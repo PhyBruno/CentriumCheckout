@@ -52,14 +52,29 @@ As pastas acima existem mas estão **vazias** — nenhum conteúdo de spec foi g
 
 Este repositório roda sob o plugin **GateGuard**, que intercepta chamadas de `Edit`, `Write` e `Bash` e bloqueia a execução até que fatos específicos sejam declarados em texto **antes** da chamada. Isso vale para qualquer sessão do Claude Code neste projeto — documentado aqui para que a regra fique visível independentemente da configuração global de quem estiver operando.
 
-**Antes de qualquer `Update`, `Edit` ou `Write`, declarar em texto:**
+**Antes de qualquer `Update`, `Edit` ou `Write`, declarar em texto os quatro pontos abaixo — nesta ordem. É exatamente o que o gate cobra antes de liberar; declarar tudo de saída evita o bloqueio.** Ao ser barrado, o gate imprime literalmente:
 
-1. Todos os arquivos que importam/referenciam o arquivo-alvo (usar `Grep`/`Glob` se necessário).
-2. Funções ou classes públicas afetadas pela mudança.
-3. Se o arquivo lê ou grava dados externos: nome dos campos, estrutura e formato — usando valores sintéticos, nunca dados reais de produção/tenant.
-4. A instrução atual do usuário, citada literalmente (verbatim).
+```
+Error: [Fact-Forcing Gate]
 
-Em seguida, antes de chamar `Edit`: usar `Read` no arquivo-alvo, confirmar que o `old_string` é **idêntico** ao conteúdo em disco (indentação, quebras de linha, caracteres especiais) e só então chamar `Edit`.
+Before creating <caminho-do-arquivo>, present these facts:
+
+1. Name the file(s) and line(s) that will call this new file
+2. Confirm no existing file serves the same purpose (search the tree — Glob/Grep, or find/grep via Bash)
+3. If this file reads/writes data files, show field names, structure, and date format (use redacted or synthetic values, not raw production data)
+4. Quote the user's current instruction verbatim
+
+Present the facts, then retry the same operation.
+```
+
+Mapeando ponto a ponto (fornecer sempre os quatro, mesmo que a resposta a algum seja "não se aplica"):
+
+1. **Arquivo(s) e linha(s) que chamam/referenciam o alvo.** Para arquivo **novo**: quem passará a chamá-lo. Para arquivo **existente**: quem o importa/referencia hoje (usar `Glob`/`Grep`, ou `find`/`grep` via `Bash`). Se aplicável, listar também as funções/classes públicas afetadas pela mudança.
+2. **Confirmar que nenhum arquivo existente já cumpre o mesmo papel** — varrer a árvore (`Glob`/`Grep`, ou `find`/`grep` via `Bash`) e afirmar o resultado. **Obrigatório de saída, não só quando o gate reclama.**
+3. **Se o arquivo lê ou grava arquivos de dados:** nome dos campos, estrutura e formato de data — com valores redigidos ou sintéticos, **nunca** dados reais de produção/tenant.
+4. **A instrução atual do usuário, citada literalmente (verbatim).**
+
+Em seguida, antes de chamar `Edit`: usar `Read` no arquivo-alvo, confirmar que o `old_string` é **idêntico** ao conteúdo em disco (indentação, quebras de linha, caracteres especiais) e só então chamar `Edit`. Depois de declarar os fatos, **reenviar a mesma chamada sem alteração** ("Present the facts, then retry the same operation").
 
 **Antes da primeira chamada `Bash` de cada sessão (e sempre que o gate bloquear), declarar em texto:**
 
