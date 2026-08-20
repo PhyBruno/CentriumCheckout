@@ -103,7 +103,7 @@ O CheckoutWEB é responsivo: a mesma aplicação atende desktop e mobile, adotan
 - **Host por tenant fora do contrato** (seção 10): `ApiCentriumOAuth.yaml` não tem bloco `servers:` (confirmado) — o host da API (composto a partir do `tenant` recebido do ERP, ex.: `TENANT.apps.centrium.inf.br`) não está formalizado em nenhum contrato ainda. Mesma situação do `codigoEmpresa`: pendente de documentação pela equipe.
 - **`refresh_token` vs. reautenticação via `password` grant** (seção 10): o contrato de `/oauth/access_token` retorna um `refresh_token` na resposta, mas o fluxo de renovação de sessão descrito usa uma nova chamada ao mesmo endpoint com `client_id`/`client_secret`/`username`/`password` salvos, não o `refresh_token`. Confirmar se essa é a intenção definitiva ou se o `refresh_token` deve substituir a reautenticação por senha.
 - **Nome da variável de ambiente do domínio base da API** (seções 9 e 10): confirmado que o domínio base (ex.: `apps.centrium.inf.br`) vem de uma variável de ambiente Docker, mas o nome dessa variável ainda não foi definido.
-- **Dúvidas operacionais sobre endpoints da API do ERP** (levantadas em 2026-07-23, a partir do mapeamento de `ApiCentriumOAuth.yaml` e `Regras.md` em `Dados da API do ERP e lógica do ERP/`; pendente alinhamento com a equipe do ERP):
+- **Dúvidas operacionais sobre endpoints da API do ERP** (levantadas em 2026-07-23, a partir do mapeamento de `ApiCentriumOAuth.yaml` e `Regras.md` em `Fluxograma - Diagrama - Alinhamentos/`; pendente alinhamento com a equipe do ERP):
   1. ✅ **Resolvido (2026-08-20) — Busca de cliente**: `GET /ApiCentriumOAuth/GetCliente` de fato só busca o cliente específico quando já identificado (por `CPFCNPJ`). Foi criado o endpoint `GetListaClientes`, que permite a busca de clientes por `&TxtBusca`, para a tela de identificação de cliente listar candidatos e permitir seleção.
   2. **Parcialmente resolvido (2026-08-20) — `GET /ApiCentriumOAuth/GetProduto` — `TipoPreco` vs. `ListaPreco`**: o código pode ser enviado como `0` no que se refere a `ListaPreco`. Também foi adicionado um campo na resposta indicando se o produto é **pesável** ou não. Ainda em aberto: diferenciação semântica completa entre `TipoPreco` e `ListaPreco` fora do caso `0`.
   3. ✅ **Resolvido (2026-08-20) — `POST /ApiCentriumOAuth/ValidaTicketDevolucao`**: não há necessidade de validar/liberar o ticket devolução novamente antes da finalização — ele é sempre consumido na finalização da venda (`FaturarNFCe`). O endpoint de validação retorna o **valor** do ticket ao validar (quando válido), resolvendo a checagem "se o valor do ticket for superior ao valor da venda, é permitido utilizá-lo". O ticket devolução **não valida a condição de pagamento**. Foi adicionado, em `CondicaoFormasDePagamento[]`, um campo indicando se aquela forma de pagamento específica aceita o uso de ticket de devolução (resolve a lacuna de flag por forma de pagamento).
@@ -155,7 +155,7 @@ O CheckoutWEB é **100% Docker**, cobrindo todo o ciclo — desenvolvimento e pr
 
 ## 10. Autenticação e gestão de sessão (login)
 
-Contratos de referência: `/oauth/access_token` e `/ApiCentriumOAuth/GetSessao` em `ApiCentriumOAuth.yaml` (pasta `Dados da API do ERP e lógica do ERP/`).
+Contratos de referência: `/oauth/access_token` e `/ApiCentriumOAuth/GetSessao` em `ApiCentriumOAuth.yaml` (pasta `Fluxograma - Diagrama - Alinhamentos/`).
 
 **Fluxo de login:**
 
