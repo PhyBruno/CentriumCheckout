@@ -1,0 +1,44 @@
+<mxfile host="Electron">
+  <diagram name="Página-1" id="ua09AKRfxfmWghCuwdTy">
+    <mxGraphModel dx="1992" dy="889" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="l5JVYLz030D5K9r7qJjH-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Checkout" vertex="1">
+          <mxGeometry height="60" width="120" x="360" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="l5JVYLz030D5K9r7qJjH-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Operador" vertex="1">
+          <mxGeometry height="60" width="120" x="120" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="l5JVYLz030D5K9r7qJjH-3" parent="1" style="html=1;whiteSpace=wrap;" value="" vertex="1">
+          <mxGeometry height="230" width="10" x="175" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="l5JVYLz030D5K9r7qJjH-4" parent="1" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" value="" vertex="1">
+          <mxGeometry height="180" width="10" x="410" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="l5JVYLz030D5K9r7qJjH-5" edge="1" parent="1" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=5;" target="l5JVYLz030D5K9r7qJjH-4" value="Selecionar Condição de Pagamento">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="185" y="145" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l5JVYLz030D5K9r7qJjH-6" edge="1" parent="1" source="l5JVYLz030D5K9r7qJjH-4" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;curved=0;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=-5;entryX=0.9;entryY=0.839;entryDx=0;entryDy=0;entryPerimeter=0;" target="l5JVYLz030D5K9r7qJjH-3" value="&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;As formas de pagamento exibidas serão&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;recarregadas conforme o carregamento do&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;Login.&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;Aplica também descontos e acrécimos.&lt;/span&gt;&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="185" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l5JVYLz030D5K9r7qJjH-7" parent="1" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" value="" vertex="1">
+          <mxGeometry height="40" width="10" x="420" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="l5JVYLz030D5K9r7qJjH-8" edge="1" parent="1" source="l5JVYLz030D5K9r7qJjH-4" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;exitX=1;exitY=0;exitDx=0;exitDy=5;exitPerimeter=0;" target="l5JVYLz030D5K9r7qJjH-7" value="Não permitir troca de condição após aprovação de algum pagamento.&lt;div&gt;&lt;br&gt;&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="455" y="145" />
+              <mxPoint x="455" y="170" />
+            </Array>
+            <mxPoint x="425" y="140" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

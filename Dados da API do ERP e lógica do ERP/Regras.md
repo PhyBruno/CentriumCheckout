@@ -1,0 +1,140 @@
+#Checkout NFCe
+	
+##Atores
+* Operador de caixa
+* Supervisor
+* Cliente
+* TEF
+* PIX
+* Leitor de codigo de barras
+* Display secundário para o cliente
+
+##Floxogramas
+
+##**Regras de negócios**
+
+###Regras gerais
+* Não será permitido devolução via Checkout.
+* Endpoint tipo health para alterações do sistema.
+* Cada Checkout será uma "maquina".
+* Cada maquina terá sua série fiscal.
+* Todo o rascunho será Gravado em Cache. Somente gravar via API no final do processo.
+* Quando ativar a contingencia, obrigar o relogin. Botao de recarregar sessão do usuario.
+* Permitir abertura de outra NFCe mesmo sem finalizar a que está aberta, irá suspender a atual.
+* Permitir carregamento de outra NFCe em Aberto.
+* O web service vai retornar todas as formas de pagamento permitidas para aquela condição.
+* Repository Guid vem da conexão do sistema ERP para o Checkout
+
+###Acesso ao sistema
+* Login obrigatório.
+* Somente Usuarios com um caixa associados podem fazer login.
+* A impressora deve estar associada a um cadastro de máquina.
+* Não permitir login simultâneo do mesmo usuario em dois checkouts.
+* Registrar data/hora de login e logout.
+* Permitir troca de operador sem fechar a aplicação.
+* Tempo máximo de inatividade para logout automático (se desejado).
+* Validar Licença da NFCe.
+
+###Regras de Cadastrar/Identificar Clientes
+* Não é obrigatório a Identificação do cliente.
+* Caso cliente queira se identificar, é obrigatório o cadastro completo com validações de CPF/CNPJ e CEP.
+* O CEP cadastrado é obrigatório ter Código do IBGE.
+* Gravar auditoria a cada cadastro novo de cliente, com qual caixa o fez, data e hora, e dados do cliente.
+* Caso cliente se identifique e já tenha cadastro, exibir histórico do cliente caso configurado para exibi-lo, retornar informações default, como vendedor, 
+condição de pagamento, entre outros Defaults.
+* Localização do cadastro será feita pelo CPF.
+* Replicar clientes ao cadastrar.
+* Não fazer edição do cliente.
+* Identificação/Cadastro só poderá ocorrer antes de começar a venda.
+
+
+###Consultar Produtos
+* A busca ter no mínimo 3 caracteres para ser realizada.
+* Somente exibir produto Ativos.
+* Caso ativo a validação de Saldo e produto sem saldo, destaca-lo em vermelho e não permitir o seu retorno.
+* Não exibir produtos Pai.
+
+###Vender produtos
+* Permitir inclusão de produtos somente ativos.
+* Caso ativo a validação de estoque e sem estoque, não permitir sua adição a venda.
+* Quando ativo o preço por quantidade, aplicar preços no produto a inserir e nos já inseridos.
+* Produtos pesaveis, que suas etiquetas foram geradas por uma balança, seu codigo de barras deve começar com 2
+* Ao localizar um * no codigo do produto, multiplicar o numero (quantidade) a esquerda pelo codigo do produto digitado a direita
+* Não permitir descontos acima do valor do produto.
+* Não permitir adição de produtos após aprovação de algum pagamento.
+* Calcular em Tela Totais.
+* Não permitir Inserir produto com valor zerado ou negativo.
+* Não permitir quantidade negativa ou zerada.
+* Não permitir Inserir produto inexistente.
+* Permitir produtos repitidos. Se agrupa ou registra um novo.
+* Não pertir inserir itens Produto Pai.
+* Após inserção, limpar campos condizentes a seleção/carregamento do produto.
+* desconto unitário não pode ser superior ao valor do produto.
+* A cada produto carregado salvar as informações daquele produto em cache para não necesisdar uso da API a cada bipe.
+* Produto editavel ao dar TAB, poder editar o produto.
+* Produto não editavel ao dar TAB, não permitir edição.
+
+###Cancelar produtos
+* Ao cancelar, produto aparecer riscado na Grid, e não remove-lo.
+* Não permitir cancelamento fracionado.
+* Não permitir cancelamento após aprovação de algum pagamento.
+* Registrar auditoria do usuário que cancelou. Registrar data/hora.
+
+###Condição de pagamentos
+* Todas as condições serão carregadas a partir da retaguarda.
+* Não permitir cadastro de novas condições pelo Checkout.
+* Não permitir troca de condição após aprovação de algum pagamento.
+* Ao trocar a condição, as formas de pagamento exibidas serão recarregadas conforme configuração.
+
+###Descontos e acrécimos
+* Serão aplicados conforme Condição de pagamento
+* Serão aplicados conforme convênio do cliente.
+* Não permitir aplicação de descontos ou acréscimos após adição de forma de pagamento.
+* Não permitir descontos superiores ao valor total da Venda.
+
+###Registrar Pagamentos
+* Ao inserir a primera forma, não permitir adicionar/remover/cancelar itens.
+* Ao inserir a primera forma, não permitir Alterar Condição de pagamento.
+* Ao inserir a primera forma, não permitir alterar Descontos e Acréscimos.
+* Ao Utilizar Pagamentos TEF, será utilizado a Integração TEF. Adicionar pagamento somente aprovação da Integração. Gravando seus respectivos campos de autorização na tabela de pagamentos.
+* Ao possuir pagamento em TEF, seu cancelamento só será permitido após cancelamento via Integração TEF.
+* Ao utilizar pagamento PIX com Integração, adicionar pagamento somente após aprovação do pagamento.
+* Somente uma forma de pagamento em dinheiro será permitida.
+* Somente Dinheiro pode gerar troco.
+* O troco não pode ultrapassar o valor em dinheiro já existente.
+* Utilização de Integrações TEF ou PIX somente permitidas com licença ativa.
+* Após inserção, calcular em Tela valor Adicionado, Faltante e Troco.
+* Pagamentos em duplicatas somente para cliente identificados.
+* Pagamentos em duplicatas somente para clientes com crédito, caso configuração ativa.
+* Não permitir Vencimento da data limite de crédito ultrapasse o da configuração do cadastro cliente.
+* Não permitir Inserir pagamento a prazo para cliente Bloqueado. A menos que seja um pagamento com cartão de débito/crédito.
+* Caso cliente carregado não esteja permitido vendas a crédito, não permitir adição de formas que não sejam consideradas à vista. A menos que seja um pagamento com cartão de débito/crédito.
+* Sem limites de quantidade de formas adicionadas.
+* Ao utilizar Ticket Devolução, valida-lo e o consumi-lo.
+* Ao cancelar o ticket devolução, voltar Status para poder consumi-lo posteriormente.
+* Ticket devolução não gera troco.
+* Caso o valor do ticket devolução for superior ao valor da venda, será permitido utiliza-lo.
+* Cada Inserção ou remoção de pagamentos, gravar auditoria. Uma grande auditoria no Fim.
+
+###Emissão da NFCe
+* Limite de valor de 10.000 reais para cliente sem identificação.
+* O checkut não se comunica com o SEFAZ, mas com as APIs do retaguarda, logo o retaguarda fará a cominicação e autorização com o Sefaz.
+* Somente permitir quando todos os pagamentos somados atingirem o total da venda.
+* Somente permitir quando os tipos de pagamento (Entradas e parcelas) atinjam os valores minimos dependendo do condição de pagamento.
+* Uma vez iniciado o processo de emissão, não permitir qualquer alteração na tela.
+* Imprimir Danfe da NFCe somente com o Status de autorizado. A menos que esteja em contingencia.
+* Caso seja rejeitada, exibir em tela os erros.
+* Após Impresão do DANFE, fazer impressão de Comprovantes TEF caso houve pagamento.
+* Após Impresão do DANFE, fazer impressão de Duplicatas caso houve pagamento.
+* Quando rejeita e houver pagamento TEF, exigir extorno do pagamento.
+* Não permitir cancelamento da NFCe via checkout.
+* Permitir Reimpressão de DANFE e outros documentos fiscais.
+* Caso falhe a comunicação com Impressora, exibir documentos em PDF.
+* Impressões em PDF, exibir em nova Guia.
+* Após finalizar autorização e impressões, desbloquear tela.
+* Outras regras de negócio vinculadas a retaguarda que não foram atendidas, devem ser exibidas antes da autorização. Os passos seriam consumo do retaguarda para validar NFCe.
+
+###Estados da Venda
+* Com Itens
+* Com Pagamentos
+* Finalizada

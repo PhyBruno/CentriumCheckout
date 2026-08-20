@@ -1,0 +1,16 @@
+# Drawio: arquivos de trava/backup temporários do editor
+**/.$*.drawio.bkp
+
+# dual-graph MCP: caches e estado de runtime locais (regenerados a cada sessão)
+.dual-graph/*.log
+.dual-graph/*.pid
+.dual-graph/mcp_port
+.dual-graph/info_graph.json
+.dual-graph/symbol_index.json
+.dual-graph/retrieval_cache.json
+.dual-graph/chat_action_graph.json
+.dual-graph/mcp_tool_calls.jsonl
+
+# dependências / build
+node_modules/
+dist/

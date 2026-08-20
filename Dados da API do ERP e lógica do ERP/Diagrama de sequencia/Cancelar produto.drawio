@@ -1,0 +1,44 @@
+<mxfile host="Electron">
+  <diagram name="Página-1" id="xjrycjZ8q0ojtShDW9RM">
+    <mxGraphModel dx="1992" dy="889" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="E_gNmeel6En6hu8OC-5a-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Checkout" vertex="1">
+          <mxGeometry height="60" width="120" x="280" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="E_gNmeel6En6hu8OC-5a-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Operador" vertex="1">
+          <mxGeometry height="60" width="120" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="E_gNmeel6En6hu8OC-5a-4" parent="1" style="html=1;whiteSpace=wrap;" value="" vertex="1">
+          <mxGeometry height="130" width="10" x="95" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="E_gNmeel6En6hu8OC-5a-5" parent="1" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" value="" vertex="1">
+          <mxGeometry height="80" width="10" x="330" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="E_gNmeel6En6hu8OC-5a-6" edge="1" parent="1" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=5;" target="E_gNmeel6En6hu8OC-5a-5" value="Clicou em Remover o produto">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="105" y="145" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E_gNmeel6En6hu8OC-5a-7" edge="1" parent="1" source="E_gNmeel6En6hu8OC-5a-5" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;curved=0;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=-5;" value="&lt;span style=&quot;text-align: left;&quot;&gt;Produto aparecer riscado na Grid,&amp;nbsp;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;text-align: left;&quot;&gt;e não remove-lo.&lt;/span&gt;&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="105" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="E_gNmeel6En6hu8OC-5a-8" parent="1" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" value="" vertex="1">
+          <mxGeometry height="40" width="10" x="340" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="E_gNmeel6En6hu8OC-5a-9" edge="1" parent="1" source="E_gNmeel6En6hu8OC-5a-5" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;exitX=1;exitY=0;exitDx=0;exitDy=5;exitPerimeter=0;" target="E_gNmeel6En6hu8OC-5a-8" value="&lt;div&gt;Não permitir cancelamento fracionado.&lt;/div&gt;&lt;div&gt;Não permitir cancelamento após aprovação de algum pagamento.&lt;/div&gt;&lt;div&gt;Registrar auditoria do usuário que cancelou. Registrar data/hora.&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="375" y="145" />
+              <mxPoint x="375" y="170" />
+            </Array>
+            <mxPoint x="345" y="140" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

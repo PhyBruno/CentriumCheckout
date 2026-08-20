@@ -1,0 +1,1341 @@
+openapi: 3.0.3
+
+info:
+  title: API de Clientes
+  version: 1.0.0
+
+paths:
+  /oauth/access_token:
+    post:
+      summary: Obter token de acesso
+      description: Endpoint para obter um token de acesso válido para autenticação.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  example: "seu_client_id"
+                client_secret:
+                  type: string
+                  example: "seu_client_secret"
+                grant_type:
+                  type: string
+                  example: "password"
+                scope:
+                  type: string
+                  example: "FullControl"
+                username:
+                  type: string
+                  example: "usuario_exemplo"
+                password:
+                  type: string
+                additionalParameters:
+                  type: string
+                  example: '{"AuthenticationTypeName":"local","Repository":"13cdc799-9969-414b-9424-ec75b5ce2646"}'
+      responses:
+        '200':
+          description: Token de acesso obtido com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                  expires_in:
+                    type: integer
+                  refresh_token:
+                    type: string
+                  scope:
+                    type: string
+                  user_guid:
+                    type: string
+
+  /ApiCentriumOAuth/GetSessao:
+    get:
+      summary: Retorna dados da sessão do usuário autenticado
+      description: Retorna informações detalhadas sobre a sessão do usuário autenticado.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: header
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: Login
+          in: query
+          required: true
+          description: Identificador exclusivo do usuário.
+          schema:
+            type: string
+            example: "12345678900"       
+
+      responses:
+        '200':
+          description: Usuário localizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  UsuarioCodigo:
+                    type: integer
+                  UsuarioNome:
+                    type: string
+                  caixa:
+                    type: integer
+                  EmpresaRazaoSocial:
+                    type: string  
+                  EmpresaNomeFantasia:
+                    type: string 
+                  VendedorCodigo:
+                    type: integer
+                  VendedorNome:
+                    type: string
+                  ClienteDefaultCodigo:
+                    type: integer
+                  ClienteDefaultNome:
+                    type: string
+                  UsuarioTipoCodigoProduto:
+                    type: string
+                  Cliente_UtilizaSegundoNivelDeEnderecos:
+                    type: string
+                  CadMaqCod:
+                    type: string
+                  CadMaqHost:
+                    type: string  
+                  CadSerieNFCe:
+                    type: string
+                  QtdMinCharParaConsulta:
+                    type: integer
+                  ImagemLogoBase64:
+                    type: string
+                  ImagemDisplaySecundarioBase64:
+                    type: string
+                  TipoPreco:
+                    type: integer
+                  CondicoesDePagamento:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        CondicaoCodigo:
+                          type: integer
+                        CondicaoDescricao:
+                          type: string
+                        CondicaoPrazo:
+                          type: integer
+                        CondicaoMinimoEntrada:
+                          type: number
+                        CondicaoDesconto:
+                          type: number
+                        CondicaoDescontoMaximo:
+                          type: number
+                        CondicaoFormasDePagamento:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              FormaCodigo:
+                                type: integer
+                              FormaDescricao:
+                                type: string
+                              FormaEntrada:
+                                type: string
+                              FormaMeioPagtoNFe:
+                                type: string
+                              FormaIntegracaoCartao:
+                                type: string
+                              FormaTipoTransacaoTEF:
+                                type: string
+                  ConfiguracoesTEF:
+                    type: object
+                    properties:
+                      TEFempresaAutomacao:
+                        type: string
+                      TEFcapAutomacao:
+                        type: integer
+                      TEFversaoInterface:
+                        type: integer
+                      TEFnomeAutomacao:
+                        type: string
+                      TEFversaoAutomacao:
+                        type: string
+                      TEFregistroCertificacao:
+                        type: string
+                      TEFVersaoImpressao:
+                        type: integer
+                  ConfiguracoesPIX:
+                    type: object
+                    properties:
+                      UtilizaCentriumPAG:
+                        type: string
+                      MinimoPix:
+                        type: number
+                      TempoEspera:
+                        type: integer
+                      UtilizaEncurtador:
+                        type: string
+                      
+  /ApiCentriumOAuth/GetCliente:
+    get:
+      summary: Buscar cliente por CPF
+      description: Retorna os dados detalhados de um único cliente cadastrado no sistema.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: header
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: CPFCNPJ
+          in: query
+          required: true
+          description: Identificador exclusivo do cliente.
+          schema:
+            type: string
+            example: "12345678900"       
+
+      responses:
+        '200':
+          description: Cliente localizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  CodCliente:
+                    type: integer
+                  nome:
+                    type: string
+                  cpf:
+                    type: string
+                  email:
+                    type: string  
+                  celular:
+                    type: string 
+                  cep:
+                    type: string
+                  endereco:
+                    type: string
+                  bairro:
+                    type: string
+                  numero:
+                    type: string
+                  cidade:
+                    type: string
+                  uf:
+                    type: string  
+                  LimiteCredito:
+                    type: number
+                  PermiteVendaCredito:
+                    type: boolean
+                  CodigoConvenio:
+                    type: integer
+                  NomeConvenio:
+                    type: string
+                  DescontoConvenio:
+                    type: number
+
+  /ApiCentriumOAuth/PostCliente:
+    post:
+      summary: Cadastrar novo cliente
+      description: Endpoint para cadastrar um novo cliente no sistema.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+   
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Empresa:
+                  type: integer
+                nome:
+                  type: string
+                cpf:
+                  type: string
+                email:
+                  type: string
+                celular:
+                  type: string
+                cep:
+                  type: string
+                endereco:
+                  type: string
+                bairro:
+                  type: string
+                numero:
+                  type: string
+                cidade:
+                  type: string
+                uf:
+                  type: string
+      responses:
+        '201':
+          description: Cliente cadastrado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Empresa:
+                    type: integer
+                  CodCliente:
+                    type: integer
+                  nome:
+                    type: string
+                  cpf:
+                    type: string
+                  email:
+                    type: string  
+                  celular:
+                    type: string 
+                  cep:
+                    type: string
+                  endereco:
+                    type: string
+                  bairro:
+                    type: string
+                  numero:
+                    type: string
+                  cidade:
+                    type: string
+                  uf:
+                    type: string
+  
+  /ApiCentriumOAuth/GetListaProdutos:
+    get:
+      summary: Retorna a lista de produtos disponíveis
+      description: Endpoint para obter a lista completa de produtos cadastrados no sistema.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: header
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: TxtBusca
+          in: query
+          required: false
+          description: Texto para filtrar os produtos pelo nome ou descrição.
+          schema:
+            type: string
+            example: "produto_exemplo"
+        - name: Pagina
+          in: query
+          required: false
+          description: Número da página para paginação dos resultados.
+          schema:
+            type: integer
+            example: 1
+        - name : TamanhoPagina
+          in: query
+          required: false
+          description: Quantidade de produtos por página. Maximo 50.
+          schema:
+            type: integer
+            example: 10
+
+      responses:
+        '200':
+          description: Lista de produtos obtida com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  PaginaAtual:
+                    type: integer
+                  RegistrosPorPagina:
+                    type: integer
+                  TotalRegistros:
+                    type: integer
+                  TotalPaginas:
+                    type: integer
+                  produtos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        CodigoProduto:
+                          type: string
+                        Descricao:
+                          type: string
+                        Referencia:
+                          type: string
+                        CodigoBarras:
+                          type: string
+                        PrecoVenda1:
+                          type: number
+                        PrecoVenda2:
+                          type: number
+                        PrecoVenda3:
+                          type: number
+                        PrecoVenda4:
+                          type: number
+                        PrecoVenda5:  
+                          type: number
+                        Estoque:
+                          type: number
+                        CodigoGrupo:
+                          type: integer
+                        DescricaoGrupo:
+                          type: string
+                        CodigoSubgrupo:
+                          type: integer
+                        DescricaoSubgrupo:
+                          type: string
+                        Aplicacao:
+                          type: string
+                        GTINTributavel:
+                          type: string
+                        QtdMinimaPreco2:
+                          type: integer
+                        QtdMinimaPreco3:
+                          type: integer
+                        QtdMinimaPreco4:
+                          type: integer
+                        QtdMinimaPreco5:
+                          type: integer
+                        UDM:
+                          type: string
+
+  /ApiCentriumOAuth/GetProduto:
+    get:
+      summary: Retorna os detalhes de um produto específico
+      description: Endpoint para obter os detalhes completos de um produto cadastrado no sistema.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: query
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: CodigoProduto
+          in: query
+          required: true
+          description: Código do produto a ser consultado.
+          schema:
+            type: string
+            example: "12345"
+        - name: TipoCodProduto
+          in: query
+          required: true
+          description: Tipo de código do produto a ser consultado ex CodigoProduto, CodigoBarras, Referencia.
+          schema:
+            type: string
+            example: "CodigoProduto"
+        - name: TipoPreco
+          in: query
+          required: true
+          description: Tipo de preço a ser consultado.
+          schema:
+            type: integer
+            example: 1
+        - name: CodCliente
+          in: query
+          required: false
+          description: Código do cliente para consulta de preço específico.
+          schema:
+            type: integer
+            example: 123
+        - name: ListaPreco
+          in: query
+          required: true
+          description: Lista de preço a ser consultada.
+          schema:
+            type: integer
+            example: 1
+
+
+      responses:
+        '200':
+          description: Detalhes do produto obtidos com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  CodigoProduto:
+                    type: string
+                  Descricao:
+                    type: string
+                  Referencia:
+                    type: string
+                  CodigoBarras:
+                    type: string
+                  PrecoVenda1:
+                    type: number
+                  PrecoVenda2:
+                    type: number
+                  PrecoVenda3:
+                    type: number
+                  PrecoVenda4:
+                    type: number
+                  PrecoVenda5:  
+                    type: number
+                  PrecoMinimo:
+                    type: number
+                  Estoque:
+                    type: number
+                  CodigoGrupo:
+                    type: integer
+                  DescricaoGrupo:
+                    type: string
+                  CodigoSubgrupo:
+                    type: integer
+                  DescricaoSubgrupo:
+                    type: string
+                  Aplicacao:
+                    type: string
+                  GTINTributavel:
+                    type: string
+                  QtdMinimaPreco2:
+                    type: integer
+                  QtdMinimaPreco3:
+                    type: integer
+                  QtdMinimaPreco4:
+                    type: integer
+                  QtdMinimaPreco5:
+                    type: integer
+                  UDM:
+
+  /ApiCentriumOAuth/ValidaTicketDevolucao:
+    post:
+      summary: Validar ticket de devolução
+      description: Endpoint para validar um ticket de devolução.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: query
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticketDevolucao:
+                  type: string
+                  example: "123456789"
+      responses:
+        '200':
+          description: Ticket de devolução validado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valido:
+                    type: boolean
+                  mensagem:
+                    type: string  
+  
+  /ApiCentriumOAuth/FaturarNFCe:
+    post:
+      summary: Faturar NFCe
+      description: Endpoint para faturar uma Nota Fiscal de Consumidor Eletrônica (NFCe).
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Empresa:
+                  type: integer
+                SuspenderOuFaturar:
+                  type: string
+                clienteCodigo:
+                  type: integer
+                vendedorCodigo:
+                  type: integer
+                CondicaoPagamentoCodigo:
+                  type: integer
+                NumeroNota:
+                  type: integer
+                CadSerieNFCe:
+                  type: string
+                UsuarioCodigo:
+                  type: integer
+                FormasDePagamento:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      FormaCodigo:
+                        type: integer
+                      FormaMeioPagtoNFe:
+                        type: string
+                      FormaValor:
+                        type: number
+                      FormaIntegracaoCartao:
+                        type: string
+                      TEFidentificacao:
+                        type: integer
+                      TEFCNPJ:
+                        type: string
+                      TEFBandeira:
+                        type: string
+                      TEFNumeroAutorizacao:
+                        type: string
+                      TEFTipoIntegracao:
+                        type: string
+                      FormaPixGUID:
+                        type: string
+                      TicketDevolucao:
+                        type: string
+                produtos:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      sequencial:
+                        type: integer
+                      codigoProduto:
+                        type: string
+                      quantidade:
+                        type: number
+                      precoUnitario:
+                        type: number
+                      DescontoPercentual:
+                        type: number
+                      DescontoValor:
+                        type: number
+                      ValorBruto:
+                        type: number
+                      UDM:
+                        type: string
+      responses:
+        '200':
+          description: NFCe faturada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  numeroNFCe:
+                    type: string
+                  chaveAcesso:
+                    type: string
+                  dataEmissao:
+                    type: string
+                  XMLImpressao:
+                    type: string
+                  CodigoRejeicao:
+                    type: string
+                  MensagemRejeicao:
+                    type: string
+
+  /ApiCentriumOAuth/CarregarNFCe:
+    get:
+      summary: Carregar NFCe
+      description: Endpoint para carregar uma Nota Fiscal de Consumidor Eletrônica (NFCe) existente.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: query
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: NumeroNota
+          in: query
+          required: true
+          description: Código da Nota.
+          schema:
+            type: integer
+            example: 1
+        - name: SerieNota
+          in: query
+          required: true
+          description: Código da série.
+          schema:
+            type: string
+            example: "R01"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                NumeroNFCe:
+                  type: string
+                  example: "12345678901234567890123456789012345678901234"
+                SerieNFCe:
+                  type: string
+                  example: "1"
+      responses:
+        '200':
+          description: NFCe carregada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dadosNFCe:
+                    type: object
+                    properties:
+                      SuspenderOuFaturar:
+                        type: string
+                      clienteCodigo:
+                        type: integer
+                      vendedorCodigo:
+                        type: integer
+                      CondicaoPagamentoCodigo:
+                        type: integer
+                      CadSerieNFCe:
+                        type: string
+                      FormasDePagamento:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            FormaCodigo:
+                              type: integer
+                            FormaMeioPagtoNFe:
+                              type: string
+                            FormaValor:
+                              type: number
+                            FormaIntegracaoCartao:
+                              type: string
+                            TEFidentificacao:
+                              type: string
+                            TEFCNPJ:
+                              type: string
+                            TEFBandeira:
+                              type: string
+                            TEFNumeroAutorizacao:
+                              type: string
+                            FormaPixGUID:
+                              type: string
+                      produtos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            sequencial:
+                              type: integer
+                            codigoProduto:
+                              type: string
+                            quantidade:
+                              type: number
+                            precoUnitario:
+                              type: number
+                            DescontoPercentual:
+                              type: number
+                            DescontoValor:
+                              type: number
+                            ValorBruto:
+                              type: number
+                            UDM:
+                              type: string
+
+  /ApiCentriumOAuth/ListaDAVs:
+    get:
+      summary: Retorna a lista de DAVs (Documentos Auxiliares de Venda)
+      description: Endpoint para obter a lista completa de DAVs cadastrados no sistema.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: header
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: Pagina
+          in: query
+          required: false
+          description: Número da página para paginação dos resultados.
+          schema:
+            type: integer
+            example: 1
+        - name : TamanhoPagina
+          in: query
+          required: false
+          description: Quantidade de DAVs por página. Maximo 50.
+          schema:
+            type: integer
+            example: 10
+
+      responses:
+        '200':
+          description: Lista de DAVs obtida com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  PaginaAtual:
+                    type: integer
+                  RegistrosPorPagina:
+                    type: integer
+                  TotalRegistros:
+                    type: integer
+                  TotalPaginas:
+                    type: integer
+                  DAVs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        NumeroDAV:
+                          type: string
+                        Titulo:
+                          type: string
+                        DataEmissao:
+                          type: string
+                        ClienteCodigo:
+                          type: integer
+                        ClienteNome:
+                          type: string
+                        VendedorCodigo:
+                          type: integer
+                        VendedorNome:
+                          type: string
+                        ValorTotal:
+                          type: number
+
+  /ApiCentriumOAuth/GetDAV:
+    get:
+      summary: Retorna os detalhes de um DAV específico
+      description: Endpoint para obter os detalhes completos de um DAV cadastrado no sistema.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: header
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: NumeroDAV
+          in: query
+          required: true
+          description: Número do DAV a ser consultado.
+          schema:
+            type: string
+            example: "12345"
+
+      responses:
+        '200':
+          description: Detalhes do DAV obtidos com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  DavEmpCod:
+                    type: integer
+                  DavNum:
+                    type: string
+                  DavTit:
+                    type: string
+                  DavDatEmi:
+                    type: date
+                  DavDatFat:
+                    type: date
+                  DavDatAlt:
+                    type: date
+                  DavSta:
+                    type: string
+                  DavCliNomR:
+                    type: string
+                  DavCliCgcR:
+                    type: string
+                  DavCliEmp:
+                    type: integer
+                  DavCliCod:
+                    type: integer
+                  DavCliNom:
+                    type: string
+                  DavCliCNPJ:
+                    type: string
+                  DavCliCEP:
+                    type: string
+                  DavCliEnd:
+                    type: string
+                  DavCliBai:
+                    type: string
+                  DavCliCid:
+                    type: string
+                  DavCliUnf:
+                    type: string
+                  DavCliEma:
+                    type: string
+                  DavCliFon:
+                    type: string
+                  DavTipPre:
+                    type: integer
+                  DavDocFNum:
+                    type: integer
+                  DavDocFSer:
+                    type: string
+                  DavDocFTip:
+                    type: string
+                  DavTot:
+                    type: number
+                  DavSubTotal:
+                    type: number
+                  DavWks:
+                    type: string
+                  DavTipo:
+                    type: string
+                  DavDocONum:
+                    type: string
+                  DavDocOSer:
+                    type: string
+                  DavVlrDesconto:
+                    type: number
+                  DavVlrAcrescimo:
+                    type: number
+                  DavRepCod:
+                    type: integer
+                  DavUsuCod:
+                    type: integer
+                  DavPraCod:
+                    type: integer
+                  DavSenha:
+                    type: string
+                  DavNroControle:
+                    type: string
+                  DavObs:
+                    type: string
+                  DavCliConv:
+                    type: string
+                  DavCliComplemento:
+                    type: string
+                  DAvCliNum:
+                    type: string
+                  DAVCRE:
+                    type: string
+                  DavItemStruct:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        DavItem:
+                          type: integer
+                        DavICodBar:
+                          type: string
+                        DavIRef:
+                          type: string
+                        DavIMatEmp:
+                          type: integer
+                        DavIMatCod:
+                          type: string
+                        DavIMDesComp:
+                          type: string
+                        DavIMatUni:
+                          type: string
+                        DavIMatUv2:
+                          type: string
+                        DavIMatPv1:
+                          type: number
+                        DavIMatPv2:
+                          type: number
+                        DavIMatPv3:
+                          type: number
+                        DavIMatPv4:
+                          type: number
+                        DavIMatPv5:
+                          type: number
+                        DavIMatPProm:
+                          type: number
+                        DavIMatProm:
+                          type: string
+                        DavIMatDsc:
+                          type: string
+                        DavIMatIAT:
+                          type: string
+                        DavIMatPAfAlq:
+                          type: string
+                        DavIMatCST:
+                          type: string
+                        DavIMatIPPT:
+                          type: string
+                        DavIMatST:
+                          type: string
+                        DavIDesR:
+                          type: string
+                        DavIDs2R:
+                          type: string
+                        DavIMatRDesComp:
+                          type: string
+                        DavIUni:
+                          type: string
+                        DavIPreUni:
+                          type: string
+                        DavPreVen:
+                          type: string
+                        DavIQtd:
+                          type: string
+                        DavITotIt:
+                          type: string
+                        DavITotLiquido:
+                          type: string
+                        DavIFlgCancelado:
+                          type: string
+                        DavIDatInclusao:
+                          type: string
+                        DavIVlrDesconto:
+                          type: string
+                        DavIVlrAcrescimo:
+                          type: string
+                        DavITotParcial:
+                          type: string
+                        DavISitTrib:
+                          type: string
+                        DaviAliquota:
+                          type: string
+                        DavIWks:
+                          type: string
+                        DavIFlgTipo:
+                          type: string
+                        DavClfAliqImp:
+                          type: string
+                        DavClfCod:
+                          type: string
+                        DavClfCodCEST:
+                          type: string
+                        DavMatProdPes:
+                          type: string
+                        DavMatTPrSv:
+                          type: string
+                        DavMatSit:
+                          type: string
+                        DavClfDes:
+                          type: string
+                  DavForPagamento:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        DavPagCod:
+                          type: integer
+                        DavPagDes:
+                          type: string
+                        DavPagVlr:
+                          type: string
+
+  /ApiCentriumOAuth/GetStatusSistema:
+    get:
+      summary: Retorna o status do sistema
+      description: Endpoint para verificar o status atual do sistema.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: header
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+
+      responses:
+        '200':
+          description: Status do sistema obtido com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  mensagem:
+                    type: string
+
+  /ApiCentriumOAuth/GetPDFNota:
+    get:
+      summary: Retorna o PDF de uma nota fiscal
+      description: Endpoint para obter o PDF de uma nota fiscal específica.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+        - name: Empresa
+          in: query
+          required: true
+          description: Código da empresa.
+          schema:
+            type: integer
+            example: 1
+        - name: NumeroNota
+          in: query
+          required: true
+          description: Código da Nota.
+          schema:
+            type: integer
+            example: 1
+        - name: SerieNota
+          in: query
+          required: true
+          description: Código da série.
+          schema:
+            type: string
+            example: "R01"
+
+      responses:
+        '200':
+          description: PDF da nota fiscal obtido com sucesso
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: base64
+
+  /ApiCentriumOAuth/GerarPIX:
+    post:
+      summary: Gerar PIX
+      description: Endpoint para gerar um pagamento via PIX.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Token de acesso no formato OAuth.
+          schema:
+            type: string
+            example: "OAuth seu_token_de_acesso"
+        - name: Content-Type
+          in: header
+          required: true
+          description: Tipo de conteúdo da requisição.
+          schema:
+            type: string
+            example: "application/json"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Empresa:
+                  type: integer
+                  example: 123
+                TrnValor:
+                  type: number
+                  example: 100.00
+                TrnPagadorNome:
+                  type: string
+                  example: "Nome do Pagador"
+                TrnPagadorCgc:
+                  type: string
+                  example: "12345678901"
+                TrnPagadorEmail:
+                  type: string
+                  example: "pagador@exemplo.com"
+                TrnPagadorFone:
+                  type: string
+                  example: "11999999999"
+                TrnOrigemDocumento:
+                  type: string
+                  example: "Documento de Origem"
+                TrnOrigemSerie:
+                  type: string
+                  example: "Série de Origem"
+                FPgCod:
+                  type: integer
+                  example: 1
+                TrnTempoExpiracaoPIX:
+                  type: integer
+                  example: 3600
+      responses:
+        '200':
+          description: PIX gerado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  TrnGUID:
+                    type: string
+                  Trnbase64text:
+                    type: string
+
+
+
+
