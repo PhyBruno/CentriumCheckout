@@ -1,0 +1,86 @@
+# Finalização e Suspensão da Venda — Specification
+
+## Problem Statement
+
+O operador precisa fechar a venda gerando a NFCe, ou suspendê-la (cancelamento em digitação) sem perder rastreabilidade no ERP — o rascunho de venda existe no servidor, então "cancelar" não é uma operação puramente local.
+
+## UI Design
+
+Fluxo mobile: frame `PDV Mobile 03 - Revisão e Finalização` (resumo de conferência, pagamentos em revisão, botão finalizar). ⚠️ Não identificado frame desktop dedicado à finalização/suspensão — parece estar dentro da própria área "Pagamento e totais" da tela principal (`Fundo PDV Online Web`), sem modal próprio — confirmar. `PDV Online Web - Valor Faltante` também é relevante aqui como bloqueio antes de finalizar.
+
+## Goals
+
+- [ ] Finalização sempre gera NFCe consistente com os itens/preços já calculados no Checkout.
+- [ ] Suspensão sempre sincronizada com o ERP — nunca puramente local.
+
+## Out of Scope
+
+| Feature | Reason |
+|---|---|
+| Cancelamento de NFCe já autorizada pelo Checkout | Não existe esse endpoint e não está no escopo — só se cancela venda ainda em digitação (suspensão) |
+| Reimpressão de NFCe | Fora de escopo — `GetPDFNota` não é usado para essa finalidade neste produto |
+
+---
+
+## User Stories
+
+### P1: Finalizar a venda (faturar NFCe) ⭐ MVP
+
+**User Story**: Como operador de caixa, quero finalizar a venda e receber a NFCe pronta para impressão.
+
+**Why P1**: É o objetivo final de toda venda.
+
+**Acceptance Criteria**:
+
+1. WHEN o operador finaliza a venda THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "FATURAR"`, enviando os itens e o total já calculados pelo frontend.
+2. WHEN a venda é enviada THEN o sistema SHALL incluir, por item, os insumos usados no cálculo (SKU, quantidade agregada, tier aplicado, preço de tabela usado) como trilha de auditoria.
+3. WHEN a venda foi carregada de um rascunho existente no ERP (via `CarregarNFCe`) THEN o sistema SHALL enviar `NumeroNota` preenchido; WHEN a venda foi criada do zero no Checkout THEN o sistema SHALL enviar `NumeroNota = 0`.
+4. WHEN a finalização é confirmada THEN o sistema SHALL descartar por completo o cache de produtos (TanStack Query) daquela venda — a próxima venda sempre começa com cache vazio.
+
+**Independent Test**: Finalizar uma venda criada do zero (NumeroNota=0) e uma carregada de rascunho (NumeroNota preenchido); confirmar payload correto em cada caso.
+
+---
+
+### P1: Suspender a venda em digitação (cancelamento) ⭐ MVP
+
+**User Story**: Como operador de caixa, ao cancelar uma venda em digitação, quero que ela fique suspensa no ERP (não só descartada localmente), para manter o rascunho consistente.
+
+**Why P1**: Corrige entendimento anterior — suspensão sempre chama a API, não é operação 100% local.
+
+**Acceptance Criteria**:
+
+1. WHEN o operador cancela a venda em digitação THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "SUSPENDER"` — a mesma regra de `NumeroNota` (0 ou preenchido) da finalização se aplica.
+2. WHEN a suspensão é confirmada THEN o sistema SHALL limpar por completo o carrinho (Zustand, sem `persist`) e o cache de produtos (TanStack Query) da venda, exatamente como na finalização.
+3. WHEN uma nova venda começa após suspensão/finalização THEN o sistema SHALL nunca herdar itens ou dados de produto da venda anterior.
+
+**Independent Test**: Suspender uma venda em digitação e verificar chamada com `SUSPENDER`, seguida de limpeza total do estado local.
+
+---
+
+## Edge Cases
+
+- WHEN a NFCe é autorizada THEN ⚠️ pendente: não confirmado se a impressão é sempre direta (API do servidor de impressão local) ou se também haverá opção de imprimir em PDF logo após a autorização (não só como fallback de falha de impressora) — e, se existir, de onde vem a preferência (config do tenant, config de máquina, escolha manual do operador).
+- WHEN é necessário obter o `NumeroNota` antes de faturar uma venda criada do zero THEN ⚠️ pendente: `GetSessao` retorna `CadSerieNFCe` (série por máquina) mas nenhum número de nota — não confirmado se o Checkout gera/controla localmente um contador sequencial ou se existe endpoint do ERP (ex.: `GetProximoNumeroNFCe`).
+- WHEN o sistema precisa detectar contingência do ERP (que "obriga o relogin") THEN ⚠️ pendente: `GET /ApiCentriumOAuth/GetStatusSistema` é mencionado em `Regras.md` como possível endpoint de health, mas os valores possíveis de `status`/`mensagem` e a necessidade de polling periódico não estão confirmados.
+
+---
+
+## Requirement Traceability
+
+| Requirement ID | Story | Phase | Status |
+|---|---|---|---|
+| FIN-01 | Finalizar venda via `FaturarNFCe` (`FATURAR`) | - | Verified |
+| FIN-02 | Trilha de auditoria por item na finalização | - | Verified |
+| FIN-03 | `NumeroNota` correto (0 vs. preenchido) | - | Verified |
+| FIN-04 | Descarte de cache de produto ao finalizar | - | Verified |
+| FIN-05 | Suspender venda via `FaturarNFCe` (`SUSPENDER`) | - | Verified |
+| FIN-06 | Limpeza total de carrinho/cache ao suspender | - | Verified |
+
+**Coverage:** 6 total, 3 edge cases pendentes de confirmação com equipe do ERP.
+
+---
+
+## Success Criteria
+
+- [ ] Nenhuma venda finalizada com dados de auditoria incompletos.
+- [ ] Nenhuma suspensão deixa rascunho divergente entre Checkout e ERP.

@@ -1,5 +1,28 @@
 [
   {
+    "id": "mem:1787257671988",
+    "kind": "blocker",
+    "content": "goey-toast/boneyard embutem SKILL.md p/ agentes de IA \u2014 risco de prompt injection na instala\u00e7\u00e3o",
+    "tags": [
+      "security",
+      "supply-chain",
+      "ui"
+    ],
+    "files": [
+      ".specs/codebase/CONCERNS.md"
+    ],
+    "file_path": ".specs/codebase/CONCERNS.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20",
+    "created_epoch": 1787194800,
+    "updated_at": "2026-08-20",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
     "id": "mem:1787248030214",
     "kind": "decision",
     "content": "Atualiza ARCHITECTURE.md: remove persist\u00eancia de venda em F5 (Zustand sem persist + confirm de beforeunload), adiciona Boneyard/Goey Toast/shadcn-ui \u00e0 stack, detalha fluxo de busca/inser\u00e7\u00e3o de produto (GetListaProdutos vs GetProduto), finaliza\u00e7\u00e3o/suspens\u00e3o via FaturarNFCe+SuspenderOuFaturar, cancelamento agora confirmado como chamada ao ERP, credenciais em cookie HttpOnly, e resolve v\u00e1rios pontos em aberto da se\u00e7\u00e3o 7",
@@ -55,7 +78,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:47:10.215769+00:00",
     "created_epoch": 1787248030,
-    "updated_at": "2026-08-20T18:50:13.395431+00:00",
+    "updated_at": "2026-08-20T20:12:05.707417+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -122,7 +145,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-20T18:50:13.417276+00:00",
+    "updated_at": "2026-08-20T20:27:51.991237+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -164,6 +187,587 @@
       "window_sec": 120,
       "recent_action_kinds": [],
       "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787255413000",
+    "kind": "decision",
+    "content": "Reorganiza .specs/ para conformidade com SDD: cria PROJECT.md, ROADMAP.md, .specs/codebase/ (STACK/ARCHITECTURE/INTEGRATIONS/CONCERNS) e 7 specs de feature em .specs/features/; remove ARCHITECTURE.md da raiz; reclassifica STATE.md",
+    "tags": [
+      "sdd",
+      "specs",
+      "reorganiza",
+      "project",
+      "roadmap",
+      "architecture",
+      "state"
+    ],
+    "files": [
+      ".specs/project/PROJECT.md",
+      ".specs/project/ROADMAP.md",
+      ".specs/project/STATE.md",
+      ".specs/codebase/ARCHITECTURE.md",
+      ".specs/codebase/STACK.md",
+      ".specs/codebase/INTEGRATIONS.md",
+      ".specs/codebase/CONCERNS.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T19:30:13.000000+00:00",
+    "created_epoch": 1787255413,
+    "updated_at": "2026-08-20T19:30:13.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787256725886",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/features/layout-responsivo-mobile/spec.md"
+    ],
+    "file_path": ".specs/features/layout-responsivo-mobile/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.886434+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.886443+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725855",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/features/finalizacao-suspensao-venda/spec.md"
+    ],
+    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.855121+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.855131+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725831",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/features/carrinho-produto-precificacao/spec.md"
+    ],
+    "file_path": ".specs/features/carrinho-produto-precificacao/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.831415+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.831432+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725804",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
+    ],
+    "file_path": ".specs/features/autenticacao-sessao-bootstrap/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.804897+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.804907+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725781",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/codebase/INTEGRATIONS.md"
+    ],
+    "file_path": ".specs/codebase/INTEGRATIONS.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.781208+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.781220+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725757",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/codebase/ARCHITECTURE.md"
+    ],
+    "file_path": ".specs/codebase/ARCHITECTURE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.757537+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.757551+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725733",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/project/PROJECT.md"
+    ],
+    "file_path": ".specs/project/PROJECT.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.733016+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.733026+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725704",
+    "kind": "decision",
+    "content": "Reorganiza .specs/ para conformidade com SDD: PROJECT/ROADMAP/codebase/features criados, ARCHITECTURE.md da raiz removido, STATE.md reclassificado",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      "ARCHITECTURE.md",
+      ".specs/project/STATE.md",
+      ".specs/project/PROJECT.md",
+      ".specs/project/ROADMAP.md",
+      ".specs/codebase/ARCHITECTURE.md",
+      ".specs/codebase/STACK.md",
+      ".specs/codebase/INTEGRATIONS.md",
+      ".specs/codebase/CONCERNS.md",
+      ".specs/features/autenticacao-sessao-bootstrap/spec.md",
+      ".specs/features/identificacao-cadastro-cliente/spec.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md",
+      ".specs/features/pagamento/spec.md",
+      ".specs/features/finalizacao-suspensao-venda/spec.md",
+      ".specs/features/importacao-dav/spec.md",
+      ".specs/features/layout-responsivo-mobile/spec.md"
+    ],
+    "file_path": "ARCHITECTURE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.704880+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.704891+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787256725744",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/project/ROADMAP.md"
+    ],
+    "file_path": ".specs/project/ROADMAP.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.744910+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.744920+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725767",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/codebase/STACK.md"
+    ],
+    "file_path": ".specs/codebase/STACK.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.767088+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.767100+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725791",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap",
+      "018",
+      "boneyard"
+    ],
+    "files": [
+      ".specs/codebase/CONCERNS.md"
+    ],
+    "file_path": ".specs/codebase/CONCERNS.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.791283+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:27:51.999444+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725816",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/features/identificacao-cadastro-cliente/spec.md"
+    ],
+    "file_path": ".specs/features/identificacao-cadastro-cliente/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.816973+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.816983+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725842",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/features/pagamento/spec.md"
+    ],
+    "file_path": ".specs/features/pagamento/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.842686+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.842696+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725872",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/features/importacao-dav/spec.md"
+    ],
+    "file_path": ".specs/features/importacao-dav/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.872471+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-20T20:12:05.872481+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787257671987",
+    "kind": "decision",
+    "content": "AD-018: Boneyard/Goey Toast/shadcn-ui instalados como depend\u00eancias npm reais (n\u00e3o skill adaptada); registrada ressalva de seguran\u00e7a sobre SKILL.md/CLAUDE.md embutidos nos pacotes goey-toast e boneyard, voltados a agentes de IA",
+    "tags": [
+      "018",
+      "boneyard",
+      "goey",
+      "toast",
+      "shadcn",
+      "instalados",
+      "como",
+      "depend"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/codebase/CONCERNS.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:27:51.987524+00:00",
+    "created_epoch": 1787257671,
+    "updated_at": "2026-08-20T20:27:51.987529+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787257672011",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "018",
+      "boneyard",
+      "goey",
+      "toast",
+      "shadcn",
+      "instalados",
+      "como",
+      "depend"
+    ],
+    "files": [
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".dual-graph/context-store.json",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:27:52.011277+00:00",
+    "created_epoch": 1787257672,
+    "updated_at": "2026-08-20T20:27:52.011286+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
     }
   }
 ]
