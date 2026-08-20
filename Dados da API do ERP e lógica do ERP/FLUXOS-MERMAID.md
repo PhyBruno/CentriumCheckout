@@ -1,10 +1,12 @@
 # Fluxos do Checkout — versão Mermaid
 
-Conversão dos diagramas `.drawio` desta pasta (10 diagramas de sequência em `Diagrama de sequencia/` + 13 fluxogramas em `Fluxogramas/`) para [Mermaid](https://mermaid.js.org/), que o GitHub renderiza nativamente em blocos ` ```mermaid `. Motivo da conversão: no XML do `.drawio` a ordem das mensagens depende de coordenadas x/y e IDs de `source`/`target` espalhados pelo arquivo — difícil de ler tanto para humano quanto para IA sem abrir no editor. Em Mermaid a ordem é literalmente a ordem das linhas do arquivo.
+Conversão dos diagramas `.drawio` desta pasta (1 diagrama de casos de uso + 10 diagramas de sequência em `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/` + 13 fluxogramas em `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/`) para [Mermaid](https://mermaid.js.org/), que o GitHub renderiza nativamente em blocos ` ```mermaid `. Motivo da conversão: no XML do `.drawio` a ordem das mensagens depende de coordenadas x/y e IDs de `source`/`target` espalhados pelo arquivo — difícil de ler tanto para humano quanto para IA sem abrir no editor. Em Mermaid a ordem é literalmente a ordem das linhas do arquivo.
 
 > **Notas de divergência/achado**, marcadas com ⚠️, apontam onde o diagrama original diverge do comportamento confirmado em `../ARCHITECTURE.md` e `../../.specs/project/STATE.md`, ou aponta um achado ainda não incorporado à arquitetura. Notas marcadas com ✅ indicam que o diagrama já está confirmado/alinhado com a arquitetura.
 
 ## Índice
+
+**Visão geral** — [Casos de uso](#casos-de-uso)
 
 **Diagramas de sequência** — [Login](#login) · [Consulta de cliente](#consulta-de-cliente) · [Consultar produtos](#consultar-produtos-sequência) · [Vender produtos](#vender-produtos-sequência) · [Cancelar produto](#cancelar-produto-sequência) · [Condição de pagamento](#condição-de-pagamento-sequência) · [Adiciona pagamentos](#adiciona-pagamentos) · [Descontos e acréscimos](#descontos-e-acréscimos-sequência) · [Emissão NFCe](#emissão-nfce) · [Importação e faturamento de DAV](#importação-e-faturamento-de-dav)
 
@@ -16,11 +18,61 @@ Conversão dos diagramas `.drawio` desta pasta (10 diagramas de sequência em `D
 
 ---
 
+## Visão geral
+
+### Casos de uso
+
+Fonte: `Casos de Uso.drawio`. Mapa de todos os atores e casos de uso do sistema — não é um diagrama de sequência/fluxograma, é a visão de escopo. Mermaid não tem um tipo nativo de diagrama de casos de uso UML; a aproximação abaixo usa nós em formato "estádio" (`([ ])`) para os casos de uso, agrupados por ator.
+
+```mermaid
+flowchart LR
+    OperadorCaixa(["👤 Operador de Caixa"])
+    Cliente(["👤 Cliente"])
+    TEF(["🔌 TEF"])
+    PIX(["🔌 PIX"])
+    Leitor(["🔌 Leitor de Código de Barras"])
+    DisplaySec(["🔌 Display Secundário"])
+    ServidorImpressao(["🔌 Servidor de Impressão"])
+
+    OperadorCaixa --> UC1(("Fazer Login"))
+    OperadorCaixa --> UC2(("Identificar/Cadastrar Clientes"))
+    OperadorCaixa --> UC3(("Consultar Produtos"))
+    OperadorCaixa --> UC4(("Vender Produtos"))
+    OperadorCaixa --> UC5(("Cancelar Produtos"))
+    OperadorCaixa --> UC6(("Selecionar Condição de Pagamento"))
+    OperadorCaixa --> UC7(("Aplicar Descontos e Acréscimos"))
+    OperadorCaixa --> UC8(("Registrar Pagamentos"))
+    OperadorCaixa --> UC9(("Emitir NFCe"))
+    OperadorCaixa --> UC10(("Importar DAV"))
+    OperadorCaixa --> UC11(("Faturar DAV"))
+    OperadorCaixa --> UC12(("Movimento não fiscal"))
+    OperadorCaixa --> UC13(("Imprimir Resumo de caixa"))
+
+    Cliente --> UC14(("Comprar Produtos"))
+    Cliente --> UC15(("Realizar Pagamentos"))
+
+    TEF --> UC16(("Autorizar pagamentos Cartão Débito/Crédito"))
+    PIX --> UC17(("Autorizar pagamentos PIX"))
+    Leitor --> UC18(("Registrar Produtos"))
+
+    DisplaySec --> UC19(("Exibir Propagandas da Empresa"))
+    DisplaySec --> UC20(("Exibir QRCode do PIX"))
+    DisplaySec --> UC21(("Agradecer Compra"))
+
+    ServidorImpressao --> UC22(("Impressão DANFE"))
+    ServidorImpressao --> UC23(("Impressão Comprovantes"))
+    ServidorImpressao --> UC24(("Impressão Duplicatas"))
+```
+
+> ⚠️ **Achado novo**: o diagrama-fonte inclui atores e casos de uso ainda não cobertos em `ARCHITECTURE.md` — "Movimento não fiscal", "Imprimir Resumo de caixa" (via Servidor de Impressão: DANFE, comprovantes, duplicatas), e o ator "Leitor de Código de Barras" tratado como caso de uso próprio ("Registrar Produtos"), separado de "Vender Produtos". Também confirma que "Importar DAV" e "Faturar DAV" são casos de uso distintos do Operador de Caixa.
+
+---
+
 ## Diagramas de sequência
 
 ### Login
 
-Fonte: `Diagrama de sequencia/Login.drawio`. Abertura do Checkout até a tela inicial de vendas.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Login.drawio`. Abertura do Checkout até a tela inicial de vendas.
 
 ```mermaid
 sequenceDiagram
@@ -48,7 +100,7 @@ sequenceDiagram
 
 ### Consulta de cliente
 
-Fonte: `Diagrama de sequencia/Consulta de Cliente.drawio`. Busca por CPF e cadastro quando o cliente não é localizado.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Consulta de Cliente.drawio`. Busca por CPF e cadastro quando o cliente não é localizado.
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +129,7 @@ sequenceDiagram
 
 ### Consultar produtos (sequência)
 
-Fonte: `Diagrama de sequencia/COnsultar Produtos.drawio`. Busca por texto livre, paginada — usada no modal de pesquisa.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/COnsultar Produtos.drawio`. Busca por texto livre, paginada — usada no modal de pesquisa.
 
 ```mermaid
 sequenceDiagram
@@ -105,7 +157,7 @@ sequenceDiagram
 
 ### Vender produtos (sequência)
 
-Fonte: `Diagrama de sequencia/Vender Produtos.drawio`. Inserção direta por código de barras ou código digitado.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Vender Produtos.drawio`. Inserção direta por código de barras ou código digitado.
 
 ```mermaid
 sequenceDiagram
@@ -132,7 +184,7 @@ sequenceDiagram
 
 ### Cancelar produto (sequência)
 
-Fonte: `Diagrama de sequencia/Cancelar produto.drawio`. Remoção de um item já lançado no carrinho.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Cancelar produto.drawio`. Remoção de um item já lançado no carrinho.
 
 ```mermaid
 sequenceDiagram
@@ -148,7 +200,7 @@ sequenceDiagram
 
 ### Condição de pagamento (sequência)
 
-Fonte: `Diagrama de sequencia/Condição de Pagamento.drawio`. Seleção da condição, aplicada sobre o payload de login.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Condição de Pagamento.drawio`. Seleção da condição, aplicada sobre o payload de login.
 
 ```mermaid
 sequenceDiagram
@@ -162,7 +214,7 @@ sequenceDiagram
 
 ### Adiciona pagamentos
 
-Fonte: `Diagrama de sequencia/Adiciona Pagamentos.drawio`. Cinco blocos independentes, um por forma de pagamento.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Adiciona Pagamentos.drawio`. Cinco blocos independentes, um por forma de pagamento.
 
 ```mermaid
 sequenceDiagram
@@ -232,7 +284,7 @@ sequenceDiagram
 
 ### Descontos e acréscimos (sequência)
 
-Fonte: `Diagrama de sequencia/Descontos e Acréscimos.drawio`. Limites aplicados sobre o total da venda.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Descontos e Acréscimos.drawio`. Limites aplicados sobre o total da venda.
 
 ```mermaid
 sequenceDiagram
@@ -260,7 +312,7 @@ sequenceDiagram
 
 ### Emissão NFCe
 
-Fonte: `Diagrama de sequencia/Emissão NFCe.drawio`. Finalização — transmissão do rascunho completo ao ERP.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Emissão NFCe.drawio`. Finalização — transmissão do rascunho completo ao ERP.
 
 ```mermaid
 sequenceDiagram
@@ -286,7 +338,7 @@ sequenceDiagram
 
 ### Importação e faturamento de DAV
 
-Fonte: `Diagrama de sequencia/Importação e Faturamento DAV.drawio`. Entrada alternativa na venda, a partir de um documento existente no ERP.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Diagrama de sequencia/Importação e Faturamento DAV.drawio`. Entrada alternativa na venda, a partir de um documento existente no ERP.
 
 ```mermaid
 sequenceDiagram
@@ -314,7 +366,7 @@ sequenceDiagram
 
 ### Fazer login (operador)
 
-Fonte: `Fluxogramas/Operador de Caixa/Fazer Login.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Fazer Login.drawio`.
 
 ```mermaid
 flowchart TD
@@ -331,7 +383,7 @@ flowchart TD
 
 ### Identificar ou cadastrar cliente
 
-Fonte: `Fluxogramas/Operador de Caixa/Identificar ou Cadastrar Clientes.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Identificar ou Cadastrar Clientes.drawio`.
 
 ```mermaid
 flowchart TD
@@ -349,7 +401,7 @@ flowchart TD
 
 ### Consultar produtos (fluxograma)
 
-Fonte: `Fluxogramas/Operador de Caixa/Consultar Produtos.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Consultar Produtos.drawio`.
 
 ```mermaid
 flowchart TD
@@ -366,7 +418,7 @@ flowchart TD
 
 ### Vender produtos (fluxograma)
 
-Fonte: `Fluxogramas/Operador de Caixa/Vender Produtos.drawio`. Edição de quantidade, preço por faixa e desconto antes de inserir.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Vender Produtos.drawio`. Edição de quantidade, preço por faixa e desconto antes de inserir.
 
 ```mermaid
 flowchart TD
@@ -400,7 +452,7 @@ flowchart TD
 
 ### Cancelar produtos (fluxograma)
 
-Fonte: `Fluxogramas/Operador de Caixa/Cancelar Produtos.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Cancelar Produtos.drawio`.
 
 ```mermaid
 flowchart TD
@@ -418,7 +470,7 @@ flowchart TD
 
 ### Selecionar condição de pagamento
 
-Fonte: `Fluxogramas/Operador de Caixa/Selecionar Condição de Pagamento.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Selecionar Condição de Pagamento.drawio`.
 
 ```mermaid
 flowchart TD
@@ -437,7 +489,7 @@ flowchart TD
 
 ### Registrar pagamentos
 
-Fonte: `Fluxogramas/Operador de Caixa/Registra Pagamentos.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Registra Pagamentos.drawio`.
 
 ```mermaid
 flowchart TD
@@ -471,7 +523,7 @@ flowchart TD
 
 ### Aplicar descontos e acréscimos (fluxograma)
 
-Fonte: `Fluxogramas/Operador de Caixa/Aplicar Descontos e Acréscimos.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/Aplicar Descontos e Acréscimos.drawio`.
 
 ```mermaid
 flowchart TD
@@ -490,7 +542,7 @@ flowchart TD
 
 ### DAV (fluxograma)
 
-Fonte: `Fluxogramas/Operador de Caixa/DAV.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Operador de Caixa/DAV.drawio`.
 
 ```mermaid
 flowchart TD
@@ -507,7 +559,7 @@ flowchart TD
 
 ### Aprovar cancelamento
 
-Fonte: `Fluxogramas/Supervisor/Aprovar Cancelamento.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Supervisor/Aprovar Cancelamento.drawio`.
 
 ```mermaid
 flowchart TD
@@ -523,7 +575,7 @@ flowchart TD
 
 ### Aprovar desconto
 
-Fonte: `Fluxogramas/Supervisor/Aprovar Desconto.drawio`.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Supervisor/Aprovar Desconto.drawio`.
 
 ```mermaid
 flowchart TD
@@ -540,7 +592,7 @@ flowchart TD
 
 ### Fazer login (supervisor)
 
-Fonte: `Fluxogramas/Supervisor/Fazer Login.drawio` — idêntico, célula a célula, ao "Fazer login" do Operador de Caixa acima.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Supervisor/Fazer Login.drawio` — idêntico, célula a célula, ao "Fazer login" do Operador de Caixa acima.
 
 ```mermaid
 flowchart TD
@@ -561,7 +613,7 @@ flowchart TD
 
 ### Tela do cliente
 
-Fonte: `Fluxogramas/Display secundário/Display.drawio`. Tela voltada para o cliente, na frente do caixa.
+Fonte: `-- Fluxos e diagramas (Antigos - Ja convertidos Mermaid)/Fluxogramas/Display secundário/Display.drawio`. Tela voltada para o cliente, na frente do caixa.
 
 ```mermaid
 flowchart TD
