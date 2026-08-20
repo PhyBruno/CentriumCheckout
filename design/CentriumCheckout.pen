@@ -636,67 +636,6 @@
                             },
                             {
                               "type": "frame",
-                              "id": "ul4MP",
-                              "name": "Campo celular cliente",
-                              "width": 164,
-                              "height": 42,
-                              "fill": "$surface-soft",
-                              "cornerRadius": 12,
-                              "stroke": "$hairline",
-                              "strokeWidth": 1,
-                              "gap": 9,
-                              "padding": [
-                                0,
-                                12
-                              ],
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "eTQQL",
-                                  "name": "Ícone Contato",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "phone",
-                                  "library": "lucide",
-                                  "fill": "$body"
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "Tcrr1",
-                                  "name": "Textos Contato",
-                                  "width": "fill_container",
-                                  "layout": "vertical",
-                                  "gap": 1,
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "AJrnT",
-                                      "name": "Rótulo Contato",
-                                      "fill": "$body",
-                                      "content": "Contato",
-                                      "fontFamily": "$font-sans",
-                                      "fontSize": 10,
-                                      "fontWeight": "600"
-                                    },
-                                    {
-                                      "type": "text",
-                                      "id": "L6Epzi",
-                                      "name": "Valor Contato",
-                                      "fill": "$ink",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
-                                      "content": "(11) 90000-0000",
-                                      "fontFamily": "$font-sans",
-                                      "fontSize": 13,
-                                      "fontWeight": "500"
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
                               "id": "d6hvv",
                               "name": "Botão identificar cliente",
                               "width": 126,
@@ -733,100 +672,11 @@
                         },
                         {
                           "type": "frame",
-                          "id": "a6jqq",
-                          "x": 14,
-                          "y": 99,
-                          "name": "Campo CFOP capa",
-                          "width": 190,
-                          "height": 42,
-                          "fill": "$surface-soft",
-                          "cornerRadius": 12,
-                          "stroke": "$hairline",
-                          "strokeWidth": 1,
-                          "gap": 8,
-                          "padding": [
-                            0,
-                            10
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "YUVMk",
-                              "name": "Ícone CFOP",
-                              "width": 16,
-                              "height": 16,
-                              "icon": "hash",
-                              "library": "lucide",
-                              "fill": "$body"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "nTDFp",
-                              "name": "Textos CFOP",
-                              "width": "fill_container",
-                              "layout": "vertical",
-                              "gap": 1,
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "UAkh8",
-                                  "name": "Rótulo CFOP",
-                                  "fill": "$body",
-                                  "content": "CFOP da capa",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": 10,
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "uYhiP",
-                                  "name": "Valor CFOP",
-                                  "fill": "$ink",
-                                  "textGrowth": "fixed-width",
-                                  "width": "fill_container",
-                                  "content": "5102 - Venda mercadoria",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": 12,
-                                  "fontWeight": "600"
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "jPaTL",
-                          "x": 212,
-                          "y": 99,
-                          "name": "Botão lupa CFOP",
-                          "width": 42,
-                          "height": 42,
-                          "fill": "$surface-strong",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "k5aUT",
-                              "name": "Lupa CFOP",
-                              "width": 16,
-                              "height": 16,
-                              "icon": "search",
-                              "library": "lucide",
-                              "fill": "$ink"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
                           "id": "AJhcG",
-                          "x": 268,
+                          "x": 267,
                           "y": 99,
                           "name": "Campo vendedor NFCe",
-                          "width": "fill_container(337)",
+                          "width": 647,
                           "height": 42,
                           "fill": "$surface-soft",
                           "cornerRadius": 12,
@@ -886,7 +736,7 @@
                         {
                           "type": "frame",
                           "id": "nRR9Q",
-                          "x": 616,
+                          "x": 924,
                           "y": 99,
                           "name": "Botão lupa vendedor NFCe",
                           "width": 42,
@@ -911,88 +761,62 @@
                         },
                         {
                           "type": "frame",
-                          "id": "FOxSc",
-                          "x": 917,
+                          "id": "ul4MP",
+                          "x": 14,
                           "y": 99,
-                          "name": "Botão lupa CFOP",
-                          "width": 42,
-                          "height": 42,
-                          "fill": "$surface-strong",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "PJPit",
-                              "name": "Lupa CFOP",
-                              "width": 16,
-                              "height": 16,
-                              "icon": "search",
-                              "library": "lucide",
-                              "fill": "$ink"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "VOwpo",
-                          "x": 666,
-                          "y": 99,
-                          "name": "Campo CFOP capa",
-                          "width": 240,
+                          "name": "Campo celular cliente",
+                          "width": 243,
                           "height": 42,
                           "fill": "$surface-soft",
                           "cornerRadius": 12,
                           "stroke": "$hairline",
                           "strokeWidth": 1,
-                          "gap": 8,
+                          "gap": 9,
                           "padding": [
                             0,
-                            10
+                            12
                           ],
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "icon",
-                              "id": "h7U5s",
-                              "name": "Ícone CFOP",
+                              "id": "eTQQL",
+                              "name": "Ícone Contato",
                               "width": 16,
                               "height": 16,
-                              "icon": "hash",
+                              "icon": "phone",
                               "library": "lucide",
                               "fill": "$body"
                             },
                             {
                               "type": "frame",
-                              "id": "RNsnl",
-                              "name": "Textos CFOP",
+                              "id": "Tcrr1",
+                              "name": "Textos Contato",
                               "width": "fill_container",
                               "layout": "vertical",
                               "gap": 1,
                               "children": [
                                 {
                                   "type": "text",
-                                  "id": "fXPv8",
-                                  "name": "Rótulo CFOP",
+                                  "id": "AJrnT",
+                                  "name": "Rótulo Contato",
                                   "fill": "$body",
-                                  "content": "Operador",
+                                  "content": "Contato",
                                   "fontFamily": "$font-sans",
                                   "fontSize": 10,
                                   "fontWeight": "600"
                                 },
                                 {
                                   "type": "text",
-                                  "id": "YYh74",
-                                  "name": "Valor CFOP",
+                                  "id": "L6Epzi",
+                                  "name": "Valor Contato",
                                   "fill": "$ink",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "214- JOAO SILVA\t",
+                                  "content": "(11) 90000-0000",
                                   "fontFamily": "$font-sans",
-                                  "fontSize": 12,
-                                  "fontWeight": "600"
+                                  "fontSize": 13,
+                                  "fontWeight": "500"
                                 }
                               ]
                             }
@@ -8252,76 +8076,6 @@
                                   "fontWeight": "700"
                                 }
                               ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "OF3vN",
-                              "name": "Chip vendedor cliente mobile",
-                              "fill": "$surface-strong",
-                              "cornerRadius": 100,
-                              "gap": 6,
-                              "padding": [
-                                5,
-                                8
-                              ],
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "vp3JA",
-                                  "name": "Ícone vendedor chip mobile",
-                                  "width": 12,
-                                  "height": 12,
-                                  "icon": "user-round",
-                                  "library": "lucide",
-                                  "fill": "$body"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "f0OT2",
-                                  "name": "Texto vendedor chip mobile",
-                                  "fill": "$ink",
-                                  "content": "Bruno",
-                                  "fontFamily": "Inter",
-                                  "fontSize": 11,
-                                  "fontWeight": "700"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "YFp96",
-                              "name": "Chip operador cliente mobile",
-                              "fill": "$surface-strong",
-                              "cornerRadius": 100,
-                              "gap": 6,
-                              "padding": [
-                                5,
-                                8
-                              ],
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "fGPr0",
-                                  "name": "Ícone operador chip mobile",
-                                  "width": 12,
-                                  "height": 12,
-                                  "icon": "user-pen",
-                                  "library": "lucide",
-                                  "fill": "$body"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "cqYw9",
-                                  "name": "Texto operador chip mobile",
-                                  "fill": "$ink",
-                                  "content": "João Silva",
-                                  "fontFamily": "Inter",
-                                  "fontSize": 11,
-                                  "fontWeight": "700"
-                                }
-                              ]
                             }
                           ]
                         },
@@ -8444,75 +8198,6 @@
                   "width": "fill_container",
                   "gap": 8,
                   "children": [
-                    {
-                      "type": "frame",
-                      "id": "I6QIH",
-                      "name": "Campo CFOP mobile",
-                      "width": "fill_container",
-                      "height": 48,
-                      "fill": "$surface-soft",
-                      "cornerRadius": 12,
-                      "stroke": "$hairline",
-                      "strokeWidth": 1,
-                      "gap": 8,
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "rAAcw",
-                          "name": "Ícone CFOP mobile",
-                          "width": 15,
-                          "height": 15,
-                          "icon": "hash",
-                          "library": "lucide",
-                          "fill": "$body"
-                        },
-                        {
-                          "type": "frame",
-                          "id": "C33viS",
-                          "name": "Texto CFOP mobile",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 1,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "RlCs2",
-                              "name": "Rótulo CFOP mobile",
-                              "fill": "$muted",
-                              "content": "CFOP",
-                              "fontFamily": "Inter",
-                              "fontSize": 10,
-                              "fontWeight": "700"
-                            },
-                            {
-                              "type": "text",
-                              "id": "kS3xy",
-                              "name": "Valor CFOP mobile",
-                              "fill": "$ink",
-                              "content": "5102",
-                              "fontFamily": "Inter",
-                              "fontSize": 13,
-                              "fontWeight": "700"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "icon",
-                          "id": "MyRcK",
-                          "name": "Lupa CFOP mobile",
-                          "width": 17,
-                          "height": 17,
-                          "icon": "search",
-                          "library": "lucide",
-                          "fill": "#5B616E"
-                        }
-                      ]
-                    },
                     {
                       "type": "frame",
                       "id": "Yqi5A",
@@ -23192,67 +22877,6 @@
                             },
                             {
                               "type": "frame",
-                              "id": "iL0FC",
-                              "name": "Campo celular cliente",
-                              "width": 164,
-                              "height": 42,
-                              "fill": "$surface-soft",
-                              "cornerRadius": 12,
-                              "stroke": "$hairline",
-                              "strokeWidth": 1,
-                              "gap": 9,
-                              "padding": [
-                                0,
-                                12
-                              ],
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "TxwXe",
-                                  "name": "Ícone Contato",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "phone",
-                                  "library": "lucide",
-                                  "fill": "$body"
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "k7o6s",
-                                  "name": "Textos Contato",
-                                  "width": "fill_container",
-                                  "layout": "vertical",
-                                  "gap": 1,
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "IFqo9",
-                                      "name": "Rótulo Contato",
-                                      "fill": "$body",
-                                      "content": "Contato",
-                                      "fontFamily": "$font-sans",
-                                      "fontSize": 10,
-                                      "fontWeight": "600"
-                                    },
-                                    {
-                                      "type": "text",
-                                      "id": "n1xKR",
-                                      "name": "Valor Contato",
-                                      "fill": "$ink",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
-                                      "content": "(11) 90000-0000",
-                                      "fontFamily": "$font-sans",
-                                      "fontSize": 13,
-                                      "fontWeight": "500"
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
                               "id": "YyWoK",
                               "name": "Botão identificar cliente",
                               "width": 126,
@@ -23289,100 +22913,11 @@
                         },
                         {
                           "type": "frame",
-                          "id": "VPwTy",
-                          "x": 14,
-                          "y": 99,
-                          "name": "Campo CFOP capa",
-                          "width": 190,
-                          "height": 42,
-                          "fill": "$surface-soft",
-                          "cornerRadius": 12,
-                          "stroke": "$hairline",
-                          "strokeWidth": 1,
-                          "gap": 8,
-                          "padding": [
-                            0,
-                            10
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "W5YFbm",
-                              "name": "Ícone CFOP",
-                              "width": 16,
-                              "height": 16,
-                              "icon": "hash",
-                              "library": "lucide",
-                              "fill": "$body"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "Mlj3l",
-                              "name": "Textos CFOP",
-                              "width": "fill_container",
-                              "layout": "vertical",
-                              "gap": 1,
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "EIrRp",
-                                  "name": "Rótulo CFOP",
-                                  "fill": "$body",
-                                  "content": "CFOP da capa",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": 10,
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "FD0vh",
-                                  "name": "Valor CFOP",
-                                  "fill": "$ink",
-                                  "textGrowth": "fixed-width",
-                                  "width": "fill_container",
-                                  "content": "5102 - Venda mercadoria",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": 12,
-                                  "fontWeight": "600"
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "jWvDG",
-                          "x": 212,
-                          "y": 99,
-                          "name": "Botão lupa CFOP",
-                          "width": 42,
-                          "height": 42,
-                          "fill": "$surface-strong",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "ihsMG",
-                              "name": "Lupa CFOP",
-                              "width": 16,
-                              "height": 16,
-                              "icon": "search",
-                              "library": "lucide",
-                              "fill": "$ink"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
                           "id": "nqy6b",
-                          "x": 268,
+                          "x": 267,
                           "y": 99,
                           "name": "Campo vendedor NFCe",
-                          "width": "fill_container(337)",
+                          "width": 647,
                           "height": 42,
                           "fill": "$surface-soft",
                           "cornerRadius": 12,
@@ -23442,7 +22977,7 @@
                         {
                           "type": "frame",
                           "id": "rYrMf",
-                          "x": 616,
+                          "x": 924,
                           "y": 99,
                           "name": "Botão lupa vendedor NFCe",
                           "width": 42,
@@ -23467,88 +23002,62 @@
                         },
                         {
                           "type": "frame",
-                          "id": "B7LsN",
-                          "x": 917,
+                          "id": "iL0FC",
+                          "x": 14,
                           "y": 99,
-                          "name": "Botão lupa CFOP",
-                          "width": 42,
-                          "height": 42,
-                          "fill": "$surface-strong",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "jbbgy",
-                              "name": "Lupa CFOP",
-                              "width": 16,
-                              "height": 16,
-                              "icon": "search",
-                              "library": "lucide",
-                              "fill": "$ink"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "t77onq",
-                          "x": 666,
-                          "y": 99,
-                          "name": "Campo CFOP capa",
-                          "width": 240,
+                          "name": "Campo celular cliente",
+                          "width": 243,
                           "height": 42,
                           "fill": "$surface-soft",
                           "cornerRadius": 12,
                           "stroke": "$hairline",
                           "strokeWidth": 1,
-                          "gap": 8,
+                          "gap": 9,
                           "padding": [
                             0,
-                            10
+                            12
                           ],
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "icon",
-                              "id": "zg6wC",
-                              "name": "Ícone CFOP",
+                              "id": "TxwXe",
+                              "name": "Ícone Contato",
                               "width": 16,
                               "height": 16,
-                              "icon": "hash",
+                              "icon": "phone",
                               "library": "lucide",
                               "fill": "$body"
                             },
                             {
                               "type": "frame",
-                              "id": "z19rv9",
-                              "name": "Textos CFOP",
+                              "id": "k7o6s",
+                              "name": "Textos Contato",
                               "width": "fill_container",
                               "layout": "vertical",
                               "gap": 1,
                               "children": [
                                 {
                                   "type": "text",
-                                  "id": "T8NBX4",
-                                  "name": "Rótulo CFOP",
+                                  "id": "IFqo9",
+                                  "name": "Rótulo Contato",
                                   "fill": "$body",
-                                  "content": "Operador",
+                                  "content": "Contato",
                                   "fontFamily": "$font-sans",
                                   "fontSize": 10,
                                   "fontWeight": "600"
                                 },
                                 {
                                   "type": "text",
-                                  "id": "I1DAZ",
-                                  "name": "Valor CFOP",
+                                  "id": "n1xKR",
+                                  "name": "Valor Contato",
                                   "fill": "$ink",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "214 - Joao Silva\t",
+                                  "content": "(11) 90000-0000",
                                   "fontFamily": "$font-sans",
-                                  "fontSize": 12,
-                                  "fontWeight": "600"
+                                  "fontSize": 13,
+                                  "fontWeight": "500"
                                 }
                               ]
                             }
