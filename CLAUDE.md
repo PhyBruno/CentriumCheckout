@@ -11,7 +11,7 @@ Checkout web para operadores de caixa do ERP Centrium — SPA React acessada exc
 
 **Estado do projeto:** pré-código — stack e arquitetura decididas em `.specs/`, scaffolding ainda não criado (ver `.specs/project/STATE.md` para decisões arquiteturais numeradas AD-NNN e pendências).
 
-**Convenções e regras de código:** ainda a definir quando o scaffolding existir (ver `.specs/project/ROADMAP.md`); até lá, este arquivo cobre apenas a política de uso do dual-graph MCP abaixo.
+**Convenções e regras de código:** ainda a definir quando o scaffolding existir (ver `.specs/project/ROADMAP.md`). **Regras de processo (git workflow, gates obrigatórios) já estão definidas em `rules.md` na raiz do repo.**
 
 # Dual-Graph Context Policy
 
