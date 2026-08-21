@@ -6,7 +6,7 @@
 
 - Framework: React (via Vite)
 - Language: TypeScript (`strict`)
-- Runtime: navegador (SPA sem wrapper Electron/Tauri)
+- Runtime: navegador (SPA sem wrapper Electron/Tauri) para o frontend; Node.js para o BFF de sessão/autenticação (AD-022 em `.specs/project/STATE.md`)
 - Package manager: a definir na criação do `package.json`
 
 ## Frontend
@@ -23,7 +23,7 @@
 
 ## Backend
 
-Não há backend próprio — o Checkout consome diretamente a API do ERP (`ApiCentriumOAuth.yaml`, ver `.specs/codebase/INTEGRATIONS.md`). Não há banco de dados do lado do Checkout além do Dexie (cache local no navegador).
+BFF (Backend for Frontend) mínimo, introduzido em AD-022 (`.specs/project/STATE.md`) — sem lógica de negócio nem banco de dados; existe só para sessão/autenticação (troca de credenciais por `access_token`, cookie de sessão cifrado `HttpOnly`, proxy autenticado das chamadas ao ERP em `ApiCentriumOAuth.yaml`, ver `.specs/codebase/INTEGRATIONS.md`). Framework a definir na criação do scaffold (candidatos: Express ou Fastify), rodando no mesmo processo Node que serve os assets estáticos da SPA. O Checkout continua sem banco de dados próprio além do Dexie (cache local no navegador) — a sessão do BFF vive cifrada dentro do cookie, não em disco/Redis/DB.
 
 ## Validação
 

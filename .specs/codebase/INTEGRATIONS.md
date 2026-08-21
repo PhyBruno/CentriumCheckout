@@ -4,15 +4,15 @@
 
 **Service:** API do ERP (`ApiCentriumOAuth.yaml`, em `Fluxograma - Diagrama - Alinhamentos/`)
 **Purpose:** Fonte de verdade única de produto, cliente, pagamento e NFCe — o Checkout não tem banco de dados próprio.
-**Implementation:** consumida diretamente pelo frontend (SPA sem backend intermediário).
+**Implementation:** consumida pelo BFF do Checkout (AD-022 em `.specs/project/STATE.md`), que faz proxy autenticado das chamadas via `/api/erp/*` — o frontend nunca chama a API do ERP diretamente nem manipula `access_token`.
 **Configuration:** host montado por `TENANT.<domínio-base>`, onde `tenant` vem do ERP na URL de abertura e o domínio base vem de variável de ambiente Docker (ver `.specs/codebase/CONCERNS.md`).
-**Authentication:** OAuth2 `password` grant (`POST /oauth/access_token`) — ver `.specs/features/autenticacao-sessao-bootstrap/spec.md`.
+**Authentication:** OAuth2 `password` grant (`POST /oauth/access_token`) — chamado pelo BFF, nunca pelo navegador diretamente. Ver `.specs/features/autenticacao-sessao-bootstrap/spec.md`.
 
 ### Principais endpoints consumidos
 
 | Endpoint | Uso |
 |---|---|
-| `POST /oauth/access_token` | Obtenção/renovação de `access_token` |
+| `POST /oauth/access_token` | Obtenção/renovação de `access_token` — chamado pelo BFF em `GET /session/start` e internamente em `/api/erp/*` na renovação silenciosa (AD-022) |
 | `GET /ApiCentriumOAuth/GetSessao` | Bootstrap de configuração (~5MB) |
 | `GET /ApiCentriumOAuth/GetCliente` | Identificação de cliente por CPF/CNPJ |
 | `GET /ApiCentriumOAuth/GetListaClientes` ⚠️ | Busca de cliente por termo livre — **não confirmado em `ApiCentriumOAuth.yaml`**, pendente de reconfirmação com o ERP (ver `.specs/codebase/CONCERNS.md`) |

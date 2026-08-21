@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-08-21
-**Current Work:** Revisão cruzada de toda a documentação `.specs/` concluída (AD-021) — correções aplicadas em 13 arquivos. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Current Work:** BFF mínimo de sessão/autenticação introduzido (AD-022), corrigindo a contradição entre AD-002/AD-010 e a premissa "SPA sem backend próprio". Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -19,6 +19,7 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 **Reason:** O ERP delega a obtenção/renovação do token ao próprio Checkout em vez de gerenciar esse ciclo de vida centralmente — reduz acoplamento entre a sessão do ERP e a sessão do Checkout. O roteamento por `tenant` reflete que cada cliente tem sua própria instância/host de API.
 **Trade-off:** Checkout precisa armazenar credenciais sensíveis (`client_id`, `client_secret`, `password`) durante toda a sessão, não só o token.
 **Impact:** Pendência de contrato quanto a host por tenant (bloco `servers:`) permanece registrada em `.specs/codebase/CONCERNS.md`; mapeamento de `codigoEmpresa` → campo `Empresa` e decisão sobre `refresh_token` (não utilizado) já confirmados (AD-019).
+**Atualização (2026-08-21):** corrigido por AD-022 — o Checkout deixa de processar esses query params diretamente no JS da SPA; um BFF mínimo (novo componente de servidor) passa a receber o redirect do ERP e fazer a troca por `access_token`, nunca expondo `client_secret`/`password`/`access_token` ao navegador. O conjunto de campos enviados pelo ERP continua o mesmo descrito aqui, mais o novo campo `validationKey` (AD-022).
 
 ---
 
@@ -85,6 +86,7 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 **Reason:** Cookie `HttpOnly` é inacessível a JavaScript no navegador, mitigando exfiltração via XSS — relevante dado que 100% do código é gerado por IA.
 **Trade-off:** Nenhum trade-off relevante identificado — prática padrão de segurança para dados de sessão sensíveis.
 **Impact:** Nenhuma pendência nova.
+**Atualização (2026-08-21):** corrigido por AD-022 — esta decisão não definia **quem** seta o cookie `HttpOnly` nem como o JS acessaria `codigoEmpresa` ou dispararia renovação de sessão sem acesso ao token, o que a tornava irrealizável (um cookie `HttpOnly` só pode ser setado por resposta de servidor, e a arquitetura documentada era "SPA sem backend próprio"). AD-022 introduz o BFF mínimo que resolve isso: ele seta o cookie (cifrado, não só `HttpOnly`) e expõe `/api/bootstrap` para os dados não sensíveis.
 
 ---
 
@@ -170,6 +172,22 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 **Reason:** A sequência de edições de AD-017 a AD-020 introduziu pequenas inconsistências entre documentos que só uma revisão cruzada dedicada pegaria — comum quando muitos arquivos interligados são editados em sequência rápida.
 **Trade-off:** Nenhum.
 **Impact:** Nenhuma pendência nova além das já listadas em `.specs/codebase/CONCERNS.md`. Documentação `.specs/` considerada consistente entre si e com o contrato/design reais nesta data.
+
+---
+
+### AD-022: Introdução de um BFF mínimo de sessão/autenticação — corrige AD-002/AD-010 (2026-08-21)
+
+**Decision:** Corrige AD-002 e AD-010: a premissa "SPA sem backend próprio" não se sustenta para o fluxo de autenticação, porque um cookie `HttpOnly` só pode ser setado por uma resposta de servidor — nenhuma decisão anterior definia quem seta esse cookie nem como o JS acessaria `codigoEmpresa` ou dispararia a renovação de sessão (`AUTH-06`) sem acesso ao token. Introduz-se um BFF (Backend for Frontend) mínimo — sem banco de dados, sem lógica de negócio, o ERP continua sendo a única fonte de verdade — rodando no mesmo processo/container Node que hoje serve os assets estáticos da SPA (ver Containerização em `.specs/codebase/ARCHITECTURE.md`), com três rotas:
+
+- `GET /session/start` — recebe o redirect do ERP com os mesmos query params de AD-002, mais o novo campo `validationKey`: uma credencial fixa por ambiente (variável de ambiente Docker), igual para todos os tenants, que só confirma que a chamada partiu de uma configuração legítima do ERP — separada e ortogonal das credenciais OAuth por operador. O BFF valida `validationKey`, chama `POST /oauth/access_token`, cifra `access_token` + as credenciais originais com uma chave de servidor (variável de ambiente Docker `SESSION_SECRET`) e devolve isso em `Set-Cookie` (`HttpOnly`, `Secure`, `SameSite=Lax`), depois redireciona para a URL limpa da SPA.
+- `GET /api/bootstrap` — decifra o cookie no servidor e devolve ao JS só os campos não sensíveis (`codigoEmpresa`, `tenant`), combinados com a resposta do `GetSessao` (AD-004) numa única chamada.
+- `/api/erp/*` — proxy de toda chamada de negócio subsequente (produto, cliente, pagamento, NFCe); o BFF decifra o cookie, injeta `Authorization`/`Empresa` e repassa ao ERP. Em caso de `401`, renova o token sozinho repetindo o `password` grant — `AUTH-06` passa a ser lógica 100% de servidor, nunca exposta ao JS nem à aba Network do navegador.
+
+Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não impede o próprio operador inspecionar o cookie pelas DevTools do navegador — cifrar garante que mesmo assim `client_secret`/`password` não fiquem legíveis.
+
+**Reason:** Sem essa peça, AD-010 (cookie `HttpOnly`) era irrealizável como estava documentada — o próprio objetivo da decisão (impedir acesso do JS ao token) ficava sem mecanismo que o sustentasse. Decisão do usuário, após levantar a contradição diretamente.
+**Trade-off:** O Checkout deixa de ser "SPA sem backend próprio" — ganha um componente de servidor novo para manter/deployar, ainda que sem banco de dados nem lógica de negócio. Em troca, o objetivo real de segurança de AD-010 passa a ser alcançável de fato.
+**Impact:** `.specs/codebase/ARCHITECTURE.md` (Pattern, High-Level Structure, Autenticação e segurança, Containerização), `.specs/codebase/STACK.md` (seção Backend), `.specs/codebase/INTEGRATIONS.md` (Implementation da API do ERP) e `.specs/features/autenticacao-sessao-bootstrap/spec.md` (`AUTH-01` a `AUTH-06`, Edge Cases) atualizados para refletir. AD-002 e AD-010 permanecem como registro histórico da decisão original, com nota de correção apontando para esta.
 
 ---
 

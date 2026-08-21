@@ -1,17 +1,20 @@
 # Architecture
 
-**Pattern:** SPA (single-page application) consumidora de API externa — sem backend próprio. Estado dividido entre estado de servidor (cache do ERP via TanStack Query), estado de sessão/venda (Zustand) e persistência local só para configuração (Dexie).
+**Pattern:** SPA (single-page application) com um BFF (Backend for Frontend) mínimo de sessão/autenticação — sem lógica de negócio nem banco de dados próprio (ver AD-022 em `.specs/project/STATE.md`). O ERP continua sendo a única fonte de verdade de negócio. Estado dividido entre estado de servidor (cache do ERP via TanStack Query), estado de sessão/venda (Zustand) e persistência local só para configuração (Dexie).
 
 > Nota: como ainda não existe código-fonte, este documento registra a arquitetura **decidida**, não extraída de código real (diferente do uso padrão de brownfield mapping). Deve ser revalidado contra o código assim que o scaffolding inicial existir.
 
 ## High-Level Structure
 
 ```
-ERP (autentica operador, abre URL do Checkout com credenciais)
+ERP (autentica operador, abre URL do Checkout com credenciais + validationKey)
         │
         ▼
+BFF (Node — sessão/autenticação; cookie HttpOnly cifrado; proxy de API; AD-022)
+        │  serve os assets estáticos da SPA + troca credenciais por access_token
+        ▼
 CheckoutWEB (SPA React)
-        │  consome
+        │  consome via /api/erp/* (mesma origem, proxy do BFF)
         ▼
 API do ERP (ApiCentriumOAuth.yaml) ── produtos, clientes, pagamento, NFCe
         │
@@ -19,7 +22,7 @@ API do ERP (ApiCentriumOAuth.yaml) ── produtos, clientes, pagamento, NFCe
         └── Servidor de impressão local (HTTP, máquina do PDV)
 ```
 
-Não há banco de dados nem serviço próprio do Checkout — toda fonte de verdade de negócio (produto, cliente, pagamento, NFCe) vive no ERP.
+Não há banco de dados nem lógica de negócio própria do Checkout — toda fonte de verdade de negócio (produto, cliente, pagamento, NFCe) vive no ERP. O BFF (AD-022) existe só para sessão/autenticação, sem armazenar estado próprio: a sessão inteira vive cifrada dentro do cookie, não em disco/Redis/banco de dados.
 
 ## Divisão de responsabilidades e persistência
 
@@ -38,7 +41,13 @@ Não há banco de dados nem serviço próprio do Checkout — toda fonte de verd
 
 ## Autenticação e segurança
 
-O `access_token` e as credenciais originais recebidas do ERP são armazenados em cookie `HttpOnly` (inacessível a JavaScript, mitigando exfiltração via XSS) — não em `localStorage`/`sessionStorage`. Fluxo completo em `.specs/features/autenticacao-sessao-bootstrap/spec.md`.
+Um BFF mínimo (Node, sem banco de dados, sem lógica de negócio — AD-022 em `.specs/project/STATE.md`) intermedia toda a sessão:
+
+- `GET /session/start` recebe o redirect do ERP (query params `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`, `codigoEmpresa` e `validationKey`), valida `validationKey` (credencial fixa por ambiente, igual para todos os tenants — só confirma a origem da chamada, não é uma credencial de operador), troca as credenciais por `access_token` (`POST /oauth/access_token`) e cifra `access_token` + credenciais originais num cookie `HttpOnly`/`Secure`/`SameSite=Lax`, usando uma chave de servidor própria (não em `localStorage`/`sessionStorage`, e nunca em texto plano acessível fora do processo do BFF).
+- `GET /api/bootstrap` decifra o cookie no servidor e devolve ao JS só os campos não sensíveis (`codigoEmpresa`, `tenant`) combinados com o payload do `GetSessao` — o frontend nunca lê `client_secret`, `password` ou `access_token`.
+- `/api/erp/*` faz proxy autenticado de toda chamada de negócio subsequente, injetando `Authorization`/`Empresa` no servidor e renovando o token sozinho em caso de expiração (401) — renovação de sessão é lógica 100% de servidor, invisível ao JS.
+
+Fluxo completo em `.specs/features/autenticacao-sessao-bootstrap/spec.md`.
 
 ## Responsividade
 
@@ -59,10 +68,12 @@ Cada opção é só um link/navegação para fora do Checkout — nenhuma das du
 
 100% Docker, cobrindo todo o ciclo:
 
-- **Desenvolvimento:** container roda o servidor de dev do Vite com hot-reload, código-fonte montado via volume.
-- **Produção:** build multi-stage — um estágio compila os assets estáticos, outro serve esses assets (ex.: Nginx) em imagem final enxuta.
+- **Desenvolvimento:** container roda o servidor de dev do Vite com hot-reload, código-fonte montado via volume, mais o processo Node do BFF (AD-022) respondendo `/session/start`, `/api/bootstrap` e `/api/erp/*`.
+- **Produção:** build multi-stage — um estágio compila os assets estáticos da SPA, outro roda o processo Node do BFF (AD-022), que serve esses assets **e** responde as rotas de sessão/proxy — não é mais um Nginx puro servindo estático, é um processo Node ativo.
 - **Fora do escopo do container:** TEF e servidor de impressão continuam nativos na máquina física do PDV (ver `.specs/codebase/INTEGRATIONS.md`).
 - **Domínio base da API do ERP:** vem de variável de ambiente Docker chamada `baseDomain`, configurada por ambiente de implantação (dev/staging/produção) (ver AD-019 em `.specs/project/STATE.md`).
+- **Credencial fixa de validação do redirect do ERP:** variável de ambiente Docker `validationKey`, igual para todos os tenants de um mesmo ambiente (AD-022).
+- **Chave de cifra do cookie de sessão:** variável de ambiente Docker `SESSION_SECRET` (AD-022).
 - **Imagem-base:** `node:<version>-slim`, para dev e produção.
 - **CI/CD (produção):** a cada merge na `master`, workflow do GitHub Actions builda a imagem e publica no Docker Hub.
 - **CI/CD (dev):** script PowerShell local que executa todo o processo de build e sobe a imagem, sem depender de Actions.

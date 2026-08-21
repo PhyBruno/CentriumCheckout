@@ -35,6 +35,12 @@ Pendências reais de infraestrutura/contrato identificadas antes de qualquer có
 - Pipeline de CI/CD (produção) e registry: a cada merge na `master`, um workflow do GitHub Actions builda a imagem e publica no Docker Hub.
 - Pipeline de CI/CD (dev): script PowerShell que executa todo o processo de build localmente e sobe a imagem localmente (sem depender de Actions).
 
+## Mecanismo de acesso do JS a dados de sessão com cookie HttpOnly — RESOLVIDO (2026-08-21)
+
+**Risco identificado:** nenhuma decisão anterior (AD-002, AD-010) definia quem seta o cookie `HttpOnly` nem como o JS acessaria `codigoEmpresa` ou dispararia a renovação de sessão (`AUTH-06`) sem acesso ao token — contradição com a arquitetura documentada de "SPA sem backend próprio", já que um cookie `HttpOnly` só pode ser setado por resposta de servidor.
+
+**Resolvido:** introdução de um BFF mínimo de sessão/autenticação (AD-022 em `.specs/project/STATE.md`), que seta o cookie (cifrado, não só `HttpOnly`), expõe `GET /api/bootstrap` para os dados não sensíveis e faz proxy das chamadas ao ERP via `/api/erp/*`, incluindo renovação silenciosa transparente ao JS.
+
 ## Nome da variável de ambiente do domínio base da API — RESOLVIDO (2026-08-21)
 
 Definido: a variável de ambiente Docker que fornece o domínio base (ex.: `apps.centrium.inf.br`) se chama `baseDomain`. Documentado em `.specs/codebase/ARCHITECTURE.md` (Containerização) e `.specs/project/STATE.md` (AD-019).
