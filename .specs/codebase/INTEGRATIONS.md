@@ -15,16 +15,19 @@
 | `POST /oauth/access_token` | Obtenção/renovação de `access_token` — chamado pelo BFF em `GET /session/start` e internamente em `/api/erp/*` na renovação silenciosa (AD-022) |
 | `GET /ApiCentriumOAuth/GetSessao` | Bootstrap de configuração (~5MB) |
 | `GET /ApiCentriumOAuth/GetCliente` | Identificação de cliente por CPF/CNPJ |
-| `GET /ApiCentriumOAuth/GetListaClientes` ⚠️ | Busca de cliente por termo livre — **não confirmado em `ApiCentriumOAuth.yaml`**, pendente de reconfirmação com o ERP (ver `.specs/codebase/CONCERNS.md`) |
+| `GET /ApiCentriumOAuth/GetListaClientes` | Busca de cliente por termo livre |
 | `POST /ApiCentriumOAuth/PostCliente` | Cadastro simplificado de cliente |
 | `GET /ApiCentriumOAuth/GetListaProdutos`, `GetProduto` | Busca/inserção de produto |
 | `POST /ApiCentriumOAuth/FaturarNFCe` | Finalização (`FATURAR`) e suspensão (`SUSPENDER`) de venda |
-| `GET /ApiCentriumOAuth/StatusPIX` ⚠️ | Consulta de status de pagamento PIX — **não confirmado em `ApiCentriumOAuth.yaml`**, pendente de reconfirmação com o ERP (ver `.specs/codebase/CONCERNS.md`) |
+| `POST /ApiCentriumOAuth/GerarPIX` | Geração de cobrança PIX (QR Code) |
+| `GET /ApiCentriumOAuth/StatusPIX` | Consulta de status de pagamento PIX |
 | `GET /ApiCentriumOAuth/ListaDAVs`, `GetDAV` | Importação de DAV |
 | `GET /ApiCentriumOAuth/CarregarNFCe` | Recuperação de rascunho de venda |
-| `GET /ApiCentriumOAuth/ListaNFCEs` ⚠️ | Listagem de rascunhos de NFCe — **não confirmado em `ApiCentriumOAuth.yaml`**, pendente de reconfirmação com o ERP (ver `.specs/codebase/CONCERNS.md`) |
+| `GET /ApiCentriumOAuth/GetListaNFCes` | Listagem de rascunhos de NFCe |
+| `GET /ApiCentriumOAuth/GetListaVendedores` | Listagem de vendedores por empresa (seleção do vendedor que atendeu o cliente final, ver `.specs/features/selecao-vendedor/spec.md`) |
+| `GET /ApiCentriumOAuth/GetStatusSistema` | Health check por empresa/máquina (`Empresa`+`Cadmaqcod` → `integer`) |
 
-Pendência real de contrato: host por tenant, sem bloco `servers:` formal (`codigoEmpresa`→`Empresa` e `refresh_token` já resolvidos, ver AD-019 em `.specs/project/STATE.md`). Além disso, `GetListaClientes`, `StatusPIX` e `ListaNFCEs` (marcados ⚠️ acima) foram confirmados verbalmente com a equipe do ERP em 2026-08-20, mas não aparecem no `ApiCentriumOAuth.yaml` atual — rebaixados a pendência (decisão do usuário, 2026-08-21) até reconfirmação (ver `.specs/codebase/CONCERNS.md`).
+Pendência real de contrato: nenhuma. Host por tenant confirmado como decisão correta (bloco `servers:` do contrato é só URL de ambiente de dev — `codigoEmpresa`→`Empresa`, `refresh_token` e host por tenant já resolvidos, ver AD-019/AD-023 em `.specs/project/STATE.md`). `GetListaClientes`, `StatusPIX` e `GetListaNFCes` (nome real do endpoint antes citado como `ListaNFCEs`) foram confirmados no `ApiCentriumOAuth.yaml` atualizado em 2026-08-21 — ver `.specs/codebase/CONCERNS.md`.
 
 ## Integrações locais (TEF e impressão)
 

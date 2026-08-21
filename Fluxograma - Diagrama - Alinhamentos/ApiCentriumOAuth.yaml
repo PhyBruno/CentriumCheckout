@@ -1,1341 +1,2210 @@
-openapi: 3.0.3
-
+openapi: 3.0.0
 info:
-  title: API de Clientes
-  version: 1.0.0
-
+  title: "APICentriumOAuth"
+  description: "APICentrium OAuth"
+  version: "20260821131003"
+servers:
+  - url: http://localhost/Centrium1600Web/APICentriumOAuth
 paths:
-  /oauth/access_token:
-    post:
-      summary: Obter token de acesso
-      description: Endpoint para obter um token de acesso válido para autenticação.
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                client_id:
-                  type: string
-                  example: "seu_client_id"
-                client_secret:
-                  type: string
-                  example: "seu_client_secret"
-                grant_type:
-                  type: string
-                  example: "password"
-                scope:
-                  type: string
-                  example: "FullControl"
-                username:
-                  type: string
-                  example: "usuario_exemplo"
-                password:
-                  type: string
-                additionalParameters:
-                  type: string
-                  example: '{"AuthenticationTypeName":"local","Repository":"13cdc799-9969-414b-9424-ec75b5ce2646"}'
-      responses:
-        '200':
-          description: Token de acesso obtido com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
-                  token_type:
-                    type: string
-                  expires_in:
-                    type: integer
-                  refresh_token:
-                    type: string
-                  scope:
-                    type: string
-                  user_guid:
-                    type: string
-
-  /ApiCentriumOAuth/GetSessao:
+  /GetSessao:
     get:
-      summary: Retorna dados da sessão do usuário autenticado
-      description: Retorna informações detalhadas sobre a sessão do usuário autenticado.
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetSessao"
+      summary: "GetSessao"
+      security: 
+        - oAuthGXGAM: []
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
+        - name: "Empresa"
+          in: "query"
+          required: false
           schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
+            type: "integer"
+            format: "int64"
+        - name: "Login"
+          in: "query"
+          required: false
           schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: header
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: Login
-          in: query
-          required: true
-          description: Identificador exclusivo do usuário.
-          schema:
-            type: string
-            example: "12345678900"       
-
+            type: "string"
+            
+      
       responses:
-        '200':
-          description: Usuário localizado
+        200:
+          description: "Successful operation"
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  UsuarioCodigo:
-                    type: integer
-                  UsuarioNome:
-                    type: string
-                  caixa:
-                    type: integer
-                  EmpresaRazaoSocial:
-                    type: string  
-                  EmpresaNomeFantasia:
-                    type: string 
-                  VendedorCodigo:
-                    type: integer
-                  VendedorNome:
-                    type: string
-                  ClienteDefaultCodigo:
-                    type: integer
-                  ClienteDefaultNome:
-                    type: string
-                  UsuarioTipoCodigoProduto:
-                    type: string
-                  Cliente_UtilizaSegundoNivelDeEnderecos:
-                    type: string
-                  CadMaqCod:
-                    type: string
-                  CadMaqHost:
-                    type: string  
-                  CadSerieNFCe:
-                    type: string
-                  QtdMinCharParaConsulta:
-                    type: integer
-                  ImagemLogoBase64:
-                    type: string
-                  ImagemDisplaySecundarioBase64:
-                    type: string
-                  TipoPreco:
-                    type: integer
-                  CondicoesDePagamento:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        CondicaoCodigo:
-                          type: integer
-                        CondicaoDescricao:
-                          type: string
-                        CondicaoPrazo:
-                          type: integer
-                        CondicaoMinimoEntrada:
-                          type: number
-                        CondicaoDesconto:
-                          type: number
-                        CondicaoDescontoMaximo:
-                          type: number
-                        CondicaoFormasDePagamento:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              FormaCodigo:
-                                type: integer
-                              FormaDescricao:
-                                type: string
-                              FormaEntrada:
-                                type: string
-                              FormaMeioPagtoNFe:
-                                type: string
-                              FormaIntegracaoCartao:
-                                type: string
-                              FormaTipoTransacaoTEF:
-                                type: string
-                  ConfiguracoesTEF:
-                    type: object
-                    properties:
-                      TEFempresaAutomacao:
-                        type: string
-                      TEFcapAutomacao:
-                        type: integer
-                      TEFversaoInterface:
-                        type: integer
-                      TEFnomeAutomacao:
-                        type: string
-                      TEFversaoAutomacao:
-                        type: string
-                      TEFregistroCertificacao:
-                        type: string
-                      TEFVersaoImpressao:
-                        type: integer
-                  ConfiguracoesPIX:
-                    type: object
-                    properties:
-                      UtilizaCentriumPAG:
-                        type: string
-                      MinimoPix:
-                        type: number
-                      TempoEspera:
-                        type: integer
-                      UtilizaEncurtador:
-                        type: string
-                      
-  /ApiCentriumOAuth/GetCliente:
+                $ref: "#/components/schemas/GetSessaoOutput"
+        404:
+          description: "Not found"
+
+  /GetCliente:
     get:
-      summary: Buscar cliente por CPF
-      description: Retorna os dados detalhados de um único cliente cadastrado no sistema.
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetCliente"
+      summary: "GetCliente"
+      security: 
+        - oAuthGXGAM: []
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
+        - name: "Empresa"
+          in: "query"
+          required: false
           schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
+            type: "integer"
+            format: "int64"
+        - name: "CPFCNPJ"
+          in: "query"
+          required: false
           schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: header
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: CPFCNPJ
-          in: query
-          required: true
-          description: Identificador exclusivo do cliente.
-          schema:
-            type: string
-            example: "12345678900"       
-
+            type: "string"
+            
+      
       responses:
-        '200':
-          description: Cliente localizado
+        200:
+          description: "Successful operation"
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  CodCliente:
-                    type: integer
-                  nome:
-                    type: string
-                  cpf:
-                    type: string
-                  email:
-                    type: string  
-                  celular:
-                    type: string 
-                  cep:
-                    type: string
-                  endereco:
-                    type: string
-                  bairro:
-                    type: string
-                  numero:
-                    type: string
-                  cidade:
-                    type: string
-                  uf:
-                    type: string  
-                  LimiteCredito:
-                    type: number
-                  PermiteVendaCredito:
-                    type: boolean
-                  CodigoConvenio:
-                    type: integer
-                  NomeConvenio:
-                    type: string
-                  DescontoConvenio:
-                    type: number
+                $ref: "#/components/schemas/GetClienteOutput"
+        404:
+          description: "Not found"
 
-  /ApiCentriumOAuth/PostCliente:
-    post:
-      summary: Cadastrar novo cliente
-      description: Endpoint para cadastrar um novo cliente no sistema.
+  /GetListaClientes:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetListaClientes"
+      summary: "GetListaClientes"
+      security: 
+        - oAuthGXGAM: []
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
+        - name: "Empresa"
+          in: "query"
+          required: false
           schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
+            type: "integer"
+            format: "int64"
+        - name: "Txtbusca"
+          in: "query"
+          required: false
           schema:
-            type: string
-            example: "application/json"
-   
+            type: "string"
+            
+        - name: "Pagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "Tamanhopagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetListaClientesOutput"
+        404:
+          description: "Not found"
+
+  /PostCliente:
+    post:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.PostCliente"
+      summary: "PostCliente"
+      security: 
+        - oAuthGXGAM: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                Empresa:
-                  type: integer
-                nome:
-                  type: string
-                cpf:
-                  type: string
-                email:
-                  type: string
-                celular:
-                  type: string
-                cep:
-                  type: string
-                endereco:
-                  type: string
-                bairro:
-                  type: string
-                numero:
-                  type: string
-                cidade:
-                  type: string
-                uf:
-                  type: string
+              $ref: "#/components/schemas/PostClienteInput"
+      
       responses:
-        '201':
-          description: Cliente cadastrado com sucesso
+        200:
+          description: "Successful operation"
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  Empresa:
-                    type: integer
-                  CodCliente:
-                    type: integer
-                  nome:
-                    type: string
-                  cpf:
-                    type: string
-                  email:
-                    type: string  
-                  celular:
-                    type: string 
-                  cep:
-                    type: string
-                  endereco:
-                    type: string
-                  bairro:
-                    type: string
-                  numero:
-                    type: string
-                  cidade:
-                    type: string
-                  uf:
-                    type: string
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeneXus.Common.Messages_Message"  
+
+        404:
+          description: "Not found"
+
+  /GetListaProdutos:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetListaProdutos"
+      summary: "GetListaProdutos"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Txtbusca"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+        - name: "Pagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "Tamanhopagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetListaProdutosOutput"
+        404:
+          description: "Not found"
+
+  /GetProduto:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetProduto"
+      summary: "GetProduto"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Codigoproduto"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+        - name: "Tipocodproduto"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+        - name: "Tipopreco"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "Codcliente"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Listapreco"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProdutoOutput"
+        404:
+          description: "Not found"
+
+  /ValidaTicketDevolucao:
+    post:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.ValidaTicketDevolucao"
+      summary: "ValidaTicketDevolucao"
+      security: 
+        - oAuthGXGAM: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidaTicketDevolucaoInput"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidaTicketDevolucaoOutput"
+        404:
+          description: "Not found"
+
+  /ListaDAVs:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.ListaDAVs"
+      summary: "ListaDAVs"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Txtbusca"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+        - name: "Pagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "Tamanhopagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListaDAVsOutput"
+        404:
+          description: "Not found"
+
+  /GetDav:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetDav"
+      summary: "GetDav"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Numerodav"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDavOutput"
+        404:
+          description: "Not found"
+
+  /FaturarNFCe:
+    post:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.FaturarNFCe"
+      summary: "FaturarNFCe"
+      security: 
+        - oAuthGXGAM: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FaturarNFCeInput"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FaturarNFCeOutput"
+        404:
+          description: "Not found"
+
+  /CarregarNFCe:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.CarregarNFCe"
+      summary: "CarregarNFCe"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Numeronota"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Serienota"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarregarNFCeOutput"
+        404:
+          description: "Not found"
+
+  /GetListaNFCes:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetListaNFCes"
+      summary: "GetListaNFCes"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Txtbusca"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+        - name: "Pagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "Tamanhopagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetListaNFCesOutput"
+        404:
+          description: "Not found"
+
+  /GerarPIX:
+    post:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GerarPIX"
+      summary: "GerarPIX"
+      security: 
+        - oAuthGXGAM: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GerarPIXInput"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GerarPIXOutput"
+        404:
+          description: "Not found"
+
+  /StatusPIX:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.StatusPIX"
+      summary: "StatusPIX"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Trnguid"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusPIXOutput"
+        404:
+          description: "Not found"
+
+  /GetStatusSistema:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetStatusSistema"
+      summary: "GetStatusSistema"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Cadmaqcod"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                type: "integer"
+              format: "int32"
+
+        404:
+          description: "Not found"
+
+  /GetListaVendedores:
+    get:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.GetListaVendedores"
+      summary: "GetListaVendedores"
+      security: 
+        - oAuthGXGAM: []
+      parameters:
+        - name: "Empresa"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "Txtbusca"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            
+        - name: "Pagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "Tamanhopagina"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetListaVendedoresOutput"
+        404:
+          description: "Not found"
+
+components:
+  securitySchemes:
+    oAuthGXGAM:
+      type: oauth2
+      description: GAM OAuth 2
+      flows:
+        password:          
+          tokenUrl: http://localhost/Centrium1600Web/oauth/gam/v2.0/access_token
+          scopes: 
+            fullcontrol: Full access
+
+  schemas:
+    GetSessaoOutput:
+      properties:
+        SessaoUsuario:
+          description: "Sessao Usuario"
+          $ref: "#/components/schemas/SessaoUsuario"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    GetClienteOutput:
+      properties:
+        Cliente:
+          description: "Cliente Checkout"
+          $ref: "#/components/schemas/ClienteCheckout"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    GetListaClientesOutput:
+      properties:
+        ListaClientes:
+          description: "SDTCheckout Lista Clientes"
+          $ref: "#/components/schemas/SDTCheckoutListaClientes"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+
+    GetListaProdutosOutput:
+      properties:
+        ListaProdutos:
+          description: "Checkout Lista Produtos"
+          $ref: "#/components/schemas/CheckoutListaProdutos"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    GetProdutoOutput:
+      properties:
+        Produto:
+          description: "SDTCheckout_Get Produto"
+          $ref: "#/components/schemas/SDTCheckout_GetProduto"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    ValidaTicketDevolucaoOutput:
+      properties:
+        ValorTicket:
+          type: "number"
+          format: "double"
+        Mensagem:
+          type: "string"
+
+    ListaDAVsOutput:
+      properties:
+        CheckoutListaDAVs:
+          description: "Checkout Lista DAVs"
+          $ref: "#/components/schemas/CheckoutListaDAVs"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    GetDavOutput:
+      properties:
+        Dav:
+          description: "SDTDav"
+          $ref: "#/components/schemas/SDTDav"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    FaturarNFCeOutput:
+      properties:
+        OutCheckoutFaturarNFCe:
+          description: "Checkout Faturar NFCe"
+          $ref: "#/components/schemas/CheckoutFaturarNFCe"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    CarregarNFCeOutput:
+      properties:
+        OutCheckoutFaturarNFCe:
+          description: "Checkout Faturar NFCe"
+          $ref: "#/components/schemas/CheckoutFaturarNFCe"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    GetListaNFCesOutput:
+      properties:
+        CheckoutListaRascunhos:
+          description: "Checkout Lista Rascunhos"
+          $ref: "#/components/schemas/CheckoutListaRascunhos"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    GerarPIXOutput:
+      properties:
+        TrnGUID:
+          type: "string"
+        Trnbase64text:
+          type: "string"
+
+    StatusPIXOutput:
+      properties:
+        StatusTransacao:
+          type: "string"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+
+    GetListaVendedoresOutput:
+      properties:
+        CheckoutListaVendedores:
+          description: "Checkout Lista Vendedores"
+          $ref: "#/components/schemas/CheckoutListaVendedores"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
+    PostClienteInput:  
+      properties:
+        Cliente:
+          description: "Cliente Checkout"
+          $ref: "#/components/schemas/ClienteCheckout"
+
+
+
+    ValidaTicketDevolucaoInput:  
+      properties:
+        Empresa:
+          type: "integer"
+          format: "int64"
+        ticketDevolucao:
+          type: "string"
+
+
+
+    FaturarNFCeInput:  
+      properties:
+        CheckoutFaturarNFCe:
+          description: "Checkout Faturar NFCe"
+          $ref: "#/components/schemas/CheckoutFaturarNFCe"
+
+
+
+    GerarPIXInput:  
+      properties:
+        SDTCentriumPag_Post:
+          description: "SDTCentrium Pag_Post"
+          $ref: "#/components/schemas/SDTCentriumPag_Post"
+
+
+
   
-  /ApiCentriumOAuth/GetListaProdutos:
-    get:
-      summary: Retorna a lista de produtos disponíveis
-      description: Endpoint para obter a lista completa de produtos cadastrados no sistema.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: header
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: TxtBusca
-          in: query
-          required: false
-          description: Texto para filtrar os produtos pelo nome ou descrição.
-          schema:
-            type: string
-            example: "produto_exemplo"
-        - name: Pagina
-          in: query
-          required: false
-          description: Número da página para paginação dos resultados.
-          schema:
-            type: integer
-            example: 1
-        - name : TamanhoPagina
-          in: query
-          required: false
-          description: Quantidade de produtos por página. Maximo 50.
-          schema:
-            type: integer
-            example: 10
+    SessaoUsuario:
+      properties:
+        UsuarioCodigo:
+          description: "Usuario Codigo"
+          type: "integer"
+          format: "int64"
+        UsuarioNome:
+          description: "Usuario Nome"
+          type: "string"
+        caixa:
+          description: "caixa"
+          type: "integer"
+          format: "int64"
+        EmpresaRazaoSocial:
+          description: "Empresa Razao Social"
+          type: "string"
+        EmpresaNomeFantasia:
+          description: "Empresa Nome Fantasia"
+          type: "string"
+        VendedorCodigo:
+          description: "Vendedor Codigo"
+          type: "integer"
+          format: "int64"
+        VendedorNome:
+          description: "Vendedor Nome"
+          type: "string"
+        ClienteDefaultCodigo:
+          description: "Cliente Default Codigo"
+          type: "integer"
+          format: "int64"
+        ClienteDefaultNome:
+          description: "Cliente Default Nome"
+          type: "string"
+        UsuarioTipoCodigoProduto:
+          description: "Usuario Tipo Codigo Produto"
+          type: "string"
+        Cliente_UtilizaSegundoNivelDeEnderecos:
+          description: "Cliente_Utiliza Segundo Nivel De Enderecos"
+          type: "string"
+        CadMaqCod:
+          description: "Cad Maq Cod"
+          type: "string"
+        CadMaqHost:
+          description: "Cad Maq Host"
+          type: "string"
+        CadSerieNFCe:
+          description: "Cad Serie NFCe"
+          type: "string"
+        QtdMinCharParaConsulta:
+          description: "Qtd Min Char Para Consulta"
+          type: "integer"
+          format: "int64"
+        TipoPreco:
+          description: "Tipo de Preço Padrão"
+          type: "integer"
+          format: "int32"
+        ImagemLogoBase64:
+          description: "Imagem Logo Base64"
+          type: "string"
+        ImagemDisplaySecundarioBase64:
+          description: "Imagem Display Secundario Base64"
+          type: "string"
 
-      responses:
-        '200':
-          description: Lista de produtos obtida com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  PaginaAtual:
-                    type: integer
-                  RegistrosPorPagina:
-                    type: integer
-                  TotalRegistros:
-                    type: integer
-                  TotalPaginas:
-                    type: integer
-                  produtos:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        CodigoProduto:
-                          type: string
-                        Descricao:
-                          type: string
-                        Referencia:
-                          type: string
-                        CodigoBarras:
-                          type: string
-                        PrecoVenda1:
-                          type: number
-                        PrecoVenda2:
-                          type: number
-                        PrecoVenda3:
-                          type: number
-                        PrecoVenda4:
-                          type: number
-                        PrecoVenda5:  
-                          type: number
-                        Estoque:
-                          type: number
-                        CodigoGrupo:
-                          type: integer
-                        DescricaoGrupo:
-                          type: string
-                        CodigoSubgrupo:
-                          type: integer
-                        DescricaoSubgrupo:
-                          type: string
-                        Aplicacao:
-                          type: string
-                        GTINTributavel:
-                          type: string
-                        QtdMinimaPreco2:
-                          type: integer
-                        QtdMinimaPreco3:
-                          type: integer
-                        QtdMinimaPreco4:
-                          type: integer
-                        QtdMinimaPreco5:
-                          type: integer
-                        UDM:
-                          type: string
+        CondicoesDePagamento:
+          type: array
+          items:
+            description: CondicoesDePagamentoItem
+            $ref: "#/components/schemas/SessaoUsuario.CondicoesDePagamento_CondicoesDePagamentoItem"
 
-  /ApiCentriumOAuth/GetProduto:
-    get:
-      summary: Retorna os detalhes de um produto específico
-      description: Endpoint para obter os detalhes completos de um produto cadastrado no sistema.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: query
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: CodigoProduto
-          in: query
-          required: true
-          description: Código do produto a ser consultado.
-          schema:
-            type: string
-            example: "12345"
-        - name: TipoCodProduto
-          in: query
-          required: true
-          description: Tipo de código do produto a ser consultado ex CodigoProduto, CodigoBarras, Referencia.
-          schema:
-            type: string
-            example: "CodigoProduto"
-        - name: TipoPreco
-          in: query
-          required: true
-          description: Tipo de preço a ser consultado.
-          schema:
-            type: integer
-            example: 1
-        - name: CodCliente
-          in: query
-          required: false
-          description: Código do cliente para consulta de preço específico.
-          schema:
-            type: integer
-            example: 123
-        - name: ListaPreco
-          in: query
-          required: true
-          description: Lista de preço a ser consultada.
-          schema:
-            type: integer
-            example: 1
+        ConfiguracoesTEF:
+          $ref: "#/components/schemas/SessaoUsuario.ConfiguracoesTEF"
+
+        ConfiguracoesPIX:
+          $ref: "#/components/schemas/SessaoUsuario.ConfiguracoesPIX"
 
 
-      responses:
-        '200':
-          description: Detalhes do produto obtidos com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  CodigoProduto:
-                    type: string
-                  Descricao:
-                    type: string
-                  Referencia:
-                    type: string
-                  CodigoBarras:
-                    type: string
-                  PrecoVenda1:
-                    type: number
-                  PrecoVenda2:
-                    type: number
-                  PrecoVenda3:
-                    type: number
-                  PrecoVenda4:
-                    type: number
-                  PrecoVenda5:  
-                    type: number
-                  PrecoMinimo:
-                    type: number
-                  Estoque:
-                    type: number
-                  CodigoGrupo:
-                    type: integer
-                  DescricaoGrupo:
-                    type: string
-                  CodigoSubgrupo:
-                    type: integer
-                  DescricaoSubgrupo:
-                    type: string
-                  Aplicacao:
-                    type: string
-                  GTINTributavel:
-                    type: string
-                  QtdMinimaPreco2:
-                    type: integer
-                  QtdMinimaPreco3:
-                    type: integer
-                  QtdMinimaPreco4:
-                    type: integer
-                  QtdMinimaPreco5:
-                    type: integer
-                  UDM:
+    SessaoUsuario.CondicoesDePagamento_CondicoesDePagamentoItem:
+      properties:
+        CondicaoCodigo:
+          description: "Condicao Codigo"
+          type: "integer"
+          format: "int64"
+        CondicaoDescricao:
+          description: "Condicao Descricao"
+          type: "string"
+        CondicaoPrazo:
+          description: "Condicao Prazo"
+          type: "number"
+          format: "double"
+        CondicaoMinimoEntrada:
+          description: "Condicao Minimo Entrada"
+          type: "number"
+          format: "double"
+        CondicaoDesconto:
+          description: "Condicao Desconto"
+          type: "number"
+          format: "double"
+        CondicaoDescontoMaximo:
+          description: "Condicao Desconto Maximo"
+          type: "number"
+          format: "double"
 
-  /ApiCentriumOAuth/ValidaTicketDevolucao:
-    post:
-      summary: Validar ticket de devolução
-      description: Endpoint para validar um ticket de devolução.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: query
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
+        CondicaoFormasDePagamento:
+          type: array
+          items:
+            description: CondicaoFormasDePagamentoItem
+            $ref: "#/components/schemas/SessaoUsuario.CondicoesDePagamento.CondicaoFormasDePagamento_CondicaoFormasDePagamentoItem"
 
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                ticketDevolucao:
-                  type: string
-                  example: "123456789"
-      responses:
-        '200':
-          description: Ticket de devolução validado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valido:
-                    type: boolean
-                  mensagem:
-                    type: string  
-  
-  /ApiCentriumOAuth/FaturarNFCe:
-    post:
-      summary: Faturar NFCe
-      description: Endpoint para faturar uma Nota Fiscal de Consumidor Eletrônica (NFCe).
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                Empresa:
-                  type: integer
-                SuspenderOuFaturar:
-                  type: string
-                clienteCodigo:
-                  type: integer
-                vendedorCodigo:
-                  type: integer
-                CondicaoPagamentoCodigo:
-                  type: integer
-                NumeroNota:
-                  type: integer
-                CadSerieNFCe:
-                  type: string
-                UsuarioCodigo:
-                  type: integer
-                FormasDePagamento:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      FormaCodigo:
-                        type: integer
-                      FormaMeioPagtoNFe:
-                        type: string
-                      FormaValor:
-                        type: number
-                      FormaIntegracaoCartao:
-                        type: string
-                      TEFidentificacao:
-                        type: integer
-                      TEFCNPJ:
-                        type: string
-                      TEFBandeira:
-                        type: string
-                      TEFNumeroAutorizacao:
-                        type: string
-                      TEFTipoIntegracao:
-                        type: string
-                      FormaPixGUID:
-                        type: string
-                      TicketDevolucao:
-                        type: string
-                produtos:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      sequencial:
-                        type: integer
-                      codigoProduto:
-                        type: string
-                      quantidade:
-                        type: number
-                      precoUnitario:
-                        type: number
-                      DescontoPercentual:
-                        type: number
-                      DescontoValor:
-                        type: number
-                      ValorBruto:
-                        type: number
-                      UDM:
-                        type: string
-      responses:
-        '200':
-          description: NFCe faturada com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  numeroNFCe:
-                    type: string
-                  chaveAcesso:
-                    type: string
-                  dataEmissao:
-                    type: string
-                  XMLImpressao:
-                    type: string
-                  CodigoRejeicao:
-                    type: string
-                  MensagemRejeicao:
-                    type: string
+      x-gx-level: "SessaoUsuario"
 
-  /ApiCentriumOAuth/CarregarNFCe:
-    get:
-      summary: Carregar NFCe
-      description: Endpoint para carregar uma Nota Fiscal de Consumidor Eletrônica (NFCe) existente.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: query
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: NumeroNota
-          in: query
-          required: true
-          description: Código da Nota.
-          schema:
-            type: integer
-            example: 1
-        - name: SerieNota
-          in: query
-          required: true
-          description: Código da série.
-          schema:
-            type: string
-            example: "R01"
+    SessaoUsuario.CondicoesDePagamento.CondicaoFormasDePagamento_CondicaoFormasDePagamentoItem:
+      properties:
+        FormaCodigo:
+          description: "Forma Codigo"
+          type: "integer"
+          format: "int64"
+        FormaDescricao:
+          description: "Forma Descricao"
+          type: "string"
+        FormaEntrada:
+          description: "Forma Entrada"
+          type: "string"
+        FormaMeioPagtoNFe:
+          description: "Forma Meio Pagto NFe"
+          type: "string"
+        FormaIntegracaoCartao:
+          description: "Forma Integracao Cartao"
+          type: "string"
+        FormaTipoTransacaoTEF:
+          description: "Forma Tipo Transacao TEF"
+          type: "string"
+        FormaFpgUtiCar:
+          description: "FpgUtiCar"
+          type: "string"
 
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                NumeroNFCe:
-                  type: string
-                  example: "12345678901234567890123456789012345678901234"
-                SerieNFCe:
-                  type: string
-                  example: "1"
-      responses:
-        '200':
-          description: NFCe carregada com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  dadosNFCe:
-                    type: object
-                    properties:
-                      SuspenderOuFaturar:
-                        type: string
-                      clienteCodigo:
-                        type: integer
-                      vendedorCodigo:
-                        type: integer
-                      CondicaoPagamentoCodigo:
-                        type: integer
-                      CadSerieNFCe:
-                        type: string
-                      FormasDePagamento:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            FormaCodigo:
-                              type: integer
-                            FormaMeioPagtoNFe:
-                              type: string
-                            FormaValor:
-                              type: number
-                            FormaIntegracaoCartao:
-                              type: string
-                            TEFidentificacao:
-                              type: string
-                            TEFCNPJ:
-                              type: string
-                            TEFBandeira:
-                              type: string
-                            TEFNumeroAutorizacao:
-                              type: string
-                            FormaPixGUID:
-                              type: string
-                      produtos:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            sequencial:
-                              type: integer
-                            codigoProduto:
-                              type: string
-                            quantidade:
-                              type: number
-                            precoUnitario:
-                              type: number
-                            DescontoPercentual:
-                              type: number
-                            DescontoValor:
-                              type: number
-                            ValorBruto:
-                              type: number
-                            UDM:
-                              type: string
 
-  /ApiCentriumOAuth/ListaDAVs:
-    get:
-      summary: Retorna a lista de DAVs (Documentos Auxiliares de Venda)
-      description: Endpoint para obter a lista completa de DAVs cadastrados no sistema.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: header
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: Pagina
-          in: query
-          required: false
-          description: Número da página para paginação dos resultados.
-          schema:
-            type: integer
-            example: 1
-        - name : TamanhoPagina
-          in: query
-          required: false
-          description: Quantidade de DAVs por página. Maximo 50.
-          schema:
-            type: integer
-            example: 10
+      x-gx-level: "SessaoUsuario.CondicoesDePagamento"
 
-      responses:
-        '200':
-          description: Lista de DAVs obtida com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  PaginaAtual:
-                    type: integer
-                  RegistrosPorPagina:
-                    type: integer
-                  TotalRegistros:
-                    type: integer
-                  TotalPaginas:
-                    type: integer
-                  DAVs:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        NumeroDAV:
-                          type: string
-                        Titulo:
-                          type: string
-                        DataEmissao:
-                          type: string
-                        ClienteCodigo:
-                          type: integer
-                        ClienteNome:
-                          type: string
-                        VendedorCodigo:
-                          type: integer
-                        VendedorNome:
-                          type: string
-                        ValorTotal:
-                          type: number
 
-  /ApiCentriumOAuth/GetDAV:
-    get:
-      summary: Retorna os detalhes de um DAV específico
-      description: Endpoint para obter os detalhes completos de um DAV cadastrado no sistema.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: header
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: NumeroDAV
-          in: query
-          required: true
-          description: Número do DAV a ser consultado.
-          schema:
-            type: string
-            example: "12345"
+    SessaoUsuario.ConfiguracoesTEF:
+      properties:
+        TEFempresaAutomacao:
+          description: "TEFempresa Automacao"
+          type: "string"
+        TEFcapAutomacao:
+          description: "TEFcap Automacao"
+          type: "integer"
+          format: "int64"
+        TEFversaoInterface:
+          description: "TEFversao Interface"
+          type: "integer"
+          format: "int64"
+        TEFnomeAutomacao:
+          description: "TEFnome Automacao"
+          type: "string"
+        TEFversaoAutomacao:
+          description: "TEFversao Automacao"
+          type: "string"
+        TEFregistroCertificacao:
+          description: "TEFregistro Certificacao"
+          type: "string"
+        TEFVersaoImpressao:
+          description: "TEFVersao Impressao"
+          type: "integer"
+          format: "int64"
+        TEFAtivo:
+          description: "TEFAtivo"
+          type: "boolean"
 
-      responses:
-        '200':
-          description: Detalhes do DAV obtidos com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  DavEmpCod:
-                    type: integer
-                  DavNum:
-                    type: string
-                  DavTit:
-                    type: string
-                  DavDatEmi:
-                    type: date
-                  DavDatFat:
-                    type: date
-                  DavDatAlt:
-                    type: date
-                  DavSta:
-                    type: string
-                  DavCliNomR:
-                    type: string
-                  DavCliCgcR:
-                    type: string
-                  DavCliEmp:
-                    type: integer
-                  DavCliCod:
-                    type: integer
-                  DavCliNom:
-                    type: string
-                  DavCliCNPJ:
-                    type: string
-                  DavCliCEP:
-                    type: string
-                  DavCliEnd:
-                    type: string
-                  DavCliBai:
-                    type: string
-                  DavCliCid:
-                    type: string
-                  DavCliUnf:
-                    type: string
-                  DavCliEma:
-                    type: string
-                  DavCliFon:
-                    type: string
-                  DavTipPre:
-                    type: integer
-                  DavDocFNum:
-                    type: integer
-                  DavDocFSer:
-                    type: string
-                  DavDocFTip:
-                    type: string
-                  DavTot:
-                    type: number
-                  DavSubTotal:
-                    type: number
-                  DavWks:
-                    type: string
-                  DavTipo:
-                    type: string
-                  DavDocONum:
-                    type: string
-                  DavDocOSer:
-                    type: string
-                  DavVlrDesconto:
-                    type: number
-                  DavVlrAcrescimo:
-                    type: number
-                  DavRepCod:
-                    type: integer
-                  DavUsuCod:
-                    type: integer
-                  DavPraCod:
-                    type: integer
-                  DavSenha:
-                    type: string
-                  DavNroControle:
-                    type: string
-                  DavObs:
-                    type: string
-                  DavCliConv:
-                    type: string
-                  DavCliComplemento:
-                    type: string
-                  DAvCliNum:
-                    type: string
-                  DAVCRE:
-                    type: string
-                  DavItemStruct:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        DavItem:
-                          type: integer
-                        DavICodBar:
-                          type: string
-                        DavIRef:
-                          type: string
-                        DavIMatEmp:
-                          type: integer
-                        DavIMatCod:
-                          type: string
-                        DavIMDesComp:
-                          type: string
-                        DavIMatUni:
-                          type: string
-                        DavIMatUv2:
-                          type: string
-                        DavIMatPv1:
-                          type: number
-                        DavIMatPv2:
-                          type: number
-                        DavIMatPv3:
-                          type: number
-                        DavIMatPv4:
-                          type: number
-                        DavIMatPv5:
-                          type: number
-                        DavIMatPProm:
-                          type: number
-                        DavIMatProm:
-                          type: string
-                        DavIMatDsc:
-                          type: string
-                        DavIMatIAT:
-                          type: string
-                        DavIMatPAfAlq:
-                          type: string
-                        DavIMatCST:
-                          type: string
-                        DavIMatIPPT:
-                          type: string
-                        DavIMatST:
-                          type: string
-                        DavIDesR:
-                          type: string
-                        DavIDs2R:
-                          type: string
-                        DavIMatRDesComp:
-                          type: string
-                        DavIUni:
-                          type: string
-                        DavIPreUni:
-                          type: string
-                        DavPreVen:
-                          type: string
-                        DavIQtd:
-                          type: string
-                        DavITotIt:
-                          type: string
-                        DavITotLiquido:
-                          type: string
-                        DavIFlgCancelado:
-                          type: string
-                        DavIDatInclusao:
-                          type: string
-                        DavIVlrDesconto:
-                          type: string
-                        DavIVlrAcrescimo:
-                          type: string
-                        DavITotParcial:
-                          type: string
-                        DavISitTrib:
-                          type: string
-                        DaviAliquota:
-                          type: string
-                        DavIWks:
-                          type: string
-                        DavIFlgTipo:
-                          type: string
-                        DavClfAliqImp:
-                          type: string
-                        DavClfCod:
-                          type: string
-                        DavClfCodCEST:
-                          type: string
-                        DavMatProdPes:
-                          type: string
-                        DavMatTPrSv:
-                          type: string
-                        DavMatSit:
-                          type: string
-                        DavClfDes:
-                          type: string
-                  DavForPagamento:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        DavPagCod:
-                          type: integer
-                        DavPagDes:
-                          type: string
-                        DavPagVlr:
-                          type: string
 
-  /ApiCentriumOAuth/GetStatusSistema:
-    get:
-      summary: Retorna o status do sistema
-      description: Endpoint para verificar o status atual do sistema.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: header
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
+      x-gx-level: "SessaoUsuario"
 
-      responses:
-        '200':
-          description: Status do sistema obtido com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  mensagem:
-                    type: string
 
-  /ApiCentriumOAuth/GetPDFNota:
-    get:
-      summary: Retorna o PDF de uma nota fiscal
-      description: Endpoint para obter o PDF de uma nota fiscal específica.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-        - name: Empresa
-          in: query
-          required: true
-          description: Código da empresa.
-          schema:
-            type: integer
-            example: 1
-        - name: NumeroNota
-          in: query
-          required: true
-          description: Código da Nota.
-          schema:
-            type: integer
-            example: 1
-        - name: SerieNota
-          in: query
-          required: true
-          description: Código da série.
-          schema:
-            type: string
-            example: "R01"
+    SessaoUsuario.ConfiguracoesPIX:
+      properties:
+        UtilizaCentriumPAG:
+          description: "Utiliza Centrium PAG"
+          type: "boolean"
+        MinimoPix:
+          description: "Minimo Pix"
+          type: "number"
+          format: "double"
+        TempoEspera:
+          description: "Tempo Espera"
+          type: "integer"
+          format: "int64"
+        UtilizaEncurtador:
+          description: "Utiliza Encurtador"
+          type: "string"
+        UtilizaLinkExterno:
+          description: "Utiliza Link Externo"
+          type: "string"
 
-      responses:
-        '200':
-          description: PDF da nota fiscal obtido com sucesso
-          content:
-            application/pdf:
-              schema:
-                type: string
-                format: base64
 
-  /ApiCentriumOAuth/GerarPIX:
-    post:
-      summary: Gerar PIX
-      description: Endpoint para gerar um pagamento via PIX.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Token de acesso no formato OAuth.
-          schema:
-            type: string
-            example: "OAuth seu_token_de_acesso"
-        - name: Content-Type
-          in: header
-          required: true
-          description: Tipo de conteúdo da requisição.
-          schema:
-            type: string
-            example: "application/json"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                Empresa:
-                  type: integer
-                  example: 123
-                TrnValor:
-                  type: number
-                  example: 100.00
-                TrnPagadorNome:
-                  type: string
-                  example: "Nome do Pagador"
-                TrnPagadorCgc:
-                  type: string
-                  example: "12345678901"
-                TrnPagadorEmail:
-                  type: string
-                  example: "pagador@exemplo.com"
-                TrnPagadorFone:
-                  type: string
-                  example: "11999999999"
-                TrnOrigemDocumento:
-                  type: string
-                  example: "Documento de Origem"
-                TrnOrigemSerie:
-                  type: string
-                  example: "Série de Origem"
-                FPgCod:
-                  type: integer
-                  example: 1
-                TrnTempoExpiracaoPIX:
-                  type: integer
-                  example: 3600
-      responses:
-        '200':
-          description: PIX gerado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  TrnGUID:
-                    type: string
-                  Trnbase64text:
-                    type: string
+      x-gx-level: "SessaoUsuario"
+
+    GeneXus.Common.Messages_Message:
+      properties:
+        Id:
+          description: "Id"
+          type: "string"
+        Type:
+          description: "Type"
+          type: "integer"
+          format: "int32"
+        Description:
+          description: "Description"
+          type: "string"
 
 
 
+    ClienteCheckout:
+      properties:
+        Empresa:
+          description: "Empresa"
+          type: "integer"
+          format: "int64"
+        CodCliente:
+          description: "Cod Cliente"
+          type: "integer"
+          format: "int64"
+        nome:
+          description: "nome"
+          type: "string"
+        cpf:
+          description: "cpf"
+          type: "string"
+        email:
+          description: "email"
+          type: "string"
+        celular:
+          description: "celular"
+          type: "string"
+        cep:
+          description: "cep"
+          type: "string"
+        endereco:
+          description: "endereco"
+          type: "string"
+        bairro:
+          description: "bairro"
+          type: "string"
+        numero:
+          description: "numero"
+          type: "string"
+        cidade:
+          description: "cidade"
+          type: "string"
+        uf:
+          description: "uf"
+          type: "string"
+        LimiteCredito:
+          description: "Limite Credito"
+          type: "number"
+          format: "double"
+        PermiteVendaCredito:
+          description: "Permite Venda Credito"
+          type: "boolean"
+        CodigoConvenio:
+          description: "Codigo Convenio"
+          type: "integer"
+          format: "int32"
+        NomeConvenio:
+          description: "Nome Convenio"
+          type: "string"
+        DescontoConvenio:
+          description: "Desconto Convenio"
+          type: "number"
+          format: "double"
+        ListaPreco:
+          description: "Lista"
+          type: "integer"
+          format: "int64"
 
+
+
+    SDTCheckoutListaClientes:
+      properties:
+        PaginaAtual:
+          description: "Pagina Atual"
+          type: "integer"
+          format: "int64"
+        RegistrosPorPagina:
+          description: "Registros Por Pagina"
+          type: "integer"
+          format: "int64"
+        TotalRegistros:
+          description: "Total Registros"
+          type: "integer"
+          format: "int64"
+        TotalPaginas:
+          description: "Total Paginas"
+          type: "integer"
+          format: "int64"
+
+        Clientes:
+          type: array
+          items:
+            description: ClientesItem
+            $ref: "#/components/schemas/SDTCheckoutListaClientes.Clientes_ClientesItem"
+
+
+    SDTCheckoutListaClientes.Clientes_ClientesItem:
+      properties:
+        ClienteCodigo:
+          description: "Cliente Codigo"
+          type: "integer"
+          format: "int64"
+        ClienteNome:
+          description: "Cliente Nome"
+          type: "string"
+        CPF:
+          description: "CPF"
+          type: "string"
+        ListaPreco:
+          description: "Lista Preco"
+          type: "integer"
+          format: "int32"
+        Celular:
+          description: "Celular"
+          type: "string"
+        Telefone:
+          description: "Telefone"
+          type: "string"
+
+        Endereco:
+          $ref: "#/components/schemas/SDTCheckoutListaClientes.Clientes.Endereco"
+
+      x-gx-level: "SDTCheckoutListaClientes"
+
+    SDTCheckoutListaClientes.Clientes.Endereco:
+      properties:
+        cep:
+          description: "cep"
+          type: "string"
+        endereco:
+          description: "endereco"
+          type: "string"
+        bairro:
+          description: "bairro"
+          type: "string"
+        numero:
+          description: "numero"
+          type: "string"
+        cidade:
+          description: "cidade"
+          type: "string"
+        uf:
+          description: "uf"
+          type: "string"
+
+
+      x-gx-level: "SDTCheckoutListaClientes.Clientes"
+
+    CheckoutListaProdutos:
+      properties:
+        PaginaAtual:
+          description: "Pagina Atual"
+          type: "integer"
+          format: "int64"
+        RegistrosPorPagina:
+          description: "Registros Por Pagina"
+          type: "integer"
+          format: "int64"
+        TotalRegistros:
+          description: "Total Registros"
+          type: "integer"
+          format: "int64"
+        TotalPaginas:
+          description: "Total Paginas"
+          type: "integer"
+          format: "int64"
+
+        Produtos:
+          type: array
+          items:
+            description: Produtos
+            $ref: "#/components/schemas/CheckoutListaProdutos.Produtos_Produtos"
+
+
+    CheckoutListaProdutos.Produtos_Produtos:
+      properties:
+        CodigoProduto:
+          description: "Codigo Produto"
+          type: "string"
+        Descricao:
+          description: "Descricao"
+          type: "string"
+        Referencia:
+          description: "Referencia"
+          type: "string"
+        CodigoBarras:
+          description: "Codigo Barras"
+          type: "string"
+        PrecoVenda1:
+          description: "Preco Venda1"
+          type: "number"
+          format: "double"
+        PrecoVenda2:
+          description: "Preco Venda2"
+          type: "number"
+          format: "double"
+        PrecoVenda3:
+          description: "Preco Venda3"
+          type: "number"
+          format: "double"
+        PrecoVenda4:
+          description: "Preco Venda4"
+          type: "number"
+          format: "double"
+        PrecoVenda5:
+          description: "Preco Venda5"
+          type: "number"
+          format: "double"
+        Estoque:
+          description: "Estoque"
+          type: "number"
+          format: "double"
+        CodigoGrupo:
+          description: "Codigo Grupo"
+          type: "integer"
+          format: "int32"
+        DescricaoGrupo:
+          description: "Descricao Grupo"
+          type: "string"
+        CodigoSubgrupo:
+          description: "Codigo Subgrupo"
+          type: "integer"
+          format: "int32"
+        DescricaoSubgrupo:
+          description: "Descricao Subgrupo"
+          type: "string"
+        Aplicacao:
+          description: "Aplicacao"
+          type: "string"
+        GTINTributavel:
+          description: "GTINTributavel"
+          type: "string"
+        QtdMinimaPreco2:
+          description: "Qtd Minima Preco2"
+          type: "integer"
+          format: "int64"
+        QtdMinimaPreco3:
+          description: "Qtd Minima Preco3"
+          type: "integer"
+          format: "int64"
+        QtdMinimaPreco4:
+          description: "Qtd Minima Preco4"
+          type: "integer"
+          format: "int64"
+        QtdMinimaPreco5:
+          description: "Qtd Minima Preco5"
+          type: "integer"
+          format: "int64"
+        UDM:
+          description: "UDM"
+          type: "string"
+
+
+      x-gx-level: "CheckoutListaProdutos"
+
+    SDTCheckout_GetProduto:
+      properties:
+        CodigoProduto:
+          description: "Codigo Produto"
+          type: "string"
+        Descricao:
+          description: "Descricao"
+          type: "string"
+        Referencia:
+          description: "Referencia"
+          type: "string"
+        CodigoBarras:
+          description: "Codigo Barras"
+          type: "string"
+        PrecoVenda:
+          description: "Preco Venda"
+          type: "number"
+          format: "double"
+        PrecoVenda1:
+          description: "Preco Venda1"
+          type: "number"
+          format: "double"
+        PrecoVenda2:
+          description: "Preco Venda2"
+          type: "number"
+          format: "double"
+        PrecoVenda3:
+          description: "Preco Venda3"
+          type: "number"
+          format: "double"
+        PrecoVenda4:
+          description: "Preco Venda4"
+          type: "number"
+          format: "double"
+        PrecoVenda5:
+          description: "Preco Venda5"
+          type: "number"
+          format: "double"
+        PrecoMinimo:
+          description: "Preco Minimo"
+          type: "number"
+          format: "double"
+        Estoque:
+          description: "Estoque"
+          type: "number"
+          format: "double"
+        CodigoGrupo:
+          description: "Codigo Grupo"
+          type: "integer"
+          format: "int32"
+        DescricaoGrupo:
+          description: "Descricao Grupo"
+          type: "string"
+        CodigoSubgrupo:
+          description: "Codigo Subgrupo"
+          type: "integer"
+          format: "int32"
+        DescricaoSubgrupo:
+          description: "Descricao Subgrupo"
+          type: "string"
+        Aplicacao:
+          description: "Aplicacao"
+          type: "string"
+        GTINTributavel:
+          description: "GTINTributavel"
+          type: "string"
+        QtdMinimaPreco2:
+          description: "Qtd Minima Preco2"
+          type: "integer"
+          format: "int64"
+        QtdMinimaPreco3:
+          description: "Qtd Minima Preco3"
+          type: "integer"
+          format: "int64"
+        QtdMinimaPreco4:
+          description: "Qtd Minima Preco4"
+          type: "integer"
+          format: "int64"
+        QtdMinimaPreco5:
+          description: "Qtd Minima Preco5"
+          type: "integer"
+          format: "int64"
+        UDM:
+          description: "UDM"
+          type: "string"
+        ProdutoPesavel:
+          description: "Material Pesável"
+          type: "string"
+
+
+
+    CheckoutListaDAVs:
+      properties:
+        PaginaAtual:
+          description: "Pagina Atual"
+          type: "integer"
+          format: "int64"
+        RegistrosPorPagina:
+          description: "Registros Por Pagina"
+          type: "integer"
+          format: "int64"
+        TotalRegistros:
+          description: "Total Registros"
+          type: "integer"
+          format: "int64"
+        TotalPaginas:
+          description: "Total Paginas"
+          type: "integer"
+          format: "int64"
+
+        DAV:
+          type: array
+          items:
+            description: DAV
+            $ref: "#/components/schemas/CheckoutListaDAVs.DAV_DAV"
+
+
+    CheckoutListaDAVs.DAV_DAV:
+      properties:
+        NumeroDAV:
+          description: "Numero DAV"
+          type: "string"
+        Titulo:
+          description: "Titulo"
+          type: "string"
+        Senha:
+          description: "Senha"
+          type: "string"
+        DataEmissao:
+          description: "Data Emissao"
+          type: "string"
+          format: "date"
+        ClienteCodigo:
+          description: "Cliente Codigo"
+          type: "integer"
+          format: "int64"
+        ClienteNome:
+          description: "Cliente Nome"
+          type: "string"
+        VendedorCodigo:
+          description: "Vendedor Codigo"
+          type: "integer"
+          format: "int64"
+        ValorTotal:
+          description: "Valor Total"
+          type: "number"
+          format: "double"
+
+
+      x-gx-level: "CheckoutListaDAVs"
+
+    SDTDav:
+      properties:
+        DavEmpCod:
+          description: "Empresa"
+          type: "integer"
+          format: "int64"
+        DavNum:
+          description: "Número do DAV"
+          type: "string"
+        DavTit:
+          description: "Título (Pedido, Orçamento, Ordem de Serviço)"
+          type: "string"
+        DavDatEmi:
+          description: "Data de Emissão"
+          type: "string"
+          format: "date"
+        DavDatFat:
+          description: "Data de Faturamento"
+          type: "string"
+          format: "date"
+        DavDatAlt:
+          description: "Data e Hora de Alteração DAV"
+          type: "string"
+          format: "date-time"
+        DavSta:
+          description: "Status do DAV"
+          type: "string"
+        DavCliNomR:
+          description: "Nome Cliente (red)"
+          type: "string"
+        DavCliCgcR:
+          description: "CNPJ (red)"
+          type: "string"
+        DavCliEmp:
+          description: "Empresa Cliente"
+          type: "integer"
+          format: "int64"
+        DavCliCod:
+          description: "Cód.Cliente"
+          type: "integer"
+          format: "int64"
+        DavCliNom:
+          description: "Nome do Cliente"
+          type: "string"
+        DavCliCNPJ:
+          description: "CNPJ"
+          type: "string"
+        DavCliCEP:
+          description: "CEP"
+          type: "string"
+        DavCliEnd:
+          description: "Endereço"
+          type: "string"
+        DavCliBai:
+          description: "Bairro"
+          type: "string"
+        DavCliCid:
+          description: "Cidade"
+          type: "string"
+        DavCliUnf:
+          description: "UF"
+          type: "string"
+        DavCliEma:
+          description: "Email"
+          type: "string"
+        DavCliFon:
+          description: "Fone"
+          type: "string"
+        DavTipPre:
+          description: "Tipo de Preço"
+          type: "integer"
+          format: "int32"
+        DavDocFNum:
+          description: "Numero Documento Fiscal"
+          type: "integer"
+          format: "int64"
+        DavDocFSer:
+          description: "Série do Documento Fiscal"
+          type: "string"
+        DavDocFTip:
+          description: "Tipo Documento Fiscal: Nota / Cupom"
+          type: "string"
+        DavTot:
+          description: "Total do DAV"
+          type: "number"
+          format: "double"
+        DavSubTotal:
+          description: "Subtotal do DAV"
+          type: "number"
+          format: "double"
+        DavWks:
+          description: "Estação Dav"
+          type: "string"
+        DavTipo:
+          description: "Dav Tipo"
+          type: "string"
+        DavDocONum:
+          description: "Número do Documento de Origem"
+          type: "integer"
+          format: "int64"
+        DavDocOSer:
+          description: "Série do Documento de Origem"
+          type: "string"
+        DavVlrDesconto:
+          description: "Valor de Desconto"
+          type: "number"
+          format: "double"
+        DavVlrAcrescimo:
+          description: "Valor de Acréscimo"
+          type: "number"
+          format: "double"
+        DavRepCod:
+          description: "Codigo do Representante"
+          type: "integer"
+          format: "int64"
+        DavUsuCod:
+          description: "Código do Usuário"
+          type: "integer"
+          format: "int64"
+        DavPraCod:
+          description: "Codigo da Condição de Pagamento"
+          type: "integer"
+          format: "int32"
+        DavSenha:
+          description: "Senha para atendimento do DAV"
+          type: "string"
+        DavObs:
+          description: "Dav Observações"
+          type: "string"
+        DavCliConv:
+          description: "Convenio Cliente"
+          type: "integer"
+          format: "int32"
+        DAvCliNum:
+          description: "Nro endereco"
+          type: "string"
+        DavCliDsc:
+          description: "Dav Cli Dsc"
+          type: "number"
+          format: "double"
+
+        DavItemStruct:
+          type: array
+          items:
+            description: DavItemStructItem
+            $ref: "#/components/schemas/SDTDav.DavItemStruct_DavItemStructItem"
+
+        DavForPagamento:
+          type: array
+          items:
+            description: DavForPagamentoItem
+            $ref: "#/components/schemas/SDTDav.DavForPagamento_DavForPagamentoItem"
+
+
+    SDTDav.DavItemStruct_DavItemStructItem:
+      properties:
+        DavItem:
+          description: "Item"
+          type: "integer"
+          format: "int32"
+        DavICodBar:
+          description: "Código de Barras"
+          type: "string"
+        DavIRef:
+          description: "Referência"
+          type: "string"
+        DavIMatEmp:
+          description: "Empresa"
+          type: "integer"
+          format: "int64"
+        DavIMatCod:
+          description: "Material"
+          type: "string"
+        DavIMDesComp:
+          description: "Descrição do Produto/Material"
+          type: "string"
+        DavIMatUni:
+          description: "Unidade"
+          type: "string"
+        DavIMatUv2:
+          description: "2ª Unidade de Venda"
+          type: "string"
+        DavIMatPv1:
+          description: "Preço de Venda 1"
+          type: "number"
+          format: "double"
+        DavIMatPv2:
+          description: "Preço de Venda 2"
+          type: "number"
+          format: "double"
+        DavIMatPv3:
+          description: "Preço de Venda 3"
+          type: "number"
+          format: "double"
+        DavIMatPv4:
+          description: "Preço de Venda 4"
+          type: "number"
+          format: "double"
+        DavIMatPv5:
+          description: "Preço de Venda 5"
+          type: "number"
+          format: "double"
+        DavIMatPProm:
+          description: "Preço de Promoção"
+          type: "number"
+          format: "double"
+        DavIMatProm:
+          description: "Material em promoção"
+          type: "string"
+        DavIMatVProm:
+          description: "Validade Promoção"
+          type: "string"
+          format: "date"
+        DavIMatDsc:
+          description: "Desconto Máximo"
+          type: "number"
+          format: "double"
+        DavIMatIAT:
+          description: "Indice de arredondamento ou truncamento"
+          type: "string"
+        DavIMatPAfAlq:
+          description: "Aliquota de tributação do item"
+          type: "number"
+          format: "double"
+        DavIMatCST:
+          description: "CST do Material"
+          type: "string"
+        DavIMatIPPT:
+          description: "Indice de produção  Prórpio ou Terceiro"
+          type: "string"
+        DavIMatST:
+          description: "Situação Tributária do item"
+          type: "string"
+        DavIDesR:
+          description: "Descrição Material (red)"
+          type: "string"
+        DavIDs2R:
+          description: "(2ª linha) (red)"
+          type: "string"
+        DavIMatRDesComp:
+          description: "Descrição do Produto/Material (r)"
+          type: "string"
+        DavIUni:
+          description: "Unidade (red)"
+          type: "string"
+        DavIPreUni:
+          description: "Preço Unitário"
+          type: "number"
+          format: "double"
+        DavPreVen:
+          description: "Preço Final com Descontos e Acrescimos unitario"
+          type: "number"
+          format: "double"
+        DavIQtd:
+          description: "Quantidade"
+          type: "number"
+          format: "double"
+        DavITotIt:
+          description: "Subtotal do Item"
+          type: "number"
+          format: "double"
+        DavITotLiquido:
+          description: "Total Liquido do Item"
+          type: "number"
+          format: "double"
+        DavIFlgCancelado:
+          description: "Item Cancelado"
+          type: "string"
+        DavIDatInclusao:
+          description: "Data de Inclusão do Item"
+          type: "string"
+          format: "date"
+        DavIVlrDesconto:
+          description: "Valor Desconto do Item"
+          type: "number"
+          format: "double"
+        DavIVlrAcrescimo:
+          description: "Valor Acréscimo do Item"
+          type: "number"
+          format: "double"
+        DavITotParcial:
+          description: "Totalizador Parcial (ECF)"
+          type: "string"
+        DavISitTrib:
+          description: "Situação tributária do item"
+          type: "string"
+        DaviAliquota:
+          description: "Aliquota de tributação do item"
+          type: "number"
+          format: "double"
+        DavIWks:
+          description: "Ecf ou estação que gravou o item"
+          type: "string"
+        DavIFlgTipo:
+          description: "Tipo da ação executado no DAV(A alteraçao, E exclusão, I inclusão)"
+          type: "string"
+        DavClfAliqImp:
+          description: "% IBPT"
+          type: "number"
+          format: "double"
+        DavClfCod:
+          description: "Classificação Fiscal"
+          type: "string"
+        DavClfCodCEST:
+          description: "CEST"
+          type: "string"
+        DavMatProdPes:
+          description: "Produto Pesável"
+          type: "string"
+        DavMatTPrSv:
+          description: "Produto ou Serviço"
+          type: "string"
+        DavMatSit:
+          description: "Situação"
+          type: "string"
+        DavClfDes:
+          description: "CLF Descrição"
+          type: "string"
+
+
+      x-gx-level: "SDTDav"
+
+
+    SDTDav.DavForPagamento_DavForPagamentoItem:
+      properties:
+        DavPagCod:
+          description: "Forma de Pagamento"
+          type: "integer"
+          format: "int32"
+        DavPagDes:
+          description: "Forma Pagamento"
+          type: "string"
+        DavPagVlr:
+          description: "R$"
+          type: "number"
+          format: "double"
+
+
+      x-gx-level: "SDTDav"
+
+    CheckoutFaturarNFCe:
+      properties:
+        Empresa:
+          description: "Empresa"
+          type: "integer"
+          format: "int64"
+        SuspenderOuFaturar:
+          description: "Suspender Ou Faturar"
+          type: "string"
+        clienteCodigo:
+          description: "cliente Codigo"
+          type: "integer"
+          format: "int64"
+        vendedorCodigo:
+          description: "vendedor Codigo"
+          type: "integer"
+          format: "int64"
+        CondicaoPagamentoCodigo:
+          description: "Condicao Pagamento Codigo"
+          type: "integer"
+          format: "int64"
+        NumeroNota:
+          description: "Numero Nota"
+          type: "integer"
+          format: "int64"
+        CadSerieNFCe:
+          description: "Cad Serie NFCe"
+          type: "string"
+        UsuarioCodigo:
+          description: "Usuario Codigo"
+          type: "integer"
+          format: "int64"
+
+        produtos:
+          type: array
+          items:
+            description: produtosItem
+            $ref: "#/components/schemas/CheckoutFaturarNFCe.produtos_produtosItem"
+
+        FormasDePagamento:
+          type: array
+          items:
+            description: FormasDePagamentoItem
+            $ref: "#/components/schemas/CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem"
+
+        NotaFiscal:
+          $ref: "#/components/schemas/CheckoutFaturarNFCe.NotaFiscal"
+
+
+    CheckoutFaturarNFCe.produtos_produtosItem:
+      properties:
+        sequencial:
+          description: "sequencial"
+          type: "integer"
+          format: "int32"
+        codigoProduto:
+          description: "codigo Produto"
+          type: "string"
+        quantidade:
+          description: "quantidade"
+          type: "number"
+          format: "double"
+        precoUnitario:
+          description: "preco Unitario"
+          type: "number"
+          format: "double"
+        DescontoPercentual:
+          description: "Desconto Percentual"
+          type: "number"
+          format: "double"
+        DescontoValor:
+          description: "Desconto Valor"
+          type: "number"
+          format: "double"
+        UDM:
+          description: "UDM"
+          type: "string"
+        ValorBruto:
+          description: "Valor Bruto"
+          type: "number"
+          format: "double"
+        ValorTotal:
+          description: "Valor Total"
+          type: "number"
+          format: "double"
+
+
+      x-gx-level: "CheckoutFaturarNFCe"
+
+
+    CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem:
+      properties:
+        FormaCodigo:
+          description: "Forma Codigo"
+          type: "integer"
+          format: "int64"
+        FormaMeioPagtoNFe:
+          description: "Forma Meio Pagto NFe"
+          type: "string"
+        FormaValor:
+          description: "Forma Valor"
+          type: "number"
+          format: "double"
+        FormaIntegracaoCartao:
+          description: "Forma Integracao Cartao"
+          type: "string"
+        TEFidentificacao:
+          description: "TEFidentificacao"
+          type: "integer"
+          format: "int64"
+        TEFCNPJ:
+          description: "TEFCNPJ"
+          type: "string"
+        TEFBandeira:
+          description: "TEFbandeira"
+          type: "string"
+        TEFNumeroAutorizacao:
+          description: "TEFNumero Autorizacao"
+          type: "string"
+        TEFTipoIntegracao:
+          description: "TEFTipo Integracao"
+          type: "string"
+        FormaPixGUID:
+          description: "Forma Pix GUID"
+          type: "string"
+        TicketDevolucao:
+          description: "Ticket Devolucao"
+          type: "string"
+
+
+      x-gx-level: "CheckoutFaturarNFCe"
+
+
+    CheckoutFaturarNFCe.NotaFiscal:
+      properties:
+        NumeroNota:
+          description: "Numero Nota"
+          type: "integer"
+          format: "int64"
+        SerieNota:
+          description: "SERIE"
+          type: "string"
+        Autorizada:
+          description: "Autorizada"
+          type: "string"
+        ErroCodigo:
+          description: "Erro Codigo"
+          type: "integer"
+          format: "int32"
+        ErroMensagem:
+          description: "Erro Mensagem"
+          type: "string"
+        XMLImpressao:
+          description: "XMLImpressao"
+          type: "string"
+        PDFImpressao:
+          description: "PDFImpressao"
+          type: "string"
+
+
+      x-gx-level: "CheckoutFaturarNFCe"
+
+    CheckoutListaRascunhos:
+      properties:
+        PaginaAtual:
+          description: "Pagina Atual"
+          type: "integer"
+          format: "int64"
+        RegistrosPorPagina:
+          description: "Registros Por Pagina"
+          type: "integer"
+          format: "int64"
+        TotalRegistros:
+          description: "Total Registros"
+          type: "integer"
+          format: "int64"
+        TotalPaginas:
+          description: "Total Paginas"
+          type: "integer"
+          format: "int64"
+
+        Rascunho:
+          type: array
+          items:
+            description: Rascunho
+            $ref: "#/components/schemas/CheckoutListaRascunhos.Rascunho_Rascunho"
+
+
+    CheckoutListaRascunhos.Rascunho_Rascunho:
+      properties:
+        NumeroNota:
+          description: "Numero Nota"
+          type: "integer"
+          format: "int64"
+        Cliente:
+          description: "Cliente"
+          type: "string"
+        Vendedor:
+          description: "Vendedor"
+          type: "string"
+        Operador:
+          description: "Operador"
+          type: "string"
+        Emissao:
+          description: "Emissao"
+          type: "string"
+          format: "date-time"
+        Total:
+          description: "Total"
+          type: "number"
+          format: "double"
+
+
+      x-gx-level: "CheckoutListaRascunhos"
+
+    SDTCentriumPag_Post:
+      properties:
+        TrnGUID:
+          description: "Transação GUID"
+          type: "string"
+          format: "uuid"
+        TrnValor:
+          description: "Transação Valor"
+          type: "number"
+          format: "double"
+        TrnFormaPagamento:
+          description: "Transação Forma Pagamento"
+          type: "string"
+        TrnPagadorNome:
+          description: "Transação Pagador Nome"
+          type: "string"
+        TrnPagadorCgc:
+          description: "Transação Pagador Cgc"
+          type: "string"
+        TrnPagadorEmail:
+          description: "Transação Pagador Email"
+          type: "string"
+        TrnPagadorFone:
+          description: "Transação Pagador Fone"
+          type: "string"
+        TrnOrigemDocumento:
+          description: "Transação Ori Documento"
+          type: "string"
+        TrnOrigemSerie:
+          description: "Transação Ori Serie"
+          type: "string"
+        TrnStatus:
+          description: "Transação Status"
+          type: "string"
+        CntGUID:
+          description: "Cnt GUID"
+          type: "string"
+          format: "uuid"
+        Empresa:
+          description: "Empresa"
+          type: "integer"
+          format: "int64"
+        FPgCod:
+          description: "Código da Forma de Pgto"
+          type: "integer"
+          format: "int32"
+        CaminhoQrCode:
+          description: "Caminho Qr Code"
+          type: "string"
+        TrnTempoExpiracaoPIX:
+          description: "Tempo em segundos de Expiracao PIX"
+          type: "integer"
+          format: "int64"
+        TrnEspDoc:
+          description: "Trn Esp Doc"
+          type: "string"
+        TrnDatVen:
+          description: "Trn Dat Ven"
+          type: "string"
+          format: "date"
+        TrnTipTaxM:
+          description: "Trn Tip Tax M"
+          type: "integer"
+          format: "int32"
+        TrnValMul:
+          description: "Trn Val Mul"
+          type: "number"
+          format: "double"
+        TrnPerMul:
+          description: "Trn Per Mul"
+          type: "number"
+          format: "double"
+        TrnTipTaxJ:
+          description: "Trn Tip Tax J"
+          type: "integer"
+          format: "int32"
+        TrnValJur:
+          description: "Trn Val Jur"
+          type: "number"
+          format: "double"
+        TrnPerJur:
+          description: "Trn Per Jur"
+          type: "number"
+          format: "double"
+        TrnDatLimD:
+          description: "Trn Dat Lim D"
+          type: "string"
+          format: "date"
+        TrnValDes:
+          description: "Trn Val Des"
+          type: "number"
+          format: "double"
+        TrnPerDes:
+          description: "Trn Per Des"
+          type: "number"
+          format: "double"
+        TrnValAbat:
+          description: "Trn Val Abat"
+          type: "number"
+          format: "double"
+        TrnDatPag:
+          description: "Trn Dat Pag"
+          type: "string"
+          format: "date"
+        TrnValOpeF:
+          description: "Trn Val Ope F"
+          type: "number"
+          format: "double"
+        TrnStaBol:
+          description: "Trn Sta Bol"
+          type: "integer"
+          format: "int32"
+        TrnOriEmp:
+          description: "Trn Ori Emp"
+          type: "integer"
+          format: "int64"
+        TrnOriPar:
+          description: "Trn Ori Par"
+          type: "integer"
+          format: "int64"
+        TrnNosNumS:
+          description: "Trn Nos Num S"
+          type: "string"
+        TrnIns1Cod:
+          description: "Trn Ins1 Cod"
+          type: "string"
+        TrnIns1Val:
+          description: "Trn Ins1 Val"
+          type: "integer"
+          format: "int64"
+        TrnIns2Cod:
+          description: "Trn Ins2 Cod"
+          type: "string"
+        TrnIns2Val:
+          description: "Trn Ins2 Val"
+          type: "integer"
+          format: "int64"
+        TrnIns3Cod:
+          description: "Trn Ins3 Cod"
+          type: "string"
+        TrnIns3Val:
+          description: "Trn Ins3 Val"
+          type: "integer"
+          format: "int64"
+        TrnCodBar:
+          description: "Trn Cod Bar"
+          type: "string"
+        TrnLinDig:
+          description: "Trn Lin Dig"
+          type: "string"
+        TrnValPag:
+          description: "Trn Val Pag"
+          type: "number"
+          format: "double"
+        TrnTipOpeA:
+          description: "Trn Tip Ope A"
+          type: "string"
+        TrnPixUrlQrCode:
+          description: "Trn Pix Url Qr Code"
+          type: "string"
+        TrnNosNumD:
+          description: "Trn Nos Num D"
+          type: "string"
+        TrnNosNum:
+          description: "Trn Nos Num"
+          type: "string"
+        EnumTipoTaxaMulta:
+          description: "Enum Tipo Taxa Multa"
+          type: "integer"
+          format: "int32"
+        TrnPagUF:
+          description: "Trn Pag UF"
+          type: "string"
+        TrnPagTip:
+          description: "Trn Pag Tip"
+          type: "string"
+        TrnPagCid:
+          description: "Trn Pag Cid"
+          type: "string"
+        TrnPagCep:
+          description: "Trn Pag Cep"
+          type: "string"
+        TrnPagEnd:
+          description: "Trn Pag End"
+          type: "string"
+        TrnPagNum:
+          description: "Trn Pag Num"
+          type: "string"
+        TrnPagCom:
+          description: "Trn Pag Com"
+          type: "string"
+        TrnPagBai:
+          description: "Trn Pag Bai"
+          type: "string"
+        TrnPagCod:
+          description: "Transação Pagador Código"
+          type: "integer"
+          format: "int64"
+        TrnValPagO:
+          description: "Trn Val Pag O"
+          type: "number"
+          format: "double"
+        TrnModVal:
+          description: "Transação emitida em modo de validação"
+          type: "boolean"
+        TrnDataEmi:
+          description: "Trn Data Emi"
+          type: "string"
+          format: "date"
+        TrnAceite:
+          description: "Trn Aceite"
+          type: "string"
+
+
+
+    CheckoutListaVendedores:
+      properties:
+        PaginaAtual:
+          description: "Pagina Atual"
+          type: "integer"
+          format: "int64"
+        RegistrosPorPagina:
+          description: "Registros Por Pagina"
+          type: "integer"
+          format: "int64"
+        TotalRegistros:
+          description: "Total Registros"
+          type: "integer"
+          format: "int64"
+        TotalPaginas:
+          description: "Total Paginas"
+          type: "integer"
+          format: "int64"
+
+        Vendedores:
+          type: array
+          items:
+            description: Vendedores
+            $ref: "#/components/schemas/CheckoutListaVendedores.Vendedores_Vendedores"
+
+
+    CheckoutListaVendedores.Vendedores_Vendedores:
+      properties:
+        VendedorCodigo:
+          description: "Vendedor Codigo"
+          type: "integer"
+          format: "int64"
+        VendedorNome:
+          description: "Vendedor Nome"
+          type: "string"
+        VendedorCGC:
+          description: "Vendedor CGC"
+          type: "string"
+        VendedorFone:
+          description: "Vendedor Fone"
+          type: "string"
+
+
+      x-gx-level: "CheckoutListaVendedores"
+
+ 

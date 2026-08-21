@@ -52,7 +52,7 @@ Nenhum item explicitamente excluído identificado até o momento — feature des
 
 ## Edge Cases
 
-- WHEN um DAV é importado THEN ⚠️ pendente: o contrato atual (`ApiCentriumOAuth.yaml`) não expõe um endpoint explícito de "marcar DAV como importado/em faturamento" — o diagrama de referência do ERP menciona essa alteração de status como efeito colateral da importação, mas o mecanismo exato não está confirmado.
+- WHEN um DAV é importado THEN o sistema SHALL faturá-lo através do próprio `POST /ApiCentriumOAuth/FaturarNFCe` — não existe endpoint separado de "marcar DAV como importado/em faturamento". **Parcialmente resolvido (2026-08-21, AD-023):** resposta direta do usuário — o próprio `FaturarNFCe` já trata a marcação de status como efeito colateral, mas exige um campo preenchido no SDT `CheckoutFaturarNFCe` cujo nome exato **ainda não foi definido** (marcado explicitamente pelo usuário como "PENDÊNCIA DEV" — falta identificar/confirmar o campo, não é mais uma dúvida de "existe endpoint ou não").
 - WHEN o operador usa qualquer um dos 6 filtros desenhados no modal (cliente, data de emissão, status, vendedor, tipo, origem) THEN ⚠️ pendente: `GET /ApiCentriumOAuth/ListaDAVs` só aceita `Pagina`/`TamanhoPagina` no contrato atual — não há suporte a filtro server-side por nenhum desses 6 campos; não confirmado se a filtragem deve ser só client-side sobre a página já carregada, ou se o contrato precisa ser expandido.
 - WHEN o operador usa a ação de reimpressão por linha, presente no design THEN ⚠️ pendente: nenhum requisito cobre esse botão ainda — `finalizacao-suspensao-venda/spec.md` já trata reimpressão de NFCe como fora de escopo (`GetPDFNota` não usado para essa finalidade); não confirmado se a reimpressão do Modal DAV é o mesmo conceito ou algo distinto (ex.: reimprimir o próprio DAV, não a NFCe).
 
@@ -66,7 +66,7 @@ Nenhum item explicitamente excluído identificado até o momento — feature des
 | DAV-02 | Importar DAV completo via `GetDAV` | - | Verified |
 | DAV-03 | DAV importado segue fluxo normal de venda | - | Verified |
 
-**Coverage:** 3 total, 3 edge cases pendentes de confirmação com equipe do ERP (marcação de status, filtros server-side, ação de reimpressão).
+**Coverage:** 3 total, 2 edge cases pendentes de confirmação com equipe do ERP (filtros server-side, ação de reimpressão), 1 pendência de implementação já entendida (campo do SDT `CheckoutFaturarNFCe` para marcar DAV importado — "PENDÊNCIA DEV", ver AD-023 em `.specs/project/STATE.md`).
 
 ---
 

@@ -32,7 +32,7 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 **Acceptance Criteria**:
 
 1. WHEN o operador informa um CPF/CNPJ conhecido THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetCliente` e retornar o cliente específico.
-2. WHEN o operador não sabe o CPF/CNPJ e busca por nome, e-mail ou telefone THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetListaClientes` com `&TxtBusca`, listando candidatos para seleção.
+2. WHEN o operador não sabe o CPF/CNPJ e busca por nome, e-mail ou telefone THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetListaClientes` com `Txtbusca` (mais `Empresa`, `Pagina`, `Tamanhopagina`), listando candidatos para seleção. **Resolvido (2026-08-21, AD-023):** endpoint confirmado no `ApiCentriumOAuth.yaml` atualizado.
 3. WHEN a identificação de cliente e a montagem do carrinho acontecem na mesma etapa (layouts desktop/mobile) THEN o sistema SHALL tratá-las como ações independentes, não sequenciais obrigatórias.
 
 **Independent Test**: Buscar um cliente conhecido por CPF e um desconhecido por nome parcial; verificar que cada caminho chama o endpoint correto.
@@ -57,9 +57,9 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 
 ## Edge Cases
 
-- WHEN o operador informa um CEP no cadastro simplificado THEN ⚠️ pendente: não confirmado se há validação de IBGE, além da máscara de formato (ver `.specs/project/STATE.md`, Todos — extensão exata do cadastro simplificado).
-- WHEN o formulário de cadastro simplificado inclui os campos "Limite de crédito" e "Permite venda a crédito" (presentes no design, frame `PDV Online Web - Modal cadastro de cliente`) THEN ⚠️ pendente: `POST /ApiCentriumOAuth/PostCliente` não aceita esses campos no payload atual (só aceita `Empresa, nome, cpf, email, celular, cep, endereco, bairro, numero, cidade, uf`) — não confirmado se são só exibidos como somente-leitura, se pertencem a outro endpoint, ou se o contrato precisa ser expandido.
-- WHEN o cliente retornado tem `CodigoConvenio`/`DescontoConvenio` preenchidos THEN ⚠️ pendente: não confirmado se `DescontoConvenio` é percentual ou valor fixo — impacta o motor de precificação (`.specs/features/carrinho-produto-precificacao/spec.md`).
+- WHEN o operador informa um CEP no cadastro simplificado THEN o sistema SHALL tratar o campo de endereço como texto livre, sem validação de IBGE. **Resolvido (2026-08-21, AD-023):** decisão direta do usuário — será livre mesmo, além da máscara de formato já prevista (`CLI-04`).
+- WHEN o formulário de cadastro simplificado inclui os campos "Limite de crédito" e "Permite venda a crédito" (presentes no design, frame `PDV Online Web - Modal cadastro de cliente`) THEN ⚠️ pendente: `POST /ApiCentriumOAuth/PostCliente` não aceita esses campos no payload atual (só aceita `Empresa, nome, cpf, email, celular, cep, endereco, bairro, numero, cidade, uf`) — não confirmado se são só exibidos como somente-leitura, se pertencem a outro endpoint, ou se o contrato precisa ser expandido (não coberto pela verificação de AD-023).
+- WHEN o cliente retornado tem `CodigoConvenio`/`DescontoConvenio` preenchidos THEN o sistema SHALL tratar `DescontoConvenio` como percentual. **Resolvido (2026-08-21, AD-023):** confirmado na KB do GenExus — `PGeraPedidoVenda` calcula `&ConvDsc = (1 - CliConvDsc / 100)`, fator de desconto percentual. Impacta o motor de precificação (`.specs/features/carrinho-produto-precificacao/spec.md`).
 
 ---
 
@@ -68,11 +68,11 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
 | CLI-01 | Busca por CPF/CNPJ (`GetCliente`) | - | Verified |
-| CLI-02 | Busca por termo livre (`GetListaClientes`) | - | ⚠️ Pendente — endpoint não confirmado em `ApiCentriumOAuth.yaml` (ver `.specs/codebase/CONCERNS.md`) |
+| CLI-02 | Busca por termo livre (`GetListaClientes`) | - | Verified (2026-08-21, AD-023 — endpoint confirmado em `ApiCentriumOAuth.yaml`) |
 | CLI-03 | Cadastro simplificado via `PostCliente` | - | Verified |
 | CLI-04 | Validação de máscara CPF/CEP no cadastro simplificado | - | Verified |
 
-**Coverage:** 4 total, 0 mapeados a tasks, 1 requisito (`CLI-02`) e 3 edge cases pendentes de confirmação com equipe do ERP.
+**Coverage:** 4 total, 0 mapeados a tasks, 0 requisitos pendentes, 1 edge case pendente de confirmação com equipe do ERP (campos "Limite de crédito"/"Permite venda a crédito" fora do payload de `PostCliente`).
 
 ---
 

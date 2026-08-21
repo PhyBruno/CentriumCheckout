@@ -50,7 +50,7 @@ No mobile, o gatilho de abertura deste modal é o `Campo Vendedor mobile`, dentr
 
 **Acceptance Criteria**:
 
-1. WHEN o operador abre o modal de seleção de vendedor THEN o sistema SHALL carregar a listagem de vendedores disponíveis **na empresa do operador logado** (filtro equivalente ao campo `Empresa`/`codigoEmpresa` usado nos demais endpoints, ver AD-019) via chamada `GET`. ⚠️ **Pendência:** a URL exata desse endpoint **não foi confirmada pelo usuário nem localizada em `ApiCentriumOAuth.yaml`** — ver Edge Cases e `.specs/codebase/CONCERNS.md`.
+1. WHEN o operador abre o modal de seleção de vendedor THEN o sistema SHALL carregar a listagem de vendedores disponíveis **na empresa do operador logado** via `GET /ApiCentriumOAuth/GetListaVendedores`, com `Empresa` (`codigoEmpresa`, ver AD-019), `Txtbusca`, `Pagina` e `Tamanhopagina` — mesmo padrão paginado de `GetListaClientes`. **Resolvido (2026-08-21, AD-023):** endpoint confirmado no `ApiCentriumOAuth.yaml` atualizado, retornando `VendedorCodigo`, `VendedorNome`, `VendedorCGC`, `VendedorFone` por item.
 2. WHEN o operador digita um termo de busca THEN o sistema SHALL filtrar a listagem pelo nome do vendedor.
 3. WHEN o operador aplica o filtro de status (ex.: "Ativo") THEN o sistema SHALL restringir a listagem por esse status.
 4. WHEN o operador clica em uma linha da tabela de resultados THEN o sistema SHALL marcar essa linha como selecionada (ícone de confirmação) e associar o `vendedorCodigo` correspondente à venda em digitação, fechando o modal — sem exigir um botão de confirmação separado.
@@ -62,7 +62,7 @@ No mobile, o gatilho de abertura deste modal é o `Campo Vendedor mobile`, dentr
 
 ## Edge Cases
 
-- WHEN o modal é aberto THEN ⚠️ **pendência real, não confirmada:** não existe, no contrato atual (`ApiCentriumOAuth.yaml`), nenhum endpoint de *listagem* de vendedores (ex.: um equivalente a `GetListaProdutos`/`GetListaClientes` para vendedor). As ocorrências de campos de vendedor no contrato são pontuais, não uma listagem: `VendedorCodigo`/`VendedorNome` na resposta de `GetSessao` (dados do operador logado, não uma lista), `vendedorCodigo` no corpo de `FaturarNFCe` (campo de envio, não de consulta), `VendedorCodigo`/`VendedorNome` na resposta de `ListaDAVs`, e `vendedorCodigo` dentro de `dadosNFCe` na resposta de `GET /ApiCentriumOAuth/CarregarNFCe` (correção 2026-08-21 — revisão cruzada encontrou essa 4ª ocorrência, que a varredura inicial havia deixado passar). **Nenhum candidato plausível de endpoint de listagem foi encontrado no contrato** — precisa ser confirmado/criado pela equipe do ERP. Caso siga o padrão de outros endpoints de listagem paginada do contrato (`GetListaProdutos`: parâmetros `Empresa` no header, `TxtBusca`, `Pagina`, `TamanhoPagina`), esperar-se-ia forma semelhante — mas isso é só uma expectativa de padrão, não uma confirmação.
+- WHEN o modal é aberto THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetListaVendedores`. **Resolvido (2026-08-21, AD-023):** o novo `ApiCentriumOAuth.yaml` confirma o endpoint de listagem, exatamente no padrão esperado dos demais endpoints paginados do contrato (`Empresa`, `Txtbusca`, `Pagina`, `Tamanhopagina` como parâmetros; `VendedorCodigo`/`VendedorNome`/`VendedorCGC`/`VendedorFone` por item da lista). As ocorrências pontuais de campos de vendedor já mapeadas continuam válidas para outros fins: `VendedorCodigo`/`VendedorNome` na resposta de `GetSessao` (dados do operador logado, não uma lista), `vendedorCodigo` no corpo de `FaturarNFCe`/`CarregarNFCe` (campo de envio/retorno da venda, não de consulta) e `VendedorCodigo`/`VendedorNome` na resposta de `ListaDAVs`.
 - WHEN uma venda é carregada de um rascunho existente via `CarregarNFCe` (ver `.specs/features/finalizacao-suspensao-venda/spec.md`, `FIN-03`) e a resposta já traz `vendedorCodigo` preenchido THEN ⚠️ pendente: não confirmado se o modal deve pré-selecionar automaticamente esse vendedor, ou se o operador precisa sempre reconfirmar manualmente.
 - WHEN a listagem de vendedores retorna vazia (nenhum vendedor ativo cadastrado, por exemplo) THEN ⚠️ pendente: comportamento não definido pelo usuário — permitir prosseguir sem vendedor selecionado, ou bloquear a finalização da venda? Precisa confirmação (relacionado ao Edge Case já registrado em `.specs/features/finalizacao-suspensao-venda/spec.md` sobre campos obrigatórios de `FaturarNFCe`).
 - WHEN o operador fecha o modal sem selecionar nenhum vendedor (botão "Cancelar") THEN o sistema SHALL manter o estado anterior da venda (nenhuma alteração de `vendedorCodigo`).
@@ -73,13 +73,13 @@ No mobile, o gatilho de abertura deste modal é o `Campo Vendedor mobile`, dentr
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| VEND-01 | Listagem de vendedores por empresa via `GET` | - | ⚠️ Endpoint pendente de confirmação com equipe do ERP |
+| VEND-01 | Listagem de vendedores por empresa via `GET /ApiCentriumOAuth/GetListaVendedores` | - | Verified (2026-08-21, AD-023 — endpoint confirmado no contrato atualizado) |
 | VEND-02 | Busca por nome | - | Verified (via design) |
 | VEND-03 | Filtro por status | - | Verified (via design) |
 | VEND-04 | Seleção de linha associa `vendedorCodigo` à venda | - | Verified (via design) |
 | VEND-05 | `vendedorCodigo` selecionado é enviado em `FaturarNFCe`, distinto do operador logado | - | Verified (contrato confirma campo em `FaturarNFCe`) |
 
-**Coverage:** 5 total, 0 mapeados a tasks, 1 pendência bloqueante (endpoint de listagem), 1 edge case pendente de confirmação.
+**Coverage:** 5 total, 0 mapeados a tasks, 0 pendências bloqueantes, 1 edge case pendente de confirmação (pré-seleção de vendedor ao carregar rascunho via `CarregarNFCe`).
 
 ---
 

@@ -2,24 +2,30 @@
 
 Pendências reais de infraestrutura/contrato identificadas antes de qualquer código existir. Diferente de dúvida de requisito de feature (essas ficam nos respectivos `spec.md` em `.specs/features/`), os itens abaixo são lacunas técnicas/contratuais que bloqueiam decisões de arquitetura ou implantação.
 
-## Contrato de API incompleto (`ApiCentriumOAuth.yaml`)
+> Mapa consolidado de toda pendência/edge case aberto no projeto (infra + todas as features): `.specs/project/PENDENCIES.md`.
 
-**Risco:** decisão de arquitetura já tomada (roteamento por tenant) não tem respaldo formal no contrato — risco de o contrato divergir da implementação real quando a equipe do ERP o atualizar.
+## Contrato de API incompleto (`ApiCentriumOAuth.yaml`) — RESOLVIDO (2026-08-21)
 
-- Host por tenant: contrato não tem bloco `servers:` — o host (`TENANT.<domínio-base>`) não está formalizado em nenhum contrato.
+**Risco identificado:** decisão de arquitetura já tomada (roteamento por tenant) não tinha respaldo formal no contrato — host por tenant sem bloco `servers:` formalizado.
 
-**Fix approach:** equipe deve expandir `ApiCentriumOAuth.yaml` com esse item; até lá, tratar como acoplamento implícito não versionado.
+**Resolvido:** a nova versão do `ApiCentriumOAuth.yaml` (2026-08-21, `info.version: 20260821131003`) trouxe um bloco `servers:` (`http://localhost/Centrium1600Web/APICentriumOAuth`), mas é uma URL fixa de ambiente de dev — sem variável de tenant. Usuário confirmou que isso é esperado: localmente não há tenant (ambiente de dev único), e o padrão já documentado `TENANT.<domínio-base>` (AD-003/AD-019) continua correto para produção. Não é uma lacuna real — o `servers:` do contrato reflete só o ambiente de geração (GeneXus dev), não uma tentativa (falha) de formalizar multi-tenancy.
 
 **Itens resolvidos (2026-08-21), não são mais pendência:**
 
 - `codigoEmpresa`: recebido do ERP via query parameter na URL de abertura, DEVE ficar salvo junto das demais informações persistentes de sessão (ver AD-002/AD-019 em `.specs/project/STATE.md`), pois é reutilizado para montar as requisições a todos os endpoints. Nos endpoints o campo se chama `Empresa` — mapeando o `ApiCentriumOAuth.yaml`, esse campo está presente em praticamente todos eles. Ou seja, o contrato **já tinha** o campo — só não sob o nome `codigoEmpresa`.
 - `refresh_token`: confirmado que **não será utilizado**. Reautenticação segue via novo `password` grant (AD-002).
+- Host por tenant / bloco `servers:`: ver acima — decisão do usuário, não é mais pendência.
 
-## Endpoints citados como confirmados com o ERP mas ausentes do contrato (2026-08-21)
+## Endpoints citados como confirmados com o ERP mas ausentes do contrato — RESOLVIDO (2026-08-21)
 
-**Risco:** três nomes de endpoint tratados como resolvidos em conversa com a equipe do ERP (`.specs/project/STATE.md`, Todos, 2026-08-20) não aparecem em `ApiCentriumOAuth.yaml`: `GetListaClientes` (busca de cliente por termo livre), `StatusPIX` (consulta de status de pagamento PIX) e `ListaNFCEs` (listagem de rascunhos de NFCe). Rebaixados a pendência (decisão do usuário, 2026-08-21) até reconfirmação — os requisitos correspondentes (`CLI-02` em `identificacao-cadastro-cliente/spec.md`, `PAY-04` em `pagamento/spec.md`) foram marcados ⚠️.
+**Histórico:** três nomes de endpoint tratados como resolvidos em conversa com a equipe do ERP (`.specs/project/STATE.md`, Todos, 2026-08-20) não apareciam na versão anterior de `ApiCentriumOAuth.yaml`: `GetListaClientes` (busca de cliente por termo livre), `StatusPIX` (consulta de status de pagamento PIX) e `ListaNFCEs` (listagem de rascunhos de NFCe). Rebaixados a pendência em 2026-08-21 até reconfirmação.
 
-**Fix approach:** reconfirmar com a equipe do ERP se esses três endpoints existem sob esses nomes (ou outro) e atualizar `ApiCentriumOAuth.yaml`; só então promover `CLI-02`/`PAY-04` de volta a "Verified".
+**Resolvido:** a nova versão do contrato (2026-08-21) traz os três, confirmando o que a equipe do ERP havia informado — com uma correção de nome:
+- `GetListaClientes` — existe (`GET`, params `Empresa`, `Txtbusca`, `Pagina`, `Tamanhopagina`). `CLI-02` promovido de volta a Verified.
+- `StatusPIX` — existe (`GET`, params `Empresa`, `Trnguid`, retorna `StatusTransacao`). `PAY-04` promovido de volta a Verified.
+- `ListaNFCEs` — existe, mas sob o nome real **`GetListaNFCes`** (não `ListaNFCEs`) — `GET`, params `Empresa`/`Txtbusca`/`Pagina`/`Tamanhopagina`, retorna `CheckoutListaRascunhos`. Toda referência em `.specs/` ao nome antigo deve ser corrigida para `GetListaNFCes`.
+
+Além disso, o novo contrato trouxe dois endpoints não documentados antes: `GerarPIX` (`POST`, geração de cobrança PIX) e **`GetListaVendedores`** (`GET`, mesmo padrão paginado dos demais — `Empresa`/`Txtbusca`/`Pagina`/`Tamanhopagina`, retorna `VendedorCodigo`/`VendedorNome`/`VendedorCGC`/`VendedorFone`) — este último resolve a pendência bloqueante `VEND-01` registrada abaixo, em "Telas desenhadas sem spec de requisito".
 
 ## Detalhes de Docker
 
@@ -54,8 +60,30 @@ Duas telas existiam em `design/CentriumCheckout.pen` sem requisito formal: `PDV 
 
 **Pendências reais que permanecem em aberto (rastreadas nos respectivos documentos, não mais nesta seção):**
 
-- Endpoint de listagem de vendedores por empresa: **não confirmado com a equipe do ERP e sem candidato plausível em `ApiCentriumOAuth.yaml`** (nenhum endpoint de listagem existe hoje — só campos pontuais de vendedor em `GetSessao`, `FaturarNFCe` e `ListaDAVs`). Ver `.specs/features/selecao-vendedor/spec.md`, requisito `VEND-01`.
+- ~~Endpoint de listagem de vendedores por empresa~~ — **RESOLVIDO (2026-08-21):** o novo `ApiCentriumOAuth.yaml` traz `GetListaVendedores` (ver seção acima). `VEND-01` promovido a Verified em `.specs/features/selecao-vendedor/spec.md`.
 - URL da opção "Relatório de resumo de caixa" do menu gerencial: não confirmada (só a opção "Central de movimentação não fiscal" tem URL confirmada). Ver `.specs/codebase/ARCHITECTURE.md`, seção "Responsividade".
+
+## Pendências de campos/semântica do contrato — atualização 2026-08-21 (verificação cruzada com KB GenExus)
+
+Rodada de esclarecimentos combinando resposta direta do usuário e inspeção do objeto `APICentriumOAuth` (e procedures relacionadas) na KB real do GenExus, via subagente dedicado.
+
+**Resolvidos:**
+
+- **`DescontoConvenio` (percentual, não valor fixo):** confirmado no KB — `PGeraPedidoVenda` calcula `&ConvDsc = (1 - CliConvDsc / 100)`, fator de desconto percentual clássico. Impacta o motor de precificação (`.specs/features/carrinho-produto-precificacao/spec.md`) e o cadastro de cliente (`.specs/features/identificacao-cadastro-cliente/spec.md`).
+- **Classificação de `FormaMeioPagtoNFe`:** confirmado — domain `NFCe_FormaPagto` no KB (atributo `FpgNfFormaPagamento`). Valores em uso real (`RLucratividadeDeVendas`): `Dinheiro, Cheque, CartaoCredito, CartaoDebito, CreditoLoja, ValeAlimentacao, ValeRefeicao, ValePresente, ValeCombustivel, DuplicataMercantil, BoletoBancario, DepositoBancario, Pix, TransferenciaBancaria, ProgaramaFidelidade (sic, typo no KB), PixEstatico, CreditoEmLoja, PagamentoNaoInformado, SemPagamento, PagamentoPosterior, Outros` — superset da tabela SEFAZ padrão. Ver `.specs/features/pagamento/spec.md`.
+- **Elegibilidade em `ValidaTicketDevolucao`:** confirmado com ressalva — não existe campo booleano dedicado. `PCheckout_ValidaTicketDevolucao` chama `PValidaTicketNfCe.Call(..., 'validar', ..., &ValorTicket, &retorno, &msgPadrao)`: se `&retorno = 0`, `Mensagem` recebe o texto de erro do ERP; senão, `Mensagem` recebe o literal fixo `'Ticket Válido'`. **A elegibilidade só é detectável comparando `Mensagem` a esse literal exato** — não basta checar `ValorTicket` preenchido ou HTTP 200. Ver `.specs/features/pagamento/spec.md`.
+- **Origem do `NumeroNota` em `FaturarNFCe`:** totalmente confirmado — `PCheckout_FaturarNFCe`: `NumeroNota = 0` gera nota nova via `PNFeSerializaRascunhoNota.Call(..., 'SERIALIZA', ...)` (`NewCapa`, 100% gerada pelo Checkout, sem controle de sequência no cliente); `NumeroNota <> 0` usa o valor recebido e executa `AtualizarCapa` (nota pré-existente, ex.: importada de DAV). Ver `.specs/features/finalizacao-suspensao-venda/spec.md`.
+- **Estorno de TEF após rejeição de NFCe:** resposta direta do usuário — depois de cobrado o valor do TEF, **não é permitido remover essa forma de pagamento da venda**. Ver `.specs/features/pagamento/spec.md`.
+- **Validação de IBGE no cadastro simplificado:** decisão do usuário — o campo de endereço **será livre mesmo**, sem validação de IBGE. Ver `.specs/features/identificacao-cadastro-cliente/spec.md`.
+
+**Correção de hipótese (não confirmado como esperado):**
+
+- **`TipoPreco` vs. `ListaPreco`:** a hipótese de que ambos seriam o mesmo conceito (índice 0-5 correlacionado a `PrecoVenda1`...`PrecoVenda5`) estava **parcialmente equivocada** — são dois conceitos distintos no KB: `ListaPreco` (`ClienteCheckout.ListaPreco` = atributo `CliListCod`, via `PCheckout_GetCliente`) é a lista de preço **do cliente**; `TipoPreco` (`SessaoUsuario.TipoPreco`, via `PTrazEmpDefP.Call`) é uma configuração padrão **da empresa**. Nenhum dos dois domains tem Documentation/Help ou enum de valores válidos no KB — o range real (0-5?) não está confirmado para nenhum dos dois. Pendência permanece, mas com caracterização corrigida. Ver `.specs/features/carrinho-produto-precificacao/spec.md`.
+
+**Continua sem confirmação (precisa de contato direto com a equipe do ERP, não só KB):**
+
+- **Formato de código de barras pesável (`ProdutoPesavel`/`DavMatProdPes`):** nenhuma lógica de parse de código de barras pesável (padrão prefixo+peso+dígito verificador) foi encontrada em varredura de ~6% do KB (8090 objetos). Achado lateral: o campo tem valor default `'E'` em `wManutencaoImplantacaoProdutos`, o que sugere um código de caractere único com múltiplos valores possíveis — não um simples flag `S`/`N`. Ver `.specs/features/carrinho-produto-precificacao/spec.md`.
+- **Mecanismo de "marcar DAV como importado/em faturamento":** resposta direta do usuário — não existe endpoint separado; ao importar e faturar a DAV, o próprio `FaturarNFCe` já trata isso, mas exige um campo preenchido no SDT `CheckoutFaturarNFCe` cujo nome exato ainda **não foi definido** (marcado explicitamente pelo usuário como "PENDÊNCIA DEV"). Ver `.specs/features/importacao-dav/spec.md`.
 
 Nota: o "Modal CFOP", inicialmente também sem spec, foi avaliado e removido do design pelo usuário em 2026-08-20 — não é mais uma lacuna, está deliberadamente fora de escopo.
 

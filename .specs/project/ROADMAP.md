@@ -1,5 +1,7 @@
 # Roadmap — CheckoutWEB
 
+> Mapa consolidado de toda pendência/edge case aberto (todas as features + infra): `.specs/project/PENDENCIES.md`.
+
 Nenhuma implementação começou ainda (repositório sem código-fonte). As features abaixo já passaram por uma extensa rodada de alinhamento de requisitos (ver histórico em `.specs/project/STATE.md`), documentado agora como specs formais em `.specs/features/`. "Specify" quase concluído em todas — a maior parte dos pontos em aberto listados em cada spec são perguntas operacionais pendentes com a equipe do ERP, não ambiguidade de produto (exceção: `CART-09`/`CART-10` em `carrinho-produto-precificacao`, bloqueio deliberado do usuário, não pendência de ERP).
 
 ## Milestone 1 — Fluxo de venda mínimo (desktop)

@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-08-21
-**Current Work:** BFF mínimo de sessão/autenticação introduzido (AD-022), corrigindo a contradição entre AD-002/AD-010 e a premissa "SPA sem backend próprio". Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Current Work:** Contrato `ApiCentriumOAuth.yaml` atualizado pelo usuário revisado contra toda `.specs/` (AD-023) — maioria das pendências de API fechadas. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -191,6 +191,32 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 
 ---
 
+### AD-023: Revisão do `ApiCentriumOAuth.yaml` atualizado — fecha a maioria das pendências de API (2026-08-21)
+
+**Decision:** O usuário disponibilizou uma nova versão do `ApiCentriumOAuth.yaml` (`info.version: 20260821131003`, agora com bloco `servers:`, 16 endpoints e schemas completos). Revisão cruzada contra `.specs/codebase/CONCERNS.md`/`INTEGRATIONS.md` e as specs de feature, complementada por verificação direta do usuário e por um subagente que inspecionou o objeto `APICentriumOAuth` e procedures relacionadas na KB real do GenExus (`mcp__genexus__*`). Resultado:
+
+**Resolvidos (contrato ou resposta direta do usuário):**
+- `GetListaClientes`, `StatusPIX` e `GetListaNFCes` (nome real do antigo "`ListaNFCEs`") confirmados presentes no contrato — `CLI-02`/`PAY-04` promovidos a Verified.
+- Novo endpoint `GetListaVendedores` (mesmo padrão paginado de `GetListaClientes`) — resolve `VEND-01`, pendência bloqueante de `selecao-vendedor/spec.md`. Novo endpoint `GerarPIX` também presente, sem spec associada ainda.
+- Host por tenant: decisão do usuário — ambiente local de dev não tem tenant, o bloco `servers:` do contrato é só a URL de dev do GeneXus; o padrão `TENANT.<domínio-base>` (AD-003/AD-019) permanece correto e não precisa de formalização adicional no contrato.
+- `DescontoConvenio` é percentual — confirmado no KB (`PGeraPedidoVenda`: `&ConvDsc = (1 - CliConvDsc / 100)`).
+- `FormaMeioPagtoNFe` — confirmado domain `NFCe_FormaPagto` no KB, com lista completa de valores (superset da tabela SEFAZ padrão).
+- Elegibilidade de `ValidaTicketDevolucao` — confirmado no KB: não há campo booleano; a elegibilidade é indicada comparando `Mensagem` ao literal fixo `'Ticket Válido'` (`PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`).
+- Origem do `NumeroNota` em `FaturarNFCe` — confirmado no KB: `= 0` gera nota nova (100% Checkout, via `PNFeSerializaRascunhoNota`), `<> 0` usa nota pré-existente/importada (`AtualizarCapa`).
+- Estorno de TEF — resposta direta do usuário: depois de cobrado, o TEF não pode mais ser removido da venda (não é uma questão de endpoint, é regra de UI/negócio do Checkout).
+- Validação de IBGE no cadastro simplificado — decisão do usuário: campo de endereço fica livre, sem validação.
+- Mecanismo de "marcar DAV como importado" — resposta direta do usuário: não há endpoint próprio; tratado via `FaturarNFCe` com um campo do SDT `CheckoutFaturarNFCe` ainda não definido (fica como pendência de implementação, não de documentação).
+
+**Correção de hipótese:** `TipoPreco` (config padrão da empresa, `SessaoUsuario`, via `PTrazEmpDefP`) e `ListaPreco` (lista de preço do cliente, `CliListCod`, via `PCheckout_GetCliente`) são conceitos **distintos** — a hipótese inicial de correlação com `PrecoVenda1`...`PrecoVenda5` não foi confirmada; nenhum dos dois tem enum de valores válidos no KB.
+
+**Continua pendente (precisa de contato direto com a equipe do ERP):** formato de código de barras pesável (`ProdutoPesavel`/`DavMatProdPes`) — nenhuma lógica de parse encontrada em ~6% do KB varrido; achado lateral (`wManutencaoImplantacaoProdutos`) sugere código multi-valor (default `'E'`), não um simples `S`/`N`.
+
+**Reason:** Fechar o máximo possível das pendências de contrato antes de iniciar a fase Design de `carrinho-produto-precificacao`, evitando que decisões de UI dependam de suposições sobre a API.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/codebase/CONCERNS.md`, `.specs/codebase/INTEGRATIONS.md`, `.specs/features/selecao-vendedor/spec.md` (`VEND-01`), `.specs/features/pagamento/spec.md` (`PAY-04`, `PAY-05`, edge cases de forma de pagamento/TEF), `.specs/features/identificacao-cadastro-cliente/spec.md` (`CLI-02`, IBGE, `DescontoConvenio`), `.specs/features/finalizacao-suspensao-venda/spec.md` (edge case de `NumeroNota`), `.specs/features/carrinho-produto-precificacao/spec.md` (`TipoPreco`/`ListaPreco`, `DescontoConvenio`, `ProdutoPesavel`) e `.specs/features/importacao-dav/spec.md` (marcação de DAV importado) atualizados para refletir.
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
@@ -224,7 +250,7 @@ Capture in-progress thoughts and action items that don't fit in active tasks.
 
 - [x] Criar `.specs/project/PROJECT.md` e `.specs/project/ROADMAP.md`, e reorganizar `ARCHITECTURE.md`/`STATE.md` em conformidade com SDD (2026-08-20) — ver `.specs/project/ROADMAP.md` e `.specs/codebase/`.
 - [x] ~~Alinhar com a equipe do ERP as 12 dúvidas operacionais sobre endpoints registradas originalmente em `ARCHITECTURE.md` seção 7 (2026-07-23)~~ — **Atualizado (2026-08-20)**: itens 3 (`ValidaTicketDevolucao`), 4 (`SuspenderOuFaturar`) e 6 (`GetPDFNota` — sem reimpressão) resolvidos. Itens 2 (`TipoPreco`/`ListaPreco`) e 8 (classificação de forma de pagamento) parcialmente resolvidos. **Correção (2026-08-21):** itens 1 (`GetListaClientes`) e 5 (`ListaNFCEs`, mas não `CarregarNFCe` — esse existe no contrato) rebaixados de volta a pendência — revisão cruzada da documentação encontrou que esses dois nomes não existem em `ApiCentriumOAuth.yaml`, apesar de terem sido registrados como "resolvidos" em conversa com o ERP; ver `.specs/codebase/CONCERNS.md`.
-- [ ] Alinhar com a equipe do ERP as dúvidas operacionais ainda em aberto, agora rastreadas por feature (Edge Cases de cada spec): `TipoPreco`/`ListaPreco` fora do valor `0`, `QtdMinCharParaConsulta`, formato de código de barras pesável, "produto editável ao dar TAB" → `.specs/features/carrinho-produto-precificacao/spec.md`; classificação completa de forma de pagamento, estorno de TEF após rejeição → `.specs/features/pagamento/spec.md`; origem do `NumeroNota`, contrato de `GetStatusSistema`, modelo de impressão pós-autorização → `.specs/features/finalizacao-suspensao-venda/spec.md`; extensão do cadastro simplificado de cliente/validação de IBGE, `DescontoConvenio` percentual ou fixo → `.specs/features/identificacao-cadastro-cliente/spec.md`.
+- [x] ~~Alinhar com a equipe do ERP as dúvidas operacionais ainda em aberto~~ — **Atualizado (2026-08-21, AD-023):** `DescontoConvenio` (percentual), classificação de forma de pagamento (`FormaMeioPagtoNFe`), estorno de TEF, origem do `NumeroNota` e validação de IBGE resolvidos (contrato + KB GenExus + resposta direta do usuário). Seguem em aberto, agora rastreados por feature: `TipoPreco`/`ListaPreco` fora do valor `0` (conceitos distintos, ainda sem enum) e `QtdMinCharParaConsulta`/"produto editável ao dar TAB" → `.specs/features/carrinho-produto-precificacao/spec.md`; formato de código de barras pesável → idem; contrato de `GetStatusSistema` (forma confirmada, semântica dos códigos ainda não) e modelo de impressão pós-autorização → `.specs/features/finalizacao-suspensao-venda/spec.md`.
 - [ ] **Analisar bloqueios de edição pós-pagamento** (2026-08-20) — ver `.specs/features/carrinho-produto-precificacao/spec.md`, requisito `CART-09` (em análise, não implementar até conclusão — pedido explícito do usuário).
 - [ ] **Confirmar validação de saldo/estoque na inserção de produto** (2026-08-20) — ver `.specs/features/carrinho-produto-precificacao/spec.md`, requisito `CART-10` (em aberto, propositalmente não resolvido — pedido explícito do usuário).
 - [ ] Confirmar com a equipe do ERP o endpoint/mecanismo de "marcar DAV como importado/em faturamento" — ver `.specs/features/importacao-dav/spec.md` (Edge Cases).
