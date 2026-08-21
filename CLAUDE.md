@@ -1,4 +1,18 @@
 ﻿<!-- dgc-policy-v11 -->
+# CentriumCheckout (CheckoutWEB)
+
+## Project Context
+
+Checkout web para operadores de caixa do ERP Centrium — SPA React acessada exclusivamente via redirecionamento a partir do ERP, cobrindo identificação de cliente, inserção de produtos, precificação, pagamento e finalização/suspensão de NFCe. O ERP é a fonte de verdade (produtos, clientes, pagamentos, NFCe); o Checkout só orquestra a venda e calcula preço em tempo real. Visão completa: `.specs/project/PROJECT.md`.
+
+**Stack:** React + Vite, TypeScript `strict`, Zustand + Immer (venda em andamento, sem `persist`), TanStack Query (cache do ERP), Zod (validação de fronteira), Dexie/IndexedDB (só bootstrap do tenant), shadcn/ui + Boneyard + Goey Toast (UI). Sem backend próprio — consome direto a API do ERP. 100% Docker (dev e produção). Detalhes: `.specs/codebase/STACK.md`.
+
+**Arquitetura:** SPA sem persistência de carrinho em F5 (Zustand sem `persist`); credenciais/`access_token` em cookie `HttpOnly`; TEF e impressão rodam fora do container, na máquina do PDV. Detalhes: `.specs/codebase/ARCHITECTURE.md`.
+
+**Estado do projeto:** pré-código — stack e arquitetura decididas em `.specs/`, scaffolding ainda não criado (ver `.specs/project/STATE.md` para decisões arquiteturais numeradas AD-NNN e pendências).
+
+**Convenções e regras de código:** ainda a definir quando o scaffolding existir (ver `.specs/project/ROADMAP.md`); até lá, este arquivo cobre apenas a política de uso do dual-graph MCP abaixo.
+
 # Dual-Graph Context Policy
 
 This project uses a local dual-graph MCP server for efficient context retrieval.

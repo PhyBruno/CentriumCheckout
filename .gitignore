@@ -14,3 +14,4 @@
 # dependências / build
 node_modules/
 dist/
+.dual-graph/

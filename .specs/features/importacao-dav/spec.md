@@ -6,7 +6,7 @@ Além da inserção manual de produtos, o operador de caixa precisa poder import
 
 ## UI Design
 
-Frame `PDV Online Web - Modal DAV` em `design/CentriumCheckout.pen` (Modal Menu DAV: tabela de DAVs, filtros, paginação).
+Frame `PDV Online Web - Modal DAV` em `design/CentriumCheckout.pen` (Modal Menu DAV: tabela de DAVs, paginação, ação de reimpressão por linha, e 6 filtros — cliente, data de emissão, status, vendedor, tipo, origem). ⚠️ Nenhum desses filtros nem a ação de reimpressão têm requisito/critério de aceite correspondente ainda — ver Edge Cases.
 
 ## Goals
 
@@ -53,6 +53,8 @@ Nenhum item explicitamente excluído identificado até o momento — feature des
 ## Edge Cases
 
 - WHEN um DAV é importado THEN ⚠️ pendente: o contrato atual (`ApiCentriumOAuth.yaml`) não expõe um endpoint explícito de "marcar DAV como importado/em faturamento" — o diagrama de referência do ERP menciona essa alteração de status como efeito colateral da importação, mas o mecanismo exato não está confirmado.
+- WHEN o operador usa qualquer um dos 6 filtros desenhados no modal (cliente, data de emissão, status, vendedor, tipo, origem) THEN ⚠️ pendente: `GET /ApiCentriumOAuth/ListaDAVs` só aceita `Pagina`/`TamanhoPagina` no contrato atual — não há suporte a filtro server-side por nenhum desses 6 campos; não confirmado se a filtragem deve ser só client-side sobre a página já carregada, ou se o contrato precisa ser expandido.
+- WHEN o operador usa a ação de reimpressão por linha, presente no design THEN ⚠️ pendente: nenhum requisito cobre esse botão ainda — `finalizacao-suspensao-venda/spec.md` já trata reimpressão de NFCe como fora de escopo (`GetPDFNota` não usado para essa finalidade); não confirmado se a reimpressão do Modal DAV é o mesmo conceito ou algo distinto (ex.: reimprimir o próprio DAV, não a NFCe).
 
 ---
 
@@ -64,7 +66,7 @@ Nenhum item explicitamente excluído identificado até o momento — feature des
 | DAV-02 | Importar DAV completo via `GetDAV` | - | Verified |
 | DAV-03 | DAV importado segue fluxo normal de venda | - | Verified |
 
-**Coverage:** 3 total, 1 edge case (mecanismo de marcação de status) pendente de confirmação com equipe do ERP.
+**Coverage:** 3 total, 3 edge cases pendentes de confirmação com equipe do ERP (marcação de status, filtros server-side, ação de reimpressão).
 
 ---
 

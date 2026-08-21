@@ -1,7 +1,7 @@
 # State
 
-**Last Updated:** 2026-08-20
-**Current Work:** Reorganização de `.specs/` para conformidade com SDD concluída — próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Last Updated:** 2026-08-21
+**Current Work:** Revisão cruzada de toda a documentação `.specs/` concluída (AD-021) — correções aplicadas em 13 arquivos. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -15,19 +15,19 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 
 ### AD-002: Login via troca de credenciais na URL, sem token pronto do ERP (2026-07-22)
 
-**Decision:** O ERP não injeta `access_token` pronto na URL de abertura do Checkout. Em vez disso, o ERP envia `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository` e `codigoEmpresa` como query parameters. `tenant` identifica o cliente e compõe o host da API do ERP daquele cliente — usado em **todas** as chamadas à API. Com os demais campos, o Checkout chama `POST /oauth/access_token` e obtém seu próprio `access_token`. Credenciais originais (exceto `codigoEmpresa`) são armazenadas para permitir reautenticação automática silenciosa quando o token expirar. Documentado em `.specs/features/autenticacao-sessao-bootstrap/spec.md` (requisitos `AUTH-01`, `AUTH-06`).
+**Decision:** O ERP não injeta `access_token` pronto na URL de abertura do Checkout. Em vez disso, o ERP envia `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository` e `codigoEmpresa` como query parameters. `tenant` identifica o cliente e compõe o host da API do ERP daquele cliente — usado em **todas** as chamadas à API. Com os demais campos, o Checkout chama `POST /oauth/access_token` e obtém seu próprio `access_token`. Credenciais originais, **incluindo `codigoEmpresa`**, são armazenadas para permitir reautenticação automática silenciosa quando o token expirar e para popular o campo `Empresa`, exigido em praticamente todos os endpoints do contrato (`ApiCentriumOAuth.yaml`) — ver correção em AD-019. Documentado em `.specs/features/autenticacao-sessao-bootstrap/spec.md` (requisitos `AUTH-01`, `AUTH-06`).
 **Reason:** O ERP delega a obtenção/renovação do token ao próprio Checkout em vez de gerenciar esse ciclo de vida centralmente — reduz acoplamento entre a sessão do ERP e a sessão do Checkout. O roteamento por `tenant` reflete que cada cliente tem sua própria instância/host de API.
 **Trade-off:** Checkout precisa armazenar credenciais sensíveis (`client_id`, `client_secret`, `password`) durante toda a sessão, não só o token.
-**Impact:** Pendências de contrato (`codigoEmpresa`, host por tenant, `refresh_token` vs. reautenticação) registradas em `.specs/codebase/CONCERNS.md`.
+**Impact:** Pendência de contrato quanto a host por tenant (bloco `servers:`) permanece registrada em `.specs/codebase/CONCERNS.md`; mapeamento de `codigoEmpresa` → campo `Empresa` e decisão sobre `refresh_token` (não utilizado) já confirmados (AD-019).
 
 ---
 
 ### AD-003: Domínio base da API do ERP via variável de ambiente Docker (2026-07-22)
 
-**Decision:** O host completo da API do ERP é montado prefixando o `tenant` a um domínio base fixo (ex.: `apps.centrium.inf.br`). Esse domínio base **não** vem do ERP — é fornecido ao Checkout via variável de ambiente Docker (nome ainda não definido). Documentado em `.specs/codebase/ARCHITECTURE.md` (seção Containerização) e `.specs/codebase/INTEGRATIONS.md`.
+**Decision:** O host completo da API do ERP é montado prefixando o `tenant` a um domínio base fixo (ex.: `apps.centrium.inf.br`). Esse domínio base **não** vem do ERP — é fornecido ao Checkout via variável de ambiente Docker chamada `baseDomain` (AD-019). Documentado em `.specs/codebase/ARCHITECTURE.md` (seção Containerização) e `.specs/codebase/INTEGRATIONS.md`.
 **Reason:** O domínio base muda por ambiente de implantação (dev/staging/produção), não por tenant.
 **Trade-off:** Nenhum trade-off relevante identificado — forma padrão de configurar valores que variam por ambiente em aplicação containerizada.
-**Impact:** Nome da variável de ambiente ainda pendente — ver `.specs/codebase/CONCERNS.md`.
+**Impact:** Nenhuma pendência nova — nome da variável definido em AD-019.
 
 ---
 
@@ -42,7 +42,7 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 
 ### AD-005: Tela de carregamento bloqueante durante login/bootstrap (2026-07-22)
 
-**Decision:** Entre o clique no ERP e a tela principal do PDV aparecer, o Checkout exibe uma tela de carregamento ("montando a sessão"), cobrindo obtenção do token, `GetSessao` e parse/validação do payload de bootstrap. Só após esse processamento terminar com sucesso o operador é redirecionado. Documentado em `.specs/features/autenticacao-sessao-bootstrap/spec.md` (requisito `AUTH-05`).
+**Decision:** Entre o clique no ERP e a tela principal do PDV aparecer, o Checkout exibe uma tela de carregamento ("montando a sessão"), cobrindo obtenção do token, `GetSessao` e parse/validação do payload de bootstrap. **Explícito:** enquanto esse carregamento ocorre, a tela pode ser exibida em formato skeleton, usando Boneyard (lib de skeletons adicionada em AD-007). Só após esse processamento terminar com sucesso o operador é redirecionado. Documentado em `.specs/features/autenticacao-sessao-bootstrap/spec.md` (requisito `AUTH-05`).
 **Reason:** Evita expor uma tela principal do PDV com configurações ainda incompletas.
 **Trade-off:** Login inicial parece mais lento (tela de espera única) em troca de nunca expor um PDV com dados parciais/inconsistentes.
 **Impact:** Nenhuma pendência nova.
@@ -92,6 +92,8 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 
 Requisito de comportamento de feature, não decisão arquitetural — migrado para `.specs/features/identificacao-cadastro-cliente/spec.md` como requisitos `CLI-03`, `CLI-04`. Rationale e trade-off completos preservados no spec da feature.
 
+**Atualização (2026-08-21):** design visual concluído — frame `PDV Online Web - Modal cadastro de cliente` criado em `design/CentriumCheckout.pen`. Removida a pendência de design que constava em `.specs/features/identificacao-cadastro-cliente/spec.md` (seção UI Design).
+
 ---
 
 ### AD-012: Status de PIX não é via SSE (2026-08-20) — MIGRADO
@@ -127,9 +129,11 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 ### AD-017: Mapeamento fino do design (Pencil) contra os specs de feature (2026-08-20)
 
 **Decision:** Todas as 16 telas de `design/CentriumCheckout.pen` foram mapeadas contra os specs de `.specs/features/`. Confirmado que o design visual do wizard mobile já está 100% concluído (3 telas completas) — corrige o `ROADMAP.md`, que registrava incorretamente "Design não iniciado". Identificadas 2 telas sem spec de requisito (`Modal vendedor`, `Modal menu gerencial`) — ver `.specs/codebase/CONCERNS.md`. O "Modal CFOP", inicialmente também sem spec, foi removido do Pencil pelo usuário durante esta sessão — não é mais uma pendência.
+
+**Atualização (2026-08-21):** levantamento preliminar do usuário reduziu a lacuna das duas telas. `Modal vendedor` fará `GET` em um endpoint ainda não confirmado com o ERP, para carregar a listagem de vendedores disponíveis para seleção na empresa — o campo indica quem atendeu o cliente final, não necessariamente o operador de caixa. `Modal menu gerencial` não é uma tela própria do Checkout: apenas aponta (redirect) para `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx`, URL do sistema legado do ERP. Fase Specify formal disparada via subagente dedicado.
 **Reason:** Cruzar design visual com requisitos formais antes de qualquer implementação evita codificar telas sem base de requisito acordada, e corrige o rastreamento de progresso do ROADMAP.
 **Trade-off:** Nenhum.
-**Impact:** `Modal vendedor` e `Modal menu gerencial` precisam de fase Specify antes de virar tasks — registrado como pendência em `.specs/codebase/CONCERNS.md` e no `ROADMAP.md`.
+**Impact:** `Modal vendedor` precisa de fase Specify completa (endpoint pendente de confirmação com o ERP) — registrado em `.specs/codebase/CONCERNS.md` e no `ROADMAP.md`. `Modal menu gerencial`, por ser um simples redirect, provavelmente não precisa de spec de feature completo — só de nota em `.specs/codebase/ARCHITECTURE.md`.
 
 ---
 
@@ -139,6 +143,33 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 **Reason:** Decisão do usuário — preferência por dependência consolidada sobre reimplementação via skill, ao contrário do caso do TypeScript-strict (onde a licença/formato da fonte favoreceu adaptação).
 **Trade-off:** Nenhuma skill de projeto dedicada será criada para essas 3 libs (diferente de `typescript-strict`); documentação de uso ficará a cargo da doc oficial de cada lib.
 **Impact:** **Ressalva de segurança** — durante a verificação dos repositórios, `anl331/goey-toast` e `0xGF/boneyard` mostraram conter arquivos `SKILL.md`/`CLAUDE.md` embutidos voltados especificamente a agentes de IA (padrão atípico para lib de UI, compatível com ataque de supply-chain via prompt injection). Usuário confirmou serem de sua autoria/confiança. **Registrado como lembrete para quem for instalar**: não executar/seguir instruções desses arquivos embutidos sem revisão manual do conteúdo bruto primeiro — ver `.specs/codebase/CONCERNS.md`.
+
+---
+
+### AD-019: Pendências de contrato/config resolvidas — `codigoEmpresa`↔`Empresa`, `refresh_token`, `baseDomain` (2026-08-21)
+
+**Decision:** Três pendências registradas em `.specs/codebase/CONCERNS.md` ("Contrato de API incompleto" e "Nome da variável de ambiente") são resolvidas: (1) `codigoEmpresa`, recebido do ERP via query parameter na URL de abertura, **corrige AD-002** — que erroneamente o excluía do conjunto de credenciais persistidas. Ele DEVE ficar salvo junto das demais, pois é reenviado como campo `Empresa` em praticamente todos os endpoints de `ApiCentriumOAuth.yaml` — mapeamento do contrato confirma que o campo já existia, só sob outro nome. (2) `refresh_token` confirmado que **não será utilizado** — reautenticação segue via novo `password` grant (reforça AD-002). (3) A variável de ambiente Docker do domínio base (AD-003) se chama `baseDomain`.
+**Reason:** Mapeamento fino do usuário contra o contrato yaml e confirmação direta das pendências em aberto.
+**Trade-off:** Nenhum.
+**Impact:** De três pendências do contrato, resta só uma real: host por tenant sem bloco `servers:` formal — ver `.specs/codebase/CONCERNS.md`. `.specs/features/autenticacao-sessao-bootstrap/spec.md` (requisitos `AUTH-01`, `AUTH-06`, edge cases) atualizado para refletir.
+
+---
+
+### AD-020: Fase Specify concluída para `Modal vendedor` e `Modal menu gerencial` (2026-08-21)
+
+**Decision:** As duas telas sem requisito formal identificadas em AD-017 tiveram a fase Specify concluída. `Modal vendedor` virou `.specs/features/selecao-vendedor/spec.md` — inclui o requisito `VEND-01` (listagem de vendedores por empresa via `GET`) explicitamente marcado como pendência bloqueante, já que nenhum endpoint de *listagem* de vendedores existe em `ApiCentriumOAuth.yaml` (só campos pontuais em `GetSessao`, `FaturarNFCe`, `ListaDAVs` e `CarregarNFCe` — nenhum candidato plausível de endpoint de listagem foi encontrado ao inspecionar o contrato; correção 2026-08-21, revisão cruzada encontrou a ocorrência em `CarregarNFCe` que a primeira varredura havia deixado passar) — e reforça, no Problem Statement e nos critérios de aceite, que o vendedor selecionado (quem atendeu o cliente final) é semanticamente distinto do operador de caixa logado. `Modal menu gerencial` **não** virou spec de feature completo — decisão foi expandir a nota já existente em `.specs/codebase/ARCHITECTURE.md` (seção "Responsividade"), por ser um menu de dois links estáticos para telas legadas do ERP, sem estado ou lógica própria do Checkout. Ao inspecionar o design (frame `viV0S`), confirmou-se que o modal tem duas opções — "Central de movimentação não fiscal" (URL confirmada: `WPMovimentoNaoFiscal_Lancamento.aspx`) e "Relatório de resumo de caixa" (URL **não confirmada** — não presumir que é a mesma da primeira opção, o conteúdo descrito é distinto).
+**Reason:** Fechar a lacuna registrada em AD-017/`CONCERNS.md` antes de qualquer código, mantendo a proporcionalidade do artefato de Specify ao tamanho real de cada tela — `selecao-vendedor` tem lógica de busca/filtro/seleção reaproveitando o padrão de `Modal cliente`, já `menu gerencial` é só navegação.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/project/ROADMAP.md` (Milestone 1, itens 8 e 9) e `.specs/codebase/CONCERNS.md` ("Telas desenhadas sem spec de requisito") atualizados para refletir a conclusão. Duas pendências reais permanecem, agora rastreadas nos documentos específicos (não mais como pendência genérica de "tela sem spec"): endpoint de listagem de vendedores (`.specs/features/selecao-vendedor/spec.md`, `VEND-01`) e URL da segunda opção do menu gerencial (`.specs/codebase/ARCHITECTURE.md`).
+
+---
+
+### AD-021: Revisão cruzada de toda a documentação `.specs/` (2026-08-21)
+
+**Decision:** Rodada de revisão com um subagente por documento (15 arquivos de `.specs/`), cruzando cada um contra os demais, contra `ApiCentriumOAuth.yaml` e contra o design real no Pencil. Correções aplicadas: (1) `GetListaClientes` e `ListaNFCEs` rebaixados de "resolvido" para pendência — não existem no contrato apesar de registrados como confirmados com o ERP em 2026-08-20 (decisão do usuário: manter rebaixado até reconfirmação, não presumir que o yaml está desatualizado); `StatusPIX` idem; `ValidaTicketDevolucao`/`PAY-07` também tiveram claims específicos (campo de valor, campo de elegibilidade) rebaixados por não terem respaldo no contrato. (2) `FaturarNFCe`/`FIN-01` (`.specs/features/finalizacao-suspensao-venda/spec.md`) passou a exigir `vendedorCodigo` e `Empresa` no payload, fechando lacuna com `selecao-vendedor/spec.md` (`VEND-05`). (3) Inventário de ocorrências de `vendedorCodigo` no contrato corrigido (faltava `CarregarNFCe`). (4) "Modal menu gerencial" confirmado como desktop-only — decisão do usuário, registrado em `.specs/features/layout-responsivo-mobile/spec.md`. (5) Diversos ajustes de precisão/completude em `PROJECT.md`, `ROADMAP.md`, `STACK.md`, `ARCHITECTURE.md`, `INTEGRATIONS.md`, `CONCERNS.md` e nos specs de `carrinho-produto-precificacao`, `pagamento`, `importacao-dav`, `identificacao-cadastro-cliente`, `selecao-vendedor`.
+**Reason:** A sequência de edições de AD-017 a AD-020 introduziu pequenas inconsistências entre documentos que só uma revisão cruzada dedicada pegaria — comum quando muitos arquivos interligados são editados em sequência rápida.
+**Trade-off:** Nenhum.
+**Impact:** Nenhuma pendência nova além das já listadas em `.specs/codebase/CONCERNS.md`. Documentação `.specs/` considerada consistente entre si e com o contrato/design reais nesta data.
 
 ---
 
@@ -174,7 +205,7 @@ _Nenhuma ideia adiada no momento — o item de layout mobile (antes registrado a
 Capture in-progress thoughts and action items that don't fit in active tasks.
 
 - [x] Criar `.specs/project/PROJECT.md` e `.specs/project/ROADMAP.md`, e reorganizar `ARCHITECTURE.md`/`STATE.md` em conformidade com SDD (2026-08-20) — ver `.specs/project/ROADMAP.md` e `.specs/codebase/`.
-- [x] ~~Alinhar com a equipe do ERP as 12 dúvidas operacionais sobre endpoints registradas originalmente em `ARCHITECTURE.md` seção 7 (2026-07-23)~~ — **Atualizado (2026-08-20)**: itens 1 (busca de cliente → `GetListaClientes`), 3 (`ValidaTicketDevolucao`), 4 (`SuspenderOuFaturar`), 5 (`CarregarNFCe`/`ListaNFCEs`) e 6 (`GetPDFNota` — sem reimpressão) resolvidos. Itens 2 (`TipoPreco`/`ListaPreco`) e 8 (classificação de forma de pagamento) parcialmente resolvidos.
+- [x] ~~Alinhar com a equipe do ERP as 12 dúvidas operacionais sobre endpoints registradas originalmente em `ARCHITECTURE.md` seção 7 (2026-07-23)~~ — **Atualizado (2026-08-20)**: itens 3 (`ValidaTicketDevolucao`), 4 (`SuspenderOuFaturar`) e 6 (`GetPDFNota` — sem reimpressão) resolvidos. Itens 2 (`TipoPreco`/`ListaPreco`) e 8 (classificação de forma de pagamento) parcialmente resolvidos. **Correção (2026-08-21):** itens 1 (`GetListaClientes`) e 5 (`ListaNFCEs`, mas não `CarregarNFCe` — esse existe no contrato) rebaixados de volta a pendência — revisão cruzada da documentação encontrou que esses dois nomes não existem em `ApiCentriumOAuth.yaml`, apesar de terem sido registrados como "resolvidos" em conversa com o ERP; ver `.specs/codebase/CONCERNS.md`.
 - [ ] Alinhar com a equipe do ERP as dúvidas operacionais ainda em aberto, agora rastreadas por feature (Edge Cases de cada spec): `TipoPreco`/`ListaPreco` fora do valor `0`, `QtdMinCharParaConsulta`, formato de código de barras pesável, "produto editável ao dar TAB" → `.specs/features/carrinho-produto-precificacao/spec.md`; classificação completa de forma de pagamento, estorno de TEF após rejeição → `.specs/features/pagamento/spec.md`; origem do `NumeroNota`, contrato de `GetStatusSistema`, modelo de impressão pós-autorização → `.specs/features/finalizacao-suspensao-venda/spec.md`; extensão do cadastro simplificado de cliente/validação de IBGE, `DescontoConvenio` percentual ou fixo → `.specs/features/identificacao-cadastro-cliente/spec.md`.
 - [ ] **Analisar bloqueios de edição pós-pagamento** (2026-08-20) — ver `.specs/features/carrinho-produto-precificacao/spec.md`, requisito `CART-09` (em análise, não implementar até conclusão — pedido explícito do usuário).
 - [ ] **Confirmar validação de saldo/estoque na inserção de produto** (2026-08-20) — ver `.specs/features/carrinho-produto-precificacao/spec.md`, requisito `CART-10` (em aberto, propositalmente não resolvido — pedido explícito do usuário).

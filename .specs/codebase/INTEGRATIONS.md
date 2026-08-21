@@ -14,15 +14,17 @@
 |---|---|
 | `POST /oauth/access_token` | Obtenção/renovação de `access_token` |
 | `GET /ApiCentriumOAuth/GetSessao` | Bootstrap de configuração (~5MB) |
-| `GET /ApiCentriumOAuth/GetCliente`, `GetListaClientes` | Identificação de cliente |
+| `GET /ApiCentriumOAuth/GetCliente` | Identificação de cliente por CPF/CNPJ |
+| `GET /ApiCentriumOAuth/GetListaClientes` ⚠️ | Busca de cliente por termo livre — **não confirmado em `ApiCentriumOAuth.yaml`**, pendente de reconfirmação com o ERP (ver `.specs/codebase/CONCERNS.md`) |
 | `POST /ApiCentriumOAuth/PostCliente` | Cadastro simplificado de cliente |
 | `GET /ApiCentriumOAuth/GetListaProdutos`, `GetProduto` | Busca/inserção de produto |
 | `POST /ApiCentriumOAuth/FaturarNFCe` | Finalização (`FATURAR`) e suspensão (`SUSPENDER`) de venda |
-| `GET /ApiCentriumOAuth/StatusPIX` | Consulta de status de pagamento PIX |
+| `GET /ApiCentriumOAuth/StatusPIX` ⚠️ | Consulta de status de pagamento PIX — **não confirmado em `ApiCentriumOAuth.yaml`**, pendente de reconfirmação com o ERP (ver `.specs/codebase/CONCERNS.md`) |
 | `GET /ApiCentriumOAuth/ListaDAVs`, `GetDAV` | Importação de DAV |
-| `GET /ApiCentriumOAuth/CarregarNFCe`, `ListaNFCEs` | Recuperação de rascunho de venda |
+| `GET /ApiCentriumOAuth/CarregarNFCe` | Recuperação de rascunho de venda |
+| `GET /ApiCentriumOAuth/ListaNFCEs` ⚠️ | Listagem de rascunhos de NFCe — **não confirmado em `ApiCentriumOAuth.yaml`**, pendente de reconfirmação com o ERP (ver `.specs/codebase/CONCERNS.md`) |
 
-Contratos ainda não formalizados em `ApiCentriumOAuth.yaml` (`codigoEmpresa`, host por tenant, `refresh_token`): ver `.specs/codebase/CONCERNS.md`.
+Pendência real de contrato: host por tenant, sem bloco `servers:` formal (`codigoEmpresa`→`Empresa` e `refresh_token` já resolvidos, ver AD-019 em `.specs/project/STATE.md`). Além disso, `GetListaClientes`, `StatusPIX` e `ListaNFCEs` (marcados ⚠️ acima) foram confirmados verbalmente com a equipe do ERP em 2026-08-20, mas não aparecem no `ApiCentriumOAuth.yaml` atual — rebaixados a pendência (decisão do usuário, 2026-08-21) até reconfirmação (ver `.specs/codebase/CONCERNS.md`).
 
 ## Integrações locais (TEF e impressão)
 

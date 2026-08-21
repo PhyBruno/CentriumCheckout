@@ -8,6 +8,8 @@ O operador precisa inserir produtos na venda por busca livre ou por código já 
 
 Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em todas as telas web), área "Venda e produtos". Busca de produto: frame `PDV Online Web - Modal produto`. Fluxo mobile: frame `PDV Mobile 01 - Cliente e Produtos` (seção "Entrada rápida") e `PDV Mobile 02 - Produtos e Pagamento` (lista de produtos + subtotal).
 
+**Nomenclatura:** `precos`/`faixasQuantidade`, usados neste documento, são apelidos internos simplificados para os campos reais do contrato `PrecoVenda1`...`PrecoVenda5` e `QtdMinimaPreco2`...`QtdMinimaPreco5` (`ApiCentriumOAuth.yaml`, `GetListaProdutos`/`GetProduto`) — não são nomes literais de campo.
+
 ## Goals
 
 - [ ] Preço aplicado sempre correto, mesmo com múltiplas linhas do mesmo SKU e cancelamentos parciais.
@@ -91,6 +93,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 ## Edge Cases
 
 - WHEN `GetProduto` é chamado com `TipoPreco`/`ListaPreco` = `0` THEN o sistema SHALL usar esse valor — ⚠️ pendente: diferenciação semântica completa entre `TipoPreco` e `ListaPreco` fora do caso `0` não confirmada.
+- WHEN o motor de precificação decide entre modo flat e por faixa (`usaPrecoPorQuantidade`, CART-04/CART-05) THEN ⚠️ pendente: esse nome de campo não foi localizado no schema de resposta de `GetSessao` (`ApiCentriumOAuth.yaml`) — não confirmado sob qual nome real esse flag existe no payload de bootstrap.
 - WHEN o operador digita menos caracteres que o mínimo de busca THEN o sistema SHALL usar `QtdMinCharParaConsulta` (retornado por `GetSessao`) — ⚠️ pendente: confirmar que essa config dinâmica substitui o "mínimo 3 caracteres" fixo de `Regras.md`, para não hardcodar.
 - WHEN o cliente tem `DescontoConvenio` aplicável THEN ⚠️ pendente: não confirmado se é percentual ou valor fixo — impacta diretamente o cálculo do motor de precificação (ver também `.specs/features/identificacao-cadastro-cliente/spec.md`).
 - WHEN um produto pesável é bipado (código de barras iniciando em `2`) THEN ⚠️ pendente: formato exato do restante do código (padrão EAN-13 de balança vs. sintaxe `código*quantidade`) não confirmado — nenhum campo do contrato expõe essa máscara.
@@ -115,7 +118,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 | CART-09 | Bloqueio de edição pós-pagamento | - | Em análise — não implementar |
 | CART-10 | Validação de saldo/estoque na inserção | - | Em aberto — propositalmente não resolvido |
 
-**Coverage:** 10 total, 8 requisitos confirmados e prontos para Design/Tasks, 2 explicitamente bloqueados até análise adicional, 6 edge cases pendentes de confirmação com equipe do ERP.
+**Coverage:** 10 total, 8 requisitos confirmados e prontos para Design/Tasks, 2 explicitamente bloqueados até análise adicional (`CART-09`/`CART-10`, categoria separada de "pendente de confirmação com ERP"), 6 edge cases pendentes de confirmação com equipe do ERP.
 
 ---
 

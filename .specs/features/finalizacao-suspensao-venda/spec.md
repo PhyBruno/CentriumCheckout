@@ -32,8 +32,8 @@ Fluxo mobile: frame `PDV Mobile 03 - Revisão e Finalização` (resumo de confer
 
 **Acceptance Criteria**:
 
-1. WHEN o operador finaliza a venda THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "FATURAR"`, enviando os itens e o total já calculados pelo frontend.
-2. WHEN a venda é enviada THEN o sistema SHALL incluir, por item, os insumos usados no cálculo (SKU, quantidade agregada, tier aplicado, preço de tabela usado) como trilha de auditoria.
+1. WHEN o operador finaliza a venda THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "FATURAR"`, `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`) e `vendedorCodigo` (vendedor selecionado no modal de vendedor — ver `.specs/features/selecao-vendedor/spec.md`, `VEND-05` — nunca o `UsuarioCodigo`/`VendedorCodigo` da sessão do operador logado), além dos itens e do total já calculados pelo frontend.
+2. WHEN a venda é enviada THEN o sistema SHALL incluir, por item, os campos do contrato (`sequencial`, `codigoProduto`, `quantidade`, `precoUnitario`, `DescontoPercentual`, `DescontoValor`, `ValorBruto`, `UDM`) — ⚠️ pendente: o array `produtos` de `ApiCentriumOAuth.yaml` não tem campo dedicado para tier aplicado/preço de tabela de origem como trilha de auditoria explícita; não confirmado se essa rastreabilidade precisa ser mantida só no lado do Checkout (logs) ou se o ERP também precisa recebê-la de alguma forma.
 3. WHEN a venda foi carregada de um rascunho existente no ERP (via `CarregarNFCe`) THEN o sistema SHALL enviar `NumeroNota` preenchido; WHEN a venda foi criada do zero no Checkout THEN o sistema SHALL enviar `NumeroNota = 0`.
 4. WHEN a finalização é confirmada THEN o sistema SHALL descartar por completo o cache de produtos (TanStack Query) daquela venda — a próxima venda sempre começa com cache vazio.
 
@@ -75,8 +75,9 @@ Fluxo mobile: frame `PDV Mobile 03 - Revisão e Finalização` (resumo de confer
 | FIN-04 | Descarte de cache de produto ao finalizar | - | Verified |
 | FIN-05 | Suspender venda via `FaturarNFCe` (`SUSPENDER`) | - | Verified |
 | FIN-06 | Limpeza total de carrinho/cache ao suspender | - | Verified |
+| FIN-07 | `vendedorCodigo` do modal de seleção enviado em `FaturarNFCe` (não o do operador logado) | - | Verified (ver `.specs/features/selecao-vendedor/spec.md`, `VEND-05`) |
 
-**Coverage:** 6 total, 3 edge cases pendentes de confirmação com equipe do ERP.
+**Coverage:** 7 total, 4 edge cases pendentes de confirmação com equipe do ERP.
 
 ---
 

@@ -1,6 +1,6 @@
 # Tech Stack
 
-**Analyzed:** 2026-08-20 (pré-código — stack decidida, ainda não implementada; nenhuma versão de dependência foi fixada em `package.json` porque ele ainda não existe)
+**Analyzed:** 2026-08-21 (pré-código — stack decidida, ainda não implementada; nenhuma versão de dependência foi fixada em `package.json` porque ele ainda não existe)
 
 ## Core
 
@@ -41,8 +41,12 @@ Não há backend próprio — o Checkout consome diretamente a API do ERP (`ApiC
 - ERP Centrium: API REST (`ApiCentriumOAuth.yaml`), autenticação OAuth password grant
 - TEF: integração local HTTP (máquina do PDV)
 - Impressão: servidor de impressão local HTTP (máquina do PDV)
-- PIX: via API do ERP (não SSE — consulta ativa por `StatusPIX`)
+- PIX: via API do ERP (não SSE — consulta ativa por endpoint de status; ⚠️ `StatusPIX` citado historicamente mas não confirmado em `ApiCentriumOAuth.yaml` — ver `.specs/features/pagamento/spec.md` `PAY-04` e `.specs/codebase/CONCERNS.md`)
 
 ## Development Tools
 
-- Empacotamento/execução: Docker (100% containerizado — dev com hot-reload via volume, produção com build multi-stage servido por Nginx ou equivalente)
+- Empacotamento/execução: Docker (100% containerizado — dev com hot-reload via volume, produção com build multi-stage servido por Nginx ou equivalente).
+- Imagem-base: `node:<version>-slim` (dev e produção).
+- CI/CD produção: a cada merge na `master`, workflow do GitHub Actions builda a imagem e publica no Docker Hub.
+- CI/CD dev: script PowerShell local que executa todo o processo de build e sobe a imagem, sem depender de Actions.
+- Domínio base da API do ERP: variável de ambiente Docker `baseDomain` (ver AD-019 em `.specs/project/STATE.md`).

@@ -1,4 +1,4 @@
-﻿$port = if (Test-Path 'C:\CentriumCheckout\.dual-graph\mcp_port') { Get-Content 'C:\CentriumCheckout\.dual-graph\mcp_port' } else { '8081' }
+﻿$port = if (Test-Path 'C:\CentriumCheckout\.dual-graph\mcp_port') { Get-Content 'C:\CentriumCheckout\.dual-graph\mcp_port' } else { '8080' }
 try {
     $out = (Invoke-WebRequest "http://127.0.0.1:$port/prime" -UseBasicParsing -TimeoutSec 3).Content
     if ($out) { Write-Output $out; Write-Error "[dual-graph] Context loaded (port $port)" }

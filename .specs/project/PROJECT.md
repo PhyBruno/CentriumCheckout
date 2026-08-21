@@ -33,6 +33,8 @@
 - Finalização e suspensão da venda (NFCe) (`.specs/features/finalizacao-suspensao-venda/`)
 - Importação e faturamento de DAV (`.specs/features/importacao-dav/`)
 - Layout responsivo desktop/mobile (`.specs/features/layout-responsivo-mobile/`)
+- Seleção de vendedor associado à venda (`.specs/features/selecao-vendedor/`)
+- Menu gerencial: redirect para telas legadas do ERP (central de movimentação não fiscal, resumo de caixa) — só desktop, sem lógica própria do Checkout (ver `.specs/codebase/ARCHITECTURE.md`)
 
 **Explicitly out of scope:**
 

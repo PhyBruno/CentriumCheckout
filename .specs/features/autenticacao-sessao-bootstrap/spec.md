@@ -6,7 +6,7 @@ O operador já está autenticado no ERP e não deve digitar credenciais de novo 
 
 ## UI Design
 
-Nenhuma tela dedicada identificada em `design/CentriumCheckout.pen` — o fluxo é automático (sem interação do operador). A tela de carregamento bloqueante do requisito `AUTH-05` ainda não tem frame correspondente no Pencil — ⚠️ pendente de design visual.
+Nenhuma tela dedicada identificada em `design/CentriumCheckout.pen` — o fluxo é automático (sem interação do operador). A tela de carregamento bloqueante do requisito `AUTH-05` ainda não tem frame correspondente no Pencil — ⚠️ pendente de design visual, mas pode ser implementada como skeleton via Boneyard sem depender de um mockup dedicado (AD-005 em `.specs/project/STATE.md`).
 
 ## Goals
 
@@ -19,7 +19,7 @@ Nenhuma tela dedicada identificada em `design/CentriumCheckout.pen` — o fluxo 
 | Feature | Reason |
 |---|---|
 | Tela de login manual (campos usuário/senha) | Credenciais sempre chegam prontas via query params do ERP — confirmado (2026-08-20) contra diagrama de referência que sugeria o contrário |
-| Uso de `refresh_token` para renovação | Fluxo decidido reautentica via novo `password` grant; ver pendência em `.specs/codebase/CONCERNS.md` |
+| Uso de `refresh_token` para renovação | Fluxo decidido reautentica via novo `password` grant — confirmado que `refresh_token` **não será utilizado** (AD-019 em `.specs/project/STATE.md`) |
 
 ---
 
@@ -36,7 +36,7 @@ Nenhuma tela dedicada identificada em `design/CentriumCheckout.pen` — o fluxo 
 1. WHEN o operador clica no botão do ERP THEN o ERP SHALL abrir a URL do Checkout com query parameters `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository` e `codigoEmpresa` — nunca um `access_token` pronto.
 2. WHEN o Checkout recebe esses parâmetros THEN o sistema SHALL montar o host da API do ERP prefixando `tenant` a um domínio base fixo vindo de variável de ambiente Docker (ex.: `TENANT.apps.centrium.inf.br`).
 3. WHEN o Checkout monta o request de token THEN o sistema SHALL chamar `POST /oauth/access_token` (form `application/x-www-form-urlencoded`) com `client_id`, `client_secret`, `grant_type=password`, `username`, `password` e `additionalParameters` contendo `Repository` no formato `{"AuthenticationTypeName":"local","Repository":"<guid>"}`.
-4. WHEN o token é obtido THEN o sistema SHALL armazenar `access_token` e as credenciais originais (`tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`) em cookie `HttpOnly` — nunca em `localStorage`/`sessionStorage`. `codigoEmpresa` SHALL ser armazenado separadamente, fora desse conjunto de reautenticação.
+4. WHEN o token é obtido THEN o sistema SHALL armazenar `access_token` e as credenciais originais (`tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`, `codigoEmpresa`) em cookie `HttpOnly` — nunca em `localStorage`/`sessionStorage`. `codigoEmpresa` SHALL ser reenviado como campo `Empresa` em praticamente todos os demais endpoints do contrato (ver AD-019 em `.specs/project/STATE.md`).
 
 **Independent Test**: Simular abertura da URL com query params válidos e verificar que o cookie `HttpOnly` recebe o token, sem qualquer input manual do operador.
 
@@ -50,10 +50,10 @@ Nenhuma tela dedicada identificada em `design/CentriumCheckout.pen` — o fluxo 
 
 **Acceptance Criteria**:
 
-1. WHEN o `access_token` é obtido THEN o sistema SHALL chamar automaticamente `GET /ApiCentriumOAuth/GetSessao` com header `Authorization` (token), header `Empresa` (`codigoEmpresa`) e query `Login` (`username`).
+1. WHEN o `access_token` é obtido THEN o sistema SHALL chamar automaticamente `GET /ApiCentriumOAuth/GetSessao` com header `Authorization` no formato `"OAuth <token>"`, header `Empresa` (`codigoEmpresa`), header `Content-Type` (obrigatório no contrato) e query `Login` (`username`).
 2. WHEN a resposta (~até 5MB) chega THEN o sistema SHALL fazer fetch, parse e validação em Web Worker (evita bloquear a thread principal) e gravar o resultado normalizado no Dexie (IndexedDB), com checagem de versão/hash para evitar re-download se nada mudou.
 3. WHEN o operador recarrega a aplicação (F5) sem mudança de versão THEN o sistema SHALL reusar o payload já persistido no Dexie, sem novo download de 5MB.
-4. WHEN a obtenção do token, a chamada ao `GetSessao` e o parse/validação do payload ainda não terminaram THEN a interface SHALL exibir uma tela de carregamento bloqueante ("montando a sessão") — a tela principal só aparece depois que tudo termina com sucesso, nunca parcialmente carregada.
+4. WHEN a obtenção do token, a chamada ao `GetSessao` e o parse/validação do payload ainda não terminaram THEN a interface SHALL exibir uma tela de carregamento bloqueante ("montando a sessão") — podendo ser em formato skeleton via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`) — a tela principal só aparece depois que tudo termina com sucesso, nunca parcialmente carregada.
 
 **Independent Test**: Mockar `GetSessao` com payload de teste e verificar que a tela principal só renderiza após o Dexie confirmar a gravação.
 
@@ -76,8 +76,8 @@ Nenhuma tela dedicada identificada em `design/CentriumCheckout.pen` — o fluxo 
 
 ## Edge Cases
 
-- WHEN `codigoEmpresa` é necessário em qualquer endpoint além de `/oauth/access_token` THEN o sistema SHALL enviá-lo — ⚠️ pendente: parâmetro ainda não documentado em `ApiCentriumOAuth.yaml` (ver `.specs/codebase/CONCERNS.md`).
-- WHEN o nome da variável de ambiente do domínio base é necessário no deploy THEN ⚠️ pendente: nome ainda não definido (ver `.specs/codebase/CONCERNS.md`).
+- WHEN `codigoEmpresa` é necessário em qualquer endpoint além de `/oauth/access_token` THEN o sistema SHALL enviá-lo como campo `Empresa` — confirmado presente no contrato (`ApiCentriumOAuth.yaml`) sob esse nome (AD-019).
+- WHEN o nome da variável de ambiente do domínio base é necessário no deploy THEN o sistema SHALL usar `baseDomain` (AD-019).
 
 ---
 

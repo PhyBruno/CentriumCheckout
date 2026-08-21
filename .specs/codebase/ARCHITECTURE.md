@@ -25,10 +25,10 @@ Não há banco de dados nem serviço próprio do Checkout — toda fonte de verd
 
 | Camada | Tecnologia | Responsabilidade | Persiste? |
 |---|---|---|---|
-| Configuração do tenant/PDV | Dexie (IndexedDB) | Flags de comportamento gerais vindas do payload de bootstrap (~5MB) (ex.: `usaPrecoPorQuantidade`, regras de arredondamento, formas de pagamento habilitadas) | Sim — sobrevive a F5, atualizado por versão/hash para evitar re-transferência desnecessária |
+| Configuração do tenant/PDV | Dexie (IndexedDB) | Flags de comportamento gerais vindas do payload de bootstrap (~5MB) (ex.: `usaPrecoPorQuantidade` ⚠️ nome de campo não confirmado no schema de `GetSessao`, regras de arredondamento, formas de pagamento habilitadas) | Sim — sobrevive a F5, atualizado por versão/hash para evitar re-transferência desnecessária |
 | Produto | TanStack Query | Busca por SKU/código de barras no ERP, no ato da inserção. Retorna `preco1..preco5` e as faixas de quantidade do próprio produto | Não — cache em memória com `staleTime: Infinity` durante a venda; descartado ao finalizar/cancelar |
 | Formas/condições de pagamento | TanStack Query | Cache em memória, `staleTime` de 30 minutos | Não |
-| Venda em andamento (carrinho) | Zustand (sem `persist`) | Itens, cliente selecionado, descontos | Não — vive só em memória durante a sessão; não sobrevive a F5 (ver AD-006 em `.specs/project/STATE.md`) |
+| Venda em andamento (carrinho) | Zustand (sem `persist`) | Itens, cliente selecionado, vendedor selecionado (ver `.specs/features/selecao-vendedor/spec.md`), descontos | Não — vive só em memória durante a sessão; não sobrevive a F5 (ver AD-006 em `.specs/project/STATE.md`) |
 | Motor de precificação | Função pura (camada de domínio, sem dependência de React/Zustand/Query) | Calcula o preço aplicado por linha (ver `.specs/features/carrinho-produto-precificacao/spec.md`) | N/A (stateless) |
 | Estado de UI efêmero | Zustand sem `persist`, ou estado local de componente | Modais, loading, resultados de busca | Não |
 
@@ -46,6 +46,15 @@ Uma única aplicação atende desktop e mobile via layout condicional sobre o me
 
 No design (`design/CentriumCheckout.pen`), a tela principal desktop já está modelada como um único componente reutilizável (`Fundo PDV Online Web`) dividido em duas áreas — "Venda e produtos" e "Pagamento e totais" — confirmando visualmente a divisão de responsabilidades documentada acima.
 
+**Modal menu gerencial:** não é uma tela própria do Checkout — é um menu de navegação com duas opções, ambas apontando para telas do sistema legado do ERP via redirect (`TENANT + baseDomain + <caminho>`, reaproveitando o padrão de montagem de host de AD-002/AD-003, formalizado para este caso em AD-020 em `.specs/project/STATE.md`). Existe só no desktop — confirmado pelo usuário (2026-08-21) que não há equivalente mobile (ver `.specs/features/layout-responsivo-mobile/spec.md`, Out of Scope). Frame `PDV Online Web - Modal menu gerencial` (id `viV0S`) em `design/CentriumCheckout.pen`, sub-frames `Cabeçalho modal menu gerencial`, `Corpo modal menu gerencial` (as duas opções abaixo) e `Rodapé modal menu gerencial` (só botão "Cancelar" — sem tela própria a "salvar/confirmar").
+
+| Opção no design | Descrição no design | Destino |
+|---|---|---|
+| "Central de movimentação não fiscal" | "Sangria, suprimento e outras movimentações de caixa" | `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx` (confirmado pelo usuário) |
+| "Relatório de resumo de caixa" | "Totais, formas de pagamento e fechamento do caixa" | ⚠️ **pendente** — URL da tela legada equivalente não foi confirmada pelo usuário; não presumir que é a mesma `WPMovimentoNaoFiscal_Lancamento.aspx` da primeira opção, já que o conteúdo descrito (relatório de fechamento de caixa) é distinto de movimentação não fiscal |
+
+Cada opção é só um link/navegação para fora do Checkout — nenhuma das duas é implementada como funcionalidade dentro da SPA (sem chamada de API própria, sem estado no Zustand). Ver `.specs/codebase/CONCERNS.md`, "Telas desenhadas sem spec de requisito", para o histórico da pendência.
+
 ## Containerização (Docker)
 
 100% Docker, cobrindo todo o ciclo:
@@ -53,7 +62,10 @@ No design (`design/CentriumCheckout.pen`), a tela principal desktop já está mo
 - **Desenvolvimento:** container roda o servidor de dev do Vite com hot-reload, código-fonte montado via volume.
 - **Produção:** build multi-stage — um estágio compila os assets estáticos, outro serve esses assets (ex.: Nginx) em imagem final enxuta.
 - **Fora do escopo do container:** TEF e servidor de impressão continuam nativos na máquina física do PDV (ver `.specs/codebase/INTEGRATIONS.md`).
-- **Domínio base da API do ERP:** vem de variável de ambiente Docker configurada por ambiente de implantação (dev/staging/produção) — nome da variável ainda não definido (ver `.specs/codebase/CONCERNS.md`).
+- **Domínio base da API do ERP:** vem de variável de ambiente Docker chamada `baseDomain`, configurada por ambiente de implantação (dev/staging/produção) (ver AD-019 em `.specs/project/STATE.md`).
+- **Imagem-base:** `node:<version>-slim`, para dev e produção.
+- **CI/CD (produção):** a cada merge na `master`, workflow do GitHub Actions builda a imagem e publica no Docker Hub.
+- **CI/CD (dev):** script PowerShell local que executa todo o processo de build e sobe a imagem, sem depender de Actions.
 
 ## Code Organization
 

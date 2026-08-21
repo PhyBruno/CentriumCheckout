@@ -8,6 +8,8 @@ O operador pode usar o PDV em tablet/celular, onde uma tela única com todas as 
 
 **Design visual já concluído** — as 3 etapas do wizard mobile existem por completo em `design/CentriumCheckout.pen`: `PDV Mobile 01 - Cliente e Produtos`, `PDV Mobile 02 - Produtos e Pagamento`, `PDV Mobile 03 - Revisão e Finalização`. Falta apenas o **design técnico** (breakpoint de implementação, componentes de layout React, hook `useIsMobile`) — não o visual.
 
+O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor mobile` dentro de `Cliente e NFCe mobile` (etapa 1, `PDV Mobile 01`) — abre o mesmo modal de `.specs/features/selecao-vendedor/spec.md`, sem necessidade de spec própria aqui.
+
 ## Goals
 
 - [ ] Mesma aplicação, mesmo estado de venda, atendendo desktop e mobile sem build/rota separada.
@@ -19,6 +21,7 @@ O operador pode usar o PDV em tablet/celular, onde uma tela única com todas as 
 |---|---|
 | Detecção de capacidade touch | Critério de troca de layout é só largura de viewport, não capacidade do dispositivo |
 | App nativo ou PWA dedicado | Fora de escopo — é responsividade web, não outra plataforma |
+| Modal menu gerencial no mobile | Confirmado (2026-08-21): é uma tela só de desktop — não existe equivalente no design mobile (nenhum dos 3 frames do wizard o referencia) e não há necessidade de operação de retaguarda (sangria, suprimento, fechamento de caixa) durante o fluxo de venda em tablet/celular. Ver `.specs/codebase/ARCHITECTURE.md` |
 
 ---
 
@@ -65,11 +68,11 @@ Nenhum edge case de comportamento pendente identificado até o momento — a amb
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| MOB-01 | Breakpoint de troca de layout (`< 768px`) | Design | Pending |
-| MOB-02 | Estado único compartilhado entre layouts | Design | Pending |
-| MOB-03 | Wizard de 3 etapas (mobile) | Design | Pending |
-| MOB-04 | Navegação livre entre etapas visitadas | Design | Pending |
-| MOB-05 | Atalhos de teclado desativados no mobile | Design | Pending |
+| MOB-01 | Breakpoint de troca de layout (`< 768px`) | Design técnico | Pending |
+| MOB-02 | Estado único compartilhado entre layouts | Design técnico | Pending |
+| MOB-03 | Wizard de 3 etapas (mobile) | Design técnico | Pending |
+| MOB-04 | Navegação livre entre etapas visitadas | Design técnico | Pending |
+| MOB-05 | Atalhos de teclado desativados no mobile | Design técnico | Pending |
 
 **Coverage:** 5 total, 0 mapeados a tasks — requisitos confirmados (Specify concluído), mas a fase **Design** (componentes de layout separados, hook `useIsMobile`, estrutura de wizard) ainda não foi iniciada.
 

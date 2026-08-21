@@ -1,6 +1,6 @@
 # Roadmap — CheckoutWEB
 
-Nenhuma implementação começou ainda (repositório sem código-fonte). As features abaixo já passaram por uma extensa rodada de alinhamento de requisitos (ver histórico em `.specs/project/STATE.md`), documentado agora como specs formais em `.specs/features/`. "Specify" quase concluído em todas — a maior parte dos pontos em aberto listados em cada spec são perguntas operacionais pendentes com a equipe do ERP, não ambiguidade de produto.
+Nenhuma implementação começou ainda (repositório sem código-fonte). As features abaixo já passaram por uma extensa rodada de alinhamento de requisitos (ver histórico em `.specs/project/STATE.md`), documentado agora como specs formais em `.specs/features/`. "Specify" quase concluído em todas — a maior parte dos pontos em aberto listados em cada spec são perguntas operacionais pendentes com a equipe do ERP, não ambiguidade de produto (exceção: `CART-09`/`CART-10` em `carrinho-produto-precificacao`, bloqueio deliberado do usuário, não pendência de ERP).
 
 ## Milestone 1 — Fluxo de venda mínimo (desktop)
 
@@ -8,9 +8,11 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 |---|---|---|---|
 | 1 | Autenticação, sessão e bootstrap | Specify feito | `.specs/features/autenticacao-sessao-bootstrap/spec.md` |
 | 2 | Identificação e cadastro de cliente | Specify feito | `.specs/features/identificacao-cadastro-cliente/spec.md` |
-| 3 | Carrinho, busca/inserção de produto e motor de precificação | Specify feito (Design recomendado — motor de precificação é lógica de domínio isolada e crítica) | `.specs/features/carrinho-produto-precificacao/spec.md` |
+| 3 | Carrinho, busca/inserção de produto e motor de precificação | Specify feito (Design recomendado — motor de precificação é lógica de domínio isolada e crítica; `CART-09`/`CART-10` fora do escopo desta rodada de Design, bloqueio deliberado do usuário) | `.specs/features/carrinho-produto-precificacao/spec.md` |
 | 4 | Pagamento (formas/condições, PIX) | Specify feito | `.specs/features/pagamento/spec.md` |
 | 5 | Finalização e suspensão da venda (NFCe) | Specify feito | `.specs/features/finalizacao-suspensao-venda/spec.md` |
+| 8 | Seleção de vendedor (modal) | Specify feito, pendência: endpoint de listagem de vendedores por empresa não confirmado com a equipe do ERP | `.specs/features/selecao-vendedor/spec.md` |
+| 9 | Menu gerencial (redirect para telas legadas do ERP) | Specify feito (nota arquitetural — sem spec de feature completo, é só link/navegação), pendência: URL da opção "Relatório de resumo de caixa" não confirmada | `.specs/codebase/ARCHITECTURE.md` (seção Responsividade) |
 
 ## Milestone 2 — Caminhos alternativos de entrada na venda
 
@@ -23,8 +25,6 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 | # | Feature | Status | Spec |
 |---|---|---|---|
 | 7 | Layout responsivo (wizard mobile) | Specify feito. **Design visual concluído** (3 telas completas em `design/CentriumCheckout.pen`) — falta só Design técnico (breakpoint, componentes de layout React, hook `useIsMobile`) | `.specs/features/layout-responsivo-mobile/spec.md` |
-
-Descoberto via design (2026-08-20): telas `Modal vendedor` (seleção de vendedor) e `Modal menu gerencial` (central de movimentação não fiscal + relatório de resumo de caixa) existem no Pencil sem nenhum spec de requisito — Specify pendente antes de implementar (ver `.specs/codebase/CONCERNS.md`).
 
 ## Infraestrutura (não é feature de usuário — tratado em `.specs/codebase/`)
 

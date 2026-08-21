@@ -6,7 +6,7 @@ O operador precisa aplicar uma ou mais formas/condições de pagamento à venda,
 
 ## UI Design
 
-Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado de valor faltante: frame `PDV Online Web - Valor Faltante`. TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `Modal TEF Aprovado`. PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de status). Fluxo mobile: frame `PDV Mobile 02 - Produtos e Pagamento`, seção "Configuração pagamento".
+Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado de valor faltante: frame `PDV Online Web - Valor Faltante`. TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal TEF Aprovado`. PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de status). Fluxo mobile: frame `PDV Mobile 02 - Produtos e Pagamento`, seção "Configuração pagamento".
 
 ## Goals
 
@@ -17,7 +17,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 | Feature | Reason |
 |---|---|
-| Server-Sent Events (SSE) para status de PIX | Confirmado (2026-08-20): não será usado, apesar de diagrama de referência do ERP mencionar SSE |
+| Server-Sent Events (SSE) para status de PIX | Confirmado (2026-08-20, AD-012 em `.specs/project/STATE.md`): não será usado — apesar de diagrama de referência do ERP mencionar SSE, o Checkout opta por consulta ativa (polling), mais simples de operar num SPA sem backend próprio e sem depender de conexão persistente |
 
 ---
 
@@ -47,7 +47,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 **Acceptance Criteria**:
 
-1. WHEN um pagamento PIX é gerado (QR Code exibido) THEN o sistema SHALL consultar ativamente `GET /ApiCentriumOAuth/StatusPIX` para saber quando foi aprovado — nunca via SSE.
+1. WHEN um pagamento PIX é gerado (QR Code exibido) THEN o sistema SHALL consultar ativamente um endpoint de status — nunca via SSE. ⚠️ Pendente: `GET /ApiCentriumOAuth/StatusPIX`, citado historicamente, não foi localizado em `ApiCentriumOAuth.yaml` — nome do endpoint real pendente de reconfirmação com a equipe do ERP (ver `.specs/codebase/CONCERNS.md`).
 
 **Independent Test**: Mockar `StatusPIX` alternando entre pendente e aprovado; confirmar que o polling detecta a mudança.
 
@@ -61,9 +61,9 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 **Acceptance Criteria**:
 
-1. WHEN o operador aplica um ticket devolução THEN o sistema SHALL considerar o valor retornado por `POST /ApiCentriumOAuth/ValidaTicketDevolucao` como fonte de verdade do saldo do ticket.
+1. WHEN o operador aplica um ticket devolução THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/ValidaTicketDevolucao`, que retorna `valido: boolean` e `mensagem: string` — ⚠️ pendente: o contrato **não** retorna um valor monetário/saldo do ticket nessa resposta; fonte real do saldo a confirmar com a equipe do ERP.
 2. WHEN a venda é finalizada THEN o sistema SHALL **não** revalidar o ticket devolução novamente — ele é sempre consumido em `FaturarNFCe`.
-3. WHEN uma forma de pagamento específica não aceita ticket devolução THEN o sistema SHALL respeitar o campo correspondente em `CondicaoFormasDePagamento[]` que indica essa elegibilidade por forma.
+3. WHEN uma forma de pagamento específica não aceita ticket devolução THEN ⚠️ pendente: `CondicaoFormasDePagamento[]` (`ApiCentriumOAuth.yaml`) não tem campo de elegibilidade a ticket devolução nem o campo `FpgUtiCar` citado no Edge Case abaixo — mecanismo real de restrição por forma de pagamento não confirmado.
 
 **Independent Test**: Aplicar ticket em forma elegível e em forma não elegível; confirmar bloqueio apenas na segunda.
 
@@ -74,6 +74,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 - WHEN o Checkout precisa classificar uma forma de pagamento (dinheiro/cartão/TEF/duplicata) para regras de troco/crédito THEN o sistema SHALL usar `FormaMeioPagtoNFe` (domínio `NFCe_FormaPagto`) e `FpgUtiCar` (indica vale devolução `VDV`) — ⚠️ pendente: classificação completa cobrindo todos os tipos citados em `Regras.md` ainda não fechada.
 - WHEN o intervalo de polling de `StatusPIX` precisa ser definido THEN ⚠️ pendente: estratégia/intervalo ainda não definidos na implementação.
 - WHEN a NFCe é rejeitada e há pagamento TEF aprovado THEN ⚠️ pendente: não confirmado se o Checkout dispara o estorno automaticamente contra a API local do TEF, ou apenas orienta o operador a estornar manualmente no terminal.
+- WHEN qualquer um dos endpoints de pagamento é chamado (`GerarPIX`, `ValidaTicketDevolucao`, `FaturarNFCe`) THEN o sistema SHALL enviar `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`), exigido pelo contrato.
 
 ---
 
@@ -84,12 +85,12 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 | PAY-01 | Carregar formas/condições (cache 30min) | - | Verified |
 | PAY-02 | Ocultar TEF quando `TEFAtivo=false` | - | Verified |
 | PAY-03 | Ocultar PIX quando `UtilizaCentriumPAG=false` | - | Verified |
-| PAY-04 | Consulta ativa de `StatusPIX` (sem SSE) | - | Verified |
-| PAY-05 | Ticket devolução — valor via `ValidaTicketDevolucao` | - | Verified |
+| PAY-04 | Consulta ativa de status de PIX (sem SSE) | - | ⚠️ Pendente — endpoint `StatusPIX` não confirmado em `ApiCentriumOAuth.yaml` |
+| PAY-05 | Ticket devolução — valor via `ValidaTicketDevolucao` | - | ⚠️ Pendente — contrato não retorna campo de valor/saldo |
 | PAY-06 | Ticket devolução — sem revalidação na finalização | - | Verified |
-| PAY-07 | Ticket devolução — elegibilidade por forma de pagamento | - | Verified |
+| PAY-07 | Ticket devolução — elegibilidade por forma de pagamento | - | ⚠️ Pendente — contrato não tem campo de elegibilidade correspondente |
 
-**Coverage:** 7 total, 3 edge cases pendentes de confirmação com equipe do ERP.
+**Coverage:** 7 total, 3 requisitos (`PAY-04`, `PAY-05`, `PAY-07`) e 4 edge cases pendentes de confirmação com equipe do ERP.
 
 ---
 

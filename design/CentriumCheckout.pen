@@ -11486,6 +11486,44 @@
                           "fontWeight": "600"
                         }
                       ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ZTpBv",
+                      "name": "Novo cliente modal cliente",
+                      "height": 36,
+                      "fill": "$cb-blue",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "uxY24",
+                          "name": "Cancelar modal cliente ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "user-plus",
+                          "library": "lucide",
+                          "fill": "$on-primary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "x412Df",
+                          "name": "Cancelar modal cliente texto",
+                          "fill": "$on-primary",
+                          "content": "Novo cliente",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
                     }
                   ]
                 },
@@ -27512,6 +27550,543 @@
                       "fontWeight": "600"
                     }
                   ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "R6FmKw",
+      "x": 3040,
+      "y": 0,
+      "name": "PDV Online Web - Modal cadastro de cliente",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$surface-soft",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "TqvHB",
+          "type": "ref",
+          "ref": "pbg1b",
+          "name": "Fundo (PDV Online Web)",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "type": "rectangle",
+          "id": "LFLJT",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0,
+          "name": "Backdrop modal cadastro cliente",
+          "fill": "#0A0B0D66",
+          "width": 1440,
+          "height": 900
+        },
+        {
+          "type": "frame",
+          "id": "m5As4q",
+          "layoutPosition": "absolute",
+          "x": 400,
+          "y": 26,
+          "name": "Modal cadastro de cliente",
+          "clip": true,
+          "width": 640,
+          "fill": "$canvas",
+          "cornerRadius": "$radius-xl",
+          "stroke": "$hairline",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "YsSyT",
+              "name": "Cabeçalho modal cadastro cliente",
+              "width": "fill_container",
+              "height": 78,
+              "fill": "$canvas",
+              "stroke": "$hairline",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                0,
+                24
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HJxHM",
+                  "name": "Título modal cadastro cliente",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Hp4wa",
+                      "name": "Ícone circular cadastro cliente",
+                      "width": 42,
+                      "height": 42,
+                      "fill": "$surface-strong",
+                      "cornerRadius": "$radius-pill",
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "S1U1T",
+                          "name": "Ícone cadastro cliente",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "user-round-plus",
+                          "library": "lucide",
+                          "fill": "$cb-blue"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "uc7IC",
+                      "name": "Textos cadastro cliente",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "D3xxJn",
+                          "name": "Título cadastro cliente",
+                          "fill": "$ink",
+                          "content": "Cadastrar cliente",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 20,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "EpLp8",
+                          "name": "Subtítulo cadastro cliente",
+                          "fill": "$body",
+                          "content": "Preencha as informações do novo cliente",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "arQRd",
+                  "name": "Fechar cadastro cliente",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$surface-strong",
+                  "cornerRadius": "$radius-pill",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Ny2l9",
+                      "name": "Ícone fechar cadastro cliente",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "x",
+                      "library": "lucide",
+                      "fill": "$ink"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IELWr",
+              "name": "Conteúdo cadastro cliente",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-5",
+              "padding": "$space-5",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oa96E",
+                  "name": "Seção dados do cliente",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-4",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tXDMn",
+                      "name": "Dados do cliente",
+                      "fill": "$ink",
+                      "content": "Dados do cliente",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "id": "G7C4EO",
+                      "type": "ref",
+                      "ref": "d31Pi5",
+                      "name": "Nome completo",
+                      "width": "fill_container",
+                      "descendants": {
+                        "bXTg2": {
+                          "content": "Nome completo"
+                        },
+                        "AagFe": {
+                          "content": "Digite o nome completo"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Pp3uB",
+                      "name": "Linha CPF Email Celular",
+                      "width": "fill_container",
+                      "gap": "$space-4",
+                      "children": [
+                        {
+                          "id": "SeGon",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "CPF",
+                          "width": "fill_container",
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "CPF"
+                            },
+                            "AagFe": {
+                              "content": "000.000.000-00"
+                            }
+                          }
+                        },
+                        {
+                          "id": "f20AqR",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "E-mail (opcional)",
+                          "width": "fill_container",
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "E-mail"
+                            },
+                            "AagFe": {
+                              "content": "nome@exemplo.com"
+                            }
+                          }
+                        },
+                        {
+                          "id": "ol6fM",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "Celular (opcional)",
+                          "width": "fill_container",
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "Celular"
+                            },
+                            "AagFe": {
+                              "content": "(11) 90000-0000"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TsVLQ",
+                  "name": "Seção endereço",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-4",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KQqzn",
+                      "name": "Endereço",
+                      "fill": "$ink",
+                      "content": "Endereço",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "w90P1",
+                      "name": "Linha CEP Endereço",
+                      "width": "fill_container",
+                      "gap": "$space-4",
+                      "children": [
+                        {
+                          "id": "USTRG",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "CEP",
+                          "width": 140,
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "CEP"
+                            },
+                            "AagFe": {
+                              "content": "00000-000"
+                            }
+                          }
+                        },
+                        {
+                          "id": "VD1Ff",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "Endereço",
+                          "width": "fill_container",
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "Endereço"
+                            },
+                            "AagFe": {
+                              "content": "Rua, avenida..."
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "telrn",
+                      "name": "Linha Bairro Número",
+                      "width": "fill_container",
+                      "gap": "$space-4",
+                      "children": [
+                        {
+                          "id": "uCL1I",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "Bairro",
+                          "width": "fill_container",
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "Bairro"
+                            },
+                            "AagFe": {
+                              "content": "Bairro"
+                            }
+                          }
+                        },
+                        {
+                          "id": "ZQA1S",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "Número",
+                          "width": 140,
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "Número"
+                            },
+                            "AagFe": {
+                              "content": "Nº"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aaNB7",
+                      "name": "Linha Cidade UF",
+                      "width": "fill_container",
+                      "gap": "$space-4",
+                      "children": [
+                        {
+                          "id": "RWYtC",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "Cidade",
+                          "width": "fill_container",
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "Cidade"
+                            },
+                            "AagFe": {
+                              "content": "Cidade"
+                            }
+                          }
+                        },
+                        {
+                          "id": "NmTg9",
+                          "type": "ref",
+                          "ref": "d31Pi5",
+                          "name": "UF",
+                          "width": 100,
+                          "descendants": {
+                            "bXTg2": {
+                              "content": "UF"
+                            },
+                            "AagFe": {
+                              "content": "UF"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZULt1",
+                  "name": "Seção crédito",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-4",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "A9tAN",
+                      "name": "Crédito",
+                      "fill": "$ink",
+                      "content": "Crédito",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "id": "zBfF1",
+                      "type": "ref",
+                      "ref": "d31Pi5",
+                      "name": "Limite de crédito",
+                      "width": "fill_container",
+                      "descendants": {
+                        "bXTg2": {
+                          "content": "Limite de crédito"
+                        },
+                        "AagFe": {
+                          "content": "R$ 0,00"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "AKMuI",
+                      "name": "Linha permite venda a crédito",
+                      "width": "fill_container",
+                      "fill": "$surface-soft",
+                      "cornerRadius": "$radius-md",
+                      "padding": [
+                        14,
+                        16
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "yYe5h",
+                          "name": "Texto permite crédito",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "bfIcG",
+                              "name": "Título permite crédito",
+                              "fill": "$ink",
+                              "content": "Permite venda a crédito",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "l7QnA",
+                              "name": "Descrição permite crédito",
+                              "fill": "$body",
+                              "textGrowth": "fixed-width",
+                              "width": 400,
+                              "content": "Cliente pode comprar utilizando o limite de crédito cadastrado",
+                              "lineHeight": 1.4,
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "id": "FVq5x",
+                          "type": "ref",
+                          "ref": "ZchKl",
+                          "name": "Toggle permite crédito"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "P6dotn",
+              "name": "Rodapé cadastro cliente",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "$canvas",
+              "stroke": "$hairline",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 12,
+              "padding": [
+                0,
+                24
+              ],
+              "justifyContent": "end",
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "atiCd",
+                  "type": "ref",
+                  "ref": "x6chvu",
+                  "name": "Cancelar cadastro cliente",
+                  "fill": "$surface-strong",
+                  "descendants": {
+                    "xiAgC": {
+                      "enabled": false
+                    },
+                    "GCrEX": {
+                      "content": "Cancelar",
+                      "fill": "$ink"
+                    }
+                  }
+                },
+                {
+                  "id": "Kf82h",
+                  "type": "ref",
+                  "ref": "x6chvu",
+                  "name": "Salvar cadastro cliente",
+                  "descendants": {
+                    "xiAgC": {
+                      "enabled": true,
+                      "icon": "check"
+                    },
+                    "GCrEX": {
+                      "content": "Salvar cliente"
+                    }
+                  }
                 }
               ]
             }

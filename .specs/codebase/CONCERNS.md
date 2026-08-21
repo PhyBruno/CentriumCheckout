@@ -4,36 +4,52 @@ Pendências reais de infraestrutura/contrato identificadas antes de qualquer có
 
 ## Contrato de API incompleto (`ApiCentriumOAuth.yaml`)
 
-**Risco:** decisões de arquitetura já tomadas (roteamento por tenant, parâmetro `codigoEmpresa`) não têm respaldo formal no contrato — risco de o contrato divergir da implementação real quando a equipe do ERP o atualizar.
+**Risco:** decisão de arquitetura já tomada (roteamento por tenant) não tem respaldo formal no contrato — risco de o contrato divergir da implementação real quando a equipe do ERP o atualizar.
 
-- `codigoEmpresa`: enviado pelo ERP na URL de abertura e usado em todos os endpoints exceto `/oauth/access_token`, mas zero ocorrências no contrato atual.
 - Host por tenant: contrato não tem bloco `servers:` — o host (`TENANT.<domínio-base>`) não está formalizado em nenhum contrato.
-- `refresh_token`: o contrato retorna um `refresh_token` na resposta de `/oauth/access_token`, mas o fluxo decidido reautentica via novo `password` grant, não via `refresh_token`. Não confirmado se é a intenção definitiva.
 
-**Fix approach:** equipe deve expandir `ApiCentriumOAuth.yaml` com esses três itens; até lá, tratar como acoplamento implícito não versionado.
+**Fix approach:** equipe deve expandir `ApiCentriumOAuth.yaml` com esse item; até lá, tratar como acoplamento implícito não versionado.
 
-## Detalhes de Docker não definidos
+**Itens resolvidos (2026-08-21), não são mais pendência:**
 
-**Risco:** sem imagem-base, orquestração e pipeline definidos, a primeira implementação de containerização terá que tomar essas decisões ad-hoc.
+- `codigoEmpresa`: recebido do ERP via query parameter na URL de abertura, DEVE ficar salvo junto das demais informações persistentes de sessão (ver AD-002/AD-019 em `.specs/project/STATE.md`), pois é reutilizado para montar as requisições a todos os endpoints. Nos endpoints o campo se chama `Empresa` — mapeando o `ApiCentriumOAuth.yaml`, esse campo está presente em praticamente todos eles. Ou seja, o contrato **já tinha** o campo — só não sob o nome `codigoEmpresa`.
+- `refresh_token`: confirmado que **não será utilizado**. Reautenticação segue via novo `password` grant (AD-002).
 
-- Imagem-base específica (dev e produção) não escolhida.
+## Endpoints citados como confirmados com o ERP mas ausentes do contrato (2026-08-21)
+
+**Risco:** três nomes de endpoint tratados como resolvidos em conversa com a equipe do ERP (`.specs/project/STATE.md`, Todos, 2026-08-20) não aparecem em `ApiCentriumOAuth.yaml`: `GetListaClientes` (busca de cliente por termo livre), `StatusPIX` (consulta de status de pagamento PIX) e `ListaNFCEs` (listagem de rascunhos de NFCe). Rebaixados a pendência (decisão do usuário, 2026-08-21) até reconfirmação — os requisitos correspondentes (`CLI-02` em `identificacao-cadastro-cliente/spec.md`, `PAY-04` em `pagamento/spec.md`) foram marcados ⚠️.
+
+**Fix approach:** reconfirmar com a equipe do ERP se esses três endpoints existem sob esses nomes (ou outro) e atualizar `ApiCentriumOAuth.yaml`; só então promover `CLI-02`/`PAY-04` de volta a "Verified".
+
+## Detalhes de Docker
+
+**Risco:** orquestração além de um `docker-compose` simples (ex.: necessidade de Kubernetes) ainda não avaliada — único ponto realmente em aberto nesta seção.
+
 - Orquestração além de um `docker-compose` simples (ex.: necessidade de Kubernetes) não avaliada.
-- Pipeline de CI/CD de build/publish da imagem não definido.
-- Estratégia de registry não definida.
 
 **Fix approach:** decidir na primeira sprint de implementação de infraestrutura — não bloqueia o desenvolvimento de features (que roda local via `docker-compose` de dev).
 
-## Nome da variável de ambiente do domínio base da API
+**Itens resolvidos (2026-08-21), não são mais pendência:**
 
-**Risco:** baixo, mas bloqueia escrever o `docker-compose`/Dockerfile real. Confirmado que o valor vem de env var Docker (ex.: `apps.centrium.inf.br`), mas o **nome** da variável nunca foi definido.
+- Imagem-base (dev e produção): `node:<version>-slim`.
+- Pipeline de CI/CD (produção) e registry: a cada merge na `master`, um workflow do GitHub Actions builda a imagem e publica no Docker Hub.
+- Pipeline de CI/CD (dev): script PowerShell que executa todo o processo de build localmente e sobe a imagem localmente (sem depender de Actions).
 
-**Fix approach:** decidir junto com a primeira implementação de bootstrap/autenticação (`.specs/features/autenticacao-sessao-bootstrap/spec.md`).
+## Nome da variável de ambiente do domínio base da API — RESOLVIDO (2026-08-21)
 
-## Telas desenhadas sem spec de requisito
+Definido: a variável de ambiente Docker que fornece o domínio base (ex.: `apps.centrium.inf.br`) se chama `baseDomain`. Documentado em `.specs/codebase/ARCHITECTURE.md` (Containerização) e `.specs/project/STATE.md` (AD-019).
 
-**Risco:** duas telas existem em `design/CentriumCheckout.pen` sem nenhum requisito documentado em `.specs/features/`: `PDV Online Web - Modal vendedor` (seleção de vendedor associado à venda) e `PDV Online Web - Modal menu gerencial` (com duas sub-áreas: "Central de movimentação não fiscal" e "Relatório de resumo de caixa"). Nenhuma menção a essas funcionalidades existe no `ARCHITECTURE.md` original nem no `STATE.md` — implementar direto do design sem Specify corre o risco de codificar comportamento nunca alinhado com o usuário/ERP.
+## Telas desenhadas sem spec de requisito — RESOLVIDO (2026-08-21)
 
-**Fix approach:** rodar a fase Specify para essas duas áreas antes de implementar (pode virar features novas em `.specs/features/`, ex.: `selecao-vendedor` e `gerencia-caixa`, promovidas no `ROADMAP.md` quando especificadas).
+Duas telas existiam em `design/CentriumCheckout.pen` sem requisito formal: `PDV Online Web - Modal vendedor` e `PDV Online Web - Modal menu gerencial`. Fase Specify concluída para as duas (ver AD-020 em `.specs/project/STATE.md` e `.specs/project/ROADMAP.md`, Milestone 1, itens 8 e 9):
+
+- **Modal vendedor**: documentado em `.specs/features/selecao-vendedor/spec.md`. O vendedor selecionado indica quem atendeu o cliente final — **não** é necessariamente o operador de caixa logado.
+- **Modal menu gerencial**: documentado como nota expandida em `.specs/codebase/ARCHITECTURE.md` (seção "Responsividade") — não é uma tela funcional própria do Checkout, é um menu de dois links para telas legadas do ERP.
+
+**Pendências reais que permanecem em aberto (rastreadas nos respectivos documentos, não mais nesta seção):**
+
+- Endpoint de listagem de vendedores por empresa: **não confirmado com a equipe do ERP e sem candidato plausível em `ApiCentriumOAuth.yaml`** (nenhum endpoint de listagem existe hoje — só campos pontuais de vendedor em `GetSessao`, `FaturarNFCe` e `ListaDAVs`). Ver `.specs/features/selecao-vendedor/spec.md`, requisito `VEND-01`.
+- URL da opção "Relatório de resumo de caixa" do menu gerencial: não confirmada (só a opção "Central de movimentação não fiscal" tem URL confirmada). Ver `.specs/codebase/ARCHITECTURE.md`, seção "Responsividade".
 
 Nota: o "Modal CFOP", inicialmente também sem spec, foi avaliado e removido do design pelo usuário em 2026-08-20 — não é mais uma lacuna, está deliberadamente fora de escopo.
 

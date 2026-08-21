@@ -6,7 +6,7 @@ Toda venda precisa de um cliente associado. O operador precisa localizar um clie
 
 ## UI Design
 
-Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumCheckout.pen` (tabela de resultados, filtros, paginação). Cadastro simplificado (`CLI-03`/`CLI-04`): ⚠️ nenhum frame dedicado encontrado no Pencil — pendente de design visual. Fluxo mobile (etapa 1): frame `PDV Mobile 01 - Cliente e Produtos`, seção "Cliente e NFCe".
+Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumCheckout.pen` (tabela de resultados, filtros, paginação). Cadastro simplificado (`CLI-03`/`CLI-04`): frame `PDV Online Web - Modal cadastro de cliente` (design concluído em 2026-08-21, ver AD-011 em `.specs/project/STATE.md`). Fluxo mobile (etapa 1): frame `PDV Mobile 01 - Cliente e Produtos`, seção "Cliente e NFCe".
 
 ## Goals
 
@@ -57,7 +57,8 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 
 ## Edge Cases
 
-- WHEN o operador informa um CEP no cadastro simplificado THEN ⚠️ pendente: não confirmado se há validação de IBGE, além da máscara de formato (ver `.specs/codebase/CONCERNS.md` — extensão exata do cadastro simplificado).
+- WHEN o operador informa um CEP no cadastro simplificado THEN ⚠️ pendente: não confirmado se há validação de IBGE, além da máscara de formato (ver `.specs/project/STATE.md`, Todos — extensão exata do cadastro simplificado).
+- WHEN o formulário de cadastro simplificado inclui os campos "Limite de crédito" e "Permite venda a crédito" (presentes no design, frame `PDV Online Web - Modal cadastro de cliente`) THEN ⚠️ pendente: `POST /ApiCentriumOAuth/PostCliente` não aceita esses campos no payload atual (só aceita `Empresa, nome, cpf, email, celular, cep, endereco, bairro, numero, cidade, uf`) — não confirmado se são só exibidos como somente-leitura, se pertencem a outro endpoint, ou se o contrato precisa ser expandido.
 - WHEN o cliente retornado tem `CodigoConvenio`/`DescontoConvenio` preenchidos THEN ⚠️ pendente: não confirmado se `DescontoConvenio` é percentual ou valor fixo — impacta o motor de precificação (`.specs/features/carrinho-produto-precificacao/spec.md`).
 
 ---
@@ -67,11 +68,11 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
 | CLI-01 | Busca por CPF/CNPJ (`GetCliente`) | - | Verified |
-| CLI-02 | Busca por termo livre (`GetListaClientes`) | - | Verified |
+| CLI-02 | Busca por termo livre (`GetListaClientes`) | - | ⚠️ Pendente — endpoint não confirmado em `ApiCentriumOAuth.yaml` (ver `.specs/codebase/CONCERNS.md`) |
 | CLI-03 | Cadastro simplificado via `PostCliente` | - | Verified |
 | CLI-04 | Validação de máscara CPF/CEP no cadastro simplificado | - | Verified |
 
-**Coverage:** 4 total, 0 mapeados a tasks, 2 edge cases pendentes de confirmação com equipe do ERP.
+**Coverage:** 4 total, 0 mapeados a tasks, 1 requisito (`CLI-02`) e 3 edge cases pendentes de confirmação com equipe do ERP.
 
 ---
 
