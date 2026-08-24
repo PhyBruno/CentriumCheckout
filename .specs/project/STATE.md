@@ -1,7 +1,7 @@
 # State
 
-**Last Updated:** 2026-08-21
-**Current Work:** Verificação direta na KB real do GenExus (`mcp__genexus__*`, KB `CentriumDEVU6`) de endpoint/request/response/domain para as pendências remanescentes de `.specs/project/PENDENCIES.md` (AD-024) — nova rodada além da revisão de contrato feita em AD-023. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Last Updated:** 2026-08-24
+**Current Work:** Últimas pendências de produto de `carrinho-produto-precificacao` resolvidas por decisão direta do usuário (AD-025 a AD-030), incluindo os bloqueios deliberados `CART-09`/`CART-10`. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -307,6 +307,19 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 **Reason:** Fechar detalhe de comportamento da story `P1: Inserção direta por código conhecido`, ainda não coberto pelas Acceptance Criteria existentes.
 **Trade-off:** Nenhum.
 **Impact:** `.specs/features/carrinho-produto-precificacao/spec.md` (nova AC3 na story de inserção direta, Independent Test estendido).
+
+---
+
+### AD-030: `CART-09`/`CART-10` resolvidos por decisão direta do usuário — remove os últimos bloqueios deliberados de `carrinho-produto-precificacao` (2026-08-24)
+
+**Decision:** Duas pendências marcadas como "não resolver ainda" (itens 14/15 de `.specs/project/PENDENCIES.md`) fecham nesta rodada:
+
+1. **`CART-09` — bloqueio de edição/cancelamento pós-pagamento:** qualquer forma de pagamento aprovada na venda bloqueia edição e cancelamento de item do carrinho. Se o pagamento aprovado for **TEF ou PIX**, a remoção do pagamento **não é permitida** — ambos chamam apps externos e não existe fluxo de cancelamento dessas transações — logo o bloqueio se torna permanente para o restante da venda. Se o pagamento aprovado for **cartão fora do fluxo TEF** (entrada manual, não integrada) ou **dinheiro**, a remoção do pagamento **é permitida**, o que reabilita a edição/cancelamento de item.
+2. **`CART-10` — validação de saldo/estoque na inserção de produto:** o Checkout **não implementa** nenhuma validação de saldo/estoque ao inserir produto no carrinho — é regra de controle exclusiva do ERP.
+
+**Reason:** Fechar os dois últimos bloqueios deliberados de `carrinho-produto-precificacao`, item pendente desde a Specify inicial (2026-08-20), liberando a feature para prosseguir sem exceções na fase Design.
+**Trade-off:** Nenhum. Para `CART-09`, o efeito colateral aceito é que uma venda com pagamento TEF/PIX aprovado fica definitivamente travada para edição/cancelamento de item pelo resto do atendimento — não há caminho de escape, por design.
+**Impact:** `.specs/project/PENDENCIES.md` (itens 14 e 15 removidos da seção 3), `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases + Requirement Traceability, `CART-09`/`CART-10` de "em análise"/"em aberto" para `Verified`) e `.specs/project/ROADMAP.md` (nota do Milestone 1 sobre bloqueio deliberado removida) atualizados.
 
 ---
 

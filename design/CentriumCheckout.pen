@@ -28157,32 +28157,154 @@
                 },
                 {
                   "type": "frame",
-                  "id": "xisJB",
+                  "id": "VxDDJ",
                   "name": "Identidade do PDV",
                   "layout": "vertical",
-                  "gap": 2,
+                  "gap": 4,
                   "children": [
                     {
-                      "type": "text",
-                      "id": "mRr8A",
-                      "name": "Nome do produto",
-                      "fill": "$ink",
-                      "content": "Centrium Checkout - Organizações Tabajara",
-                      "lineHeight": 1.2,
-                      "fontFamily": "$font-sans",
-                      "fontSize": 16,
-                      "fontWeight": "600"
+                      "type": "frame",
+                      "id": "OtJkM",
+                      "name": "Linha organização",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "zjAOu",
+                          "name": "Nome do produto",
+                          "fill": "$ink",
+                          "content": "Centrium Checkout",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font-sans",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qJJbO",
+                          "name": "Separador organização",
+                          "fill": "$muted",
+                          "content": "–",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font-sans",
+                          "fontSize": 16,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "HZ3E0",
+                          "name": "Nome organização skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 150,
+                          "height": 15
+                        }
+                      ]
                     },
                     {
-                      "type": "text",
-                      "id": "HiFtQ",
+                      "type": "frame",
+                      "id": "zvqWq",
                       "name": "Sessão ativa",
-                      "fill": "$body",
-                      "content": "Caixa 03 • PDV 01",
-                      "lineHeight": 1.3,
-                      "fontFamily": "$font-sans",
-                      "fontSize": 13,
-                      "fontWeight": "normal"
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "qE8cr",
+                          "name": "Caixa skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 56,
+                          "height": 12
+                        },
+                        {
+                          "type": "text",
+                          "id": "X1ZYyD",
+                          "name": "Separador sessão",
+                          "fill": "$body",
+                          "content": "•",
+                          "lineHeight": 1.3,
+                          "fontFamily": "$font-sans",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "DSBH2",
+                          "name": "PDV skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 56,
+                          "height": 12
+                        }
+                      ]
                     }
                   ]
                 }
@@ -28258,66 +28380,32 @@
                   "height": 34
                 },
                 {
-                  "type": "rectangle",
-                  "cornerRadius": 100,
-                  "id": "Z0ybhO",
-                  "name": "Botão computador skeleton",
-                  "fill": {
-                    "type": "gradient",
-                    "gradientType": "linear",
-                    "enabled": true,
-                    "rotation": 115,
-                    "size": {
-                      "height": 1
-                    },
-                    "colors": [
-                      {
-                        "color": "#E3E6EB",
-                        "position": 0
-                      },
-                      {
-                        "color": "#F4F5F7",
-                        "position": 0.5
-                      },
-                      {
-                        "color": "#E3E6EB",
-                        "position": 1
-                      }
-                    ]
-                  },
+                  "id": "CRf7P",
+                  "type": "ref",
+                  "ref": "LQbS8",
+                  "name": "Botão computador",
                   "width": 40,
-                  "height": 40
+                  "height": 40,
+                  "fill": "$surface-strong",
+                  "descendants": {
+                    "Exe9z": {
+                      "icon": "monitor"
+                    }
+                  }
                 },
                 {
-                  "type": "rectangle",
-                  "cornerRadius": 100,
-                  "id": "pPPXa",
-                  "name": "Botão configurações skeleton",
-                  "fill": {
-                    "type": "gradient",
-                    "gradientType": "linear",
-                    "enabled": true,
-                    "rotation": 115,
-                    "size": {
-                      "height": 1
-                    },
-                    "colors": [
-                      {
-                        "color": "#E3E6EB",
-                        "position": 0
-                      },
-                      {
-                        "color": "#F4F5F7",
-                        "position": 0.5
-                      },
-                      {
-                        "color": "#E3E6EB",
-                        "position": 1
-                      }
-                    ]
-                  },
+                  "id": "tw1ZI",
+                  "type": "ref",
+                  "ref": "LQbS8",
+                  "name": "Botão configurações",
                   "width": 40,
-                  "height": 40
+                  "height": 40,
+                  "fill": "$surface-strong",
+                  "descendants": {
+                    "Exe9z": {
+                      "icon": "settings"
+                    }
+                  }
                 }
               ]
             }
@@ -28481,35 +28569,33 @@
                               ]
                             },
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 100,
-                              "id": "SLFQs",
+                              "type": "frame",
+                              "id": "vu6qM",
                               "name": "Chip expandir",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
+                              "gap": 4,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "FD526",
+                                  "name": "Texto expandir",
+                                  "fill": "$body",
+                                  "content": "Detalhes",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
                                 },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 70,
-                              "height": 16
+                                {
+                                  "type": "icon",
+                                  "id": "Pduln",
+                                  "name": "Ícone expandir",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "chevron-down",
+                                  "library": "lucide",
+                                  "fill": "$body"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -28585,66 +28671,31 @@
                               "height": 42
                             },
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 100,
-                              "id": "xZ3cr",
-                              "name": "Botão lupa skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
+                              "id": "SyhCZ",
+                              "type": "ref",
+                              "ref": "LQbS8",
+                              "name": "Botão lupa cliente",
                               "width": 42,
-                              "height": 42
+                              "height": 42,
+                              "fill": "$surface-strong",
+                              "descendants": {
+                                "Exe9z": {
+                                  "icon": "search"
+                                }
+                              }
                             },
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 100,
-                              "id": "tlnYt",
-                              "name": "Botão identificar skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
+                              "id": "A6WehF",
+                              "type": "ref",
+                              "ref": "x6chvu",
+                              "name": "Botão identificar",
                               "width": 126,
-                              "height": 42
+                              "height": 42,
+                              "descendants": {
+                                "GCrEX": {
+                                  "content": "Identificar"
+                                }
+                              }
                             }
                           ]
                         }
@@ -28883,35 +28934,18 @@
                           "height": 68
                         },
                         {
-                          "type": "rectangle",
-                          "cornerRadius": 100,
-                          "id": "a06WH",
-                          "name": "Botão adicionar produto skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 70,
-                          "height": 46
+                          "id": "ibEYw",
+                          "type": "ref",
+                          "ref": "LQbS8",
+                          "name": "Botão adicionar produto",
+                          "width": 56,
+                          "height": 46,
+                          "fill": "$cb-blue",
+                          "descendants": {
+                            "Exe9z": {
+                              "fill": "$on-primary"
+                            }
+                          }
                         }
                       ]
                     },
@@ -28990,7 +29024,7 @@
                               "name": "Cabeçalho célula",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "justifyContent": "center",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "rectangle",
@@ -29303,7 +29337,7 @@
                               "name": "Célula",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "justifyContent": "center",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "rectangle",
@@ -29616,7 +29650,7 @@
                               "name": "Célula",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "justifyContent": "center",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "rectangle",
@@ -29929,7 +29963,7 @@
                               "name": "Célula",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "justifyContent": "center",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "rectangle",
@@ -30242,7 +30276,7 @@
                               "name": "Célula",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "justifyContent": "center",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "rectangle",
@@ -30555,7 +30589,7 @@
                               "name": "Célula",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "justifyContent": "center",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "rectangle",
@@ -30868,7 +30902,7 @@
                               "name": "Célula",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "justifyContent": "center",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "rectangle",
@@ -31119,110 +31153,120 @@
                     },
                     {
                       "type": "frame",
-                      "id": "Gvg84",
-                      "name": "Rodapé venda skeleton",
+                      "id": "nOvEU",
+                      "name": "Atalhos da venda",
                       "width": "fill_container",
                       "height": 44,
-                      "fill": "$surface-strong",
-                      "padding": [
-                        0,
-                        20
-                      ],
-                      "justifyContent": "space_between",
+                      "gap": 10,
                       "alignItems": "center",
                       "children": [
                         {
-                          "type": "rectangle",
-                          "cornerRadius": 4,
-                          "id": "VCGVm",
-                          "name": "Bar status carrinho",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 220,
-                          "height": 14
-                        },
-                        {
-                          "type": "rectangle",
+                          "type": "frame",
+                          "id": "z59ZwM",
+                          "name": "Atalho Cancelar venda",
+                          "width": "fill_container",
+                          "height": 36,
+                          "fill": "$canvas",
                           "cornerRadius": 100,
-                          "id": "E4mCGM",
-                          "name": "Badge itens skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
+                          "stroke": "$hairline",
+                          "strokeWidth": 1,
+                          "gap": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Vv0kL",
+                              "name": "Ícone Suspender venda",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "panel-right-open",
+                              "library": "lucide",
+                              "fill": "$body"
                             },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 80,
-                          "height": 24
+                            {
+                              "type": "text",
+                              "id": "c6tWi",
+                              "name": "Texto Cancelar venda",
+                              "fill": "$ink",
+                              "content": "Cancelar venda",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
                         },
                         {
-                          "type": "rectangle",
-                          "cornerRadius": 4,
-                          "id": "B1JhPZ",
-                          "name": "Bar subtotal",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
+                          "type": "frame",
+                          "id": "y7Tze",
+                          "name": "Atalho Calculadora",
+                          "width": "fill_container",
+                          "height": 36,
+                          "fill": "$canvas",
+                          "cornerRadius": 100,
+                          "stroke": "$hairline",
+                          "strokeWidth": 1,
+                          "gap": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "G70rB",
+                              "name": "Ícone Menu Gerencial",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "layout-dashboard",
+                              "library": "lucide",
+                              "fill": "$body"
                             },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 110,
-                          "height": 18
+                            {
+                              "type": "text",
+                              "id": "WknXk",
+                              "name": "Texto Menu Gerencial",
+                              "fill": "$ink",
+                              "content": "Menu Gerencial",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "RDgmY",
+                          "name": "Atalho Menu DAV",
+                          "width": "fill_container",
+                          "height": 36,
+                          "fill": "$canvas",
+                          "cornerRadius": 100,
+                          "stroke": "$hairline",
+                          "strokeWidth": 1,
+                          "gap": 8,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Ix0Y9",
+                              "name": "Ícone Menu DAV",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "file-text",
+                              "library": "lucide",
+                              "fill": "$body"
+                            },
+                            {
+                              "type": "text",
+                              "id": "WojKJ",
+                              "name": "Texto Menu DAV",
+                              "fill": "$ink",
+                              "content": "Menu DAV",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
                         }
                       ]
                     }
@@ -31258,99 +31302,42 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 6,
-                              "id": "hEw6w",
-                              "name": "Ícone pagamento skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
+                              "type": "icon",
+                              "id": "UVUd0",
+                              "name": "Ícone pagamento",
                               "width": 20,
-                              "height": 20
+                              "height": 20,
+                              "icon": "credit-card",
+                              "library": "lucide",
+                              "fill": "$ink"
                             },
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 6,
-                              "id": "Iy9MH",
-                              "name": "Texto pagamento skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 90,
-                              "height": 20
+                              "type": "text",
+                              "id": "QEoSX",
+                              "name": "Texto pagamento",
+                              "fill": "$ink",
+                              "content": "Pagamento",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 16,
+                              "fontWeight": "600"
                             }
                           ]
                         },
                         {
-                          "type": "rectangle",
-                          "cornerRadius": 100,
-                          "id": "H57UHY",
-                          "name": "Badge seguro skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
+                          "id": "Z91Kbf",
+                          "type": "ref",
+                          "ref": "hKvqW",
+                          "name": "Badge seguro",
+                          "fill": "$info-soft",
+                          "descendants": {
+                            "G1rj7": {
+                              "fill": "$info"
                             },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 70,
-                          "height": 24
+                            "qrD4E": {
+                              "fill": "$info-ink",
+                              "content": "Seguro"
+                            }
+                          }
                         }
                       ]
                     },
@@ -31363,35 +31350,14 @@
                       "gap": 8,
                       "children": [
                         {
-                          "type": "rectangle",
-                          "cornerRadius": 4,
-                          "id": "vgArM",
-                          "name": "Label condição skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 150,
-                          "height": 13
+                          "type": "text",
+                          "id": "Cfo0K",
+                          "name": "Label condição",
+                          "fill": "$body",
+                          "content": "Condição de pagamento",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 13,
+                          "fontWeight": "500"
                         },
                         {
                           "type": "rectangle",
@@ -31435,35 +31401,14 @@
                       "gap": 8,
                       "children": [
                         {
-                          "type": "rectangle",
-                          "cornerRadius": 4,
-                          "id": "c0aXE",
-                          "name": "Label desconto skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 170,
-                          "height": 13
+                          "type": "text",
+                          "id": "MWG7L",
+                          "name": "Label desconto",
+                          "fill": "$body",
+                          "content": "Desconto e acréscimo",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 13,
+                          "fontWeight": "500"
                         },
                         {
                           "type": "frame",
@@ -31548,35 +31493,14 @@
                       "gap": 8,
                       "children": [
                         {
-                          "type": "rectangle",
-                          "cornerRadius": 4,
-                          "id": "qsi5y",
-                          "name": "Label forma skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 160,
-                          "height": 13
+                          "type": "text",
+                          "id": "BAqOM",
+                          "name": "Label forma",
+                          "fill": "$body",
+                          "content": "Forma de pagamento",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 13,
+                          "fontWeight": "500"
                         },
                         {
                           "type": "rectangle",
@@ -31628,66 +31552,39 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 4,
-                              "id": "kl8qT",
-                              "name": "Label recebido skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 120,
-                              "height": 13
+                              "type": "text",
+                              "id": "LwmY7",
+                              "name": "Label recebido",
+                              "fill": "$body",
+                              "content": "Valor recebido",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "500"
                             },
                             {
-                              "type": "rectangle",
+                              "type": "frame",
+                              "id": "EUdHt",
+                              "name": "Pill enter",
+                              "fill": "$surface-strong",
                               "cornerRadius": 100,
-                              "id": "DyWua",
-                              "name": "Pill enter skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 110,
-                              "height": 24
+                              "padding": [
+                                4,
+                                10
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "WEzQ0",
+                                  "name": "Texto pill enter",
+                                  "fill": "$muted",
+                                  "content": "↵ Enter",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -31731,181 +31628,21 @@
                               "height": 48
                             },
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 12,
-                              "id": "jtlKM",
-                              "name": "Botão adicionar pagamento skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
+                              "id": "v9jKD1",
+                              "type": "ref",
+                              "ref": "x6chvu",
+                              "name": "Botão adicionar pagamento",
                               "width": 166,
-                              "height": 48
+                              "height": 48,
+                              "fill": "$surface-strong",
+                              "descendants": {
+                                "GCrEX": {
+                                  "content": "Adicionar",
+                                  "fill": "$ink"
+                                }
+                              }
                             }
                           ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "nLg6y",
-                      "name": "Pagamentos aplicados skeleton",
-                      "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": 6,
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "IlTBf",
-                          "name": "Cabeçalho aplicados skeleton",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "rectangle",
-                              "cornerRadius": 4,
-                              "id": "Ey1zn",
-                              "name": "Label aplicados skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 170,
-                              "height": 13
-                            },
-                            {
-                              "type": "rectangle",
-                              "cornerRadius": 4,
-                              "id": "ROn5R",
-                              "name": "Label restante skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#F4F5F7",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#E3E6EB",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 110,
-                              "height": 13
-                            }
-                          ]
-                        },
-                        {
-                          "type": "rectangle",
-                          "cornerRadius": 12,
-                          "id": "a3Wv5V",
-                          "name": "Pagamento aplicado 1 skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": "fill_container",
-                          "height": 34
-                        },
-                        {
-                          "type": "rectangle",
-                          "cornerRadius": 12,
-                          "id": "aqlUc",
-                          "name": "Pagamento aplicado 2 skeleton",
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 115,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#E3E6EB",
-                                "position": 0
-                              },
-                              {
-                                "color": "#F4F5F7",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#E3E6EB",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": "fill_container",
-                          "height": 34
                         }
                       ]
                     },
@@ -31929,66 +31666,24 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 4,
-                              "id": "R3sIU",
-                              "name": "Label total skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#2A2D33",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#3B3F47",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#2A2D33",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 100,
-                              "height": 13
+                              "type": "text",
+                              "id": "hloM6",
+                              "name": "Label total",
+                              "fill": "$muted-soft",
+                              "content": "Total",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 13,
+                              "fontWeight": "500"
                             },
                             {
-                              "type": "rectangle",
-                              "cornerRadius": 4,
-                              "id": "F2imC",
-                              "name": "Moeda total skeleton",
-                              "fill": {
-                                "type": "gradient",
-                                "gradientType": "linear",
-                                "enabled": true,
-                                "rotation": 115,
-                                "size": {
-                                  "height": 1
-                                },
-                                "colors": [
-                                  {
-                                    "color": "#2A2D33",
-                                    "position": 0
-                                  },
-                                  {
-                                    "color": "#3B3F47",
-                                    "position": 0.5
-                                  },
-                                  {
-                                    "color": "#2A2D33",
-                                    "position": 1
-                                  }
-                                ]
-                              },
-                              "width": 40,
-                              "height": 12
+                              "type": "text",
+                              "id": "PJ1GH",
+                              "name": "Moeda total",
+                              "fill": "$on-primary",
+                              "content": "R$",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
                             }
                           ]
                         },
@@ -32042,35 +31737,14 @@
                               "padding": 9,
                               "children": [
                                 {
-                                  "type": "rectangle",
-                                  "cornerRadius": 4,
-                                  "id": "eoDxJ",
-                                  "name": "Label recebido metrica skeleton",
-                                  "fill": {
-                                    "type": "gradient",
-                                    "gradientType": "linear",
-                                    "enabled": true,
-                                    "rotation": 115,
-                                    "size": {
-                                      "height": 1
-                                    },
-                                    "colors": [
-                                      {
-                                        "color": "#2A2D33",
-                                        "position": 0
-                                      },
-                                      {
-                                        "color": "#3B3F47",
-                                        "position": 0.5
-                                      },
-                                      {
-                                        "color": "#2A2D33",
-                                        "position": 1
-                                      }
-                                    ]
-                                  },
-                                  "width": 60,
-                                  "height": 12
+                                  "type": "text",
+                                  "id": "S87UN",
+                                  "name": "Label recebido métrica",
+                                  "fill": "$muted-soft",
+                                  "content": "Recebido",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
                                 },
                                 {
                                   "type": "rectangle",
@@ -32117,35 +31791,14 @@
                               "padding": 9,
                               "children": [
                                 {
-                                  "type": "rectangle",
-                                  "cornerRadius": 4,
-                                  "id": "c9cle9",
-                                  "name": "Label troco metrica skeleton",
-                                  "fill": {
-                                    "type": "gradient",
-                                    "gradientType": "linear",
-                                    "enabled": true,
-                                    "rotation": 115,
-                                    "size": {
-                                      "height": 1
-                                    },
-                                    "colors": [
-                                      {
-                                        "color": "#2A2D33",
-                                        "position": 0
-                                      },
-                                      {
-                                        "color": "#3B3F47",
-                                        "position": 0.5
-                                      },
-                                      {
-                                        "color": "#2A2D33",
-                                        "position": 1
-                                      }
-                                    ]
-                                  },
-                                  "width": 60,
-                                  "height": 12
+                                  "type": "text",
+                                  "id": "jSyBE",
+                                  "name": "Label troco métrica",
+                                  "fill": "$muted-soft",
+                                  "content": "Troco",
+                                  "fontFamily": "$font-sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "500"
                                 },
                                 {
                                   "type": "rectangle",
@@ -32183,43 +31836,48 @@
                           ]
                         }
                       ]
-                    },
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": 100,
-                      "id": "BFdvU",
-                      "name": "Botão finalizar venda skeleton",
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 115,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "#E3E6EB",
-                            "position": 0
-                          },
-                          {
-                            "color": "#F4F5F7",
-                            "position": 0.5
-                          },
-                          {
-                            "color": "#E3E6EB",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "width": "fill_container",
-                      "height": 48
                     }
                   ]
                 }
               ]
             }
           ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "g2Ipp",
+      "x": 946.1377369844786,
+      "y": 1765.5805164864207,
+      "name": "Botão finalizar venda",
+      "width": "fill_container(360)",
+      "height": 48,
+      "fill": "$surface-strong",
+      "cornerRadius": 100,
+      "gap": 9,
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "icon",
+          "id": "i7X7op",
+          "name": "Ícone finalizar",
+          "width": 20,
+          "height": 20,
+          "icon": "circle-check",
+          "library": "lucide",
+          "fill": "$muted"
+        },
+        {
+          "type": "text",
+          "id": "O1KkLT",
+          "name": "Texto finalizar",
+          "fill": "$muted",
+          "content": "Finalizar venda",
+          "fontFamily": "$font-sans",
+          "fontSize": 15,
+          "fontWeight": "700"
         }
       ]
     }
