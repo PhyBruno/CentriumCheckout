@@ -271,6 +271,19 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-027: Mecanismo de editabilidade de produto ao TAB na grid confirmado por decisão do usuário — estreita pendência #4 (2026-08-24)
+
+**Decision:** A flag de editabilidade do cadastro do produto decide se o TAB no campo de código insere a linha ou não — não é sobre campos ficarem somente-leitura depois de já inseridos (duas redações anteriores desta mesma decisão, no mesmo dia, erraram esse ponto). Especificamente:
+- Produto **não editável** → TAB insere a linha diretamente na grid nesse mesmo momento, com `preço`, `unidade de medida`, `quantidade` e `desconto` somente-leitura (mesmo fluxo de `CART-01`/`CART-02`).
+- Produto **editável** → TAB **não** insere a linha; o foco pula para os campos `preço`, `unidade de medida`, `quantidade` e `desconto`, liberando edição desses valores. A linha só entra efetivamente na grid quando o operador aciona o botão `+` já previsto na UI — não há inserção automática ao fim da edição.
+
+**Verificação na KB real do GenExus (MCP `genexus`, KB `CentriumDEVU6`):** lido `SDTCheckout_GetProduto` (estrutura completa) e `PCheckout_GetProduto` (source, que popula o SDT a partir da tabela `Materiais`, atributos `Mat*` como `MatCodRed`/`MatPreVen1-5`/`MatUniVen`/`MatProdPes`). Buscas por `MatEdit*`, `MatBloq*` e `MatPermite*` na KB não retornaram nenhum atributo. **Confirmado: não existe hoje nenhum campo de editabilidade no contrato nem na origem** — não é falta de mapeamento no SDT, é lacuna real de dado no ERP.
+**Reason:** Fechar mais uma pendência de UI de `carrinho-produto-precificacao` antes da fase Design, mesmo objetivo de AD-025/AD-026.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/project/PENDENCIES.md` (item 4, categoria realinhada de "comportamento de UI não desenhado" para "pergunta de contrato/KB", com achado de KB anexado) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases) atualizados. Falta ao ERP criar o campo de editabilidade no contrato — mesmo status "PENDÊNCIA DEV" do item 13 (`.specs/project/PENDENCIES.md`).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
