@@ -256,6 +256,21 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-026: Quatro pendências de produto resolvidas por decisão direta do usuário — polling de PIX, campo de cancelamento em `FaturarNFCe`, remoção de campos de crédito, URL do menu gerencial (2026-08-24)
+
+**Decision:** Rodada de respostas diretas do usuário fechando quatro pendências de `.specs/project/PENDENCIES.md` que dependiam de decisão de produto (não de KB/contrato):
+
+1. **Intervalo de polling de `StatusPIX` (item 5):** a cada 10 segundos, sem estratégia de backoff documentada. Ver `.specs/features/pagamento/spec.md` (`PAY-04`, Edge Cases).
+2. **Trilha de auditoria de cancelamento em `FaturarNFCe` (item 6) e campo de autoria de cancelamento no SDT de produto (item 21) — mesma decisão resolve as duas:** será adicionado o campo `produtoCancelado` (`boolean`, `NULL` equivale a `false`) ao SDT `CheckoutFaturarNFCe`, indicando que um item foi inserido no carrinho e depois cancelado antes da finalização. O contrato **não** ganha campo dedicado para o tier de preço aplicado por item — a expansão de contrato decidida foi só para marcar cancelamento; rastreabilidade de tier, se necessária no futuro, fica só no lado do Checkout (logs). **Campo ainda não implementado no ERP** — mesmo status "PENDÊNCIA DEV" do item 13 (marcação de DAV importado). Ver `.specs/features/finalizacao-suspensao-venda/spec.md` (story "Finalizar a venda", AC2) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
+3. **Campos "Limite de crédito"/"Permite venda a crédito" no cadastro simplificado (item 9):** serão removidos da tela — sem tratamento como somente-leitura, sem expansão de contrato pedida ao ERP. Remoção visual no frame `PDV Online Web - Modal cadastro de cliente` (`design/CentriumCheckout.pen`) ainda não aplicada nesta rodada, só o requisito foi corrigido. Ver `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases).
+4. **URL da opção "Relatório de resumo de caixa" no menu gerencial (item 12):** mesmo link da opção "Central de movimentação não fiscal" (`WPMovimentoNaoFiscal_Lancamento.aspx`), apesar da descrição de conteúdo distinta no design. Ver `.specs/codebase/ARCHITECTURE.md` (seção Responsividade).
+
+**Reason:** Fechar pendências de produto que não dependiam de nova inspeção de KB/contrato, só de decisão do usuário — reduzindo o índice de `.specs/project/PENDENCIES.md` antes da fase Design de `carrinho-produto-precificacao`.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/project/PENDENCIES.md` (itens 5, 6, 9, 12 e 21 removidos da seção 1), `.specs/features/pagamento/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/codebase/ARCHITECTURE.md` e `.specs/codebase/CONCERNS.md` atualizados para refletir. Duas pendências de implementação ficam abertas para a equipe do ERP: o campo `produtoCancelado` (novo) e a remoção visual dos campos de crédito no Pencil (trabalho de design, não de requisito).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

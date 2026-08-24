@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-24T13:15:04.472090+00:00",
+    "updated_at": "2026-08-24T13:25:58.920849+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -216,7 +216,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.842686+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.716394+00:00",
+    "updated_at": "2026-08-24T13:25:58.930133+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -251,7 +251,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.816973+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.725518+00:00",
+    "updated_at": "2026-08-24T13:25:58.959615+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -286,7 +286,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.791283+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:15:50.095430+00:00",
+    "updated_at": "2026-08-24T13:25:58.982757+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -474,7 +474,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.757537+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:15:04.479817+00:00",
+    "updated_at": "2026-08-24T13:25:58.969707+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -579,7 +579,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.831415+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:06:13.435834+00:00",
+    "updated_at": "2026-08-24T13:25:58.950209+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -614,7 +614,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.855121+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.733223+00:00",
+    "updated_at": "2026-08-24T13:25:58.940356+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -718,7 +718,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-21T17:40:07.757113+00:00",
+    "updated_at": "2026-08-24T13:25:58.994741+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -985,7 +985,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T17:44:16.509506+00:00",
     "created_epoch": 1787334256,
-    "updated_at": "2026-08-24T13:06:13.445324+00:00",
+    "updated_at": "2026-08-24T13:25:58.912611+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -995,6 +995,38 @@
       "recent_queries": [],
       "edited": true
     }
+  },
+  {
+    "id": "mem:1787577958911",
+    "kind": "decision",
+    "content": "AD-026: resolve pendencias 5/6/9/12/21 por decisao direta do usuario - polling PIX 10s, campo produtoCancelado em CheckoutFaturarNFCe, remove campos de credito da tela, mesma URL para as 2 opcoes do menu gerencial",
+    "tags": [
+      "pendencies",
+      "ad-026",
+      "produtoCancelado",
+      "statuspix",
+      "menu-gerencial"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md",
+      ".specs/project/STATE.md",
+      ".specs/features/pagamento/spec.md",
+      ".specs/features/finalizacao-suspensao-venda/spec.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md",
+      ".specs/features/identificacao-cadastro-cliente/spec.md",
+      ".specs/codebase/ARCHITECTURE.md",
+      ".specs/codebase/CONCERNS.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-24",
+    "created_epoch": 1787540400,
+    "updated_at": "2026-08-24",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
     "id": "mem:1787576773434",
@@ -1094,6 +1126,45 @@
       "recent_action_kinds": [
         "register_edit"
       ],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787577958910",
+    "kind": "decision",
+    "content": "AD-026: resolve pendencias 5/6/9/12/21 por decisao direta do usuario",
+    "tags": [
+      "026",
+      "resolve",
+      "pendencias",
+      "por",
+      "decisao",
+      "direta",
+      "usuario"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md",
+      ".specs/project/STATE.md",
+      ".specs/features/pagamento/spec.md",
+      ".specs/features/finalizacao-suspensao-venda/spec.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md",
+      ".specs/features/identificacao-cadastro-cliente/spec.md",
+      ".specs/codebase/ARCHITECTURE.md",
+      ".specs/codebase/CONCERNS.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-24T13:25:58.910961+00:00",
+    "created_epoch": 1787577958,
+    "updated_at": "2026-08-24T13:25:58.910966+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
       "recent_queries": []
     }
   }

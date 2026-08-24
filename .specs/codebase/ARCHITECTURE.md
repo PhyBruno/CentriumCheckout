@@ -60,7 +60,7 @@ No design (`design/CentriumCheckout.pen`), a tela principal desktop já está mo
 | Opção no design | Descrição no design | Destino |
 |---|---|---|
 | "Central de movimentação não fiscal" | "Sangria, suprimento e outras movimentações de caixa" | `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx` (confirmado pelo usuário) |
-| "Relatório de resumo de caixa" | "Totais, formas de pagamento e fechamento do caixa" | ⚠️ **pendente** — URL da tela legada equivalente não foi confirmada pelo usuário; não presumir que é a mesma `WPMovimentoNaoFiscal_Lancamento.aspx` da primeira opção, já que o conteúdo descrito (relatório de fechamento de caixa) é distinto de movimentação não fiscal |
+| "Relatório de resumo de caixa" | "Totais, formas de pagamento e fechamento do caixa" | `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx` — **Resolvido (2026-08-24, AD-026):** confirmado pelo usuário que as duas opções apontam para o mesmo link, apesar da descrição de conteúdo distinta no design |
 
 Cada opção é só um link/navegação para fora do Checkout — nenhuma das duas é implementada como funcionalidade dentro da SPA (sem chamada de API própria, sem estado no Zustand). Ver `.specs/codebase/CONCERNS.md`, "Telas desenhadas sem spec de requisito", para o histórico da pendência.
 

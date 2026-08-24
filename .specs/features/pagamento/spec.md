@@ -47,7 +47,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 **Acceptance Criteria**:
 
-1. WHEN um pagamento PIX é gerado (QR Code exibido) THEN o sistema SHALL consultar ativamente `GET /ApiCentriumOAuth/StatusPIX` (params `Empresa`, `Trnguid`, retorna `StatusTransacao`) — nunca via SSE. **Resolvido (2026-08-21, AD-023):** endpoint confirmado no `ApiCentriumOAuth.yaml` atualizado.
+1. WHEN um pagamento PIX é gerado (QR Code exibido) THEN o sistema SHALL consultar ativamente `GET /ApiCentriumOAuth/StatusPIX` (params `Empresa`, `Trnguid`, retorna `StatusTransacao`) a cada 10 segundos — nunca via SSE. **Resolvido (2026-08-21, AD-023):** endpoint confirmado no `ApiCentriumOAuth.yaml` atualizado. **Intervalo de polling resolvido (2026-08-24, AD-026):** decisão direta do usuário — a cada 10s, sem estratégia de backoff documentada.
 
 **Independent Test**: Mockar `StatusPIX` alternando entre pendente e aprovado; confirmar que o polling detecta a mudança.
 
@@ -72,7 +72,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 ## Edge Cases
 
 - WHEN o Checkout precisa classificar uma forma de pagamento (dinheiro/cartão/TEF/duplicata) para regras de troco/crédito THEN o sistema SHALL usar `FormaMeioPagtoNFe` (domínio `NFCe_FormaPagto`) e `FormaFpgUtiCar` (indica vale devolução `VDV`, campo do contrato mapeado de `FpgUtiCar` no KB). **Resolvido (2026-08-21, AD-023):** classificação completa confirmada na KB do GenExus — domain `NFCe_FormaPagto` tem os valores `Dinheiro, Cheque, CartaoCredito, CartaoDebito, CreditoLoja, ValeAlimentacao, ValeRefeicao, ValePresente, ValeCombustivel, DuplicataMercantil, BoletoBancario, DepositoBancario, Pix, TransferenciaBancaria, ProgaramaFidelidade (sic, typo no KB), PixEstatico, CreditoEmLoja, PagamentoNaoInformado, SemPagamento, PagamentoPosterior, Outros` — superset da tabela SEFAZ padrão. **(2026-08-21, AD-024):** `FormaFpgUtiCar` confirmado presente no contrato (ver Story P2/PAY-07) — só vazio quando a empresa não tem regra dinâmica de pagamento configurada.
-- WHEN o intervalo de polling de `StatusPIX` precisa ser definido THEN ⚠️ pendente: estratégia/intervalo ainda não definidos na implementação.
+- WHEN o intervalo de polling de `StatusPIX` precisa ser definido THEN o sistema SHALL consultar a cada 10 segundos. **Resolvido (2026-08-24, AD-026):** decisão direta do usuário — intervalo fixo de 10s.
 - WHEN uma forma de pagamento TEF já foi cobrada na venda THEN o sistema SHALL impedir a remoção dessa forma de pagamento. **Resolvido (2026-08-21, AD-023):** resposta direta do usuário — depois de inserido e cobrado o valor do TEF, não é permitido remover essa forma de pagamento da venda. Isso implica que não existe um fluxo de "estorno automático pelo Checkout": como a forma não pode ser removida da UI, qualquer reversão de um TEF já aprovado (ex.: NFCe rejeitada após o pagamento) é tratada fora do Checkout, diretamente no terminal físico pelo operador.
 - WHEN qualquer um dos endpoints de pagamento é chamado (`GerarPIX`, `ValidaTicketDevolucao`, `FaturarNFCe`) THEN o sistema SHALL enviar `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`), exigido pelo contrato.
 
@@ -90,7 +90,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 | PAY-06 | Ticket devolução — sem revalidação na finalização | - | Verified |
 | PAY-07 | Ticket devolução — elegibilidade por forma de pagamento (`FormaFpgUtiCar`) | - | Verified (2026-08-21, AD-024 — campo confirmado no contrato e na KB, com ressalva de poder vir vazio no fallback sem regra dinâmica) |
 
-**Coverage:** 7 total, 1 edge case pendente de confirmação com equipe do ERP (intervalo de polling de `StatusPIX`).
+**Coverage:** 7 total, 0 edge cases pendentes (intervalo de polling de `StatusPIX` resolvido em 2026-08-24, AD-026 — decisão direta do usuário, a cada 10s).
 
 ---
 

@@ -101,7 +101,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 - WHEN o operador dá TAB em um produto na grid THEN ⚠️ pendente: qual campo entra em edição (preço, quantidade, desconto) e o critério de elegibilidade não estão confirmados.
 - WHEN uma forma de pagamento já foi aprovada na venda THEN ⚠️ **em análise, não implementar até conclusão** (pedido explícito do usuário, 2026-08-20): definir como/onde travar inserção de novo produto e cancelamento de item — vários diagramas de referência do ERP trazem essa regra, mas o mecanismo exato (desabilitar UI vs. validação adicional) ainda não foi decidido.
 - WHEN a validação de saldo/estoque está ativa THEN ⚠️ **em aberto, propositalmente não resolvido** (pedido explícito do usuário, 2026-08-20): não confirmado se a validação de estoque é sempre ativa ou condicionada a flag do `GetSessao`, nem o comportamento exato quando o saldo é insuficiente.
-- WHEN um item é cancelado (`CART-08`) THEN o sistema SHALL enviar ao ERP a marcação de que o cancelamento foi feito pelo operador do checkout — ⚠️ pendente (2026-08-24): nenhum SDT de produto mapeado até agora (`SDTCheckout_GetProduto`, payload de `FaturarNFCe`) expõe um campo para essa marcação. O front pode manter a linha riscada localmente (AC1/AC2 da story acima), mas a trilha de autoria definitiva é responsabilidade do ERP — precisa confirmar com a equipe do ERP/KB GenExus se existe (ou será criado) um campo booleano/status no SDT de produto para indicar "cancelado pelo operador do checkout".
+- WHEN um item é cancelado (`CART-08`) THEN o sistema SHALL enviar ao ERP a marcação de que o cancelamento foi feito pelo operador do checkout, via o campo `produtoCancelado` (`boolean`, `NULL` equivale a `false`) no SDT `CheckoutFaturarNFCe`. **Resolvido (2026-08-24, AD-026, decisão direta do usuário):** o front mantém a linha riscada localmente (AC1/AC2 da story acima) e, ao finalizar (`FaturarNFCe`), envia `produtoCancelado = true` para o item que foi inserido no carrinho e depois cancelado — mesma decisão que resolve a pendência #6 (`.specs/features/finalizacao-suspensao-venda/spec.md`, story "Finalizar a venda", AC2). **Campo ainda não implementado no lado do ERP** — decisão de contrato a desenvolver pela equipe do ERP, mesmo status de "PENDÊNCIA DEV" do item 13 em `.specs/project/PENDENCIES.md`.
 
 ---
 
@@ -120,7 +120,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 | CART-09 | Bloqueio de edição pós-pagamento | - | Em análise — não implementar |
 | CART-10 | Validação de saldo/estoque na inserção | - | Em aberto — propositalmente não resolvido |
 
-**Coverage:** 10 total, 8 requisitos confirmados e prontos para Design/Tasks, 2 explicitamente bloqueados até análise adicional (`CART-09`/`CART-10`, categoria separada de "pendente de confirmação com ERP"), 6 edge cases pendentes de confirmação com equipe do ERP.
+**Coverage:** 10 total, 8 requisitos confirmados e prontos para Design/Tasks, 2 explicitamente bloqueados até análise adicional (`CART-09`/`CART-10`, categoria separada de "pendente de confirmação com ERP"), 5 edge cases pendentes de confirmação com equipe do ERP (marcação de autoria de cancelamento resolvida em 2026-08-24, AD-026 — campo `produtoCancelado`, ainda não implementado no ERP).
 
 ---
 
