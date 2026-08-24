@@ -2,7 +2,7 @@
 
 Índice de toda pendência real aberta no projeto (dúvida de requisito, edge case não confirmado, bloqueio deliberado, trabalho de design ainda não feito). **Não é a fonte da verdade** — cada item continua documentado por completo no arquivo de origem; aqui só há um resumo de uma linha + link, para não duplicar texto que fica desatualizado. Ao resolver um item, atualize o documento de origem primeiro (e a tabela de Requirement Traceability da feature, se aplicável) — só depois marque como resolvido aqui.
 
-**Última atualização:** 2026-08-24 — item 16 resolvido pelo frame "PDV Online Web - Skeleton Carregamento" desenhado no Pencil (ver Notas). Atualização anterior: 2026-08-21, após AD-024 (`.specs/project/STATE.md`) — verificação direta na KB real do GenExus (não só no arquivo de contrato, como em AD-023) para as pendências remanescentes.
+**Última atualização:** 2026-08-24 — item 21 adicionado (campo de autoria de cancelamento no SDT de produto). Atualização anterior: mesmo dia, item 16 resolvido pelo frame "PDV Online Web - Skeleton Carregamento" desenhado no Pencil (ver Notas). Atualização anterior: 2026-08-21, após AD-024 (`.specs/project/STATE.md`) — verificação direta na KB real do GenExus (não só no arquivo de contrato, como em AD-023) para as pendências remanescentes.
 
 ---
 
@@ -24,6 +24,7 @@ Dúvidas operacionais reais — não são ambiguidade de produto, dependem de re
 | 10 | Filtros server-side de `ListaDAVs` (cliente, data, status, vendedor, tipo, origem) | `.specs/features/importacao-dav/spec.md`, Edge Cases | **Corrigido (AD-024):** o endpoint aceita `TxtBusca` (busca por número/título/nome do cliente do DAV) além de `Pagina`/`TamanhoPagina` — a listagem "não aceita filtro" estava incorreta. Porém `data` e `status` nunca serão parametrizáveis: estão hardcoded no `DataProvider` (`DavDatEmi = Today`, `DavSta = 'A'`) — a lista é sempre "hoje" + aberto, não depende do contrato aceitar parâmetro. Vendedor/tipo/origem seguem sem suporte. Achado lateral: bug de paginação no ERP anula o cap de 50 registros — o Checkout deve limitar `TamanhoPagina` no próprio request |
 | 11 | Ação de reimpressão por linha no Modal DAV | `.specs/features/importacao-dav/spec.md`, Edge Cases | Presente no design, sem requisito/critério de aceite — decisão de produto, não de KB |
 | 12 | URL da opção "Relatório de resumo de caixa" (menu gerencial) | `.specs/codebase/ARCHITECTURE.md`, seção Responsividade | Só "Central de movimentação não fiscal" tem URL confirmada |
+| 21 | Campo no SDT de produto para marcar cancelamento feito pelo operador do checkout | `.specs/features/carrinho-produto-precificacao/spec.md`, Edge Cases | É o ERP que salva a trilha de autoria do cancelamento (não só a marcação visual local de `CART-08`) — nenhum SDT mapeado até agora expõe esse campo; precisa confirmar com equipe do ERP/KB se existe ou será criado |
 
 ## 2. Pendências de implementação já entendidas
 

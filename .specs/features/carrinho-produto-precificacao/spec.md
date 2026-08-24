@@ -100,6 +100,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 - WHEN o operador dá TAB em um produto na grid THEN ⚠️ pendente: qual campo entra em edição (preço, quantidade, desconto) e o critério de elegibilidade não estão confirmados.
 - WHEN uma forma de pagamento já foi aprovada na venda THEN ⚠️ **em análise, não implementar até conclusão** (pedido explícito do usuário, 2026-08-20): definir como/onde travar inserção de novo produto e cancelamento de item — vários diagramas de referência do ERP trazem essa regra, mas o mecanismo exato (desabilitar UI vs. validação adicional) ainda não foi decidido.
 - WHEN a validação de saldo/estoque está ativa THEN ⚠️ **em aberto, propositalmente não resolvido** (pedido explícito do usuário, 2026-08-20): não confirmado se a validação de estoque é sempre ativa ou condicionada a flag do `GetSessao`, nem o comportamento exato quando o saldo é insuficiente.
+- WHEN um item é cancelado (`CART-08`) THEN o sistema SHALL enviar ao ERP a marcação de que o cancelamento foi feito pelo operador do checkout — ⚠️ pendente (2026-08-24): nenhum SDT de produto mapeado até agora (`SDTCheckout_GetProduto`, payload de `FaturarNFCe`) expõe um campo para essa marcação. O front pode manter a linha riscada localmente (AC1/AC2 da story acima), mas a trilha de autoria definitiva é responsabilidade do ERP — precisa confirmar com a equipe do ERP/KB GenExus se existe (ou será criado) um campo booleano/status no SDT de produto para indicar "cancelado pelo operador do checkout".
 
 ---
 
