@@ -16,7 +16,7 @@
 
 - Framework: React + Vite
 - Language: TypeScript (`strict`)
-- Runtime: navegador (SPA, sem wrapper Electron/Tauri, exige internet — sem requisito offline)
+- Runtime: navegador (SPA, sem wrapper Electron/Tauri, exige internet — sem requisito offline) para o frontend; Node.js para o BFF mínimo de sessão/autenticação (ver AD-022 em `.specs/project/STATE.md` e `.specs/codebase/ARCHITECTURE.md`)
 
 **Key dependencies:** Zustand + Immer (estado da venda), TanStack Query (cache de dados do ERP), Zod (validação de fronteira), shadcn/ui (design system). Lista completa em `.specs/codebase/STACK.md`.
 

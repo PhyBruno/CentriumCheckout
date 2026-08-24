@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-Toda venda precisa de um cliente associado. O operador precisa localizar um cliente já cadastrado no ERP rapidamente (por CPF/CNPJ ou por busca livre) e, quando o cliente não existe, cadastrá-lo sem sair do Checkout — mas sem reimplementar todas as validações completas do ERP.
+Uma venda pode precisar de um cliente associado [Nao é obrigatorio]. O operador precisa localizar um cliente já cadastrado no ERP rapidamente (por CPF/CNPJ ou por busca livre) e, quando o cliente não existe, cadastrá-lo sem sair do Checkout — mas sem reimplementar todas as validações completas do ERP.
 
 ## UI Design
 
@@ -27,7 +27,7 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 
 **User Story**: Como operador de caixa, quero buscar o cliente pelo CPF/CNPJ, ou por nome/e-mail/telefone quando não sei o documento, para associá-lo à venda rapidamente.
 
-**Why P1**: Toda venda depende de um cliente identificado.
+**Why P1**: Uma venda pode depender de um cliente identificado.
 
 **Acceptance Criteria**:
 
@@ -41,7 +41,7 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 
 ### P1: Cadastro simplificado quando cliente não é encontrado ⭐ MVP
 
-**User Story**: Como operador de caixa, quando o cliente não existe no ERP, quero cadastrá-lo com os dados básicos sem sair do Checkout, para não perder a venda.
+**User Story**: Como operador de caixa, quando o cliente não existe no ERP, quero cadastrá-lo com os dados básicos sem sair do Checkout, para não perder a identificaçao na venda se necessario.
 
 **Why P1**: Bloquear a venda por falta de cadastro é operacionalmente inaceitável.
 
