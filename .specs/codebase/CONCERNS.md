@@ -87,6 +87,27 @@ Rodada de esclarecimentos combinando resposta direta do usuário e inspeção do
 
 Nota: o "Modal CFOP", inicialmente também sem spec, foi avaliado e removido do design pelo usuário em 2026-08-20 — não é mais uma lacuna, está deliberadamente fora de escopo.
 
+## Pendências de campos/semântica do contrato — atualização 2026-08-21 (AD-024, leitura direta da KB GenExus)
+
+Segunda rodada, desta vez lendo o código-fonte real dos objetos na KB (`mcp__genexus__genexus_read`/`genexus_search_source`/`genexus_analyze`, KB `CentriumDEVU6`), não só o arquivo de contrato como em AD-023. Detalhe completo em `.specs/project/STATE.md`, AD-024.
+
+**Resolvidos:**
+
+- **`QtdMinCharParaConsulta` substitui o hardcode de 3 caracteres:** confirmado — `PCheckout_GetSessao` já aplica `iif(&QtdMinChar <= 2, 3, &QtdMinChar)` no próprio ERP. Usar sempre o valor retornado, nunca hardcodar. Ver `.specs/features/carrinho-produto-precificacao/spec.md`.
+- **`PAY-07`/`FpgUtiCar`:** o campo `FormaFpgUtiCar` **existe** em `CondicaoFormasDePagamento` (confirmado na SDT da KB e em `ApiCentriumOAuth.yaml`, linhas 893-916) — a pendência estava desatualizada. Ressalva: só vem preenchido quando a empresa tem regra dinâmica de forma de pagamento configurada; no fallback ("puxa todos"), o campo fica vazio. Ver `.specs/features/pagamento/spec.md`.
+- **Pré-seleção de vendedor em `CarregarNFCe`:** confirmado — a procedure já retorna `vendedorCodigo` preenchido com o vendedor salvo no rascunho; o frontend deve pré-selecioná-lo. Ver `.specs/features/selecao-vendedor/spec.md`.
+- **Impressão pós-autorização:** confirmado — `PCheckout_FaturarNFCe` já devolve o PDF gerado em base64 (`NotaFiscal.PDFImpressao`) e o XML (`NotaFiscal.XMLImpressao`) na própria resposta de `FaturarNFCe`. Não há "impressão direta pelo servidor"; o Checkout sempre recebe o arquivo pronto e decide como apresentá-lo. Ver `.specs/features/finalizacao-suspensao-venda/spec.md`.
+- **Filtros de `ListaDAVs`:** o endpoint aceita `TxtBusca` (busca em número/título/nome do cliente do DAV) — não é só `Pagina`/`TamanhoPagina`. Porém `data de emissão` e `status` **nunca serão filtros parametrizáveis** nesse endpoint: estão hardcoded no `DataProvider` (`DavDatEmi = Today`, `DavSta = 'A'`) — a listagem sempre é "hoje" + status aberto. Vendedor/tipo/origem continuam sem suporte. Achado lateral: bug de paginação no ERP (o cap de 50 registros é anulado por uma segunda atribuição logo depois) — o Checkout deve limitar o próprio `TamanhoPagina` no request, não confiar no servidor. Ver `.specs/features/importacao-dav/spec.md`.
+- **`PostCliente` — "Limite de crédito"/"Permite venda a crédito":** confirmado ausente no código-fonte da procedure (não só no schema). Achados laterais: `CliTip` é hardcoded `'F'` (cadastro simplificado só cria pessoa física); e com `UtilizaSegundoNivelDeEnderecos = 'S'` na empresa, o mesmo payload é roteado para um registro de `Endereco` separado (transparente ao Checkout). Ver `.specs/features/identificacao-cadastro-cliente/spec.md`.
+
+**Reforçados (continuam pendentes, agora com evidência mais forte):**
+
+- **`usaPrecoPorQuantidade`:** confirmado ausente em toda a SDT `SessaoUsuario` e em `SDTCheckout_GetProduto` — não existe sob nenhum nome. Hipótese a validar: inferir localmente por `QtdMinimaPreco2 > 0`.
+- **`ProdutoPesavel`/`DavMatProdPes`:** o `Default('E')` de `wManutencaoImplantacaoProdutos` citado em AD-023 está, na verdade, **comentado/inativo** no código; validação de obrigatoriedade trata o campo como texto (`.IsEmpty()`), não booleano. Segue sem lógica de parse de código de barras pesável localizável na KB.
+- **Vínculo `CheckoutFaturarNFCe` ↔ DAV importado:** não é só falta de nome de campo — `genexus_analyze(mode=impact)` em `DavDocFNum` não encontrou nenhuma procedure do Checkout escrevendo nesse campo. Não existe hoje nenhum caminho de código que marque a DAV como faturada a partir do Checkout; é mudança de KB do ERP a priorizar, não resposta simples de nomenclatura.
+- **`GetStatusSistema`:** confirmado que a procedure só repassa `CadStatus` bruto, sem transformação, e o atributo não tem `Documentation`/`Help` na KB — é lacuna de documentação do próprio ERP, não recuperável por inspeção de KB.
+- **`FaturarNFCe.produtos` — trilha de tier de preço:** confirmado, campo a campo, que o array não tem nenhum campo para registrar a faixa de preço aplicada.
+
 ## `goey-toast` e `boneyard` embutem arquivos de instrução voltados a agentes de IA
 
 **Risco:** Ao verificar `anl331/goey-toast` e `0xGF/boneyard` (dependências decididas em AD-007/AD-018, `.specs/project/STATE.md`) antes da instalação, ambos aparentam empacotar arquivos `SKILL.md`/`CLAUDE.md` destinados especificamente a assistentes de IA (Claude Code, Cursor) "instalarem/implementarem a lib corretamente" — padrão atípico para bibliotecas de UI comuns e compatível com ataque de supply-chain via prompt injection contra agentes de IA. O usuário confirmou que os repositórios são de sua autoria/confiança, então a instalação segue autorizada — mas o risco fica registrado para quem executar a instalação de fato (humano ou IA).
