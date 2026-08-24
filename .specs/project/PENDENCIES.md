@@ -2,7 +2,7 @@
 
 Índice de toda pendência real aberta no projeto (dúvida de requisito, edge case não confirmado, bloqueio deliberado, trabalho de design ainda não feito). **Não é a fonte da verdade** — cada item continua documentado por completo no arquivo de origem; aqui só há um resumo de uma linha + link, para não duplicar texto que fica desatualizado. Ao resolver um item, atualize o documento de origem primeiro (e a tabela de Requirement Traceability da feature, se aplicável) — só depois marque como resolvido aqui.
 
-**Última atualização:** 2026-08-21, após AD-024 (`.specs/project/STATE.md`) — verificação direta na KB real do GenExus (não só no arquivo de contrato, como em AD-023) para as pendências remanescentes.
+**Última atualização:** 2026-08-24 — item 16 resolvido pelo frame "PDV Online Web - Skeleton Carregamento" desenhado no Pencil (ver Notas). Atualização anterior: 2026-08-21, após AD-024 (`.specs/project/STATE.md`) — verificação direta na KB real do GenExus (não só no arquivo de contrato, como em AD-023) para as pendências remanescentes.
 
 ---
 
@@ -48,7 +48,6 @@ Não são dúvida de requisito — é trabalho de design ainda não feito, ou um
 
 | # | Item | Onde mora | Nota |
 |---|---|---|---|
-| 16 | `AUTH-05` — tela de carregamento bloqueante sem frame dedicado no Pencil | `.specs/features/autenticacao-sessao-bootstrap/spec.md`, UI Design | Workaround já viável: skeleton via Boneyard, sem depender de mockup dedicado |
 | 17 | `layout-responsivo-mobile` — fase Design técnico não iniciada | `.specs/features/layout-responsivo-mobile/spec.md`, Requirement Traceability (`MOB-01` a `MOB-05`) | Design visual 100% concluído; falta breakpoint, componentes React, hook `useIsMobile` |
 | 18 | Frame desktop dedicado à finalização/suspensão não identificado no Pencil | `.specs/features/finalizacao-suspensao-venda/spec.md`, UI Design | Parece estar dentro da área "Pagamento e totais" da tela principal, sem modal próprio — confirmar |
 
@@ -70,3 +69,4 @@ Não são dúvida de requisito — é trabalho de design ainda não feito, ou um
 
 - `.specs/codebase/CONVENTIONS.md`, `STRUCTURE.md` e `TESTING.md` (padrão brownfield mapping) **não** são pendência real — dependem de código existir, e serão gerados assim que o scaffolding inicial existir (ver `.specs/codebase/CONCERNS.md`).
 - Itens resolvidos por `AD-023` e `AD-024` (`.specs/project/STATE.md`) já foram removidos deste mapa (numeração renumerada em 2026-08-21 após a remoção de AD-024); o histórico completo de cada rodada de resolução fica lá, não aqui.
+- Item 16 (`AUTH-05` sem frame dedicado no Pencil) removido em 2026-08-24: o frame "PDV Online Web - Skeleton Carregamento" (id `BIu92`) foi desenhado em `design/CentriumCheckout.pen`, resolvendo a lacuna de mockup — ver UI Design em `.specs/features/autenticacao-sessao-bootstrap/spec.md`.

@@ -28093,6 +28093,4135 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "BIu92",
+      "x": 0,
+      "y": 980,
+      "name": "PDV Online Web - Skeleton Carregamento",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$surface-soft",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "vCx6Y",
+          "name": "Barra superior",
+          "width": "fill_container",
+          "height": 72,
+          "fill": "$canvas",
+          "stroke": "$hairline",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "padding": [
+            0,
+            28
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Ey9Rr",
+              "name": "Marca e contexto",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "H21JK",
+                  "name": "Símbolo PDV",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$cb-blue",
+                  "cornerRadius": 100,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Utju8",
+                      "name": "Ícone carrinho",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "shopping-cart",
+                      "library": "lucide",
+                      "fill": "$on-primary"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xisJB",
+                  "name": "Identidade do PDV",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mRr8A",
+                      "name": "Nome do produto",
+                      "fill": "$ink",
+                      "content": "Centrium Checkout - Organizações Tabajara",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font-sans",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "HiFtQ",
+                      "name": "Sessão ativa",
+                      "fill": "$body",
+                      "content": "Caixa 03 • PDV 01",
+                      "lineHeight": 1.3,
+                      "fontFamily": "$font-sans",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OIg1i",
+              "name": "Status da operação",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 100,
+                  "id": "nN9mt",
+                  "name": "Status online skeleton",
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 115,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#E3E6EB",
+                        "position": 0
+                      },
+                      {
+                        "color": "#F4F5F7",
+                        "position": 0.5
+                      },
+                      {
+                        "color": "#E3E6EB",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "width": 92,
+                  "height": 34
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 100,
+                  "id": "R7anh4",
+                  "name": "Operador skeleton",
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 115,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#E3E6EB",
+                        "position": 0
+                      },
+                      {
+                        "color": "#F4F5F7",
+                        "position": 0.5
+                      },
+                      {
+                        "color": "#E3E6EB",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "width": 110,
+                  "height": 34
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 100,
+                  "id": "Z0ybhO",
+                  "name": "Botão computador skeleton",
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 115,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#E3E6EB",
+                        "position": 0
+                      },
+                      {
+                        "color": "#F4F5F7",
+                        "position": 0.5
+                      },
+                      {
+                        "color": "#E3E6EB",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "width": 40,
+                  "height": 40
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 100,
+                  "id": "pPPXa",
+                  "name": "Botão configurações skeleton",
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 115,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#E3E6EB",
+                        "position": 0
+                      },
+                      {
+                        "color": "#F4F5F7",
+                        "position": 0.5
+                      },
+                      {
+                        "color": "#E3E6EB",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "width": 40,
+                  "height": 40
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "lk6Ek",
+          "name": "PDV Online Web",
+          "width": "fill_container",
+          "height": "fill_container",
+          "children": [
+            {
+              "type": "frame",
+              "id": "LL7mk",
+              "name": "Área operacional",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface-soft",
+              "gap": 20,
+              "padding": [
+                20,
+                24,
+                24,
+                24
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "J15Bus",
+                  "name": "Venda e produtos",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "uWT5M",
+                      "name": "Cliente da venda skeleton",
+                      "width": "fill_container",
+                      "height": 152,
+                      "fill": "$canvas",
+                      "cornerRadius": 24,
+                      "stroke": "$hairline",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 16,
+                      "padding": 16,
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "q8tCq",
+                          "name": "Cabeçalho cliente skeleton",
+                          "width": "fill_container",
+                          "height": 26,
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "MvYb8",
+                              "name": "Chips cliente",
+                              "gap": 20,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 100,
+                                  "id": "oik7h",
+                                  "name": "Chip cliente",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 80,
+                                  "height": 20
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 100,
+                                  "id": "FZwQ9",
+                                  "name": "Chip vendedor",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 90,
+                                  "height": 20
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 100,
+                                  "id": "L7U3o",
+                                  "name": "Chip operador",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 90,
+                                  "height": 20
+                                }
+                              ]
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 100,
+                              "id": "SLFQs",
+                              "name": "Chip expandir",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 70,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "oAlS1",
+                          "name": "Campos cliente skeleton",
+                          "width": "fill_container",
+                          "height": 42,
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 12,
+                              "id": "P4x69c",
+                              "name": "Campo CPF skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 243,
+                              "height": 42
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 12,
+                              "id": "Sceel",
+                              "name": "Campo nome skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": "fill_container",
+                              "height": 42
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 100,
+                              "id": "xZ3cr",
+                              "name": "Botão lupa skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 42,
+                              "height": 42
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 100,
+                              "id": "tlnYt",
+                              "name": "Botão identificar skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 126,
+                              "height": 42
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YK7QL",
+                      "name": "Entrada rápida de produto skeleton",
+                      "width": "fill_container",
+                      "height": 122,
+                      "fill": "$canvas",
+                      "cornerRadius": 24,
+                      "stroke": "$hairline",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": 16,
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "AE4nV",
+                          "name": "Campo código skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 164,
+                          "height": 68
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 100,
+                          "id": "m1NxI",
+                          "name": "Botão lupa consulta skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 46,
+                          "height": 46
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "JY1sE",
+                          "name": "Campo quantidade skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 170,
+                          "height": 68
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "P8EoeS",
+                          "name": "Campo unidade skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 50,
+                          "height": 68
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "Gqt3J",
+                          "name": "Campo preço unitário skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 122,
+                          "height": 68
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "jWFML",
+                          "name": "Campo desconto skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 128,
+                          "height": 68
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "kdO3R",
+                          "name": "Campo total item skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 152,
+                          "height": 68
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 100,
+                          "id": "a06WH",
+                          "name": "Botão adicionar produto skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 70,
+                          "height": 46
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "D92Rsj",
+                      "name": "Produtos da venda skeleton",
+                      "clip": true,
+                      "width": "fill_container",
+                      "height": 414,
+                      "fill": "$canvas",
+                      "cornerRadius": 24,
+                      "stroke": "$hairline",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "UR8o2",
+                          "name": "Cabeçalho tabela skeleton",
+                          "width": "fill_container",
+                          "height": 32,
+                          "fill": "$surface-strong",
+                          "gap": 10,
+                          "padding": [
+                            0,
+                            16
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "zwgSU",
+                              "name": "Cabeçalho célula",
+                              "width": 52,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "wiOJz",
+                                  "name": "Bar cabeçalho",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 29,
+                                  "height": 10
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "bKG1h",
+                              "name": "Cabeçalho célula",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "A6glJ5",
+                                  "name": "Bar cabeçalho",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 120,
+                                  "height": 10
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Zdvj1",
+                              "name": "Cabeçalho célula",
+                              "width": 92,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "uhn53",
+                                  "name": "Bar cabeçalho",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 51,
+                                  "height": 10
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "OV69J",
+                              "name": "Cabeçalho célula",
+                              "width": 116,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "MFNHm",
+                                  "name": "Bar cabeçalho",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 64,
+                                  "height": 10
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "I6zQf",
+                              "name": "Cabeçalho célula",
+                              "width": 100,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "UFJJT",
+                                  "name": "Bar cabeçalho",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 55,
+                                  "height": 10
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "OkfkP",
+                              "name": "Cabeçalho célula",
+                              "width": 120,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "M8tCPM",
+                                  "name": "Bar cabeçalho",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 66,
+                                  "height": 10
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "I7ScmW",
+                              "name": "Cabeçalho célula",
+                              "width": 80,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "m9iNb3",
+                                  "name": "Bar cabeçalho",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 44,
+                                  "height": 10
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "s5Ak12",
+                          "name": "Linha produto skeleton 1",
+                          "width": "fill_container",
+                          "height": 42,
+                          "fill": "$surface-soft",
+                          "stroke": "$hairline",
+                          "strokeWidth": {
+                            "bottom": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            0,
+                            16
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "IczsF",
+                              "name": "Célula",
+                              "width": 52,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "MBsXR",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 26,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "VQ2uy",
+                              "name": "Célula",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "e5Utj",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 260,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "wZIyA",
+                              "name": "Célula",
+                              "width": 92,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "kyvI2",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 46,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "cjfuf",
+                              "name": "Célula",
+                              "width": 116,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "BxVPw",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 58,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "MiTa8",
+                              "name": "Célula",
+                              "width": 100,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "d77AvL",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 50,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "i4SCU",
+                              "name": "Célula",
+                              "width": 120,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "Puu27",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "x5Iy9",
+                              "name": "Célula",
+                              "width": 80,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "SHzvx",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 40,
+                                  "height": 12
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "z1lOY",
+                          "name": "Linha produto skeleton 2",
+                          "width": "fill_container",
+                          "height": 42,
+                          "fill": "$canvas",
+                          "stroke": "$hairline",
+                          "strokeWidth": {
+                            "bottom": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            0,
+                            16
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "n7Bxb",
+                              "name": "Célula",
+                              "width": 52,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "H80Xj",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 26,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "luIbm",
+                              "name": "Célula",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "gGFTs",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 190,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "i8M5d",
+                              "name": "Célula",
+                              "width": 92,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "QpIXP",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 46,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "DXAfW",
+                              "name": "Célula",
+                              "width": 116,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "N85Vf",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 58,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "fZCcB",
+                              "name": "Célula",
+                              "width": 100,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "yYu85",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 50,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "E1zmy",
+                              "name": "Célula",
+                              "width": 120,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "o9gobA",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "xSJap",
+                              "name": "Célula",
+                              "width": 80,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "sYUUw",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 40,
+                                  "height": 12
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "X3AUna",
+                          "name": "Linha produto skeleton 3",
+                          "width": "fill_container",
+                          "height": 42,
+                          "fill": "$surface-soft",
+                          "stroke": "$hairline",
+                          "strokeWidth": {
+                            "bottom": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            0,
+                            16
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "kp5bT",
+                              "name": "Célula",
+                              "width": 52,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "iw9lW",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 26,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "QPm6u",
+                              "name": "Célula",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "N8Yauc",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 260,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "TcowU",
+                              "name": "Célula",
+                              "width": 92,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "WIaYp",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 46,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "QdTiM",
+                              "name": "Célula",
+                              "width": 116,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "wqxoB",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 58,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "rMEjB",
+                              "name": "Célula",
+                              "width": 100,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "XpPyZ",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 50,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "o45TF",
+                              "name": "Célula",
+                              "width": 120,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "peQfF",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "EvC44",
+                              "name": "Célula",
+                              "width": 80,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "XAVU2",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 40,
+                                  "height": 12
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Ps11u",
+                          "name": "Linha produto skeleton 4",
+                          "width": "fill_container",
+                          "height": 42,
+                          "fill": "$canvas",
+                          "stroke": "$hairline",
+                          "strokeWidth": {
+                            "bottom": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            0,
+                            16
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "K2hwxx",
+                              "name": "Célula",
+                              "width": 52,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "ZmSPR",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 26,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "V2PEk",
+                              "name": "Célula",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "e1lj1A",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 190,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "xl1lN",
+                              "name": "Célula",
+                              "width": 92,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "Gv1I4",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 46,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "e40WUg",
+                              "name": "Célula",
+                              "width": 116,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "O1lBRT",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 58,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ntqbn",
+                              "name": "Célula",
+                              "width": 100,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "a7gkMX",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 50,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "GJM5D",
+                              "name": "Célula",
+                              "width": 120,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "hXBb5",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "W8aZJy",
+                              "name": "Célula",
+                              "width": 80,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "F4Fkk",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 40,
+                                  "height": 12
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sH4tj",
+                          "name": "Linha produto skeleton 5",
+                          "width": "fill_container",
+                          "height": 42,
+                          "fill": "$surface-soft",
+                          "stroke": "$hairline",
+                          "strokeWidth": {
+                            "bottom": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            0,
+                            16
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "WZvmx",
+                              "name": "Célula",
+                              "width": 52,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "J844hm",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 26,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "IvoJ3",
+                              "name": "Célula",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "B6ddK",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 260,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "M7K8GG",
+                              "name": "Célula",
+                              "width": 92,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "xlXGl",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 46,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "YxF35",
+                              "name": "Célula",
+                              "width": 116,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "lZnKN",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 58,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "s7W0t2",
+                              "name": "Célula",
+                              "width": 100,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "C5ycc",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 50,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "xb20k",
+                              "name": "Célula",
+                              "width": 120,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "qvQp1",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Pb2Cu",
+                              "name": "Célula",
+                              "width": 80,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "g2Lhao",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 40,
+                                  "height": 12
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "o6y7SM",
+                          "name": "Linha produto skeleton 6",
+                          "width": "fill_container",
+                          "height": 42,
+                          "fill": "$canvas",
+                          "stroke": "$hairline",
+                          "strokeWidth": {
+                            "bottom": 1
+                          },
+                          "gap": 10,
+                          "padding": [
+                            0,
+                            16
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "I67gS",
+                              "name": "Célula",
+                              "width": 52,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "oZySp",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 26,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "c4ebSN",
+                              "name": "Célula",
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "MtYRP",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 190,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "PCl1B",
+                              "name": "Célula",
+                              "width": 92,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "xrbnS",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 46,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "S5Ba9",
+                              "name": "Célula",
+                              "width": 116,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "dsE2s",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 58,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "rcyn2",
+                              "name": "Célula",
+                              "width": 100,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "LVqKQ",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 50,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qUvB0",
+                              "name": "Célula",
+                              "width": 120,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "zXnMn",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "hrmkW",
+                              "name": "Célula",
+                              "width": 80,
+                              "height": "fill_container",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "zlUgo",
+                                  "name": "Bar célula",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F4F5F7",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#E3E6EB",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 40,
+                                  "height": 12
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Gvg84",
+                      "name": "Rodapé venda skeleton",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "$surface-strong",
+                      "padding": [
+                        0,
+                        20
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "VCGVm",
+                          "name": "Bar status carrinho",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 220,
+                          "height": 14
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 100,
+                          "id": "E4mCGM",
+                          "name": "Badge itens skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 80,
+                          "height": 24
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "B1JhPZ",
+                          "name": "Bar subtotal",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 110,
+                          "height": 18
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "l4YMK",
+                  "name": "Pagamento e totais skeleton",
+                  "width": 392,
+                  "height": "fill_container",
+                  "fill": "$canvas",
+                  "cornerRadius": 24,
+                  "stroke": "$hairline",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 20,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "RSd5H",
+                      "name": "Cabeçalho pagamento skeleton",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Dxadq",
+                          "name": "Título pagamento skeleton",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 6,
+                              "id": "hEw6w",
+                              "name": "Ícone pagamento skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 20,
+                              "height": 20
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 6,
+                              "id": "Iy9MH",
+                              "name": "Texto pagamento skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 90,
+                              "height": 20
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 100,
+                          "id": "H57UHY",
+                          "name": "Badge seguro skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 70,
+                          "height": 24
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "AvS6p",
+                      "name": "Condição de pagamento skeleton",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "vgArM",
+                          "name": "Label condição skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 150,
+                          "height": 13
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "pMUrI",
+                          "name": "Campo condição skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": "fill_container",
+                          "height": 44
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Yilrq",
+                      "name": "Desconto e acréscimo skeleton",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "c0aXE",
+                          "name": "Label desconto skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 170,
+                          "height": 13
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ERFb4",
+                          "name": "Linha desconto skeleton",
+                          "width": "fill_container",
+                          "height": 44,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 12,
+                              "id": "L3ZoL",
+                              "name": "Campo tipo ajuste skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 158,
+                              "height": 44
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 12,
+                              "id": "g4oavn",
+                              "name": "Campo valor ajuste skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": "fill_container",
+                              "height": 44
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nbThm",
+                      "name": "Forma de pagamento skeleton",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "qsi5y",
+                          "name": "Label forma skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 160,
+                          "height": 13
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "vubfs",
+                          "name": "Campo forma skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": "fill_container",
+                          "height": 44
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "H8jWXx",
+                      "name": "Valor recebido skeleton",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "m4lwEH",
+                          "name": "Cabeçalho recebido skeleton",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "kl8qT",
+                              "name": "Label recebido skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 120,
+                              "height": 13
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 100,
+                              "id": "DyWua",
+                              "name": "Pill enter skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 110,
+                              "height": 24
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "MLGr6",
+                          "name": "Linha recebido skeleton",
+                          "width": "fill_container",
+                          "height": 48,
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 12,
+                              "id": "hlItq",
+                              "name": "Campo valor recebido skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": "fill_container",
+                              "height": 48
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 12,
+                              "id": "jtlKM",
+                              "name": "Botão adicionar pagamento skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 166,
+                              "height": 48
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nLg6y",
+                      "name": "Pagamentos aplicados skeleton",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "IlTBf",
+                          "name": "Cabeçalho aplicados skeleton",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "Ey1zn",
+                              "name": "Label aplicados skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 170,
+                              "height": 13
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "ROn5R",
+                              "name": "Label restante skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#F4F5F7",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#E3E6EB",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 110,
+                              "height": 13
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "a3Wv5V",
+                          "name": "Pagamento aplicado 1 skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": "fill_container",
+                          "height": 34
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 12,
+                          "id": "aqlUc",
+                          "name": "Pagamento aplicado 2 skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#E3E6EB",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F4F5F7",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#E3E6EB",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": "fill_container",
+                          "height": 34
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "wmeDE",
+                      "name": "Total da venda skeleton",
+                      "width": "fill_container",
+                      "fill": "$surface-dark",
+                      "cornerRadius": 20,
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "OtmBe",
+                          "name": "Linha total skeleton",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "R3sIU",
+                              "name": "Label total skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#2A2D33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#3B3F47",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#2A2D33",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 100,
+                              "height": 13
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "F2imC",
+                              "name": "Moeda total skeleton",
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 115,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#2A2D33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#3B3F47",
+                                    "position": 0.5
+                                  },
+                                  {
+                                    "color": "#2A2D33",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "width": 40,
+                              "height": 12
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 6,
+                          "id": "xgn8y",
+                          "name": "Valor total skeleton",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 115,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#2A2D33",
+                                "position": 0
+                              },
+                              {
+                                "color": "#3B3F47",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "#2A2D33",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 160,
+                          "height": 32
+                        },
+                        {
+                          "type": "frame",
+                          "id": "hIexE",
+                          "name": "Métricas pagamento skeleton",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "c5hW7b",
+                              "name": "Métrica Recebido skeleton",
+                              "width": "fill_container",
+                              "fill": "$surface-dark-elevated",
+                              "cornerRadius": 14,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "padding": 9,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "eoDxJ",
+                                  "name": "Label recebido metrica skeleton",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#3B3F47",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "bBvxT",
+                                  "name": "Valor recebido metrica skeleton",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#3B3F47",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 80,
+                                  "height": 15
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "YJukg",
+                              "name": "Métrica Troco skeleton",
+                              "width": "fill_container",
+                              "fill": "$surface-dark-elevated",
+                              "cornerRadius": 14,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "padding": 9,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "c9cle9",
+                                  "name": "Label troco metrica skeleton",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#3B3F47",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 60,
+                                  "height": 12
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 4,
+                                  "id": "KQzxS",
+                                  "name": "Valor troco metrica skeleton",
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 115,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#3B3F47",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#2A2D33",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 80,
+                                  "height": 15
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 100,
+                      "id": "BFdvU",
+                      "name": "Botão finalizar venda skeleton",
+                      "fill": {
+                        "type": "gradient",
+                        "gradientType": "linear",
+                        "enabled": true,
+                        "rotation": 115,
+                        "size": {
+                          "height": 1
+                        },
+                        "colors": [
+                          {
+                            "color": "#E3E6EB",
+                            "position": 0
+                          },
+                          {
+                            "color": "#F4F5F7",
+                            "position": 0.5
+                          },
+                          {
+                            "color": "#E3E6EB",
+                            "position": 1
+                          }
+                        ]
+                      },
+                      "width": "fill_container",
+                      "height": 48
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
