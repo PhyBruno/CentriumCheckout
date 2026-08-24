@@ -100,7 +100,7 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 
 ### AD-012: Status de PIX não é via SSE (2026-08-20) — MIGRADO
 
-Requisito de comportamento de feature, não decisão arquitetural — migrado para `.specs/features/pagamento/spec.md` como requisito `PAY-04`. Rationale e trade-off completos preservados no spec da feature.
+Requisito de comportamento de feature, não decisão arquitetural — migrado para `.specs/features/pagamento-pix/spec.md` como requisito `PAY-04`. Rationale e trade-off completos preservados no spec da feature.
 
 ---
 
@@ -213,7 +213,7 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 
 **Reason:** Fechar o máximo possível das pendências de contrato antes de iniciar a fase Design de `carrinho-produto-precificacao`, evitando que decisões de UI dependam de suposições sobre a API.
 **Trade-off:** Nenhum.
-**Impact:** `.specs/codebase/CONCERNS.md`, `.specs/codebase/INTEGRATIONS.md`, `.specs/features/selecao-vendedor/spec.md` (`VEND-01`), `.specs/features/pagamento/spec.md` (`PAY-04`, `PAY-05`, edge cases de forma de pagamento/TEF), `.specs/features/identificacao-cadastro-cliente/spec.md` (`CLI-02`, IBGE, `DescontoConvenio`), `.specs/features/finalizacao-suspensao-venda/spec.md` (edge case de `NumeroNota`), `.specs/features/carrinho-produto-precificacao/spec.md` (`TipoPreco`/`ListaPreco`, `DescontoConvenio`, `ProdutoPesavel`) e `.specs/features/importacao-dav/spec.md` (marcação de DAV importado) atualizados para refletir.
+**Impact:** `.specs/codebase/CONCERNS.md`, `.specs/codebase/INTEGRATIONS.md`, `.specs/features/selecao-vendedor/spec.md` (`VEND-01`), `.specs/features/pagamento-pix/spec.md` (`PAY-04`), `.specs/features/pagamento-geral/spec.md` (`PAY-05`), `.specs/features/pagamento-tef/spec.md` (edge case de forma de pagamento TEF), `.specs/features/identificacao-cadastro-cliente/spec.md` (`CLI-02`, IBGE, `DescontoConvenio`), `.specs/features/finalizacao-suspensao-venda/spec.md` (edge case de `NumeroNota`), `.specs/features/carrinho-produto-precificacao/spec.md` (`TipoPreco`/`ListaPreco`, `DescontoConvenio`, `ProdutoPesavel`) e `.specs/features/importacao-dav/spec.md` (marcação de DAV importado) atualizados para refletir.
 
 ---
 
@@ -238,7 +238,7 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 
 **Reason:** Esgotar a verificação por KB antes de escalar as pendências remanescentes para contato direto com a equipe do ERP — reduzir ao mínimo o que depende de resposta humana.
 **Trade-off:** Nenhum.
-**Impact:** `.specs/project/PENDENCIES.md`, `.specs/codebase/CONCERNS.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/pagamento/spec.md` (`PAY-07`), `.specs/features/selecao-vendedor/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/features/importacao-dav/spec.md` e `.specs/features/finalizacao-suspensao-venda/spec.md` atualizados para refletir.
+**Impact:** `.specs/project/PENDENCIES.md`, `.specs/codebase/CONCERNS.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/pagamento-geral/spec.md` (`PAY-07`), `.specs/features/selecao-vendedor/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/features/importacao-dav/spec.md` e `.specs/features/finalizacao-suspensao-venda/spec.md` atualizados para refletir.
 
 ---
 
@@ -260,14 +260,14 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 **Decision:** Rodada de respostas diretas do usuário fechando quatro pendências de `.specs/project/PENDENCIES.md` que dependiam de decisão de produto (não de KB/contrato):
 
-1. **Intervalo de polling de `StatusPIX` (item 5):** a cada 10 segundos, sem estratégia de backoff documentada. Ver `.specs/features/pagamento/spec.md` (`PAY-04`, Edge Cases).
+1. **Intervalo de polling de `StatusPIX` (item 5):** a cada 10 segundos, sem estratégia de backoff documentada. Ver `.specs/features/pagamento-pix/spec.md` (`PAY-04`, Edge Cases).
 2. **Trilha de auditoria de cancelamento em `FaturarNFCe` (item 6) e campo de autoria de cancelamento no SDT de produto (item 21) — mesma decisão resolve as duas:** será adicionado o campo `produtoCancelado` (`boolean`, `NULL` equivale a `false`) ao SDT `CheckoutFaturarNFCe`, indicando que um item foi inserido no carrinho e depois cancelado antes da finalização. O contrato **não** ganha campo dedicado para o tier de preço aplicado por item — a expansão de contrato decidida foi só para marcar cancelamento; rastreabilidade de tier, se necessária no futuro, fica só no lado do Checkout (logs). **Campo ainda não implementado no ERP** — mesmo status "PENDÊNCIA DEV" do item 13 (marcação de DAV importado). Ver `.specs/features/finalizacao-suspensao-venda/spec.md` (story "Finalizar a venda", AC2) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
 3. **Campos "Limite de crédito"/"Permite venda a crédito" no cadastro simplificado (item 9):** serão removidos da tela — sem tratamento como somente-leitura, sem expansão de contrato pedida ao ERP. Remoção visual no frame `PDV Online Web - Modal cadastro de cliente` (`design/CentriumCheckout.pen`) ainda não aplicada nesta rodada, só o requisito foi corrigido. Ver `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases).
 4. **URL da opção "Relatório de resumo de caixa" no menu gerencial (item 12):** mesmo link da opção "Central de movimentação não fiscal" (`WPMovimentoNaoFiscal_Lancamento.aspx`), apesar da descrição de conteúdo distinta no design. Ver `.specs/codebase/ARCHITECTURE.md` (seção Responsividade).
 
 **Reason:** Fechar pendências de produto que não dependiam de nova inspeção de KB/contrato, só de decisão do usuário — reduzindo o índice de `.specs/project/PENDENCIES.md` antes da fase Design de `carrinho-produto-precificacao`.
 **Trade-off:** Nenhum.
-**Impact:** `.specs/project/PENDENCIES.md` (itens 5, 6, 9, 12 e 21 removidos da seção 1), `.specs/features/pagamento/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/codebase/ARCHITECTURE.md` e `.specs/codebase/CONCERNS.md` atualizados para refletir. Duas pendências de implementação ficam abertas para a equipe do ERP: o campo `produtoCancelado` (novo) e a remoção visual dos campos de crédito no Pencil (trabalho de design, não de requisito).
+**Impact:** `.specs/project/PENDENCIES.md` (itens 5, 6, 9, 12 e 21 removidos da seção 1), `.specs/features/pagamento-pix/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/codebase/ARCHITECTURE.md` e `.specs/codebase/CONCERNS.md` atualizados para refletir. Duas pendências de implementação ficam abertas para a equipe do ERP: o campo `produtoCancelado` (novo) e a remoção visual dos campos de crédito no Pencil (trabalho de design, não de requisito).
 
 ---
 

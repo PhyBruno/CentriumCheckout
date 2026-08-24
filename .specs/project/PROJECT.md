@@ -29,7 +29,7 @@
 - Autenticação/sessão via credenciais recebidas do ERP na URL + bootstrap de configuração (`.specs/features/autenticacao-sessao-bootstrap/`)
 - Identificação e cadastro simplificado de cliente (`.specs/features/identificacao-cadastro-cliente/`)
 - Busca/inserção de produto, carrinho e motor de precificação por faixa de quantidade (`.specs/features/carrinho-produto-precificacao/`)
-- Formas/condições de pagamento, incluindo PIX (`.specs/features/pagamento/`)
+- Formas/condições de pagamento, incluindo PIX e TEF (`.specs/features/pagamento-geral/`, `.specs/features/pagamento-pix/`, `.specs/features/pagamento-tef/`)
 - Finalização e suspensão da venda (NFCe) (`.specs/features/finalizacao-suspensao-venda/`)
 - Importação e faturamento de DAV (`.specs/features/importacao-dav/`)
 - Layout responsivo desktop/mobile (`.specs/features/layout-responsivo-mobile/`)

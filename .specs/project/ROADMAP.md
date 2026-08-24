@@ -11,7 +11,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 | 1 | Autenticação, sessão e bootstrap | Specify feito | `.specs/features/autenticacao-sessao-bootstrap/spec.md` |
 | 2 | Identificação e cadastro de cliente | Specify feito | `.specs/features/identificacao-cadastro-cliente/spec.md` |
 | 3 | Carrinho, busca/inserção de produto e motor de precificação | Specify feito (Design recomendado — motor de precificação é lógica de domínio isolada e crítica; `CART-09`/`CART-10` fora do escopo desta rodada de Design, bloqueio deliberado do usuário) | `.specs/features/carrinho-produto-precificacao/spec.md` |
-| 4 | Pagamento (formas/condições, PIX) | Specify feito | `.specs/features/pagamento/spec.md` |
+| 4 | Pagamento (formas/condições, PIX, TEF) | Specify feito | `.specs/features/pagamento-geral/spec.md`, `.specs/features/pagamento-pix/spec.md`, `.specs/features/pagamento-tef/spec.md` |
 | 5 | Finalização e suspensão da venda (NFCe) | Specify feito | `.specs/features/finalizacao-suspensao-venda/spec.md` |
 | 8 | Seleção de vendedor (modal) | Specify feito, pendência: endpoint de listagem de vendedores por empresa não confirmado com a equipe do ERP | `.specs/features/selecao-vendedor/spec.md` |
 | 9 | Menu gerencial (redirect para telas legadas do ERP) | Specify feito (nota arquitetural — sem spec de feature completo, é só link/navegação), pendência: URL da opção "Relatório de resumo de caixa" não confirmada | `.specs/codebase/ARCHITECTURE.md` (seção Responsividade) |

@@ -44,7 +44,7 @@ Nenhum item explicitamente excluído identificado até o momento — feature des
 **Acceptance Criteria**:
 
 1. WHEN o operador seleciona um DAV da lista THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetDAV?NumeroDAV=...` e receber o DAV completo (cabeçalho, cliente, itens em `DavItemStruct`, formas de pagamento em `DavForPagamento`).
-2. WHEN o DAV é carregado THEN o sistema SHALL popular a venda com os dados importados e seguir o fluxo normal de carrinho/pagamento/finalização (`.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/pagamento/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`), sem lógica especial adicional.
+2. WHEN o DAV é carregado THEN o sistema SHALL popular a venda com os dados importados e seguir o fluxo normal de carrinho/pagamento/finalização (`.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/pagamento-geral/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`), sem lógica especial adicional.
 
 **Independent Test**: Importar um DAV mockado com 2 itens e 1 forma de pagamento; verificar que o carrinho reflete exatamente esses dados antes de qualquer edição manual.
 

@@ -41,7 +41,7 @@ BFF (Backend for Frontend) mínimo, introduzido em AD-022 (`.specs/project/STATE
 - ERP Centrium: API REST (`ApiCentriumOAuth.yaml`), autenticação OAuth password grant
 - TEF: integração local HTTP (máquina do PDV)
 - Impressão: servidor de impressão local HTTP (máquina do PDV)
-- PIX: via API do ERP (não SSE — consulta ativa por endpoint de status; ⚠️ `StatusPIX` citado historicamente mas não confirmado em `ApiCentriumOAuth.yaml` — ver `.specs/features/pagamento/spec.md` `PAY-04` e `.specs/codebase/CONCERNS.md`)
+- PIX: via API do ERP (não SSE — consulta ativa por endpoint de status; ⚠️ `StatusPIX` citado historicamente mas não confirmado em `ApiCentriumOAuth.yaml` — ver `.specs/features/pagamento-pix/spec.md` `PAY-04` e `.specs/codebase/CONCERNS.md`)
 
 ## Development Tools
 
