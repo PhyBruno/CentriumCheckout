@@ -100,7 +100,7 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 
 ### AD-012: Status de PIX não é via SSE (2026-08-20) — MIGRADO
 
-Requisito de comportamento de feature, não decisão arquitetural — migrado para `.specs/features/pagamento/spec.md` como requisito `PAY-04`. Rationale e trade-off completos preservados no spec da feature.
+Requisito de comportamento de feature, não decisão arquitetural — migrado para `.specs/features/pagamento-pix/spec.md` como requisito `PAY-04`. Rationale e trade-off completos preservados no spec da feature.
 
 ---
 
@@ -207,13 +207,13 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 - Validação de IBGE no cadastro simplificado — decisão do usuário: campo de endereço fica livre, sem validação.
 - Mecanismo de "marcar DAV como importado" — resposta direta do usuário: não há endpoint próprio; tratado via `FaturarNFCe` com um campo do SDT `CheckoutFaturarNFCe` ainda não definido (fica como pendência de implementação, não de documentação).
 
-**Correção de hipótese:** `TipoPreco` (config padrão da empresa, `SessaoUsuario`, via `PTrazEmpDefP`) e `ListaPreco` (lista de preço do cliente, `CliListCod`, via `PCheckout_GetCliente`) são conceitos **distintos** — a hipótese inicial de correlação com `PrecoVenda1`...`PrecoVenda5` não foi confirmada; nenhum dos dois tem enum de valores válidos no KB.
+**Correção de hipótese:** `TipoPreco` (config padrão da empresa, `SessaoUsuario`, via `PTrazEmpDefP`) e `ListaPreco` (lista de preço do cliente, `CliListCod`, via `PCheckout_GetCliente`) são conceitos **distintos** — a hipótese inicial de correlação com `PrecoVenda1`...`PrecoVenda5` não foi confirmada; nenhum dos dois tem enum de valores válidos no KB. **→ Corrigido em AD-025 (2026-08-24):** `TipoPreco` foi caracterizado por completo via regra de negócio confirmada pelo usuário.
 
 **Continua pendente (precisa de contato direto com a equipe do ERP):** formato de código de barras pesável (`ProdutoPesavel`/`DavMatProdPes`) — nenhuma lógica de parse encontrada em ~6% do KB varrido; achado lateral (`wManutencaoImplantacaoProdutos`) sugere código multi-valor (default `'E'`), não um simples `S`/`N`.
 
 **Reason:** Fechar o máximo possível das pendências de contrato antes de iniciar a fase Design de `carrinho-produto-precificacao`, evitando que decisões de UI dependam de suposições sobre a API.
 **Trade-off:** Nenhum.
-**Impact:** `.specs/codebase/CONCERNS.md`, `.specs/codebase/INTEGRATIONS.md`, `.specs/features/selecao-vendedor/spec.md` (`VEND-01`), `.specs/features/pagamento/spec.md` (`PAY-04`, `PAY-05`, edge cases de forma de pagamento/TEF), `.specs/features/identificacao-cadastro-cliente/spec.md` (`CLI-02`, IBGE, `DescontoConvenio`), `.specs/features/finalizacao-suspensao-venda/spec.md` (edge case de `NumeroNota`), `.specs/features/carrinho-produto-precificacao/spec.md` (`TipoPreco`/`ListaPreco`, `DescontoConvenio`, `ProdutoPesavel`) e `.specs/features/importacao-dav/spec.md` (marcação de DAV importado) atualizados para refletir.
+**Impact:** `.specs/codebase/CONCERNS.md`, `.specs/codebase/INTEGRATIONS.md`, `.specs/features/selecao-vendedor/spec.md` (`VEND-01`), `.specs/features/pagamento-pix/spec.md` (`PAY-04`), `.specs/features/pagamento-geral/spec.md` (`PAY-05`), `.specs/features/pagamento-tef/spec.md` (edge case de forma de pagamento TEF), `.specs/features/identificacao-cadastro-cliente/spec.md` (`CLI-02`, IBGE, `DescontoConvenio`), `.specs/features/finalizacao-suspensao-venda/spec.md` (edge case de `NumeroNota`), `.specs/features/carrinho-produto-precificacao/spec.md` (`TipoPreco`/`ListaPreco`, `DescontoConvenio`, `ProdutoPesavel`) e `.specs/features/importacao-dav/spec.md` (marcação de DAV importado) atualizados para refletir.
 
 ---
 
@@ -230,7 +230,7 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 - **`PostCliente` — "Limite de crédito"/"Permite venda a crédito":** confirmado ausente diretamente no código-fonte da procedure (não só no schema) — `PCheckout_PostCliente` só usa `Empresa, cpf, nome, email, celular, cep, endereco, bairro, numero, cidade, uf`. Achados laterais: `CliTip` é hardcoded `'F'` (o cadastro simplificado do Checkout só cria pessoa física, nunca jurídica); e quando a empresa tem `UtilizaSegundoNivelDeEnderecos = 'S'`, o mesmo payload é roteado para criar um registro de `Endereco` separado em vez de gravar os campos direto no cliente — transparente para o Checkout (mesmo payload), mas relevante caso o tenant tenha essa config ligada.
 
 **Reforçados como pendência real (não resolvida, mas com evidência mais forte de que não há solução só de nomenclatura):**
-- **`usaPrecoPorQuantidade`:** lido o SDT `SessaoUsuario` por completo — o campo não existe sob nenhum nome. Também não existe em `SDTCheckout_GetProduto` (`PCheckout_GetProduto`) — só os limiares `QtdMinimaPreco2..5` (`MatQtMiPV2..5`). Não há, em lugar nenhum do contrato, um booleano/flag equivalente. Hipótese a validar com o time: o Checkout pode inferir "modo por faixa" localmente (`QtdMinimaPreco2 > 0` ⇒ tiered) em vez de esperar um flag explícito — precisa confirmação de que essa inferência é segura.
+- **`usaPrecoPorQuantidade`:** lido o SDT `SessaoUsuario` por completo — o campo não existe sob nenhum nome. Também não existe em `SDTCheckout_GetProduto` (`PCheckout_GetProduto`) — só os limiares `QtdMinimaPreco2..5` (`MatQtMiPV2..5`). Não há, em lugar nenhum do contrato, um booleano/flag equivalente. Hipótese a validar com o time: o Checkout pode inferir "modo por faixa" localmente (`QtdMinimaPreco2 > 0` ⇒ tiered) em vez de esperar um flag explícito — precisa confirmação de que essa inferência é segura. **→ Resolvido em AD-025 (2026-08-24):** não é inferido por `QtdMinimaPreco2` — o modo por faixa é indicado por `SessaoUsuario.TipoPreco = 8`.
 - **`ProdutoPesavel`/`DavMatProdPes`:** confirmado que é o mesmo conceito em dois contextos (`MatProdPes` no produto, `DavMatProdPes` no item de DAV). Novo detalhe: em `wManutencaoImplantacaoProdutos`, a linha `Default(&sdtDefaultProdutos.MatProdPes,'E')` está **comentada** (`//`, inativa) — o "default 'E'" documentado em AD-023 não está de fato em vigor nesse WebPanel; e a validação de campo obrigatório trata o valor via `.IsEmpty()` (texto, não booleano `S`/`N`), reforçando a hipótese de código multi-valor. Segue sem lógica de parse de código de barras pesável encontrada — precisa da equipe do ERP.
 - **`CheckoutFaturarNFCe` → campo de vínculo com DAV:** lida a SDT completa — não existe nenhum campo (nem `NumeroDav`, nem equivalente) em `CheckoutFaturarNFCe` hoje. Rodada adicional de `genexus_analyze(mode=impact)` em `DavDocFNum` (campo que a DAV usa para registrar o documento fiscal gerado) não encontrou nenhuma procedure do Checkout escrevendo nele. Ou seja, a pendência não é só "falta nomear o campo" — hoje **não existe nenhum caminho de código, em lugar nenhum da KB, que marque a DAV como faturada a partir do fluxo do Checkout**. É mudança de KB do ERP, não só de nomenclatura de contrato.
 - **`GetStatusSistema`:** confirmado que a procedure só repassa o valor bruto do atributo `CadStatus` (`NUMERIC(4)`, tabela de cadastro de máquina) sem nenhuma transformação — e `CadStatus` não tem `Documentation`/`Help` preenchidos na KB. A semântica dos códigos é uma lacuna de documentação do próprio ERP, não algo recuperável via KB — precisa mesmo de contato direto com a equipe.
@@ -238,7 +238,75 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 
 **Reason:** Esgotar a verificação por KB antes de escalar as pendências remanescentes para contato direto com a equipe do ERP — reduzir ao mínimo o que depende de resposta humana.
 **Trade-off:** Nenhum.
-**Impact:** `.specs/project/PENDENCIES.md`, `.specs/codebase/CONCERNS.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/pagamento/spec.md` (`PAY-07`), `.specs/features/selecao-vendedor/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/features/importacao-dav/spec.md` e `.specs/features/finalizacao-suspensao-venda/spec.md` atualizados para refletir.
+**Impact:** `.specs/project/PENDENCIES.md`, `.specs/codebase/CONCERNS.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/pagamento-geral/spec.md` (`PAY-07`), `.specs/features/selecao-vendedor/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/features/importacao-dav/spec.md` e `.specs/features/finalizacao-suspensao-venda/spec.md` atualizados para refletir.
+
+---
+
+### AD-025: Regra de negócio de `TipoPreco`/`EmpDefPre` confirmada diretamente pelo usuário — corrige AD-023 e resolve `usaPrecoPorQuantidade` (2026-08-24)
+
+**Decision:** Diferente de AD-023/AD-024 (inspeção de contrato/KB), esta correção veio de resposta direta do usuário sobre a regra de negócio do domain `EmpDefPre`. `SessaoUsuario.TipoPreco` (via `PTrazEmpDefP.Call`) vai de `1` a `11` e indica **diretamente o preço de venda a aplicar no item** — não é um espelho 0-based de `ListaPreco` como a hipótese de AD-023 chegou a cogitar. De `1` a `5`, é índice direto para `PrecoVenda1`...`PrecoVenda5`. De `6` a `11` são casos especiais, dos quais dois mapeados:
+- `TipoPreco = 9` — preço por lista: aplicar a lista de preço do cadastro do cliente (`ClienteCheckout.ListaPreco`/`CliListCod`); sem lista própria, usar a lista padrão da empresa (`SessaoUsuario.listaPrecoPadrao`). `GetProduto` retorna `SDTCheckout_GetProduto.PrecoVendaLista` preenchido nesse caso.
+- `TipoPreco = 8` — preço por faixa de quantidade: resolve a pendência de `usaPrecoPorQuantidade` (AD-024) — **não existe flag booleano separado no contrato**, o próprio valor `8` já é o sinal, substituindo a hipótese de inferir via `QtdMinimaPreco2 > 0`.
+
+Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência estreitada, não eliminada.
+
+**Reason:** Fechar a lacuna mais crítica do motor de precificação (`carrinho-produto-precificacao`) antes da fase Design — a ambiguidade anterior bloqueava tanto a UI quanto o cálculo de preço.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/codebase/CONCERNS.md`, `.specs/project/PENDENCIES.md` (itens 1 e 2) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases, Acceptance Criteria, Requirement Traceability) atualizados para refletir.
+
+---
+
+### AD-026: Quatro pendências de produto resolvidas por decisão direta do usuário — polling de PIX, campo de cancelamento em `FaturarNFCe`, remoção de campos de crédito, URL do menu gerencial (2026-08-24)
+
+**Decision:** Rodada de respostas diretas do usuário fechando quatro pendências de `.specs/project/PENDENCIES.md` que dependiam de decisão de produto (não de KB/contrato):
+
+1. **Intervalo de polling de `StatusPIX` (item 5):** a cada 10 segundos, sem estratégia de backoff documentada. Ver `.specs/features/pagamento-pix/spec.md` (`PAY-04`, Edge Cases).
+2. **Trilha de auditoria de cancelamento em `FaturarNFCe` (item 6) e campo de autoria de cancelamento no SDT de produto (item 21) — mesma decisão resolve as duas:** será adicionado o campo `produtoCancelado` (`boolean`, `NULL` equivale a `false`) ao SDT `CheckoutFaturarNFCe`, indicando que um item foi inserido no carrinho e depois cancelado antes da finalização. O contrato **não** ganha campo dedicado para o tier de preço aplicado por item — a expansão de contrato decidida foi só para marcar cancelamento; rastreabilidade de tier, se necessária no futuro, fica só no lado do Checkout (logs). **Campo ainda não implementado no ERP** — mesmo status "PENDÊNCIA DEV" do item 13 (marcação de DAV importado). Ver `.specs/features/finalizacao-suspensao-venda/spec.md` (story "Finalizar a venda", AC2) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
+3. **Campos "Limite de crédito"/"Permite venda a crédito" no cadastro simplificado (item 9):** serão removidos da tela — sem tratamento como somente-leitura, sem expansão de contrato pedida ao ERP. Remoção visual no frame `PDV Online Web - Modal cadastro de cliente` (`design/CentriumCheckout.pen`) ainda não aplicada nesta rodada, só o requisito foi corrigido. Ver `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases).
+4. **URL da opção "Relatório de resumo de caixa" no menu gerencial (item 12):** mesmo link da opção "Central de movimentação não fiscal" (`WPMovimentoNaoFiscal_Lancamento.aspx`), apesar da descrição de conteúdo distinta no design. Ver `.specs/codebase/ARCHITECTURE.md` (seção Responsividade).
+
+**Reason:** Fechar pendências de produto que não dependiam de nova inspeção de KB/contrato, só de decisão do usuário — reduzindo o índice de `.specs/project/PENDENCIES.md` antes da fase Design de `carrinho-produto-precificacao`.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/project/PENDENCIES.md` (itens 5, 6, 9, 12 e 21 removidos da seção 1), `.specs/features/pagamento-pix/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/codebase/ARCHITECTURE.md` e `.specs/codebase/CONCERNS.md` atualizados para refletir. Duas pendências de implementação ficam abertas para a equipe do ERP: o campo `produtoCancelado` (novo) e a remoção visual dos campos de crédito no Pencil (trabalho de design, não de requisito).
+
+---
+
+### AD-027: Mecanismo de editabilidade de produto ao TAB na grid confirmado por decisão do usuário — estreita pendência #4 (2026-08-24)
+
+**Decision:** A flag de editabilidade do cadastro do produto decide se o TAB no campo de código insere a linha ou não — não é sobre campos ficarem somente-leitura depois de já inseridos (duas redações anteriores desta mesma decisão, no mesmo dia, erraram esse ponto). Especificamente:
+- Produto **não editável** → TAB insere a linha diretamente na grid nesse mesmo momento, com `preço`, `unidade de medida`, `quantidade` e `desconto` somente-leitura (mesmo fluxo de `CART-01`/`CART-02`).
+- Produto **editável** → TAB **não** insere a linha; o foco pula para os campos `preço`, `unidade de medida`, `quantidade` e `desconto`, liberando edição desses valores. A linha só entra efetivamente na grid quando o operador aciona o botão `+` já previsto na UI — não há inserção automática ao fim da edição.
+
+**Verificação na KB real do GenExus (MCP `genexus`, KB `CentriumDEVU6`):** lido `SDTCheckout_GetProduto` (estrutura completa) e `PCheckout_GetProduto` (source, que popula o SDT a partir da tabela `Materiais`, atributos `Mat*` como `MatCodRed`/`MatPreVen1-5`/`MatUniVen`/`MatProdPes`). Buscas por `MatEdit*`, `MatBloq*` e `MatPermite*` na KB não retornaram nenhum atributo. **Confirmado: não existe hoje nenhum campo de editabilidade no contrato nem na origem** — não é falta de mapeamento no SDT, é lacuna real de dado no ERP.
+**Reason:** Fechar mais uma pendência de UI de `carrinho-produto-precificacao` antes da fase Design, mesmo objetivo de AD-025/AD-026.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/project/PENDENCIES.md` (item 4, categoria realinhada de "comportamento de UI não desenhado" para "pergunta de contrato/KB", com achado de KB anexado) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases) atualizados. Falta ao ERP criar o campo de editabilidade no contrato — mesmo status "PENDÊNCIA DEV" do item 13 (`.specs/project/PENDENCIES.md`).
+
+---
+
+### AD-028: Formato de código de barras pesável confirmado por decisão direta do usuário — resolve pendência #3 (2026-08-24)
+
+**Decision:** Um código de barras bipado identifica um produto pesável (gerado por balança) quando tem **13 dígitos** e **começa com `2`**. Essa é a condição completa de detecção no lado do Checkout — não depende de nenhum campo do contrato (`ProdutoPesavel`/`MatProdPes`/`DavMatProdPes` continuam servindo só para o cadastro saber que o produto *pode* ser pesado, não para o parse do código bipado em si). O formato confirma a hipótese de padrão EAN-13 de balança levantada em AD-023, descartando a alternativa de sintaxe `código*quantidade`.
+
+**Escopo da resolução:** a decisão do usuário fecha a detecção (comprimento + prefixo). A extração exata dos demais dígitos do código (faixa reservada ao código reduzido do produto vs. faixa reservada ao peso/valor, mais dígito verificador) segue sem confirmação — nenhuma lógica de parse foi localizada na KB (AD-023) e o usuário não detalhou o restante da máscara nesta rodada. Tratado como detalhe de implementação a confirmar na fase Design, não mais como pendência bloqueante de requisito.
+
+**Reason:** Fechar mais uma pendência de produto de `carrinho-produto-precificacao` antes da fase Design, mesmo objetivo de AD-025/AD-026/AD-027.
+**Trade-off:** Nenhum na detecção; o parse fino dos dígitos internos ainda pode exigir ajuste quando a equipe do ERP confirmar a máscara completa.
+**Impact:** `.specs/project/PENDENCIES.md` (item 3 removido da seção 1), `.specs/codebase/CONCERNS.md` (bullet movido de "sem confirmação" para "resolvido") e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases) atualizados.
+
+---
+
+### AD-029: Sintaxe `código*quantidade` e inserção via Enter confirmadas por decisão direta do usuário — complementa CART-02 (2026-08-24)
+
+**Decision:** No fluxo de inserção direta por código conhecido (`CART-02`), quando o operador **digita** (não bipa) o código e pressiona Enter:
+- Se digitar só o código → o sistema carrega o produto (`GetProduto`) e insere a linha na grid com quantidade `1` (padrão).
+- Se digitar no formato `código*quantidade` (ex.: `12345*3`) → o sistema carrega o produto pela parte antes do `*` e aplica o valor após o `*` diretamente ao campo de quantidade do item, inserindo a linha já com essa quantidade.
+
+**Distinção de AD-028:** este é um mecanismo de **digitação manual** via teclado, não de leitura de código de barras **bipado** (scanner). AD-028 resolveu como o Checkout reconhece um código de barras *bipado* de produto pesável (13 dígitos, prefixo `2`, sem `*`); esta decisão (AD-029) é ortogonal — trata de um atalho de teclado para informar quantidade na hora de digitar qualquer código de produto, pesável ou não.
+
+**Reason:** Fechar detalhe de comportamento da story `P1: Inserção direta por código conhecido`, ainda não coberto pelas Acceptance Criteria existentes.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/features/carrinho-produto-precificacao/spec.md` (nova AC3 na story de inserção direta, Independent Test estendido).
 
 ---
 
@@ -281,4 +349,4 @@ Capture in-progress thoughts and action items that don't fit in active tasks.
 - [ ] Confirmar com a equipe do ERP o endpoint/mecanismo de "marcar DAV como importado/em faturamento" — **Atualizado (2026-08-21, AD-024):** confirmado via KB que não é só nomenclatura — não existe hoje nenhum caminho de código que escreva em `DavDocFNum`/status do DAV a partir do Checkout; é mudança de KB do ERP a ser priorizada, não resposta simples. Ver `.specs/features/importacao-dav/spec.md` (Edge Cases).
 - [ ] Confirmar com a equipe do ERP a semântica dos códigos de retorno de `GetStatusSistema` (`CadStatus`) — **Atualizado (2026-08-21, AD-024):** confirmado que o próprio ERP não documenta esses códigos na KB (`Documentation`/`Help` vazios); não é recuperável por inspeção de KB, só por conversa direta. Ver `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases).
 - [ ] Confirmar com a equipe do ERP o formato de código de barras pesável (`ProdutoPesavel`/`DavMatProdPes`) — **Atualizado (2026-08-21, AD-024):** achado adicional (o `Default('E')` de `wManutencaoImplantacaoProdutos` está comentado/inativo) não muda a conclusão de AD-023: segue sem lógica de parse localizável via KB. Ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
-- [ ] Confirmar com a equipe do ERP/produto se o Checkout pode inferir `usaPrecoPorQuantidade` localmente a partir de `QtdMinimaPreco2 > 0`, já que nenhum flag equivalente existe no contrato ou na KB (2026-08-21, AD-024) — ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
+- [x] ~~Confirmar com a equipe do ERP/produto se o Checkout pode inferir `usaPrecoPorQuantidade` localmente a partir de `QtdMinimaPreco2 > 0`, já que nenhum flag equivalente existe no contrato ou na KB (2026-08-21, AD-024)~~ — **Resolvido (2026-08-24, AD-025):** não é inferência — `SessaoUsuario.TipoPreco = 8` é o sinal oficial de preço por faixa de quantidade, confirmado por regra de negócio direta do usuário. Ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).

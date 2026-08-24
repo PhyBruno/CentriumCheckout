@@ -28,7 +28,7 @@ Não há banco de dados nem lógica de negócio própria do Checkout — toda fo
 
 | Camada | Tecnologia | Responsabilidade | Persiste? |
 |---|---|---|---|
-| Configuração do tenant/PDV | Dexie (IndexedDB) | Flags de comportamento gerais vindas do payload de bootstrap (~5MB) (ex.: `usaPrecoPorQuantidade` ⚠️ nome de campo não confirmado no schema de `GetSessao`, regras de arredondamento, formas de pagamento habilitadas) | Sim — sobrevive a F5, atualizado por versão/hash para evitar re-transferência desnecessária |
+| Configuração do tenant/PDV | Dexie (IndexedDB) | Flags de comportamento gerais vindas do payload de bootstrap (~5MB) (ex.: `SessaoUsuario.TipoPreco` — domain `EmpDefPre`, `1`-`11`, indica o preço a aplicar; `8` = por faixa de quantidade, `9` = por lista — ver AD-025 em `.specs/project/STATE.md` —, regras de arredondamento, formas de pagamento habilitadas) | Sim — sobrevive a F5, atualizado por versão/hash para evitar re-transferência desnecessária |
 | Produto | TanStack Query | Busca por SKU/código de barras no ERP, no ato da inserção. Retorna `preco1..preco5` e as faixas de quantidade do próprio produto | Não — cache em memória com `staleTime: Infinity` durante a venda; descartado ao finalizar/cancelar |
 | Formas/condições de pagamento | TanStack Query | Cache em memória, `staleTime` de 30 minutos | Não |
 | Venda em andamento (carrinho) | Zustand (sem `persist`) | Itens, cliente selecionado, vendedor selecionado (ver `.specs/features/selecao-vendedor/spec.md`), descontos | Não — vive só em memória durante a sessão; não sobrevive a F5 (ver AD-006 em `.specs/project/STATE.md`) |
@@ -60,7 +60,7 @@ No design (`design/CentriumCheckout.pen`), a tela principal desktop já está mo
 | Opção no design | Descrição no design | Destino |
 |---|---|---|
 | "Central de movimentação não fiscal" | "Sangria, suprimento e outras movimentações de caixa" | `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx` (confirmado pelo usuário) |
-| "Relatório de resumo de caixa" | "Totais, formas de pagamento e fechamento do caixa" | ⚠️ **pendente** — URL da tela legada equivalente não foi confirmada pelo usuário; não presumir que é a mesma `WPMovimentoNaoFiscal_Lancamento.aspx` da primeira opção, já que o conteúdo descrito (relatório de fechamento de caixa) é distinto de movimentação não fiscal |
+| "Relatório de resumo de caixa" | "Totais, formas de pagamento e fechamento do caixa" | `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx` — **Resolvido (2026-08-24, AD-026):** confirmado pelo usuário que as duas opções apontam para o mesmo link, apesar da descrição de conteúdo distinta no design |
 
 Cada opção é só um link/navegação para fora do Checkout — nenhuma das duas é implementada como funcionalidade dentro da SPA (sem chamada de API própria, sem estado no Zustand). Ver `.specs/codebase/CONCERNS.md`, "Telas desenhadas sem spec de requisito", para o histórico da pendência.
 

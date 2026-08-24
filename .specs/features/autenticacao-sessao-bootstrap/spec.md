@@ -6,7 +6,16 @@ O operador já está autenticado no ERP e não deve digitar credenciais de novo 
 
 ## UI Design
 
-Nenhuma tela dedicada identificada em `design/CentriumCheckout.pen` — o fluxo é automático (sem interação do operador). A tela de carregamento bloqueante do requisito `AUTH-05` ainda não tem frame correspondente no Pencil — ⚠️ pendente de design visual, mas pode ser implementada como skeleton via Boneyard sem depender de um mockup dedicado (AD-005 em `.specs/project/STATE.md`).
+O fluxo de login/troca de token é automático (sem interação do operador, sem tela própria). A tela de carregamento bloqueante do requisito `AUTH-05` tem frame dedicado no Pencil: **"PDV Online Web - Skeleton Carregamento"** (id `BIu92`, em `design/CentriumCheckout.pen`) — replica a estrutura completa da tela principal do PDV com placeholders shimmer (gradiente cinza) no lugar do conteúdo real:
+
+- Barra superior com a marca/identidade do PDV já visível (não é skeleton) — "Centrium Checkout" + identificação de caixa/PDV
+- Bloco "Cliente da venda" (campos CPF/nome/botões) em skeleton
+- Bloco "Entrada rápida de produto" (código, quantidade, unidade, preço, desconto, total) em skeleton
+- Tabela "Produtos da venda" com cabeçalho + 6 linhas em skeleton
+- Rodapé da venda (status do carrinho, subtotal) em skeleton
+- Painel lateral "Pagamento e totais" (condição, desconto/acréscimo, forma de pagamento, valor recebido, pagamentos aplicados, cartão de total da venda) em skeleton
+
+Implementação segue via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`), usando este frame como referência visual — não é necessário reproduzir pixel a pixel, o Boneyard gera o shimmer em runtime a partir da estrutura de layout real dos componentes.
 
 ## Goals
 
