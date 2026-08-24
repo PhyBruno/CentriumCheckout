@@ -13,6 +13,45 @@ Checkout web para operadores de caixa do ERP Centrium — SPA React acessada exc
 
 **Convenções e regras de código:** ainda a definir quando o scaffolding existir (ver `.specs/project/ROADMAP.md`). **Regras de processo (git workflow, gates obrigatórios) já estão definidas em `rules.md` na raiz do repo.**
 
+## Spec-Driven Development (Obrigatório)
+
+Este projeto usa **[Spec Kit](https://github.com/github/spec-kit)** como framework de desenvolvimento orientado por especificação. Toda nova feature, bugfix, ou refatoração deve começar com a sequência de commands obrigatória:
+
+1. **`/speckit.specify`** — Defina requisitos formais, comportamentos esperados, invariantes e casos de limite **antes** de qualquer implementação
+2. **`/speckit.tasks`** — Gere tarefas decompostas em dependência topológica (Setup → Foundational → Feature → Testing)
+3. **`/speckit.implement`** — Execute tarefas na ordem, com contexto de especificação injetado em cada passo
+
+**Por quê:** Este projeto começou em pré-código (`.specs/`); Spec Kit garante que toda implementação futura mantenha a rastreabilidade entre requisito-design-implementação, reduzindo ambiguidade e retrabalho.
+
+**📖 Guia operacional completo:** Ver `SPECKIT.md` na raiz do repo para sequência exata, exemplos e troubleshooting.
+
+**Combinação com outras skills:**
+
+- **Ao especificar:** Nenhuma outra skill é acionada automaticamente — `tlc-spec-driven` (skill global) cobre o processo genérico, mas `specify` é sua materialização declarativa.
+- **Ao gerar tarefas:** `/speckit.tasks` sai de um `speckit.json` — não usa outras skills para gerar; é puro sequenciamento de dependência.
+- **Ao implementar (`/speckit.implement`):** Aqui SIM, acionam-se as skills relevantes conforme tipo de tarefa:
+  - **Componente React ou hook** → Ativa `ecc:react-build`, `ecc:react-review`, `vitest-testing-library-react` (skill de projeto)
+  - **Lógica de precificação** → `money-precision` (skill de projeto, maior risco)
+  - **State management (Zustand)** → `zustand-immer-state` (skill de projeto)
+  - **Validação de entrada** → `zod-boundary-validation` (skill de projeto)
+  - **Query de dados (TanStack)** → `tanstack-query-checkout` (skill de projeto)
+  - **Persistência (Dexie)** → `dexie-bootstrap-cache` (skill de projeto)
+  - **TypeScript strict** → `typescript-strict` (skill de projeto) — obrigatória antes de qualquer `git push`
+  - **Testes end-to-end** → `ecc:e2e-testing` (skill global)
+  - **Security** → `owasp-security` (skill global) — obrigatória antes de merge para `main`
+
+**MCPs/plugins que aumentam Spec Kit:**
+
+- **`genexus`** (user scope) — Ao descrever endpoints/contracts de API nos requisitos, consulte direto a KB GenExus do ERP para confirmar contratos atuais (ex.: AD-023/AD-024 em `.specs/project/PENDENCIES.md`)
+- **`context7`** (user scope) — Ao especificar padrões de React/Vite/TS/Zod, busque docs atuais das versões fixadas neste projeto (React 19, Zod 4, Zustand 5)
+- **`dual-graph`** (project scope, local MCP) — Contexto semântico do repo injeta ao `specify` sugestões de padrões já usados
+
+**Não acionadas por Spec Kit (use manualmente conforme necessário):**
+
+- `ecc:tdd-workflow` — É complementar a `speckit.implement`, não automático. Se a tarefa gerada por Spec Kit tiver critérios de aceitação testáveis, ative RED/GREEN/checkpoint via `ecc:tdd-workflow` dentro daquela tarefa.
+- `superpowers:brainstorming`, `superpowers:test-driven-development` — Usados fora de Spec Kit, para exploração antes de `specify`.
+- **Skills globais genéricas** (`ecc:frontend-patterns`, `ecc:error-handling`, etc.) — Use quando `speckit.implement` indicar a tarefa, não preventivamente.
+
 # Dual-Graph Context Policy
 
 This project uses a local dual-graph MCP server for efficient context retrieval.

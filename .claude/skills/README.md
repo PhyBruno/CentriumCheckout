@@ -17,9 +17,10 @@
 
 ## Skills globais já usadas (não duplicadas aqui)
 
-- `ecc:tdd-workflow` — fluxo TDD (RED/GREEN/checkpoint git), 80%+ cobertura
-- `superpowers:test-driven-development` — processo TDD genérico, complementar
-- `tlc-spec-driven` — Spec-Driven Development em 4 fases (Specify/Design/Tasks/Execute)
+- **`/speckit.specify`, `/speckit.tasks`, `/speckit.implement`** — [Spec Kit](https://github.com/github/spec-kit) do GitHub (framework obrigatório de spec-driven development). Ver seção "Spec-Driven Development" em `CLAUDE.md` para workflow completo de acionamento e integração com outras skills.
+- `ecc:tdd-workflow` — fluxo TDD (RED/GREEN/checkpoint git), 80%+ cobertura; acionado **dentro** de tarefas Spec Kit quando há critérios testáveis
+- `superpowers:test-driven-development` — processo TDD genérico, complementar; usado fora de Spec Kit para exploração prévia
+- `tlc-spec-driven` — Spec-Driven Development em 4 fases (Specify/Design/Tasks/Execute); `speckit` materializa isso de forma declarativa em `speckit.json`
 - `ecc:e2e-testing` — Playwright, Page Object Model, CI/CD
 - `ecc:frontend-patterns`, `ecc:vite-patterns`, `ecc:coding-standards`, `ecc:error-handling`, `ecc:frontend-a11y` — padrões gerais de React/Vite/TS
 - `ui-ux-pro-max` — decisões de design/UX (paletas, tipografia, componentes), camada separada da qualidade de código
