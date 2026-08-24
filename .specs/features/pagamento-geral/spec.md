@@ -33,6 +33,24 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 ---
 
+### P1: Roteamento da integração por meio de pagamento ⭐ MVP
+
+**User Story**: Como Checkout, quero identificar a integração correta a partir da forma de pagamento selecionada, para chamar PIX ou TEF somente quando aplicável.
+
+**Why P1**: O campo `FormaMeioPagtoNFe` já é retornado pelo ERP junto de cada forma permitida e é a fonte de verdade para o roteamento operacional atual.
+
+**Acceptance Criteria**:
+
+1. WHEN `FormaMeioPagtoNFe` for `CartaoCredito` ou `CartaoDebito` AND `ConfiguracoesTEF.TEFAtivo` for `true` THEN o sistema SHALL chamar a integração TEF local e somente adicionar o pagamento após a aprovação do TEF.
+2. WHEN `FormaMeioPagtoNFe` for `Pix` AND `ConfiguracoesPIX.UtilizaCentriumPAG` for `true` THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/GerarPIX`, consultar `GET /ApiCentriumOAuth/StatusPIX` a cada 10 segundos e somente adicionar o pagamento após a aprovação do PIX.
+3. WHEN `FormaMeioPagtoNFe` for `PixEstatico` THEN o sistema SHALL NOT tratá-la como PIX dinâmico nem encaminhá-la automaticamente para `GerarPIX`.
+4. WHEN `FormaMeioPagtoNFe` tiver qualquer outro valor THEN o sistema SHALL seguir o fluxo normal da forma, sem chamar a integração TEF ou o fluxo PIX dinâmico.
+5. WHEN a flag global da integração correspondente estiver `false` THEN o sistema SHALL ocultar ou desabilitar as formas que dependem daquela integração, conforme `PAY-02` e `PAY-03`.
+
+**Independent Test**: Mockar formas com `FormaMeioPagtoNFe` igual a `CartaoCredito`, `CartaoDebito`, `Pix`, `PixEstatico` e `Dinheiro`; confirmar que somente cartão de crédito/débito chama TEF, somente `Pix` chama o fluxo PIX dinâmico e as demais formas não chamam integração externa.
+
+---
+
 ### P2: Ticket devolução na condição de pagamento
 
 **User Story**: Como operador de caixa, quero aplicar um ticket devolução em uma forma de pagamento elegível, sem validação redundante na finalização.
@@ -51,6 +69,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 ## Edge Cases
 
+- WHEN uma forma de pagamento é selecionada THEN o Checkout SHALL rotear a operação pelo valor de `FormaMeioPagtoNFe`: `CartaoCredito` e `CartaoDebito` usam TEF; `Pix` usa PIX dinâmico; `PixEstatico` não usa automaticamente o fluxo PIX dinâmico; os demais valores não usam essas integrações.
 - WHEN o Checkout precisa classificar uma forma de pagamento (dinheiro/cartão/TEF/duplicata) para regras de troco/crédito THEN o sistema SHALL usar `FormaMeioPagtoNFe` (domínio `NFCe_FormaPagto`) e `FormaFpgUtiCar` (indica vale devolução `VDV`, campo do contrato mapeado de `FpgUtiCar` no KB). **Resolvido (2026-08-21, AD-023):** classificação completa confirmada na KB do GenExus — domain `NFCe_FormaPagto` tem os valores `Dinheiro, Cheque, CartaoCredito, CartaoDebito, CreditoLoja, ValeAlimentacao, ValeRefeicao, ValePresente, ValeCombustivel, DuplicataMercantil, BoletoBancario, DepositoBancario, Pix, TransferenciaBancaria, ProgaramaFidelidade (sic, typo no KB), PixEstatico, CreditoEmLoja, PagamentoNaoInformado, SemPagamento, PagamentoPosterior, Outros` — superset da tabela SEFAZ padrão. **(2026-08-21, AD-024):** `FormaFpgUtiCar` confirmado presente no contrato (ver Story P2/PAY-07) — só vazio quando a empresa não tem regra dinâmica de pagamento configurada.
 - WHEN qualquer um dos endpoints de pagamento é chamado (`GerarPIX`, `ValidaTicketDevolucao`, `FaturarNFCe`) THEN o sistema SHALL enviar `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`), exigido pelo contrato. Aplica-se também a `GerarPIX`, específico de `.specs/features/pagamento-pix/spec.md`.
 
@@ -63,11 +82,12 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 | PAY-01 | Carregar formas/condições (cache 30min) | - | Verified |
 | PAY-02 | Ocultar TEF quando `TEFAtivo=false` | - | Verified (AC completo em `.specs/features/pagamento-tef/spec.md`) |
 | PAY-03 | Ocultar PIX quando `UtilizaCentriumPAG=false` | - | Verified (AC completo em `.specs/features/pagamento-pix/spec.md`) |
+| PAY-08 | Roteamento por `FormaMeioPagtoNFe` para TEF/PIX | - | Verified (regra confirmada pelo usuário em 2026-08-24) |
 | PAY-05 | Ticket devolução — valor via `ValidaTicketDevolucao` | - | Verified (2026-08-21, AD-023 — `ValorTicket` confirmado; elegibilidade via comparação de `Mensagem` a `'Ticket Válido'`) |
 | PAY-06 | Ticket devolução — sem revalidação na finalização | - | Verified |
 | PAY-07 | Ticket devolução — elegibilidade por forma de pagamento (`FormaFpgUtiCar`) | - | Verified (2026-08-21, AD-024 — campo confirmado no contrato e na KB, com ressalva de poder vir vazio no fallback sem regra dinâmica) |
 
-**Coverage:** 6 total, 0 edge cases pendentes. `PAY-04` (status PIX) fica em `.specs/features/pagamento-pix/spec.md`.
+**Coverage:** 7 total, 0 edge cases pendentes. `PAY-04` (status PIX) fica em `.specs/features/pagamento-pix/spec.md`.
 
 ---
 
