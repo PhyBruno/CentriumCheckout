@@ -82,7 +82,6 @@ Rodada de esclarecimentos combinando resposta direta do usuário e inspeção do
 
 **Continua sem confirmação (precisa de contato direto com a equipe do ERP, não só KB):**
 
-- **Formato de código de barras pesável (`ProdutoPesavel`/`DavMatProdPes`):** nenhuma lógica de parse de código de barras pesável (padrão prefixo+peso+dígito verificador) foi encontrada em varredura de ~6% do KB (8090 objetos). Achado lateral: o campo tem valor default `'E'` em `wManutencaoImplantacaoProdutos`, o que sugere um código de caractere único com múltiplos valores possíveis — não um simples flag `S`/`N`. Ver `.specs/features/carrinho-produto-precificacao/spec.md`.
 - **Mecanismo de "marcar DAV como importado/em faturamento":** resposta direta do usuário — não existe endpoint separado; ao importar e faturar a DAV, o próprio `FaturarNFCe` já trata isso, mas exige um campo preenchido no SDT `CheckoutFaturarNFCe` cujo nome exato ainda **não foi definido** (marcado explicitamente pelo usuário como "PENDÊNCIA DEV"). Ver `.specs/features/importacao-dav/spec.md`.
 
 Nota: o "Modal CFOP", inicialmente também sem spec, foi avaliado e removido do design pelo usuário em 2026-08-20 — não é mais uma lacuna, está deliberadamente fora de escopo.
@@ -121,6 +120,12 @@ Diferente das rodadas anteriores (inspeção de KB via subagente, AD-023/AD-024)
 - **`usaPrecoPorQuantidade` (nome real do campo):** resolvido — **não existe flag booleano separado no contrato.** O modo "preço por faixa de quantidade" (CART-04/CART-05) é indicado pelo próprio `SessaoUsuario.TipoPreco = 8`, substituindo a hipótese anterior (AD-024) de inferir via `QtdMinimaPreco2 > 0`.
 
 Ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases, Acceptance Criteria e Requirement Traceability atualizados).
+
+## Formato de código de barras pesável — RESOLVIDO (2026-08-24, AD-028, decisão direta do usuário)
+
+**Resolvido:** um código de barras bipado com **13 dígitos**, começando em `2`, indica produto gerado por balança (pesável). Confirma o padrão EAN-13 de balança já levantado como hipótese em AD-023, descartando a sintaxe alternativa `código*quantidade`. `ProdutoPesavel`/`MatProdPes`/`DavMatProdPes` (contrato) seguem servindo só para o cadastro indicar que o produto *pode* ser pesado — não fazem parte do parse do código bipado em si.
+
+**Continua sem confirmação:** a extração fina dos demais 12 dígitos do código (faixa do código reduzido do produto vs. faixa de peso/valor vs. dígito verificador) não foi detalhada nesta rodada — nenhuma lógica de parse completa foi localizada na KB (AD-023). Tratado como detalhe de implementação a confirmar na fase Design, não mais como pendência bloqueante de requisito. Ver `.specs/features/carrinho-produto-precificacao/spec.md`.
 
 ## `goey-toast` e `boneyard` embutem arquivos de instrução voltados a agentes de IA
 

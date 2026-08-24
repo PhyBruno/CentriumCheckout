@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-24T13:25:58.920849+00:00",
+    "updated_at": "2026-08-24T14:05:45.671100+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -286,7 +286,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.791283+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.982757+00:00",
+    "updated_at": "2026-08-24T14:03:07.093841+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -579,7 +579,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.831415+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.950209+00:00",
+    "updated_at": "2026-08-24T14:05:45.680284+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -661,40 +661,6 @@
     }
   },
   {
-    "id": "mem:1787257671987",
-    "kind": "decision",
-    "content": "AD-018: Boneyard/Goey Toast/shadcn-ui instalados como depend\u00eancias npm reais (n\u00e3o skill adaptada); registrada ressalva de seguran\u00e7a sobre SKILL.md/CLAUDE.md embutidos nos pacotes goey-toast e boneyard, voltados a agentes de IA",
-    "tags": [
-      "018",
-      "boneyard",
-      "goey",
-      "toast",
-      "shadcn",
-      "instalados",
-      "como",
-      "depend"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/codebase/CONCERNS.md",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:27:51.987524+00:00",
-    "created_epoch": 1787257671,
-    "updated_at": "2026-08-20T20:27:51.987529+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787257672011",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -718,7 +684,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-24T13:25:58.994741+00:00",
+    "updated_at": "2026-08-24T14:05:45.687933+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -848,45 +814,6 @@
     }
   },
   {
-    "id": "mem:1787322600000",
-    "kind": "decision",
-    "content": "AD-023: novo ApiCentriumOAuth.yaml resolve GetListaClientes/StatusPIX/GetListaVendedores/GetListaNFCes; KB GenExus confirma DescontoConvenio%, FormaMeioPagtoNFe, NumeroNota, ValidaTicketDevolucao",
-    "tags": [
-      "023",
-      "apicentriumoauth",
-      "genexus",
-      "getlistavendedores",
-      "resolve",
-      "pendencias",
-      "api"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/codebase/INTEGRATIONS.md",
-      ".specs/features/selecao-vendedor/spec.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/importacao-dav/spec.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T14:30:00.000000+00:00",
-    "created_epoch": 1787322600,
-    "updated_at": "2026-08-21T14:30:00.000000+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787334007679",
     "kind": "decision",
     "content": "AD-023: novo ApiCentriumOAuth.yaml + verificacao KB GenExus resolvem maioria das pendencias de API (GetListaClientes, StatusPIX, GetListaVendedores, GetListaNFCes, DescontoConvenio%, FormaMeioPagtoNFe, NumeroNota, ValidaTicketDevolucao)",
@@ -985,7 +912,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T17:44:16.509506+00:00",
     "created_epoch": 1787334256,
-    "updated_at": "2026-08-24T13:25:58.912611+00:00",
+    "updated_at": "2026-08-24T14:03:07.086106+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1053,39 +980,6 @@
     "created_at": "2026-08-24T13:06:13.434293+00:00",
     "created_epoch": 1787576773,
     "updated_at": "2026-08-24T13:06:13.434298+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787577304460",
-    "kind": "decision",
-    "content": "AD-025: TipoPreco/EmpDefPre confirmado pelo usu\u00e1rio; corrige AD-023/AD-024, resolve pend\u00eancia usaPrecoPorQuantidade (era TipoPreco=8); ARCHITECTURE.md linha do Dexie atualizada",
-    "tags": [
-      "025",
-      "tipopreco",
-      "empdefpre",
-      "confirmado",
-      "pelo",
-      "usu",
-      "rio",
-      "corrige"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/codebase/ARCHITECTURE.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-24T13:15:04.460055+00:00",
-    "created_epoch": 1787577304,
-    "updated_at": "2026-08-24T13:15:04.460061+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1167,5 +1061,94 @@
       "recent_action_kinds": [],
       "recent_queries": []
     }
+  },
+  {
+    "id": "mem:1787580345669",
+    "kind": "decision",
+    "content": "AD-029: sintaxe codigo*quantidade + Enter para insercao direta com quantidade, complementa CART-02, distinto de AD-028",
+    "tags": [
+      "029",
+      "sintaxe",
+      "codigo",
+      "quantidade",
+      "enter",
+      "para",
+      "insercao",
+      "direta"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-24T14:05:45.669373+00:00",
+    "created_epoch": 1787580345,
+    "updated_at": "2026-08-24T14:05:45.669378+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787583600000",
+    "kind": "decision",
+    "content": "AD-028: formato de codigo de barras pesavel resolvido - 13 digitos comecando em 2 indica balanca; resolve pendencia #3",
+    "tags": [
+      "028",
+      "pesavel",
+      "codigo-de-barras",
+      "resolve",
+      "pendencia",
+      "usuario"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md",
+      ".specs/project/STATE.md",
+      ".specs/codebase/CONCERNS.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-24",
+    "created_epoch": 1787583600,
+    "updated_at": "2026-08-24",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787584200000",
+    "kind": "decision",
+    "content": "AD-029: sintaxe codigo*quantidade + Enter para insercao direta com quantidade, distinta do AD-028 (codigo pesavel bipado)",
+    "tags": [
+      "029",
+      "codigo-quantidade",
+      "enter",
+      "insercao-direta",
+      "usuario"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-24",
+    "created_epoch": 1787584200,
+    "updated_at": "2026-08-24",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   }
 ]

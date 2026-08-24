@@ -284,6 +284,32 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-028: Formato de código de barras pesável confirmado por decisão direta do usuário — resolve pendência #3 (2026-08-24)
+
+**Decision:** Um código de barras bipado identifica um produto pesável (gerado por balança) quando tem **13 dígitos** e **começa com `2`**. Essa é a condição completa de detecção no lado do Checkout — não depende de nenhum campo do contrato (`ProdutoPesavel`/`MatProdPes`/`DavMatProdPes` continuam servindo só para o cadastro saber que o produto *pode* ser pesado, não para o parse do código bipado em si). O formato confirma a hipótese de padrão EAN-13 de balança levantada em AD-023, descartando a alternativa de sintaxe `código*quantidade`.
+
+**Escopo da resolução:** a decisão do usuário fecha a detecção (comprimento + prefixo). A extração exata dos demais dígitos do código (faixa reservada ao código reduzido do produto vs. faixa reservada ao peso/valor, mais dígito verificador) segue sem confirmação — nenhuma lógica de parse foi localizada na KB (AD-023) e o usuário não detalhou o restante da máscara nesta rodada. Tratado como detalhe de implementação a confirmar na fase Design, não mais como pendência bloqueante de requisito.
+
+**Reason:** Fechar mais uma pendência de produto de `carrinho-produto-precificacao` antes da fase Design, mesmo objetivo de AD-025/AD-026/AD-027.
+**Trade-off:** Nenhum na detecção; o parse fino dos dígitos internos ainda pode exigir ajuste quando a equipe do ERP confirmar a máscara completa.
+**Impact:** `.specs/project/PENDENCIES.md` (item 3 removido da seção 1), `.specs/codebase/CONCERNS.md` (bullet movido de "sem confirmação" para "resolvido") e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases) atualizados.
+
+---
+
+### AD-029: Sintaxe `código*quantidade` e inserção via Enter confirmadas por decisão direta do usuário — complementa CART-02 (2026-08-24)
+
+**Decision:** No fluxo de inserção direta por código conhecido (`CART-02`), quando o operador **digita** (não bipa) o código e pressiona Enter:
+- Se digitar só o código → o sistema carrega o produto (`GetProduto`) e insere a linha na grid com quantidade `1` (padrão).
+- Se digitar no formato `código*quantidade` (ex.: `12345*3`) → o sistema carrega o produto pela parte antes do `*` e aplica o valor após o `*` diretamente ao campo de quantidade do item, inserindo a linha já com essa quantidade.
+
+**Distinção de AD-028:** este é um mecanismo de **digitação manual** via teclado, não de leitura de código de barras **bipado** (scanner). AD-028 resolveu como o Checkout reconhece um código de barras *bipado* de produto pesável (13 dígitos, prefixo `2`, sem `*`); esta decisão (AD-029) é ortogonal — trata de um atalho de teclado para informar quantidade na hora de digitar qualquer código de produto, pesável ou não.
+
+**Reason:** Fechar detalhe de comportamento da story `P1: Inserção direta por código conhecido`, ainda não coberto pelas Acceptance Criteria existentes.
+**Trade-off:** Nenhum.
+**Impact:** `.specs/features/carrinho-produto-precificacao/spec.md` (nova AC3 na story de inserção direta, Independent Test estendido).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
