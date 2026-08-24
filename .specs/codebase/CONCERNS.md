@@ -78,7 +78,7 @@ Rodada de esclarecimentos combinando resposta direta do usuário e inspeção do
 
 **Correção de hipótese (não confirmado como esperado):**
 
-- **`TipoPreco` vs. `ListaPreco`:** a hipótese de que ambos seriam o mesmo conceito (índice 0-5 correlacionado a `PrecoVenda1`...`PrecoVenda5`) estava **parcialmente equivocada** — são dois conceitos distintos no KB: `ListaPreco` (`ClienteCheckout.ListaPreco` = atributo `CliListCod`, via `PCheckout_GetCliente`) é a lista de preço **do cliente**; `TipoPreco` (`SessaoUsuario.TipoPreco`, via `PTrazEmpDefP.Call`) é uma configuração padrão **da empresa**. Nenhum dos dois domains tem Documentation/Help ou enum de valores válidos no KB — o range real (0-5?) não está confirmado para nenhum dos dois. Pendência permanece, mas com caracterização corrigida. Ver `.specs/features/carrinho-produto-precificacao/spec.md`.
+- **`TipoPreco` vs. `ListaPreco`:** a hipótese de que ambos seriam o mesmo conceito (índice 0-5 correlacionado a `PrecoVenda1`...`PrecoVenda5`) estava **parcialmente equivocada** — são dois conceitos distintos no KB: `ListaPreco` (`ClienteCheckout.ListaPreco` = atributo `CliListCod`, via `PCheckout_GetCliente`) é a lista de preço **do cliente**; `TipoPreco` (`SessaoUsuario.TipoPreco`, via `PTrazEmpDefP.Call`) é uma configuração padrão **da empresa**. Nenhum dos dois domains tem Documentation/Help no KB (nunca foi recuperável por inspeção de KB). **Resolvido em 2026-08-24 (regra de negócio confirmada pelo usuário, ver seção abaixo):** o range real de `TipoPreco` é `1` a `11`, não `0`-`5`, e a ligação entre os dois conceitos foi identificada — `TipoPreco = 9` é justamente o caso em que `ListaPreco` do cliente é aplicado. Só a semântica de `TipoPreco` = `6`, `7`, `10` e `11` segue sem confirmação (`.specs/project/PENDENCIES.md`, item 1). Ver `.specs/features/carrinho-produto-precificacao/spec.md`.
 
 **Continua sem confirmação (precisa de contato direto com a equipe do ERP, não só KB):**
 
@@ -102,11 +102,25 @@ Segunda rodada, desta vez lendo o código-fonte real dos objetos na KB (`mcp__ge
 
 **Reforçados (continuam pendentes, agora com evidência mais forte):**
 
-- **`usaPrecoPorQuantidade`:** confirmado ausente em toda a SDT `SessaoUsuario` e em `SDTCheckout_GetProduto` — não existe sob nenhum nome. Hipótese a validar: inferir localmente por `QtdMinimaPreco2 > 0`.
+- **`usaPrecoPorQuantidade`:** confirmado ausente em toda a SDT `SessaoUsuario` e em `SDTCheckout_GetProduto` — não existe sob nenhum nome. Hipótese a validar: inferir localmente por `QtdMinimaPreco2 > 0`. **→ Resolvido em 2026-08-24 (regra de negócio confirmada pelo usuário), ver seção abaixo — a hipótese de `QtdMinimaPreco2 > 0` foi substituída.**
 - **`ProdutoPesavel`/`DavMatProdPes`:** o `Default('E')` de `wManutencaoImplantacaoProdutos` citado em AD-023 está, na verdade, **comentado/inativo** no código; validação de obrigatoriedade trata o campo como texto (`.IsEmpty()`), não booleano. Segue sem lógica de parse de código de barras pesável localizável na KB.
 - **Vínculo `CheckoutFaturarNFCe` ↔ DAV importado:** não é só falta de nome de campo — `genexus_analyze(mode=impact)` em `DavDocFNum` não encontrou nenhuma procedure do Checkout escrevendo nesse campo. Não existe hoje nenhum caminho de código que marque a DAV como faturada a partir do Checkout; é mudança de KB do ERP a priorizar, não resposta simples de nomenclatura.
 - **`GetStatusSistema`:** confirmado que a procedure só repassa `CadStatus` bruto, sem transformação, e o atributo não tem `Documentation`/`Help` na KB — é lacuna de documentação do próprio ERP, não recuperável por inspeção de KB.
 - **`FaturarNFCe.produtos` — trilha de tier de preço:** confirmado, campo a campo, que o array não tem nenhum campo para registrar a faixa de preço aplicada.
+
+## Pendências de campos/semântica do contrato — atualização 2026-08-24 (regra de negócio `TipoPreco`/`EmpDefPre` confirmada pelo usuário)
+
+Diferente das rodadas anteriores (inspeção de KB via subagente, AD-023/AD-024), esta correção veio de resposta direta do usuário sobre a regra de negócio do domain `EmpDefPre`.
+
+**Resolvidos:**
+
+- **`TipoPreco` (`SessaoUsuario.TipoPreco`, via `PTrazEmpDefP.Call`):** confirmado que o valor vai de `1` a `11` e indica **diretamente o preço de venda a aplicar no item** — não é um espelho 0-based de `ListaPreco` como as hipóteses anteriores (AD-023) chegaram a cogitar. De `1` a `5`, é índice direto para `PrecoVenda1`...`PrecoVenda5` (sem faixa de quantidade). De `6` a `11` são casos especiais, dos quais dois já mapeados:
+  - `TipoPreco = 9` — **preço por lista:** aplicar a lista de preço configurada no cadastro do cliente (`ClienteCheckout.ListaPreco`/`CliListCod`, via `PCheckout_GetCliente`); se o cliente não tiver lista própria, usar a lista padrão da empresa, carregada em `SessaoUsuario.listaPrecoPadrao`. Ao chamar `GetProduto` com a lista do cliente informada, o campo `SDTCheckout_GetProduto.PrecoVendaLista` retorna preenchido — é esse o valor a aplicar nesse caso, não `PrecoVenda1`...`PrecoVenda5`.
+  - `TipoPreco = 8` — **preço por faixa de quantidade:** resolve a pendência do item abaixo (`usaPrecoPorQuantidade`).
+  - Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência estreitada, não eliminada. Ver `.specs/project/PENDENCIES.md`, item 1.
+- **`usaPrecoPorQuantidade` (nome real do campo):** resolvido — **não existe flag booleano separado no contrato.** O modo "preço por faixa de quantidade" (CART-04/CART-05) é indicado pelo próprio `SessaoUsuario.TipoPreco = 8`, substituindo a hipótese anterior (AD-024) de inferir via `QtdMinimaPreco2 > 0`.
+
+Ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases, Acceptance Criteria e Requirement Traceability atualizados).
 
 ## `goey-toast` e `boneyard` embutem arquivos de instrução voltados a agentes de IA
 

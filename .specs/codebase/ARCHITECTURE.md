@@ -28,7 +28,7 @@ Não há banco de dados nem lógica de negócio própria do Checkout — toda fo
 
 | Camada | Tecnologia | Responsabilidade | Persiste? |
 |---|---|---|---|
-| Configuração do tenant/PDV | Dexie (IndexedDB) | Flags de comportamento gerais vindas do payload de bootstrap (~5MB) (ex.: `usaPrecoPorQuantidade` ⚠️ nome de campo não confirmado no schema de `GetSessao`, regras de arredondamento, formas de pagamento habilitadas) | Sim — sobrevive a F5, atualizado por versão/hash para evitar re-transferência desnecessária |
+| Configuração do tenant/PDV | Dexie (IndexedDB) | Flags de comportamento gerais vindas do payload de bootstrap (~5MB) (ex.: `SessaoUsuario.TipoPreco` — domain `EmpDefPre`, `1`-`11`, indica o preço a aplicar; `8` = por faixa de quantidade, `9` = por lista — ver AD-025 em `.specs/project/STATE.md` —, regras de arredondamento, formas de pagamento habilitadas) | Sim — sobrevive a F5, atualizado por versão/hash para evitar re-transferência desnecessária |
 | Produto | TanStack Query | Busca por SKU/código de barras no ERP, no ato da inserção. Retorna `preco1..preco5` e as faixas de quantidade do próprio produto | Não — cache em memória com `staleTime: Infinity` durante a venda; descartado ao finalizar/cancelar |
 | Formas/condições de pagamento | TanStack Query | Cache em memória, `staleTime` de 30 minutos | Não |
 | Venda em andamento (carrinho) | Zustand (sem `persist`) | Itens, cliente selecionado, vendedor selecionado (ver `.specs/features/selecao-vendedor/spec.md`), descontos | Não — vive só em memória durante a sessão; não sobrevive a F5 (ver AD-006 em `.specs/project/STATE.md`) |
