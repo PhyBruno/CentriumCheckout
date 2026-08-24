@@ -63,7 +63,7 @@ No mobile, o gatilho de abertura deste modal é o `Campo Vendedor mobile`, dentr
 ## Edge Cases
 
 - WHEN o modal é aberto THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetListaVendedores`. **Resolvido (2026-08-21, AD-023):** o novo `ApiCentriumOAuth.yaml` confirma o endpoint de listagem, exatamente no padrão esperado dos demais endpoints paginados do contrato (`Empresa`, `Txtbusca`, `Pagina`, `Tamanhopagina` como parâmetros; `VendedorCodigo`/`VendedorNome`/`VendedorCGC`/`VendedorFone` por item da lista). As ocorrências pontuais de campos de vendedor já mapeadas continuam válidas para outros fins: `VendedorCodigo`/`VendedorNome` na resposta de `GetSessao` (dados do operador logado, não uma lista), `vendedorCodigo` no corpo de `FaturarNFCe`/`CarregarNFCe` (campo de envio/retorno da venda, não de consulta) e `VendedorCodigo`/`VendedorNome` na resposta de `ListaDAVs`.
-- WHEN uma venda é carregada de um rascunho existente via `CarregarNFCe` (ver `.specs/features/finalizacao-suspensao-venda/spec.md`, `FIN-03`) e a resposta já traz `vendedorCodigo` preenchido THEN ⚠️ pendente: não confirmado se o modal deve pré-selecionar automaticamente esse vendedor, ou se o operador precisa sempre reconfirmar manualmente.
+- WHEN uma venda é carregada de um rascunho existente via `CarregarNFCe` (ver `.specs/features/finalizacao-suspensao-venda/spec.md`, `FIN-03`) e a resposta já traz `vendedorCodigo` preenchido THEN o sistema SHALL pré-selecionar automaticamente esse vendedor. **Resolvido (2026-08-21, AD-024):** confirmado na KB do GenExus — `PCheckout_CarregarNFCe` já monta `&OutCheckoutFaturarNFCe.vendedorCodigo = RepCod` a partir do registro salvo do rascunho (não é um valor vazio a preencher, o próprio ERP devolve o vendedor gravado). O operador pode reconfirmar/trocar manualmente depois, mas o estado inicial do modal deve refletir o vendedor já salvo, não vir em branco.
 - WHEN a listagem de vendedores retorna vazia (nenhum vendedor ativo cadastrado, por exemplo) THEN ⚠️ pendente: comportamento não definido pelo usuário — permitir prosseguir sem vendedor selecionado, ou bloquear a finalização da venda? Precisa confirmação (relacionado ao Edge Case já registrado em `.specs/features/finalizacao-suspensao-venda/spec.md` sobre campos obrigatórios de `FaturarNFCe`).
 - WHEN o operador fecha o modal sem selecionar nenhum vendedor (botão "Cancelar") THEN o sistema SHALL manter o estado anterior da venda (nenhuma alteração de `vendedorCodigo`).
 
@@ -79,7 +79,7 @@ No mobile, o gatilho de abertura deste modal é o `Campo Vendedor mobile`, dentr
 | VEND-04 | Seleção de linha associa `vendedorCodigo` à venda | - | Verified (via design) |
 | VEND-05 | `vendedorCodigo` selecionado é enviado em `FaturarNFCe`, distinto do operador logado | - | Verified (contrato confirma campo em `FaturarNFCe`) |
 
-**Coverage:** 5 total, 0 mapeados a tasks, 0 pendências bloqueantes, 1 edge case pendente de confirmação (pré-seleção de vendedor ao carregar rascunho via `CarregarNFCe`).
+**Coverage:** 5 total, 0 mapeados a tasks, 0 pendências bloqueantes, 0 edge cases pendentes de contrato/KB (pré-seleção de vendedor ao carregar rascunho resolvida em 2026-08-21, AD-024) — resta 1 edge case de decisão de produto (comportamento quando a listagem de vendedores retorna vazia, ver `.specs/project/PENDENCIES.md` #8).
 
 ---
 

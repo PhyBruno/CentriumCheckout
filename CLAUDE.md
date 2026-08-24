@@ -160,3 +160,13 @@ The skill `/owasp-security` must be invoked before any system is deployed to pro
 
 Invoke with: `/owasp-security` or include it in the pre-production checklist workflow.
 
+## Agent skills
+
+### Issue tracker
+
+Issues tracked in GitHub Issues (`PhyBruno/CentriumCheckout`), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Domain documentation lives under `.specs/` (not root `CONTEXT.md`/`docs/adr/`) — project-level specs, codebase docs, and per-feature specs. See `docs/agents/domain.md`.
+
