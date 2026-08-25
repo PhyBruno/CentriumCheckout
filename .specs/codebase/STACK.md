@@ -41,11 +41,11 @@ BFF (Backend for Frontend) mínimo, introduzido em AD-022 (`.specs/project/STATE
 - ERP Centrium: API REST (`ApiCentriumOAuth.yaml`), autenticação OAuth password grant
 - TEF: integração local HTTP (máquina do PDV)
 - Impressão: servidor de impressão local HTTP (máquina do PDV)
-- PIX: via API do ERP (não SSE — consulta ativa por endpoint de status; ⚠️ `StatusPIX` citado historicamente mas não confirmado em `ApiCentriumOAuth.yaml` — ver `.specs/features/pagamento-pix/spec.md` `PAY-04` e `.specs/codebase/CONCERNS.md`)
+- PIX: via API do ERP (não SSE — consulta ativa ao endpoint `StatusPIX`, confirmado no contrato desde AD-023 em `.specs/project/STATE.md` — ver `.specs/features/pagamento-pix/spec.md` `PAY-04`)
 
 ## Development Tools
 
-- Empacotamento/execução: Docker (100% containerizado — dev com hot-reload via volume, produção com build multi-stage servido por Nginx ou equivalente).
+- Empacotamento/execução: Docker (100% containerizado — dev com hot-reload via volume, produção com build multi-stage servido pelo processo Node do BFF mínimo — não Nginx, ver AD-022 em `.specs/project/STATE.md` e seção Backend acima).
 - Imagem-base: `node:<version>-slim` (dev e produção).
 - CI/CD produção: a cada merge na `master`, workflow do GitHub Actions builda a imagem e publica no Docker Hub.
 - CI/CD dev: script PowerShell local que executa todo o processo de build e sobe a imagem, sem depender de Actions.

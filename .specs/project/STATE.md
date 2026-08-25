@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-08-25
-**Current Work:** Nova feature `auditoria-acoes-operador` especificada (AD-061) — trilha de auditoria de todas as ações relevantes do operador durante a venda, entregue ao ERP no campo `Log` de `FaturarNFCe`. AD-062 remove o campo `produtoCancelado` (introduzido em AD-026) do escopo — cancelamento de item passa a ser rastreado só pelo evento `PRODUTO_CANCELADO` do log de auditoria, sem campo dedicado no SDT de produto. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Current Work:** Auditoria de consistência de `.specs/` cruzada com `Fluxograma - Diagrama - Alinhamentos\FLUXOS-MERMAID.md` (fluxo completo do checkout em Mermaid, já existente). Correções pontuais aplicadas em `STACK.md` (referências obsoletas a `StatusPIX` e a Nginx) e `PROJECT.md` (escopo v1 não citava a feature de auditoria, AD-061). Três decisões novas fecham os últimos pontos em aberto do FLUXOS-MERMAID.md: AD-064 (comprovante de TEF/duplicata não é impresso), AD-065 (cancelamento de item sem aprovação de supervisor, sem modal de reautenticação) e AD-066 (display secundário registrado como pendência de escopo, não decidido). Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -667,6 +667,33 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 **Reason:** Resposta direta do usuário identificando um campo do contrato que as buscas anteriores por nome (`MatBloq*`/`MatEdit*`/`MatPermite*`/`ProdutoPesavel`/`MatProdPes`) não tinham encontrado, por não conter esses termos no próprio nome do campo.
 **Trade-off:** Nenhum identificado — só fecha lacunas de contrato já documentadas como pendentes.
 **Impact:** Atualiza `.specs/project/PENDENCIES.md` (remove item 4), `.specs/codebase/CONCERNS.md` (bullet `ProdutoPesavel`/`DavMatProdPes`) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases de TAB/editabilidade e de código de barras pesável, Requirement Traceability/Coverage).
+
+---
+
+### AD-064: Comprovante de TEF e de duplicata não são impressos pelo Checkout (2026-08-25)
+
+**Decision:** O Checkout SHALL imprimir apenas a NFCe (DANFE), via `XMLImpressao` retornado embutido na resposta de `FaturarNFCe` (`FIN-10`, AD-024/AD-037). O sistema NÃO SHALL imprimir comprovante de pagamento TEF nem gerar/imprimir qualquer documento para pagamento em duplicata (`FormaMeioPagtoNFe = DuplicataMercantil`). Fecha, por decisão explícita, os casos de uso "Impressão Comprovantes" e "Impressão Duplicatas" do diagrama de casos de uso em `Fluxograma - Diagrama - Alinhamentos\FLUXOS-MERMAID.md`, que não tinham spec correspondente em nenhuma feature.
+**Reason:** Decisão direta do usuário — o comprovante de TEF já é emitido pelo próprio terminal físico da maquininha, fora do Checkout; duplicata não gera documento de impressão neste produto.
+**Trade-off:** Nenhum identificado.
+**Impact:** Atualiza `.specs/features/finalizacao-suspensao-venda/spec.md` (Out of Scope), `.specs/features/pagamento-tef/spec.md` (Edge Cases) e `.specs/features/pagamento-geral/spec.md` (Edge Cases, referência a `DuplicataMercantil`).
+
+---
+
+### AD-065: Cancelamento de item não exige aprovação de supervisor; sem modal de reautenticação no Checkout (2026-08-25)
+
+**Decision:** O Checkout SHALL NÃO implementar nenhum mecanismo de aprovação de supervisor para cancelamento de item do carrinho, nem um modal de login/reautenticação de supervisor dentro da aplicação. Decisão direta do usuário: "nesse momento, não faremos essa restrição no checkout". O único bloqueio de cancelamento de item continua sendo o já documentado em `CART-09` (pagamento aprovado, AD-030) — não há bloqueio adicional condicionado a configuração de supervisor. Esta decisão fecha, sem implementar, o comportamento descrito nos fluxogramas antigos "Cancelar Produtos" e "Aprovar Cancelamento"/"Aprovar Desconto" de `Fluxograma - Diagrama - Alinhamentos\FLUXOS-MERMAID.md` — o caso simétrico de desconto sem aprovação de supervisor já estava coberto por AD-039; esta decisão fecha o caso de cancelamento e encerra a pergunta em aberto sobre o mecanismo de reautenticação levantada naquele arquivo.
+**Reason:** Decisão direta do usuário.
+**Trade-off:** Nenhum controle de dupla checagem para cancelamento de item — mesmo trade-off já aceito para desconto manual em AD-039.
+**Impact:** Atualiza `.specs/features/carrinho-produto-precificacao/spec.md` (Out of Scope, Edge Cases próximo a `CART-09`).
+
+---
+
+### AD-066: Display secundário (tela voltada ao cliente) — gap de escopo registrado como pendência (2026-08-25)
+
+**Decision:** O recurso de "display secundário" (segunda tela voltada ao cliente — propaganda, QR Code do PIX, agradecimento pela compra — descrito no fluxograma "Tela do cliente" de `Fluxograma - Diagrama - Alinhamentos\FLUXOS-MERMAID.md`) é confirmado pelo usuário como gap real de escopo: não existe hoje em `PROJECT.md`, `ARCHITECTURE.md` nem `ROADMAP.md`. Diferente das demais decisões desta sessão, aqui não há resolução — fica registrado formalmente como pendência de expansão de escopo, que vai exigir UI própria no Pencil e uma fase Specify dedicada antes de entrar no roadmap.
+**Reason:** Usuário confirmou que é gap real, sem decisão de incluir ou excluir ainda — só registro formal da pendência.
+**Trade-off:** Não aplicável — nada decidido ainda.
+**Impact:** Novo item em `.specs/project/PENDENCIES.md` (seção 4, Pendências de design).
 
 ---
 

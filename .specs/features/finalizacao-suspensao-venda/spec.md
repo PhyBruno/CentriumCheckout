@@ -19,6 +19,8 @@ Fluxo mobile: frame `PDV Mobile 03 - Revisão e Finalização` (resumo de confer
 |---|---|
 | Cancelamento de NFCe já autorizada pelo Checkout | Não existe esse endpoint e não está no escopo — só se cancela venda ainda em digitação (suspensão) |
 | Reimpressão de NFCe | Fora de escopo — `GetPDFNota` não é usado para essa finalidade neste produto |
+| Impressão de comprovante TEF | Fora de escopo — decisão direta do usuário (AD-064 em `.specs/project/STATE.md`): o próprio terminal físico do TEF emite seu comprovante |
+| Impressão de documento de duplicata | Fora de escopo — decisão direta do usuário (AD-064) — não há documento a imprimir para pagamento em duplicata |
 
 ---
 

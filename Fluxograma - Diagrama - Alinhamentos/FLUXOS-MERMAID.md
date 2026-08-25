@@ -64,7 +64,7 @@ flowchart LR
     ServidorImpressao --> UC24(("Impressão Duplicatas"))
 ```
 
-> ⚠️ **Achado novo**: o diagrama-fonte inclui atores e casos de uso ainda não cobertos em `ARCHITECTURE.md` — "Movimento não fiscal", "Imprimir Resumo de caixa" (via Servidor de Impressão: DANFE, comprovantes, duplicatas), e o ator "Leitor de Código de Barras" tratado como caso de uso próprio ("Registrar Produtos"), separado de "Vender Produtos". Também confirma que "Importar DAV" e "Faturar DAV" são casos de uso distintos do Operador de Caixa.
+> ✅ **Confirmado/resolvido (2026-08-25)**: "Movimento não fiscal" e "Imprimir Resumo de caixa" são as duas opções do menu gerencial, redirect para telas legadas do ERP (AD-020/AD-026 em `.specs/project/STATE.md`). Impressão de DANFE é a única impressão implementada pelo Checkout (`FIN-10`); comprovante de TEF e documento de duplicata **não são impressos pelo Checkout** — decisão direta do usuário (AD-064). "Importar DAV" e "Faturar DAV" confirmados como casos de uso distintos do Operador de Caixa (`.specs/features/importacao-dav/spec.md`). ⚠️ Só o ator "Leitor de Código de Barras" como caso de uso próprio segue sem nome formal em `.specs/` — coberto implicitamente por `CART-02` (bipar ou digitar código), não é gap crítico.
 
 ---
 
@@ -125,7 +125,7 @@ sequenceDiagram
     end
 ```
 
-> ✅ **Confirmado**: existência de cadastro simplificado de cliente pelo Checkout — ver `ARCHITECTURE.md` seção 5, item 3 e AD-011.
+> ✅ **Confirmado**: existência de cadastro simplificado de cliente pelo Checkout — ver `.specs/features/identificacao-cadastro-cliente/spec.md` (`CLI-03`, `CLI-04`) e AD-011 em `.specs/project/STATE.md`.
 
 ### Consultar produtos (sequência)
 
@@ -180,7 +180,7 @@ sequenceDiagram
     end
 ```
 
-> ⚠️ **Nota**: regras de inserção do diagrama-fonte: só produto ativo; bloqueia sem estoque quando a validação está ativa; preço por quantidade recalcula o inserido e os já lançados; "*" multiplica quantidade × código; desconto não pode exceder o valor do item; bloqueia quantidade/valor zerado ou negativo; permite repetição (agrupa); bloqueia "produto pai" (fora de escopo — ver `ARCHITECTURE.md` seção 5, item 4); limpa os campos após inserir; bloqueia inserção após pagamento aprovado (`ARCHITECTURE.md` seção 7, item 17 — ainda em análise).
+> ⚠️ **Nota**: regras de inserção do diagrama-fonte: só produto ativo; bloqueia sem estoque quando a validação está ativa (**Resolvido, AD-030/`CART-10`**: o Checkout não implementa validação de saldo/estoque, é regra do ERP); preço por quantidade recalcula o inserido e os já lançados; "*" multiplica quantidade × código; desconto não pode exceder o valor do item; bloqueia quantidade/valor zerado ou negativo; permite repetição (agrupa); bloqueia "produto pai" (fora de escopo — ver `.specs/features/carrinho-produto-precificacao/spec.md`, Out of Scope, AD-014); limpa os campos após inserir; bloqueia inserção após pagamento aprovado (**Resolvido**: `CART-09`, `Verified` desde AD-030 em `.specs/project/STATE.md`).
 
 ### Cancelar produto (sequência)
 
@@ -358,7 +358,8 @@ sequenceDiagram
     note over Checkout: A partir daqui segue o fluxo normal de faturamento (Emissão NFCe)
 ```
 
-> ✅ **Confirmado**: endpoints reais no contrato: `GET /ApiCentriumOAuth/ListaDAVs` e `GET /ApiCentriumOAuth/GetDAV`. Documentado em `ARCHITECTURE.md` seção 5, AD-013.
+> ✅ **Confirmado**: endpoints reais no contrato: `GET /ApiCentriumOAuth/ListaDAVs` e `GET /ApiCentriumOAuth/GetDAV` (AD-013).
+> ⚠️ **Diagrama desatualizado nos detalhes internos (AD-057/AD-058 em `.specs/project/STATE.md`)**: os passos "Altera status do DAV" e "DAV completo (itens e pagamentos)" acima não refletem o comportamento real confirmado — `GetDAV` faz o ERP **gerar automaticamente um rascunho de NFCe** (mesmo shape JSON de `CarregarNFCe`, não a estrutura bruta de DAV/`DavItemStruct`), e é esse rascunho — não a estrutura bruta do DAV — que é importado. O ERP só fecha/marca a DAV como faturada automaticamente quando esse rascunho é faturado via `FaturarNFCe`, não no momento do `GetDAV`. A importação de DAV reusa o mesmo mecanismo de `.specs/features/recuperacao-nfce/spec.md`.
 
 ---
 
@@ -466,7 +467,7 @@ flowchart TD
     E --> G(["Fim"])
 ```
 
-> ⚠️ **Descoberta nova**: configuração "cancelamento habilitado por supervisor" — quando ativa, exige aprovação (ver bloco Supervisor abaixo). Ainda não documentado em `ARCHITECTURE.md`.
+> ✅ **Resolvido (2026-08-25, AD-065 em `.specs/project/STATE.md`)**: decisão direta do usuário — o Checkout NÃO implementa a configuração "cancelamento habilitado por supervisor" nem nenhum mecanismo de aprovação para cancelamento de item. O único bloqueio de cancelamento é o pós-pagamento (`CART-09`, AD-030).
 
 ### Selecionar condição de pagamento
 
@@ -538,7 +539,7 @@ flowchart TD
     D --> H(["Fim"])
 ```
 
-> ⚠️ **Descoberta nova**: desconto acima do limite da condição de pagamento pode ser liberado por aprovação de supervisor — mecanismo distinto do "bloqueio pós-pagamento" já registrado como pendente em `ARCHITECTURE.md` seção 7, item 17.
+> ✅ **Resolvido (2026-08-25, AD-039 em `.specs/project/STATE.md`)**: decisão direta do usuário — não há teto de valor nem exigência de senha/autorização de supervisor para aplicar desconto (item ou capa). O mecanismo de aprovação do diagrama-fonte foi avaliado e rejeitado. Distinto do bloqueio pós-pagamento (`CART-09`, AD-030), que continua valendo.
 
 ### DAV (fluxograma)
 
@@ -605,7 +606,7 @@ flowchart TD
     F --> G(["Fim"])
 ```
 
-> ⚠️ **Descoberta nova**: as telas "Aprovar cancelamento" e "Aprovar desconto" pedem login manual do supervisor (usuário/senha) dentro do próprio Checkout — um mecanismo diferente da sessão do operador (AD-002/AD-016), ainda sem tratamento em `ARCHITECTURE.md`. Precisa de alinhamento: é um modal de reautenticação, e usa qual endpoint?
+> ✅ **Resolvido (2026-08-25, AD-065 em `.specs/project/STATE.md`)**: decisão direta do usuário — o Checkout NÃO implementa nenhum modal de login/reautenticação de supervisor dentro da aplicação. Fica sem objeto tanto para desconto (AD-039 já elimina teto/autorização) quanto para cancelamento (AD-065).
 
 ---
 
@@ -627,4 +628,4 @@ flowchart TD
     F --> G(["Fim"])
 ```
 
-> ⚠️ **Descoberta nova**: recurso de segunda tela (voltada ao cliente) inteiramente ausente de `ARCHITECTURE.md` — precisa de decisão sobre se entra no escopo do produto.
+> ⚠️ **Gap real de escopo, registrado como pendência (2026-08-25, AD-066 em `.specs/project/STATE.md` / item 28 de `.specs/project/PENDENCIES.md`)**: recurso de segunda tela confirmado pelo usuário como ausente do escopo atual — vai exigir UI própria no Pencil e uma fase Specify dedicada antes de entrar no roadmap. Ainda não decidido se entra ou não no produto.
