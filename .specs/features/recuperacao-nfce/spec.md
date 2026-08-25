@@ -13,6 +13,8 @@ Frame `PDV Online Web - Modal Recuperação NFCe` em `design/CentriumCheckout.pe
 - [ ] Retomar um rascunho de NFCe pronto para continuar a venda, sem redigitar itens/pagamentos.
 - [ ] Preço de cada item sempre igual ao valor salvo no rascunho, salvo reinserção explícita do operador.
 
+**Nota (2026-08-25, AD-057 em `.specs/project/STATE.md`):** a importação de DAV (`.specs/features/importacao-dav/spec.md`) reusa exatamente este mesmo mecanismo de import/mapeamento — `GetDAV` faz o ERP gerar automaticamente um rascunho de NFCe e devolve o mesmo shape JSON que `CarregarNFCe` (`OutCheckoutFaturarNFCe`/`CheckoutFaturarNFCe`), não uma estrutura própria de DAV. Toda a lógica desta feature (preservação de `NumeroNota`, preço congelado sem motor de precificação, pré-seleção de vendedor) se aplica igualmente a um DAV importado.
+
 ## Out of Scope
 
 | Feature | Reason |

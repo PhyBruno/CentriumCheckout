@@ -591,6 +591,15 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-057: `GetDAV` gera automaticamente um rascunho de NFCe no ERP — JSON de retorno é o mesmo de `CarregarNFCe`, import de DAV reusa o fluxo de recuperação de NFCe (2026-08-25)
+
+**Decision:** WHEN o Checkout chama `GET /ApiCentriumOAuth/GetDAV` THEN o sistema SHALL tratar o JSON retornado como um rascunho de NFCe idêntico ao retornado por `CarregarNFCe` (`OutCheckoutFaturarNFCe`/`CheckoutFaturarNFCe`) — não como o `SDTDav` (com `DavItemStruct`/`DavForPagamento`) hoje documentado em `ApiCentriumOAuth.yaml`. O ERP, ao processar `GetDAV`, gera automaticamente um rascunho de NFCe a partir do DAV, e é esse rascunho — não a estrutura bruta do DAV — que é devolvido e deve ser importado para a NFCe em digitação. Consequentemente, a importação de DAV (`.specs/features/importacao-dav/spec.md`) SHALL reusar exatamente o mesmo mecanismo de import/mapeamento já usado para retomar um rascunho de NFCe (`.specs/features/recuperacao-nfce/spec.md`), incluindo preservação de `NumeroNota` (reenviado em `FaturarNFCe`, já consistente com o comportamento de `AtualizarCapa` descrito em `.specs/codebase/CONCERNS.md`) e preço de item preservado/congelado sem disparar o motor de precificação — não uma lógica de mapeamento própria a partir de `DavItemStruct`/`DavForPagamento`.
+**Reason:** Esclarecimento direto do usuário sobre o comportamento real do ERP — o efeito colateral de `GetDAV` gerar o rascunho antes de devolver o JSON é intencional, e o formato de saída é deliberadamente o mesmo de `CarregarNFCe`, para permitir reuso total do fluxo de importação/carregamento de venda.
+**Trade-off:** O contrato `ApiCentriumOAuth.yaml` está desatualizado nesse ponto — ainda documenta `GetDavOutput` como `{ Dav: SDTDav }` (linhas 675-679), não como `{ OutCheckoutFaturarNFCe: CheckoutFaturarNFCe }` (mesmo shape de `CarregarNFCeOutput`, linhas 697-706). Usuário confirmou que vai atualizar o yaml; até lá, isso é um concern registrado, não um bloqueio de requisito. Fica em aberto uma pergunta não resolvida aqui: se o efeito colateral de `GetDAV` (gerar o rascunho) já é, na prática, o mecanismo que falta para "marcar DAV como importado/em faturamento" (pendência #13/#26, "PENDÊNCIA DEV") — não confirmado nesta decisão, não tratar como resolução automática dessa pendência.
+**Impact:** Atualiza `.specs/features/importacao-dav/spec.md` (Acceptance Criteria da story "Importar DAV completo para o carrinho", Requirement Traceability), `.specs/features/recuperacao-nfce/spec.md` (nota cruzada), `.specs/codebase/CONCERNS.md` (novo item: yaml desatualizado quanto a `GetDavOutput`) e `.specs/project/PENDENCIES.md` (novo item 26).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

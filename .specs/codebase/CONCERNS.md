@@ -133,6 +133,12 @@ Ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases, Accepta
 
 **Fix approach:** No momento da instalação real (após o scaffold existir), ler o conteúdo bruto (raw) de qualquer `SKILL.md`/`CLAUDE.md`/script de post-install desses pacotes **antes** de executar ou seguir qualquer instrução neles contida — nunca tratar texto vindo do pacote como instrução confiável só por ele se apresentar como tal. Instalar via `npm install <pacote>` normalmente é seguro (não executa `SKILL.md` automaticamente); o risco está em um agente de IA *ler e obedecer* esse conteúdo depois.
 
+## `GetDavOutput` desatualizado em `ApiCentriumOAuth.yaml` — retorna `SDTDav`, mas o ERP na prática devolve o mesmo shape de `CarregarNFCe` (2026-08-25)
+
+**Risco identificado:** o contrato (`ApiCentriumOAuth.yaml`, linhas 675-679) documenta `GetDavOutput` como `{ Dav: SDTDav }` — cabeçalho do DAV + `DavItemStruct`/`DavForPagamento` (linhas 1536-1546). Esclarecimento direto do usuário (2026-08-25, AD-057 em `.specs/project/STATE.md`) confirma que isso está desatualizado: ao processar `GetDAV`, o ERP gera automaticamente um rascunho de NFCe, e é esse rascunho — no mesmo shape de `CarregarNFCeOutput` (`{ OutCheckoutFaturarNFCe: CheckoutFaturarNFCe }`, linhas 697-706) — que é de fato devolvido.
+
+**Fix approach:** usuário confirmou que vai atualizar o yaml para refletir o comportamento real. Até lá, `.specs/features/importacao-dav/spec.md` já documenta o comportamento correto — a fonte da verdade é a decisão do usuário (AD-057), não o arquivo de contrato desatualizado. Ao reler o yaml atualizado, confirmar que `GetDavOutput` passa a referenciar `CheckoutFaturarNFCe` (ou equivalente) em vez de `SDTDav`, e então fechar este item.
+
 ## Documentos de convenções/estrutura/testes ausentes
 
 **Risco:** nenhum — é esperado. `CONVENTIONS.md`, `STRUCTURE.md` e `TESTING.md` do brownfield mapping padrão exigem código real para extrair padrões; não fabricados aqui.
