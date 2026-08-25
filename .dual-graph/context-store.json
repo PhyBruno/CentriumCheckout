@@ -1262,5 +1262,62 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1787680000000",
+    "kind": "fact",
+    "content": "Auditoria DECISIONS.md vs .specs/: unica inconsistencia real era Todos de STATE.md com CART-09/CART-10 nao riscados",
+    "tags": [
+      "auditoria",
+      "consistencia",
+      "cart-09",
+      "cart-10",
+      "ad-030",
+      "todos"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787680000,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787680000001",
+    "kind": "fact",
+    "content": "Confirmado por leitura integral: PENDENCIES, ROADMAP, PROJECT, CONCERNS, ARCHITECTURE, STACK, INTEGRATIONS e os 11 specs de feature ja refletem AD-030/AD-032 a AD-056",
+    "tags": [
+      "auditoria",
+      "consistencia",
+      "specs",
+      "pendencies",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md",
+      ".specs/project/ROADMAP.md",
+      ".specs/project/PROJECT.md",
+      ".specs/codebase/CONCERNS.md",
+      ".specs/codebase/ARCHITECTURE.md",
+      ".specs/codebase/STACK.md",
+      ".specs/codebase/INTEGRATIONS.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787680001,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   }
 ]
