@@ -32,7 +32,7 @@ Fluxo mobile: frame `PDV Mobile 03 - Revisão e Finalização` (resumo de confer
 
 **Acceptance Criteria**:
 
-1. WHEN o operador finaliza a venda THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "FATURAR"`, `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`) e `vendedorCodigo` (vendedor selecionado no modal de vendedor — ver `.specs/features/selecao-vendedor/spec.md`, `VEND-05` — nunca o `UsuarioCodigo`/`VendedorCodigo` da sessão do operador logado), além dos itens e do total já calculados pelo frontend.
+1. WHEN o operador finaliza a venda THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "FATURAR"`, `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`), `vendedorCodigo` (vendedor selecionado no modal de vendedor — ver `.specs/features/selecao-vendedor/spec.md`, `VEND-05` — nunca o `UsuarioCodigo`/`VendedorCodigo` da sessão do operador logado) e `CadSerieNFCe` = `SessaoUsuario.CadSerieNFCe` (retornado por `GetSessao`, persistido no bootstrap), além dos itens e do total já calculados pelo frontend. **Resolvido (2026-08-25, AD-034, clarificação de processo do usuário):** a série da NFCe vem sempre da configuração do usuário/máquina exposta em `GetSessao`, nunca escolhida pelo operador ou inferida pelo Checkout.
 2. WHEN a venda é enviada THEN o sistema SHALL incluir, por item, os campos do contrato (`sequencial`, `codigoProduto`, `quantidade`, `precoUnitario`, `DescontoPercentual`, `DescontoValor`, `ValorBruto`, `UDM`), mais o novo campo `produtoCancelado` (`boolean`, `NULL` equivale a `false`) — indica que o item foi inserido no carrinho mas cancelado antes da finalização. **Reforçado (2026-08-21, AD-024):** conferido campo a campo direto no código-fonte de `PCheckout_FaturarNFCe` na KB — a lista completa de campos de item é exatamente essa (mais `ValorTotal`), sem nenhum campo de tier/faixa. **Resolvido (2026-08-24, AD-026, decisão direta do usuário):** a rastreabilidade de itens cancelados na venda será feita adicionando `produtoCancelado` ao SDT `CheckoutFaturarNFCe` — a mesma decisão resolve a pendência #21 (`.specs/features/carrinho-produto-precificacao/spec.md`, Edge Cases, marcação de autoria de cancelamento). O contrato não ganha um campo dedicado para o tier de preço aplicado por item — a expansão de contrato decidida foi para marcar cancelamento, não tier; se rastreabilidade de tier for necessária no futuro, fica só no lado do Checkout (logs). **Campo ainda não implementado no lado do ERP** — é uma decisão de contrato a desenvolver pela equipe do ERP, mesmo status de "PENDÊNCIA DEV" do item 13 em `.specs/project/PENDENCIES.md` (marcação de DAV importado).
 3. WHEN a venda foi carregada de um rascunho existente no ERP (via `CarregarNFCe`) THEN o sistema SHALL enviar `NumeroNota` preenchido; WHEN a venda foi criada do zero no Checkout THEN o sistema SHALL enviar `NumeroNota = 0`.
 4. WHEN a finalização é confirmada THEN o sistema SHALL descartar por completo o cache de produtos (TanStack Query) daquela venda — a próxima venda sempre começa com cache vazio.
@@ -49,7 +49,7 @@ Fluxo mobile: frame `PDV Mobile 03 - Revisão e Finalização` (resumo de confer
 
 **Acceptance Criteria**:
 
-1. WHEN o operador cancela a venda em digitação THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "SUSPENDER"` — a mesma regra de `NumeroNota` (0 ou preenchido) da finalização se aplica.
+1. WHEN o operador cancela a venda em digitação THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/FaturarNFCe` com `SuspenderOuFaturar = "SUSPENDER"` — a mesma regra de `NumeroNota` (0 ou preenchido) e `CadSerieNFCe` (`SessaoUsuario.CadSerieNFCe`, ver AD-034) da finalização se aplica.
 2. WHEN a suspensão é confirmada THEN o sistema SHALL limpar por completo o carrinho (Zustand, sem `persist`) e o cache de produtos (TanStack Query) da venda, exatamente como na finalização.
 3. WHEN uma nova venda começa após suspensão/finalização THEN o sistema SHALL nunca herdar itens ou dados de produto da venda anterior.
 
@@ -76,8 +76,9 @@ Fluxo mobile: frame `PDV Mobile 03 - Revisão e Finalização` (resumo de confer
 | FIN-05 | Suspender venda via `FaturarNFCe` (`SUSPENDER`) | - | Verified |
 | FIN-06 | Limpeza total de carrinho/cache ao suspender | - | Verified |
 | FIN-07 | `vendedorCodigo` do modal de seleção enviado em `FaturarNFCe` (não o do operador logado) | - | Verified (ver `.specs/features/selecao-vendedor/spec.md`, `VEND-05`) |
+| FIN-08 | `CadSerieNFCe` = `SessaoUsuario.CadSerieNFCe` sempre enviado em `FaturarNFCe` (FATURAR e SUSPENDER) | - | Verified (2026-08-25, AD-034 — clarificação de processo do usuário) |
 
-**Coverage:** 7 total, 1 edge case resolvido em 2026-08-21 (impressão pós-autorização, AD-024), 1 edge case resolvido em 2026-08-24 por decisão direta do usuário (trilha de auditoria via `produtoCancelado`, AD-026 — campo ainda não implementado no ERP) e 1 edge case que só a equipe do ERP resolve diretamente (semântica dos códigos de `GetStatusSistema`, confirmado como lacuna de documentação do próprio ERP).
+**Coverage:** 8 total, 1 edge case resolvido em 2026-08-21 (impressão pós-autorização, AD-024), 1 edge case resolvido em 2026-08-24 por decisão direta do usuário (trilha de auditoria via `produtoCancelado`, AD-026 — campo ainda não implementado no ERP) e 1 edge case que só a equipe do ERP resolve diretamente (semântica dos códigos de `GetStatusSistema`, confirmado como lacuna de documentação do próprio ERP).
 
 ---
 

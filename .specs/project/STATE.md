@@ -365,6 +365,15 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-034: `FaturarNFCe` sempre envia `CadSerieNFCe` = `SessaoUsuario.CadSerieNFCe` — clarificação de processo do usuário (2026-08-25)
+
+**Decision:** Toda chamada a `POST /ApiCentriumOAuth/FaturarNFCe` (finalização `FATURAR` e suspensão `SUSPENDER`, `.specs/features/finalizacao-suspensao-venda/spec.md`) SHALL enviar o campo `CadSerieNFCe` preenchido com o valor de `SessaoUsuario.CadSerieNFCe` (retornado por `GetSessao`, já persistido no bootstrap). Confirmado no contrato (`ApiCentriumOAuth.yaml`): `CheckoutFaturarNFCe` (corpo de `FaturarNFCe`) tem o campo `CadSerieNFCe` (`string`); `SessaoUsuario.CadSerieNFCe` (`string`) existe na resposta de `GetSessao`.
+**Reason:** Clarificação de processo do usuário — a série de NFCe a utilizar é definida pela configuração do próprio usuário/máquina (não é escolhida pelo operador nem inferida pelo Checkout), exposta em `GetSessao`.
+**Trade-off:** Nenhum identificado — é um valor já disponível desde o bootstrap, sem chamada adicional.
+**Impact:** Atualiza `.specs/features/finalizacao-suspensao-venda/spec.md` (Acceptance Criteria de Finalizar/Suspender e Requirement Traceability).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-25T11:19:36.923766+00:00",
+    "updated_at": "2026-08-25T11:24:54.685369+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -216,7 +216,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.855121+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.940356+00:00",
+    "updated_at": "2026-08-25T11:24:54.694084+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -686,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-25T11:19:36.942405+00:00",
+    "updated_at": "2026-08-25T11:24:54.702286+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1183,34 +1183,6 @@
     }
   },
   {
-    "id": "mem:1787663173000",
-    "kind": "decision",
-    "content": "AD-031: TipoPreco 6/7/10/11 identificados mas deliberadamente fora de escopo do Checkout",
-    "tags": [
-      "031",
-      "tipopreco",
-      "empdefpre",
-      "fora-de-escopo",
-      "decisao-desenvolvimento"
-    ],
-    "files": [
-      ".specs/project/PENDENCIES.md",
-      ".specs/project/STATE.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-25",
-    "created_epoch": 1787663173,
-    "updated_at": "2026-08-25",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
     "id": "mem:1787670000000",
     "kind": "decision",
     "content": "AD-032: vendedor/cliente pre-selecionados por padrao ao iniciar NFCe, via VendedorCodigo/ClienteDefaultCodigo de GetSessao",
@@ -1259,6 +1231,32 @@
     "symbol_hash": "",
     "created_at": "2026-08-25",
     "created_epoch": 1787671000,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787672000000",
+    "kind": "decision",
+    "content": "AD-034: FaturarNFCe sempre envia CadSerieNFCe = SessaoUsuario.CadSerieNFCe de GetSessao",
+    "tags": [
+      "034",
+      "faturarnfce",
+      "cadserienfce",
+      "getsessao",
+      "clarificacao-processo"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/features/finalizacao-suspensao-venda/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787672000,
     "updated_at": "2026-08-25",
     "stale": false,
     "stale_reason": "",
