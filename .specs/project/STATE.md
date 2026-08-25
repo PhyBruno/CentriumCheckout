@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-08-25
-**Current Work:** Pré-seleção padrão de vendedor/cliente ao iniciar uma nova NFCe definida por decisão direta do usuário (AD-032). Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Current Work:** Sessão de grilling (`.specs/project/DECISIONS.md`) materializada em AD-036 a AD-056 — cobre split de pagamento/troco, desconto manual, TEF/impressão local, PIX (`ConfiguracoesPIX`), recuperação de NFCe (nova feature), suspensão com pagamento aprovado, troca de cliente/vendedor com carrinho populado, isolamento de tenant no Dexie, escopo mobile e defaults de cliente/vendedor. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -383,6 +383,214 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-036: Split de pagamento e regra de troco confirmados por decisão direta do usuário (2026-08-25)
+
+**Decision:** O Checkout SHALL suportar múltiplas formas de pagamento na mesma venda (split de pagamento/split tender) — confirmado por resposta direta do usuário. Troco (dinheiro recebido acima do total da venda) é calculado e exibido pelo Checkout somente quando a forma de pagamento é dinheiro — cartão e PIX nunca geram troco. Só é possível inserir uma única forma de pagamento "dinheiro" por venda; WHEN o operador tenta inserir uma segunda forma "dinheiro" THEN o sistema SHALL exibir um toast de notificação avisando que já existe uma forma "dinheiro" aplicada, bloqueando a segunda inserção.
+**Reason:** Decisão direta do usuário — múltiplas formas de pagamento (split) já são operação comum no PDV físico; o cálculo de troco só faz sentido para dinheiro, já que cartão/PIX são sempre cobrados no valor exato/autorizado.
+**Trade-off:** Nenhum identificado — restringir dinheiro a uma única entrada por venda simplifica o cálculo de troco sem perder capacidade operacional (o operador soma o valor total recebido em dinheiro numa única entrada).
+**Impact:** Atualiza `.specs/features/pagamento-geral/spec.md` (nova story formal de split de pagamento, cálculo de troco restrito a dinheiro, exclusividade de uma forma "dinheiro" por venda, e Requirement Traceability).
+
+---
+
+### AD-037: TEF fica como bloqueio deliberado (parceiro será trocado); serviço de impressão local confirmado, com fallback para PDF (2026-08-25)
+
+**Decision:** Duas decisões sobre integrações locais (fora do container, na máquina do PDV):
+1. **TEF** — o mecanismo técnico de comunicação (protocolo de invocação, timeout/erro) fica deliberadamente como bloqueio, não será desenhado nesta rodada: o parceiro de TEF atual será trocado, então especificar o contrato do parceiro atual seria retrabalho. Registrado como pendência.
+2. **Serviço de impressão local** — é um serviço local sem autenticação, rodando em porta fixa (número ainda não informado), que recebe o `XMLImpressao` já retornado embutido na resposta de `FaturarNFCe` (ver AD-024). WHEN o serviço de impressão local não responde THEN o sistema SHALL informar ao operador que não foi possível imprimir diretamente e perguntar se deseja imprimir o PDF (fallback), em vez de falhar silenciosamente ou travar a operação. Falta, em qualquer lugar do contrato hoje, um indicativo (idealmente um novo campo em `GetSessao`) de qual mecanismo de impressão o tenant/máquina deve usar (serviço local vs. PDF) — registrado como pendência a levar à equipe do ERP.
+**Reason:** Decisão direta do usuário — TEF depende de uma troca de parceiro já decidida, então não vale desenhar contrato para o parceiro atual; o fallback de impressão evita bloquear a operação de caixa quando o serviço local não está disponível.
+**Trade-off:** Sem o indicativo de mecanismo de impressão no `GetSessao`, o Checkout precisa de alguma configuração/heurística provisória até o campo existir — não definida nesta rodada.
+**Impact:** Atualiza `.specs/features/pagamento-tef/spec.md` (registra bloqueio deliberado, sem inventar comportamento de protocolo/timeout) e `.specs/features/finalizacao-suspensao-venda/spec.md` (mecanismo de impressão local, fallback para PDF). Adiciona dois itens novos a `.specs/project/PENDENCIES.md`: contrato técnico completo do serviço de impressão local (porta, rota, formato de resposta) e indicativo faltante de mecanismo de impressão no `GetSessao`.
+
+---
+
+### AD-038: Falha de rede em `FaturarNFCe` exige confirmação manual antes de reenvio — decisão direta do usuário (2026-08-25)
+
+**Decision:** WHEN o Checkout envia `POST /ApiCentriumOAuth/FaturarNFCe` e a chamada falha por problema de rede (nenhuma resposta recebida, não um erro de negócio) THEN o sistema SHALL NÃO reenviar automaticamente — o operador SHALL confirmar manualmente que uma solicitação de emissão já foi feita e não teve retorno, antes de permitir um novo envio. Reenviar sem essa confirmação arrisca duplicar a nota fiscal.
+**Reason:** Decisão direta do usuário — mitigar risco de NFCe duplicada em caso de falha de rede não determinística (não se sabe se o ERP processou a solicitação ou não).
+**Trade-off:** Fluxo de recuperação de erro fica mais lento (depende de confirmação humana) em troca de eliminar o risco de duplicidade de NFCe.
+**Impact:** Atualiza `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases — confirmação manual antes de reenvio de `FaturarNFCe`).
+
+---
+
+### AD-039: Desconto manual (item e capa) e padrão de arredondamento monetário generalizado — decisão direta do usuário (2026-08-25)
+
+**Decision:** O operador pode aplicar desconto de duas formas: diretamente no item do carrinho, ou na capa da nota (seção de pagamentos), afetando o total da venda. Desconto de capa pode ser expresso em porcentagem ou em valor fixo, à escolha do operador. Não há teto de valor nem exigência de senha/autorização para aplicar desconto (item ou capa) — decisão tomada nesta sessão. Na montagem do JSON de `FaturarNFCe`, o valor do desconto de capa SHALL ser rateado igualmente entre os itens da venda; quando o rateio não fecha em centavos exatos, o centavo remanescente SHALL ser adicionado a um dos itens (não há fração de centavo). Esse mesmo padrão de arredondamento monetário — centavos inteiros, arredondamento por linha, sobra de centavo atribuída a um item — SHALL ser aplicado de forma geral em todo cálculo monetário do Checkout, não só no rateio de desconto de capa.
+**Reason:** Decisão direta do usuário — flexibiliza desconto (item ou capa, percentual ou fixo) sem burocracia de autorização, e generaliza a regra de arredondamento (já necessária para o rateio de desconto) para manter consistência monetária em toda a aplicação.
+**Trade-off:** Sem teto/senha, a aplicação de desconto fica inteiramente sob responsabilidade operacional do usuário do caixa — nenhuma trava de sistema evita desconto excessivo.
+**Impact:** Atualiza `.specs/features/pagamento-geral/spec.md` (nova story de desconto manual — item e capa — com rateio no JSON de `FaturarNFCe`) e `.specs/features/carrinho-produto-precificacao/spec.md` (padrão geral de arredondamento monetário, generalizado a partir do desconto de capa).
+
+---
+
+### AD-040: PIX pendente — fechamento de modal com aviso de desassociação manual; falha em `POST GerarPIX` com retry (2026-08-25)
+
+**Decision:** Duas decisões sobre o fluxo de PIX:
+1. **Fechamento do modal com PIX pendente** — o operador pode fechar o modal PIX mesmo com uma transação pendente; ao fazer isso, o sistema SHALL exibir um aviso informando que será necessário desassociar o PIX manualmente na Central de Transações PIX. O Checkout SHALL remover a forma de pagamento PIX da venda local e permitir aplicar outra forma no lugar — mas SHALL NÃO enviar nenhuma solicitação de cancelamento de PIX ao ERP/CentriumPag. O PIX não expira em um tempo curto (sem teto de 10-15min de polling).
+2. **Falha na própria chamada `POST /ApiCentriumOAuth/GerarPIX`** (erro de rede/validação, distinto de falha no polling de `StatusPIX` depois de gerado) — o sistema SHALL exibir erro simples e oferecer a opção de tentar novamente.
+**Reason:** Decisão direta do usuário — desassociação de PIX abandonado é responsabilidade manual do operador na Central de Transações PIX, não automatizada pelo Checkout; falha simples na geração do PIX só precisa de retry, sem tratamento especial.
+**Trade-off:** Sem cancelamento automático, um PIX pendente abandonado pode ficar "aberto" até desassociação manual — aceito deliberadamente.
+**Impact:** Atualiza `.specs/features/pagamento-pix/spec.md` (Edge Cases — fechamento de modal com PIX pendente e aviso de desassociação manual, falha em `GerarPIX` com retry).
+
+---
+
+### AD-041: Nova feature — Recuperação de NFCe (2026-08-25)
+
+**Decision:** Nova feature formal — recuperação/retomada de rascunho de NFCe. Listagem via `GET /ApiCentriumOAuth/GetListaNFCes` (DataProvider real `DpCheckout_RascunhosLista`, confirmado via KB do GenExus — Fato F2 de `.specs/project/DECISIONS.md`): `TxtBusca` filtra só por nome de cliente (`CliNom`) ou nome de vendedor (`NfcRepNom`) — **não** por número da nota; a listagem é hardcoded para `NfcStatus = '0'` (só rascunhos) e `NfcDatEmi >= Today - 30` (só últimos 30 dias), nenhum dos dois é parametrizável; mesmo bug de paginação de cap-50 anulado já encontrado em `ListaDAVs` (AD-024) — o Checkout deve limitar `TamanhoPagina` no próprio request, não confiar no servidor. Retomada via `GET /ApiCentriumOAuth/CarregarNFCe`, preservando o campo `NumeroNota` para reenvio em `FaturarNFCe`. O preço de cada item é sempre preservado/congelado do valor salvo no rascunho (reflete que o preço pode ter sido alterado manualmente pelo operador na inserção original), exceto quando o operador reinsere um item que já está no carrinho retomado — isso dispara recálculo normal pelo motor de precificação de `carrinho-produto-precificacao`. UI de referência já existe no Pencil: frame "PDV Online Web - Modal Recuperação NFCe". Feature é desktop-only.
+**Reason:** Decisão direta do usuário — recuperação de rascunho de NFCe é fluxo real do produto, precisa de fase Specify formal própria (mesmo padrão de `importacao-dav`).
+**Trade-off:** Nenhum identificado — recuperação de rascunho reaproveita o motor de precificação e o fluxo normal de carrinho/pagamento/finalização já especificados.
+**Impact:** Cria `.specs/features/recuperacao-nfce/spec.md` (nova feature). Atualiza `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases — nota sobre preço preservado exceto reinserção). Atualiza `.specs/project/PROJECT.md` (seção Scope) e `.specs/project/ROADMAP.md` (novo milestone).
+
+---
+
+### AD-042: Suspender venda — bloqueado com TEF/PIX aprovado, permitido com pagamento removível (persiste ao retomar) (2026-08-25)
+
+**Decision:** WHEN a venda em digitação tem uma forma de pagamento TEF ou PIX já aprovada THEN o sistema SHALL NÃO permitir suspender a venda — mesma lógica de bloqueio permanente já confirmada para edição/cancelamento de item (`CART-09`, AD-030), já que nenhuma dessas duas formas pode ser removida da venda. WHEN a venda tem só pagamento(s) removível(is) já aplicado(s) — dinheiro ou cartão manual fora do fluxo TEF — THEN o sistema SHALL permitir suspender a venda normalmente; esse estado persiste ao retomar o rascunho depois (o pagamento removível continua associado quando a venda é recarregada via `CarregarNFCe`).
+**Reason:** Decisão direta do usuário — consistente com a regra já estabelecida para `CART-09`: TEF/PIX aprovados travam a venda por não terem fluxo de cancelamento, enquanto pagamentos removíveis mantêm a venda flexível mesmo suspensa.
+**Trade-off:** Nenhum identificado — segue a mesma lógica já aplicada a `CART-09`.
+**Impact:** Atualiza `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases — bloqueio de suspensão com TEF/PIX aprovado, permissão com pagamento removível persistindo ao retomar).
+
+---
+
+### AD-043: Troca de cliente/vendedor com carrinho populado — decisão direta do usuário (2026-08-25)
+
+**Decision:** Duas decisões sobre troca de cliente/vendedor depois que o carrinho já tem itens:
+1. **Cliente** — a troca de cliente com carrinho já populado É permitida (ao contrário da recomendação inicial de bloquear pelo gatilho de `CART-09`); ao trocar, o sistema SHALL disparar o recálculo de preço para `TipoPreco = 9` (preço por lista, AD-025), já que a lista de preço pode mudar com o novo cliente. Essa troca deixa de ser permitida (SHALL ser bloqueada) quando já existe pagamento aprovado na venda — mesmo gatilho de bloqueio de `CART-09` (AD-030).
+2. **Vendedor** — a troca de vendedor com carrinho já populado é permitida, exceto após pagamento aprovado (mesmo gatilho de `CART-09`).
+**Reason:** Decisão direta do usuário — troca de cliente/vendedor no meio da venda é operação legítima até o ponto em que a venda tem pagamento aprovado, quando o bloqueio geral de `CART-09` já se aplica.
+**Trade-off:** Trocar cliente após itens já inseridos exige recálculo de preço em tempo real (`TipoPreco = 9`), acoplando essa troca ao motor de precificação.
+**Impact:** Atualiza `.specs/features/identificacao-cadastro-cliente/spec.md` (nova Acceptance Criteria — troca de cliente com carrinho populado, recálculo de `TipoPreco=9`, bloqueio pós-pagamento), `.specs/features/selecao-vendedor/spec.md` (troca de vendedor com carrinho populado, bloqueio pós-pagamento) e `.specs/features/carrinho-produto-precificacao/spec.md` (referência cruzada a `CART-09`).
+
+---
+
+### AD-044: Aviso ao operador quando renovação silenciosa de token falha com venda em digitação (2026-08-25)
+
+**Decision:** WHEN a renovação silenciosa de token (`AUTH-06`) falha enquanto existe uma venda em digitação (carrinho com itens) THEN o sistema SHALL exibir ao operador um aviso equivalente ao diálogo nativo de `beforeunload` (mesmo padrão já usado para proteger contra F5/fechamento acidental, AD-006), avisando que a sessão será encerrada e a venda em andamento pode ser perdida.
+**Reason:** Decisão direta do usuário — reforça a mesma proteção de perda de venda já adotada para reload acidental (AD-006), agora também no caso de falha de reautenticação.
+**Trade-off:** Nenhum identificado — reaproveita padrão de UX já decidido.
+**Impact:** Atualiza `.specs/features/autenticacao-sessao-bootstrap/spec.md` (`AUTH-06`, Edge Cases — aviso ao operador quando a renovação falha com venda em digitação).
+
+---
+
+### AD-045: Isolamento de tenant na chave do Dexie e hash calculado localmente (2026-08-25)
+
+**Decision:** Duas decisões sobre o cache Dexie/IndexedDB (`AUTH-04`):
+1. O `tenant` SHALL ser incluído na chave do banco Dexie, isolando o cache entre tenants diferentes que possam compartilhar o mesmo navegador/máquina.
+2. O hash/versão usado para decidir se o cache Dexie precisa ser invalidado/re-baixado SHALL ser calculado localmente pelo Checkout — não é um campo retornado por `GetSessao`.
+**Reason:** Decisão direta do usuário — isolamento por tenant evita vazamento de configuração entre lojas/clientes diferentes no mesmo dispositivo; o hash local evita depender de um campo que o ERP não expõe.
+**Trade-off:** Nenhum identificado.
+**Impact:** Atualiza `.specs/features/autenticacao-sessao-bootstrap/spec.md` (`AUTH-04` — chave do Dexie inclui `tenant`, hash calculado localmente).
+
+---
+
+### AD-046: Escopo mobile confirmado — DAV e recuperação de NFCe desktop-only; cadastro de cliente e pagamento precisam de adaptação (2026-08-25)
+
+**Decision:** Confirmações de escopo mobile:
+- Modal de importação de DAV é desktop-only (já documentado em `layout-responsivo-mobile`).
+- Modal de recuperação de NFCe (nova feature, AD-041) também é desktop-only.
+- Cadastro de cliente (`identificacao-cadastro-cliente`, cadastro simplificado) DEVE existir no mobile — precisa de adaptação de layout na fase Design de `layout-responsivo-mobile`.
+- Fluxo de pagamento no mobile precisa de adaptação de layout, inferida pela IA na fase Design (sem detalhamento adicional nesta rodada).
+**Reason:** Decisão direta do usuário — confirma quais fluxos existem no mobile e quais ficam restritos ao desktop, fechando lacuna de escopo antes da fase Design de `layout-responsivo-mobile`.
+**Trade-off:** Nenhum identificado.
+**Impact:** Atualiza `.specs/features/layout-responsivo-mobile/spec.md` (confirma DAV e recuperação de NFCe como desktop-only; cadastro de cliente e pagamento precisam de adaptação mobile). Referência cruzada em `.specs/features/importacao-dav/spec.md`, `.specs/features/recuperacao-nfce/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md` e `.specs/features/pagamento-geral/spec.md`.
+
+---
+
+### AD-047: Fato F3 — campos de PIX (`ConfiguracoesPIX`, `TrnTempoExpiracaoPIX`) resolvidos por decisão direta do usuário (2026-08-25)
+
+**Decision:** A partir do Fato F3 de `.specs/project/DECISIONS.md` (campos de PIX não documentados até então, encontrados lendo `SessaoUsuario` por completo: `ConfiguracoesPIX { UtilizaCentriumPAG, MinimoPix, TempoEspera, UtilizaEncurtador, UtilizaLinkExterno }` e `SDTCentriumPag_Post.TrnTempoExpiracaoPIX`), quatro decisões:
+1. `TrnTempoExpiracaoPIX` SHALL NÃO ser enviado pelo Checkout ao chamar `GerarPIX`.
+2. `ConfiguracoesPIX.MinimoPix` SHALL ser validado no lado do Checkout (client-side) — bloqueando a geração de PIX abaixo desse mínimo.
+3. `GerarPIX` SHALL usar o saldo residual da venda (valor ainda não coberto por outras formas de pagamento já aplicadas em split), não o total cheio da venda.
+4. `UtilizaEncurtador`/`UtilizaLinkExterno` são tratados como configurações internas do CentriumPag — a assunção é que o endpoint sempre retorna o QR Code em base64, sem necessidade de UI adicional de link. **Nota de baixa confiança:** a resposta do usuário reconheceu incerteza própria ("eu acho") — tratar como best-effort a confirmar depois, não como fato definitivo.
+**Reason:** Fato F3 revelou campos de PIX não cobertos por `pagamento-pix/spec.md` até esta sessão; as decisões do usuário fecham o comportamento esperado de cada um.
+**Trade-off:** O ponto 4 carrega incerteza reconhecida pelo próprio usuário — se `UtilizaEncurtador`/`UtilizaLinkExterno` afetarem o formato de resposta, pode ser necessário revisitar.
+**Impact:** Atualiza `.specs/features/pagamento-pix/spec.md` (`TrnTempoExpiracaoPIX` não enviado, `MinimoPix` validado client-side, saldo residual em split, nota de baixa confiança sobre `UtilizaEncurtador`/`UtilizaLinkExterno`). Adiciona item de baixa confiança a `.specs/project/PENDENCIES.md`.
+
+---
+
+### AD-048: `FormaFpgUtiCar` vazio — permitir aplicar ticket devolução otimisticamente (2026-08-25)
+
+**Decision:** WHEN `CondicaoFormasDePagamento[].FormaFpgUtiCar` vem vazio (branch de fallback do ERP, sem regra dinâmica configurada — ver AD-024) THEN o sistema SHALL permitir aplicar o ticket devolução otimisticamente, tratando a ausência de informação como elegibilidade, e não como inelegibilidade. Decisão contrária à recomendação apresentada (que sugeria esconder por segurança) — o usuário optou explicitamente por permitir.
+**Reason:** Decisão direta do usuário, indo contra a recomendação — priorizar não bloquear a operação de caixa por ausência de dado, mesmo que isso implique aceitar ticket em uma forma que talvez não devesse.
+**Trade-off:** Risco aceito de aplicar ticket devolução numa forma de pagamento que, se a regra dinâmica existisse, não seria elegível — aceito deliberadamente pelo usuário.
+**Impact:** Atualiza `.specs/features/pagamento-geral/spec.md` (`PAY-07`, Edge Cases — `FormaFpgUtiCar` vazio tratado como elegível, permitindo aplicação otimista).
+
+---
+
+### AD-049: Falha não-401 no bootstrap inicial — tela de erro com "Tentar novamente" (2026-08-25)
+
+**Decision:** WHEN o bootstrap inicial (`GET /api/bootstrap` / `GetSessao`) falha com um erro que não é `401` (ex.: `500`, timeout do ERP) THEN o sistema SHALL exibir uma tela de erro com um botão "Tentar novamente", em vez de assumir necessidade de novo login.
+**Reason:** Decisão direta do usuário — distingue falha transitória de infraestrutura (retry simples) de falha de autenticação (que já tem tratamento próprio, `AUTH-06`).
+**Trade-off:** Nenhum identificado.
+**Impact:** Atualiza `.specs/features/autenticacao-sessao-bootstrap/spec.md` (Edge Cases — falha não-401 no bootstrap, botão "Tentar novamente").
+
+---
+
+### AD-050: `CliTip='F'` fixo — bloquear/alertar entrada de CNPJ na busca de cliente (2026-08-25)
+
+**Decision:** Como o cadastro simplificado do Checkout só cria cliente pessoa física (`CliTip` hardcoded `'F'` em `PCheckout_PostCliente`, confirmado em AD-024), a busca de cliente (`GetCliente`/`GetListaClientes`) SHALL bloquear ou alertar quando o operador digitar um CNPJ (14 dígitos) no campo de documento, já que o cadastro simplificado nunca poderia criar esse cliente como pessoa jurídica.
+**Reason:** Decisão direta do usuário — evita que o operador tente cadastrar um CNPJ pelo cadastro simplificado, que sempre falharia silenciosamente ao gravar como pessoa física.
+**Trade-off:** Nenhum identificado.
+**Impact:** Atualiza `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases — bloqueio/alerta de CNPJ na busca, reforça `CliTip='F'` fixo já documentado em AD-024).
+
+---
+
+### AD-051: `GetStatusSistema` — timing de chamada permanece pendência (não resolvido nesta sessão) (2026-08-25)
+
+**Decision:** O timing de quando `GetStatusSistema` é chamado no fluxo do Checkout (ex.: uma vez no bootstrap, polling periódico, antes de cada finalização) segue como pendência — não resolvido nesta sessão. Distinto da pendência já registrada (semântica dos códigos de retorno, `CadStatus`, AD-024) — esta é sobre o gatilho de chamada, não o significado do valor retornado.
+**Reason:** O usuário não respondeu a este ponto nesta rodada de grilling — registrado como pendência explícita, não como decisão.
+**Trade-off:** Não aplicável — item permanece em aberto.
+**Impact:** Novo item em `.specs/project/PENDENCIES.md` (seção "Pendências de confirmação com a equipe do ERP"), distinto do item já existente sobre semântica de `GetStatusSistema`. Nota em `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases).
+
+---
+
+### AD-052: Concorrência entre operadores no mesmo DAV/rascunho de NFCe — ERP resolve, sem lock no Checkout (2026-08-25)
+
+**Decision:** WHEN dois operadores acessam concorrentemente o mesmo DAV ou o mesmo rascunho de NFCe suspenso THEN o Checkout SHALL NÃO implementar nenhum mecanismo de lock otimista/pessimista — a resolução de conflito fica inteiramente a cargo do próprio ERP.
+**Reason:** Decisão direta do usuário — simplifica o Checkout, delegando controle de concorrência à mesma camada que já é fonte de verdade dos dados (o ERP).
+**Trade-off:** Se dois operadores editarem o mesmo rascunho/DAV simultaneamente, o comportamento de qual alteração "vence" depende inteiramente do ERP, sem feedback antecipado do Checkout.
+**Impact:** Atualiza `.specs/features/importacao-dav/spec.md` e `.specs/features/recuperacao-nfce/spec.md` (Edge Cases — concorrência entre operadores, sem lock no Checkout).
+
+---
+
+### AD-053: Default vazio no `GetSessao`, sem indicador visual, filtro "Ativo" pré-marcado (2026-08-25)
+
+**Decision:** Três decisões relacionadas aos modais de cliente/vendedor:
+1. **Default vazio no `GetSessao`** — quando o próprio tenant nunca configurou um cliente/vendedor default (`ClienteDefaultCodigo`/`VendedorCodigo` vêm vazios no `GetSessao`, distinto de uma lista de busca vazia no modal, já resolvida em AD-032), o campo correspondente nasce vazio na venda e exige seleção manual do operador antes de finalizar — mesmo tratamento dado ao caso já coberto por AD-032, só que aplicado à origem "nunca configurado" em vez de "lista de busca vazia".
+2. **Sem indicador visual** — não há necessidade de distinguir visualmente, no campo de cliente/vendedor, se o valor atual veio do default (`GetSessao`) ou de seleção manual do operador.
+3. **Filtro "Ativo" pré-marcado** — nos modais de listagem de cliente e de vendedor, o filtro "Ativo" vem pré-marcado por padrão (em vez de listar todos os registros, incluindo inativos, por padrão).
+**Reason:** Decisão direta do usuário — mantém o mesmo comportamento defensivo já adotado em AD-032 (nunca deixar o campo travado num estado inválido) mesmo na origem "nunca configurado"; simplifica a UI não exigindo indicador visual extra; reduz ruído na listagem pré-filtrando por registros ativos.
+**Trade-off:** Sem indicador visual, o operador não tem como saber, só olhando a tela, se o cliente/vendedor atual é o default da empresa ou foi selecionado manualmente — aceito deliberadamente.
+**Impact:** Atualiza `.specs/features/identificacao-cadastro-cliente/spec.md` e `.specs/features/selecao-vendedor/spec.md` (Edge Cases — default vazio tratado igual a AD-032, sem indicador visual, filtro "Ativo" pré-marcado nos modais).
+
+---
+
+### AD-054: Múltiplas abas com cookie compartilhado — comportamento aceito como está (2026-08-25)
+
+**Decision:** WHEN o mesmo operador abre múltiplas abas do Checkout com o mesmo cookie de sessão compartilhado (ex.: uma aba pode invalidar/renovar o cookie de forma que afeta a outra) THEN o sistema SHALL aceitar esse comportamento como está — não será implementado nenhum mecanismo de coordenação entre abas.
+**Reason:** Decisão direta do usuário — aceitar o comportamento conhecido de cookies compartilhados entre abas do mesmo navegador, sem investir em coordenação (ex.: `BroadcastChannel`) nesta fase.
+**Trade-off:** Uma aba pode, em teoria, invalidar a sessão de outra aba do mesmo operador — aceito deliberadamente.
+**Impact:** Atualiza `.specs/features/autenticacao-sessao-bootstrap/spec.md` (Edge Cases — múltiplas abas com cookie compartilhado, comportamento aceito como está).
+
+---
+
+### AD-055: Importação de DAV sempre sobrescreve cliente/vendedor default (2026-08-25)
+
+**Decision:** WHEN um DAV é importado (`.specs/features/importacao-dav/spec.md`) THEN o sistema SHALL sempre sobrescrever o cliente e o vendedor default (pré-selecionados via `GetSessao`, AD-032) pelos dados de cliente/vendedor trazidos no próprio DAV — nunca preservar o default anterior nesse caso.
+**Reason:** Decisão direta do usuário — o DAV já tem cliente/vendedor próprios, gravados no ERP; preservar o default da venda em vez de usar os dados do DAV importado geraria inconsistência.
+**Trade-off:** Nenhum identificado.
+**Impact:** Atualiza `.specs/features/importacao-dav/spec.md` (Edge Cases — importação sempre sobrescreve cliente/vendedor default).
+
+---
+
+### AD-056: Fato F1 — `VendedorCodigo`/`UsuarioCodigo` confirmados como campos distintos, sem contradição com AD-032 (2026-08-25)
+
+**Decision:** Verificação direta no contrato (`ApiCentriumOAuth.yaml`, SDT `SessaoUsuario`) confirma que `UsuarioCodigo` (linha 785) e `VendedorCodigo`/`VendedorNome` (linhas 802-808) são campos genuinamente distintos no schema — não há contradição entre AD-032 (vendedor default = `SessaoUsuario.VendedorCodigo`) e a regra de `selecao-vendedor` de nunca associar vendedor = operador logado. Achado de um dos 4 forks de revisão desta sessão, descartado como contradição real após verificação direta no contrato.
+**Reason:** Checagem de fato, não decisão de produto — registrada para encerrar formalmente a dúvida levantada pelo fork de revisão.
+**Trade-off:** Não aplicável.
+**Impact:** Nota em `.specs/features/selecao-vendedor/spec.md` confirmando que AD-032 permanece correto, sem necessidade de correção.
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
@@ -423,3 +631,7 @@ Capture in-progress thoughts and action items that don't fit in active tasks.
 - [ ] Confirmar com a equipe do ERP a semântica dos códigos de retorno de `GetStatusSistema` (`CadStatus`) — **Atualizado (2026-08-21, AD-024):** confirmado que o próprio ERP não documenta esses códigos na KB (`Documentation`/`Help` vazios); não é recuperável por inspeção de KB, só por conversa direta. Ver `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases).
 - [ ] Confirmar com a equipe do ERP o formato de código de barras pesável (`ProdutoPesavel`/`DavMatProdPes`) — **Atualizado (2026-08-21, AD-024):** achado adicional (o `Default('E')` de `wManutencaoImplantacaoProdutos` está comentado/inativo) não muda a conclusão de AD-023: segue sem lógica de parse localizável via KB. Ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
 - [x] ~~Confirmar com a equipe do ERP/produto se o Checkout pode inferir `usaPrecoPorQuantidade` localmente a partir de `QtdMinimaPreco2 > 0`, já que nenhum flag equivalente existe no contrato ou na KB (2026-08-21, AD-024)~~ — **Resolvido (2026-08-24, AD-025):** não é inferência — `SessaoUsuario.TipoPreco = 8` é o sinal oficial de preço por faixa de quantidade, confirmado por regra de negócio direta do usuário. Ver `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
+- [ ] **Definir protocolo/timeout do TEF** (2026-08-25, AD-037) — bloqueio deliberado: parceiro de TEF será trocado, não vale desenhar contrato para o parceiro atual. Ver `.specs/features/pagamento-tef/spec.md`.
+- [ ] Confirmar com a equipe do ERP o contrato técnico completo do serviço de impressão local (porta, rota, formato de resposta) e pedir um indicativo no `GetSessao` de qual mecanismo de impressão o tenant/máquina usa (2026-08-25, AD-037). Ver `.specs/features/finalizacao-suspensao-venda/spec.md`.
+- [ ] Confirmar com a equipe do ERP o timing de chamada de `GetStatusSistema` no fluxo (2026-08-25, AD-051) — distinto da pendência já existente sobre a semântica dos códigos de retorno. Ver `.specs/features/finalizacao-suspensao-venda/spec.md`.
+- [ ] Confirmar `UtilizaEncurtador`/`UtilizaLinkExterno` (2026-08-25, AD-047) — assunção de baixa confiança do usuário ("eu acho") de que o endpoint sempre retorna QR base64, sem UI de link. Ver `.specs/features/pagamento-pix/spec.md`.

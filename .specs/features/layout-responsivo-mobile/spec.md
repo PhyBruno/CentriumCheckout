@@ -10,6 +10,12 @@ O operador pode usar o PDV em tablet/celular, onde uma tela única com todas as 
 
 O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor mobile` dentro de `Cliente e NFCe mobile` (etapa 1, `PDV Mobile 01`) — abre o mesmo modal de `.specs/features/selecao-vendedor/spec.md`, sem necessidade de spec própria aqui.
 
+**Escopo mobile confirmado (2026-08-25, AD-046):**
+- Modal de importação de DAV (`.specs/features/importacao-dav/spec.md`) é **desktop-only**.
+- Modal de recuperação de NFCe (`.specs/features/recuperacao-nfce/spec.md`) também é **desktop-only**.
+- Cadastro de cliente (`.specs/features/identificacao-cadastro-cliente/spec.md`, `CLI-03`/`CLI-04`) DEVE existir no mobile — precisa de adaptação de layout (fase Design desta feature).
+- Fluxo de pagamento (`.specs/features/pagamento-geral/spec.md`) precisa de adaptação de layout no mobile — inferida pela IA na fase Design, sem detalhamento adicional confirmado pelo usuário nesta rodada.
+
 ## Goals
 
 - [ ] Mesma aplicação, mesmo estado de venda, atendendo desktop e mobile sem build/rota separada.
@@ -22,6 +28,8 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 | Detecção de capacidade touch | Critério de troca de layout é só largura de viewport, não capacidade do dispositivo |
 | App nativo ou PWA dedicado | Fora de escopo — é responsividade web, não outra plataforma |
 | Modal menu gerencial no mobile | Confirmado (2026-08-21): é uma tela só de desktop — não existe equivalente no design mobile (nenhum dos 3 frames do wizard o referencia) e não há necessidade de operação de retaguarda (sangria, suprimento, fechamento de caixa) durante o fluxo de venda em tablet/celular. Ver `.specs/codebase/ARCHITECTURE.md` |
+| Modal de importação de DAV no mobile | Confirmado (2026-08-25, AD-046): decisão direta do usuário — desktop-only, ver `.specs/features/importacao-dav/spec.md` |
+| Modal de recuperação de NFCe no mobile | Confirmado (2026-08-25, AD-046): decisão direta do usuário — desktop-only, ver `.specs/features/recuperacao-nfce/spec.md` |
 
 ---
 

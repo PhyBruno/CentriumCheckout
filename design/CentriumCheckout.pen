@@ -31880,6 +31880,2357 @@
           "fontWeight": "700"
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "XxdSt",
+      "x": 17583,
+      "y": 0,
+      "name": "PDV Online Web - Modal Recuperação NFCe",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$surface-soft",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "Q6boCz",
+          "type": "ref",
+          "ref": "pbg1b",
+          "name": "Fundo (PDV Online Web)",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "type": "rectangle",
+          "id": "D2EOTK",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0,
+          "name": "Backdrop modal cliente",
+          "fill": "#0A0B0D66",
+          "width": 1440,
+          "height": 900
+        },
+        {
+          "type": "frame",
+          "id": "xkc5i",
+          "layoutPosition": "absolute",
+          "x": 160,
+          "y": 90,
+          "name": "Modal Recuperação NFCe",
+          "clip": true,
+          "width": 1120,
+          "height": 720,
+          "fill": "$canvas",
+          "cornerRadius": 24,
+          "stroke": "$hairline",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "rmkfT",
+              "name": "Cabeçalho modal Recuperação NFCe",
+              "width": "fill_container",
+              "height": 78,
+              "fill": "$canvas",
+              "stroke": "$hairline",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                0,
+                24
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "V64sPC",
+                  "name": "Título modal Recuperação NFCe",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZRnZf",
+                      "name": "Ícone circular Recuperação NFCe",
+                      "width": 42,
+                      "height": 42,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "xR8QJ",
+                          "name": "Ícone Recuperação NFCe",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "archive-restore",
+                          "library": "lucide",
+                          "fill": "$cb-blue"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Bn6Zv",
+                      "name": "Textos modal Recuperação NFCe",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "LN83R",
+                          "name": "Título Recuperação NFCe",
+                          "fill": "#0A0B0D",
+                          "content": "Recuperação NFCe",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 20,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "t816Xo",
+                          "name": "Subtítulo Recuperação NFCe",
+                          "fill": "#5B616E",
+                          "content": "Carregue uma NFCe suspensa para a venda atual",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "WSqAl",
+                  "name": "Ações topo Recuperação NFCe",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "IGtJb",
+                      "name": "Fechar modal Recuperação NFCe",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "dLsIa",
+                          "name": "Ícone fechar Recuperação NFCe",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "#0A0B0D"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "gwScl",
+              "name": "Filtros Recuperação NFCe",
+              "width": "fill_container",
+              "height": 128,
+              "fill": "$canvas",
+              "stroke": "$hairline",
+              "layout": "vertical",
+              "gap": 10,
+              "padding": [
+                14,
+                24
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "er3mq",
+                  "name": "Linha filtros Recuperação NFCe 1",
+                  "width": "fill_container",
+                  "height": 44,
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "I90kJt",
+                      "name": "Filtro cliente NFCe",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 10,
+                      "padding": [
+                        0,
+                        16
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "YmDLr",
+                          "name": "Filtro cliente NFCe ícone",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "search",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "cZWcb",
+                          "name": "Filtro cliente NFCe valor",
+                          "fill": "#0A0B0D",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Bruno",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "cXwOe",
+                      "name": "Filtro suspensão NFCe",
+                      "width": 194,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "DzaVy",
+                          "name": "Filtro suspensão NFCe ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "calendar-days",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "eaGRx",
+                          "name": "Filtro suspensão NFCe texto",
+                          "fill": "#0A0B0D",
+                          "content": "Suspensão: 01/06 - 11/06",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "M8yBU",
+                      "name": "Filtro status NFCe",
+                      "width": 140,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "hOWlK",
+                          "name": "Filtro status NFCe ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "activity",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sj3GS",
+                          "name": "Filtro status NFCe texto",
+                          "fill": "#0A0B0D",
+                          "content": "Status: Todas",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oyCMX",
+                  "name": "Linha filtros Recuperação NFCe 2",
+                  "width": "fill_container",
+                  "height": 44,
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zY34m",
+                      "name": "Filtro vendedor NFCe",
+                      "width": 174,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "MapdS",
+                          "name": "Filtro vendedor NFCe ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "user-round",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Y2KtG",
+                          "name": "Filtro vendedor NFCe texto",
+                          "fill": "#0A0B0D",
+                          "content": "Vendedor: Mariana",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ns3jT",
+                      "name": "Filtro caixa NFCe",
+                      "width": 140,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "jCcZR",
+                          "name": "Filtro caixa NFCe ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "monitor",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "YvS1X",
+                          "name": "Filtro caixa NFCe texto",
+                          "fill": "#0A0B0D",
+                          "content": "Caixa: Todos",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "QqGxB",
+                      "name": "Filtro série NFCe",
+                      "width": 140,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "I2P7l",
+                          "name": "Filtro série NFCe ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "layers",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "m90mAP",
+                          "name": "Filtro série NFCe texto",
+                          "fill": "#0A0B0D",
+                          "content": "Série: Todas",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Qcs6R",
+                      "name": "Resumo filtros NFCe",
+                      "width": "fill_container",
+                      "height": 36,
+                      "justifyContent": "end",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "A0BA5",
+                          "name": "Contagem NFCe",
+                          "fill": "#0A0B0D",
+                          "content": "5 NFCes suspensas encontradas",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Lw5oT",
+              "name": "Tabela Recuperação NFCe",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Bmehn",
+                  "name": "Cabeçalho tabela NFCe",
+                  "width": "fill_container",
+                  "height": 38,
+                  "fill": "#F7F7F7",
+                  "stroke": "#DEE1E6",
+                  "strokeWidth": {
+                    "top": 1,
+                    "bottom": 1
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HXllJ",
+                      "name": "Head seleção NFCe",
+                      "width": 42,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "rlD3P",
+                          "name": "Head vazio NFCe",
+                          "fill": "#0A0B0D",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aSySv",
+                      "name": "Head NFCe",
+                      "width": 90,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "nxwMd",
+                          "name": "Head texto NFCe",
+                          "fill": "#5B616E",
+                          "content": "NFCe",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DHtx6",
+                      "name": "Head série NFCe",
+                      "width": 80,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "buEC1",
+                          "name": "Head texto série NFCe",
+                          "fill": "#5B616E",
+                          "content": "Série",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lgo5K",
+                      "name": "Head cliente NFCe",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "e5VfUU",
+                          "name": "Head texto cliente NFCe",
+                          "fill": "#5B616E",
+                          "content": "Cliente",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Y79kjw",
+                      "name": "Head caixa NFCe",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "KFEDe",
+                          "name": "Head texto caixa NFCe",
+                          "fill": "#5B616E",
+                          "content": "Caixa",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MnWwY",
+                      "name": "Head suspensão NFCe",
+                      "width": 150,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ecvF9",
+                          "name": "Head texto suspensão NFCe",
+                          "fill": "#5B616E",
+                          "content": "Suspensão",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "q4XGI",
+                      "name": "Head valor NFCe",
+                      "width": 116,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "HS2GZ",
+                          "name": "Head texto valor NFCe",
+                          "fill": "#5B616E",
+                          "content": "Total",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kmLt1",
+                      "name": "Head status NFCe",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "vo6BQ",
+                          "name": "Head texto status NFCe",
+                          "fill": "#5B616E",
+                          "content": "Status",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "M6356",
+                      "name": "Head comprovante NFCe",
+                      "width": 90,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h68LP",
+                          "name": "Head texto comprovante NFCe",
+                          "fill": "#5B616E",
+                          "content": "Comprovante",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "A2p3zX",
+                  "name": "Resultado NFCe 018452",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "#EEF0F3",
+                  "stroke": "#DEE1E6",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kEWLR",
+                      "name": "Resultado DAV 004821 seleção",
+                      "width": 42,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "MPiYM",
+                          "name": "Resultado DAV 004821 check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "circle-check",
+                          "library": "lucide",
+                          "fill": "$cb-blue-active"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "v2YLXM",
+                      "name": "Resultado DAV 004821 DAV",
+                      "width": 90,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "zAQXe",
+                          "name": "Resultado DAV 004821 número DAV",
+                          "fill": "#0A0B0D",
+                          "content": "018452",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Iro5P",
+                      "name": "Resultado DAV 004821 documento",
+                      "width": 80,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Jg32z",
+                          "name": "Resultado DAV 004821 número documento",
+                          "fill": "#0A0B0D",
+                          "content": "Série 1",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "sjmy4",
+                      "name": "Resultado DAV 004821 cliente",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "KRppv",
+                          "name": "Resultado DAV 004821 cliente nome",
+                          "fill": "#0A0B0D",
+                          "content": "Bruno Eduardo Santos",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "n441h",
+                          "name": "Resultado DAV 004821 vendedor",
+                          "fill": "#5B616E",
+                          "content": "Vendedor Mariana Alves",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "iQIMi",
+                      "name": "Resultado DAV 004821 origem",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "H2jsU",
+                          "name": "Resultado DAV 004821 origem código",
+                          "fill": "#0A0B0D",
+                          "content": "PDV 03",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "omh61",
+                          "name": "Resultado DAV 004821 origem detalhe",
+                          "fill": "#5B616E",
+                          "content": "Loja 01",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "UjoQt",
+                      "name": "Resultado DAV 004821 emissão",
+                      "width": 150,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "m1J6fK",
+                          "name": "Resultado DAV 004821 emissão data",
+                          "fill": "#0A0B0D",
+                          "content": "11/06/2026 14:32",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "AwrEb",
+                      "name": "Resultado DAV 004821 valor",
+                      "width": 116,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jSZCU",
+                          "name": "Resultado DAV 004821 valor total",
+                          "fill": "#0A0B0D",
+                          "content": "R$ 167,89",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "NHdZd",
+                      "name": "Resultado DAV 004821 status",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dWOCk",
+                          "name": "Resultado DAV 004821 status texto",
+                          "fill": "#0052FF",
+                          "content": "Suspensa",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EtmVe",
+                      "name": "Resultado NFCe 018452 ações comprovante",
+                      "width": 90,
+                      "height": "fill_container",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "end",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "vL4Il",
+                          "name": "Resultado NFCe 018452 ver comprovante",
+                          "width": 32,
+                          "height": 32,
+                          "fill": "#EEF0F3",
+                          "cornerRadius": 100,
+                          "layout": "vertical",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "TyrHt",
+                              "name": "Resultado NFCe 018452 ver comprovante ícone",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "file-text",
+                              "library": "lucide",
+                              "fill": "#0A0B0D"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Jdu0e",
+                  "name": "Resultado NFCe 018440",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "#FFFFFF",
+                  "stroke": "#DEE1E6",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "EkZIp",
+                      "name": "Resultado DAV 004790 seleção",
+                      "width": 42,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "y85UT",
+                          "name": "Resultado DAV 004790 check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "circle",
+                          "library": "lucide",
+                          "fill": "#A8ACB3"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vUQKh",
+                      "name": "Resultado DAV 004790 DAV",
+                      "width": 90,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "l9y6sf",
+                          "name": "Resultado DAV 004790 número DAV",
+                          "fill": "#0A0B0D",
+                          "content": "018440",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "RpI1C",
+                      "name": "Resultado DAV 004790 documento",
+                      "width": 80,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "C7Juxp",
+                          "name": "Resultado DAV 004790 número documento",
+                          "fill": "#0A0B0D",
+                          "content": "Série 1",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GZgfB",
+                      "name": "Resultado DAV 004790 cliente",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "BoFxu",
+                          "name": "Resultado DAV 004790 cliente nome",
+                          "fill": "#0A0B0D",
+                          "content": "NILMAQ COMERCIO DE PEÇAS",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "VHWFK",
+                          "name": "Resultado DAV 004790 vendedor",
+                          "fill": "#5B616E",
+                          "content": "Vendedor Bruno Santos",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "o9F4x",
+                      "name": "Resultado DAV 004790 origem",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "R3VGq",
+                          "name": "Resultado DAV 004790 origem código",
+                          "fill": "#0A0B0D",
+                          "content": "PDV 01",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "BzEN8",
+                          "name": "Resultado DAV 004790 origem detalhe",
+                          "fill": "#5B616E",
+                          "content": "Loja 01",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FbCBK",
+                      "name": "Resultado DAV 004790 emissão",
+                      "width": 150,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tgnzZ",
+                          "name": "Resultado DAV 004790 emissão data",
+                          "fill": "#0A0B0D",
+                          "content": "10/06/2026 09:15",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P81PAV",
+                      "name": "Resultado DAV 004790 valor",
+                      "width": 116,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "p5uF5",
+                          "name": "Resultado DAV 004790 valor total",
+                          "fill": "#0A0B0D",
+                          "content": "R$ 2.840,50",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "khnMV",
+                      "name": "Resultado DAV 004790 status",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n9E8Z1",
+                          "name": "Resultado DAV 004790 status texto",
+                          "fill": "#0052FF",
+                          "content": "Suspensa",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "NKhn2",
+                      "name": "Resultado NFCe 018440 ações comprovante",
+                      "width": 90,
+                      "height": "fill_container",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "end",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Igd32",
+                          "name": "Resultado NFCe 018440 ver comprovante",
+                          "width": 32,
+                          "height": 32,
+                          "fill": "#EEF0F3",
+                          "cornerRadius": 100,
+                          "layout": "vertical",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "I60GN",
+                              "name": "Resultado NFCe 018440 ver comprovante ícone",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "file-text",
+                              "library": "lucide",
+                              "fill": "#0A0B0D"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "L3WSp",
+                  "name": "Resultado NFCe 018421",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "#FFFFFF",
+                  "stroke": "#DEE1E6",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Lrof4",
+                      "name": "Resultado DAV 004720 seleção",
+                      "opacity": 0.5,
+                      "width": 42,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "wdctX",
+                          "name": "Resultado DAV 004720 check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "circle",
+                          "library": "lucide",
+                          "fill": "$primary-disabled"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "D5NBpi",
+                      "name": "Resultado DAV 004720 DAV",
+                      "width": 90,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "NeCK4",
+                          "name": "Resultado DAV 004720 número DAV",
+                          "fill": "#0A0B0D",
+                          "content": "018421",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EuLxe",
+                      "name": "Resultado DAV 004720 documento",
+                      "width": 80,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "hz9UC",
+                          "name": "Resultado DAV 004720 número documento",
+                          "fill": "#0A0B0D",
+                          "content": "Série 2",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ZSatg",
+                      "name": "Resultado DAV 004720 cliente",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "r5qys",
+                          "name": "Resultado DAV 004720 cliente nome",
+                          "fill": "#0A0B0D",
+                          "content": "Mariana Alves",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "PirEx",
+                          "name": "Resultado DAV 004720 vendedor",
+                          "fill": "#5B616E",
+                          "content": "Vendedor Carla Mendes",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kqphd",
+                      "name": "Resultado DAV 004720 origem",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "koOq7",
+                          "name": "Resultado DAV 004720 origem código",
+                          "fill": "#0A0B0D",
+                          "content": "PDV 02",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "iNfIb",
+                          "name": "Resultado DAV 004720 origem detalhe",
+                          "fill": "#5B616E",
+                          "content": "Loja 02",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Vwl6z",
+                      "name": "Resultado DAV 004720 emissão",
+                      "width": 150,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Wlzhe",
+                          "name": "Resultado DAV 004720 emissão data",
+                          "fill": "#0A0B0D",
+                          "content": "08/06/2026 18:47",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lnlK3",
+                      "name": "Resultado DAV 004720 valor",
+                      "width": 116,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "JN6wG",
+                          "name": "Resultado DAV 004720 valor total",
+                          "fill": "#0A0B0D",
+                          "content": "R$ 430,00",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "WdN7n",
+                      "name": "Resultado DAV 004720 status",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "B7j2XH",
+                          "name": "Resultado DAV 004720 status texto",
+                          "fill": "#05B169",
+                          "content": "Recuperada",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "uXA6G",
+                      "name": "Resultado NFCe 018421 ações comprovante",
+                      "width": 90,
+                      "height": "fill_container",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "end",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "yDf8Q",
+                          "name": "Resultado NFCe 018421 ver comprovante",
+                          "width": 32,
+                          "height": 32,
+                          "fill": "#EEF0F3",
+                          "cornerRadius": 100,
+                          "layout": "vertical",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "jJXQV",
+                              "name": "Resultado NFCe 018421 ver comprovante ícone",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "file-text",
+                              "library": "lucide",
+                              "fill": "#0A0B0D"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "JX3tg",
+                  "name": "Resultado NFCe 018408",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "#FFFFFF",
+                  "stroke": "#DEE1E6",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "k9Q3l",
+                      "name": "Resultado DAV 004701 seleção",
+                      "width": 42,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "M3XxdC",
+                          "name": "Resultado DAV 004701 check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "circle",
+                          "library": "lucide",
+                          "fill": "#A8ACB3"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "p7W8V4",
+                      "name": "Resultado DAV 004701 DAV",
+                      "width": 90,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "aQWkh",
+                          "name": "Resultado DAV 004701 número DAV",
+                          "fill": "#0A0B0D",
+                          "content": "018408",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "VIYBz",
+                      "name": "Resultado DAV 004701 documento",
+                      "width": 80,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "o60C35",
+                          "name": "Resultado DAV 004701 número documento",
+                          "fill": "#0A0B0D",
+                          "content": "Série 1",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Dh3Cc",
+                      "name": "Resultado DAV 004701 cliente",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "afAN4",
+                          "name": "Resultado DAV 004701 cliente nome",
+                          "fill": "#0A0B0D",
+                          "content": "Carla Mendes",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "G0qgZg",
+                          "name": "Resultado DAV 004701 vendedor",
+                          "fill": "#5B616E",
+                          "content": "Vendedor Paulo Henrique",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qSuXq",
+                      "name": "Resultado DAV 004701 origem",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "D6AMwx",
+                          "name": "Resultado DAV 004701 origem código",
+                          "fill": "#0A0B0D",
+                          "content": "PDV 03",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "B7cc3S",
+                          "name": "Resultado DAV 004701 origem detalhe",
+                          "fill": "#5B616E",
+                          "content": "Loja 01",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "St3ya",
+                      "name": "Resultado DAV 004701 emissão",
+                      "width": 150,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "a1B7l",
+                          "name": "Resultado DAV 004701 emissão data",
+                          "fill": "#0A0B0D",
+                          "content": "07/06/2026 11:03",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PRBnS",
+                      "name": "Resultado DAV 004701 valor",
+                      "width": 116,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CXPow",
+                          "name": "Resultado DAV 004701 valor total",
+                          "fill": "#0A0B0D",
+                          "content": "R$ 89,90",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SHKY7",
+                      "name": "Resultado DAV 004701 status",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "d6zliy",
+                          "name": "Resultado DAV 004701 status texto",
+                          "fill": "#CF202F",
+                          "content": "Cancelada",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "t5faL",
+                      "name": "Resultado NFCe 018408 ações comprovante",
+                      "width": 90,
+                      "height": "fill_container",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "end",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "s4UB0i",
+                          "name": "Resultado NFCe 018408 ver comprovante",
+                          "width": 32,
+                          "height": 32,
+                          "fill": "#EEF0F3",
+                          "cornerRadius": 100,
+                          "layout": "vertical",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "QDT8n",
+                              "name": "Resultado NFCe 018408 ver comprovante ícone",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "file-text",
+                              "library": "lucide",
+                              "fill": "#0A0B0D"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "KSJLf",
+                  "name": "Resultado NFCe 018390",
+                  "width": "fill_container",
+                  "height": 52,
+                  "fill": "#FFFFFF",
+                  "stroke": "#DEE1E6",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "p48sp",
+                      "name": "Resultado DAV 004688 seleção",
+                      "width": 42,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "oMg1k",
+                          "name": "Resultado DAV 004688 check",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "circle",
+                          "library": "lucide",
+                          "fill": "#A8ACB3"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CVav1",
+                      "name": "Resultado DAV 004688 DAV",
+                      "width": 90,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "fqFG9",
+                          "name": "Resultado DAV 004688 número DAV",
+                          "fill": "#0A0B0D",
+                          "content": "018390",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qrxXn",
+                      "name": "Resultado DAV 004688 documento",
+                      "width": 80,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "oXsxV",
+                          "name": "Resultado DAV 004688 número documento",
+                          "fill": "#0A0B0D",
+                          "content": "Série 1",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FaVAe",
+                      "name": "Resultado DAV 004688 cliente",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "a5Wpr",
+                          "name": "Resultado DAV 004688 cliente nome",
+                          "fill": "#0A0B0D",
+                          "content": "Paulo Henrique",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "PNZ6K",
+                          "name": "Resultado DAV 004688 vendedor",
+                          "fill": "#5B616E",
+                          "content": "Vendedor Mariana Alves",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "IiPJW",
+                      "name": "Resultado DAV 004688 origem",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Z8a1nz",
+                          "name": "Resultado DAV 004688 origem código",
+                          "fill": "#0A0B0D",
+                          "content": "PDV 01",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "GrXgk",
+                          "name": "Resultado DAV 004688 origem detalhe",
+                          "fill": "#5B616E",
+                          "content": "Loja 01",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 10,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "q4Xhle",
+                      "name": "Resultado DAV 004688 emissão",
+                      "width": 150,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ufjQO",
+                          "name": "Resultado DAV 004688 emissão data",
+                          "fill": "#0A0B0D",
+                          "content": "06/06/2026 16:20",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tXmbU",
+                      "name": "Resultado DAV 004688 valor",
+                      "width": 116,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "m0OEZ",
+                          "name": "Resultado DAV 004688 valor total",
+                          "fill": "#0A0B0D",
+                          "content": "R$ 1.240,00",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Geist Mono",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nVZlw",
+                      "name": "Resultado DAV 004688 status",
+                      "width": 100,
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "IEVSp",
+                          "name": "Resultado DAV 004688 status texto",
+                          "fill": "#0052FF",
+                          "content": "Suspensa",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LHQoh",
+                      "name": "Resultado NFCe 018390 ações comprovante",
+                      "width": 90,
+                      "height": "fill_container",
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "end",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "tjBeW",
+                          "name": "Resultado NFCe 018390 ver comprovante",
+                          "width": 32,
+                          "height": 32,
+                          "fill": "#EEF0F3",
+                          "cornerRadius": 100,
+                          "layout": "vertical",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "SlVjV",
+                              "name": "Resultado NFCe 018390 ver comprovante ícone",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "file-text",
+                              "library": "lucide",
+                              "fill": "#0A0B0D"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tELS4",
+              "name": "Rodapé modal Recuperação NFCe",
+              "width": "fill_container",
+              "height": 60,
+              "fill": "$canvas",
+              "stroke": "$hairline",
+              "strokeWidth": {
+                "top": 1
+              },
+              "padding": [
+                0,
+                24
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TeaBA",
+                  "name": "Paginação NFCe",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gKzvH",
+                      "name": "NFCe página anterior",
+                      "width": 112,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "lKzi3",
+                          "name": "NFCe página anterior ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "chevron-left",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "i7lBvf",
+                          "name": "NFCe página anterior texto",
+                          "fill": "#0A0B0D",
+                          "content": "Anterior",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "yIxu6",
+                      "name": "NFCe página atual",
+                      "width": 86,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "LRRM6",
+                          "name": "NFCe página atual texto",
+                          "fill": "#0A0B0D",
+                          "content": "1 de 1",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PYCDy",
+                      "name": "NFCe página próxima",
+                      "width": 112,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "klAAp",
+                          "name": "NFCe página próxima ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "chevron-right",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "VSiSa",
+                          "name": "NFCe página próxima texto",
+                          "fill": "#0A0B0D",
+                          "content": "Próxima",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Y5jdSM",
+                  "name": "Ações Recuperação NFCe",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "FihQs",
+                      "name": "Cancelar Recuperação NFCe",
+                      "width": 112,
+                      "height": 36,
+                      "fill": "#EEF0F3",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "FG5qp",
+                          "name": "Cancelar Recuperação NFCe ícone",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "#5B616E"
+                        },
+                        {
+                          "type": "text",
+                          "id": "DYWCF",
+                          "name": "Cancelar Recuperação NFCe texto",
+                          "fill": "#0A0B0D",
+                          "content": "Cancelar",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LrQIP",
+                      "name": "Carregar NFCe selecionada",
+                      "width": 156,
+                      "height": 44,
+                      "fill": "#0052FF",
+                      "cornerRadius": 100,
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "PsAMg",
+                          "name": "Ícone carregar NFCe",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "arrow-down-to-line",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "wQBlJ",
+                          "name": "Texto carregar NFCe",
+                          "fill": "#FFFFFF",
+                          "content": "Carregar NFCe",
+                          "lineHeight": 1.2,
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

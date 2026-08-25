@@ -12,6 +12,9 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 - [ ] Formas/condições de pagamento sempre disponíveis com dados atualizados (cache de 30 min).
 - [ ] Ticket devolução nunca bloqueia finalização por revalidação redundante.
+- [ ] Split de pagamento (múltiplas formas na mesma venda) sempre disponível, com troco calculado só para dinheiro.
+
+**Nota mobile (2026-08-25, AD-046):** o fluxo de pagamento no mobile precisa de adaptação de layout (fase Design de `.specs/features/layout-responsivo-mobile/spec.md`) — decisão direta do usuário, sem detalhamento adicional nesta rodada.
 
 ---
 
@@ -61,9 +64,41 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 1. WHEN o operador aplica um ticket devolução THEN o sistema SHALL chamar `POST /ApiCentriumOAuth/ValidaTicketDevolucao`, que retorna `ValorTicket: number` e `Mensagem: string`. **Resolvido (2026-08-21, AD-023):** o contrato atualizado já retorna o valor (`ValorTicket`) — não existe campo booleano de validade; a KB do GenExus confirma que a **elegibilidade é indicada comparando `Mensagem` ao literal fixo `'Ticket Válido'`** (`PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`) — qualquer outro texto em `Mensagem` indica ticket inválido/inelegível. O frontend deve implementar essa comparação de string explicitamente, não assumir "HTTP 200 = válido".
 2. WHEN a venda é finalizada THEN o sistema SHALL **não** revalidar o ticket devolução novamente — ele é sempre consumido em `FaturarNFCe`.
-3. WHEN uma forma de pagamento específica não aceita ticket devolução THEN o sistema SHALL usar o campo `FormaFpgUtiCar` de `CondicaoFormasDePagamento[]`. **Resolvido (2026-08-21, AD-024):** confirmado — `FormaFpgUtiCar` existe tanto na SDT `SessaoUsuario` da KB quanto em `ApiCentriumOAuth.yaml` (linhas 893-916). Ressalva: `PCheckout_GetSessao` só preenche esse campo quando a empresa tem uma regra dinâmica de forma de pagamento configurada para a condição; no branch de fallback (sem regra definida, "puxa todos"), o campo vem vazio — o frontend deve tratar `FormaFpgUtiCar` vazio como "sem informação", não como "não elegível".
+3. WHEN uma forma de pagamento específica não aceita ticket devolução THEN o sistema SHALL usar o campo `FormaFpgUtiCar` de `CondicaoFormasDePagamento[]`. **Resolvido (2026-08-21, AD-024):** confirmado — `FormaFpgUtiCar` existe tanto na SDT `SessaoUsuario` da KB quanto em `ApiCentriumOAuth.yaml` (linhas 893-916). Ressalva: `PCheckout_GetSessao` só preenche esse campo quando a empresa tem uma regra dinâmica de forma de pagamento configurada para a condição; no branch de fallback (sem regra definida, "puxa todos"), o campo vem vazio. **Resolvido (2026-08-25, AD-048):** decisão direta do usuário (contrária à recomendação apresentada) — `FormaFpgUtiCar` vazio SHALL ser tratado como elegível, permitindo aplicar o ticket devolução otimisticamente, e não como "não elegível".
 
 **Independent Test**: Aplicar ticket em forma elegível e em forma não elegível; confirmar bloqueio apenas na segunda.
+
+---
+
+### P1: Split de pagamento e cálculo de troco ⭐ MVP
+
+**User Story**: Como operador de caixa, quero aplicar múltiplas formas de pagamento na mesma venda e ver o troco calculado automaticamente quando o cliente paga em dinheiro acima do total, para fechar a venda com o valor exato recebido.
+
+**Why P1**: Split de pagamento é operação comum no PDV físico; sem cálculo de troco correto, a venda não pode ser finalizada com segurança.
+
+**Acceptance Criteria**:
+
+1. WHEN o operador aplica mais de uma forma de pagamento na mesma venda THEN o sistema SHALL permitir o split (múltiplas formas), somando os valores aplicados até cobrir o total da venda. **Resolvido (2026-08-25, AD-036):** confirmado por decisão direta do usuário.
+2. WHEN a forma de pagamento é dinheiro e o valor recebido excede o total (ou o saldo residual, em split) THEN o sistema SHALL calcular e exibir o troco. WHEN a forma de pagamento é cartão ou PIX THEN o sistema SHALL NÃO calcular troco — são sempre cobradas no valor exato/autorizado.
+3. WHEN o operador tenta inserir uma segunda forma de pagamento "dinheiro" na mesma venda THEN o sistema SHALL bloquear a inserção e exibir um toast de notificação avisando que já existe uma forma "dinheiro" aplicada — só é possível uma entrada de dinheiro por venda.
+
+**Independent Test**: Aplicar duas formas de pagamento diferentes cobrindo o total da venda; aplicar dinheiro acima do total e verificar o troco calculado; tentar inserir uma segunda forma "dinheiro" e verificar o toast de bloqueio.
+
+---
+
+### P1: Desconto manual — item e capa ⭐ MVP
+
+**User Story**: Como operador de caixa, quero aplicar desconto direto em um item ou na capa da nota (afetando o total da venda), sem precisar de autorização, para agilizar negociações simples de preço.
+
+**Why P1**: Desconto manual é operação frequente no balcão, sem depender de aprovação de supervisor.
+
+**Acceptance Criteria**:
+
+1. WHEN o operador aplica desconto direto em um item do carrinho THEN o sistema SHALL aceitar o valor sem teto e sem exigir senha/autorização. **Resolvido (2026-08-25, AD-039):** decisão direta do usuário.
+2. WHEN o operador aplica desconto na capa da nota (seção de pagamentos) THEN o sistema SHALL aceitar o desconto em porcentagem ou em valor fixo, à escolha do operador, sem teto e sem senha.
+3. WHEN o JSON de `FaturarNFCe` é montado com um desconto de capa aplicado THEN o sistema SHALL ratear o valor igualmente entre os itens da venda; WHEN o rateio não fecha em centavos exatos THEN o sistema SHALL adicionar o centavo remanescente a um dos itens (mesmo padrão de arredondamento generalizado em `.specs/features/carrinho-produto-precificacao/spec.md`, Edge Cases).
+
+**Independent Test**: Aplicar desconto percentual e desconto em valor fixo na capa de uma venda com 3 itens cujo total não divide exatamente por 3; verificar que o JSON de `FaturarNFCe` rateia o desconto entre os itens com o centavo remanescente em um deles.
 
 ---
 
@@ -85,9 +120,11 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 | PAY-08 | Roteamento por `FormaMeioPagtoNFe` para TEF/PIX | - | Verified (regra confirmada pelo usuário em 2026-08-24) |
 | PAY-05 | Ticket devolução — valor via `ValidaTicketDevolucao` | - | Verified (2026-08-21, AD-023 — `ValorTicket` confirmado; elegibilidade via comparação de `Mensagem` a `'Ticket Válido'`) |
 | PAY-06 | Ticket devolução — sem revalidação na finalização | - | Verified |
-| PAY-07 | Ticket devolução — elegibilidade por forma de pagamento (`FormaFpgUtiCar`) | - | Verified (2026-08-21, AD-024 — campo confirmado no contrato e na KB, com ressalva de poder vir vazio no fallback sem regra dinâmica) |
+| PAY-07 | Ticket devolução — elegibilidade por forma de pagamento (`FormaFpgUtiCar`, vazio tratado como elegível) | - | Verified (2026-08-25, AD-048 — decisão direta do usuário: vazio permite aplicação otimista) |
+| PAY-09 | Split de pagamento (múltiplas formas) e troco restrito a dinheiro | - | Verified (2026-08-25, AD-036) |
+| PAY-10 | Desconto manual — item e capa, com rateio no JSON de `FaturarNFCe` | - | Verified (2026-08-25, AD-039) |
 
-**Coverage:** 7 total, 0 edge cases pendentes. `PAY-04` (status PIX) fica em `.specs/features/pagamento-pix/spec.md`.
+**Coverage:** 10 total, 0 edge cases pendentes. `PAY-04` (status PIX) fica em `.specs/features/pagamento-pix/spec.md`.
 
 ---
 

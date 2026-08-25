@@ -37,8 +37,15 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 2. WHEN o operador não sabe o CPF/CNPJ e busca por nome, e-mail ou telefone THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetListaClientes` com `Txtbusca` (mais `Empresa`, `Pagina`, `Tamanhopagina`), listando candidatos para seleção. **Resolvido (2026-08-21, AD-023):** endpoint confirmado no `ApiCentriumOAuth.yaml` atualizado.
 3. WHEN a identificação de cliente e a montagem do carrinho acontecem na mesma etapa (layouts desktop/mobile) THEN o sistema SHALL tratá-las como ações independentes, não sequenciais obrigatórias.
 4. WHEN uma nova NFCe é iniciada THEN o sistema SHALL pré-selecionar automaticamente `SessaoUsuario.ClienteDefaultCodigo`/`ClienteDefaultNome` (via `GetSessao`) como cliente da venda, sem exigir que o operador abra o modal de busca. **Resolvido (2026-08-25, AD-032):** decisão direta do usuário — cliente é obrigatório, o default da empresa evita que a venda comece em estado inválido; o operador pode trocar a qualquer momento buscando outro cliente.
+5. WHEN o tenant nunca configurou um cliente default (`ClienteDefaultCodigo` vem vazio na própria resposta de `GetSessao`, distinto de uma busca no modal que retorna lista vazia) THEN o sistema SHALL deixar o campo cliente vazio, exigindo seleção manual do operador antes de finalizar a venda. **Resolvido (2026-08-25, AD-053):** decisão direta do usuário — mesmo tratamento de "nasce vazio, exige seleção manual" já usado para o caso já coberto por AD-032, aplicado agora à origem "nunca configurado".
+6. WHEN o campo cliente exibe o valor atual (default ou selecionado manualmente) THEN o sistema SHALL NÃO exibir nenhum indicador visual distinguindo as duas origens. **Resolvido (2026-08-25, AD-053):** decisão direta do usuário — não é necessário.
+7. WHEN o modal de busca de cliente é aberto THEN o sistema SHALL exibir o filtro "Ativo" pré-marcado por padrão. **Resolvido (2026-08-25, AD-053):** decisão direta do usuário.
+8. WHEN o carrinho já tem itens inseridos e o operador troca o cliente da venda THEN o sistema SHALL permitir a troca e disparar recálculo de preço para `TipoPreco = 9` (preço por lista, AD-025), já que a lista de preço pode mudar com o novo cliente. WHEN a venda já tem pagamento aprovado THEN o sistema SHALL bloquear essa troca — mesmo gatilho de `CART-09` (`.specs/features/carrinho-produto-precificacao/spec.md`). **Resolvido (2026-08-25, AD-043):** decisão direta do usuário.
+9. WHEN o operador digita um CNPJ (14 dígitos) no campo de busca de cliente THEN o sistema SHALL bloquear ou alertar, já que o cadastro simplificado do Checkout só cria cliente pessoa física (`CliTip` hardcoded `'F'`, AD-024) — um CNPJ nunca poderia ser cadastrado por esse caminho. **Resolvido (2026-08-25, AD-050):** decisão direta do usuário.
 
-**Independent Test**: Buscar um cliente conhecido por CPF e um desconhecido por nome parcial; verificar que cada caminho chama o endpoint correto. Verificar também que uma NFCe recém-iniciada, sem interação com o modal, já finaliza com o cliente igual a `SessaoUsuario.ClienteDefaultCodigo`.
+**Independent Test**: Buscar um cliente conhecido por CPF e um desconhecido por nome parcial; verificar que cada caminho chama o endpoint correto. Verificar também que uma NFCe recém-iniciada, sem interação com o modal, já finaliza com o cliente igual a `SessaoUsuario.ClienteDefaultCodigo`. Trocar o cliente com o carrinho já populado e confirmar o recálculo de `TipoPreco=9`; tentar a mesma troca após um pagamento aprovado e confirmar o bloqueio. Digitar um CNPJ no campo de busca e confirmar o bloqueio/alerta.
+
+**Nota mobile (2026-08-25, AD-046):** o cadastro de cliente (`CLI-03`/`CLI-04`) DEVE existir no mobile — precisa de adaptação de layout na fase Design de `.specs/features/layout-responsivo-mobile/spec.md`.
 
 ---
 
@@ -75,8 +82,11 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 | CLI-03 | Cadastro simplificado via `PostCliente` | - | Verified |
 | CLI-04 | Validação de máscara CPF/CEP no cadastro simplificado | - | Verified |
 | CLI-05 | Pré-seleção default de `SessaoUsuario.ClienteDefaultCodigo`/`ClienteDefaultNome` ao iniciar nova NFCe | - | Verified (2026-08-25, AD-032 — decisão direta do usuário) |
+| CLI-06 | Default vazio no `GetSessao` (tenant nunca configurou) tratado igual a AD-032 | - | Verified (2026-08-25, AD-053) |
+| CLI-07 | Troca de cliente com carrinho populado — recálculo `TipoPreco=9`, bloqueio pós-pagamento | - | Verified (2026-08-25, AD-043) |
+| CLI-08 | Bloqueio/alerta de CNPJ na busca (cadastro simplificado só cria pessoa física) | - | Verified (2026-08-25, AD-050) |
 
-**Coverage:** 5 total, 0 mapeados a tasks, 0 requisitos pendentes, 0 edge cases pendentes de decisão de produto (campos "Limite de crédito"/"Permite venda a crédito" — decisão de remover do design confirmada em 2026-08-24, AD-026; remoção visual no Pencil ainda não aplicada).
+**Coverage:** 8 total, 0 mapeados a tasks, 0 requisitos pendentes, 0 edge cases pendentes de decisão de produto (campos "Limite de crédito"/"Permite venda a crédito" — decisão de remover do design confirmada em 2026-08-24, AD-026; remoção visual no Pencil ainda não aplicada). Adaptação de layout mobile do cadastro simplificado pendente na fase Design de `layout-responsivo-mobile` (AD-046).
 
 ---
 

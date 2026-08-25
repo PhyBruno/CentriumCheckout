@@ -58,8 +58,13 @@ No mobile, o gatilho de abertura deste modal é o `Campo Vendedor mobile`, dentr
 4. WHEN o operador clica em uma linha da tabela de resultados THEN o sistema SHALL marcar essa linha como selecionada (ícone de confirmação) e associar o `vendedorCodigo` correspondente à venda em digitação, fechando o modal — sem exigir um botão de confirmação separado.
 5. WHEN a venda em digitação é finalizada (`FaturarNFCe`) THEN o sistema SHALL enviar o `vendedorCodigo` selecionado neste modal (default mantido ou trocado pelo operador), e não o `UsuarioCodigo` do operador logado.
 6. WHEN uma nova NFCe é iniciada THEN o sistema SHALL pré-selecionar automaticamente `SessaoUsuario.VendedorCodigo`/`VendedorNome` (via `GetSessao`) como vendedor da venda, sem exigir que o operador abra este modal. **Resolvido (2026-08-25, AD-032):** decisão direta do usuário — vendedor é obrigatório, o default da empresa evita que a venda comece em estado inválido; o operador pode trocar a qualquer momento abrindo o modal.
+7. WHEN o tenant nunca configurou um vendedor default (`SessaoUsuario.VendedorCodigo` vem vazio na própria resposta de `GetSessao`, distinto de uma busca no modal que retorna lista vazia, já coberta pela pendência #8 resolvida em AD-032) THEN o sistema SHALL deixar o campo vendedor vazio, exigindo seleção manual do operador antes de finalizar a venda. **Resolvido (2026-08-25, AD-053):** decisão direta do usuário — mesmo tratamento já usado para o caso de AD-032, aplicado agora à origem "nunca configurado".
+8. WHEN este modal é aberto THEN o sistema SHALL exibir o filtro "Ativo" pré-marcado por padrão. **Resolvido (2026-08-25, AD-053):** decisão direta do usuário.
+9. WHEN o carrinho já tem itens inseridos e o operador troca o vendedor da venda THEN o sistema SHALL permitir a troca normalmente. WHEN a venda já tem pagamento aprovado THEN o sistema SHALL bloquear essa troca — mesmo gatilho de `CART-09` (`.specs/features/carrinho-produto-precificacao/spec.md`). **Resolvido (2026-08-25, AD-043):** decisão direta do usuário.
 
-**Independent Test**: Abrir o modal, buscar um vendedor por nome parcial, selecioná-lo clicando na linha, finalizar a venda e verificar que o `vendedorCodigo` enviado a `FaturarNFCe` corresponde ao vendedor selecionado — não ao operador autenticado. Verificar também que uma NFCe recém-iniciada, sem interação com o modal, já finaliza com `vendedorCodigo` = `SessaoUsuario.VendedorCodigo`.
+**Independent Test**: Abrir o modal, buscar um vendedor por nome parcial, selecioná-lo clicando na linha, finalizar a venda e verificar que o `vendedorCodigo` enviado a `FaturarNFCe` corresponde ao vendedor selecionado — não ao operador autenticado. Verificar também que uma NFCe recém-iniciada, sem interação com o modal, já finaliza com `vendedorCodigo` = `SessaoUsuario.VendedorCodigo`. Trocar o vendedor com o carrinho já populado e confirmar que é permitido; tentar a mesma troca após um pagamento aprovado e confirmar o bloqueio.
+
+**Nota — Fato F1 (2026-08-25, AD-056):** verificação direta no contrato (`ApiCentriumOAuth.yaml`, SDT `SessaoUsuario`) confirmou que `UsuarioCodigo` (operador logado) e `VendedorCodigo`/`VendedorNome` (vendedor default da empresa) são campos genuinamente distintos no schema — não há contradição entre esta feature (nunca associar vendedor = operador logado, ver Out of Scope) e AD-032 (vendedor default pré-selecionado a partir de `SessaoUsuario.VendedorCodigo`). AD-032 permanece correto como está.
 
 ---
 
@@ -82,8 +87,11 @@ No mobile, o gatilho de abertura deste modal é o `Campo Vendedor mobile`, dentr
 | VEND-04 | Seleção de linha associa `vendedorCodigo` à venda | - | Verified (via design) |
 | VEND-05 | `vendedorCodigo` selecionado é enviado em `FaturarNFCe`, distinto do operador logado | - | Verified (contrato confirma campo em `FaturarNFCe`) |
 | VEND-06 | Pré-seleção default de `SessaoUsuario.VendedorCodigo`/`VendedorNome` ao iniciar nova NFCe | - | Verified (2026-08-25, AD-032 — decisão direta do usuário) |
+| VEND-07 | Default vazio no `GetSessao` (tenant nunca configurou) tratado igual a AD-032 | - | Verified (2026-08-25, AD-053) |
+| VEND-08 | Filtro "Ativo" pré-marcado no modal | - | Verified (2026-08-25, AD-053) |
+| VEND-09 | Troca de vendedor com carrinho populado — permitida, bloqueio pós-pagamento | - | Verified (2026-08-25, AD-043) |
 
-**Coverage:** 6 total, 0 mapeados a tasks, 0 pendências bloqueantes, 0 edge cases pendentes de contrato/KB ou de decisão de produto (pré-seleção de vendedor ao carregar rascunho resolvida em 2026-08-21, AD-024; comportamento de listagem vazia resolvido em 2026-08-25, AD-032, pela pré-seleção default).
+**Coverage:** 9 total, 0 mapeados a tasks, 0 pendências bloqueantes, 0 edge cases pendentes de contrato/KB ou de decisão de produto (pré-seleção de vendedor ao carregar rascunho resolvida em 2026-08-21, AD-024; comportamento de listagem vazia resolvido em 2026-08-25, AD-032, pela pré-seleção default; Fato F1 confirma ausência de contradição com AD-032, AD-056).
 
 ---
 

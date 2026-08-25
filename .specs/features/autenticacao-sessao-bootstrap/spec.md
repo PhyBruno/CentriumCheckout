@@ -63,11 +63,12 @@ Implementação segue via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`),
 **Acceptance Criteria**:
 
 1. WHEN a SPA carrega THEN o sistema SHALL chamar `GET /api/bootstrap` (mesma origem, cookie de sessão enviado automaticamente pelo navegador) — o BFF decifra o cookie no servidor, chama `GET /ApiCentriumOAuth/GetSessao` no ERP (header `Authorization` no formato `"OAuth <token>"`, header `Empresa` (`codigoEmpresa`), header `Content-Type` obrigatório no contrato, query `Login` (`username`)) e devolve ao JS uma resposta combinada com `codigoEmpresa`, `tenant` e o payload de configuração do `GetSessao` — nunca `access_token`, `client_secret` ou `password`.
-2. WHEN a resposta de `/api/bootstrap` (~até 5MB) chega ao navegador THEN o sistema SHALL fazer parse e validação em Web Worker (evita bloquear a thread principal) e gravar o resultado normalizado no Dexie (IndexedDB), com checagem de versão/hash para evitar re-download se nada mudou.
+2. WHEN a resposta de `/api/bootstrap` (~até 5MB) chega ao navegador THEN o sistema SHALL fazer parse e validação em Web Worker (evita bloquear a thread principal) e gravar o resultado normalizado no Dexie (IndexedDB), com checagem de versão/hash para evitar re-download se nada mudou. WHEN a chave do banco Dexie é montada THEN o sistema SHALL incluir o `tenant` nessa chave, isolando o cache entre tenants diferentes que possam compartilhar o mesmo navegador/máquina. WHEN o hash/versão do cache é calculado THEN o sistema SHALL calculá-lo localmente no Checkout — não é um campo retornado por `GetSessao`. **Resolvido (2026-08-25, AD-045):** decisões diretas do usuário.
 3. WHEN o operador recarrega a aplicação (F5) sem mudança de versão THEN o sistema SHALL reusar o payload já persistido no Dexie, sem nova chamada de rede a `/api/bootstrap`.
 4. WHEN a troca de credenciais por token, a chamada a `/api/bootstrap` e o parse/validação do payload ainda não terminaram THEN a interface SHALL exibir uma tela de carregamento skeleton bloqueante— podendo ser em formato skeleton via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`).
+5. WHEN a chamada a `/api/bootstrap`/`GetSessao` falha com um erro que não é `401` (ex.: `500`, timeout do ERP) THEN o sistema SHALL exibir uma tela de erro com um botão "Tentar novamente", em vez de assumir necessidade de novo login. **Resolvido (2026-08-25, AD-049):** decisão direta do usuário — distingue falha transitória de infraestrutura de falha de autenticação (`AUTH-06`).
 
-**Independent Test**: Mockar `GetSessao` com payload de teste e verificar que a tela principal só renderiza após o Dexie confirmar a gravação.
+**Independent Test**: Mockar `GetSessao` com payload de teste e verificar que a tela principal só renderiza após o Dexie confirmar a gravação. Verificar que a chave do Dexie muda entre dois `tenant`s diferentes. Mockar `/api/bootstrap` retornando `500` e confirmar a tela de erro com "Tentar novamente".
 
 ---
 
@@ -81,8 +82,9 @@ Implementação segue via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`),
 
 1. WHEN o `access_token` expira durante o uso normal THEN o BFF SHALL detectar o `401` do ERP em qualquer chamada feita através de `/api/erp/*`, obter um novo `access_token` automaticamente repetindo a chamada a `/oauth/access_token` com as credenciais já salvas no cookie de sessão, regravar o cookie e refazer a chamada original — tudo de forma transparente ao JS, sem retry especial no cliente e sem novo login manual.
 2. WHEN a tentativa de renovação falha THEN o sistema SHALL desconectar o operador (única condição de logout automático) — o BFF invalida o cookie de sessão e o frontend exibe mensagem pedindo para reabrir pelo ERP.
+3. WHEN a tentativa de renovação falha e existe uma venda em digitação (carrinho com itens) THEN o sistema SHALL exibir ao operador um aviso equivalente ao diálogo nativo de `beforeunload` (mesmo padrão já usado para proteger contra F5/fechamento acidental, AD-006), avisando que a sessão será encerrada e a venda em andamento pode ser perdida. **Resolvido (2026-08-25, AD-044):** decisão direta do usuário.
 
-**Independent Test**: Forçar expiração do token mockado nas respostas do ERP e verificar que o BFF reautentica sozinho sem que o cliente precise implementar lógica de retry.
+**Independent Test**: Forçar expiração do token mockado nas respostas do ERP e verificar que o BFF reautentica sozinho sem que o cliente precise implementar lógica de retry. Forçar falha de renovação com um carrinho populado e verificar o aviso equivalente ao `beforeunload`.
 
 ---
 
@@ -92,6 +94,7 @@ Implementação segue via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`),
 - WHEN o nome da variável de ambiente do domínio base é necessário no deploy THEN o sistema SHALL usar `baseDomain` (AD-019).
 - WHEN `validationKey` recebido em `GET /session/start` não confere com o valor configurado no ambiente THEN o BFF SHALL rejeitar o request antes de chamar `/oauth/access_token` (evita gastar uma tentativa de autenticação OAuth com uma origem não verificada) (AD-022).
 - WHEN o JS do frontend precisa de `codigoEmpresa` ou de qualquer dado de sessão THEN ele SHALL obtê-lo exclusivamente via `GET /api/bootstrap` — nunca lendo o cookie diretamente (impossível, é `HttpOnly`) nem recebendo o valor embutido em HTML/JS na resposta inicial (AD-022).
+- WHEN o mesmo operador abre múltiplas abas do Checkout com o mesmo cookie de sessão compartilhado (uma aba pode invalidar/renovar o cookie de forma que afeta a outra) THEN o sistema SHALL aceitar esse comportamento como está — nenhum mecanismo de coordenação entre abas será implementado. **Resolvido (2026-08-25, AD-054):** decisão direta do usuário.
 
 ---
 
@@ -102,11 +105,13 @@ Implementação segue via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`),
 | AUTH-01 | Login automático — troca de credenciais por token | - | Verified (requisito confirmado, aguarda Design/Tasks) |
 | AUTH-02 | Login automático — armazenamento em cookie HttpOnly | - | Verified |
 | AUTH-03 | Bootstrap — chamada automática a GetSessao | - | Verified |
-| AUTH-04 | Bootstrap — persistência Dexie com versionamento | - | Verified |
+| AUTH-04 | Bootstrap — persistência Dexie com versionamento (chave inclui `tenant`, hash calculado localmente) | - | Verified (2026-08-25, AD-045) |
 | AUTH-05 | Bootstrap — tela de carregamento bloqueante | - | Verified |
-| AUTH-06 | Renovação silenciosa de sessão | - | Verified |
+| AUTH-06 | Renovação silenciosa de sessão (aviso equivalente a `beforeunload` com venda em digitação) | - | Verified (2026-08-25, AD-044) |
+| AUTH-07 | Falha não-401 no bootstrap — tela de erro com "Tentar novamente" | - | Verified (2026-08-25, AD-049) |
+| AUTH-08 | Múltiplas abas com cookie compartilhado — comportamento aceito como está | - | Verified (2026-08-25, AD-054) |
 
-**Coverage:** 6 total, 0 mapeados a tasks (Tasks ainda não iniciado), 6 requisitos já confirmados em conversas anteriores (não ambíguos).
+**Coverage:** 8 total, 0 mapeados a tasks (Tasks ainda não iniciado), 8 requisitos já confirmados (não ambíguos).
 
 ---
 
