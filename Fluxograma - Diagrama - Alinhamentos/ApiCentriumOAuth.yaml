@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: "APICentriumOAuth"
   description: "APICentrium OAuth"
-  version: "20260821131003"
+  version: "20260825172440"
 servers:
   - url: http://localhost/Centrium1600Web/APICentriumOAuth
 paths:
@@ -658,6 +658,8 @@ components:
         ValorTicket:
           type: "number"
           format: "double"
+        Valido:
+          type: "boolean"
         Mensagem:
           type: "string"
 
@@ -674,9 +676,9 @@ components:
 
     GetDavOutput:
       properties:
-        Dav:
-          description: "SDTDav"
-          $ref: "#/components/schemas/SDTDav"
+        OutCheckoutFaturarNFCe:
+          description: "Checkout Faturar NFCe"
+          $ref: "#/components/schemas/CheckoutFaturarNFCe"
         messages:
           description: "Messages"
           type: array
@@ -1326,7 +1328,7 @@ components:
         UDM:
           description: "UDM"
           type: "string"
-        ProdutoPesavel:
+        ProdutoPesavelEditavel:
           description: "Material Pesável"
           type: "string"
 
@@ -1392,346 +1394,6 @@ components:
 
       x-gx-level: "CheckoutListaDAVs"
 
-    SDTDav:
-      properties:
-        DavEmpCod:
-          description: "Empresa"
-          type: "integer"
-          format: "int64"
-        DavNum:
-          description: "Número do DAV"
-          type: "string"
-        DavTit:
-          description: "Título (Pedido, Orçamento, Ordem de Serviço)"
-          type: "string"
-        DavDatEmi:
-          description: "Data de Emissão"
-          type: "string"
-          format: "date"
-        DavDatFat:
-          description: "Data de Faturamento"
-          type: "string"
-          format: "date"
-        DavDatAlt:
-          description: "Data e Hora de Alteração DAV"
-          type: "string"
-          format: "date-time"
-        DavSta:
-          description: "Status do DAV"
-          type: "string"
-        DavCliNomR:
-          description: "Nome Cliente (red)"
-          type: "string"
-        DavCliCgcR:
-          description: "CNPJ (red)"
-          type: "string"
-        DavCliEmp:
-          description: "Empresa Cliente"
-          type: "integer"
-          format: "int64"
-        DavCliCod:
-          description: "Cód.Cliente"
-          type: "integer"
-          format: "int64"
-        DavCliNom:
-          description: "Nome do Cliente"
-          type: "string"
-        DavCliCNPJ:
-          description: "CNPJ"
-          type: "string"
-        DavCliCEP:
-          description: "CEP"
-          type: "string"
-        DavCliEnd:
-          description: "Endereço"
-          type: "string"
-        DavCliBai:
-          description: "Bairro"
-          type: "string"
-        DavCliCid:
-          description: "Cidade"
-          type: "string"
-        DavCliUnf:
-          description: "UF"
-          type: "string"
-        DavCliEma:
-          description: "Email"
-          type: "string"
-        DavCliFon:
-          description: "Fone"
-          type: "string"
-        DavTipPre:
-          description: "Tipo de Preço"
-          type: "integer"
-          format: "int32"
-        DavDocFNum:
-          description: "Numero Documento Fiscal"
-          type: "integer"
-          format: "int64"
-        DavDocFSer:
-          description: "Série do Documento Fiscal"
-          type: "string"
-        DavDocFTip:
-          description: "Tipo Documento Fiscal: Nota / Cupom"
-          type: "string"
-        DavTot:
-          description: "Total do DAV"
-          type: "number"
-          format: "double"
-        DavSubTotal:
-          description: "Subtotal do DAV"
-          type: "number"
-          format: "double"
-        DavWks:
-          description: "Estação Dav"
-          type: "string"
-        DavTipo:
-          description: "Dav Tipo"
-          type: "string"
-        DavDocONum:
-          description: "Número do Documento de Origem"
-          type: "integer"
-          format: "int64"
-        DavDocOSer:
-          description: "Série do Documento de Origem"
-          type: "string"
-        DavVlrDesconto:
-          description: "Valor de Desconto"
-          type: "number"
-          format: "double"
-        DavVlrAcrescimo:
-          description: "Valor de Acréscimo"
-          type: "number"
-          format: "double"
-        DavRepCod:
-          description: "Codigo do Representante"
-          type: "integer"
-          format: "int64"
-        DavUsuCod:
-          description: "Código do Usuário"
-          type: "integer"
-          format: "int64"
-        DavPraCod:
-          description: "Codigo da Condição de Pagamento"
-          type: "integer"
-          format: "int32"
-        DavSenha:
-          description: "Senha para atendimento do DAV"
-          type: "string"
-        DavObs:
-          description: "Dav Observações"
-          type: "string"
-        DavCliConv:
-          description: "Convenio Cliente"
-          type: "integer"
-          format: "int32"
-        DAvCliNum:
-          description: "Nro endereco"
-          type: "string"
-        DavCliDsc:
-          description: "Dav Cli Dsc"
-          type: "number"
-          format: "double"
-
-        DavItemStruct:
-          type: array
-          items:
-            description: DavItemStructItem
-            $ref: "#/components/schemas/SDTDav.DavItemStruct_DavItemStructItem"
-
-        DavForPagamento:
-          type: array
-          items:
-            description: DavForPagamentoItem
-            $ref: "#/components/schemas/SDTDav.DavForPagamento_DavForPagamentoItem"
-
-
-    SDTDav.DavItemStruct_DavItemStructItem:
-      properties:
-        DavItem:
-          description: "Item"
-          type: "integer"
-          format: "int32"
-        DavICodBar:
-          description: "Código de Barras"
-          type: "string"
-        DavIRef:
-          description: "Referência"
-          type: "string"
-        DavIMatEmp:
-          description: "Empresa"
-          type: "integer"
-          format: "int64"
-        DavIMatCod:
-          description: "Material"
-          type: "string"
-        DavIMDesComp:
-          description: "Descrição do Produto/Material"
-          type: "string"
-        DavIMatUni:
-          description: "Unidade"
-          type: "string"
-        DavIMatUv2:
-          description: "2ª Unidade de Venda"
-          type: "string"
-        DavIMatPv1:
-          description: "Preço de Venda 1"
-          type: "number"
-          format: "double"
-        DavIMatPv2:
-          description: "Preço de Venda 2"
-          type: "number"
-          format: "double"
-        DavIMatPv3:
-          description: "Preço de Venda 3"
-          type: "number"
-          format: "double"
-        DavIMatPv4:
-          description: "Preço de Venda 4"
-          type: "number"
-          format: "double"
-        DavIMatPv5:
-          description: "Preço de Venda 5"
-          type: "number"
-          format: "double"
-        DavIMatPProm:
-          description: "Preço de Promoção"
-          type: "number"
-          format: "double"
-        DavIMatProm:
-          description: "Material em promoção"
-          type: "string"
-        DavIMatVProm:
-          description: "Validade Promoção"
-          type: "string"
-          format: "date"
-        DavIMatDsc:
-          description: "Desconto Máximo"
-          type: "number"
-          format: "double"
-        DavIMatIAT:
-          description: "Indice de arredondamento ou truncamento"
-          type: "string"
-        DavIMatPAfAlq:
-          description: "Aliquota de tributação do item"
-          type: "number"
-          format: "double"
-        DavIMatCST:
-          description: "CST do Material"
-          type: "string"
-        DavIMatIPPT:
-          description: "Indice de produção  Prórpio ou Terceiro"
-          type: "string"
-        DavIMatST:
-          description: "Situação Tributária do item"
-          type: "string"
-        DavIDesR:
-          description: "Descrição Material (red)"
-          type: "string"
-        DavIDs2R:
-          description: "(2ª linha) (red)"
-          type: "string"
-        DavIMatRDesComp:
-          description: "Descrição do Produto/Material (r)"
-          type: "string"
-        DavIUni:
-          description: "Unidade (red)"
-          type: "string"
-        DavIPreUni:
-          description: "Preço Unitário"
-          type: "number"
-          format: "double"
-        DavPreVen:
-          description: "Preço Final com Descontos e Acrescimos unitario"
-          type: "number"
-          format: "double"
-        DavIQtd:
-          description: "Quantidade"
-          type: "number"
-          format: "double"
-        DavITotIt:
-          description: "Subtotal do Item"
-          type: "number"
-          format: "double"
-        DavITotLiquido:
-          description: "Total Liquido do Item"
-          type: "number"
-          format: "double"
-        DavIFlgCancelado:
-          description: "Item Cancelado"
-          type: "string"
-        DavIDatInclusao:
-          description: "Data de Inclusão do Item"
-          type: "string"
-          format: "date"
-        DavIVlrDesconto:
-          description: "Valor Desconto do Item"
-          type: "number"
-          format: "double"
-        DavIVlrAcrescimo:
-          description: "Valor Acréscimo do Item"
-          type: "number"
-          format: "double"
-        DavITotParcial:
-          description: "Totalizador Parcial (ECF)"
-          type: "string"
-        DavISitTrib:
-          description: "Situação tributária do item"
-          type: "string"
-        DaviAliquota:
-          description: "Aliquota de tributação do item"
-          type: "number"
-          format: "double"
-        DavIWks:
-          description: "Ecf ou estação que gravou o item"
-          type: "string"
-        DavIFlgTipo:
-          description: "Tipo da ação executado no DAV(A alteraçao, E exclusão, I inclusão)"
-          type: "string"
-        DavClfAliqImp:
-          description: "% IBPT"
-          type: "number"
-          format: "double"
-        DavClfCod:
-          description: "Classificação Fiscal"
-          type: "string"
-        DavClfCodCEST:
-          description: "CEST"
-          type: "string"
-        DavMatProdPes:
-          description: "Produto Pesável"
-          type: "string"
-        DavMatTPrSv:
-          description: "Produto ou Serviço"
-          type: "string"
-        DavMatSit:
-          description: "Situação"
-          type: "string"
-        DavClfDes:
-          description: "CLF Descrição"
-          type: "string"
-
-
-      x-gx-level: "SDTDav"
-
-
-    SDTDav.DavForPagamento_DavForPagamentoItem:
-      properties:
-        DavPagCod:
-          description: "Forma de Pagamento"
-          type: "integer"
-          format: "int32"
-        DavPagDes:
-          description: "Forma Pagamento"
-          type: "string"
-        DavPagVlr:
-          description: "R$"
-          type: "number"
-          format: "double"
-
-
-      x-gx-level: "SDTDav"
-
     CheckoutFaturarNFCe:
       properties:
         Empresa:
@@ -1764,6 +1426,12 @@ components:
           description: "Usuario Codigo"
           type: "integer"
           format: "int64"
+        DavNum:
+          description: "Número do DAV"
+          type: "string"
+        Log:
+          description: "Log"
+          type: "string"
 
         produtos:
           type: array

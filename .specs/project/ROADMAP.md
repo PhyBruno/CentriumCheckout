@@ -15,6 +15,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 | 5 | Finalização e suspensão da venda (NFCe) | Specify feito | `.specs/features/finalizacao-suspensao-venda/spec.md` |
 | 8 | Seleção de vendedor (modal) | Specify feito (endpoint `GetListaVendedores` confirmado, AD-023; default de vendedor via `GetSessao` ao iniciar NFCe resolvido em 2026-08-25, AD-032, sem bloqueio remanescente) | `.specs/features/selecao-vendedor/spec.md` |
 | 9 | Menu gerencial (redirect para telas legadas do ERP) | Specify feito (nota arquitetural — sem spec de feature completo, é só link/navegação); URLs das duas opções confirmadas (AD-026) | `.specs/codebase/ARCHITECTURE.md` (seção Responsividade) |
+| 11 | Auditoria de ações do operador (trilha de log enviada no campo `Log` de `FaturarNFCe`) | Specify feito (2026-08-25, AD-061) — mecanismo transversal, sem tela própria; campo `Log` já confirmado no contrato | `.specs/features/auditoria-acoes-operador/spec.md` |
 
 ## Milestone 2 — Caminhos alternativos de entrada na venda
 

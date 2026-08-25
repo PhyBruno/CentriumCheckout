@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-08-25
-**Current Work:** Sessão de grilling (`.specs/project/DECISIONS.md`) materializada em AD-036 a AD-056 — cobre split de pagamento/troco, desconto manual, TEF/impressão local, PIX (`ConfiguracoesPIX`), recuperação de NFCe (nova feature), suspensão com pagamento aprovado, troca de cliente/vendedor com carrinho populado, isolamento de tenant no Dexie, escopo mobile e defaults de cliente/vendedor. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Current Work:** Nova feature `auditoria-acoes-operador` especificada (AD-061) — trilha de auditoria de todas as ações relevantes do operador durante a venda, entregue ao ERP no campo `Log` de `FaturarNFCe`. AD-062 remove o campo `produtoCancelado` (introduzido em AD-026) do escopo — cancelamento de item passa a ser rastreado só pelo evento `PRODUTO_CANCELADO` do log de auditoria, sem campo dedicado no SDT de produto. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -242,13 +242,13 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 
 ---
 
-### AD-025: Regra de negócio de `TipoPreco`/`EmpDefPre` confirmada diretamente pelo usuário — corrige AD-023 e resolve `usaPrecoPorQuantidade` (2026-08-24)
+### AD-025: Regra de negócio de `TipoPreco`/`EmpDefPre` confirmada diretamente pelo usuário — corrige AD-023 e resolve `usaPrecoPorQuantidade` (2026-08-24; campo de leitura corrigido em 2026-08-25, ver AD-059)
 
-**Decision:** Diferente de AD-023/AD-024 (inspeção de contrato/KB), esta correção veio de resposta direta do usuário sobre a regra de negócio do domain `EmpDefPre`. `SessaoUsuario.TipoPreco` (via `PTrazEmpDefP.Call`) vai de `1` a `11` e indica **diretamente o preço de venda a aplicar no item** — não é um espelho 0-based de `ListaPreco` como a hipótese de AD-023 chegou a cogitar. De `1` a `5`, é índice direto para `PrecoVenda1`...`PrecoVenda5`. De `6` a `11` são casos especiais, dos quais dois mapeados:
-- `TipoPreco = 9` — preço por lista: aplicar a lista de preço do cadastro do cliente (`ClienteCheckout.ListaPreco`/`CliListCod`); sem lista própria, usar a lista padrão da empresa (`SessaoUsuario.listaPrecoPadrao`). `GetProduto` retorna `SDTCheckout_GetProduto.PrecoVendaLista` preenchido nesse caso.
-- `TipoPreco = 8` — preço por faixa de quantidade: resolve a pendência de `usaPrecoPorQuantidade` (AD-024) — **não existe flag booleano separado no contrato**, o próprio valor `8` já é o sinal, substituindo a hipótese de inferir via `QtdMinimaPreco2 > 0`.
+**Decision:** Diferente de AD-023/AD-024 (inspeção de contrato/KB), esta correção veio de resposta direta do usuário sobre a regra de negócio do domain `EmpDefPre`. `SessaoUsuario.TipoPreco` (via `PTrazEmpDefP.Call`) vai de `1` a `11` e indica **diretamente o preço de venda a aplicar no item** — não é um espelho 0-based de `ListaPreco` como a hipótese de AD-023 chegou a cogitar. Para **todo `TipoPreco` diferente de `8`** — o que inclui `1` a `5` e também `9` (preço por lista) — o valor a aplicar é o **campo único `PrecoVenda`**, retornado por `GetProduto`/`GetListaProdutos`: o ERP já resolve internamente qual regra vale (índice `1`-`5` ou lista do cliente) e devolve o valor final pronto nesse campo; o Checkout não indexa `PrecoVenda1`...`PrecoVenda5` nem lê `PrecoVendaLista` para nenhum desses casos. `6`, `7`, `10` e `11` são casos especiais, dos quais dois mapeados:
+- `TipoPreco = 9` — preço por lista: aplicar a lista de preço do cadastro do cliente (`ClienteCheckout.ListaPreco`/`CliListCod`); sem lista própria, usar a lista padrão da empresa (`SessaoUsuario.listaPrecoPadrao`). O valor final já vem resolvido no campo `PrecoVenda` de `GetProduto`/`GetListaProdutos` — o Checkout não lê `SDTCheckout_GetProduto.PrecoVendaLista` para aplicar o preço.
+- `TipoPreco = 8` — preço por faixa de quantidade: resolve a pendência de `usaPrecoPorQuantidade` (AD-024) — **não existe flag booleano separado no contrato**, o próprio valor `8` já é o sinal, substituindo a hipótese de inferir via `QtdMinimaPreco2 > 0`. É o **único caso** em que o Checkout usa os campos `PrecoVenda1`...`PrecoVenda5` em vez do campo único `PrecoVenda`, porque a faixa depende da quantidade agregada do SKU no carrinho da venda em curso — estado que o ERP não conhece numa chamada isolada de `GetProduto`.
 
-Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência estreitada, não eliminada.
+Semântica de `6`, `7`, `10` e `11` foi confirmada em seguida (AD-031, corrigida por AD-060, 2026-08-25): os quatro valores estão no escopo do Checkout e são tratados pela mesma regra geral acima — leem o campo único `PrecoVenda`, sem lógica adicional.
 
 **Reason:** Fechar a lacuna mais crítica do motor de precificação (`carrinho-produto-precificacao`) antes da fase Design — a ambiguidade anterior bloqueava tanto a UI quanto o cálculo de preço.
 **Trade-off:** Nenhum.
@@ -256,18 +256,18 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
-### AD-026: Quatro pendências de produto resolvidas por decisão direta do usuário — polling de PIX, campo de cancelamento em `FaturarNFCe`, remoção de campos de crédito, URL do menu gerencial (2026-08-24)
+### AD-026: Quatro pendências de produto resolvidas por decisão direta do usuário — polling de PIX, campo de cancelamento em `FaturarNFCe`, remoção de campos de crédito, URL do menu gerencial (2026-08-24; item 2 corrigido em 2026-08-25 pela AD-062 — campo `produtoCancelado` removido do escopo, substituído pelo log de auditoria geral)
 
 **Decision:** Rodada de respostas diretas do usuário fechando quatro pendências de `.specs/project/PENDENCIES.md` que dependiam de decisão de produto (não de KB/contrato):
 
 1. **Intervalo de polling de `StatusPIX` (item 5):** a cada 10 segundos, sem estratégia de backoff documentada. Ver `.specs/features/pagamento-pix/spec.md` (`PAY-04`, Edge Cases).
-2. **Trilha de auditoria de cancelamento em `FaturarNFCe` (item 6) e campo de autoria de cancelamento no SDT de produto (item 21) — mesma decisão resolve as duas:** será adicionado o campo `produtoCancelado` (`boolean`, `NULL` equivale a `false`) ao SDT `CheckoutFaturarNFCe`, indicando que um item foi inserido no carrinho e depois cancelado antes da finalização. O contrato **não** ganha campo dedicado para o tier de preço aplicado por item — a expansão de contrato decidida foi só para marcar cancelamento; rastreabilidade de tier, se necessária no futuro, fica só no lado do Checkout (logs). **Campo ainda não implementado no ERP** — mesmo status "PENDÊNCIA DEV" do item 13 (marcação de DAV importado). Ver `.specs/features/finalizacao-suspensao-venda/spec.md` (story "Finalizar a venda", AC2) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases).
+2. **[CORRIGIDO em 2026-08-25 pela AD-062 — a solução abaixo NÃO é implementada; ver a frase em negrito ao final deste item para o mecanismo atual]** Trilha de auditoria de cancelamento em `FaturarNFCe` (item 6) e campo de autoria de cancelamento no SDT de produto (item 21) — mesma decisão resolve as duas: a proposta original (2026-08-24) era adicionar o campo `produtoCancelado` (`boolean`, `NULL` equivale a `false`) ao SDT `CheckoutFaturarNFCe`, indicando que um item foi inserido no carrinho e depois cancelado antes da finalização; o contrato não ganharia campo dedicado para tier de preço, só para marcar cancelamento. **Mecanismo atual (AD-062, 2026-08-25): esse campo dedicado NÃO é implementado — cancelamento de item é rastreado só pelo evento `PRODUTO_CANCELADO` no log de auditoria geral da venda (campo `Log`, ver `.specs/features/auditoria-acoes-operador/spec.md`).** Ver `.specs/features/finalizacao-suspensao-venda/spec.md` (`FIN-02`/`FIN-12`) e `.specs/features/carrinho-produto-precificacao/spec.md` (`CART-08`, Edge Cases) para o comportamento vigente.
 3. **Campos "Limite de crédito"/"Permite venda a crédito" no cadastro simplificado (item 9):** serão removidos da tela — sem tratamento como somente-leitura, sem expansão de contrato pedida ao ERP. Remoção visual no frame `PDV Online Web - Modal cadastro de cliente` (`design/CentriumCheckout.pen`) ainda não aplicada nesta rodada, só o requisito foi corrigido. Ver `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases).
 4. **URL da opção "Relatório de resumo de caixa" no menu gerencial (item 12):** mesmo link da opção "Central de movimentação não fiscal" (`WPMovimentoNaoFiscal_Lancamento.aspx`), apesar da descrição de conteúdo distinta no design. Ver `.specs/codebase/ARCHITECTURE.md` (seção Responsividade).
 
 **Reason:** Fechar pendências de produto que não dependiam de nova inspeção de KB/contrato, só de decisão do usuário — reduzindo o índice de `.specs/project/PENDENCIES.md` antes da fase Design de `carrinho-produto-precificacao`.
 **Trade-off:** Nenhum.
-**Impact:** `.specs/project/PENDENCIES.md` (itens 5, 6, 9, 12 e 21 removidos da seção 1), `.specs/features/pagamento-pix/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/codebase/ARCHITECTURE.md` e `.specs/codebase/CONCERNS.md` atualizados para refletir. Duas pendências de implementação ficam abertas para a equipe do ERP: o campo `produtoCancelado` (novo) e a remoção visual dos campos de crédito no Pencil (trabalho de design, não de requisito).
+**Impact:** `.specs/project/PENDENCIES.md` (itens 5, 6, 9, 12 e 21 removidos da seção 1), `.specs/features/pagamento-pix/spec.md`, `.specs/features/finalizacao-suspensao-venda/spec.md`, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/codebase/ARCHITECTURE.md` e `.specs/codebase/CONCERNS.md` atualizados para refletir. Duas pendências de implementação ficam abertas para a equipe do ERP: o campo `produtoCancelado` (**removido do escopo em 2026-08-25 pela AD-062 — não é mais implementado, ver ponto 2 acima**) e a remoção visual dos campos de crédito no Pencil (trabalho de design, não de requisito).
 
 ---
 
@@ -323,7 +323,7 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
-### AD-031: Semântica de `TipoPreco` = `6`, `7`, `10`, `11` confirmada pelo usuário — decisão de desenvolvimento de não suportar esses valores (2026-08-25)
+### AD-031: Semântica de `TipoPreco` = `6`, `7`, `10`, `11` confirmada pelo usuário — todos no escopo, tratados via `PrecoVenda` (2026-08-25; corrigido em 2026-08-25 pela AD-060 — a redação original desta AD declarava esses quatro valores fora de escopo, decisão revertida pelo usuário)
 
 **Decision:** Fecha a última lacuna de semântica de `SessaoUsuario.TipoPreco` (domain `EmpDefPre`, ver AD-025) por resposta direta do usuário:
 - `TipoPreco = 6` — Preço de Custo.
@@ -331,10 +331,10 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 - `TipoPreco = 10` — Preço Cliente x Produto (`PRM0241`).
 - `TipoPreco = 11` — Preço por Índice.
 
-**Decisão de desenvolvimento:** apesar da semântica agora conhecida, **nenhum desses quatro valores será suportado pelo Checkout** — decisão explícita do usuário de não implementar tratamento para `6`, `7`, `10` nem `11`. O motor de precificação (`CART-04`/`CART-05`) continua cobrindo só `1`-`5` (índice fixo) e `8`/`9` (faixa de quantidade / lista, AD-025). Não é mais uma pendência de requisito — é escopo deliberadamente fechado.
-**Reason:** Decisão direta do usuário — os quatro casos especiais não ocorrem na operação real dos tenants do Checkout, não há necessidade de implementar suporte a eles.
-**Trade-off:** Se um tenant algum dia configurar `TipoPreco` para um desses quatro valores, o comportamento do Checkout nesse cenário fica indefinido/não tratado — aceito deliberadamente, não é considerado um caso a cobrir.
-**Impact:** `.specs/project/PENDENCIES.md` (item 1 removido da seção 1), `.specs/codebase/CONCERNS.md` e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases) atualizados para refletir.
+Os quatro valores **estão no escopo do Checkout** e são tratados exatamente como `1`-`5`/`9`: o cálculo da regra é feito inteiramente no backend (ERP), que devolve o valor final já resolvido no mesmo campo único `PrecoVenda` (`GetProduto`/`GetListaProdutos`, ver AD-059). Não há, e nunca houve, necessidade de nenhuma lógica adicional no Checkout para esses quatro casos — eles se encaixam sem exceção na regra geral de AD-059 ("todo `TipoPreco` diferente de `8` → ler `PrecoVenda`"). O motor de precificação (`CART-04`/`CART-05`) cobre `1`-`11` uniformemente, com `8` (faixa de quantidade, via `PrecoVenda1`...`PrecoVenda5`) como único caso especial.
+**Reason:** Decisão direta do usuário — como o cálculo de todas as regras de `TipoPreco` é feito no backend (ERP) e devolvido sempre no mesmo campo `PrecoVenda`, não existe motivo técnico para excluir `6`, `7`, `10` ou `11` do escopo do Checkout; a redação original desta AD (2026-08-25) declarava esses valores fora de escopo por engano, corrigido no mesmo dia pela AD-060.
+**Trade-off:** Nenhum — tratar `6`, `7`, `10` e `11` como os demais casos não-`8` não introduz lógica nova nem custo adicional, já que a leitura de `PrecoVenda` já é feita para `1`-`5` e `9`.
+**Impact:** `.specs/project/PENDENCIES.md` (nota do item 1 corrigida), `.specs/codebase/CONCERNS.md` e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases, Acceptance Criteria, Requirement Traceability, Coverage) atualizados para refletir — ver também AD-060.
 
 ---
 
@@ -606,6 +606,67 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 **Reason:** Confirmação direta do usuário — resolve definitivamente a pendência #13 (campo em `CheckoutFaturarNFCe` para marcar DAV como importada/faturada, marcada "PENDÊNCIA DEV" em AD-023/AD-024) e a pergunta deixada em aberto em AD-057.
 **Trade-off:** Nenhum identificado. Nota técnica: o achado anterior de KB (AD-024, `genexus_analyze(mode=impact)` em `DavDocFNum` sem nenhuma escrita vinda do Checkout) continua correto — só não era o caminho relevante. O vínculo é interno ao ERP, criado a partir do rascunho gerado em `GetDAV`, não uma escrita explícita feita pelo Checkout via `CheckoutFaturarNFCe`.
 **Impact:** Atualiza `.specs/features/importacao-dav/spec.md` (Edge Cases, Requirement Traceability/Coverage), `.specs/codebase/CONCERNS.md` (resolve os itens "Mecanismo de marcar DAV como importado/em faturamento" e "Vínculo `CheckoutFaturarNFCe` ↔ DAV importado") e `.specs/project/PENDENCIES.md` (remove item 13 da seção 2).
+
+### AD-059: Campo de preço aplicado corrigido para `PrecoVenda` em todos os casos exceto `TipoPreco = 8` — corrige AD-025 (2026-08-25)
+
+**Decision:** WHEN `SessaoUsuario.TipoPreco` for **diferente de `8`** (inclui `1`-`5` e `9`, preço por lista) THEN o sistema SHALL aplicar o valor do campo único `PrecoVenda`, retornado por `GetProduto`/`GetListaProdutos` — o ERP já resolve internamente qual regra de preço vale (índice `1`-`5` ou lista do cliente) e devolve o valor final pronto nesse campo, sem o Checkout precisar indexar `PrecoVenda1`...`PrecoVenda5` nem ler `PrecoVendaLista` separadamente. WHEN `TipoPreco = 8` THEN o sistema SHALL continuar usando `PrecoVenda1`...`PrecoVenda5` (não `PrecoVenda`) — único caso em que o motor de precificação do Checkout precisa decidir a faixa no cliente, porque a quantidade agregada do SKU é estado do carrinho da venda em curso, que o ERP não conhece numa chamada isolada de `GetProduto`.
+**Reason:** Decisão direta do usuário — corrige a leitura anterior (AD-025) de que os índices `1`-`5` mapeavam para `PrecoVenda1`...`PrecoVenda5` e de que `TipoPreco = 9` retornava `PrecoVendaLista`. `PrecoVendaLista` deixa de ser referenciado nesta documentação.
+**Trade-off:** Nenhum identificado — simplifica o motor de precificação do Checkout, que deixa de replicar a lógica de índice/lista já resolvida pelo ERP, restringindo lógica própria ao único caso (`8`) que depende de estado do carrinho.
+**Impact:** Atualiza `.specs/features/carrinho-produto-precificacao/spec.md` (Nomenclatura, CART-04, Edge Cases, Requirement Traceability), `.specs/codebase/CONCERNS.md` (seção "Pendências de campos/semântica do contrato") e `.specs/codebase/ARCHITECTURE.md` (tabela de persistência, linha "Produto").
+
+---
+
+### AD-060: Reversão da AD-031 — `TipoPreco = 6, 7, 10, 11` estão no escopo do Checkout, sem tratamento especial (2026-08-25)
+
+**Decision:** A decisão registrada em AD-031 (2026-08-25) de que `TipoPreco = 6` (Preço de Custo), `7` (Preço da última venda), `10` (Preço Cliente x Produto, `PRM0241`) e `11` (Preço por Índice) **não seriam suportados pelo Checkout** estava errada e é **revertida**. Confirmação direta do usuário: os quatro valores **estão no escopo** do Checkout. O cálculo de cada uma dessas regras é feito inteiramente no backend (ERP) — o Checkout nunca precisa replicar a lógica de "preço de custo", "última venda", "cliente x produto" ou "preço por índice" — e o valor final de venda volta sempre no **mesmo campo único `PrecoVenda`** já usado para `1`-`5` e `9` (AD-059). Ou seja: não existe, e nunca existiu, necessidade de tratamento especial para `6`, `7`, `10` ou `11` no Checkout — eles se encaixam sem exceção na regra geral de AD-059 ("todo `TipoPreco` diferente de `8` → ler `PrecoVenda`"). A "pendência"/"escopo fechado" registrada em AD-031 nunca precisava existir. O texto da própria AD-031 foi reescrito no lugar (não só anexada esta nota) para refletir a regra corrigida.
+**Reason:** O usuário identificou que a decisão de "não suportar" em AD-031 partiu de uma leitura equivocada — como a resolução de cada `TipoPreco` é responsabilidade do backend e o contrato já devolve um único campo de saída (`PrecoVenda`) para todo caso não-`8`, não havia nenhuma razão técnica para excluir `6`, `7`, `10` e `11` do escopo do Checkout.
+**Trade-off:** Nenhum — reverter a exclusão não introduz lógica nova; o Checkout já lia `PrecoVenda` para `1`-`5`/`9`, e passa a fazer o mesmo, sem alteração de código, para `6`, `7`, `10` e `11`.
+**Impact:** Reescreve `.specs/project/STATE.md` (AD-031, corpo principal, e nota na AD-025), `.specs/codebase/CONCERNS.md` (seção "Pendências de campos/semântica do contrato"), `.specs/features/carrinho-produto-precificacao/spec.md` (Acceptance Criteria `CART-04`, Edge Cases, Requirement Traceability, Coverage) e `.specs/project/PENDENCIES.md` (nota do item 1 e "Última atualização") para não afirmarem mais, isoladamente, que esses quatro valores são fora de escopo ou têm comportamento indefinido.
+
+---
+
+### AD-061: Nova feature — Auditoria de ações do operador, entregue ao ERP no campo `Log` de `FaturarNFCe` (2026-08-25)
+
+**Decision:** Toda ação relevante do operador durante a venda (identificação/criação/troca de cliente, seleção/troca de vendedor, inserção/alteração/cancelamento de produto, aplicação/remoção de forma de pagamento, uso de vale devolução, falhas de pagamento, finalização/suspensão) passa a ser registrada como evento tipado com timestamp (ISO 8601 completo, com segundos — não só precisão de minuto) num novo slice de estado `auditoria` (Zustand, sem `persist`, mesmo ciclo de vida do carrinho — AD-006). O array acumulado é serializado (`JSON.stringify`) e enviado no campo `Log` (string) de `CheckoutFaturarNFCe`, tanto em `SuspenderOuFaturar = "FATURAR"` quanto em `"SUSPENDER"` — decisão direta do usuário de cobrir os dois casos, não só finalização efetiva. Falhas de ações relevantes (pagamento recusado, falha de rede em `FaturarNFCe`, AD-038) também geram evento — decisão direta do usuário, ampliando o escopo inicial de "só ações bem-sucedidas". WHEN `FaturarNFCe` falha por rede THEN o slice `auditoria` NÃO é descartado — o log completo (incluindo o evento de falha) é reenviado íntegro na tentativa seguinte. WHEN uma venda é retomada (rascunho, DAV, recuperação de NFCe) THEN o log local começa vazio — não reconstrói histórico já entregue ao ERP numa suspensão/importação anterior.
+
+Documentado em nova spec dedicada `.specs/features/auditoria-acoes-operador/spec.md` (`AUDIT-01` a `AUDIT-10`), com referência cruzada nas specs de feature que originam cada tipo de evento (`carrinho-produto-precificacao`, `identificacao-cadastro-cliente`, `selecao-vendedor`, `pagamento-geral`, `finalizacao-suspensao-venda`).
+
+**Verificação de contrato:** o `APICentriumOAuth.yaml` mais recente (`info.version: 20260825172440`) já traz o campo `Log` (junto de um novo `DavNum`, não coberto por esta decisão) no bloco `CheckoutFaturarNFCe` (linha 1397) — única definição desse schema no arquivo, sem duplicidade. **Correção (2026-08-25):** esta AD chegou a registrar aqui uma suposta chave `CheckoutFaturarNFCe` duplicada no yaml (com um segundo bloco sem `Log`/`DavNum`) — engano de leitura da IA durante a investigação, corrigido após reverificação; não há duplicidade real, e a nota correspondente em `.specs/codebase/CONCERNS.md` e o item 27 de `.specs/project/PENDENCIES.md` foram removidos.
+
+**Reason:** Decisão de produto do usuário — rastreabilidade completa da venda no ERP, não só o resultado final. Abordagem de eventos explícitos por ação de negócio (não middleware genérico de interceptação de estado, nem log no BFF) escolhida em brainstorming por produzir eventos semânticos utilizáveis pelo ERP, em vez de diffs de estado crus — o BFF (AD-022) não tem lógica de negócio nem visibilidade de ações puramente locais (abrir modal, editar campo antes de confirmar).
+**Trade-off:** Cada feature de negócio precisa disparar explicitamente seu evento de auditoria (disciplina adicional, mesmo padrão já exigido pela "Regra de fronteira" em `.specs/codebase/ARCHITECTURE.md`) — em troca, o log entregue ao ERP tem exatamente os campos semânticos relevantes por tipo de ação, não um diff genérico de estado.
+**Impact:** Nova spec `.specs/features/auditoria-acoes-operador/spec.md`. Atualiza `.specs/project/ROADMAP.md` (nova linha no Milestone 1), `.specs/codebase/ARCHITECTURE.md` (tabela de persistência, novo slice `auditoria`) e, com uma linha de referência cruzada cada, `.specs/features/carrinho-produto-precificacao/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`, `.specs/features/selecao-vendedor/spec.md`, `.specs/features/pagamento-geral/spec.md` e `.specs/features/finalizacao-suspensao-venda/spec.md` (esta última ganha também o requisito `FIN-12` para o envio do campo `Log`). Ver também AD-062 (remove `produtoCancelado`, superado por esta feature).
+
+---
+
+### AD-062: Remove o campo `produtoCancelado` do escopo — cancelamento de item passa a ser rastreado só pelo log de auditoria — corrige AD-026 (2026-08-25)
+
+**Decision:** O campo dedicado `produtoCancelado` (`boolean`, `NULL` equivale a `false`), decidido em AD-026 para o SDT `CheckoutFaturarNFCe`, é **removido do escopo**. Decisão direta do usuário: com a feature de auditoria geral (AD-061) já cobrindo cancelamento de item via evento `PRODUTO_CANCELADO` no campo `Log`, um campo booleano por item dedicado só a esse propósito fica redundante. O item cancelado continua com o mesmo comportamento de UI já documentado (linha mantida riscada na grid, excluída dos cálculos — `CART-08`) — só a forma de comunicar isso ao ERP muda, de um campo de payload por item para um evento no log geral da venda.
+**Reason:** Evitar dois mecanismos paralelos fazendo a mesma coisa (campo dedicado + log geral) — decisão do usuário de consolidar em um único caminho de auditoria, mais simples e mais amplo (o log já cobre toda ação relevante, não só cancelamento de produto).
+**Trade-off:** O campo `produtoCancelado`, que já estava "PENDÊNCIA DEV" sem implementação no ERP, deixa de precisar ser desenvolvido — reduz o pedido de mudança de contrato ao time do ERP. Em troca, a informação de cancelamento passa a viver dentro de uma string JSON livre (`Log`), não mais um campo estruturado/tipado do contrato — leitura pelo lado do ERP fica dependente do parse do JSON, não de um campo boolean direto.
+**Impact:** Reescreve `.specs/project/STATE.md` (nota em AD-026), `.specs/features/finalizacao-suspensao-venda/spec.md` (AC2 da story "Finalizar a venda", `FIN-02`), `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases, `CART-08`) e `.specs/project/PENDENCIES.md` (nota dos itens 6/21) para não referenciarem mais `produtoCancelado` como campo de contrato a implementar.
+
+---
+
+### AD-063: Campo `ProdutoPesavelEditavel` confirmado — resolve simultaneamente a semântica de produto pesável e a flag de editabilidade ao TAB (item 4) (2026-08-25)
+
+**Decision:** `SDTCheckout_GetProduto` (retornado por `GetProduto`/`GetListaProdutos`) tem o campo `ProdutoPesavelEditavel` (string, confirmado em `ApiCentriumOAuth.yaml`, linha 1331, `description: "Material Pesável"`) — informação nova, não localizada nas rodadas anteriores de investigação de KB (AD-023/AD-024), que buscavam nomes como `ProdutoPesavel`/`MatProdPes`/`DavMatProdPes` e não encontravam enum de valores. Valores confirmados diretamente pelo usuário:
+
+| Valor | Significado |
+|---|---|
+| `'S'` | Produto pesável, leitura do peso na etiqueta |
+| `'B'` | Produto pesável, leitura do preço na balança |
+| `''` (vazio) | Produto não pesável e não editável |
+| `'E'` | Produto não pesável, mas editável |
+
+Esse único campo resolve duas pendências que antes pareciam não relacionadas: (1) a semântica de "produto pesável" que AD-023/AD-024 não conseguiram fechar via KB (`ProdutoPesavel`/`MatProdPes`) — hoje confirmado que o nome real exposto no contrato é `ProdutoPesavelEditavel`, com `'S'`/`'B'` distinguindo o mecanismo de leitura (etiqueta vs. balança); e (2) o item 4 de `.specs/project/PENDENCIES.md` (flag de editabilidade ao TAB, `.specs/features/carrinho-produto-precificacao/spec.md`, AD-027) — AD-027 havia confirmado via KB que **nenhum** campo de editabilidade existia em `SDTCheckout_GetProduto`/`PCheckout_GetProduto`, buscando por `MatBloq*`/`MatEdit*`/`MatPermite*`; a busca não cobria `ProdutoPesavelEditavel`, que não tem nome sugestivo de editabilidade nem de pesável isoladamente — daí ter passado despercebido nas rodadas anteriores.
+
+**Interpretação assumida (a confirmar se necessário):** produto pesável (`'S'` ou `'B'`) não é simultaneamente editável — os quatro valores parecem ser mutuamente exclusivos, não dois booleanos independentes combinados. Produto pesável tem preço/peso resolvido pela etiqueta/balança, fora do fluxo de edição manual de `preço`/`unidade de medida`/`quantidade`/`desconto` descrito em `CART-01`/`AD-027`; o mecanismo de TAB de `AD-027` (inserir direto vs. pular para edição) se aplica só à distinção `''` (não editável) vs. `'E'` (editável), ambos não pesáveis.
+
+**Escopo não coberto por esta decisão:** `DavMatProdPes` (nome de atributo visto em KB para o contexto de item de DAV, `.specs/features/importacao-dav/spec.md`) não aparece em `ApiCentriumOAuth.yaml` sob nenhum nome — permanece pendência separada, não confirmada por esta resposta do usuário (que tratou só do contexto de `GetProduto`/`GetListaProdutos`).
+**Reason:** Resposta direta do usuário identificando um campo do contrato que as buscas anteriores por nome (`MatBloq*`/`MatEdit*`/`MatPermite*`/`ProdutoPesavel`/`MatProdPes`) não tinham encontrado, por não conter esses termos no próprio nome do campo.
+**Trade-off:** Nenhum identificado — só fecha lacunas de contrato já documentadas como pendentes.
+**Impact:** Atualiza `.specs/project/PENDENCIES.md` (remove item 4), `.specs/codebase/CONCERNS.md` (bullet `ProdutoPesavel`/`DavMatProdPes`) e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases de TAB/editabilidade e de código de barras pesável, Requirement Traceability/Coverage).
 
 ---
 

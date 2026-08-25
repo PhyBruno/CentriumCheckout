@@ -172,3 +172,9 @@ Issues tracked in GitHub Issues (`PhyBruno/CentriumCheckout`), via the `gh` CLI.
 
 Domain documentation lives under `.specs/` (not root `CONTEXT.md`/`docs/adr/`) — project-level specs, codebase docs, and per-feature specs. See `docs/agents/domain.md`.
 
+**Ao corrigir uma decisão superada em `.specs/`, nunca deixe a correção só anexada ao final do parágrafo** — um leitor (humano ou IA) que pare de ler no meio pega a informação errada, o que gera ambiguidade e pode causar erro de implementação. Regra completa (como reescrever/sinalizar corretamente, precedente já usado em `STATE.md`) em `docs/agents/domain.md`, seção "Ao corrigir uma decisão superada, não anexe a correção no final" — pedido explícito do usuário (2026-08-25).
+
+### Fluxo de desenvolvimento com IA
+
+Sequência padrão (plugins/skills obrigatórios, ordem SDD → requisitos → grilling/brainstorming → implementação, defaults de stack) e o que foi mapeado de reaproveitável em `C:\CentriumIA`. See `docs/agents/fluxo-ia.md`.
+
