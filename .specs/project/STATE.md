@@ -600,6 +600,15 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-058: Pendência #13 resolvida — o ERP fecha a DAV automaticamente ao identificar que o rascunho vinculado foi faturado via `FaturarNFCe` (2026-08-25)
+
+**Decision:** WHEN um DAV importado é faturado via `POST /ApiCentriumOAuth/FaturarNFCe` THEN o sistema SHALL confiar que o próprio ERP fecha/marca a DAV como faturada automaticamente — o rascunho de NFCe gerado por `GetDAV` (AD-057) já fica vinculado internamente à DAV de origem, e o ERP identifica esse vínculo ao processar o faturamento. O Checkout **não** precisa enviar nenhum campo adicional em `CheckoutFaturarNFCe` para isso acontecer.
+**Reason:** Confirmação direta do usuário — resolve definitivamente a pendência #13 (campo em `CheckoutFaturarNFCe` para marcar DAV como importada/faturada, marcada "PENDÊNCIA DEV" em AD-023/AD-024) e a pergunta deixada em aberto em AD-057.
+**Trade-off:** Nenhum identificado. Nota técnica: o achado anterior de KB (AD-024, `genexus_analyze(mode=impact)` em `DavDocFNum` sem nenhuma escrita vinda do Checkout) continua correto — só não era o caminho relevante. O vínculo é interno ao ERP, criado a partir do rascunho gerado em `GetDAV`, não uma escrita explícita feita pelo Checkout via `CheckoutFaturarNFCe`.
+**Impact:** Atualiza `.specs/features/importacao-dav/spec.md` (Edge Cases, Requirement Traceability/Coverage), `.specs/codebase/CONCERNS.md` (resolve os itens "Mecanismo de marcar DAV como importado/em faturamento" e "Vínculo `CheckoutFaturarNFCe` ↔ DAV importado") e `.specs/project/PENDENCIES.md` (remove item 13 da seção 2).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
