@@ -13,7 +13,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 | 3 | Carrinho, busca/inserção de produto e motor de precificação | Specify feito (Design recomendado — motor de precificação é lógica de domínio isolada e crítica; `CART-09`/`CART-10` resolvidos em 2026-08-24, AD-030, sem bloqueio remanescente) | `.specs/features/carrinho-produto-precificacao/spec.md` |
 | 4 | Pagamento (formas/condições, PIX, TEF) | Specify feito | `.specs/features/pagamento-geral/spec.md`, `.specs/features/pagamento-pix/spec.md`, `.specs/features/pagamento-tef/spec.md` |
 | 5 | Finalização e suspensão da venda (NFCe) | Specify feito | `.specs/features/finalizacao-suspensao-venda/spec.md` |
-| 8 | Seleção de vendedor (modal) | Specify feito (endpoint `GetListaVendedores` confirmado, AD-023; pendência remanescente: comportamento quando a listagem retorna vazia, `.specs/project/PENDENCIES.md` #8) | `.specs/features/selecao-vendedor/spec.md` |
+| 8 | Seleção de vendedor (modal) | Specify feito (endpoint `GetListaVendedores` confirmado, AD-023; default de vendedor via `GetSessao` ao iniciar NFCe resolvido em 2026-08-25, AD-032, sem bloqueio remanescente) | `.specs/features/selecao-vendedor/spec.md` |
 | 9 | Menu gerencial (redirect para telas legadas do ERP) | Specify feito (nota arquitetural — sem spec de feature completo, é só link/navegação); URLs das duas opções confirmadas (AD-026) | `.specs/codebase/ARCHITECTURE.md` (seção Responsividade) |
 
 ## Milestone 2 — Caminhos alternativos de entrada na venda

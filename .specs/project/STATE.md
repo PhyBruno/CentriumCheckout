@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-08-25
-**Current Work:** Última pendência de produto de `carrinho-produto-precificacao` resolvida por decisão direta do usuário (AD-031 — semântica de `TipoPreco` 6/7/10/11 conhecida, mas deliberadamente fora de escopo). Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Current Work:** Pré-seleção padrão de vendedor/cliente ao iniciar uma nova NFCe definida por decisão direta do usuário (AD-032). Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -335,6 +335,33 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 **Reason:** Decisão direta do usuário — os quatro casos especiais não ocorrem na operação real dos tenants do Checkout, não há necessidade de implementar suporte a eles.
 **Trade-off:** Se um tenant algum dia configurar `TipoPreco` para um desses quatro valores, o comportamento do Checkout nesse cenário fica indefinido/não tratado — aceito deliberadamente, não é considerado um caso a cobrir.
 **Impact:** `.specs/project/PENDENCIES.md` (item 1 removido da seção 1), `.specs/codebase/CONCERNS.md` e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases) atualizados para refletir.
+
+---
+
+### AD-032: Vendedor e cliente pré-selecionados por padrão ao iniciar uma nova NFCe, a partir de `GetSessao` — decisão direta do usuário (2026-08-25)
+
+**Decision:** Ao iniciar uma nova NFCe, antes (ou na ausência) de qualquer seleção manual do operador:
+- O vendedor pré-selecionado por padrão é `SessaoUsuario.VendedorCodigo`/`VendedorNome` (retornados por `GetSessao`, já persistidos no bootstrap via Dexie — ver `.specs/features/autenticacao-sessao-bootstrap/spec.md`) — são os valores configurados como default da empresa, não uma suposição do Checkout. Vendedor é campo obrigatório em `FaturarNFCe` (`.specs/features/finalizacao-suspensao-venda/spec.md`, `FIN-07`).
+- O cliente pré-selecionado por padrão é `SessaoUsuario.ClienteDefaultCodigo`/`ClienteDefaultNome` (mesma origem/persistência). Cliente é sempre obrigatório em toda NFCe — nunca fica vazio.
+- Em ambos os casos, o operador pode substituir o default selecionando outro vendedor/cliente através dos respectivos modais (`.specs/features/selecao-vendedor/spec.md`, `.specs/features/identificacao-cadastro-cliente/spec.md`) — o default é só o valor inicial do campo, não um valor travado.
+
+**Reconciliação com decisões anteriores (confirmado pelo usuário nesta rodada):**
+- `selecao-vendedor` já tinha, como decisão confirmada, que o Checkout **nunca deve associar automaticamente vendedor = operador logado** (Out of Scope) e que `FaturarNFCe` deve receber o vendedor **"explicitamente selecionado"**, nunca **"inferido automaticamente da sessão"** (Success Criteria). Essa regra continua valendo para o valor final enviado — a pré-seleção de `GetSessao` é só o ponto de partida do campo (satisfaz a obrigatoriedade desde o início da venda, sem o operador precisar abrir o modal); manter o default sem trocá-lo já conta como "selecionado", não é uma inferência silenciosa que o operador não pode ver/mudar.
+- `identificacao-cadastro-cliente` descrevia cliente como **"[Não é obrigatório]"** no Problem Statement. Isso descrevia a UX (operador não precisa abrir o modal de busca para a venda prosseguir), não a regra de negócio — cliente é sempre obrigatório para o ERP; o Checkout nunca deixa o campo vazio porque pré-preenche com o default da empresa desde o início da venda.
+
+**Reason:** Decisão direta do usuário — Vendedor e Cliente são campos obrigatórios de toda NFCe; sem um default, a venda nasceria em estado inválido até o operador interagir com os modais de busca.
+**Trade-off:** Nenhum identificado — o default é sempre substituível pelo operador, e os endpoints/campos já estavam confirmados no contrato (`ApiCentriumOAuth.yaml`, schema `SessaoUsuario`).
+**Impact:** Resolve a pendência #8 de `.specs/project/PENDENCIES.md` (comportamento quando `GetListaVendedores` retorna vazio — nunca bloqueia, pois já existe vendedor default desde o início da venda). Atualiza `.specs/features/selecao-vendedor/spec.md` (Problem Statement, Out of Scope, Acceptance Criteria, Edge Cases, Success Criteria, Requirement Traceability) e `.specs/features/identificacao-cadastro-cliente/spec.md` (Problem Statement, Acceptance Criteria, Requirement Traceability).
+
+---
+
+### AD-033: `GetProduto` sempre envia `Tipocodproduto` = `SessaoUsuario.UsuarioTipoCodigoProduto` — clarificação de processo do usuário (2026-08-25)
+
+**Decision:** Toda chamada a `GET /ApiCentriumOAuth/GetProduto` (inserção direta por código conhecido, `CART-02`) SHALL enviar o parâmetro `Tipocodproduto` preenchido com o valor de `SessaoUsuario.UsuarioTipoCodigoProduto` (retornado por `GetSessao`, já persistido no bootstrap). Confirmado no contrato (`ApiCentriumOAuth.yaml`): `GetProduto` tem o parâmetro `Tipocodproduto` (`query`, `string`); `SessaoUsuario.UsuarioTipoCodigoProduto` (`string`) existe na resposta de `GetSessao`.
+**Escopo:** aplica-se só a `GetProduto` — `GetListaProdutos` (busca via modal, `CART-01`) não tem esse parâmetro no contrato (só `Empresa`/`Txtbusca`/`Pagina`/`Tamanhopagina`), então não é afetado por esta decisão.
+**Reason:** Clarificação de processo do usuário — o tipo de código de produto (ex.: código de barras vs. código interno) que o operador digita/bipa é definido pela configuração do usuário/empresa, exposta em `GetSessao`; não é um valor a inferir ou perguntar por chamada.
+**Trade-off:** Nenhum identificado — é um valor já disponível desde o bootstrap, sem chamada adicional.
+**Impact:** Atualiza `.specs/features/carrinho-produto-precificacao/spec.md` (`CART-02`, Acceptance Criteria e Requirement Traceability).
 
 ---
 

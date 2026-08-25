@@ -2,7 +2,9 @@
 
 ## Problem Statement
 
-Uma venda pode precisar de um cliente associado [Nao é obrigatorio]. O operador precisa localizar um cliente já cadastrado no ERP rapidamente (por CPF/CNPJ ou por busca livre) e, quando o cliente não existe, cadastrá-lo sem sair do Checkout — mas sem reimplementar todas as validações completas do ERP.
+Toda NFCe precisa de um cliente associado — é campo sempre obrigatório, a venda nunca pode ficar sem ele. O operador precisa localizar um cliente já cadastrado no ERP rapidamente (por CPF/CNPJ ou por busca livre) e, quando o cliente não existe, cadastrá-lo sem sair do Checkout — mas sem reimplementar todas as validações completas do ERP.
+
+**Decisão de desenvolvimento (2026-08-25, AD-032 em `.specs/project/STATE.md`):** como cliente é sempre obrigatório e a venda não pode nascer em estado inválido, ao iniciar uma nova NFCe o campo já vem pré-selecionado por padrão com `SessaoUsuario.ClienteDefaultCodigo`/`ClienteDefaultNome` (mesmos valores de `GetSessao`, persistidos no bootstrap) — o cliente default configurado na empresa. Esse default é só o valor inicial: o operador pode substituí-lo a qualquer momento, buscando e selecionando outro cliente pelo modal descrito abaixo. A busca/seleção continua sendo uma ação opcional do ponto de vista da UX (a venda nunca fica bloqueada por falta de interação com o modal), mas o campo cliente em si nunca está vazio.
 
 ## UI Design
 
@@ -27,15 +29,16 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 
 **User Story**: Como operador de caixa, quero buscar o cliente pelo CPF/CNPJ, ou por nome/e-mail/telefone quando não sei o documento, para associá-lo à venda rapidamente.
 
-**Why P1**: Uma venda pode depender de um cliente identificado.
+**Why P1**: Toda venda precisa de um cliente identificado — é campo obrigatório em toda NFCe.
 
 **Acceptance Criteria**:
 
 1. WHEN o operador informa um CPF/CNPJ conhecido THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetCliente` e retornar o cliente específico.
 2. WHEN o operador não sabe o CPF/CNPJ e busca por nome, e-mail ou telefone THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetListaClientes` com `Txtbusca` (mais `Empresa`, `Pagina`, `Tamanhopagina`), listando candidatos para seleção. **Resolvido (2026-08-21, AD-023):** endpoint confirmado no `ApiCentriumOAuth.yaml` atualizado.
 3. WHEN a identificação de cliente e a montagem do carrinho acontecem na mesma etapa (layouts desktop/mobile) THEN o sistema SHALL tratá-las como ações independentes, não sequenciais obrigatórias.
+4. WHEN uma nova NFCe é iniciada THEN o sistema SHALL pré-selecionar automaticamente `SessaoUsuario.ClienteDefaultCodigo`/`ClienteDefaultNome` (via `GetSessao`) como cliente da venda, sem exigir que o operador abra o modal de busca. **Resolvido (2026-08-25, AD-032):** decisão direta do usuário — cliente é obrigatório, o default da empresa evita que a venda comece em estado inválido; o operador pode trocar a qualquer momento buscando outro cliente.
 
-**Independent Test**: Buscar um cliente conhecido por CPF e um desconhecido por nome parcial; verificar que cada caminho chama o endpoint correto.
+**Independent Test**: Buscar um cliente conhecido por CPF e um desconhecido por nome parcial; verificar que cada caminho chama o endpoint correto. Verificar também que uma NFCe recém-iniciada, sem interação com o modal, já finaliza com o cliente igual a `SessaoUsuario.ClienteDefaultCodigo`.
 
 ---
 
@@ -71,12 +74,14 @@ Busca de cliente: frame `PDV Online Web - Modal cliente` em `design/CentriumChec
 | CLI-02 | Busca por termo livre (`GetListaClientes`) | - | Verified (2026-08-21, AD-023 — endpoint confirmado em `ApiCentriumOAuth.yaml`) |
 | CLI-03 | Cadastro simplificado via `PostCliente` | - | Verified |
 | CLI-04 | Validação de máscara CPF/CEP no cadastro simplificado | - | Verified |
+| CLI-05 | Pré-seleção default de `SessaoUsuario.ClienteDefaultCodigo`/`ClienteDefaultNome` ao iniciar nova NFCe | - | Verified (2026-08-25, AD-032 — decisão direta do usuário) |
 
-**Coverage:** 4 total, 0 mapeados a tasks, 0 requisitos pendentes, 0 edge cases pendentes de decisão de produto (campos "Limite de crédito"/"Permite venda a crédito" — decisão de remover do design confirmada em 2026-08-24, AD-026; remoção visual no Pencil ainda não aplicada).
+**Coverage:** 5 total, 0 mapeados a tasks, 0 requisitos pendentes, 0 edge cases pendentes de decisão de produto (campos "Limite de crédito"/"Permite venda a crédito" — decisão de remover do design confirmada em 2026-08-24, AD-026; remoção visual no Pencil ainda não aplicada).
 
 ---
 
 ## Success Criteria
 
 - [ ] Operador nunca fica sem opção de continuar a venda por cliente não encontrado.
+- [ ] A venda nunca fica sem cliente associado — o default de `SessaoUsuario.ClienteDefaultCodigo` (AD-032) garante que o campo sempre tem um valor válido desde o início da NFCe.
 - [ ] Nenhuma venda é bloqueada por falha de cadastro simplificado dentro do fluxo normal.

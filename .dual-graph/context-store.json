@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-24T16:04:28.017515+00:00",
+    "updated_at": "2026-08-25T11:19:36.923766+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -251,7 +251,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.831415+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T16:04:28.000686+00:00",
+    "updated_at": "2026-08-25T11:19:36.933614+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -472,13 +472,15 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.744910+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T16:04:28.025105+00:00",
+    "updated_at": "2026-08-25T11:16:51.009013+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
-      "recent_action_kinds": [],
+      "recent_action_kinds": [
+        "register_edit"
+      ],
       "recent_queries": [],
       "edited": true
     }
@@ -579,7 +581,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.816973+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.959615+00:00",
+    "updated_at": "2026-08-25T11:16:33.244660+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -684,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-24T14:05:45.687933+00:00",
+    "updated_at": "2026-08-25T11:19:36.942405+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -802,7 +804,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T12:57:28.462281+00:00",
     "created_epoch": 1787317048,
-    "updated_at": "2026-08-21T17:40:07.708222+00:00",
+    "updated_at": "2026-08-25T11:16:33.235748+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -878,7 +880,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T17:44:16.509506+00:00",
     "created_epoch": 1787334256,
-    "updated_at": "2026-08-24T16:04:28.009694+00:00",
+    "updated_at": "2026-08-25T11:16:33.227380+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1063,95 +1065,6 @@
     }
   },
   {
-    "id": "mem:1787580345669",
-    "kind": "decision",
-    "content": "AD-029: sintaxe codigo*quantidade + Enter para insercao direta com quantidade, complementa CART-02, distinto de AD-028",
-    "tags": [
-      "029",
-      "sintaxe",
-      "codigo",
-      "quantidade",
-      "enter",
-      "para",
-      "insercao",
-      "direta"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-24T14:05:45.669373+00:00",
-    "created_epoch": 1787580345,
-    "updated_at": "2026-08-24T14:05:45.669378+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787583600000",
-    "kind": "decision",
-    "content": "AD-028: formato de codigo de barras pesavel resolvido - 13 digitos comecando em 2 indica balanca; resolve pendencia #3",
-    "tags": [
-      "028",
-      "pesavel",
-      "codigo-de-barras",
-      "resolve",
-      "pendencia",
-      "usuario"
-    ],
-    "files": [
-      ".specs/project/PENDENCIES.md",
-      ".specs/project/STATE.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-24",
-    "created_epoch": 1787583600,
-    "updated_at": "2026-08-24",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1787584200000",
-    "kind": "decision",
-    "content": "AD-029: sintaxe codigo*quantidade + Enter para insercao direta com quantidade, distinta do AD-028 (codigo pesavel bipado)",
-    "tags": [
-      "029",
-      "codigo-quantidade",
-      "enter",
-      "insercao-direta",
-      "usuario"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-24",
-    "created_epoch": 1787584200,
-    "updated_at": "2026-08-24",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
     "id": "mem:1787587467999",
     "kind": "decision",
     "content": "AD-030: resolve CART-09 (bloqueio edicao/cancelamento pos-pagamento, permanente se TEF/PIX) e CART-10 (sem validacao de estoque, regra do ERP) por decisao direta do usuario",
@@ -1221,7 +1134,9 @@
       "engram",
       "config"
     ],
-    "files": [],
+    "files": [
+      ".dual-graph/context-store.json"
+    ],
     "file_path": ".dual-graph/context-store.json",
     "symbol_id": "",
     "symbol_hash": "",
@@ -1232,6 +1147,40 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1787656611007",
+    "kind": "decision",
+    "content": "AD-032: corrige referencia stale a pendencia #8 no ROADMAP.md, ja resolvida pelo default de vendedor via GetSessao",
+    "tags": [
+      "032",
+      "corrige",
+      "referencia",
+      "stale",
+      "pendencia",
+      "roadmap",
+      "resolvida",
+      "pelo"
+    ],
+    "files": [
+      ".specs/project/ROADMAP.md"
+    ],
+    "file_path": ".specs/project/ROADMAP.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25T11:16:51.007416+00:00",
+    "created_epoch": 1787656611,
+    "updated_at": "2026-08-25T11:16:51.007422+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [
+        "register_edit"
+      ],
+      "recent_queries": []
+    }
   },
   {
     "id": "mem:1787663173000",
@@ -1255,6 +1204,61 @@
     "symbol_hash": "",
     "created_at": "2026-08-25",
     "created_epoch": 1787663173,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787670000000",
+    "kind": "decision",
+    "content": "AD-032: vendedor/cliente pre-selecionados por padrao ao iniciar NFCe, via VendedorCodigo/ClienteDefaultCodigo de GetSessao",
+    "tags": [
+      "032",
+      "vendedor",
+      "cliente",
+      "default",
+      "getsessao",
+      "decisao-desenvolvimento"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/project/PENDENCIES.md",
+      ".specs/features/selecao-vendedor/spec.md",
+      ".specs/features/identificacao-cadastro-cliente/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787670000,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787671000000",
+    "kind": "decision",
+    "content": "AD-033: GetProduto sempre envia Tipocodproduto = UsuarioTipoCodigoProduto de GetSessao",
+    "tags": [
+      "033",
+      "getproduto",
+      "tipocodproduto",
+      "usuariotipocodigoproduto",
+      "clarificacao-processo"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787671000,
     "updated_at": "2026-08-25",
     "stale": false,
     "stale_reason": "",

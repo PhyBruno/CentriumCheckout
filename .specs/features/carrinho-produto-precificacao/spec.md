@@ -50,7 +50,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 
 **Acceptance Criteria**:
 
-1. WHEN o operador bipa ou digita um código já conhecido THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetProduto` para esse código específico.
+1. WHEN o operador bipa ou digita um código já conhecido THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/GetProduto` para esse código específico, sempre enviando o parâmetro `Tipocodproduto` com o valor de `SessaoUsuario.UsuarioTipoCodigoProduto` (retornado por `GetSessao`, ver `.specs/features/autenticacao-sessao-bootstrap/spec.md`). **Resolvido (2026-08-25, AD-033, clarificação de processo do usuário):** o tipo de código enviado é sempre o configurado na sessão, nunca inferido por chamada. Não se aplica a `GetListaProdutos` (`CART-01`) — o parâmetro não existe nesse endpoint.
 2. WHEN o mesmo SKU é reinserido na mesma venda THEN o sistema SHALL reusar o cache já existente (mesmos `precos`/`faixasQuantidade`), sem nova chamada de rede e sem risco de divergência entre linhas.
 3. WHEN o operador digita o código no formato `código*quantidade` (ex.: `12345*3`) e pressiona Enter THEN o sistema SHALL carregar os dados do produto pela parte antes do `*` (chamada a `GetProduto`) e aplicar o valor após o `*` ao campo de quantidade do item, inserindo a linha diretamente na grid. **Resolvido (2026-08-24, AD-029, decisão direta do usuário):** WHEN o operador digita só o código (sem `*`) e pressiona Enter THEN o sistema SHALL inserir o item com quantidade `1` (padrão). Mecanismo de digitação manual, distinto do formato de código de barras *bipado* (escaneado) de produto pesável, já resolvido em AD-028.
 
@@ -111,7 +111,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
 | CART-01 | Busca via `GetListaProdutos` (modal) | - | Verified |
-| CART-02 | Inserção direta via `GetProduto` | - | Verified |
+| CART-02 | Inserção direta via `GetProduto`, sempre com `Tipocodproduto` = `SessaoUsuario.UsuarioTipoCodigoProduto` | - | Verified (2026-08-25, AD-033) |
 | CART-03 | Cache por SKU, `staleTime: Infinity` na venda | - | Verified |
 | CART-04 | Precificação por índice fixo de `TipoPreco` (1-5) | - | Verified |
 | CART-05 | Precificação por faixa de quantidade (`TipoPreco = 8`) | - | Verified |
