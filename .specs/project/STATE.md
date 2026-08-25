@@ -1,7 +1,7 @@
 # State
 
-**Last Updated:** 2026-08-24
-**Current Work:** Últimas pendências de produto de `carrinho-produto-precificacao` resolvidas por decisão direta do usuário (AD-025 a AD-030), incluindo os bloqueios deliberados `CART-09`/`CART-10`. Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Last Updated:** 2026-08-25
+**Current Work:** Última pendência de produto de `carrinho-produto-precificacao` resolvida por decisão direta do usuário (AD-031 — semântica de `TipoPreco` 6/7/10/11 conhecida, mas deliberadamente fora de escopo). Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -320,6 +320,21 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 **Reason:** Fechar os dois últimos bloqueios deliberados de `carrinho-produto-precificacao`, item pendente desde a Specify inicial (2026-08-20), liberando a feature para prosseguir sem exceções na fase Design.
 **Trade-off:** Nenhum. Para `CART-09`, o efeito colateral aceito é que uma venda com pagamento TEF/PIX aprovado fica definitivamente travada para edição/cancelamento de item pelo resto do atendimento — não há caminho de escape, por design.
 **Impact:** `.specs/project/PENDENCIES.md` (itens 14 e 15 removidos da seção 3), `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases + Requirement Traceability, `CART-09`/`CART-10` de "em análise"/"em aberto" para `Verified`) e `.specs/project/ROADMAP.md` (nota do Milestone 1 sobre bloqueio deliberado removida) atualizados.
+
+---
+
+### AD-031: Semântica de `TipoPreco` = `6`, `7`, `10`, `11` confirmada pelo usuário — decisão de desenvolvimento de não suportar esses valores (2026-08-25)
+
+**Decision:** Fecha a última lacuna de semântica de `SessaoUsuario.TipoPreco` (domain `EmpDefPre`, ver AD-025) por resposta direta do usuário:
+- `TipoPreco = 6` — Preço de Custo.
+- `TipoPreco = 7` — Preço da última venda.
+- `TipoPreco = 10` — Preço Cliente x Produto (`PRM0241`).
+- `TipoPreco = 11` — Preço por Índice.
+
+**Decisão de desenvolvimento:** apesar da semântica agora conhecida, **nenhum desses quatro valores será suportado pelo Checkout** — decisão explícita do usuário de não implementar tratamento para `6`, `7`, `10` nem `11`. O motor de precificação (`CART-04`/`CART-05`) continua cobrindo só `1`-`5` (índice fixo) e `8`/`9` (faixa de quantidade / lista, AD-025). Não é mais uma pendência de requisito — é escopo deliberadamente fechado.
+**Reason:** Decisão direta do usuário — os quatro casos especiais não ocorrem na operação real dos tenants do Checkout, não há necessidade de implementar suporte a eles.
+**Trade-off:** Se um tenant algum dia configurar `TipoPreco` para um desses quatro valores, o comportamento do Checkout nesse cenário fica indefinido/não tratado — aceito deliberadamente, não é considerado um caso a cobrir.
+**Impact:** `.specs/project/PENDENCIES.md` (item 1 removido da seção 1), `.specs/codebase/CONCERNS.md` e `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases) atualizados para refletir.
 
 ---
 

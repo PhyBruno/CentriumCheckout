@@ -1211,5 +1211,54 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1787599600000",
+    "kind": "decision",
+    "content": "Desativa plugin Engram automatico no OpenCode; mantem MCP conectado e reversivel",
+    "tags": [
+      "opencode",
+      "engram",
+      "config"
+    ],
+    "files": [],
+    "file_path": ".dual-graph/context-store.json",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-24",
+    "created_epoch": 1787599600,
+    "updated_at": "2026-08-24",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787663173000",
+    "kind": "decision",
+    "content": "AD-031: TipoPreco 6/7/10/11 identificados mas deliberadamente fora de escopo do Checkout",
+    "tags": [
+      "031",
+      "tipopreco",
+      "empdefpre",
+      "fora-de-escopo",
+      "decisao-desenvolvimento"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md",
+      ".specs/project/STATE.md",
+      ".specs/codebase/CONCERNS.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787663173,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   }
 ]
