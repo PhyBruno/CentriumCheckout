@@ -6,7 +6,7 @@ Além da inserção manual de produtos, o operador de caixa precisa poder import
 
 ## UI Design
 
-Frame `PDV Online Web - Modal DAV` em `design/CentriumCheckout.pen` (Modal Menu DAV: tabela de DAVs, paginação, ação de reimpressão por linha, e 6 filtros — cliente, data de emissão, status, vendedor, tipo, origem). ⚠️ Nenhum desses filtros nem a ação de reimpressão têm requisito/critério de aceite correspondente ainda — ver Edge Cases.
+Frame `PDV Online Web - Modal DAV` em `design/CentriumCheckout.pen` (Modal Menu DAV: tabela de DAVs, paginação, ação de reimpressão por linha, e 6 filtros — cliente, data de emissão, status, vendedor, tipo, origem). ⚠️ Nenhum desses filtros tem requisito/critério de aceite correspondente ainda — ver Edge Cases. A ação de reimpressão por linha, presente no design, **não será implementada** — ver Out of Scope.
 
 ## Goals
 
@@ -15,7 +15,7 @@ Frame `PDV Online Web - Modal DAV` em `design/CentriumCheckout.pen` (Modal Menu 
 
 ## Out of Scope
 
-Nenhum item explicitamente excluído identificado até o momento — feature descoberta na varredura dos diagramas de sequência do ERP, escopo ainda sendo confirmado.
+- Reimpressão de DAV pela ação por linha do Modal DAV (presente no design) — **decisão direta do usuário (2026-08-25, AD-035):** não será implementada pelo Checkout. Se o operador precisar reimprimir um DAV, deve fazer isso diretamente pelo ERP. Segue a mesma linha da reimpressão de NFCe (já fora de escopo, ver `.specs/features/finalizacao-suspensao-venda/spec.md`), mas aqui é decisão de produto direta, não achado de contrato.
 
 ---
 
@@ -54,7 +54,7 @@ Nenhum item explicitamente excluído identificado até o momento — feature des
 
 - WHEN um DAV é importado THEN o sistema SHALL faturá-lo através do próprio `POST /ApiCentriumOAuth/FaturarNFCe` — não existe endpoint separado de "marcar DAV como importado/em faturamento". **Parcialmente resolvido (2026-08-21, AD-023):** resposta direta do usuário — o próprio `FaturarNFCe` já trata a marcação de status como efeito colateral, mas exige um campo preenchido no SDT `CheckoutFaturarNFCe` cujo nome exato **ainda não foi definido** (marcado explicitamente pelo usuário como "PENDÊNCIA DEV"). **Reforçado (2026-08-21, AD-024):** leitura completa da SDT `CheckoutFaturarNFCe` na KB confirma que ela não tem nenhum campo relacionado a DAV hoje (nem `NumeroDav` nem equivalente). Além disso, `genexus_analyze(mode=impact)` em `DavDocFNum` (campo que a DAV usa para registrar o documento fiscal gerado ao ser faturada) não encontrou nenhuma procedure do Checkout escrevendo nele. Ou seja: não existe hoje, em lugar nenhum da KB, um caminho de código que marque a DAV como faturada a partir do fluxo do Checkout — a pendência é uma mudança de KB do ERP a ser priorizada (novo parâmetro + lógica de escrita), não apenas escolher o nome de um campo já existente.
 - WHEN o operador usa qualquer um dos 6 filtros desenhados no modal (cliente, data de emissão, status, vendedor, tipo, origem) THEN ⚠️ pendente, com forma corrigida (2026-08-21, AD-024): `GET /ApiCentriumOAuth/ListaDAVs` aceita `TxtBusca` (busca livre por número/título/nome do cliente do DAV, ver `DpCheckout_GetDavs` na KB) — cobre parcialmente o filtro "cliente" via busca por nome. Porém `data de emissão` e `status` **nunca poderão ser filtros server-side** nesse endpoint: estão hardcoded na query do `DataProvider` (`Where DavDatEmi = &Today`, `where DavSta = 'A'`) — a listagem sempre retorna só os DAVs de hoje com status aberto, independentemente do que o Checkout envie; não é uma questão de o contrato aceitar ou não o parâmetro. Filtros de vendedor/tipo/origem seguem genuinamente sem suporte server-side (nenhum parâmetro correspondente em `DpCheckout_GetDavs`). Decisão de produto pendente: aceitar essa janela fixa de "hoje + aberto" (a única coisa que o operador pode ajustar é o texto de busca), ou pedir ao ERP que exponha os filtros de data/status/vendedor como parâmetros reais. Achado lateral de qualidade: `DpCheckout_GetDavs` tem um bug de paginação — o cap de 50 registros por página é anulado por uma segunda atribuição (`&TamanhoPaginaAuxiliar = iif(&TamanhoPagina.IsEmpty(), 50, &TamanhoPagina)`) logo após a que aplicava o limite — o Checkout deve limitar o próprio `TamanhoPagina` no request, não confiar no servidor para isso.
-- WHEN o operador usa a ação de reimpressão por linha, presente no design THEN ⚠️ pendente: nenhum requisito cobre esse botão ainda — `finalizacao-suspensao-venda/spec.md` já trata reimpressão de NFCe como fora de escopo (`GetPDFNota` não usado para essa finalidade); não confirmado se a reimpressão do Modal DAV é o mesmo conceito ou algo distinto (ex.: reimprimir o próprio DAV, não a NFCe).
+- WHEN o operador usa a ação de reimpressão por linha, presente no design THEN o sistema SHALL **não implementar** essa ação. **Resolvido (2026-08-25, AD-035):** decisão direta do usuário — reimpressão de DAV não será feita pelo Checkout; se o operador precisar reimprimir, deve fazer isso pelo próprio ERP. O botão presente no design do Pencil (`PDV Online Web - Modal DAV`) deve ser desconsiderado/removido na fase de implementação de UI.
 
 ---
 
@@ -66,7 +66,7 @@ Nenhum item explicitamente excluído identificado até o momento — feature des
 | DAV-02 | Importar DAV completo via `GetDAV` | - | Verified |
 | DAV-03 | DAV importado segue fluxo normal de venda | - | Verified |
 
-**Coverage:** 3 total, 1 edge case pendente de decisão de produto (janela fixa "hoje + aberto" em `ListaDAVs`, filtros de vendedor/tipo/origem sem suporte, 2026-08-21 AD-024), 1 edge case de UX não especificado (ação de reimpressão), 1 pendência de KB do ERP (campo/lógica de marcação de DAV importado em `CheckoutFaturarNFCe` — "PENDÊNCIA DEV", reforçada em AD-024 como mudança de KB, não só de nomenclatura, ver `.specs/project/STATE.md`).
+**Coverage:** 3 total, 1 edge case pendente de decisão de produto (janela fixa "hoje + aberto" em `ListaDAVs`, filtros de vendedor/tipo/origem sem suporte, 2026-08-21 AD-024), 1 pendência de KB do ERP (campo/lógica de marcação de DAV importado em `CheckoutFaturarNFCe` — "PENDÊNCIA DEV", reforçada em AD-024 como mudança de KB, não só de nomenclatura, ver `.specs/project/STATE.md`). Ação de reimpressão por linha resolvida (2026-08-25, AD-035) — não será implementada, fora de escopo por decisão direta do usuário.
 
 ---
 

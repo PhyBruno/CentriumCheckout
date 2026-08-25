@@ -374,6 +374,15 @@ Semântica de `6`, `7`, `10` e `11` continua sem confirmação — pendência es
 
 ---
 
+### AD-035: Ação de reimpressão por linha no Modal DAV não será implementada — decisão direta do usuário (2026-08-25)
+
+**Decision:** A ação de reimpressão por linha presente no design do Modal DAV (frame `PDV Online Web - Modal DAV`, `design/CentriumCheckout.pen`) **não será implementada** pelo Checkout. Se o operador precisar reimprimir um DAV, deve fazer isso diretamente pelo ERP — não há requisito/critério de aceite correspondente no Checkout.
+**Reason:** Decisão direta do usuário — reimpressão de documentos já existe no ERP e não precisa ser replicada no Checkout, seguindo a mesma lógica já aplicada à reimpressão de NFCe (fora de escopo, `.specs/features/finalizacao-suspensao-venda/spec.md`).
+**Trade-off:** Nenhum identificado — o operador continua podendo reimprimir o DAV, só que fora do Checkout, pelo próprio ERP.
+**Impact:** Resolve a pendência #11 de `.specs/project/PENDENCIES.md` (removida da seção 1). Atualiza `.specs/features/importacao-dav/spec.md` (UI Design, Out of Scope, Edge Cases e Requirement Traceability/Coverage).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
