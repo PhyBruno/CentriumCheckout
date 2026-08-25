@@ -32112,45 +32112,6 @@
                     },
                     {
                       "type": "frame",
-                      "id": "cXwOe",
-                      "name": "Filtro suspensão NFCe",
-                      "width": 194,
-                      "height": 36,
-                      "fill": "#EEF0F3",
-                      "cornerRadius": 100,
-                      "gap": 8,
-                      "padding": [
-                        0,
-                        12
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "DzaVy",
-                          "name": "Filtro suspensão NFCe ícone",
-                          "width": 15,
-                          "height": 15,
-                          "icon": "calendar-days",
-                          "library": "lucide",
-                          "fill": "#5B616E"
-                        },
-                        {
-                          "type": "text",
-                          "id": "eaGRx",
-                          "name": "Filtro suspensão NFCe texto",
-                          "fill": "#0A0B0D",
-                          "content": "Suspensão: 01/06 - 11/06",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
                       "id": "M8yBU",
                       "name": "Filtro status NFCe",
                       "width": 140,
@@ -32230,7 +32191,7 @@
                           "id": "Y2KtG",
                           "name": "Filtro vendedor NFCe texto",
                           "fill": "#0A0B0D",
-                          "content": "Vendedor: Mariana",
+                          "content": "Vendedor: Todos",
                           "lineHeight": 1.2,
                           "fontFamily": "Inter",
                           "fontSize": 12,
@@ -32330,7 +32291,7 @@
                           "id": "A0BA5",
                           "name": "Contagem NFCe",
                           "fill": "#0A0B0D",
-                          "content": "5 NFCes suspensas encontradas",
+                          "content": "3 NFCes suspensas encontradas",
                           "lineHeight": 1.2,
                           "fontFamily": "Inter",
                           "fontSize": 13,
@@ -32495,32 +32456,6 @@
                     },
                     {
                       "type": "frame",
-                      "id": "MnWwY",
-                      "name": "Head suspensão NFCe",
-                      "width": 150,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "ecvF9",
-                          "name": "Head texto suspensão NFCe",
-                          "fill": "#5B616E",
-                          "content": "Suspensão",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 11,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
                       "id": "q4XGI",
                       "name": "Head valor NFCe",
                       "width": 116,
@@ -32565,33 +32500,6 @@
                           "name": "Head texto status NFCe",
                           "fill": "#5B616E",
                           "content": "Status",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 11,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "M6356",
-                      "name": "Head comprovante NFCe",
-                      "width": 90,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "end",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "h68LP",
-                          "name": "Head texto comprovante NFCe",
-                          "fill": "#5B616E",
-                          "content": "Comprovante",
                           "lineHeight": 1.2,
                           "fontFamily": "Inter",
                           "fontSize": 11,
@@ -32680,7 +32588,7 @@
                           "id": "Jg32z",
                           "name": "Resultado DAV 004821 número documento",
                           "fill": "#0A0B0D",
-                          "content": "Série 1",
+                          "content": "R01",
                           "lineHeight": 1.2,
                           "fontFamily": "Geist Mono",
                           "fontSize": 12,
@@ -32764,32 +32672,6 @@
                     },
                     {
                       "type": "frame",
-                      "id": "UjoQt",
-                      "name": "Resultado DAV 004821 emissão",
-                      "width": 150,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "m1J6fK",
-                          "name": "Resultado DAV 004821 emissão data",
-                          "fill": "#0A0B0D",
-                          "content": "11/06/2026 14:32",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
                       "id": "AwrEb",
                       "name": "Resultado DAV 004821 valor",
                       "width": 116,
@@ -32838,45 +32720,6 @@
                           "fontFamily": "Inter",
                           "fontSize": 12,
                           "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "EtmVe",
-                      "name": "Resultado NFCe 018452 ações comprovante",
-                      "width": 90,
-                      "height": "fill_container",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "end",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "vL4Il",
-                          "name": "Resultado NFCe 018452 ver comprovante",
-                          "width": 32,
-                          "height": 32,
-                          "fill": "#EEF0F3",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "TyrHt",
-                              "name": "Resultado NFCe 018452 ver comprovante ícone",
-                              "width": 15,
-                              "height": 15,
-                              "icon": "file-text",
-                              "library": "lucide",
-                              "fill": "#0A0B0D"
-                            }
-                          ]
                         }
                       ]
                     }
@@ -32961,7 +32804,7 @@
                           "id": "C7Juxp",
                           "name": "Resultado DAV 004790 número documento",
                           "fill": "#0A0B0D",
-                          "content": "Série 1",
+                          "content": "R01",
                           "lineHeight": 1.2,
                           "fontFamily": "Geist Mono",
                           "fontSize": 12,
@@ -33045,32 +32888,6 @@
                     },
                     {
                       "type": "frame",
-                      "id": "FbCBK",
-                      "name": "Resultado DAV 004790 emissão",
-                      "width": 150,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "tgnzZ",
-                          "name": "Resultado DAV 004790 emissão data",
-                          "fill": "#0A0B0D",
-                          "content": "10/06/2026 09:15",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
                       "id": "P81PAV",
                       "name": "Resultado DAV 004790 valor",
                       "width": 116,
@@ -33119,608 +32936,6 @@
                           "fontFamily": "Inter",
                           "fontSize": 12,
                           "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "NKhn2",
-                      "name": "Resultado NFCe 018440 ações comprovante",
-                      "width": 90,
-                      "height": "fill_container",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "end",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "Igd32",
-                          "name": "Resultado NFCe 018440 ver comprovante",
-                          "width": 32,
-                          "height": 32,
-                          "fill": "#EEF0F3",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "I60GN",
-                              "name": "Resultado NFCe 018440 ver comprovante ícone",
-                              "width": 15,
-                              "height": 15,
-                              "icon": "file-text",
-                              "library": "lucide",
-                              "fill": "#0A0B0D"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "L3WSp",
-                  "name": "Resultado NFCe 018421",
-                  "width": "fill_container",
-                  "height": 52,
-                  "fill": "#FFFFFF",
-                  "stroke": "#DEE1E6",
-                  "strokeWidth": {
-                    "bottom": 1
-                  },
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "Lrof4",
-                      "name": "Resultado DAV 004720 seleção",
-                      "opacity": 0.5,
-                      "width": 42,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "wdctX",
-                          "name": "Resultado DAV 004720 check",
-                          "width": 16,
-                          "height": 16,
-                          "icon": "circle",
-                          "library": "lucide",
-                          "fill": "$primary-disabled"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "D5NBpi",
-                      "name": "Resultado DAV 004720 DAV",
-                      "width": 90,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "NeCK4",
-                          "name": "Resultado DAV 004720 número DAV",
-                          "fill": "#0A0B0D",
-                          "content": "018421",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "EuLxe",
-                      "name": "Resultado DAV 004720 documento",
-                      "width": 80,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "hz9UC",
-                          "name": "Resultado DAV 004720 número documento",
-                          "fill": "#0A0B0D",
-                          "content": "Série 2",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "ZSatg",
-                      "name": "Resultado DAV 004720 cliente",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "r5qys",
-                          "name": "Resultado DAV 004720 cliente nome",
-                          "fill": "#0A0B0D",
-                          "content": "Mariana Alves",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 13,
-                          "fontWeight": "700"
-                        },
-                        {
-                          "type": "text",
-                          "id": "PirEx",
-                          "name": "Resultado DAV 004720 vendedor",
-                          "fill": "#5B616E",
-                          "content": "Vendedor Carla Mendes",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 11,
-                          "fontWeight": "500"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "kqphd",
-                      "name": "Resultado DAV 004720 origem",
-                      "width": 100,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "koOq7",
-                          "name": "Resultado DAV 004720 origem código",
-                          "fill": "#0A0B0D",
-                          "content": "PDV 02",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 12,
-                          "fontWeight": "700"
-                        },
-                        {
-                          "type": "text",
-                          "id": "iNfIb",
-                          "name": "Resultado DAV 004720 origem detalhe",
-                          "fill": "#5B616E",
-                          "content": "Loja 02",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 10,
-                          "fontWeight": "500"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "Vwl6z",
-                      "name": "Resultado DAV 004720 emissão",
-                      "width": 150,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "Wlzhe",
-                          "name": "Resultado DAV 004720 emissão data",
-                          "fill": "#0A0B0D",
-                          "content": "08/06/2026 18:47",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "lnlK3",
-                      "name": "Resultado DAV 004720 valor",
-                      "width": 116,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "JN6wG",
-                          "name": "Resultado DAV 004720 valor total",
-                          "fill": "#0A0B0D",
-                          "content": "R$ 430,00",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 13,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "WdN7n",
-                      "name": "Resultado DAV 004720 status",
-                      "width": 100,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "end",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "B7j2XH",
-                          "name": "Resultado DAV 004720 status texto",
-                          "fill": "#05B169",
-                          "content": "Recuperada",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 12,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "uXA6G",
-                      "name": "Resultado NFCe 018421 ações comprovante",
-                      "width": 90,
-                      "height": "fill_container",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "end",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "yDf8Q",
-                          "name": "Resultado NFCe 018421 ver comprovante",
-                          "width": 32,
-                          "height": 32,
-                          "fill": "#EEF0F3",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "jJXQV",
-                              "name": "Resultado NFCe 018421 ver comprovante ícone",
-                              "width": 15,
-                              "height": 15,
-                              "icon": "file-text",
-                              "library": "lucide",
-                              "fill": "#0A0B0D"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "JX3tg",
-                  "name": "Resultado NFCe 018408",
-                  "width": "fill_container",
-                  "height": 52,
-                  "fill": "#FFFFFF",
-                  "stroke": "#DEE1E6",
-                  "strokeWidth": {
-                    "bottom": 1
-                  },
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "k9Q3l",
-                      "name": "Resultado DAV 004701 seleção",
-                      "width": 42,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "M3XxdC",
-                          "name": "Resultado DAV 004701 check",
-                          "width": 16,
-                          "height": 16,
-                          "icon": "circle",
-                          "library": "lucide",
-                          "fill": "#A8ACB3"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "p7W8V4",
-                      "name": "Resultado DAV 004701 DAV",
-                      "width": 90,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "aQWkh",
-                          "name": "Resultado DAV 004701 número DAV",
-                          "fill": "#0A0B0D",
-                          "content": "018408",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "VIYBz",
-                      "name": "Resultado DAV 004701 documento",
-                      "width": 80,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "o60C35",
-                          "name": "Resultado DAV 004701 número documento",
-                          "fill": "#0A0B0D",
-                          "content": "Série 1",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "Dh3Cc",
-                      "name": "Resultado DAV 004701 cliente",
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "afAN4",
-                          "name": "Resultado DAV 004701 cliente nome",
-                          "fill": "#0A0B0D",
-                          "content": "Carla Mendes",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 13,
-                          "fontWeight": "700"
-                        },
-                        {
-                          "type": "text",
-                          "id": "G0qgZg",
-                          "name": "Resultado DAV 004701 vendedor",
-                          "fill": "#5B616E",
-                          "content": "Vendedor Paulo Henrique",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 11,
-                          "fontWeight": "500"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "qSuXq",
-                      "name": "Resultado DAV 004701 origem",
-                      "width": 100,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "D6AMwx",
-                          "name": "Resultado DAV 004701 origem código",
-                          "fill": "#0A0B0D",
-                          "content": "PDV 03",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 12,
-                          "fontWeight": "700"
-                        },
-                        {
-                          "type": "text",
-                          "id": "B7cc3S",
-                          "name": "Resultado DAV 004701 origem detalhe",
-                          "fill": "#5B616E",
-                          "content": "Loja 01",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 10,
-                          "fontWeight": "500"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "St3ya",
-                      "name": "Resultado DAV 004701 emissão",
-                      "width": 150,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "a1B7l",
-                          "name": "Resultado DAV 004701 emissão data",
-                          "fill": "#0A0B0D",
-                          "content": "07/06/2026 11:03",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "PRBnS",
-                      "name": "Resultado DAV 004701 valor",
-                      "width": 116,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "CXPow",
-                          "name": "Resultado DAV 004701 valor total",
-                          "fill": "#0A0B0D",
-                          "content": "R$ 89,90",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 13,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "SHKY7",
-                      "name": "Resultado DAV 004701 status",
-                      "width": 100,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "end",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "d6zliy",
-                          "name": "Resultado DAV 004701 status texto",
-                          "fill": "#CF202F",
-                          "content": "Cancelada",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Inter",
-                          "fontSize": 12,
-                          "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "t5faL",
-                      "name": "Resultado NFCe 018408 ações comprovante",
-                      "width": 90,
-                      "height": "fill_container",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "end",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "s4UB0i",
-                          "name": "Resultado NFCe 018408 ver comprovante",
-                          "width": 32,
-                          "height": 32,
-                          "fill": "#EEF0F3",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "QDT8n",
-                              "name": "Resultado NFCe 018408 ver comprovante ícone",
-                              "width": 15,
-                              "height": 15,
-                              "icon": "file-text",
-                              "library": "lucide",
-                              "fill": "#0A0B0D"
-                            }
-                          ]
                         }
                       ]
                     }
@@ -33805,7 +33020,7 @@
                           "id": "oXsxV",
                           "name": "Resultado DAV 004688 número documento",
                           "fill": "#0A0B0D",
-                          "content": "Série 1",
+                          "content": "R01",
                           "lineHeight": 1.2,
                           "fontFamily": "Geist Mono",
                           "fontSize": 12,
@@ -33889,32 +33104,6 @@
                     },
                     {
                       "type": "frame",
-                      "id": "q4Xhle",
-                      "name": "Resultado DAV 004688 emissão",
-                      "width": 150,
-                      "height": "fill_container",
-                      "layout": "vertical",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "ufjQO",
-                          "name": "Resultado DAV 004688 emissão data",
-                          "fill": "#0A0B0D",
-                          "content": "06/06/2026 16:20",
-                          "lineHeight": 1.2,
-                          "fontFamily": "Geist Mono",
-                          "fontSize": 12,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
                       "id": "tXmbU",
                       "name": "Resultado DAV 004688 valor",
                       "width": 116,
@@ -33963,45 +33152,6 @@
                           "fontFamily": "Inter",
                           "fontSize": 12,
                           "fontWeight": "700"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "LHQoh",
-                      "name": "Resultado NFCe 018390 ações comprovante",
-                      "width": 90,
-                      "height": "fill_container",
-                      "padding": [
-                        0,
-                        10
-                      ],
-                      "justifyContent": "end",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "tjBeW",
-                          "name": "Resultado NFCe 018390 ver comprovante",
-                          "width": 32,
-                          "height": 32,
-                          "fill": "#EEF0F3",
-                          "cornerRadius": 100,
-                          "layout": "vertical",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "SlVjV",
-                              "name": "Resultado NFCe 018390 ver comprovante ícone",
-                              "width": 15,
-                              "height": 15,
-                              "icon": "file-text",
-                              "library": "lucide",
-                              "fill": "#0A0B0D"
-                            }
-                          ]
                         }
                       ]
                     }
