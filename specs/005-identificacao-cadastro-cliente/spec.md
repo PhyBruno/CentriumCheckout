@@ -48,7 +48,7 @@ Como operador de caixa, quando o cliente não existe no cadastro, quero registr�
 
 - O que acontece quando o operador digita um CNPJ no campo de busca de cliente? O sistema bloqueia ou alerta, já que o cadastro simplificado só cria clientes pessoa física — um CNPJ nunca poderia ser cadastrado por esse caminho.
 - Existe alguma indicação visual de que o cliente atual da venda veio do padrão da empresa em vez de uma seleção manual? Não — o campo cliente não distingue as duas origens visualmente.
-- Qual o filtro padrão ao abrir a busca de cliente? Só clientes ativos, por padrão.
+- Qual o filtro padrão ao abrir a busca de cliente? ~~Só clientes ativos, por padrão.~~ **Corrigido (2026-08-26, AD-093 em `.specs/project/STATE.md`):** não há filtro de status — `GetListaClientes`/`GetCliente` não têm campo `Ativo`/`Status` no contrato do ERP, não há como filtrar ou exibir isso. O modal lista todos os clientes retornados pela busca, sem distinção de status.
 - Como o sistema valida o endereço informado no cadastro simplificado? Como texto livre, sem validação de endereço postal oficial — apenas o formato do CEP é validado.
 - O formulário de cadastro simplificado inclui limite de crédito ou permissão de venda a crédito? Não — esses campos não fazem parte do cadastro simplificado feito pelo Checkout.
 - Como um desconto especial de convênio do cliente afeta o preço dos itens? É aplicado como percentual sobre os itens elegíveis (ver feature de carrinho e precificação).
@@ -64,7 +64,7 @@ Como operador de caixa, quando o cliente não existe no cadastro, quero registr�
 - **FR-004**: O sistema MUST pré-selecionar automaticamente um cliente padrão em toda venda nova, sem exigir busca do operador, sempre que a empresa tiver um cliente padrão configurado.
 - **FR-005**: O sistema MUST deixar o campo cliente vazio, exigindo seleção manual antes de finalizar a venda, quando a empresa não tiver um cliente padrão configurado.
 - **FR-006**: O sistema MUST NOT distinguir visualmente, no campo cliente, se o valor atual veio do padrão da empresa ou de uma seleção manual do operador.
-- **FR-007**: O sistema MUST restringir a busca de cliente a clientes ativos por padrão.
+- ~~**FR-007**: O sistema MUST restringir a busca de cliente a clientes ativos por padrão.~~ **Removido (2026-08-26, AD-093):** o contrato do ERP (`GetListaClientes`/`GetCliente`) não expõe status de cliente — nem como parâmetro de filtro, nem como campo de resposta. Não há dado disponível para implementar essa restrição.
 - **FR-008**: O sistema MUST permitir trocar o cliente da venda quando o carrinho já tem itens, recalculando o preço de qualquer item cujo valor dependa do cliente.
 - **FR-009**: O sistema MUST bloquear a troca de cliente da venda assim que houver um pagamento aprovado.
 - **FR-010**: O sistema MUST bloquear ou alertar o operador quando um CNPJ é informado na busca de cliente, já que o cadastro simplificado só admite clientes pessoa física.
@@ -91,3 +91,7 @@ Como operador de caixa, quando o cliente não existe no cadastro, quero registr�
 
 - O cadastro completo de cliente, com todas as validações usadas fora do Checkout, está fora de escopo — o Checkout oferece apenas o cadastro simplificado.
 - O cadastro simplificado feito pelo Checkout cria exclusivamente clientes pessoa física.
+
+## Known Limitations
+
+- **Pendência bloqueante de contrato (AD-094, item 31 de `.specs/project/PENDENCIES.md`):** quando a venda nasce com o cliente default pré-selecionado (sem o operador interagir com a busca), o sistema só tem código e nome desse cliente — não tem acesso aos demais dados (lista de preço, desconto de convênio) até a equipe do ERP disponibilizar uma forma de buscar cliente por código. Isso não bloqueia a venda, mas pode afetar o preço calculado para esse cliente até o operador reabrir a busca ou até a pendência ser resolvida.

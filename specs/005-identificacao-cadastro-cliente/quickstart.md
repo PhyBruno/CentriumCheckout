@@ -1,0 +1,96 @@
+# Quickstart — Validação da Identificação e Cadastro de Cliente
+
+**Feature**: `specs/005-identificacao-cadastro-cliente/` | **Date**: 2026-08-26
+
+Guia de validação: como provar que a feature funciona ponta a ponta. Não contém código de implementação — os detalhes de contrato estão em `contracts/` e a modelagem em `data-model.md`.
+
+---
+
+## Pré-requisitos
+
+| # | Pré-requisito | Origem |
+|---|---|---|
+| 1 | Scaffolding do projeto criado (`package.json`, Vite, TypeScript `strict`, Docker) | feature 002 |
+| 2 | BFF respondendo `/session/start`, `/api/bootstrap` e o proxy `/api/erp/*` | feature 002 |
+| 3 | `vendaStore` (Zustand + Immer) existindo, com os slices `auditoria` (001) e `carrinho` (003) combinados | features 001, 003 |
+| 4 | Sessão do ERP válida, com `SessaoUsuario.ClienteDefaultCodigo`/`ClienteDefaultNome`/`QtdMinCharParaConsulta` no bootstrap | feature 002 |
+| 5 | Ao menos um cliente cadastrado com `DescontoConvenio`/`ListaPreco` preenchidos, e um documento (CPF) inexistente para testar o cadastro simplificado | ambiente ERP de dev |
+| 6 | Ao menos um produto com `TipoPreco = 9` (preço por lista) configurado, para validar a troca de cliente com carrinho populado | ambiente ERP de dev |
+
+O projeto roda 100% em Docker (`.specs/codebase/ARCHITECTURE.md`). Comandos abaixo assumem o container de desenvolvimento em execução.
+
+---
+
+## Camada 1 — Domínio puro
+
+```bash
+npm test -- tests/unit/domain/cliente
+```
+
+| Arquivo | Cenários mínimos | Requisito |
+|---|---|---|
+| `documento.spec.ts` | 11 dígitos → `CPF`; 14 dígitos → `CNPJ`; outro comprimento → `INVALIDO`; texto com pontuação (`123.456.789-00`) classificado corretamente; `validarFormatoCEP` aceita `12345-678` e `12345678`, rejeita menos/mais dígitos | `CLI-04`, `FR-010` |
+
+---
+
+## Camada 2 — Slice (integração de estado)
+
+```bash
+npm test -- tests/integration/clienteSlice.spec.ts
+```
+
+| Cenário | Como montar | Esperado | Requisito |
+|---|---|---|---|
+| Pré-seleção do default | `inicializarClientePadrao({ ClienteDefaultCodigo: 42, ClienteDefaultNome: 'Fulano' })` | `clienteAtual = { codigoCliente: 42, nome: 'Fulano', documento: null, listaPreco: null, descontoConvenio: null, origem: 'DEFAULT' }`; **nenhum** evento de auditoria disparado | `FR-004`, AD-032, AD-094 |
+| Default vazio | `inicializarClientePadrao({ ClienteDefaultCodigo: null })` | `clienteAtual === null` | `FR-005`, `CLI-06` |
+| Primeira seleção explícita | `selecionarCliente(clienteX, 'BUSCA_DOCUMENTO')` numa venda nova | evento `CLIENTE_SELECIONADO` com `{ codigoCliente, nome }` de `clienteX` | `research.md` D9 |
+| Troca subsequente | selecionar `clienteX`, depois `selecionarCliente(clienteY, 'BUSCA_LIVRE')` | evento `CLIENTE_TROCADO` com `{ codigoClienteAnterior: X, codigoClienteNovo: Y }` | `research.md` D9 |
+| Cadastro simplificado | `cadastrarESelecionarCliente(dados)` com mock de `postCliente` retornando sucesso | evento `CLIENTE_CRIADO`; `clienteAtual.origem === 'CADASTRO_SIMPLIFICADO'` | `CLI-03`, AD-061 |
+| Bloqueio pós-pagamento | injetar `podeMutarCarrinho: () => false`, tentar `selecionarCliente` | `clienteAtual` inalterado, nenhum evento disparado | `FR-008`, `CLI-07`, AD-043 |
+| Troca dispara re-fetch por SKU | carrinho com 2 linhas ativas de SKUs diferentes + 1 linha congelada; trocar cliente | `fetchProduto` chamado exatamente 2 vezes (uma por SKU ativo distinto), nunca para o SKU da linha congelada | `research.md` D7 |
+| `null` nunca vira fallback | inspecionar `ClienteVenda` de um cliente sem convênio | `descontoConvenio === null`, nunca `0` tratado como "valor calculado" pelo consumidor | `research.md` D10 |
+
+---
+
+## Camada 3 — E2E (fluxo dourado)
+
+```bash
+npx playwright test tests/e2e/identificacao-cliente.spec.ts
+```
+
+Percurso, contra o ambiente de dev do ERP:
+
+1. Abrir o Checkout pelo redirect do ERP (sessão válida) → o campo cliente já mostra o cliente default, sem nenhuma interação.
+2. Abrir o modal de busca, digitar um CPF conhecido → resultado único, seleção associa o cliente à venda (evento `CLIENTE_SELECIONADO`).
+3. Abrir o modal novamente, buscar por nome parcial → lista paginada aparece (skeleton Boneyard enquanto carrega); selecionar um candidato dispara `GetCliente` pelo documento do candidato antes de associar (evento `CLIENTE_TROCADO`, já que houve seleção explícita antes).
+4. Buscar um CPF inexistente → sem resultado, oferece cadastro simplificado; preencher e confirmar → `PostCliente` é chamado, cliente passa a existir e é associado (evento `CLIENTE_CRIADO`).
+5. Buscar um CNPJ (14 dígitos) sem resultado → cadastro simplificado **não** é oferecido; aviso explica que só pessoa física é cadastrável pelo Checkout. Buscar um CNPJ **com** resultado (cliente PJ pré-existente) → seleção funciona normalmente.
+6. Com carrinho já populado (produto com `TipoPreco = 9`), trocar o cliente → nova chamada a `GetProduto` por SKU ativo, preço da linha atualiza para refletir a lista do novo cliente.
+7. Repetir o passo 6 com um pagamento aprovado no carrinho → troca bloqueada, sem chamada de rede nova, `clienteAtual` inalterado.
+8. Repetir os passos 2-4 no layout mobile (mesmo estado de venda, layout condicional) → mesmo resultado.
+
+### Verificações manuais que o E2E não cobre
+
+- **F5 no meio da venda**: o navegador pede confirmação (`beforeunload`) e, ao confirmar, o cliente volta a ser o default (ou vazio) — nada do que foi selecionado sobrevive (Constitution VI, AD-006).
+- **Filtro "Ativo"**: confirmar visualmente que o chip **não** aparece no modal de busca (AD-093) — sua ausência é o comportamento correto, não uma regressão.
+
+---
+
+## Gates antes de considerar a feature pronta
+
+| Gate | Comando | Quando |
+|---|---|---|
+| TypeScript `strict` sem erro | `npx tsc --noEmit` | antes de **qualquer** `git push` (Constitution, Development Workflow) |
+| Suíte unitária do domínio verde | `npm test -- tests/unit/domain/cliente` | antes do push |
+| `/owasp-security` | skill | antes de merge para `master`/deploy de produção |
+
+---
+
+## Achados de contrato levantados no Design
+
+| Achado | Resolução | Onde está |
+|---|---|---|
+| `GetListaClientes`/`GetCliente` sem campo/parâmetro de status | **AD-093** — filtro "Ativo" removido do modal de cliente, decisão de produto, nada bloqueado | `research.md`, achados desta fase |
+| `GetCliente` só busca por documento, sem forma de completar dados do cliente default por código | **AD-094** — registrado como **pendência bloqueante** (item 31 de `.specs/project/PENDENCIES.md`), aguardando a equipe do ERP; a feature é implementável hoje com o limite documentado (`ClienteVenda` parcial para `origem = 'DEFAULT'`) | `research.md`, D3, D10, achados desta fase |
+
+A feature 005 não fica bloqueada para `/speckit-tasks` — a pendência AD-094 é um limite conhecido e documentado, não uma ambiguidade de requisito.
