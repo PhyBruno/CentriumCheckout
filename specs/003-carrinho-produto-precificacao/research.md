@@ -11,7 +11,7 @@ Este documento resolve as incógnitas técnicas do Technical Context de `plan.md
 
 ## D1 — O modal de busca é um seletor de código; `GetProduto` é sempre quem resolve a linha
 
-**Natureza**: Nova (corrige uma leitura otimista da documentação de domínio).
+**Natureza**: Confirmação — nasceu como achado desta fase e foi **ratificada por decisão direta do usuário em 2026-08-26, registrada como AD-091** em `.specs/project/STATE.md`.
 
 **Decision**: Ao selecionar um candidato no modal de busca, o Checkout **não** monta a linha a partir do resultado de `GetListaProdutos`. Ele usa apenas o `CodigoProduto` do candidato e faz uma chamada a `GET /api/erp/GetProduto` para esse código — exatamente o mesmo caminho da inserção direta por código bipado (`CART-02`). O resultado de `GetListaProdutos` serve para exibir a lista (descrição, referência, código de barras, UDM) e para escolher, nada mais.
 
@@ -22,7 +22,9 @@ Este documento resolve as incógnitas técnicas do Technical Context de `plan.md
 
 Além disso, `/GetListaProdutos` aceita somente `Empresa`, `Txtbusca`, `Pagina` e `Tamanhopagina` (linhas 153-177) — não aceita `Tipopreco`, `Codcliente` nem `Listapreco`, que `/GetProduto` aceita (linhas 197-233). Ou seja, a busca é estruturalmente incapaz de devolver um preço contextualizado pela sessão e pelo cliente. Montar a linha a partir dela produziria preço errado sempre que `TipoPreco ∉ {1..5}` e quebraria o fluxo de produto pesável/editável por falta da flag.
 
-**Impacto na documentação de domínio**: `.specs/project/STATE.md:248` e `.specs/codebase/ARCHITECTURE.md` afirmam que `PrecoVenda` vem "de `GetProduto`/`GetListaProdutos`" — a segunda metade dessa afirmação não se sustenta contra o contrato atual. Ver "Achados a promover", A1.
+O usuário confirmou a leitura: `GetProduto` devolve `PrecoVenda` e `ProdutoPesavelEditavel` e aceita os parâmetros de precificação; o modal de lista existe apenas para captar os produtos e permitir a seleção.
+
+**Impacto na documentação de domínio**: as redações de `.specs/project/STATE.md` (AD-025), `.specs/codebase/CONCERNS.md` e `.specs/features/carrinho-produto-precificacao/spec.md` que afirmavam que `PrecoVenda` vinha "de `GetProduto`/`GetListaProdutos`" estavam erradas e **já foram corrigidas no ponto do texto** (não por nota anexada ao fim), conforme AD-091.
 
 **Alternatives considered**:
 - *Montar a linha direto do resultado da busca quando `TipoPreco ∈ {1..5}`*: rejeitado — cria dois caminhos de inserção com semânticas diferentes, viola Single Responsibility e torna o comportamento dependente de uma configuração de tenant, o tipo exato de acoplamento que a Constitution II proíbe.
@@ -158,15 +160,15 @@ O DV do EAN-13 é validado antes de aceitar o ramo 2. Se o DV falhar, a entrada 
 
 ---
 
-## D10 — `TipoPreco = 9` sem lista de preço no cliente: lacuna de contrato
+## D10 — `TipoPreco = 9` usa sempre a lista do cliente; não existe lista padrão da empresa
 
-**Natureza**: Nova (pendência identificada nesta fase).
+**Natureza**: Confirmação — nasceu como achado desta fase e foi **resolvida por decisão direta do usuário em 2026-08-26, registrada como AD-092** em `.specs/project/STATE.md`.
 
-**Decision**: Implementar o caminho principal — quando `TipoPreco = 9` e o cliente tem `ListaPreco` preenchido, enviar esse valor no parâmetro `Listapreco` de `GetProduto`. Para `TipoPreco ≠ 9`, **não** enviar nada nesse parâmetro (regra de negócio confirmada em 2026-08-24). O ramo "cliente sem lista própria" fica registrado como pendência, com fallback definido abaixo.
+**Decision**: Quando `TipoPreco = 9`, enviar **sempre** `ClienteCheckout.ListaPreco` (a lista do cadastro do cliente) no parâmetro `Listapreco` de `GetProduto`. Para `TipoPreco ≠ 9`, **não** enviar nada nesse parâmetro (regra de negócio confirmada em 2026-08-24). **Não há fallback** — `TipoPreco = 9` significa exatamente "o tipo de preço é por lista, e a lista é a do cliente".
 
-**Problema**: `.specs/codebase/CONCERNS.md:118` e `.specs/project/STATE.md:248` instruem, para o caso de cliente sem lista própria, a usar a lista padrão da empresa "carregada em `SessaoUsuario.listaPrecoPadrao`". **Esse campo não existe em `APICentriumOAuth.yaml`.** O schema `SessaoUsuario` (linhas 799-864) contém `TipoPreco`, `QtdMinCharParaConsulta`, `UsuarioTipoCodigoProduto`, `CadMaqCod`, `CadSerieNFCe` e demais, mas nenhum campo de lista de preço padrão — busca por `listaPrecoPadrao`/`ListaPrecoPadrao` no yaml não retorna nenhuma ocorrência.
+**Achado que originou a decisão**: `.specs/codebase/CONCERNS.md` e `.specs/project/STATE.md` (AD-025) instruíam, para o caso de cliente sem lista própria, a usar a lista padrão da empresa "carregada em `SessaoUsuario.listaPrecoPadrao`" — **campo que não existe em `APICentriumOAuth.yaml`**. O schema `SessaoUsuario` (linhas 799-864) contém `TipoPreco`, `QtdMinCharParaConsulta`, `UsuarioTipoCodigoProduto`, `CadMaqCod`, `CadSerieNFCe` e demais, mas nenhum campo de lista de preço padrão; busca por `listaPrecoPadrao`/`ListaPrecoPadrao` no yaml não retorna ocorrência alguma.
 
-**Fallback adotado enquanto a pendência não é resolvida**: omitir o parâmetro `Listapreco` na chamada, deixando o ERP aplicar o padrão que ele já usa internamente. Isso é consistente com o resto da decisão (o ERP resolve o preço e devolve em `PrecoVenda`) e não inventa um valor no Checkout. É explicitamente um fallback, não a solução final. Ver "Achados a promover", A2.
+**Resolução**: o usuário confirmou que o campo nunca existiu porque **o conceito não existe no domínio** — não há lista de preço padrão da empresa. A regra real é mais simples que a documentada, e a documentação de domínio já foi corrigida no ponto do texto (AD-092). Nenhum ramo de fallback será implementado.
 
 ---
 
@@ -198,13 +200,13 @@ Uma reprecificação automática **não** gera evento — só a ação do operad
 
 ---
 
-## Achados a promover a AD em `.specs/project/STATE.md`
+## Achados desta fase, já promovidos a AD
 
-Estes dois pontos foram descobertos nesta fase, contradizem ou completam documentação de domínio existente, e devem ser registrados como decisão arquitetural numerada antes de `/speckit-tasks`:
+Os dois achados de contrato levantados durante este Design foram **fechados no mesmo dia por decisão direta do usuário** (2026-08-26) e registrados em `.specs/project/STATE.md`. Nenhum dos dois virou pendência com a equipe do ERP.
 
-| # | Achado | Documento afetado | Ação sugerida |
+| # | Achado | AD | Documentos corrigidos |
 |---|---|---|---|
-| A1 | `GetListaProdutos` não devolve `PrecoVenda` nem `ProdutoPesavelEditavel`, e não aceita `Tipopreco`/`Codcliente`/`Listapreco` — a busca é seletor de código, e `GetProduto` é sempre quem resolve a linha (D1) | `.specs/project/STATE.md:248` e `.specs/codebase/ARCHITECTURE.md` afirmam que `PrecoVenda` vem de "`GetProduto`/`GetListaProdutos`" | Corrigir **no ponto do texto**, não por nota anexada ao fim do parágrafo (regra de `docs/agents/domain.md`) |
-| A2 | `SessaoUsuario.listaPrecoPadrao` não existe no `APICentriumOAuth.yaml` — o fallback de `TipoPreco = 9` para cliente sem lista própria não tem campo de origem (D10) | `.specs/codebase/CONCERNS.md:118`, `.specs/project/STATE.md:248` | Abrir item em `.specs/project/PENDENCIES.md` (seção 1, confirmação com a equipe do ERP) e registrar o fallback de D10 como comportamento interino |
+| A1 | `GetListaProdutos` não devolve `PrecoVenda` nem `ProdutoPesavelEditavel`, e não aceita `Tipopreco`/`Codcliente`/`Listapreco` — o modal de lista só capta/seleciona, e `GetProduto` é sempre quem resolve a linha (D1) | **AD-091** | `.specs/project/STATE.md` (AD-025 e nova AD-091), `.specs/codebase/CONCERNS.md`, `.specs/features/carrinho-produto-precificacao/spec.md` — todos corrigidos **no ponto do texto**, conforme `docs/agents/domain.md` |
+| A2 | `SessaoUsuario.listaPrecoPadrao` não existe no `APICentriumOAuth.yaml` — e não deveria existir: não há lista de preço padrão da empresa. `TipoPreco = 9` usa sempre a lista do cliente, sem fallback (D10) | **AD-092** | mesmos documentos acima, mais `.specs/project/PENDENCIES.md` (nota de atualização; nenhum item aberto) |
 
-Nenhum dos dois bloqueia `/speckit-tasks`: A1 já está resolvido por decisão de design neste plano, e A2 tem fallback definido que não impede a implementação do caminho principal.
+Nada bloqueia `/speckit-tasks`.

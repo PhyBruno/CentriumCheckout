@@ -59,7 +59,7 @@ A chamada só é feita quando `Txtbusca.length >= SessaoUsuario.QtdMinCharParaCo
 
 **Apenas para exibir e escolher.** Campos consumidos: `CodigoProduto`, `Descricao`, `Referencia`, `CodigoBarras`, `UDM`, e os campos de paginação.
 
-**Proibido montar `LinhaCarrinho` a partir desta resposta** — o schema não traz `PrecoVenda` (preço já resolvido pelo ERP, obrigatório para todo `TipoPreco ≠ 8`) nem `ProdutoPesavelEditavel` (decide o fluxo de inserção). Ao selecionar um candidato, o Checkout chama `GetProduto` com o `CodigoProduto` escolhido. Ver `research.md`, D1.
+**Proibido montar `LinhaCarrinho` a partir desta resposta** — o schema não traz `PrecoVenda` (preço já resolvido pelo ERP, obrigatório para todo `TipoPreco ≠ 8`) nem `ProdutoPesavelEditavel` (decide o fluxo de inserção). Ao selecionar um candidato, o Checkout chama `GetProduto` com o `CodigoProduto` escolhido. Confirmado por decisão direta do usuário em AD-091 — ver `research.md`, D1, e `.specs/project/STATE.md`.
 
 ---
 
@@ -76,7 +76,7 @@ Chamado em **todos** os caminhos de inserção: código bipado, código digitado
 | `Tipocodproduto` | string | **sempre** `SessaoUsuario.UsuarioTipoCodigoProduto` (AD-033) — nunca inferido por chamada |
 | `Tipopreco` | int32 | `SessaoUsuario.TipoPreco` |
 | `Codcliente` | int64 | código do cliente selecionado na venda (feature 005) |
-| `Listapreco` | int64 | **só quando `TipoPreco = 9`**, com `ClienteCheckout.ListaPreco` do cliente. Para `TipoPreco ≠ 9`, o parâmetro é **omitido**. Quando `TipoPreco = 9` e o cliente não tem lista própria, também é omitido — fallback interino, ver `research.md`, D10 |
+| `Listapreco` | int64 | **só quando `TipoPreco = 9`**, sempre com `ClienteCheckout.ListaPreco` do cliente. Para `TipoPreco ≠ 9`, o parâmetro é **omitido**. Não existe lista de preço padrão da empresa e não há fallback (AD-092) |
 
 ### Resposta — `SDTCheckout_GetProduto`
 

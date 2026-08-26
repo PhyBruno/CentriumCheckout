@@ -106,9 +106,11 @@ Percurso, contra o ambiente de dev do ERP:
 
 ---
 
-## Pendências conhecidas que **não** bloqueiam esta validação
+## Achados de contrato levantados no Design — todos fechados
 
-| Item | Efeito prático | Onde está |
+Nenhuma pendência aberta bloqueia esta validação. Os dois achados de contrato desta fase foram resolvidos por decisão direta do usuário em 2026-08-26:
+
+| Achado | Resolução | Onde está |
 |---|---|---|
-| `SessaoUsuario.listaPrecoPadrao` não existe no contrato | o fallback de `TipoPreco = 9` para cliente sem lista própria omite o parâmetro `Listapreco` e deixa o ERP aplicar o padrão dele — comportamento interino | `research.md`, D10 / achado A2 |
-| `GetListaProdutos` não devolve `PrecoVenda`/`ProdutoPesavelEditavel` | já resolvido por design: a busca é seletor de código, `GetProduto` resolve a linha | `research.md`, D1 / achado A1 |
+| `GetListaProdutos` não devolve `PrecoVenda`/`ProdutoPesavelEditavel` e não aceita `Tipopreco`/`Codcliente`/`Listapreco` | **AD-091** — o modal de lista só capta e seleciona produtos; `GetProduto` é sempre quem resolve a linha do carrinho | `research.md`, D1 |
+| `SessaoUsuario.listaPrecoPadrao` não existe no contrato | **AD-092** — não existe lista de preço padrão da empresa; `TipoPreco = 9` usa **sempre** a lista do cliente, sem fallback. Nenhum ramo de fallback a implementar ou testar | `research.md`, D10 |
