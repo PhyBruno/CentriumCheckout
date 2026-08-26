@@ -860,6 +860,15 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
+### AD-085: Código deve seguir arquitetura SOLID (2026-08-26)
+
+**Decision:** Fixado como exigência de projeto que a implementação do Checkout (componentes React, hooks, camada de acesso à API do ERP, state management) SHALL seguir os cinco princípios SOLID (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion). É uma constraint de design de código, não uma decisão de stack/arquitetura de sistema (essas continuam em `.specs/codebase/ARCHITECTURE.md`/`STACK.md`).
+**Reason:** Decisão explícita do usuário, registrada antes de existir código real para não deixar a exigência implícita ou dependente de memória entre sessões.
+**Trade-off:** Nenhum trade-off técnico avaliado nesta decisão — é uma diretriz de qualidade/manutenibilidade a ser detalhada (com exemplos concretos do próprio código) quando `CONVENTIONS.md` for gerado via brownfield mapping, conforme `.specs/project/ROADMAP.md`.
+**Impact:** Atualiza `.specs/project/ROADMAP.md` (nota sobre `CONVENTIONS.md` ainda não gerado) e `CLAUDE.md` (seção "Convenções e regras de código"), apontando para este AD como exigência já decidida a ser incorporada quando o scaffolding existir.
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

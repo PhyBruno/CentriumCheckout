@@ -39,7 +39,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 
 ## Ainda não gerados (dependem de código existir)
 
-`.specs/codebase/CONVENTIONS.md`, `STRUCTURE.md` e `TESTING.md` requerem amostras de código real (padrões de nomenclatura, árvore de diretórios, testes existentes) — serão gerados via brownfield mapping assim que o scaffolding inicial do projeto existir. Não fabricados agora para evitar documentar convenções inexistentes.
+`.specs/codebase/CONVENTIONS.md`, `STRUCTURE.md` e `TESTING.md` requerem amostras de código real (padrões de nomenclatura, árvore de diretórios, testes existentes) — serão gerados via brownfield mapping assim que o scaffolding inicial do projeto existir. Não fabricados agora para evitar documentar convenções inexistentes. **Exceção já decidida:** `CONVENTIONS.md`, quando gerado, deve incorporar a exigência de arquitetura SOLID já fixada em `.specs/project/STATE.md` (AD-085) — não é uma convenção a ser inferida do código, é uma constraint definida antes do scaffolding existir.
 
 ## Referência visual
 

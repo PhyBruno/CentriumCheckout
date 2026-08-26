@@ -11,7 +11,7 @@ Checkout web para operadores de caixa do ERP Centrium — SPA React acessada exc
 
 **Estado do projeto:** pré-código — stack e arquitetura decididas em `.specs/`, scaffolding ainda não criado (ver `.specs/project/STATE.md` para decisões arquiteturais numeradas AD-NNN e pendências).
 
-**Convenções e regras de código:** ainda a definir quando o scaffolding existir (ver `.specs/project/ROADMAP.md`). **Regras de processo (git workflow, gates obrigatórios) já estão definidas em `rules.md` na raiz do repo.**
+**Convenções e regras de código:** ainda a definir quando o scaffolding existir (ver `.specs/project/ROADMAP.md`), **exceto** a exigência de arquitetura SOLID (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion), já fixada em `.specs/project/STATE.md` (AD-085) e obrigatória desde já para todo código que vier a ser escrito. **Regras de processo (git workflow, gates obrigatórios) já estão definidas em `rules.md` na raiz do repo.**
 
 **Commit + push obrigatórios ao final de cada tarefa:** ao concluir uma tarefa coerente (não a cada edição individual de arquivo), sempre fazer `git commit` e `git push` na branch da tarefa, sem esperar o usuário pedir — pedido explícito do usuário (2026-08-25). Regra completa (branch/worktree, mensagens de commit, exceções) em `rules.md`, seção "Fim de tarefa: commit + push obrigatórios".
 
