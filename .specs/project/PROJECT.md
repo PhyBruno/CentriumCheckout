@@ -33,7 +33,7 @@
 - Finalização e suspensão da venda (NFCe) (`.specs/features/finalizacao-suspensao-venda/`)
 - Importação e faturamento de DAV (`.specs/features/importacao-dav/`)
 - Recuperação e retomada de rascunho de NFCe (`.specs/features/recuperacao-nfce/`)
-- Layout responsivo desktop/mobile (`.specs/features/layout-responsivo-mobile/`)
+- Layout responsivo desktop/mobile (`.specs/features/layout-responsivo-mobile/`) — inclui leitura de código de barras via câmera no mobile (botão "Scanner"), restrita a Chrome no Android (ver AD-086 em `.specs/project/STATE.md`)
 - Seleção de vendedor associado à venda (`.specs/features/selecao-vendedor/`)
 - Menu gerencial: redirect para telas legadas do ERP (central de movimentação não fiscal, resumo de caixa) — só desktop, sem lógica própria do Checkout (ver `.specs/codebase/ARCHITECTURE.md`)
 - Auditoria de ações do operador durante a venda, entregue ao ERP no campo `Log` de `FaturarNFCe` (`.specs/features/auditoria-acoes-operador/`)

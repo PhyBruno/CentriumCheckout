@@ -860,12 +860,34 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
+### AD-084: Revisão do conteúdo bruto de `SKILL.md`/`CLAUDE.md` embutidos em `goey-toast`/`boneyard` concluída — nenhum conteúdo malicioso encontrado; instalação real segue pendente do scaffold (2026-08-26)
+
+**Decision:** Adiantada a etapa de revisão manual prevista em AD-018 (ler o conteúdo bruto dos arquivos voltados a agentes de IA antes de seguir qualquer instrução neles) — via GitHub API, sem clonar nem instalar nada. Revisados: `anl331/goey-toast` (`skills/goey-toast/SKILL.md`, `bin/cli.mjs`, `package.json`) e `0xGF/boneyard` (`CLAUDE.md`, `.claude/skills/boneyard/SKILL.md`, `packages/boneyard/package.json` — o pacote publicado de fato como `boneyard-js`). Achados:
+- **goey-toast:** `SKILL.md` contém só documentação de uso (instalação, API, recipes) — nenhuma instrução suspeita (sem exfiltração, sem comando destrutivo, sem tentativa de "ignorar instruções anteriores"). `bin/cli.mjs` só copia o próprio `SKILL.md` para `.claude/skills/goey-toast/` e, opcionalmente, anexa um bloco a `AGENTS.md` — I/O local, sem rede — e só roda se alguém executar explicitamente `npx goey-toast add-skill`. `package.json` não tem script `postinstall`/`preinstall`: um `npm install goey-toast` normal não dispara nada disso.
+- **boneyard:** `CLAUDE.md` e `.claude/skills/boneyard/SKILL.md` contêm documentação de arquitetura/uso/debug da lib — mesma conclusão, nada malicioso. O `SKILL.md` declara `allowed-tools: Bash Read Edit Write Glob Grep Agent` no frontmatter (autoconcessão de permissões amplas a um agente de IA) — padrão atípico, mas não há, dentro do arquivo, nenhuma instrução que abuse dessa permissão (é só metadado declarativo do formato de skill). `packages/boneyard/package.json` (pacote publicado como `boneyard-js`) também não tem `postinstall`/`preinstall` — só `prepublishOnly`, que roda no `npm publish` do mantenedor, não no `npm install` do consumidor.
+- **Achado lateral (operacional, não é risco de supply-chain):** `boneyard-js` declara `playwright ^1.58.2` como dependency real (usado pelo CLI para navegar/tirar screenshot da página de dev). O `playwright` tem seu próprio `postinstall` que baixa binários de browser (~300MB) no `npm install` — isso precisa entrar na conta da imagem Docker (dev/build) quando a instalação real acontecer, dado que o projeto é 100% Docker (`.specs/codebase/STACK.md`).
+
+**Reason:** Reduzir o risco residual do lembrete de segurança de AD-018 adiantando a parte da revisão que não depende do scaffold existir, em vez de deixá-la só para o momento da instalação real.
+**Trade-off:** Nenhum novo. A instalação real (`npm install goey-toast boneyard-js`, quando o scaffold existir) continua não executada — decisão do usuário de não criar o scaffold agora só para isso. O item 20 de `PENDENCIES.md` permanece na tabela (não é removido): o lembrete de reler o conteúdo bruto no momento da instalação real continua válido, já que os pacotes podem publicar novas versões até lá — esta revisão cobre o estado dos repositórios em 2026-08-26.
+**Impact:** Atualiza `.specs/codebase/CONCERNS.md` (seção `goey-toast`/`boneyard`) e `.specs/project/PENDENCIES.md` (nota do item 20, seção "Riscos/lembretes de segurança").
+
+---
+
 ### AD-085: Código deve seguir arquitetura SOLID (2026-08-26)
 
 **Decision:** Fixado como exigência de projeto que a implementação do Checkout (componentes React, hooks, camada de acesso à API do ERP, state management) SHALL seguir os cinco princípios SOLID (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion). É uma constraint de design de código, não uma decisão de stack/arquitetura de sistema (essas continuam em `.specs/codebase/ARCHITECTURE.md`/`STACK.md`).
 **Reason:** Decisão explícita do usuário, registrada antes de existir código real para não deixar a exigência implícita ou dependente de memória entre sessões.
 **Trade-off:** Nenhum trade-off técnico avaliado nesta decisão — é uma diretriz de qualidade/manutenibilidade a ser detalhada (com exemplos concretos do próprio código) quando `CONVENTIONS.md` for gerado via brownfield mapping, conforme `.specs/project/ROADMAP.md`.
 **Impact:** Atualiza `.specs/project/ROADMAP.md` (nota sobre `CONVENTIONS.md` ainda não gerado) e `CLAUDE.md` (seção "Convenções e regras de código"), apontando para este AD como exigência já decidida a ser incorporada quando o scaffolding existir.
+
+---
+
+### AD-086: Leitura de código de barras via câmera no mobile, restrita a Chrome no Android (2026-08-26)
+
+**Decision:** O botão "Scanner" já previsto no design mobile (etapa de produtos do wizard) ativa a câmera do dispositivo para leitura de código de barras usando a API nativa `BarcodeDetector` (Shape Detection API), sem biblioteca de decodificação externa (ex.: ZXing). Essa funcionalidade **só funciona em Chrome no Android** — não há fallback para outros navegadores/plataformas (Safari/iOS, desktop) nesta decisão.
+**Reason:** Decisão explícita do usuário — restringir a Chrome/Android elimina a necessidade de biblioteca de decodificação em JS/WASM (mais pesada, exigiria Web Worker) e de tratar suporte cross-browser, em troca de não cobrir iOS/Safari.
+**Trade-off:** Se o parque de dispositivos do PDV precisar incluir iPad/Safari ou outro navegador no futuro, a base de decodificação via `BarcodeDetector` não tem fallback incremental — exigiria reescrever o mecanismo de decodificação (ex.: introduzir ZXing), não apenas estendê-lo.
+**Impact:** Atualiza `.specs/project/PROJECT.md` (Scope) e `.specs/features/layout-responsivo-mobile/spec.md` (novo requisito `MOB-06`, escopo mobile confirmado e Edge Cases — comportamento fora de Chrome/Android permanece indefinido, registrado como edge case em aberto).
 
 ---
 
