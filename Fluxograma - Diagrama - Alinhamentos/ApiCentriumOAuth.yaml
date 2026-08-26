@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: "APICentriumOAuth"
   description: "APICentrium OAuth"
-  version: "20260825172440"
+  version: "20260826163735"
 servers:
   - url: http://localhost/Centrium1600Web/APICentriumOAuth
 paths:
@@ -288,6 +288,18 @@ paths:
           schema:
             type: "string"
             
+        - name: "Datainicial"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "Datafinal"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
         - name: "Pagina"
           in: "query"
           required: false
@@ -724,6 +736,8 @@ components:
           type: "string"
         Trnbase64text:
           type: "string"
+        Trnbase64image:
+          type: "string"
 
     StatusPIXOutput:
       properties:
@@ -838,6 +852,9 @@ components:
           description: "Tipo de Preço Padrão"
           type: "integer"
           format: "int32"
+        TipoImpressao:
+          description: "Tipo Impressao"
+          type: "string"
         ImagemLogoBase64:
           description: "Imagem Logo Base64"
           type: "string"

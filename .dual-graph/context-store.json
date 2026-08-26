@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-26T16:34:58.059820+00:00",
+    "updated_at": "2026-08-26T16:56:24.689257+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -616,7 +616,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.855121+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T14:44:57.822347+00:00",
+    "updated_at": "2026-08-26T16:56:24.699417+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -686,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-26T16:34:58.094760+00:00",
+    "updated_at": "2026-08-26T17:15:31.072911+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -880,7 +880,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T17:44:16.509506+00:00",
     "created_epoch": 1787334256,
-    "updated_at": "2026-08-26T14:44:57.814095+00:00",
+    "updated_at": "2026-08-26T16:56:24.709441+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1341,40 +1341,6 @@
     }
   },
   {
-    "id": "mem:1787761018289",
-    "kind": "decision",
-    "content": "Registra AD-085: exig\u00eancia de arquitetura SOLID no c\u00f3digo, referenciada em ROADMAP.md e CLAUDE.md",
-    "tags": [
-      "registra",
-      "085",
-      "exig",
-      "ncia",
-      "arquitetura",
-      "solid",
-      "digo",
-      "referenciada"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/project/ROADMAP.md",
-      "CLAUDE.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26T16:16:58.289963+00:00",
-    "created_epoch": 1787761018,
-    "updated_at": "2026-08-26T16:16:58.289971+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787761018318",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -1408,31 +1374,31 @@
     }
   },
   {
-    "id": "mem:1787762098057",
+    "id": "mem:1787763384687",
     "kind": "decision",
-    "content": "AD-086: leitura de codigo de barras via camera no mobile (botao Scanner), restrita a Chrome/Android via BarcodeDetector",
+    "content": "AD-089: gatilhos de UI de finalizacao/suspensao confirmados (desktop: botoes Cancelar Venda/Finalizar Venda; mobile: icone de lixeira + botao Finalizar Venda), resolve item 18 de PENDENCIES.md",
     "tags": [
-      "086",
-      "leitura",
-      "codigo",
-      "barras",
-      "via",
-      "camera",
-      "mobile",
-      "botao"
+      "089",
+      "gatilhos",
+      "finalizacao",
+      "suspensao",
+      "confirmados",
+      "desktop",
+      "botoes",
+      "cancelar"
     ],
     "files": [
       ".specs/project/STATE.md",
-      ".specs/project/PROJECT.md",
-      ".specs/features/layout-responsivo-mobile/spec.md",
+      ".specs/features/finalizacao-suspensao-venda/spec.md",
+      ".specs/project/PENDENCIES.md",
       ".dual-graph/context-store.json"
     ],
     "file_path": ".specs/project/STATE.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-26T16:34:58.057489+00:00",
-    "created_epoch": 1787762098,
-    "updated_at": "2026-08-26T16:34:58.057495+00:00",
+    "created_at": "2026-08-26T16:56:24.687109+00:00",
+    "created_epoch": 1787763384,
+    "updated_at": "2026-08-26T16:56:24.687117+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1440,6 +1406,72 @@
       "window_sec": 120,
       "recent_action_kinds": [],
       "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787764531060",
+    "kind": "decision",
+    "content": "Instala Spec Kit real (uvx specify init --here) e ratifica constitution v1.0.0",
+    "tags": [
+      "instala",
+      "spec",
+      "kit",
+      "real",
+      "uvx",
+      "specify",
+      "init",
+      "here"
+    ],
+    "files": [
+      ".specify/memory/constitution.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".specify/memory/constitution.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T17:15:31.060423+00:00",
+    "created_epoch": 1787764531,
+    "updated_at": "2026-08-26T17:15:31.060430+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787764531062",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "instala",
+      "spec",
+      "kit",
+      "real",
+      "uvx",
+      "specify",
+      "init",
+      "here"
+    ],
+    "files": [
+      ".specify/memory/constitution.md"
+    ],
+    "file_path": ".specify/memory/constitution.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T17:15:31.062697+00:00",
+    "created_epoch": 1787764531,
+    "updated_at": "2026-08-26T17:15:31.062708+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
     }
   },
   {
@@ -1466,6 +1498,62 @@
     "symbol_hash": "",
     "created_at": "2026-08-26",
     "created_epoch": 1787790000,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787800000000",
+    "kind": "decision",
+    "content": "AD-089: gatilhos de UI de finalizacao/suspensao confirmados (desktop: botoes; mobile: lixeira), resolve item 18",
+    "tags": [
+      "089",
+      "finalizacao",
+      "suspensao",
+      "ui",
+      "desktop",
+      "mobile",
+      "lixeira",
+      "item18"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/features/finalizacao-suspensao-venda/spec.md",
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787800000,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787810000000",
+    "kind": "decision",
+    "content": "Spec Kit real instalado via uvx (specify init --here, integracao claude, scripts ps) e constitution v1.0.0 ratificada em .specify/memory/constitution.md",
+    "tags": [
+      "speckit",
+      "constitution",
+      "spec-kit",
+      "cli",
+      "instalacao"
+    ],
+    "files": [
+      ".specify/memory/constitution.md",
+      ".specify/integration.json"
+    ],
+    "file_path": ".specify/memory/constitution.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787810000,
     "updated_at": "2026-08-26",
     "stale": false,
     "stale_reason": "",
