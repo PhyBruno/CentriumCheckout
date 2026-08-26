@@ -891,6 +891,44 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
+### AD-087: Contrato atualizado (`info.version: 20260826163735`) — `ListaDAVs` ganha `Datainicial`/`Datafinal` (resolve item 10) e `GerarPIXOutput` ganha `Trnbase64image` (resolve item 24) (2026-08-26)
+
+**Decision:** Usuário atualizou `ApiCentriumOAuth.yaml` com três mudanças de contrato, confirmando compromissos que a equipe do ERP havia assumido em AD-081:
+- `GET /ApiCentriumOAuth/ListaDAVs` ganhou os parâmetros de query `Datainicial`/`Datafinal` (`string`, `format: date`, ambos opcionais) — entrega a atualização prometida em AD-081 e efetiva a decisão de produto de AD-077 (filtro de data real no modal de DAVs, sem restrição fixa de "hoje"). Resolve por completo o item 10 de `PENDENCIES.md`; `status`/vendedor/tipo/origem seguem sem suporte, mas nunca fizeram parte do escopo prometido.
+- `GerarPIXOutput` ganhou o campo `Trnbase64image` (`string`), ao lado do `Trnbase64text` já existente — entrega a atualização prometida em AD-081 para expor a imagem do QR Code do PIX (achado de AD-079). Resolve por completo o item 24 de `PENDENCIES.md`.
+- `SessaoUsuario` ganhou o campo `TipoImpressao` (`string`) — formaliza no contrato o indicativo de mecanismo de impressão (`'E'`/`'P'`) já assumido por AD-082 a partir de resposta direta do usuário; não havia pendência aberta associada, é só a confirmação escrita no yaml do que já estava documentado.
+
+**Reason:** Fechar no contrato formal os dois compromissos que a equipe do ERP havia assumido em AD-081, eliminando a dependência de "aguardar atualização" nos dois itens.
+**Trade-off:** Nenhum novo — ambas as mudanças são estritamente aditivas ao contrato (novos campos/parâmetros opcionais), sem quebra de compatibilidade com o que já estava documentado.
+**Impact:** Atualiza `.specs/project/PENDENCIES.md` (remove itens 10 e 24 da tabela — resolvidos), `.specs/features/importacao-dav/spec.md` (UI Design, Edge Cases, Coverage — e corrige de passagem uma referência esquecida ao item 26, já resolvido em AD-057) e `.specs/features/pagamento-pix/spec.md` (UI Design, Edge Cases, Coverage).
+
+---
+
+### AD-088: `GetStatusSistema` — semântica de limiar confirmada em produção e parâmetro `Cadmaqcod` esclarecido (`SessaoUsuario.CadMaqCod`) — resolve por completo o item 7 (2026-08-26)
+
+**Decision:** Usuário confirmou diretamente, fechando por completo a pendência de contrato remanescente sobre `GET /ApiCentriumOAuth/GetStatusSistema`:
+- O endpoint já implementa a semântica de limiar decidida em AD-075 (corrigida por AD-080): `0` = nada do que foi enviado em `GetSessao` mudou desde a última captura pelo Checkout (nada a fazer); qualquer valor `>= 1` = mudou, exige rechamar `GetSessao` por completo. O significado específico de valores acima de `1` não importa para essa decisão binária — supera o achado de KB (AD-024 e nova checagem em 2026-08-26) de que a procedure ainda repassava `CadStatus` bruto sem transformação.
+- O contrato (`ApiCentriumOAuth.yaml`) já retorna o tipo correto (`integer` puro, sem wrapper) — confirmado sem necessidade de nenhuma mudança no yaml.
+- Informação nova, não documentada antes: o parâmetro `Cadmaqcod` (já presente no contrato como query param opcional) deve ser enviado com o valor de `SessaoUsuario.CadMaqCod`, recebido em `GetSessao` — não é um valor arbitrário/fixo do cliente.
+
+**Reason:** Decisão/confirmação direta do usuário, fechando a lacuna de documentação do ERP que nem inspeção de KB (AD-024) conseguia resolver.
+**Trade-off:** Nenhum — não exige mudança de contrato, só implementação no Checkout usando o valor de `CadMaqCod` já disponível em `SessaoUsuario`.
+**Impact:** Atualiza `.specs/project/PENDENCIES.md` (remove item 7 da tabela — resolvido), `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases, Coverage) e `.specs/codebase/CONCERNS.md` (nota sobre `GetStatusSistema`).
+
+---
+
+### AD-089: Gatilhos de UI de finalização/suspensão confirmados — desktop com botões dedicados, mobile com ícone de lixeira no menu superior — resolve por completo o item 18 (2026-08-26)
+
+**Decision:** Usuário confirmou diretamente o mecanismo de UI que aciona `FaturarNFCe` (`FATURAR`/`SUSPENDER`), fechando a pendência sobre a ausência de frame desktop dedicado:
+- **Desktop:** existe um botão "Cancelar Venda" (aciona `SuspenderOuFaturar = "SUSPENDER"`) e um botão "Finalizar Venda" (aciona `SuspenderOuFaturar = "FATURAR"`), dentro da própria tela principal (`Fundo PDV Online Web`) — não há modal dedicado para essa ação, confirmando a suposição já registrada em `.specs/features/finalizacao-suspensao-venda/spec.md`.
+- **Mobile:** existe um ícone de lixeira no menu superior direito, presente em **todas** as telas do wizard mobile (`PDV Mobile 01`, `02` e `03`) — não só na etapa final — que aciona a suspensão (`SUSPENDER`); e um botão "Finalizar Venda" (`FATURAR`), já previsto na etapa 03 (`PDV Mobile 03 - Revisão e Finalização`).
+
+**Reason:** Decisão/confirmação direta do usuário — fecha a lacuna de UI Design que impedia detalhar os requisitos `FIN-01`/`FIN-05` com o gatilho real de interface.
+**Trade-off:** Nenhum — é só documentação do mecanismo de UI já existente no design; não muda contrato de API nem regra de negócio.
+**Impact:** Atualiza `.specs/project/PENDENCIES.md` (remove item 18 da tabela — resolvido) e `.specs/features/finalizacao-suspensao-venda/spec.md` (UI Design, Coverage).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
