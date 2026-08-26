@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- 1 item reprovado, deliberadamente: 1 `[NEEDS CLARIFICATION]` genuíno permanece em Edge Cases — comportamento da leitura de código de barras por câmera fora do navegador/plataforma já suportado. A spec de origem (`.specs/features/layout-responsivo-mobile/spec.md`) marca isso explicitamente como "pendência aberta para a fase Design", não como omissão trivial — não é seguro adivinhar (esconder botão? mensagem de indisponibilidade? outro tratamento?) sem decisão de produto. Requer decisão do usuário antes de `/speckit-clarify` ou `/speckit-plan`.
-- Demais itens passaram na primeira validação. Detalhe técnico (API `BarcodeDetector`, `useIsMobile`, breakpoint em CSS) deliberadamente omitido, fica para `/speckit-plan`.
+- Todos os itens passaram. O único item reprovado na primeira validação (`[NEEDS CLARIFICATION]` sobre o comportamento da leitura por câmera fora de Chrome/Android) foi resolvido em 2026-08-26: decisão do usuário registrada como AD-090 em `.specs/project/STATE.md` — o botão fica oculto fora de Chrome/Android, sem versão desabilitada nem mensagem de indisponibilidade. Refletido em `FR-011` deste spec.
+- Detalhe técnico (API `BarcodeDetector`, `useIsMobile`, breakpoint em CSS) deliberadamente omitido, fica para `/speckit-plan`.

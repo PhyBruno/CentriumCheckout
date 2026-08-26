@@ -18,7 +18,7 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 - **(AD-074)** Busca e cadastro de cliente, inserção/edição/exclusão de item normal, identificação de vendedor e seleção de condição/forma de pagamento funcionam normalmente no mobile — mesmo fluxo do desktop, sujeito só à adaptação de layout já prevista acima.
 - **(AD-074)** TEF **não** é chamado no mobile, independentemente de `ConfiguracoesTEF.TEFAtivo` — ver `.specs/features/pagamento-tef/spec.md`.
 - **(AD-074)** PIX permanece disponível no mobile — exceção à exclusão de TEF, já que não depende de terminal físico.
-- **(AD-086)** O botão "Scanner", já previsto na etapa de produtos do design mobile, ativa a câmera do dispositivo para leitura de código de barras via API nativa `BarcodeDetector`, sem biblioteca de decodificação externa. Funciona **somente em Chrome no Android** — nenhum outro navegador/plataforma é suportado por esta decisão.
+- **(AD-086)** O botão "Scanner", já previsto na etapa de produtos do design mobile, ativa a câmera do dispositivo para leitura de código de barras via API nativa `BarcodeDetector`, sem biblioteca de decodificação externa. Funciona **somente em Chrome no Android** — nenhum outro navegador/plataforma é suportado por esta decisão. **(AD-090)** Fora de Chrome/Android, o botão fica **oculto** — sem versão desabilitada nem mensagem de indisponibilidade.
 
 ## Goals
 
@@ -71,7 +71,7 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 
 ---
 
-### P3: Leitura de código de barras via câmera (mobile, Chrome/Android)
+### P3: Leitura de código de barras via câmera (mobile, Chrome/Android; oculto nos demais)
 
 **User Story**: Como operador de caixa em mobile usando Chrome no Android, quero tocar no botão "Scanner" já previsto na etapa de produtos para ativar a câmera do dispositivo e ler o código de barras do produto, sem depender de leitor físico.
 
@@ -81,7 +81,7 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 
 1. WHEN o operador está no layout mobile em Chrome no Android E toca no botão "Scanner" (já previsto na etapa de produtos do wizard) THEN o sistema SHALL solicitar permissão de câmera e, uma vez concedida, ativar a leitura de código de barras via API nativa `BarcodeDetector` — sem biblioteca de decodificação externa (ex.: ZXing).
 2. WHEN um código de barras é lido com sucesso THEN o sistema SHALL inserir o produto correspondente no carrinho pelo mesmo fluxo hoje usado por entrada via leitor físico/teclado (ver `.specs/features/carrinho-produto-precificacao/spec.md`).
-3. WHEN o navegador/dispositivo não é Chrome no Android THEN o comportamento do botão "Scanner" **não está definido nesta especificação** — ver Edge Cases.
+3. WHEN o navegador/dispositivo não é Chrome no Android THEN o sistema SHALL **não exibir** o botão "Scanner" (AD-090) — sem versão desabilitada nem mensagem de indisponibilidade.
 
 **Independent Test**: Em Chrome/Android, tocar em "Scanner", apontar para um código de barras válido e confirmar que o produto correspondente é inserido no carrinho.
 
@@ -89,9 +89,9 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 
 ## Edge Cases
 
-- **Comportamento fora de Chrome/Android (Safari/iOS, outros navegadores, desktop):** ainda não definido — AD-086 confirma apenas o caminho feliz em Chrome/Android; não há decisão registrada sobre esconder o botão, exibir mensagem de indisponibilidade, ou qualquer outro tratamento nesses casos. Pendência aberta para a fase Design desta feature.
+- **Comportamento fora de Chrome/Android (Safari/iOS, outros navegadores, desktop):** resolvido por AD-090 — o botão "Scanner" fica **oculto**, sem versão desabilitada nem mensagem de indisponibilidade.
 
-Fora esse ponto, nenhum edge case de comportamento pendente identificado — a ambiguidade restante desta feature é técnica (fase Design), não de requisito.
+Nenhum edge case de comportamento pendente identificado — a ambiguidade restante desta feature é técnica (fase Design), não de requisito.
 
 ---
 

@@ -61,7 +61,7 @@ Como operador de caixa em mobile, quero apontar a câmera do dispositivo para o 
 - O pagamento por terminal físico (cartão integrado) está disponível no mobile? Não — depende de hardware conectado ao ponto de venda, incompatível com o uso em tablet/celular. O pagamento via PIX permanece disponível, por não depender de hardware físico.
 - Telas de gestão/retaguarda (ex.: sangria, suprimento, fechamento de caixa) estão disponíveis no mobile? Não — permanecem exclusivas do layout desktop.
 - Atalhos de teclado pensados para operador com teclado físico/leitor fixo continuam ativos no mobile? Não — são desativados nesse layout, sem equivalente touch necessário.
-- Qual o comportamento da leitura de código de barras por câmera em um navegador ou dispositivo sem suporte a essa funcionalidade? [NEEDS CLARIFICATION: a especificação de origem confirma o caminho funcional apenas para um navegador/plataforma específicos e registra explicitamente como pendência em aberto o que deve acontecer nos demais — esconder a opção, exibir uma mensagem de indisponibilidade, ou outro tratamento. Não há decisão de produto registrada ainda; não deve ser assumida uma resposta sem confirmação, dado que a fonte marca isso como pendência deliberada, não uma omissão trivial.]
+- Qual o comportamento da leitura de código de barras por câmera em um navegador ou dispositivo sem suporte a essa funcionalidade? A opção fica inteiramente ausente da interface — sem versão desabilitada nem mensagem de indisponibilidade.
 
 ## Requirements *(mandatory)*
 
@@ -77,6 +77,7 @@ Como operador de caixa em mobile, quero apontar a câmera do dispositivo para o 
 - **FR-008**: O sistema MUST NOT oferecer, no layout mobile, os fluxos de importação de documento pronto para faturamento e de recuperação de venda suspensa/com falha — ambos permanecem exclusivos do desktop.
 - **FR-009**: O sistema MUST NOT tentar pagamento por terminal físico no layout mobile, independentemente da configuração; formas de pagamento que não dependem de hardware físico (ex.: PIX) MUST permanecer disponíveis.
 - **FR-010**: O sistema MUST NOT oferecer telas de gestão/retaguarda no layout mobile.
+- **FR-011**: Quando o navegador ou dispositivo em uso não suportar a leitura de código de barras pela câmera, o sistema MUST NOT exibir a opção ao operador — nem botão desabilitado, nem mensagem de indisponibilidade; a leitura por câmera fica inteiramente ausente da interface nesses casos.
 
 ## Success Criteria *(mandatory)*
 

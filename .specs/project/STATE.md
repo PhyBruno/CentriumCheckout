@@ -929,6 +929,15 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
+### AD-090: Botão "Scanner" fica oculto fora de Chrome/Android — resolve o edge case deixado em aberto por AD-086 (2026-08-26)
+
+**Decision:** Quando o navegador/dispositivo em uso não suporta a leitura de código de barras via câmera (ou seja, fora de Chrome no Android, conforme restrição já fixada em AD-086), o botão "Scanner" **não é exibido** na etapa de produtos do wizard mobile. Não há versão desabilitada nem mensagem de indisponibilidade — a opção simplesmente está ausente da interface nesses casos.
+**Reason:** Decisão explícita do usuário, resolvendo a pendência que AD-086 havia deixado registrada como edge case em aberto (aquela decisão só cobria o caminho feliz em Chrome/Android). Esconder evita expor ao operador uma funcionalidade que ele não pode usar, sem exigir copy adicional de indisponibilidade.
+**Trade-off:** Nenhum novo — é a opção mais simples de implementar (checagem de suporte antes de renderizar o botão). O operador num dispositivo não suportado não tem nenhuma pista visual de que a funcionalidade existe, o que é aceitável já que a inserção manual/por leitor físico continua disponível como caminho principal.
+**Impact:** Atualiza `.specs/features/layout-responsivo-mobile/spec.md` (Edge Cases, User Story de leitura por câmera) e `specs/007-layout-responsivo-mobile/spec.md` (resolve o marcador `[NEEDS CLARIFICATION]` em Edge Cases, novo requisito funcional, checklist de qualidade).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
