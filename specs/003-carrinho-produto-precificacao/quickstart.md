@@ -34,6 +34,7 @@ npm test -- tests/unit/domain/precificacao
 | Arquivo | Cenários mínimos | Requisito |
 |---|---|---|
 | `dinheiro.spec.ts` | soma/multiplicação em centavos sem drift de ponto flutuante; `distribuirPorMaiorResto` devolve parcelas cuja soma é **exatamente** o total, em casos que não fecham em centavo (ex.: dividir 100 por 3) | `FR-016`, AD-072 |
+| `dinheiro.spec.ts` (total de linha) | `calcularTotalLinha` com quantidade inteira e com quantidade fracionária (pesável); desconto subtraído **por unidade antes** da multiplicação; desconto maior que o preço resulta em piso `0`, nunca negativo; desconto `0` devolve `preço × quantidade` | §1 de `data-model.md`, I8 |
 | `tabelaPreco.spec.ts` | um caso por `TipoPreco` de `1` a `11`; para `8`, quantidade **abaixo**, **exatamente igual** e **acima** de cada limiar; limiar `0` ignorado como faixa não configurada | `FR-005`, `FR-006`, AD-059/AD-060 |
 | `reprecificacao.spec.ts` | cruzar faixa recalcula **todas** as linhas do SKU; cancelamento derruba as remanescentes para a faixa inferior; linha congelada não é alterada nem entra no agregado; linhas de outros SKUs voltam por identidade inalterada | `FR-006`, `FR-007`, `FR-008`, AD-067, D3 |
 | `codigoProduto.spec.ts` | `"001234*3"` → `COM_QTD`; `"001234"` → `SIMPLES` com quantidade 1; EAN-13 válido iniciado em `2` → `BALANCA` com código e valor corretos; DV inválido cai em `SIMPLES`; `quantidadePesavel` com `precoVenda = 0` lança | `FR-004`, `FR-013`, AD-028/AD-029/AD-076 |
@@ -85,7 +86,7 @@ Percurso, contra o ambiente de dev do ERP:
 5. Bipar/digitar o código de um produto com faixa, em quantidade que cruza o limiar → todas as linhas daquele SKU exibem o novo preço.
 6. Cancelar uma dessas linhas → ela permanece visível **riscada**; as demais voltam à faixa inferior; o subtotal não a inclui.
 7. Digitar `codigo*3` + Enter → linha entra com quantidade 3. Digitar só `codigo` + Enter → linha entra com quantidade 1.
-8. Bipar o EAN-13 de um produto pesável → quantidade e preço vêm da etiqueta, campos somente-leitura.
+8. Bipar o EAN-13 de um produto pesável → a quantidade é derivada da etiqueta, o preço unitário é o `PrecoVenda` do produto, e o total da linha é recalculado por `preço × quantidade` (pode divergir da etiqueta em até 1 centavo — comportamento esperado, ver `data-model.md` §1). Campos somente-leitura.
 9. Digitar o código de um produto `ProdutoPesavelEditavel = 'E'` e pressionar TAB → a linha **não** entra; o foco vai para os campos editáveis; a linha só entra ao acionar `+`.
 10. Repetir o passo 6 no layout mobile (mesmo estado de venda, layout condicional) → mesmo resultado.
 
