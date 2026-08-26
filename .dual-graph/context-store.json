@@ -1475,6 +1475,207 @@
     }
   },
   {
+    "id": "mem:1787767860273",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "gera",
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "001",
+      "auditoria",
+      "acoes"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/quickstart.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/quickstart.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T18:11:00.273424+00:00",
+    "created_epoch": 1787767860,
+    "updated_at": "2026-08-26T18:11:00.273500+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787767860234",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "gera",
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "001",
+      "auditoria",
+      "acoes"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/data-model.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T18:11:00.234760+00:00",
+    "created_epoch": 1787767860,
+    "updated_at": "2026-08-26T18:11:00.234775+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787767860197",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "gera",
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "001",
+      "auditoria",
+      "acoes"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/plan.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T18:11:00.197266+00:00",
+    "created_epoch": 1787767860,
+    "updated_at": "2026-08-26T18:11:00.197320+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787767860193",
+    "kind": "decision",
+    "content": "Gera Design (speckit-plan) da feature 001-auditoria-acoes-operador: slice auditoria no vendaStore, 17 tipos de evento, serializa\u00e7\u00e3o para campo Log de FaturarNFCe",
+    "tags": [
+      "gera",
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "001",
+      "auditoria",
+      "acoes"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/plan.md",
+      "specs/001-auditoria-acoes-operador/research.md",
+      "specs/001-auditoria-acoes-operador/data-model.md",
+      "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md",
+      "specs/001-auditoria-acoes-operador/quickstart.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T18:11:00.193792+00:00",
+    "created_epoch": 1787767860,
+    "updated_at": "2026-08-26T18:11:00.193806+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787767860217",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "gera",
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "001",
+      "auditoria",
+      "acoes"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/research.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/research.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T18:11:00.217456+00:00",
+    "created_epoch": 1787767860,
+    "updated_at": "2026-08-26T18:11:00.217483+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787767860251",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "gera",
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "001",
+      "auditoria",
+      "acoes"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T18:11:00.251915+00:00",
+    "created_epoch": 1787767860,
+    "updated_at": "2026-08-26T18:11:00.251933+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
     "id": "mem:1787790000000",
     "kind": "decision",
     "content": "AD-086: leitura de codigo de barras via camera no mobile (botao Scanner), restrita a Chrome no Android via BarcodeDetector nativo",
