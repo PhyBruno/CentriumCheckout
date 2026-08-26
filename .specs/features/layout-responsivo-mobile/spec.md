@@ -10,6 +10,16 @@ O operador pode usar o PDV em tablet/celular, onde uma tela única com todas as 
 
 O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor mobile` dentro de `Cliente e NFCe mobile` (etapa 1, `PDV Mobile 01`) — abre o mesmo modal de `.specs/features/selecao-vendedor/spec.md`, sem necessidade de spec própria aqui.
 
+**Escopo mobile confirmado (2026-08-25, AD-046; complementado em 2026-08-26, AD-074):**
+- Modal de importação de DAV (`.specs/features/importacao-dav/spec.md`) é **desktop-only**.
+- Modal de recuperação de NFCe (`.specs/features/recuperacao-nfce/spec.md`) também é **desktop-only**.
+- Cadastro de cliente (`.specs/features/identificacao-cadastro-cliente/spec.md`, `CLI-03`/`CLI-04`) DEVE existir no mobile — precisa de adaptação de layout (fase Design desta feature).
+- Fluxo de pagamento (`.specs/features/pagamento-geral/spec.md`) precisa de adaptação de layout no mobile — inferida pela IA na fase Design, sem detalhamento adicional confirmado pelo usuário nesta rodada.
+- **(AD-074)** Busca e cadastro de cliente, inserção/edição/exclusão de item normal, identificação de vendedor e seleção de condição/forma de pagamento funcionam normalmente no mobile — mesmo fluxo do desktop, sujeito só à adaptação de layout já prevista acima.
+- **(AD-074)** TEF **não** é chamado no mobile, independentemente de `ConfiguracoesTEF.TEFAtivo` — ver `.specs/features/pagamento-tef/spec.md`.
+- **(AD-074)** PIX permanece disponível no mobile — exceção à exclusão de TEF, já que não depende de terminal físico.
+- **(AD-086)** O botão "Scanner", já previsto na etapa de produtos do design mobile, ativa a câmera do dispositivo para leitura de código de barras via API nativa `BarcodeDetector`, sem biblioteca de decodificação externa. Funciona **somente em Chrome no Android** — nenhum outro navegador/plataforma é suportado por esta decisão.
+
 ## Goals
 
 - [ ] Mesma aplicação, mesmo estado de venda, atendendo desktop e mobile sem build/rota separada.
@@ -22,6 +32,9 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 | Detecção de capacidade touch | Critério de troca de layout é só largura de viewport, não capacidade do dispositivo |
 | App nativo ou PWA dedicado | Fora de escopo — é responsividade web, não outra plataforma |
 | Modal menu gerencial no mobile | Confirmado (2026-08-21): é uma tela só de desktop — não existe equivalente no design mobile (nenhum dos 3 frames do wizard o referencia) e não há necessidade de operação de retaguarda (sangria, suprimento, fechamento de caixa) durante o fluxo de venda em tablet/celular. Ver `.specs/codebase/ARCHITECTURE.md` |
+| Modal de importação de DAV no mobile | Confirmado (2026-08-25, AD-046): decisão direta do usuário — desktop-only, ver `.specs/features/importacao-dav/spec.md` |
+| Modal de recuperação de NFCe no mobile | Confirmado (2026-08-25, AD-046): decisão direta do usuário — desktop-only, ver `.specs/features/recuperacao-nfce/spec.md` |
+| TEF no mobile | Confirmado (2026-08-26, AD-074): decisão direta do usuário — TEF depende de terminal físico conectado ao PDV, incompatível com uso em tablet/celular. PIX permanece disponível no mobile (não depende de hardware). Ver `.specs/features/pagamento-tef/spec.md` |
 
 ---
 
@@ -58,9 +71,27 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 
 ---
 
+### P3: Leitura de código de barras via câmera (mobile, Chrome/Android)
+
+**User Story**: Como operador de caixa em mobile usando Chrome no Android, quero tocar no botão "Scanner" já previsto na etapa de produtos para ativar a câmera do dispositivo e ler o código de barras do produto, sem depender de leitor físico.
+
+**Why P3**: Conveniência para cenários sem leitor físico conectado ao tablet/celular; não bloqueia o MVP, que já cobre inserção manual/por leitor de teclado.
+
+**Acceptance Criteria**:
+
+1. WHEN o operador está no layout mobile em Chrome no Android E toca no botão "Scanner" (já previsto na etapa de produtos do wizard) THEN o sistema SHALL solicitar permissão de câmera e, uma vez concedida, ativar a leitura de código de barras via API nativa `BarcodeDetector` — sem biblioteca de decodificação externa (ex.: ZXing).
+2. WHEN um código de barras é lido com sucesso THEN o sistema SHALL inserir o produto correspondente no carrinho pelo mesmo fluxo hoje usado por entrada via leitor físico/teclado (ver `.specs/features/carrinho-produto-precificacao/spec.md`).
+3. WHEN o navegador/dispositivo não é Chrome no Android THEN o comportamento do botão "Scanner" **não está definido nesta especificação** — ver Edge Cases.
+
+**Independent Test**: Em Chrome/Android, tocar em "Scanner", apontar para um código de barras válido e confirmar que o produto correspondente é inserido no carrinho.
+
+---
+
 ## Edge Cases
 
-Nenhum edge case de comportamento pendente identificado até o momento — a ambiguidade restante desta feature é técnica (fase Design), não de requisito.
+- **Comportamento fora de Chrome/Android (Safari/iOS, outros navegadores, desktop):** ainda não definido — AD-086 confirma apenas o caminho feliz em Chrome/Android; não há decisão registrada sobre esconder o botão, exibir mensagem de indisponibilidade, ou qualquer outro tratamento nesses casos. Pendência aberta para a fase Design desta feature.
+
+Fora esse ponto, nenhum edge case de comportamento pendente identificado — a ambiguidade restante desta feature é técnica (fase Design), não de requisito.
 
 ---
 
@@ -73,8 +104,9 @@ Nenhum edge case de comportamento pendente identificado até o momento — a amb
 | MOB-03 | Wizard de 3 etapas (mobile) | Design técnico | Pending |
 | MOB-04 | Navegação livre entre etapas visitadas | Design técnico | Pending |
 | MOB-05 | Atalhos de teclado desativados no mobile | Design técnico | Pending |
+| MOB-06 | Leitura de código de barras via câmera (botão "Scanner", Chrome/Android) | Design técnico | Pending |
 
-**Coverage:** 5 total, 0 mapeados a tasks — requisitos confirmados (Specify concluído), mas a fase **Design** (componentes de layout separados, hook `useIsMobile`, estrutura de wizard) ainda não foi iniciada.
+**Coverage:** 6 total, 0 mapeados a tasks — requisitos confirmados (Specify concluído), mas a fase **Design** (componentes de layout separados, hook `useIsMobile`, estrutura de wizard, integração com `BarcodeDetector`) ainda não foi iniciada.
 
 ---
 

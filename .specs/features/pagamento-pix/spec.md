@@ -6,7 +6,7 @@ O operador precisa gerar um pagamento PIX e saber quando ele foi aprovado, sem d
 
 ## UI Design
 
-Modal PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de status). Tela principal e área "Pagamento e totais": ver `.specs/features/pagamento-geral/spec.md`.
+Modal PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de status). Tela principal e área "Pagamento e totais": ver `.specs/features/pagamento-geral/spec.md`. **Fonte do QR Code (2026-08-26, AD-079; atualização confirmada pelo ERP em AD-081):** ver Edge Cases — o contrato atual de `GerarPIX` não devolve a imagem do QR Code, só o "copia e cola"; a equipe do ERP já confirmou que vai atualizar o contrato para expor `Trnbase64image`.
 
 ## Goals
 
@@ -50,10 +50,32 @@ Modal PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de s
 
 ---
 
+### P1: Fechamento do modal com PIX pendente ⭐ MVP
+
+**User Story**: Como operador de caixa, quero poder fechar o modal PIX mesmo com uma transação ainda pendente e trocar por outra forma de pagamento, sem travar a venda.
+
+**Why P1**: Cliente pode desistir do PIX ou demorar demais — o operador precisa seguir com outra forma sem depender de expiração automática.
+
+**Acceptance Criteria**:
+
+1. WHEN o operador fecha o modal PIX com uma transação ainda pendente THEN o sistema SHALL exibir um aviso informando que será necessário desassociar o PIX manualmente na Central de Transações PIX. **Resolvido (2026-08-25, AD-040):** decisão direta do usuário.
+2. WHEN o modal é fechado nesse estado THEN o sistema SHALL remover a forma de pagamento PIX da venda local e permitir que o operador aplique outra forma no lugar.
+3. WHEN o PIX é abandonado dessa forma THEN o sistema SHALL NÃO enviar nenhuma solicitação de cancelamento de PIX ao ERP/CentriumPag — a desassociação é sempre manual, feita pelo operador fora do Checkout. O PIX não expira em um tempo curto (sem teto de polling de 10-15min).
+
+**Independent Test**: Gerar um PIX, fechar o modal antes da aprovação, confirmar o aviso de desassociação manual e verificar que nenhuma chamada de cancelamento é feita; aplicar outra forma de pagamento no lugar.
+
+---
+
 ## Edge Cases
 
 - WHEN o intervalo de polling de `StatusPIX` precisa ser definido THEN o sistema SHALL consultar a cada 10 segundos. **Resolvido (2026-08-24, AD-026):** decisão direta do usuário — intervalo fixo de 10s.
 - WHEN `GerarPIX` é chamado THEN o sistema SHALL enviar `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`), exigido pelo contrato — regra geral detalhada em `.specs/features/pagamento-geral/spec.md`.
+- WHEN `GerarPIX` é chamado THEN o sistema SHALL exibir o QR Code retornado. **Achado (2026-08-26, AD-079 em `.specs/project/STATE.md`), corrige a assunção "eu acho" de AD-047:** verificado no código-fonte real do ERP (`PCheckout_GerarPIX`) e no contrato (`GerarPIXOutput` em `ApiCentriumOAuth.yaml`) que o endpoint hoje só devolve `TrnGUID` e `Trnbase64text` — e `Trnbase64text` é o base64 do **texto** "copia e cola" (`ToBase64(&TrnPixCopiaECola)`), não uma imagem. A imagem do QR Code (`Trnbase64image`) já é gerada pelo próprio ERP nesse mesmo fluxo (`PTransacao_CentriumPag_Post` chama `PGetBarCodeImage.Udp(BarCodeQRCode, copiaECola)`) e fica persistida na tabela `Transacao` — é essa mesma imagem já pronta que a tela legada do ERP (`WPTransacao_LapseStatus`, sub `CarregarQRCode`) usa hoje para exibir o QR Code ao cliente, mas ela nunca é devolvida ao Checkout via `GerarPIX`. ⚠️ **Pendência de contrato, atualização já encaminhada (2026-08-26, AD-081):** o ERP precisa incluir `Trnbase64image` no `parm()` de saída de `PCheckout_GerarPIX` (valor já calculado, só falta expor) — usuário confirmou que a equipe do ERP vai fazer essa atualização. O Checkout SHALL então decodificar e exibir via `<img src="data:image/jpeg;base64,...">`, sem repetir o padrão legado de gravar em arquivo temporário (específico de Web Panel GX Web, não aplicável a uma SPA). Até essa mudança de contrato, o Checkout não tem como exibir a imagem do QR Code, só o texto "copia e cola".
+- WHEN `GerarPIX` é chamado THEN o sistema SHALL NÃO enviar o campo `TrnTempoExpiracaoPIX` (presente no SDT de entrada `SDTCentriumPag_Post`, Fato F3 de `.specs/project/DECISIONS.md`). **Resolvido (2026-08-25, AD-047):** decisão direta do usuário — campo não enviado pelo Checkout.
+- WHEN o operador tenta gerar um PIX abaixo do valor mínimo configurado THEN o sistema SHALL validar `ConfiguracoesPIX.MinimoPix` no lado do cliente (client-side) e bloquear a geração. **Resolvido (2026-08-25, AD-047):** decisão direta do usuário.
+- WHEN `GerarPIX` é chamado em uma venda com split de pagamento (outras formas já aplicadas) THEN o sistema SHALL usar o saldo residual da venda (valor ainda não coberto), não o total cheio. **Resolvido (2026-08-25, AD-047):** decisão direta do usuário.
+- WHEN o Checkout precisa decidir se exibe alguma UI além do QR Code (encurtador de link, link externo) THEN o sistema SHALL assumir que o endpoint sempre retorna o QR Code em base64, sem necessidade de UI adicional para `ConfiguracoesPIX.UtilizaEncurtador`/`UtilizaLinkExterno`. ⚠️ **Nota de baixa confiança (2026-08-25, AD-047):** a resposta do usuário reconheceu incerteza própria ("eu acho") — tratar como assunção best-effort a confirmar depois, não como fato definitivo (ver item 24 em `.specs/project/PENDENCIES.md`).
+- WHEN a própria chamada `POST /ApiCentriumOAuth/GerarPIX` falha (erro de rede/validação, distinto de falha no polling de `StatusPIX` depois de gerado) THEN o sistema SHALL exibir um erro simples e oferecer a opção de tentar novamente. **Resolvido (2026-08-25, AD-040):** decisão direta do usuário.
 
 ---
 
@@ -63,8 +85,9 @@ Modal PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de s
 |---|---|---|---|
 | PAY-03 | Ocultar PIX quando `UtilizaCentriumPAG=false` | - | Verified |
 | PAY-04 | Consulta ativa de status de PIX (sem SSE) | - | Verified (2026-08-21, AD-023 — endpoint `StatusPIX` confirmado no contrato atualizado) |
+| PAY-11 | Fechamento de modal com PIX pendente (aviso de desassociação manual, sem cancelamento) | - | Verified (2026-08-25, AD-040) |
 
-**Coverage:** 2 total, 0 edge cases pendentes (intervalo de polling de `StatusPIX` resolvido em 2026-08-24, AD-026 — decisão direta do usuário, a cada 10s).
+**Coverage:** 3 total, 1 pendência de contrato com atualização já encaminhada pelo ERP (item 24 de `.specs/project/PENDENCIES.md` — `Trnbase64image` já existe no ERP, falta expor em `GerarPIX`, AD-079/AD-081, corrige a assunção de baixa confiança de AD-047), demais edge cases resolvidos (intervalo de polling de `StatusPIX` — AD-026; `TrnTempoExpiracaoPIX`, `MinimoPix`, saldo residual — AD-047; falha em `GerarPIX` — AD-040).
 
 ---
 

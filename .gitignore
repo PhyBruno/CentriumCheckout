@@ -15,3 +15,6 @@
 node_modules/
 dist/
 .dual-graph/
+
+# OMO: estado de continuação de sessão local (regenerado a cada sessão)
+.omo/

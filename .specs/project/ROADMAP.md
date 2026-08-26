@@ -2,7 +2,7 @@
 
 > Mapa consolidado de toda pendência/edge case aberto (todas as features + infra): `.specs/project/PENDENCIES.md`.
 
-Nenhuma implementação começou ainda (repositório sem código-fonte). As features abaixo já passaram por uma extensa rodada de alinhamento de requisitos (ver histórico em `.specs/project/STATE.md`), documentado agora como specs formais em `.specs/features/`. "Specify" quase concluído em todas — a maior parte dos pontos em aberto listados em cada spec são perguntas operacionais pendentes com a equipe do ERP, não ambiguidade de produto (exceção: `CART-09`/`CART-10` em `carrinho-produto-precificacao`, bloqueio deliberado do usuário, não pendência de ERP).
+Nenhuma implementação começou ainda (repositório sem código-fonte). As features abaixo já passaram por uma extensa rodada de alinhamento de requisitos (ver histórico em `.specs/project/STATE.md`), documentado agora como specs formais em `.specs/features/`. "Specify" quase concluído em todas — a maior parte dos pontos em aberto listados em cada spec são perguntas operacionais pendentes com a equipe do ERP, não ambiguidade de produto.
 
 ## Milestone 1 — Fluxo de venda mínimo (desktop)
 
@@ -10,17 +10,19 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 |---|---|---|---|
 | 1 | Autenticação, sessão e bootstrap | Specify feito | `.specs/features/autenticacao-sessao-bootstrap/spec.md` |
 | 2 | Identificação e cadastro de cliente | Specify feito | `.specs/features/identificacao-cadastro-cliente/spec.md` |
-| 3 | Carrinho, busca/inserção de produto e motor de precificação | Specify feito (Design recomendado — motor de precificação é lógica de domínio isolada e crítica; `CART-09`/`CART-10` fora do escopo desta rodada de Design, bloqueio deliberado do usuário) | `.specs/features/carrinho-produto-precificacao/spec.md` |
+| 3 | Carrinho, busca/inserção de produto e motor de precificação | Specify feito (Design recomendado — motor de precificação é lógica de domínio isolada e crítica; `CART-09`/`CART-10` resolvidos em 2026-08-24, AD-030, sem bloqueio remanescente) | `.specs/features/carrinho-produto-precificacao/spec.md` |
 | 4 | Pagamento (formas/condições, PIX, TEF) | Specify feito | `.specs/features/pagamento-geral/spec.md`, `.specs/features/pagamento-pix/spec.md`, `.specs/features/pagamento-tef/spec.md` |
 | 5 | Finalização e suspensão da venda (NFCe) | Specify feito | `.specs/features/finalizacao-suspensao-venda/spec.md` |
-| 8 | Seleção de vendedor (modal) | Specify feito, pendência: endpoint de listagem de vendedores por empresa não confirmado com a equipe do ERP | `.specs/features/selecao-vendedor/spec.md` |
-| 9 | Menu gerencial (redirect para telas legadas do ERP) | Specify feito (nota arquitetural — sem spec de feature completo, é só link/navegação), pendência: URL da opção "Relatório de resumo de caixa" não confirmada | `.specs/codebase/ARCHITECTURE.md` (seção Responsividade) |
+| 8 | Seleção de vendedor (modal) | Specify feito (endpoint `GetListaVendedores` confirmado, AD-023; default de vendedor via `GetSessao` ao iniciar NFCe resolvido em 2026-08-25, AD-032, sem bloqueio remanescente) | `.specs/features/selecao-vendedor/spec.md` |
+| 9 | Menu gerencial (redirect para telas legadas do ERP) | Specify feito (nota arquitetural — sem spec de feature completo, é só link/navegação); URLs das duas opções confirmadas (AD-026) | `.specs/codebase/ARCHITECTURE.md` (seção Responsividade) |
+| 11 | Auditoria de ações do operador (trilha de log enviada no campo `Log` de `FaturarNFCe`) | Specify feito (2026-08-25, AD-061) — mecanismo transversal, sem tela própria; campo `Log` já confirmado no contrato | `.specs/features/auditoria-acoes-operador/spec.md` |
 
 ## Milestone 2 — Caminhos alternativos de entrada na venda
 
 | # | Feature | Status | Spec |
 |---|---|---|---|
 | 6 | Importação e faturamento de DAV | Specify feito (pendência: endpoint de "marcar DAV como importado" não confirmado) | `.specs/features/importacao-dav/spec.md` |
+| 10 | Recuperação e retomada de rascunho de NFCe | Specify feito (2026-08-25, AD-041) — desktop-only, sem pendência bloqueante (busca restrita a nome de cliente/vendedor, limitação conhecida do `DataProvider` do ERP) | `.specs/features/recuperacao-nfce/spec.md` |
 
 ## Milestone 3 — Mobile
 
@@ -37,7 +39,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 
 ## Ainda não gerados (dependem de código existir)
 
-`.specs/codebase/CONVENTIONS.md`, `STRUCTURE.md` e `TESTING.md` requerem amostras de código real (padrões de nomenclatura, árvore de diretórios, testes existentes) — serão gerados via brownfield mapping assim que o scaffolding inicial do projeto existir. Não fabricados agora para evitar documentar convenções inexistentes.
+`.specs/codebase/CONVENTIONS.md`, `STRUCTURE.md` e `TESTING.md` requerem amostras de código real (padrões de nomenclatura, árvore de diretórios, testes existentes) — serão gerados via brownfield mapping assim que o scaffolding inicial do projeto existir. Não fabricados agora para evitar documentar convenções inexistentes. **Exceção já decidida:** `CONVENTIONS.md`, quando gerado, deve incorporar a exigência de arquitetura SOLID já fixada em `.specs/project/STATE.md` (AD-085) — não é uma convenção a ser inferida do código, é uma constraint definida antes do scaffolding existir.
 
 ## Referência visual
 

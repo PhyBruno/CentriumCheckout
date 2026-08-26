@@ -16,7 +16,7 @@
 
 - Framework: React + Vite
 - Language: TypeScript (`strict`)
-- Runtime: navegador (SPA, sem wrapper Electron/Tauri, exige internet — sem requisito offline)
+- Runtime: navegador (SPA, sem wrapper Electron/Tauri, exige internet — sem requisito offline) para o frontend; Node.js para o BFF mínimo de sessão/autenticação (ver AD-022 em `.specs/project/STATE.md` e `.specs/codebase/ARCHITECTURE.md`)
 
 **Key dependencies:** Zustand + Immer (estado da venda), TanStack Query (cache de dados do ERP), Zod (validação de fronteira), shadcn/ui (design system). Lista completa em `.specs/codebase/STACK.md`.
 
@@ -32,9 +32,11 @@
 - Formas/condições de pagamento, incluindo PIX e TEF (`.specs/features/pagamento-geral/`, `.specs/features/pagamento-pix/`, `.specs/features/pagamento-tef/`)
 - Finalização e suspensão da venda (NFCe) (`.specs/features/finalizacao-suspensao-venda/`)
 - Importação e faturamento de DAV (`.specs/features/importacao-dav/`)
-- Layout responsivo desktop/mobile (`.specs/features/layout-responsivo-mobile/`)
+- Recuperação e retomada de rascunho de NFCe (`.specs/features/recuperacao-nfce/`)
+- Layout responsivo desktop/mobile (`.specs/features/layout-responsivo-mobile/`) — inclui leitura de código de barras via câmera no mobile (botão "Scanner"), restrita a Chrome no Android (ver AD-086 em `.specs/project/STATE.md`)
 - Seleção de vendedor associado à venda (`.specs/features/selecao-vendedor/`)
 - Menu gerencial: redirect para telas legadas do ERP (central de movimentação não fiscal, resumo de caixa) — só desktop, sem lógica própria do Checkout (ver `.specs/codebase/ARCHITECTURE.md`)
+- Auditoria de ações do operador durante a venda, entregue ao ERP no campo `Log` de `FaturarNFCe` (`.specs/features/auditoria-acoes-operador/`)
 
 **Explicitly out of scope:**
 

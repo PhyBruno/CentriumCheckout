@@ -20,12 +20,10 @@
 
 ## Sequência Obrigatória
 
-### 1️⃣ `/speckit.specify` — Defina o requisito
-
-Crie um arquivo `speckit.json` na raiz do projeto (ou use existente):
+### 1️⃣ `/speckit-specify` — Defina o requisito
 
 ```bash
-/speckit.specify
+/speckit-specify
 ```
 
 O comando abre um editor interativo onde você declara:
@@ -62,10 +60,10 @@ Dependências:
 - AD-023 (ApiCentriumOAuth.yaml com novo endpoint GetDescontoConvenio%)
 ```
 
-### 2️⃣ `/speckit.tasks` — Gere tarefas em ordem
+### 2️⃣ `/speckit-tasks` — Gere tarefas em ordem
 
 ```bash
-/speckit.tasks
+/speckit-tasks
 ```
 
 Spec Kit analisa a especificação e gera tarefas decompostas:
@@ -101,12 +99,12 @@ Testing:
   [ ] Task 12: Security review (OWASP) antes de merge a main
 ```
 
-Cada tarefa tem **critério de aceitação** testável — será usado em `/speckit.implement`.
+Cada tarefa tem **critério de aceitação** testável — será usado em `/speckit-implement`.
 
-### 3️⃣ `/speckit.implement [Task N]` — Execute na ordem
+### 3️⃣ `/speckit-implement [Task N]` — Execute na ordem
 
 ```bash
-/speckit.implement
+/speckit-implement
 ```
 
 Executa **todas** as tarefas em sequência topológica. O agente:
@@ -123,7 +121,7 @@ Executa **todas** as tarefas em sequência topológica. O agente:
 **Ou implemente tarefa específica:**
 
 ```bash
-/speckit.implement Task 6: Input de código de convênio
+/speckit-implement Task 6: Input de código de convênio
 ```
 
 ---
@@ -140,7 +138,7 @@ Executa **todas** as tarefas em sequência topológica. O agente:
 | **Precificação** | `money-precision` | Qualquer cálculo monetário |
 | **TanStack Query** | `tanstack-query-checkout` | Queries de produto/pagamento do ERP |
 | **Dexie/IndexedDB** | `dexie-bootstrap-cache` | Persistência de bootstrap |
-| **Testes Unitários** | `ecc:tdd-workflow` (RED/GREEN/checkpoint) | Dentro de `/speckit.implement` |
+| **Testes Unitários** | `ecc:tdd-workflow` (RED/GREEN/checkpoint) | Dentro de `/speckit-implement` |
 | **E2E (Playwright)** | `ecc:e2e-testing` | Testes de fluxo completo |
 | **Security (OWASP)** | `owasp-security` | **Obrigatório antes de merge a main** |
 
@@ -153,12 +151,12 @@ Executa **todas** as tarefas em sequência topológica. O agente:
 
 ## MCPs Complementares
 
-**Durante `/speckit.specify`:**
+**Durante `/speckit-specify`:**
 
 - **`genexus`** (user MCP) — Ao descrever requisitos de API, consulte KB GenExus para confirmar endpoints/contracts atuais
 - **`context7`** (user MCP) — Ao descrever padrões React/Zod/Zustand, busque docs atuais das versões fixadas
 
-**Durante `/speckit.implement`:**
+**Durante `/speckit-implement`:**
 
 - **`dual-graph`** (project MCP local) — Injetará padrões já usados no repo ao contexto
 
@@ -173,7 +171,7 @@ Cada tarefa = **1 commit** (ou fixup se erro):
 git add .
 git commit -m "feat/fix: [Task N] descrição curta
 
-Especificação: <URL de speckit.json ou task ID>
+Especificação: <caminho de specs/NNN-feature/spec.md ou task ID>
 Critério de aceitação: [copiado de Task N]
 Co-Authored-By: Claude Haiku <noreply@anthropic.com>"
 ```
@@ -192,16 +190,16 @@ Co-Authored-By: Claude Haiku <noreply@anthropic.com>"
 
 ```bash
 # 1. Começar feature
-/speckit.specify
+/speckit-specify
   → Define: "Suporte a desconto de convênio"
-  → Salva em speckit.json
+  → Salva spec.md em specs/NNN-desconto-convenio/
 
 # 2. Gerar tarefas
-/speckit.tasks
+/speckit-tasks
   → 12 tarefas criadas (Setup → Foundational → Feature → Testing)
 
 # 3. Implementar
-/speckit.implement
+/speckit-implement
   → Task 1: TypeScript/Zod types — `typescript-strict`, `zod-boundary-validation`
   → Task 2: Atualizar bootstrap — [manual: verificar KB GenExus]
   → Task 3: Zustand store — `zustand-immer-state`
@@ -228,7 +226,7 @@ git push origin feature/desconto-convenio
 
 ### P: O que fazer se uma tarefa falhar?
 
-R: `/speckit.implement Task N` novamente. O agente reexecuta a tarefa, com contexto de especificação ainda presente.
+R: `/speckit-implement Task N` novamente. O agente reexecuta a tarefa, com contexto de especificação ainda presente.
 
 ### P: Posso pular a fase "Setup"?
 
@@ -236,11 +234,11 @@ R: **NÃO.** Setup define tipos/schemas que toda feature seguinte depende. Pular
 
 ### P: Como atualizar especificação no meio da implementação?
 
-R: `/speckit.specify` (novamente). Spec Kit detecta mudanças e regera tarefas conforme necessário. Tarefas já completadas permanecem como estão.
+R: `/speckit-specify` (novamente). Spec Kit detecta mudanças e regera tarefas conforme necessário. Tarefas já completadas permanecem como estão.
 
 ### P: E se a dependência (ex.: AD-023) ainda não existir?
 
-R: Marque-a em `speckit.json` como "Bloqueada por AD-023". `/speckit.tasks` não gera tarefas dependentes até que bloqueador seja removido.
+R: Marque-a como "Bloqueada por AD-023" na spec da feature. `/speckit-tasks` não gera tarefas dependentes até que bloqueador seja removido.
 
 ---
 
@@ -248,11 +246,17 @@ R: Marque-a em `speckit.json` como "Bloqueada por AD-023". `/speckit.tasks` não
 
 | Command | O que faz |
 |---|---|
-| `/speckit.specify` | Abre editor interativo de especificação |
-| `/speckit.tasks` | Gera tarefas topológicas de especificação |
-| `/speckit.implement` | Executa todas as tarefas (ou específica) com skills automáticas |
-| `/speckit.implement Task N` | Executa somente tarefa N |
-| `/speckit.check` | Valida especificação (sem executar) |
+| `/speckit-constitution` | Cria/atualiza a constitution do projeto (`.specify/memory/constitution.md`) |
+| `/speckit-specify` | Cria/atualiza a especificação da feature a partir de descrição em linguagem natural |
+| `/speckit-clarify` | (opcional) Faz até 5 perguntas para reduzir ambiguidade antes de `/speckit-plan` |
+| `/speckit-plan` | Gera artefatos de design (plan.md) a partir da especificação |
+| `/speckit-tasks` | Gera tarefas topológicas (tasks.md) a partir de spec/plan |
+| `/speckit-analyze` | Valida consistência entre spec/plan/tasks (sem executar) |
+| `/speckit-checklist` | (opcional) Gera checklist de qualidade da especificação |
+| `/speckit-implement` | Executa todas as tarefas (ou específica) com skills automáticas |
+| `/speckit-implement Task N` | Executa somente tarefa N |
+| `/speckit-converge` | Avalia o código já existente contra spec/plan/tasks e anexa trabalho faltante como novas tasks |
+| `/speckit-taskstoissues` | Converte tasks.md em issues do GitHub |
 
 **Mais detalhes:** [Spec Kit Docs](https://github.com/github/spec-kit/tree/main/docs)
 

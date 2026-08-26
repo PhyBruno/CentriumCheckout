@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-24T14:05:45.671100+00:00",
+    "updated_at": "2026-08-26T16:34:58.059820+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -181,7 +181,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.872471+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.749766+00:00",
+    "updated_at": "2026-08-26T14:18:53.835709+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -251,7 +251,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.816973+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.959615+00:00",
+    "updated_at": "2026-08-25T11:16:33.244660+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -286,7 +286,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.791283+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T14:03:07.093841+00:00",
+    "updated_at": "2026-08-25T17:05:28.526394+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -358,13 +358,15 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.744910+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:44:16.517826+00:00",
+    "updated_at": "2026-08-26T16:16:58.303550+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
-      "recent_action_kinds": [],
+      "recent_action_kinds": [
+        "register_edit"
+      ],
       "recent_queries": [],
       "edited": true
     }
@@ -439,7 +441,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.733016+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.332374+00:00",
+    "updated_at": "2026-08-26T16:34:58.072761+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -474,7 +476,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.757537+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.969707+00:00",
+    "updated_at": "2026-08-25T16:56:00.658155+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -579,7 +581,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.831415+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T14:05:45.680284+00:00",
+    "updated_at": "2026-08-26T14:04:43.619124+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -614,7 +616,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.855121+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.940356+00:00",
+    "updated_at": "2026-08-26T14:44:57.822347+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -649,7 +651,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:12:05.886434+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.452796+00:00",
+    "updated_at": "2026-08-26T16:34:58.083668+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -684,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-24T14:05:45.687933+00:00",
+    "updated_at": "2026-08-26T16:34:58.094760+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -756,7 +758,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T12:57:28.462281+00:00",
     "created_epoch": 1787317048,
-    "updated_at": "2026-08-21T17:40:07.708222+00:00",
+    "updated_at": "2026-08-25T11:16:33.235748+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -855,40 +857,6 @@
     }
   },
   {
-    "id": "mem:1787334256508",
-    "kind": "decision",
-    "content": "Cria .specs/project/PENDENCIES.md como indice consolidado de pendencias/edge cases de todas as features + infra, com cross-links de ROADMAP.md e CONCERNS.md",
-    "tags": [
-      "cria",
-      "specs",
-      "project",
-      "pendencies",
-      "como",
-      "indice",
-      "consolidado",
-      "pendencias"
-    ],
-    "files": [
-      ".specs/project/PENDENCIES.md",
-      ".specs/project/ROADMAP.md",
-      ".specs/codebase/CONCERNS.md"
-    ],
-    "file_path": ".specs/project/PENDENCIES.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T17:44:16.508240+00:00",
-    "created_epoch": 1787334256,
-    "updated_at": "2026-08-21T17:44:16.508245+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787334256509",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -912,7 +880,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T17:44:16.509506+00:00",
     "created_epoch": 1787334256,
-    "updated_at": "2026-08-24T14:03:07.086106+00:00",
+    "updated_at": "2026-08-26T14:44:57.814095+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -922,38 +890,6 @@
       "recent_queries": [],
       "edited": true
     }
-  },
-  {
-    "id": "mem:1787577958911",
-    "kind": "decision",
-    "content": "AD-026: resolve pendencias 5/6/9/12/21 por decisao direta do usuario - polling PIX 10s, campo produtoCancelado em CheckoutFaturarNFCe, remove campos de credito da tela, mesma URL para as 2 opcoes do menu gerencial",
-    "tags": [
-      "pendencies",
-      "ad-026",
-      "produtoCancelado",
-      "statuspix",
-      "menu-gerencial"
-    ],
-    "files": [
-      ".specs/project/PENDENCIES.md",
-      ".specs/project/STATE.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/codebase/ARCHITECTURE.md",
-      ".specs/codebase/CONCERNS.md"
-    ],
-    "file_path": ".specs/project/PENDENCIES.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-24",
-    "created_epoch": 1787540400,
-    "updated_at": "2026-08-24",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
   },
   {
     "id": "mem:1787576773434",
@@ -1063,30 +999,31 @@
     }
   },
   {
-    "id": "mem:1787580345669",
+    "id": "mem:1787587467999",
     "kind": "decision",
-    "content": "AD-029: sintaxe codigo*quantidade + Enter para insercao direta com quantidade, complementa CART-02, distinto de AD-028",
+    "content": "AD-030: resolve CART-09 (bloqueio edicao/cancelamento pos-pagamento, permanente se TEF/PIX) e CART-10 (sem validacao de estoque, regra do ERP) por decisao direta do usuario",
     "tags": [
-      "029",
-      "sintaxe",
-      "codigo",
-      "quantidade",
-      "enter",
-      "para",
-      "insercao",
-      "direta"
+      "030",
+      "resolve",
+      "cart",
+      "bloqueio",
+      "edicao",
+      "cancelamento",
+      "pos",
+      "pagamento"
     ],
     "files": [
-      ".specs/project/STATE.md",
       ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".dual-graph/context-store.json"
+      ".specs/project/PENDENCIES.md",
+      ".specs/project/STATE.md",
+      ".specs/project/ROADMAP.md"
     ],
-    "file_path": ".specs/project/STATE.md",
+    "file_path": ".specs/features/carrinho-produto-precificacao/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-24T14:05:45.669373+00:00",
-    "created_epoch": 1787580345,
-    "updated_at": "2026-08-24T14:05:45.669378+00:00",
+    "created_at": "2026-08-24T16:04:27.999266+00:00",
+    "created_epoch": 1787587467,
+    "updated_at": "2026-08-24T16:04:27.999271+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1097,28 +1034,25 @@
     }
   },
   {
-    "id": "mem:1787583600000",
+    "id": "mem:1787599200000",
     "kind": "decision",
-    "content": "AD-028: formato de codigo de barras pesavel resolvido - 13 digitos comecando em 2 indica balanca; resolve pendencia #3",
+    "content": "Auditoria cruzada .specs/ vs features: corrige ROADMAP.md (remove excecao stale CART-09/10, atualiza itens 8/9) e cabecalho STATE.md (data/Current Work desatualizados)",
     "tags": [
-      "028",
-      "pesavel",
-      "codigo-de-barras",
-      "resolve",
-      "pendencia",
-      "usuario"
+      "auditoria",
+      "roadmap",
+      "state",
+      "stale",
+      "cross-check"
     ],
     "files": [
-      ".specs/project/PENDENCIES.md",
-      ".specs/project/STATE.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md"
+      ".specs/project/ROADMAP.md",
+      ".specs/project/STATE.md"
     ],
-    "file_path": ".specs/project/STATE.md",
+    "file_path": ".specs/project/ROADMAP.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-24",
-    "created_epoch": 1787583600,
+    "created_epoch": 1787599200,
     "updated_at": "2026-08-24",
     "stale": false,
     "stale_reason": "",
@@ -1126,26 +1060,413 @@
     "evidence": {}
   },
   {
-    "id": "mem:1787584200000",
+    "id": "mem:1787599600000",
     "kind": "decision",
-    "content": "AD-029: sintaxe codigo*quantidade + Enter para insercao direta com quantidade, distinta do AD-028 (codigo pesavel bipado)",
+    "content": "Desativa plugin Engram automatico no OpenCode; mantem MCP conectado e reversivel",
     "tags": [
-      "029",
-      "codigo-quantidade",
-      "enter",
-      "insercao-direta",
-      "usuario"
+      "opencode",
+      "engram",
+      "config"
     ],
     "files": [
-      ".specs/project/STATE.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md"
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".dual-graph/context-store.json",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-24",
+    "created_epoch": 1787599600,
+    "updated_at": "2026-08-24",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787656611007",
+    "kind": "decision",
+    "content": "AD-032: corrige referencia stale a pendencia #8 no ROADMAP.md, ja resolvida pelo default de vendedor via GetSessao",
+    "tags": [
+      "032",
+      "corrige",
+      "referencia",
+      "stale",
+      "pendencia",
+      "roadmap",
+      "resolvida",
+      "pelo"
+    ],
+    "files": [
+      ".specs/project/ROADMAP.md"
+    ],
+    "file_path": ".specs/project/ROADMAP.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25T11:16:51.007416+00:00",
+    "created_epoch": 1787656611,
+    "updated_at": "2026-08-25T11:16:51.007422+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [
+        "register_edit"
+      ],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787680000000",
+    "kind": "fact",
+    "content": "Auditoria DECISIONS.md vs .specs/: unica inconsistencia real era Todos de STATE.md com CART-09/CART-10 nao riscados",
+    "tags": [
+      "auditoria",
+      "consistencia",
+      "cart-09",
+      "cart-10",
+      "ad-030",
+      "todos"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
     ],
     "file_path": ".specs/project/STATE.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-24",
-    "created_epoch": 1787584200,
-    "updated_at": "2026-08-24",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787680000,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787680000001",
+    "kind": "fact",
+    "content": "Confirmado por leitura integral: PENDENCIES, ROADMAP, PROJECT, CONCERNS, ARCHITECTURE, STACK, INTEGRATIONS e os 11 specs de feature ja refletem AD-030/AD-032 a AD-056",
+    "tags": [
+      "auditoria",
+      "consistencia",
+      "specs",
+      "pendencies",
+      "roadmap"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md",
+      ".specs/project/ROADMAP.md",
+      ".specs/project/PROJECT.md",
+      ".specs/codebase/CONCERNS.md",
+      ".specs/codebase/ARCHITECTURE.md",
+      ".specs/codebase/STACK.md",
+      ".specs/codebase/INTEGRATIONS.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787680001,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787744912382",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "074",
+      "escopo",
+      "mobile",
+      "confirma",
+      "funcionalidades",
+      "normais",
+      "cliente",
+      "itens"
+    ],
+    "files": [
+      ".specs/features/pagamento-tef/spec.md"
+    ],
+    "file_path": ".specs/features/pagamento-tef/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T11:48:32.382935+00:00",
+    "created_epoch": 1787744912,
+    "updated_at": "2026-08-26T11:48:32.382949+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787744912404",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "074",
+      "escopo",
+      "mobile",
+      "confirma",
+      "funcionalidades",
+      "normais",
+      "cliente",
+      "itens",
+      "075",
+      "079"
+    ],
+    "files": [
+      ".specs/features/pagamento-geral/spec.md"
+    ],
+    "file_path": ".specs/features/pagamento-geral/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T11:48:32.404343+00:00",
+    "created_epoch": 1787744912,
+    "updated_at": "2026-08-26T14:04:43.570880+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787753083596",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "075",
+      "079",
+      "getstatussistema",
+      "boolean",
+      "polling",
+      "60s",
+      "item",
+      "parse",
+      "080",
+      "corrige"
+    ],
+    "files": [
+      ".specs/features/pagamento-pix/spec.md"
+    ],
+    "file_path": ".specs/features/pagamento-pix/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T14:04:43.596032+00:00",
+    "created_epoch": 1787753083,
+    "updated_at": "2026-08-26T14:18:53.846053+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787754249245",
+    "kind": "decision",
+    "content": "Correcao: itens 29 e 30 removidos da tabela de pendencias abertas (estavam marcados Resolvido mas ainda listados) - movidos para secao Notas, seguindo a convencao do arquivo. Itens 7/10/23/24 permanecem na tabela pois dependem de endpoint do ERP",
+    "tags": [
+      "correcao",
+      "itens",
+      "removidos",
+      "tabela",
+      "pendencias",
+      "abertas",
+      "estavam",
+      "marcados"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T14:24:09.245277+00:00",
+    "created_epoch": 1787754249,
+    "updated_at": "2026-08-26T14:24:09.245285+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787754459367",
+    "kind": "decision",
+    "content": "Correcao: item 23 tambem removido da tabela de pendencias abertas (polling 60s ja decidido, nao depende do ERP) - item 7 (semantica de retorno) permanece pois endpoint ainda nao implementa",
+    "tags": [
+      "correcao",
+      "item",
+      "tambem",
+      "removido",
+      "tabela",
+      "pendencias",
+      "abertas",
+      "polling"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T14:27:39.367922+00:00",
+    "created_epoch": 1787754459,
+    "updated_at": "2026-08-26T14:27:39.367930+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787761018289",
+    "kind": "decision",
+    "content": "Registra AD-085: exig\u00eancia de arquitetura SOLID no c\u00f3digo, referenciada em ROADMAP.md e CLAUDE.md",
+    "tags": [
+      "registra",
+      "085",
+      "exig",
+      "ncia",
+      "arquitetura",
+      "solid",
+      "digo",
+      "referenciada"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/project/ROADMAP.md",
+      "CLAUDE.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T16:16:58.289963+00:00",
+    "created_epoch": 1787761018,
+    "updated_at": "2026-08-26T16:16:58.289971+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787761018318",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "registra",
+      "085",
+      "exig",
+      "ncia",
+      "arquitetura",
+      "solid",
+      "digo",
+      "referenciada"
+    ],
+    "files": [
+      "CLAUDE.md"
+    ],
+    "file_path": "CLAUDE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T16:16:58.318166+00:00",
+    "created_epoch": 1787761018,
+    "updated_at": "2026-08-26T16:16:58.318182+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787762098057",
+    "kind": "decision",
+    "content": "AD-086: leitura de codigo de barras via camera no mobile (botao Scanner), restrita a Chrome/Android via BarcodeDetector",
+    "tags": [
+      "086",
+      "leitura",
+      "codigo",
+      "barras",
+      "via",
+      "camera",
+      "mobile",
+      "botao"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/project/PROJECT.md",
+      ".specs/features/layout-responsivo-mobile/spec.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T16:34:58.057489+00:00",
+    "created_epoch": 1787762098,
+    "updated_at": "2026-08-26T16:34:58.057495+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787790000000",
+    "kind": "decision",
+    "content": "AD-086: leitura de codigo de barras via camera no mobile (botao Scanner), restrita a Chrome no Android via BarcodeDetector nativo",
+    "tags": [
+      "086",
+      "scanner",
+      "camera",
+      "barcode",
+      "mobile",
+      "chrome",
+      "android",
+      "barcodedetector"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/project/PROJECT.md",
+      ".specs/features/layout-responsivo-mobile/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787790000,
+    "updated_at": "2026-08-26",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
