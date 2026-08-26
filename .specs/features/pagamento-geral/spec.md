@@ -96,15 +96,15 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 
 1. WHEN o operador aplica desconto direto em um item do carrinho THEN o sistema SHALL aceitar o valor sem teto e sem exigir senha/autorização. **Resolvido (2026-08-25, AD-039):** decisão direta do usuário.
 2. WHEN o operador aplica desconto na capa da nota (seção de pagamentos) THEN o sistema SHALL aceitar o desconto em porcentagem ou em valor fixo, à escolha do operador, sem teto e sem senha.
-3. WHEN o JSON de `FaturarNFCe` é montado com um desconto de capa aplicado THEN o sistema SHALL ratear o valor igualmente entre os itens da venda; WHEN o rateio não fecha em centavos exatos THEN o sistema SHALL adicionar o centavo remanescente a um dos itens (mesmo padrão de arredondamento generalizado em `.specs/features/carrinho-produto-precificacao/spec.md`, Edge Cases).
+3. WHEN o JSON de `FaturarNFCe` é montado com um desconto de capa aplicado THEN o sistema SHALL ratear o valor igualmente entre os itens da venda; WHEN o rateio não fecha em centavos exatos THEN o sistema SHALL distribuir o resto pelo **método do maior resto** (mesmo padrão de arredondamento generalizado em `.specs/features/carrinho-produto-precificacao/spec.md`, Edge Cases). **Formalizado (2026-08-26, AD-072 em `.specs/project/STATE.md`):** cada item arredondado para baixo; a diferença total distribuída 1 centavo por vez aos itens com maior parte fracionária descartada, do maior resto para o menor, até zerar.
 
-**Independent Test**: Aplicar desconto percentual e desconto em valor fixo na capa de uma venda com 3 itens cujo total não divide exatamente por 3; verificar que o JSON de `FaturarNFCe` rateia o desconto entre os itens com o centavo remanescente em um deles.
+**Independent Test**: Aplicar desconto percentual e desconto em valor fixo na capa de uma venda com 3 itens cujo total não divide exatamente por 3; verificar que o JSON de `FaturarNFCe` rateia o desconto entre os itens, com os centavos remanescentes atribuídos pelo método do maior resto.
 
 ---
 
 ## Edge Cases
 
-- WHEN uma forma de pagamento é selecionada THEN o Checkout SHALL rotear a operação pelo valor de `FormaMeioPagtoNFe`: `CartaoCredito` e `CartaoDebito` usam TEF; `Pix` usa PIX dinâmico; `PixEstatico` não usa automaticamente o fluxo PIX dinâmico; os demais valores não usam essas integrações.
+- WHEN uma forma de pagamento é selecionada THEN o Checkout SHALL rotear a operação pelo valor de `FormaMeioPagtoNFe`: `CartaoCredito` e `CartaoDebito` usam TEF **quando `ConfiguracoesTEF.TEFAtivo = true`** (ver `PAY-08` acima); `Pix` usa PIX dinâmico; `PixEstatico` não usa automaticamente o fluxo PIX dinâmico; os demais valores não usam essas integrações. **Pendência não-bloqueante registrada (2026-08-26, AD-073 em `.specs/project/STATE.md`, item 30 de `.specs/project/PENDENCIES.md`):** essa regra não distingue, dentro de cartão, uma eventual forma cadastrada como "cartão avulso" (maquininha standalone fora do TEF) — nenhum campo/endpoint por-forma-de-pagamento para essa distinção foi encontrado na KB do ERP. A regra acima continua valendo como está até o ERP modelar essa distinção no contrato.
 - WHEN o Checkout precisa classificar uma forma de pagamento (dinheiro/cartão/TEF/duplicata) para regras de troco/crédito THEN o sistema SHALL usar `FormaMeioPagtoNFe` (domínio `NFCe_FormaPagto`) e `FormaFpgUtiCar` (indica vale devolução `VDV`, campo do contrato mapeado de `FpgUtiCar` no KB). **Resolvido (2026-08-21, AD-023):** classificação completa confirmada na KB do GenExus — domain `NFCe_FormaPagto` tem os valores `Dinheiro, Cheque, CartaoCredito, CartaoDebito, CreditoLoja, ValeAlimentacao, ValeRefeicao, ValePresente, ValeCombustivel, DuplicataMercantil, BoletoBancario, DepositoBancario, Pix, TransferenciaBancaria, ProgaramaFidelidade (sic, typo no KB), PixEstatico, CreditoEmLoja, PagamentoNaoInformado, SemPagamento, PagamentoPosterior, Outros` — superset da tabela SEFAZ padrão. **(2026-08-21, AD-024):** `FormaFpgUtiCar` confirmado presente no contrato (ver Story P2/PAY-07) — só vazio quando a empresa não tem regra dinâmica de pagamento configurada.
 - WHEN qualquer um dos endpoints de pagamento é chamado (`GerarPIX`, `ValidaTicketDevolucao`, `FaturarNFCe`) THEN o sistema SHALL enviar `Empresa` (`codigoEmpresa` persistido, ver AD-019 em `.specs/project/STATE.md`), exigido pelo contrato. Aplica-se também a `GerarPIX`, específico de `.specs/features/pagamento-pix/spec.md`.
 - WHEN uma condição/forma de pagamento é aplicada ou removida, um vale devolução é usado, ou uma forma de pagamento (TEF, PIX ou cartão manual) é recusada THEN o sistema SHALL registrar o evento correspondente (`CONDICAO_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_APLICADA`/`REMOVIDA`, `VALE_DEVOLUCAO_USADO`, `PAGAMENTO_RECUSADO`) no log de auditoria da venda — aplica-se também aos fluxos específicos de `.specs/features/pagamento-pix/spec.md` e `.specs/features/pagamento-tef/spec.md`. **Novo (2026-08-25, AD-061):** ver `.specs/features/auditoria-acoes-operador/spec.md` (`AUDIT-05`, `AUDIT-06`).
@@ -119,14 +119,14 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 | PAY-01 | Carregar formas/condições (cache 30min) | - | Verified |
 | PAY-02 | Ocultar TEF quando `TEFAtivo=false` | - | Verified (AC completo em `.specs/features/pagamento-tef/spec.md`) |
 | PAY-03 | Ocultar PIX quando `UtilizaCentriumPAG=false` | - | Verified (AC completo em `.specs/features/pagamento-pix/spec.md`) |
-| PAY-08 | Roteamento por `FormaMeioPagtoNFe` para TEF/PIX | - | Verified (regra confirmada pelo usuário em 2026-08-24) |
+| PAY-08 | Roteamento por `FormaMeioPagtoNFe` para TEF/PIX | - | Verified (regra confirmada pelo usuário em 2026-08-24; mantida em 2026-08-26, AD-073, com pendência não-bloqueante registrada — item 30 de `.specs/project/PENDENCIES.md`) |
 | PAY-05 | Ticket devolução — valor via `ValidaTicketDevolucao` | - | Verified (2026-08-21, AD-023 — `ValorTicket` confirmado; elegibilidade via comparação de `Mensagem` a `'Ticket Válido'`) |
 | PAY-06 | Ticket devolução — sem revalidação na finalização | - | Verified |
 | PAY-07 | Ticket devolução — elegibilidade por forma de pagamento (`FormaFpgUtiCar`, vazio tratado como elegível) | - | Verified (2026-08-25, AD-048 — decisão direta do usuário: vazio permite aplicação otimista) |
 | PAY-09 | Split de pagamento (múltiplas formas) e troco restrito a dinheiro | - | Verified (2026-08-25, AD-036) |
-| PAY-10 | Desconto manual — item e capa, com rateio no JSON de `FaturarNFCe` | - | Verified (2026-08-25, AD-039) |
+| PAY-10 | Desconto manual — item e capa, com rateio no JSON de `FaturarNFCe` | - | Verified (2026-08-25, AD-039; critério de distribuição do resto formalizado em 2026-08-26, AD-072 — método do maior resto) |
 
-**Coverage:** 10 total, 0 edge cases pendentes. `PAY-04` (status PIX) fica em `.specs/features/pagamento-pix/spec.md`.
+**Coverage:** 10 total, 0 edge cases bloqueantes. 1 pendência não-bloqueante (item 30 de `.specs/project/PENDENCIES.md` — distinção de "cartão avulso" no roteamento de TEF, `PAY-08`, AD-073). `PAY-04` (status PIX) fica em `.specs/features/pagamento-pix/spec.md`.
 
 ---
 
