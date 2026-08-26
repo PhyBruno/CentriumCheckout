@@ -1822,4 +1822,56 @@
     "observed_queries": [],
     "evidence": {}
   }
+,
+  {
+    "id": "mem:1787830000000",
+    "kind": "decision",
+    "content": "AD-098: desconto de capa rateado igualmente entre itens, com clamp e redistribuicao",
+    "tags": ["pagamento", "desconto", "rateio", "ad-098"],
+    "files": ["specs/008-pagamento-geral/data-model.md", ".specs/project/STATE.md"],
+    "file_path": "specs/008-pagamento-geral/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787830000,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787830000001",
+    "kind": "fact",
+    "content": "AD-099: ValidaTicketDevolucao tem campo Valido no yaml; corrige AD-023, item 32 aberto",
+    "tags": ["pagamento", "ticket-devolucao", "contrato-erp", "ad-099"],
+    "files": ["specs/008-pagamento-geral/contracts/erp-pagamento-api.md", ".specs/project/PENDENCIES.md"],
+    "file_path": "specs/008-pagamento-geral/contracts/erp-pagamento-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787830000,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787830000002",
+    "kind": "next",
+    "content": "Feature 008 (pagamento geral) pronta para /speckit-tasks apos merge do design",
+    "tags": ["speckit", "feature-008"],
+    "files": ["specs/008-pagamento-geral/plan.md"],
+    "file_path": "specs/008-pagamento-geral/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787830000,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  }
 ]
