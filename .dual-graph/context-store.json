@@ -1821,5 +1821,39 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1787830000000",
+    "kind": "decision",
+    "content": "Design (speckit-plan) da feature 004: novo slice identidadeVenda (origem/numeroNota), impressao local fora do proxy do BFF, falha de rede vs negocio distintas em FaturarNFCe",
+    "tags": [
+      "speckit",
+      "plan",
+      "004",
+      "finalizacao",
+      "suspensao",
+      "faturarnfce",
+      "impressao",
+      "identidadevenda"
+    ],
+    "files": [
+      "specs/004-finalizacao-suspensao-venda/plan.md",
+      "specs/004-finalizacao-suspensao-venda/research.md",
+      "specs/004-finalizacao-suspensao-venda/data-model.md",
+      "specs/004-finalizacao-suspensao-venda/contracts/faturamento-api.md",
+      "specs/004-finalizacao-suspensao-venda/contracts/impressao-local-api.md",
+      "specs/004-finalizacao-suspensao-venda/contracts/status-sistema-api.md",
+      "specs/004-finalizacao-suspensao-venda/quickstart.md"
+    ],
+    "file_path": "specs/004-finalizacao-suspensao-venda/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787830000,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   }
 ]
