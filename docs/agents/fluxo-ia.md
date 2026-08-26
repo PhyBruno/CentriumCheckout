@@ -18,7 +18,7 @@ Como Bruno desenvolve com IA (Claude Code) neste e em outros projetos (ex.: `Cen
 
 Confirmados instalados nos dois repos auditados (`CentriumCheckout` e `CentriumIA`).
 
-**Github Spec Kit** não é um plugin de marketplace — é scaffolding manual por projeto: comandos `/speckit.specify` → `/speckit.tasks` → `/speckit.implement`, documentados em `SPECKIT.md` na raiz de cada repo.
+**Github Spec Kit** não é um plugin de marketplace — é instalado por projeto via `specify init` (CLI oficial, `uvx --from git+https://github.com/github/spec-kit.git specify init --here`), que cria `.specify/` e as skills `speckit-*`: `/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`, documentados em `SPECKIT.md` na raiz de cada repo. Confirmado instalado desta forma em `CentriumCheckout` desde 2026-08-26; verificar se `CentriumIA` já recebeu a mesma instalação antes de assumir paridade.
 
 **Mapeamento de docs/contexto:** "graperoot" = MCP local **`dual-graph`** (`.dual-graph/` por projeto, política descrita no próprio `CLAUDE.md`) — confirmado pelo usuário em 2026-08-25.
 
@@ -46,11 +46,11 @@ Confirmados instalados nos dois repos auditados (`CentriumCheckout` e `CentriumI
 
    Estrutura idêntica confirmada em `CentriumCheckout` e `CentriumIA`. O `CentriumIA` opera em modo **Spec-Anchored** (nenhum Execute sem `spec.md` + `tasks.md` aprovados) — vale considerar o mesmo grau de rigor para features de maior risco.
 
-3. **Escrever requisitos** combinando `tlc-spec-driven` (fases Specify → Design → Tasks → Execute) com os comandos do Spec Kit (`/speckit.specify` → `/speckit.tasks` → `/speckit.implement`).
+3. **Escrever requisitos** combinando `tlc-spec-driven` (fases Specify → Design → Tasks → Execute) com as skills do Spec Kit (`/speckit-specify` → `/speckit-tasks` → `/speckit-implement`).
 4. **Revisar antes de implementar:**
    - `mattpocock-skills:grilling` ("grill-me") — estressar o plano/decisão com perguntas difíceis antes de codar
    - `superpowers:brainstorming` — explorar intenção, requisitos e alternativas de design
-5. **Implementar** (`/speckit.implement`), acionando as skills de domínio pertinentes por tipo de tarefa (componente → skill de framework/review, lógica sensível → skill dedicada, etc. — ver exemplo já registrado no `CLAUDE.md` deste repo).
+5. **Implementar** (`/speckit-implement`), acionando as skills de domínio pertinentes por tipo de tarefa (componente → skill de framework/review, lógica sensível → skill dedicada, etc. — ver exemplo já registrado no `CLAUDE.md` deste repo).
 6. **Gates finais** antes de merge/deploy: type-check limpo, `owasp-security` antes de qualquer produção.
 
 ## 2. Padrões técnicos por default

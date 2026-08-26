@@ -19,7 +19,7 @@ CentriumCheckout is spec-driven (Spec Kit — see `CLAUDE.md` and `SPECKIT.md` a
 │   ├── INTEGRATIONS.md
 │   └── CONCERNS.md
 ├── features/
-│   └── <feature-slug>/spec.md   ← one spec per feature (Spec Kit `/speckit.specify` output)
+│   └── <feature-slug>/spec.md   ← one spec per feature (Spec Kit `/speckit-specify` output)
 └── quick/                        ← quick, ungrouped notes
 ```
 
@@ -60,4 +60,4 @@ Em vez disso:
 
 ## Spec-Driven Development note
 
-New features, bugfixes, and refactors in this repo go through the Spec Kit sequence (`/speckit.specify` → `/speckit.tasks` → `/speckit.implement`). Engineering skills that create issues/tickets should point back to the relevant `.specs/features/<feature-slug>/spec.md` rather than duplicating spec content in the issue body.
+New features, bugfixes, and refactors in this repo go through the Spec Kit sequence (`/speckit-specify` → `/speckit-tasks` → `/speckit-implement`) — the real CLI, installed in `.specify/` since 2026-08-26, not just documented convention. Engineering skills that create issues/tickets should point back to the relevant `.specs/features/<feature-slug>/spec.md` rather than duplicating spec content in the issue body.

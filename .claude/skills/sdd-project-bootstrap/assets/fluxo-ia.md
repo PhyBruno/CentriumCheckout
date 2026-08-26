@@ -18,7 +18,7 @@ Como Bruno desenvolve com IA (Claude Code) neste e em outros projetos (ex.: `Cen
 | `mattpocock-skills@claude-plugins-official` | Inclui a skill `grilling` ("grill-me") |
 | `ui-ux-pro-max@ui-ux-pro-max-skill` | Base de estilos, paletas e ícones para UI |
 
-**Github Spec Kit** não é um plugin de marketplace — é scaffolding manual por projeto: comandos `/speckit.specify` → `/speckit.tasks` → `/speckit.implement`, documentados em `SPECKIT.md` na raiz de cada repo.
+**Github Spec Kit** não é um plugin de marketplace — instale por projeto com `uvx --from git+https://github.com/github/spec-kit.git specify init --here --integration claude` (cria `.specify/` + skills `speckit-*`): `/speckit-constitution` → `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`, documentados em `SPECKIT.md` na raiz de cada repo.
 
 **Mapeamento de docs/contexto:** MCP local **`dual-graph`** (`.dual-graph/` por projeto, política descrita no próprio `CLAUDE.md`).
 
@@ -44,11 +44,11 @@ Como Bruno desenvolve com IA (Claude Code) neste e em outros projetos (ex.: `Cen
    └── quick/                         notas rápidas, ainda não agrupadas
    ```
 
-3. **Escrever requisitos** combinando `tlc-spec-driven` (fases Specify → Design → Tasks → Execute) com os comandos do Spec Kit (`/speckit.specify` → `/speckit.tasks` → `/speckit.implement`).
+3. **Escrever requisitos** combinando `tlc-spec-driven` (fases Specify → Design → Tasks → Execute) com as skills do Spec Kit (`/speckit-specify` → `/speckit-tasks` → `/speckit-implement`).
 4. **Revisar antes de implementar:**
    - `mattpocock-skills:grilling` ("grill-me") — estressar o plano/decisão com perguntas difíceis antes de codar
    - `superpowers:brainstorming` — explorar intenção, requisitos e alternativas de design
-5. **Implementar** (`/speckit.implement`), acionando as skills de domínio pertinentes por tipo de tarefa.
+5. **Implementar** (`/speckit-implement`), acionando as skills de domínio pertinentes por tipo de tarefa.
 6. **Gates finais** antes de merge/deploy: type-check limpo, `owasp-security` antes de qualquer produção.
 
 ## 2. Padrões técnicos por default
