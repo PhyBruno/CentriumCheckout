@@ -1,7 +1,7 @@
 # State
 
 **Last Updated:** 2026-08-26
-**Current Work:** Sessão de grilling (`mattpocock-skills:grilling`) auditando os 20 documentos de `.specs/` em busca de contradições e ambiguidades residuais. Sete decisões novas (AD-067 a AD-073) fecham: escopo de `repriceSku` sobre linha congelada de rascunho/DAV (AD-067); reclassificação do parse fino do código de barras pesável para pendência bloqueante, corrigindo AD-028 (AD-068); fechamento sem pendência nova da trilha de tier em `FaturarNFCe.produtos` e de `DavMatProdPes`, corrigindo AD-024/AD-063 (AD-069); confirmação estrutural da exclusividade pesável/editável, corrigindo AD-063 (AD-070); aritmética monetária em centavos inteiros e BFF em Fastify, fechando `STACK.md` (AD-071); método do maior resto para resto de arredondamento, corrigindo AD-039 (AD-072); e manutenção da regra de roteamento TEF com nova pendência não-bloqueante sobre "cartão avulso" (AD-073). Em seguida, mais cinco decisões (AD-075 a AD-079), várias confirmadas por inspeção direta da KB real do GeneXus (`CentriumDEVU6`) via MCP: semântica boolean + polling de 60s de `GetStatusSistema` (AD-075, itens 7/23); parse completo do código de barras de balança e fórmula de quantidade, **resolve a pendência bloqueante item 29/AD-068** (AD-076); filtro de data real no modal de DAVs (AD-077, item 10); `FormaIntegracaoCartao` confirmado em `GetSessao` (AD-078, item 30); e achado sobre o QR Code do PIX — a imagem já é gerada/persistida pelo ERP, só falta expor no contrato de `GerarPIX` (AD-079, item 24, corrige a suposição de baixa confiança de AD-047). Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
+**Current Work:** Sessão de grilling (`mattpocock-skills:grilling`) auditando os 20 documentos de `.specs/` em busca de contradições e ambiguidades residuais. Sete decisões novas (AD-067 a AD-073) fecham: escopo de `repriceSku` sobre linha congelada de rascunho/DAV (AD-067); reclassificação do parse fino do código de barras pesável para pendência bloqueante, corrigindo AD-028 (AD-068); fechamento sem pendência nova da trilha de tier em `FaturarNFCe.produtos` e de `DavMatProdPes`, corrigindo AD-024/AD-063 (AD-069); confirmação estrutural da exclusividade pesável/editável, corrigindo AD-063 (AD-070); aritmética monetária em centavos inteiros e BFF em Fastify, fechando `STACK.md` (AD-071); método do maior resto para resto de arredondamento, corrigindo AD-039 (AD-072); e manutenção da regra de roteamento TEF com nova pendência não-bloqueante sobre "cartão avulso" (AD-073). Em seguida, mais sete decisões (AD-075 a AD-081), várias confirmadas por inspeção direta da KB real do GeneXus (`CentriumDEVU6`) via MCP: semântica de retorno + polling de 60s de `GetStatusSistema` (AD-075, itens 7/23, **corrigida por AD-080** — é `numeric` com limiar `0`/`>=1`, não `boolean`); parse completo do código de barras de balança e fórmula de quantidade, **resolve a pendência bloqueante item 29/AD-068** (AD-076); filtro de data real no modal de DAVs (AD-077, item 10); `FormaIntegracaoCartao` confirmado em `GetSessao` (AD-078, item 30); achado sobre o QR Code do PIX — a imagem já é gerada/persistida pelo ERP, só falta expor no contrato de `GerarPIX` (AD-079, item 24, corrige a suposição de baixa confiança de AD-047); e confirmação de que a equipe do ERP vai atualizar os endpoints pendentes dos itens 10 e 24 (AD-081). Próximo passo sugerido: fase **Design** da feature `carrinho-produto-precificacao` (ver `.specs/project/ROADMAP.md`)
 
 ---
 
@@ -774,11 +774,11 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
-### AD-075: `GetStatusSistema` — retorno boolean (mudança desde a última captura) + polling de 60s só entre vendas — resolve itens 7 e 23 (2026-08-26)
+### AD-075: `GetStatusSistema` — retorno `numeric` com limiar (`0` = nada mudou, `>= 1` = mudou) + polling de 60s só entre vendas — resolve itens 7 e 23 (corrigido em 2026-08-26 por AD-080)
 
-**Decision:** Complementa AD-024 (semântica dos códigos, sem resposta até então, item 7) e AD-051 (timing da chamada, sem resposta até então, item 23). Decisão direta do usuário: o endpoint `GetStatusSistema` (contrato **pendente de atualização pelo próprio ERP**) passa a expor um retorno `boolean` simples — `true` indica que algo enviado em `GetSessao` mudou desde a última captura das informações pelo Checkout; nesse caso o Checkout SHALL rechamar `GetSessao` por completo para atualizar o `SessaoUsuario` local. O polling desse endpoint acontece a cada 60 segundos, e SHALL ocorrer **só entre vendas** — nunca durante uma "venda ativa" (carrinho com pelo menos 1 item OU cliente já identificado/selecionado).
+**Decision:** Complementa AD-024 (semântica dos códigos, sem resposta até então, item 7) e AD-051 (timing da chamada, sem resposta até então, item 23). Decisão direta do usuário: o endpoint `GetStatusSistema` (contrato **pendente de atualização pelo próprio ERP**) passa a expor um retorno **`numeric`** (não `boolean` — **correção em AD-080**) com semântica de limiar: `0` indica que nada do que foi enviado em `GetSessao` mudou desde a última captura das informações pelo Checkout; `>= 1` indica mudança, e nesse caso o Checkout SHALL rechamar `GetSessao` por completo para atualizar o `SessaoUsuario` local. O polling desse endpoint acontece a cada 60 segundos, e SHALL ocorrer **só entre vendas** — nunca durante uma "venda ativa" (carrinho com pelo menos 1 item OU cliente já identificado/selecionado).
 **Reason:** Decisão direta do usuário, fechando duas pendências que dependiam de contato com a equipe do ERP.
-**Trade-off:** Verificado agora na KB real do GeneXus (`PCheckout_GetStatusSistema`) que o endpoint **ainda retorna `CadStatus` bruto** (`NUMERIC`, sem transformação) — a semântica boolean agora definida é o desenho-alvo para quando o ERP atualizar o contrato, não o comportamento atual. Até lá, o polling não pode ser implementado de fato pelo Checkout.
+**Trade-off:** Verificado agora na KB real do GeneXus (`PCheckout_GetStatusSistema`) que o endpoint **ainda retorna `CadStatus` bruto** (`NUMERIC`, sem transformação) — a semântica de limiar agora definida é o desenho-alvo para quando o ERP atualizar o contrato, não o comportamento atual. Até lá, o polling não pode ser implementado de fato pelo Checkout.
 **Impact:** Atualiza `.specs/project/PENDENCIES.md` (itens 7 e 23 — resposta obtida, endpoint segue pendente do lado ERP) e `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases, `GetStatusSistema`).
 
 ---
@@ -816,6 +816,24 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 **Reason:** Decisão direta do usuário, a partir de achado verificado na KB real do GeneXus — corrige AD-047, que tratava a questão como suposição de baixa confiança ("eu acho").
 **Trade-off:** Exige que o ERP atualize o `parm()` de saída de `PCheckout_GerarPIX` para incluir `Trnbase64image` (valor já calculado e persistido pela mesma chamada, só não exposto hoje) — pendência de contrato, não de nova lógica de negócio. Até lá, o Checkout só recebe o texto "copia e cola", sem imagem pronta para exibir.
 **Impact:** Atualiza `.specs/project/PENDENCIES.md` (item 24 — nota corrigida: não é mais assunção "eu acho", é achado confirmado com direção de implementação definida — pedir ao ERP para expor `Trnbase64image`) e `.specs/features/pagamento-pix/spec.md` (Edge Cases, UI Design).
+
+---
+
+### AD-080: Correção de AD-075 — `GetStatusSistema` retorna `numeric` com limiar, não `boolean` (2026-08-26)
+
+**Decision:** Corrige AD-075, registrada mais cedo no mesmo dia com semântica `boolean` (`true`/`false`). Decisão direta do usuário: o retorno de `GetStatusSistema` é **`numeric`**, com a seguinte regra de limiar — `0` indica que nada mudou desde a última captura de `GetSessao` (Checkout NÃO precisa rechamar `GetSessao`); qualquer valor **`>= 1`** indica mudança (Checkout SHALL rechamar `GetSessao`). O restante de AD-075 (polling a cada 60s, só entre vendas) continua valendo sem alteração.
+**Reason:** Correção direta do usuário, momentos depois do registro original — a especificação de tipo estava errada (boolean em vez de numeric com limiar).
+**Trade-off:** Nenhum novo — mesma ressalva de AD-075 permanece: `PCheckout_GetStatusSistema` ainda retorna `CadStatus` bruto hoje, então essa semântica (agora com o tipo certo) segue sendo o desenho-alvo, pendente de implementação pelo ERP.
+**Impact:** Reescreve AD-075 in-place (não apenas anexa a correção no fim) e `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases, `GetStatusSistema`) — nenhum outro documento referenciava a semântica boolean antes desta correção.
+
+---
+
+### AD-081: Itens 10 e 24 — equipe do ERP confirmou que vai atualizar os endpoints pendentes (2026-08-26)
+
+**Decision:** Usuário confirmou diretamente que a equipe do ERP vai atualizar tanto `ListaDAVs`/`DpCheckout_GetDavs` (item 10 — para aceitar filtro de data real, AD-077) quanto `PCheckout_GerarPIX` (item 24 — para expor `Trnbase64image`, AD-079). Os dois deixam de ser pendências em aberto sem direção — a atualização já está encaminhada pelo lado do ERP, só falta ser feita.
+**Reason:** Confirmação direta do usuário.
+**Trade-off:** Nenhum novo — o Checkout continua sem poder implementar o filtro de data real de DAVs nem exibir a imagem do QR Code do PIX até essas atualizações saírem, mas a incerteza sobre "se" o ERP vai atualizar deixa de existir.
+**Impact:** Atualiza `.specs/project/PENDENCIES.md` (itens 10 e 24 — nota de que a atualização já foi encaminhada pela equipe do ERP) e `.specs/features/importacao-dav/spec.md` / `.specs/features/pagamento-pix/spec.md` (Edge Cases).
 
 ---
 
