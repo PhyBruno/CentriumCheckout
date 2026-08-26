@@ -1760,5 +1760,66 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1787820000000",
+    "kind": "decision",
+    "content": "Design (speckit-plan) da feature 003: dominio puro de precificacao, centavos/milesimos branded, repricarSku",
+    "tags": [
+      "speckit",
+      "plan",
+      "003",
+      "carrinho",
+      "precificacao",
+      "centavos",
+      "solid"
+    ],
+    "files": [
+      "specs/003-carrinho-produto-precificacao/plan.md",
+      "specs/003-carrinho-produto-precificacao/research.md",
+      "specs/003-carrinho-produto-precificacao/data-model.md",
+      "specs/003-carrinho-produto-precificacao/contracts/erp-produto-api.md",
+      "specs/003-carrinho-produto-precificacao/contracts/precificacao-domain-api.md",
+      "specs/003-carrinho-produto-precificacao/quickstart.md"
+    ],
+    "file_path": "specs/003-carrinho-produto-precificacao/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787820000,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787820000001",
+    "kind": "blocker",
+    "content": "GetListaProdutos nao devolve PrecoVenda nem ProdutoPesavelEditavel; SessaoUsuario.listaPrecoPadrao nao existe no yaml",
+    "tags": [
+      "contrato",
+      "erp",
+      "getlistaprodutos",
+      "precovenda",
+      "listaprecopadrao",
+      "ad-pendente"
+    ],
+    "files": [
+      "specs/003-carrinho-produto-precificacao/research.md",
+      ".specs/project/STATE.md",
+      ".specs/codebase/CONCERNS.md",
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": "specs/003-carrinho-produto-precificacao/research.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787820001,
+    "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   }
 ]
