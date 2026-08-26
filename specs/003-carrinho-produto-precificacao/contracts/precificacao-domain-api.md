@@ -21,14 +21,14 @@ export function distribuirPorMaiorResto(total: Centavos, pesos: readonly Centavo
 
 export function calcularTotalLinha(
   precoUnitario: Centavos,
-  descontoUnitario: Centavos,
   quantidade: Milesimos,
+  descontoLinha: Centavos,
 ): Centavos;
 ```
 
-- `multiplicarPorQuantidade` implementa `arredondar(preco × qtd ÷ 1000)`.
-- `calcularTotalLinha` é a **única** forma de obter o valor de uma linha: `arredondar((precoUnitario − descontoUnitario) × quantidade ÷ 1000)`, com o preço líquido unitário limitado a um piso de `0`. `precoUnitario` é sempre o preço de **uma** unidade — `PrecoVenda` (ou o `PrecoVenda{n}` da faixa) é base unitária, nunca valor de linha. `totalLinha` nunca é armazenado no estado (invariante I9 de `data-model.md`).
-- `aplicarPercentual` cobre o desconto de convênio: fator `(1 - DescontoConvenio / 100)` (AD-023). O `descontoUnitario` resultante é recalculado sempre que `precoUnitario` muda.
+- `multiplicarPorQuantidade` implementa `arredondar(preco × qtd ÷ 1000)` — é o cálculo do **total bruto** da linha.
+- `calcularTotalLinha` é a **única** forma de obter o valor de uma linha: `multiplicarPorQuantidade(precoUnitario, quantidade) − descontoLinha`, com piso de `0`. `precoUnitario` é sempre o preço de **uma** unidade — `PrecoVenda` (ou o `PrecoVenda{n}` da faixa) é base unitária, nunca valor de linha. `descontoLinha` é absoluto e incide **sobre o total**, depois da multiplicação. `totalLinha` nunca é armazenado no estado (invariante I9 de `data-model.md`).
+- `aplicarPercentual` cobre o desconto de convênio: fator `(1 - DescontoConvenio / 100)` aplicado ao **total bruto** da linha (AD-023). O `descontoLinha` resultante é recalculado sempre que `precoUnitario` ou `quantidade` mudam.
 - `distribuirPorMaiorResto` implementa AD-072: arredonda cada parcela para baixo e distribui a diferença 1 centavo por vez, das maiores partes fracionárias descartadas para as menores, até zerar. A soma das parcelas devolvidas é **sempre exatamente** `total` — esta é a invariante que o teste unitário afirma.
 
 ### `quantidade.ts`
@@ -50,7 +50,7 @@ export function resolvePrecoUnitario(
 ): Centavos;
 ```
 
-Devolve o preço de **uma unidade**. Quantidade e desconto não entram nesta função — são aplicados por `calcularTotalLinha`.
+Devolve o preço de **uma unidade**. Quantidade e desconto não entram nesta função — são aplicados por `calcularTotalLinha`, que multiplica pela quantidade e só então subtrai o desconto da linha.
 
 - `tipoPreco ∈ {1..7, 9, 10, 11}` → `snapshot.precoBase` (AD-059/AD-060).
 - `tipoPreco = 8` → faixa flat resolvida pela quantidade agregada (algoritmo em `data-model.md`, §5). Limiar `0` = faixa não configurada, ignorado.
@@ -111,7 +111,7 @@ export interface CarrinhoSlice {
   limparCarrinho(): void;
 }
 
-export type CampoEditavel = 'quantidade' | 'precoUnitario' | 'descontoUnitario';
+export type CampoEditavel = 'quantidade' | 'precoUnitario' | 'descontoLinha';
 ```
 
 ### Dependências injetadas (Dependency Inversion)

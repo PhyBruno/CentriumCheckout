@@ -31,21 +31,21 @@ export type Milesimos = number & { readonly __brand: 'Milesimos' };
 |---|---|---|
 | `precoUnitario` | `PrecoVenda`, ou `PrecoVenda{n}` da faixa quando `TipoPreco = 8` | **ERP** — o Checkout aplica, não calcula (exceto a escolha da faixa) |
 | `quantidade` | digitada, `codigo*qtd`, padrão `1`, ou derivada da etiqueta em produto pesável | **Checkout** |
-| `descontoUnitario` | desconto de convênio do cliente (percentual, AD-023) e/ou desconto manual em produto `'E'` | **Checkout** |
+| `descontoLinha` | desconto de convênio do cliente (percentual, AD-023) e/ou desconto manual em produto `'E'` | **Checkout** |
 | `totalLinha` | cálculo abaixo | **Checkout** |
 
 **Fórmula do total de linha**:
 
 ```
-precoLiquidoUnitario = precoUnitario − descontoUnitario        // nunca negativo; piso em 0
-totalLinhaCentavos   = arredondar(precoLiquidoUnitario × quantidadeMilesimos ÷ 1000)
+totalBrutoCentavos = arredondar(precoUnitarioCentavos × quantidadeMilesimos ÷ 1000)
+totalLinhaCentavos = totalBrutoCentavos − descontoLinhaCentavos        // nunca negativo; piso em 0
 ```
 
-O desconto é subtraído **por unidade, antes** de multiplicar pela quantidade — não sobre o total da linha. As duas ordens divergem em centavos quando a quantidade é fracionária (produto pesável), e subtrair antes mantém `precoLiquidoUnitario` como um valor exibível na grid, coerente com o que o operador vê por unidade.
+O desconto incide **sobre o total da linha**, depois da multiplicação — não sobre o preço unitário. `descontoLinha` é um valor absoluto em centavos, referente à linha inteira, do jeito que o operador informa e do jeito que o total é exibido.
 
-**Desconto de convênio**: `descontoUnitario = precoUnitario − aplicarPercentual(precoUnitario, 100 − DescontoConvenio)`, arredondado a centavo inteiro por unidade (AD-023). Recalculado sempre que `precoUnitario` muda — ou seja, junto com `repricarSku` e na troca de cliente.
+**Desconto de convênio**: `descontoLinha = totalBruto − aplicarPercentual(totalBruto, 100 − DescontoConvenio)`, arredondado a centavo inteiro sobre o total da linha (AD-023). Recalculado sempre que `precoUnitario` ou `quantidade` mudam — ou seja, junto com `repricarSku`, na edição de quantidade e na troca de cliente.
 
-**Produto pesável — o valor da etiqueta não é o total da linha**: em `'S'`/`'B'`, o valor lido da etiqueta serve **exclusivamente** para derivar a quantidade (`quantidade = round(trunc(valorEtiqueta / precoUnitario, 5), 3)`, AD-076). O total da linha é então recalculado pela fórmula acima, como em qualquer outra linha — há uma única fonte de verdade para o total. Como a quantidade é arredondada a 3 casas, o total recalculado pode divergir do valor impresso na etiqueta em **até 1 centavo**; essa divergência é aceita, e o valor que vale para a venda é o recalculado.
+**Produto pesável — o valor da etiqueta não é o total da linha**: em `'S'`/`'B'`, o valor lido da etiqueta serve **exclusivamente** para derivar a quantidade (`quantidade = round(trunc(valorEtiqueta / precoUnitario, 5), 3)`, AD-076). O total bruto é então recalculado pela fórmula acima, como em qualquer outra linha — há uma única fonte de verdade para o total. Como a quantidade é arredondada a 3 casas, o total recalculado pode divergir do valor impresso na etiqueta em **até 1 centavo**; essa divergência é aceita, e o valor que vale para a venda é o recalculado.
 
 **Distribuição de resto** (AD-072): quando um rateio (desconto de capa, desconto de convênio sobre múltiplas linhas) não fecha em centavos exatos, cada linha é arredondada **para baixo**, e a diferença total em centavos é distribuída 1 centavo por vez às linhas com maior parte fracionária descartada, do maior resto para o menor, até zerar. Nunca fração de centavo.
 
@@ -92,7 +92,7 @@ export interface LinhaCarrinho {
   readonly snapshot: SnapshotPrecoProduto;
   quantidade: Milesimos;
   precoUnitario: Centavos;               // preço unitário base corrente (resultado de resolvePrecoUnitario)
-  descontoUnitario: Centavos;            // desconto por unidade (convênio ou manual em produto 'E'); 0 quando não há
+  descontoLinha: Centavos;               // desconto absoluto sobre o total da linha (convênio ou manual em produto 'E'); 0 quando não há
   cancelada: boolean;                    // CART-08 — linha nunca sai do array
   readonly precoCongelado: boolean;      // true quando origem é rascunho de NFCe ou DAV (AD-067)
   readonly origem: OrigemLinha;
@@ -112,8 +112,8 @@ export type OrigemLinha = 'MANUAL' | 'BUSCA' | 'BALANCA' | 'RASCUNHO' | 'DAV';
 | I5 | `precoCongelado` só é `true` quando `origem ∈ {'RASCUNHO', 'DAV'}` | `FR-017` |
 | I6 | `precoCongelado` nunca vira `false` por reprecificação automática — só por reinserção ou edição explícita do operador | `FR-017`, `NFCE-04` |
 | I7 | `quantidade > 0` em toda linha ativa | — |
-| I8 | `descontoUnitario ≤ precoUnitario` — o preço líquido unitário nunca é negativo | Constitution V |
-| I9 | `totalLinha` **nunca** é armazenado na linha: é sempre derivado de `precoUnitario`, `descontoUnitario` e `quantidade`. Estado redundante poderia divergir do preço após uma reprecificação | `SC-001`, `FR-007` |
+| I8 | `descontoLinha ≤ totalBruto` — o total da linha nunca é negativo | Constitution V |
+| I9 | `totalLinha` **nunca** é armazenado na linha: é sempre derivado de `precoUnitario`, `quantidade` e `descontoLinha`. Estado redundante poderia divergir do preço após uma reprecificação | `SC-001`, `FR-007` |
 
 ---
 
@@ -131,7 +131,8 @@ Derivações (seletores, nunca campos armazenados — evitam estado redundante q
 |---|---|
 | `linhasAtivas` | `linhas.filter(l => !l.cancelada)` |
 | `quantidadeAgregada(sku)` | soma de `quantidade` das linhas ativas **não-congeladas** com aquele `codigoProduto` |
-| `totalLinha(linha)` | `arredondar((precoUnitario − descontoUnitario) × quantidade ÷ 1000)` — ver §1 |
+| `totalBruto(linha)` | `arredondar(precoUnitario × quantidade ÷ 1000)` |
+| `totalLinha(linha)` | `totalBruto(linha) − descontoLinha` — ver §1 |
 | `totalVenda` | soma de `totalLinha` de todas as linhas ativas (congeladas incluídas, com o preço que trouxeram) |
 
 ---
@@ -247,6 +248,6 @@ Consumidos via o contrato da feature 001 (`specs/001-auditoria-acoes-operador/co
 
 | Ação do operador | Evento | `detalhes` |
 |---|---|---|
-| Linha efetivamente inserida | `PRODUTO_INSERIDO` | `{ codigoProduto, quantidade, precoUnitario, desconto }` |
+| Linha efetivamente inserida | `PRODUTO_INSERIDO` | `{ codigoProduto, quantidade, precoUnitario, desconto }` — `precoUnitario` é a base **unitária**; `desconto` é o `descontoLinha` (absoluto, sobre o total da linha), ambos em centavos inteiros |
 | Campo de linha editado | `PRODUTO_ALTERADO` | `{ codigoProduto, campo, valorAnterior, valorNovo }` |
 | Linha cancelada | `PRODUTO_CANCELADO` | `{ codigoProduto }` |
