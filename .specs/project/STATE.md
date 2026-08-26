@@ -762,6 +762,18 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
+### AD-074: Escopo mobile — funcionalidades normais confirmadas e TEF excluído (PIX permanece) — complementa AD-046 (2026-08-26)
+
+**Decision:** Confirmação adicional de escopo mobile, complementando AD-046 (que já cobria DAV, recuperação de NFCe, cadastro de cliente e menu gerencial):
+- O checkout mobile permite normalmente busca e cadastro de cliente, inserção/edição/exclusão de item normal, identificação de vendedor e seleção de condição/forma de pagamento — mesmo fluxo do desktop, sujeito só à adaptação de layout já prevista em `layout-responsivo-mobile`.
+- O checkout mobile **não** chama TEF — nenhuma forma de pagamento tipo cartão roteia para a integração TEF local quando o layout é mobile, independentemente de `ConfiguracoesTEF.TEFAtivo`.
+- **Exceção:** PIX continua disponível e chamável normalmente no mobile.
+**Reason:** Decisão direta do usuário — TEF depende de terminal físico conectado ao PDV, cenário que não se aplica a uso em tablet/celular; PIX não tem essa dependência de hardware, por isso permanece disponível.
+**Trade-off:** Nenhum identificado.
+**Impact:** Atualiza `.specs/features/layout-responsivo-mobile/spec.md` (Escopo mobile confirmado / Out of Scope) e `.specs/features/pagamento-tef/spec.md` e `.specs/features/pagamento-geral/spec.md` (roteamento TEF/PIX exclui TEF no mobile).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

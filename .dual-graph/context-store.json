@@ -23,38 +23,6 @@
     "evidence": {}
   },
   {
-    "id": "mem:1787248030214",
-    "kind": "decision",
-    "content": "Atualiza ARCHITECTURE.md: remove persist\u00eancia de venda em F5 (Zustand sem persist + confirm de beforeunload), adiciona Boneyard/Goey Toast/shadcn-ui \u00e0 stack, detalha fluxo de busca/inser\u00e7\u00e3o de produto (GetListaProdutos vs GetProduto), finaliza\u00e7\u00e3o/suspens\u00e3o via FaturarNFCe+SuspenderOuFaturar, cancelamento agora confirmado como chamada ao ERP, credenciais em cookie HttpOnly, e resolve v\u00e1rios pontos em aberto da se\u00e7\u00e3o 7",
-    "tags": [
-      "atualiza",
-      "architecture",
-      "remove",
-      "persist",
-      "ncia",
-      "venda",
-      "zustand",
-      "sem"
-    ],
-    "files": [
-      "ARCHITECTURE.md"
-    ],
-    "file_path": "ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T17:47:10.214189+00:00",
-    "created_epoch": 1787248030,
-    "updated_at": "2026-08-20T17:47:10.214576+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787248030215",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -90,6 +58,38 @@
     }
   },
   {
+    "id": "mem:1787248030214",
+    "kind": "decision",
+    "content": "Atualiza ARCHITECTURE.md: remove persist\u00eancia de venda em F5 (Zustand sem persist + confirm de beforeunload), adiciona Boneyard/Goey Toast/shadcn-ui \u00e0 stack, detalha fluxo de busca/inser\u00e7\u00e3o de produto (GetListaProdutos vs GetProduto), finaliza\u00e7\u00e3o/suspens\u00e3o via FaturarNFCe+SuspenderOuFaturar, cancelamento agora confirmado como chamada ao ERP, credenciais em cookie HttpOnly, e resolve v\u00e1rios pontos em aberto da se\u00e7\u00e3o 7",
+    "tags": [
+      "atualiza",
+      "architecture",
+      "remove",
+      "persist",
+      "ncia",
+      "venda",
+      "zustand",
+      "sem"
+    ],
+    "files": [
+      "ARCHITECTURE.md"
+    ],
+    "file_path": "ARCHITECTURE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T17:47:10.214189+00:00",
+    "created_epoch": 1787248030,
+    "updated_at": "2026-08-20T17:47:10.214576+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
     "id": "mem:1787248391193",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-25T11:24:54.685369+00:00",
+    "updated_at": "2026-08-26T11:48:32.354385+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -158,7 +158,7 @@
     }
   },
   {
-    "id": "mem:1787256725886",
+    "id": "mem:1787256725872",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -174,14 +174,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/layout-responsivo-mobile/spec.md"
+      ".specs/features/importacao-dav/spec.md"
     ],
-    "file_path": ".specs/features/layout-responsivo-mobile/spec.md",
+    "file_path": ".specs/features/importacao-dav/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.886434+00:00",
+    "created_at": "2026-08-20T20:12:05.872471+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.452796+00:00",
+    "updated_at": "2026-08-21T17:40:07.749766+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -193,7 +193,7 @@
     }
   },
   {
-    "id": "mem:1787256725855",
+    "id": "mem:1787256725842",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -209,14 +209,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/finalizacao-suspensao-venda/spec.md"
+      ".specs/features/pagamento/spec.md"
     ],
-    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
+    "file_path": ".specs/features/pagamento/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.855121+00:00",
+    "created_at": "2026-08-20T20:12:05.842686+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T11:24:54.694084+00:00",
+    "updated_at": "2026-08-24T13:25:58.930133+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -228,42 +228,7 @@
     }
   },
   {
-    "id": "mem:1787256725831",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/features/carrinho-produto-precificacao/spec.md"
-    ],
-    "file_path": ".specs/features/carrinho-produto-precificacao/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.831415+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T11:19:36.933614+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725804",
+    "id": "mem:1787256725816",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -279,14 +244,14 @@
       "pend"
     ],
     "files": [
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
+      ".specs/features/identificacao-cadastro-cliente/spec.md"
     ],
-    "file_path": ".specs/features/autenticacao-sessao-bootstrap/spec.md",
+    "file_path": ".specs/features/identificacao-cadastro-cliente/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.804897+00:00",
+    "created_at": "2026-08-20T20:12:05.816973+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.391900+00:00",
+    "updated_at": "2026-08-25T11:16:33.244660+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -298,7 +263,44 @@
     }
   },
   {
-    "id": "mem:1787256725781",
+    "id": "mem:1787256725791",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap",
+      "018",
+      "boneyard"
+    ],
+    "files": [
+      ".specs/codebase/CONCERNS.md"
+    ],
+    "file_path": ".specs/codebase/CONCERNS.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.791283+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-25T17:05:28.526394+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [
+        "register_edit"
+      ],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725767",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -314,14 +316,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/codebase/INTEGRATIONS.md"
+      ".specs/codebase/STACK.md"
     ],
-    "file_path": ".specs/codebase/INTEGRATIONS.md",
+    "file_path": ".specs/codebase/STACK.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.781208+00:00",
+    "created_at": "2026-08-20T20:12:05.767088+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.691333+00:00",
+    "updated_at": "2026-08-21T12:57:28.359529+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -333,7 +335,7 @@
     }
   },
   {
-    "id": "mem:1787256725757",
+    "id": "mem:1787256725744",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -349,55 +351,22 @@
       "pend"
     ],
     "files": [
-      ".specs/codebase/ARCHITECTURE.md"
+      ".specs/project/ROADMAP.md"
     ],
-    "file_path": ".specs/codebase/ARCHITECTURE.md",
+    "file_path": ".specs/project/ROADMAP.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.757537+00:00",
+    "created_at": "2026-08-20T20:12:05.744910+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.969707+00:00",
+    "updated_at": "2026-08-25T11:16:51.009013+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725733",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/project/PROJECT.md"
-    ],
-    "file_path": ".specs/project/PROJECT.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.733016+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.332374+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
+      "recent_action_kinds": [
+        "register_edit"
+      ],
       "recent_queries": [],
       "edited": true
     }
@@ -449,7 +418,42 @@
     }
   },
   {
-    "id": "mem:1787256725744",
+    "id": "mem:1787256725733",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap",
+      "revis",
+      "cruzada"
+    ],
+    "files": [
+      ".specs/project/PROJECT.md"
+    ],
+    "file_path": ".specs/project/PROJECT.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.733016+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-21T12:57:28.332374+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725757",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -465,28 +469,26 @@
       "pend"
     ],
     "files": [
-      ".specs/project/ROADMAP.md"
+      ".specs/codebase/ARCHITECTURE.md"
     ],
-    "file_path": ".specs/project/ROADMAP.md",
+    "file_path": ".specs/codebase/ARCHITECTURE.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.744910+00:00",
+    "created_at": "2026-08-20T20:12:05.757537+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T11:16:51.009013+00:00",
+    "updated_at": "2026-08-25T16:56:00.658155+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
-      "recent_action_kinds": [
-        "register_edit"
-      ],
+      "recent_action_kinds": [],
       "recent_queries": [],
       "edited": true
     }
   },
   {
-    "id": "mem:1787256725767",
+    "id": "mem:1787256725781",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -502,14 +504,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/codebase/STACK.md"
+      ".specs/codebase/INTEGRATIONS.md"
     ],
-    "file_path": ".specs/codebase/STACK.md",
+    "file_path": ".specs/codebase/INTEGRATIONS.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.767088+00:00",
+    "created_at": "2026-08-20T20:12:05.781208+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.359529+00:00",
+    "updated_at": "2026-08-21T17:40:07.691333+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -521,44 +523,7 @@
     }
   },
   {
-    "id": "mem:1787256725791",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "018",
-      "boneyard"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.791283+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T14:03:07.093841+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [
-        "register_edit"
-      ],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725816",
+    "id": "mem:1787256725804",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -574,14 +539,14 @@
       "pend"
     ],
     "files": [
-      ".specs/features/identificacao-cadastro-cliente/spec.md"
+      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
     ],
-    "file_path": ".specs/features/identificacao-cadastro-cliente/spec.md",
+    "file_path": ".specs/features/autenticacao-sessao-bootstrap/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.816973+00:00",
+    "created_at": "2026-08-20T20:12:05.804897+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T11:16:33.244660+00:00",
+    "updated_at": "2026-08-21T12:57:28.391900+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -593,7 +558,7 @@
     }
   },
   {
-    "id": "mem:1787256725842",
+    "id": "mem:1787256725831",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -609,14 +574,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/pagamento/spec.md"
+      ".specs/features/carrinho-produto-precificacao/spec.md"
     ],
-    "file_path": ".specs/features/pagamento/spec.md",
+    "file_path": ".specs/features/carrinho-produto-precificacao/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.842686+00:00",
+    "created_at": "2026-08-20T20:12:05.831415+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.930133+00:00",
+    "updated_at": "2026-08-25T17:05:28.534047+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -628,7 +593,7 @@
     }
   },
   {
-    "id": "mem:1787256725872",
+    "id": "mem:1787256725855",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -644,14 +609,49 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/importacao-dav/spec.md"
+      ".specs/features/finalizacao-suspensao-venda/spec.md"
     ],
-    "file_path": ".specs/features/importacao-dav/spec.md",
+    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.872471+00:00",
+    "created_at": "2026-08-20T20:12:05.855121+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.749766+00:00",
+    "updated_at": "2026-08-25T11:24:54.694084+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725886",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap",
+      "revis",
+      "cruzada"
+    ],
+    "files": [
+      ".specs/features/layout-responsivo-mobile/spec.md"
+    ],
+    "file_path": ".specs/features/layout-responsivo-mobile/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.886434+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-26T11:48:32.368077+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -686,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-25T11:24:54.702286+00:00",
+    "updated_at": "2026-08-26T11:48:32.421205+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -732,6 +732,41 @@
       "window_sec": 120,
       "recent_action_kinds": [],
       "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787317048462",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "revis",
+      "cruzada",
+      "toda",
+      "specs",
+      "subagentes",
+      "alinhamento",
+      "rebaixa",
+      "getlistaclientes",
+      "023",
+      "novo"
+    ],
+    "files": [
+      ".specs/features/selecao-vendedor/spec.md"
+    ],
+    "file_path": ".specs/features/selecao-vendedor/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-21T12:57:28.462281+00:00",
+    "created_epoch": 1787317048,
+    "updated_at": "2026-08-25T11:16:33.235748+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
     }
   },
   {
@@ -781,41 +816,6 @@
     }
   },
   {
-    "id": "mem:1787317048462",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "revis",
-      "cruzada",
-      "toda",
-      "specs",
-      "subagentes",
-      "alinhamento",
-      "rebaixa",
-      "getlistaclientes",
-      "023",
-      "novo"
-    ],
-    "files": [
-      ".specs/features/selecao-vendedor/spec.md"
-    ],
-    "file_path": ".specs/features/selecao-vendedor/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:57:28.462281+00:00",
-    "created_epoch": 1787317048,
-    "updated_at": "2026-08-25T11:16:33.235748+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
     "id": "mem:1787334007679",
     "kind": "decision",
     "content": "AD-023: novo ApiCentriumOAuth.yaml + verificacao KB GenExus resolvem maioria das pendencias de API (GetListaClientes, StatusPIX, GetListaVendedores, GetListaNFCes, DescontoConvenio%, FormaMeioPagtoNFe, NumeroNota, ValidaTicketDevolucao)",
@@ -857,41 +857,6 @@
     }
   },
   {
-    "id": "mem:1787334256509",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "cria",
-      "specs",
-      "project",
-      "pendencies",
-      "como",
-      "indice",
-      "consolidado",
-      "pendencias",
-      "corre",
-      "regra"
-    ],
-    "files": [
-      ".specs/project/PENDENCIES.md"
-    ],
-    "file_path": ".specs/project/PENDENCIES.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T17:44:16.509506+00:00",
-    "created_epoch": 1787334256,
-    "updated_at": "2026-08-25T11:16:33.227380+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
     "id": "mem:1787334256508",
     "kind": "decision",
     "content": "Cria .specs/project/PENDENCIES.md como indice consolidado de pendencias/edge cases de todas as features + infra, com cross-links de ROADMAP.md e CONCERNS.md",
@@ -923,6 +888,41 @@
       "window_sec": 120,
       "recent_action_kinds": [],
       "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787334256509",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "cria",
+      "specs",
+      "project",
+      "pendencies",
+      "como",
+      "indice",
+      "consolidado",
+      "pendencias",
+      "corre",
+      "regra"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-21T17:44:16.509506+00:00",
+    "created_epoch": 1787334256,
+    "updated_at": "2026-08-25T17:05:28.543233+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
     }
   },
   {
@@ -1183,85 +1183,39 @@
     }
   },
   {
-    "id": "mem:1787670000000",
+    "id": "mem:1787677528517",
     "kind": "decision",
-    "content": "AD-032: vendedor/cliente pre-selecionados por padrao ao iniciar NFCe, via VendedorCodigo/ClienteDefaultCodigo de GetSessao",
+    "content": "Reverteu AD-031 (TipoPreco 6,7,10,11 agora no escopo, via PrecoVenda, nova AD-060) e corrigiu STATE.md/CONCERNS.md/spec.md/PENDENCIES.md in-place, n\u00e3o s\u00f3 anexando nota.",
     "tags": [
-      "032",
-      "vendedor",
-      "cliente",
-      "default",
-      "getsessao",
-      "decisao-desenvolvimento"
+      "reverteu",
+      "031",
+      "tipopreco",
+      "agora",
+      "escopo",
+      "via",
+      "precovenda",
+      "nova"
     ],
     "files": [
       ".specs/project/STATE.md",
-      ".specs/project/PENDENCIES.md",
-      ".specs/features/selecao-vendedor/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md"
+      ".specs/codebase/CONCERNS.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md",
+      ".specs/project/PENDENCIES.md"
     ],
     "file_path": ".specs/project/STATE.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-25",
-    "created_epoch": 1787670000,
-    "updated_at": "2026-08-25",
+    "created_at": "2026-08-25T17:05:28.517185+00:00",
+    "created_epoch": 1787677528,
+    "updated_at": "2026-08-25T17:05:28.517189+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1787671000000",
-    "kind": "decision",
-    "content": "AD-033: GetProduto sempre envia Tipocodproduto = UsuarioTipoCodigoProduto de GetSessao",
-    "tags": [
-      "033",
-      "getproduto",
-      "tipocodproduto",
-      "usuariotipocodigoproduto",
-      "clarificacao-processo"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-25",
-    "created_epoch": 1787671000,
-    "updated_at": "2026-08-25",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1787672000000",
-    "kind": "decision",
-    "content": "AD-034: FaturarNFCe sempre envia CadSerieNFCe = SessaoUsuario.CadSerieNFCe de GetSessao",
-    "tags": [
-      "034",
-      "faturarnfce",
-      "cadserienfce",
-      "getsessao",
-      "clarificacao-processo"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-25",
-    "created_epoch": 1787672000,
-    "updated_at": "2026-08-25",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
   },
   {
     "id": "mem:1787680000000",
@@ -1319,5 +1273,137 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1787680100000",
+    "kind": "decision",
+    "content": "AD-059: campo de preco aplicado corrigido para PrecoVenda em todo TipoPreco exceto 8; PrecoVenda1-5 so para faixa de quantidade (8); PrecoVendaLista descontinuado",
+    "tags": [
+      "059",
+      "precovenda",
+      "tipopreco",
+      "precificacao",
+      "corrige-ad-025"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/codebase/CONCERNS.md",
+      ".specs/codebase/ARCHITECTURE.md",
+      ".specs/features/carrinho-produto-precificacao/spec.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-25",
+    "created_epoch": 1787680100,
+    "updated_at": "2026-08-25",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787734000000",
+    "kind": "decision",
+    "content": "AD-074: escopo mobile confirma funcionalidades normais (cliente, itens, vendedor, pagamento) e exclui TEF, mantendo PIX",
+    "tags": [
+      "ad-074",
+      "mobile",
+      "tef",
+      "pix",
+      "escopo",
+      "074",
+      "confirma",
+      "funcionalidades",
+      "normais",
+      "cliente"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/features/layout-responsivo-mobile/spec.md",
+      ".specs/features/pagamento-tef/spec.md",
+      ".specs/features/pagamento-geral/spec.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787734000,
+    "updated_at": "2026-08-26T11:48:32.348307+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787744912382",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "074",
+      "escopo",
+      "mobile",
+      "confirma",
+      "funcionalidades",
+      "normais",
+      "cliente",
+      "itens"
+    ],
+    "files": [
+      ".specs/features/pagamento-tef/spec.md"
+    ],
+    "file_path": ".specs/features/pagamento-tef/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T11:48:32.382935+00:00",
+    "created_epoch": 1787744912,
+    "updated_at": "2026-08-26T11:48:32.382949+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787744912404",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "074",
+      "escopo",
+      "mobile",
+      "confirma",
+      "funcionalidades",
+      "normais",
+      "cliente",
+      "itens"
+    ],
+    "files": [
+      ".specs/features/pagamento-geral/spec.md"
+    ],
+    "file_path": ".specs/features/pagamento-geral/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T11:48:32.404343+00:00",
+    "created_epoch": 1787744912,
+    "updated_at": "2026-08-26T11:48:32.404360+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
   }
 ]

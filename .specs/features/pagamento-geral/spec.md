@@ -14,7 +14,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 - [ ] Ticket devolução nunca bloqueia finalização por revalidação redundante.
 - [ ] Split de pagamento (múltiplas formas na mesma venda) sempre disponível, com troco calculado só para dinheiro.
 
-**Nota mobile (2026-08-25, AD-046):** o fluxo de pagamento no mobile precisa de adaptação de layout (fase Design de `.specs/features/layout-responsivo-mobile/spec.md`) — decisão direta do usuário, sem detalhamento adicional nesta rodada.
+**Nota mobile (2026-08-25, AD-046; complementado em 2026-08-26, AD-074):** o fluxo de pagamento no mobile precisa de adaptação de layout (fase Design de `.specs/features/layout-responsivo-mobile/spec.md`). Busca/cadastro de cliente, itens e condição/forma de pagamento funcionam normalmente no mobile; TEF não é chamado no mobile em nenhuma hipótese, PIX permanece disponível — ver `PAY-08` abaixo e `.specs/features/pagamento-tef/spec.md`.
 
 ---
 
@@ -49,8 +49,9 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 3. WHEN `FormaMeioPagtoNFe` for `PixEstatico` THEN o sistema SHALL NOT tratá-la como PIX dinâmico nem encaminhá-la automaticamente para `GerarPIX`.
 4. WHEN `FormaMeioPagtoNFe` tiver qualquer outro valor THEN o sistema SHALL seguir o fluxo normal da forma, sem chamar a integração TEF ou o fluxo PIX dinâmico.
 5. WHEN a flag global da integração correspondente estiver `false` THEN o sistema SHALL ocultar ou desabilitar as formas que dependem daquela integração, conforme `PAY-02` e `PAY-03`.
+6. WHEN o layout é mobile THEN o sistema SHALL NÃO chamar a integração TEF em nenhuma hipótese, independentemente de `ConfiguracoesTEF.TEFAtivo` — decisão direta do usuário (2026-08-26, AD-074), ver `.specs/features/pagamento-tef/spec.md`. PIX permanece disponível normalmente no mobile.
 
-**Independent Test**: Mockar formas com `FormaMeioPagtoNFe` igual a `CartaoCredito`, `CartaoDebito`, `Pix`, `PixEstatico` e `Dinheiro`; confirmar que somente cartão de crédito/débito chama TEF, somente `Pix` chama o fluxo PIX dinâmico e as demais formas não chamam integração externa.
+**Independent Test**: Mockar formas com `FormaMeioPagtoNFe` igual a `CartaoCredito`, `CartaoDebito`, `Pix`, `PixEstatico` e `Dinheiro`; confirmar que somente cartão de crédito/débito chama TEF, somente `Pix` chama o fluxo PIX dinâmico e as demais formas não chamam integração externa. Repetir com layout mobile e confirmar que TEF nunca é chamado (mesmo para cartão com `TEFAtivo=true`) enquanto PIX continua funcionando normalmente.
 
 ---
 
@@ -119,7 +120,7 @@ Tela principal: frame `Fundo PDV Online Web`, área "Pagamento e totais". Estado
 | PAY-01 | Carregar formas/condições (cache 30min) | - | Verified |
 | PAY-02 | Ocultar TEF quando `TEFAtivo=false` | - | Verified (AC completo em `.specs/features/pagamento-tef/spec.md`) |
 | PAY-03 | Ocultar PIX quando `UtilizaCentriumPAG=false` | - | Verified (AC completo em `.specs/features/pagamento-pix/spec.md`) |
-| PAY-08 | Roteamento por `FormaMeioPagtoNFe` para TEF/PIX | - | Verified (regra confirmada pelo usuário em 2026-08-24; mantida em 2026-08-26, AD-073, com pendência não-bloqueante registrada — item 30 de `.specs/project/PENDENCIES.md`) |
+| PAY-08 | Roteamento por `FormaMeioPagtoNFe` para TEF/PIX | - | Verified (regra confirmada pelo usuário em 2026-08-24; mantida em 2026-08-26, AD-073, com pendência não-bloqueante registrada — item 30 de `.specs/project/PENDENCIES.md`; TEF excluído no mobile em 2026-08-26, AD-074, PIX permanece) |
 | PAY-05 | Ticket devolução — valor via `ValidaTicketDevolucao` | - | Verified (2026-08-21, AD-023 — `ValorTicket` confirmado; elegibilidade via comparação de `Mensagem` a `'Ticket Válido'`) |
 | PAY-06 | Ticket devolução — sem revalidação na finalização | - | Verified |
 | PAY-07 | Ticket devolução — elegibilidade por forma de pagamento (`FormaFpgUtiCar`, vazio tratado como elegível) | - | Verified (2026-08-25, AD-048 — decisão direta do usuário: vazio permite aplicação otimista) |

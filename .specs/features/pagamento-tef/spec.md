@@ -36,6 +36,7 @@ TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal 
 - WHEN o mecanismo técnico de comunicação com o TEF (protocolo, invocação, timeout/erro) precisa ser especificado THEN este documento SHALL permanecer sem essa especificação. **Bloqueio deliberado (2026-08-25, AD-037):** decisão direta do usuário — parceiro de TEF será trocado, ver seção "Bloqueio deliberado" acima e item 25 de `.specs/project/PENDENCIES.md`.
 - WHEN a venda com pagamento TEF já aprovado precisa ser suspensa THEN o sistema SHALL bloquear a suspensão. **Resolvido (2026-08-25, AD-042):** mesma lógica de `CART-09` — TEF aprovado não pode ser removido, logo a venda fica travada para suspensão também. Detalhado em `.specs/features/finalizacao-suspensao-venda/spec.md`.
 - WHEN um pagamento TEF é aprovado THEN o sistema SHALL NÃO imprimir nenhum comprovante próprio — o comprovante é emitido pelo terminal físico do TEF. **Resolvido (2026-08-25, AD-064 em `.specs/project/STATE.md`):** decisão direta do usuário, fora de escopo do Checkout.
+- WHEN o layout é mobile THEN o sistema SHALL NÃO oferecer nem chamar a integração TEF, independentemente de `ConfiguracoesTEF.TEFAtivo`. **Confirmado (2026-08-26, AD-074 em `.specs/project/STATE.md`):** decisão direta do usuário — TEF depende do terminal físico do PDV, sem equivalente para uso em tablet/celular. PIX permanece disponível no mobile (`.specs/features/pagamento-pix/spec.md`), pois não depende de hardware.
 
 ---
 
