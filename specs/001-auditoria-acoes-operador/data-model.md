@@ -24,7 +24,7 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 | 4 | `CLIENTE_TROCADO` | 005-identificacao-cadastro-cliente | `{ codigoClienteAnterior: number, codigoClienteNovo: number }` |
 | 5 | `VENDEDOR_SELECIONADO` | 012-selecao-vendedor | `{ codigoVendedor: number, nome: string }` |
 | 6 | `VENDEDOR_TROCADO` | 012-selecao-vendedor | `{ codigoVendedorAnterior: number, codigoVendedorNovo: number }` |
-| 7 | `PRODUTO_INSERIDO` | 003-carrinho-produto-precificacao | `{ codigoProduto: string, quantidade: number, precoUnitario: number, desconto: number }` (`precoUnitario`/`desconto` em centavos inteiros — Constitution V) |
+| 7 | `PRODUTO_INSERIDO` | 003-carrinho-produto-precificacao | `{ codigoProduto: string, quantidade: number, precoUnitario: number, desconto: number }` (`precoUnitario`/`desconto` em centavos inteiros — Constitution V). `precoUnitario` é a base **unitária**; `desconto` é absoluto e referente ao **total da linha**, não por unidade (ver `specs/003-carrinho-produto-precificacao/data-model.md`, §1) |
 | 8 | `PRODUTO_ALTERADO` | 003-carrinho-produto-precificacao | `{ codigoProduto: string, campo: string, valorAnterior: unknown, valorNovo: unknown }` |
 | 9 | `PRODUTO_CANCELADO` | 003-carrinho-produto-precificacao | `{ codigoProduto: string }` |
 | 10 | `CONDICAO_PAGAMENTO_APLICADA` | 008-pagamento-geral | `{ condicao: string }` |
