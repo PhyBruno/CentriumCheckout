@@ -216,7 +216,7 @@ type ResultadoTicket =
   | { readonly valido: false; readonly mensagem: string };
 ```
 
-Construído por `interpretarRespostaTicket` a partir de `ValidaTicketDevolucaoOutput` (`ValorTicket`, `Valido`, `Mensagem`) conforme AD-099 (`research.md`, D9): `Valido` quando presente, `Mensagem === 'Ticket Válido'` como fallback. União discriminada — o call site não consegue ler `valor` sem antes checar `valido`.
+Construído por `interpretarRespostaTicket` a partir de `ValidaTicketDevolucaoOutput` (`ValorTicket`, `Valido`) conforme AD-101 (`research.md`, D9 — corrige o fallback de `Mensagem` que AD-099 exigia): usa só `Valido`, sempre preenchido pelo procedure. União discriminada — o call site não consegue ler `valor` sem antes checar `valido`.
 
 ---
 

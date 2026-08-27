@@ -143,7 +143,7 @@ export function interpretarRespostaTicket(
 ```
 
 - `ehElegivelParaVale`: `fpgUtiCar` vazio → `true` (AD-048, `research.md` D10). Só um valor explicitamente diferente de vale devolução torna a forma inelegível.
-- `interpretarRespostaTicket`: `Valido` primário, `Mensagem === 'Ticket Válido'` como fallback (AD-099). União discriminada — o call site não alcança `valor` sem checar `valido`.
+- `interpretarRespostaTicket`: usa só `Valido` (AD-101 — corrige o fallback para `Mensagem` de AD-099, item 32 resolvido). União discriminada — o call site não alcança `valor` sem checar `valido`.
 
 ---
 

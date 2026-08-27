@@ -1265,7 +1265,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-26T14:04:43.596032+00:00",
     "created_epoch": 1787753083,
-    "updated_at": "2026-08-27T10:58:55.566799+00:00",
+    "updated_at": "2026-08-27T11:20:33.594907+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1799,7 +1799,9 @@
       "009",
       "pagamento",
       "pix",
-      "research"
+      "research",
+      "102",
+      "corrige"
     ],
     "files": [
       "specs/009-pagamento-pix/contracts/pix-domain-api.md"
@@ -1809,7 +1811,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-27T10:58:55.519269+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.519279+00:00",
+    "updated_at": "2026-08-27T11:20:33.566127+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1832,7 +1834,9 @@
       "009",
       "pagamento",
       "pix",
-      "research"
+      "research",
+      "102",
+      "corrige"
     ],
     "files": [
       "specs/009-pagamento-pix/data-model.md"
@@ -1842,7 +1846,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-27T10:58:55.497723+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.497742+00:00",
+    "updated_at": "2026-08-27T11:20:33.547991+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1865,7 +1869,9 @@
       "009",
       "pagamento",
       "pix",
-      "research"
+      "research",
+      "102",
+      "corrige"
     ],
     "files": [
       "specs/009-pagamento-pix/plan.md"
@@ -1875,7 +1881,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-27T10:58:55.472699+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.472724+00:00",
+    "updated_at": "2026-08-27T11:20:33.574329+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1940,7 +1946,9 @@
       "009",
       "pagamento",
       "pix",
-      "research"
+      "research",
+      "102",
+      "corrige"
     ],
     "files": [
       "specs/009-pagamento-pix/research.md"
@@ -1950,7 +1958,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-27T10:58:55.485762+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.485775+00:00",
+    "updated_at": "2026-08-27T11:20:33.536158+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1973,7 +1981,9 @@
       "009",
       "pagamento",
       "pix",
-      "research"
+      "research",
+      "102",
+      "corrige"
     ],
     "files": [
       "specs/009-pagamento-pix/contracts/erp-pix-api.md"
@@ -1983,7 +1993,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-27T10:58:55.508710+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.508720+00:00",
+    "updated_at": "2026-08-27T11:20:33.556782+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2006,7 +2016,9 @@
       "009",
       "pagamento",
       "pix",
-      "research"
+      "research",
+      "102",
+      "corrige"
     ],
     "files": [
       "specs/009-pagamento-pix/quickstart.md"
@@ -2016,7 +2028,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-27T10:58:55.535163+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.535174+00:00",
+    "updated_at": "2026-08-27T11:20:33.585019+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2058,6 +2070,44 @@
       "recent_action_kinds": [],
       "recent_queries": [],
       "edited": true
+    }
+  },
+  {
+    "id": "mem:1787829633534",
+    "kind": "decision",
+    "content": "AD-102 corrige item 33: 10 literais reais de StatusTransacao fornecidos pelo usu\u00e1rio, substituindo achado parcial via KB",
+    "tags": [
+      "102",
+      "corrige",
+      "item",
+      "literais",
+      "reais",
+      "statustransacao",
+      "fornecidos",
+      "pelo"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/research.md",
+      "specs/009-pagamento-pix/data-model.md",
+      "specs/009-pagamento-pix/contracts/erp-pix-api.md",
+      "specs/009-pagamento-pix/contracts/pix-domain-api.md",
+      "specs/009-pagamento-pix/plan.md",
+      "specs/009-pagamento-pix/quickstart.md",
+      ".specs/features/pagamento-pix/spec.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/research.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T11:20:33.534437+00:00",
+    "created_epoch": 1787829633,
+    "updated_at": "2026-08-27T11:20:33.534443+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
     }
   },
   {
