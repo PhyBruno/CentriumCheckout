@@ -19,7 +19,7 @@ export type ResultadoStatusPix =
 export function interpretarStatusPix(statusTransacao: string): ResultadoStatusPix;
 ```
 
-Função pura e total — nunca lança, nunca devolve `APROVADO` fora do caso exato `'PagamentoRecebido'` (`data-model.md` §2, invariante J2).
+Função pura e total — nunca lança, nunca devolve `APROVADO` fora dos casos exatos `'P'`/`'M'` (`data-model.md` §2, invariante J2, AD-102).
 
 ### `validarValorMinimoPix.ts`
 

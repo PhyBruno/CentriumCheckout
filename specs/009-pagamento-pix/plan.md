@@ -10,7 +10,7 @@
 
 A feature 009 implementa exclusivamente o que acontece **depois** que a feature 008 já decidiu, via `resolverIntegracao`, que uma forma de pagamento é `PIX_DINAMICO` (`research.md`, D1) — gerar a cobrança (`POST GerarPIX`), exibir QR Code e "copia e cola", consultar ativamente o status a cada 10 segundos (`GET StatusPIX`, sem SSE, AD-012/AD-026) e devolver aprovação/recusa ao slice de pagamento via `confirmarPagamentoIntegrado`/`recusarPagamentoIntegrado` — as mesmas duas actions já expostas pelo contrato da feature 008, sem que esta feature acrescente estado novo ao `vendaStore`.
 
-O maior achado desta fase foi a semântica real de `StatusPIXOutput.StatusTransacao`: um campo `VARCHAR(1)` sem documentação prévia em `.specs/`, cujos cinco estados nomeados (`Aguardando`, `PagamentoRecebido`, `Expirada`, `Recusada`, `Erro`) foram confirmados lendo o código-fonte real do ERP via KB GeneXus (`PCheckout_StatusPIX`, `PTransacao_CentriumPag_GetStatusPAG`) — achado com alta confiança nos nomes, mas confiança média nos literais exatos armazenados pelo domain, o que abre o item 33 de `PENDENCIES.md`. Esse achado também revelou um comportamento de produto que a spec original não cobria explicitamente: a CentriumPag pode reportar uma falha terminal (`Expirada`/`Recusada`/`Erro`) sem que o operador tenha fechado o modal manualmente — este design resolve isso reaproveitando exatamente o mesmo caminho de UX já decidido para o fechamento manual (AD-040): aviso, remoção do pagamento local, nenhuma chamada de cancelamento, nunca um segundo mecanismo de estado. O segundo achado foi que `SDTCentriumPag_Post` é um SDT genérico compartilhado com boleto/duplicata — só um subconjunto pequeno de campos é relevante para PIX, com os dados do pagador resolvidos por decisão direta do usuário nesta sessão (cliente identificado, ou o cliente default da venda — **AD-100**).
+O maior achado desta fase foi a semântica real de `StatusPIXOutput.StatusTransacao`: um campo `VARCHAR(1)` sem documentação prévia em `.specs/`, com dez literais possíveis (`'C'` Criada, `'A'` Aberta, `'G'` Aguardando Pagamento, `'P'` Pagamento Recebido, `'M'` Pagamento Liberado Manualmente, `'X'` Expirada, `'R'` Recusada, `'E'` Erro, `'F'` Fechada, `'O'` Removido Associação PIX) — os três primeiros (pendente), `'P'`/`'M'` (aprovado, ambos) e os cinco últimos (falha terminal) confirmados diretamente pelo usuário nesta sessão (**AD-102**, fecha o item 33 de `PENDENCIES.md`, corrigindo uma leitura inicial via KB GeneXus que tinha alta confiança só nos nomes de cinco estados, não nos literais). Esse achado também revelou um comportamento de produto que a spec original não cobria explicitamente: a CentriumPag/ERP pode reportar uma falha terminal (ou uma desassociação feita fora do Checkout, `'O'`) sem que o operador tenha fechado o modal manualmente — este design resolve isso reaproveitando exatamente o mesmo caminho de UX já decidido para o fechamento manual (AD-040): aviso, remoção do pagamento local, nenhuma chamada de cancelamento, nunca um segundo mecanismo de estado. O segundo achado foi que `SDTCentriumPag_Post` é um SDT genérico compartilhado com boleto/duplicata — só um subconjunto pequeno de campos é relevante para PIX, com os dados do pagador resolvidos por decisão direta do usuário nesta sessão (cliente identificado, ou o cliente default da venda — **AD-100**).
 
 ## Technical Context
 
@@ -20,7 +20,7 @@ O maior achado desta fase foi a semântica real de `StatusPIXOutput.StatusTransa
 
 **Storage**: N/A — nenhum dado desta feature sobrevive além do modal PIX aberto (Constitution VI). `MinimoPix`/`UtilizaCentriumPAG` são lidos do mesmo cache em memória do TanStack Query sobre o bootstrap (feature 002), nunca uma query própria.
 
-**Testing**: Vitest + Testing Library. Unitários puros (sem React) para: `interpretarStatusPix` (5 estados nomeados + `'G'` + `default` desconhecido, `data-model.md` J2), `validarValorMinimoPix`, `montarDadosPagador` (cliente identificado × default × `null`). Integração para a máquina de estados do modal (`data-model.md` §4): geração → polling → aprovação; geração → polling → falha terminal; geração → fechamento manual; geração → erro de rede → retry com novo `TrnGUID`. Teste negativo explícito de que nenhuma chamada de cancelamento é feita em qualquer caminho de abandono (`data-model.md` J5, mesmo padrão do teste negativo de impressão da feature 008). Playwright para o fluxo dourado de `quickstart.md`.
+**Testing**: Vitest + Testing Library. Unitários puros (sem React) para: `interpretarStatusPix` (10 literais confirmados, AD-102, + `default` desconhecido, `data-model.md` J2), `validarValorMinimoPix`, `montarDadosPagador` (cliente identificado × default × `null`). Integração para a máquina de estados do modal (`data-model.md` §4): geração → polling → aprovação; geração → polling → falha terminal; geração → fechamento manual; geração → erro de rede → retry com novo `TrnGUID`. Teste negativo explícito de que nenhuma chamada de cancelamento é feita em qualquer caminho de abandono (`data-model.md` J5, mesmo padrão do teste negativo de impressão da feature 008). Playwright para o fluxo dourado de `quickstart.md`.
 
 **Target Platform**: Navegador (Chrome prioritário), desktop e mobile — PIX é uma das únicas duas integrações que **permanecem** disponíveis no mobile (AD-074; a outra é nenhuma, já que TEF é excluído). Nenhuma ramificação de código por plataforma dentro desta feature.
 
@@ -42,10 +42,10 @@ O maior achado desta fase foi a semântica real de `StatusPIXOutput.StatusTransa
 
 | Princípio | Avaliação (pré-Phase 0) | Re-avaliação (pós-Phase 1) |
 |---|---|---|
-| I. Spec-Driven Development | ✅ Este plano é resultado de `/speckit-plan` sobre `specs/009-pagamento-pix/spec.md`, seguindo a sequência obrigatória. | ✅ Mantido — todo artefato rastreia a um `FR-xxx`/`PAY-0x`; o achado de `StatusTransacao` virou AD-100 (dados do pagador) e o item 33 de `PENDENCIES.md` (literais do domain), nenhuma decisão implícita no código. |
+| I. Spec-Driven Development | ✅ Este plano é resultado de `/speckit-plan` sobre `specs/009-pagamento-pix/spec.md`, seguindo a sequência obrigatória. | ✅ Mantido — todo artefato rastreia a um `FR-xxx`/`PAY-0x`; os achados desta fase viraram AD-100 (dados do pagador) e AD-102 (os dez literais reais de `StatusTransacao`, fechando o item 33 de `PENDENCIES.md`), nenhuma decisão implícita no código. |
 | II. Arquitetura SOLID | ✅ Planejado com domínio puro (`interpretarStatusPix` etc.) ↔ query (rede) ↔ UI (`ModalPix`), sem tocar o slice de pagamento diretamente. | ✅ Confirmado em `contracts/pix-domain-api.md`: `ModalPix` recebe `onAprovado`/`onAbandonado` por prop, não importa `vendaStore`; `interpretarStatusPix` não conhece TanStack Query nem React. Uma futura mudança de significado de `StatusTransacao` altera só um `switch` em um arquivo (Open/Closed). |
 | III. ERP como Fonte Única de Verdade | ✅ O Checkout nunca decide localmente se um PIX foi pago — só interpreta o que `StatusPIX` devolve. | ✅ Confirmado, e reforçado pelo achado de que `StatusPIX` já delega a CentriumPag via `PTransacao_CentriumPag_GetStatusPAG` quando o status está no estado inicial — o Checkout nunca simula/infere aprovação, só espelha o que o ERP relata. |
-| IV. Tipagem Estrita e Validação de Fronteira | ✅ Zod obrigatório em `GerarPIXOutput`/`StatusPIXOutput`. | ✅ Confirmado: `StatusTransacao` é validado como `string` livre (não união fechada, por causa da confiança média nos literais — `research.md` D15) e `interpretarStatusPix` tem um ramo `default` explícito que nunca aprova um valor desconhecido — é o compilador + o teste J2 que impedem um valor novo de ser lido como sucesso. |
+| IV. Tipagem Estrita e Validação de Fronteira | ✅ Zod obrigatório em `GerarPIXOutput`/`StatusPIXOutput`. | ✅ Confirmado: `StatusTransacao` agora é validado com os dez literais reais confirmados por AD-102 (`data-model.md` §2), mas a fronteira Zod aceita qualquer `string` e é `interpretarStatusPix` quem tem o ramo `default` explícito para um valor fora dos dez — é o compilador + o teste J2 que impedem um valor novo (ex.: um literal futuro do ERP) de ser lido como sucesso, sem quebrar a tela. |
 | V. Precisão Monetária Inegociável | ✅ `TrnValor` é `Centavos → double` só na fronteira de saída; nenhum cálculo novo de dinheiro nesta feature (reusa `saldoRestante` já calculado pela 008). | ✅ Confirmado — esta feature não introduz nenhum algoritmo monetário próprio; `data-model.md` J6 é só uma restrição de uso, não um cálculo novo. |
 | VI. Sem Estado de Venda Persistido no Cliente | ✅ `CobrancaPix` é estado efêmero de UI, descartado ao fechar o modal; o único estado duradouro é `PagamentoAplicado`, já coberto pela feature 008. | ✅ Confirmado — nenhum artefato de design grava em Dexie/localStorage; `data-model.md` §1 é explícito que `CobrancaPix` não é `vendaStore`. |
 
@@ -58,7 +58,7 @@ Nenhuma violação identificada em nenhuma das duas avaliações. Nenhuma entrad
 ```text
 specs/009-pagamento-pix/
 ├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output — D1..D15, origem de AD-100 e do item 33
+├── research.md          # Phase 0 output — D1..D15, origem de AD-100 e AD-102 (fecha o item 33)
 ├── data-model.md        # Phase 1 output — CobrancaPix, ResultadoStatusPix, máquina de estados
 ├── quickstart.md        # Phase 1 output — 8 cenários de validação + fluxo dourado
 ├── contracts/           # Phase 1 output
@@ -76,7 +76,7 @@ src/
 ├── client/
 │   ├── domain/
 │   │   └── pix/                              # camada pura — sem React, TanStack Query ou fetch
-│   │       ├── interpretarStatusPix.ts       # 5 estados nomeados + 'G' + default (data-model.md §2)
+│   │       ├── interpretarStatusPix.ts       # 10 literais (AD-102) + default desconhecido (data-model.md §2)
 │   │       ├── validarValorMinimoPix.ts      # research.md D13
 │   │       └── montarDadosPagador.ts         # research.md D7, AD-100
 │   ├── services/
@@ -95,7 +95,7 @@ tests/
 ├── unit/
 │   └── domain/
 │       └── pix/
-│           ├── interpretarStatusPix.spec.ts  # 5 estados + 'G' + valor desconhecido (J2)
+│           ├── interpretarStatusPix.spec.ts  # 10 literais (AD-102) + valor desconhecido (J2)
 │           ├── validarValorMinimoPix.spec.ts
 │           └── montarDadosPagador.spec.ts    # identificado × default × null
 ├── integration/

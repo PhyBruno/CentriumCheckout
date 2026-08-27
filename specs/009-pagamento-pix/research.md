@@ -79,32 +79,38 @@ Decisões que fecham todo `NEEDS CLARIFICATION` da feature. Base: `specs/009-pag
 
 ---
 
-## D8 — Interpretação de `StatusTransacao` — achado via KB real do GeneXus
+## D8 — Interpretação de `StatusTransacao` — literais confirmados diretamente pelo usuário (AD-102, resolve o item 33)
 
-**Decision**: `StatusTransacao` é um domain `VARCHAR(1)` enumerado (não documentado em `.specs/` antes desta fase). Valores nomeados confirmados lendo o código-fonte real (`mcp__genexus__genexus_search_source`/`genexus_read`, KB `CentriumDEVU6`, objetos `PCheckout_StatusPIX`, `PTransacao_CentriumPag_GetStatusPAG`, `PTransacao_CentriumPag_TestaConexao`):
+**Decision**: `StatusTransacao` é um domain `VARCHAR(1)` com **dez** literais possíveis, confirmados diretamente pelo usuário em 2026-08-27 (**AD-102**, corrige a leitura parcial desta mesma seção baseada só em nomes de enum obtidos via KB):
 
-| Nome (enum) | Significado | Origem no código |
+| Literal | Significado | Situação para o Checkout |
 |---|---|---|
-| `Aguardando` | Pendente — CentriumPag ainda não recebeu o pagamento | `PTransacao_CentriumPag_GetStatusPAG`, `Codigo = 4` |
-| `PagamentoRecebido` | **Aprovado** — é o único estado que o Checkout SHALL tratar como `FR-002` "aprovado" | idem, `Codigo = 3` |
-| `Expirada` | Estado terminal de falha — CentriumPag considerou a cobrança expirada | idem, `Codigo = 5` |
-| `Recusada` | Estado terminal de falha — pagamento recusado | idem, `Codigo = 6` |
-| `Erro` | Estado terminal de falha — erro de comunicação/config no lado do CentriumPag | idem, `Codigo = 2`/`9999` |
+| `'C'` | Criada | `PENDENTE` — estado inicial, transação recém-criada |
+| `'A'` | Aberta | `PENDENTE` |
+| `'G'` | Aguardando Pagamento | `PENDENTE` — mesmo estado já referenciado por `PCheckout_StatusPIX` como gatilho da consulta ativa a CentriumPag |
+| `'P'` | Pagamento Recebido | **`APROVADO`** |
+| `'M'` | Pagamento Liberado Manualmente | **`APROVADO`** — um operador/administrador liberou o pagamento manualmente fora do fluxo normal de confirmação da adquirente; o Checkout trata exatamente como `'P'` |
+| `'X'` | Expirada | `FALHA_TERMINAL` (`EXPIRADA`) |
+| `'R'` | Recusada | `FALHA_TERMINAL` (`RECUSADA`) |
+| `'E'` | Erro | `FALHA_TERMINAL` (`ERRO`) |
+| `'F'` | Fechada | `FALHA_TERMINAL` (`FECHADA`) — transação encerrada sem cair em `'P'`/`'M'` |
+| `'O'` | Removido Associação PIX | `FALHA_TERMINAL` (`ASSOCIACAO_REMOVIDA`) — é precisamente o estado que a própria Central de Transações PIX do ERP grava depois da desassociação manual já prevista em D11; o `StatusPIX` pode devolver `'O'` se essa desassociação acontecer enquanto o Checkout ainda estivesse (hipoteticamente) consultando |
 
-Além desses, `PCheckout_StatusPIX` usa o literal `'G'` diretamente (`if &StatusTransacao = 'G'`) como o estado inicial gravado na criação da transação (antes de qualquer consulta ativa a CentriumPag) — plausivelmente "Gerado", distinto de `Aguardando` (que só é escrito depois de uma consulta que já confirmou o status "aguardando pagamento" na adquirente). `PCheckout_StatusPIX` só dispara a consulta ativa à CentriumPag (`PTransacao_CentriumPag_GetStatusPAG`) quando o valor armazenado é `'G'` — ou seja, o polling do Checkout aciona indiretamente essa consulta a cada `GET /StatusPIX` enquanto a transação não sai do estado inicial.
+**Reason**: Achado inicial desta sessão (via KB do GeneXus) tinha alta confiança nos *nomes* de cinco estados, mas confiança só média nos *literais* exatos — o próprio texto desta seção já registrava essa lacuna e abria o item 33. O usuário forneceu a lista completa e definitiva dos dez literais reais, incluindo três estados que a busca na KB não havia revelado (`'C'`/Criada, `'A'`/Aberta, `'F'`/Fechada, `'O'`/Removido Associação PIX — quatro, não três) e a confirmação explícita de que **dois** literais, não um, contam como aprovado: `'P'` e `'M'`.
 
-**Interpretação adotada pelo Checkout** (`interpretarStatusPix`, `data-model.md` §5): compara a string recebida por **nome semântico**, nunca por char hardcoded:
-- `PagamentoRecebido` → aprovado; chama `confirmarPagamentoIntegrado`.
-- `Aguardando` ou o estado inicial (`'G'`) → ainda pendente; o polling continua (`FR-001`/`FR-002`).
-- `Expirada`, `Recusada`, `Erro` → falha terminal; tratado com o **mesmo caminho de UX já decidido para fechamento manual** (AD-040/D11 abaixo) — aviso de desassociação manual, remoção do pagamento do estado local, sem chamada de cancelamento. **Não** é uma aprovação nem um erro de rede — é uma extensão direta de AD-040 para o caso em que é a própria CentriumPag, não o operador, que reporta que a cobrança não vai mais ser paga.
+**Interpretação adotada pelo Checkout** (`interpretarStatusPix`, `data-model.md` §2): comparação direta pelo literal de um char, união fechada de 10 valores — não mais por nome semântico assumido nem por comparação textual longa:
+- `'P'` ou `'M'` → `APROVADO`; chama `confirmarPagamentoIntegrado`.
+- `'C'`, `'A'` ou `'G'` → `PENDENTE`; o polling continua (`FR-001`/`FR-002`).
+- `'X'`, `'R'`, `'E'`, `'F'` ou `'O'` → `FALHA_TERMINAL`; tratado com o **mesmo caminho de UX já decidido para fechamento manual** (AD-040/D11 abaixo) — aviso de desassociação manual, remoção do pagamento do estado local, sem chamada de cancelamento. **Não** é uma aprovação nem um erro de rede — é uma extensão direta de AD-040 para o caso em que é a própria CentriumPag/ERP, não o operador dentro do Checkout, que reporta que a cobrança não vai mais ser paga.
+- Qualquer outro caractere (fora dos 10 listados) → `FALHA_TERMINAL` (`DESCONHECIDO`) — guarda defensiva mantida por Constitution IV, mesmo com a união agora fechada; nunca aprovado por default.
 
-**Trade-off/confiança**: Alta confiança nos **nomes** dos cinco estados (lidos diretamente do código-fonte real, não suposição). Confiança média nos **literais exatos** (`'G'` confirmado para o estado inicial; os caracteres exatos usados para `Aguardando`/`PagamentoRecebido`/`Expirada`/`Recusada`/`Erro` não foram expostos pela ferramenta de introspecção de domain disponível nesta sessão — a implementação SHALL comparar por nome/constante nomeada do lado do ERP, nunca hardcode de char no Checkout, e a fronteira Zod SHALL aceitar qualquer string não reconhecida como "estado desconhecido", tratado como falha terminal por segurança, nunca como aprovado). Abre o **item 33** em `.specs/project/PENDENCIES.md`: confirmar com a equipe do ERP a lista completa e os literais exatos de `StatusTransacao`.
+**Trade-off/confiança**: Alta confiança — literais fornecidos diretamente pelo usuário, não mais inferência de KB. **Fecha o item 33** em `.specs/project/PENDENCIES.md`.
 
 ---
 
 ## D9 — Mecânica do polling: TanStack Query, 10s fixo, condicional ao modal aberto e status pendente
 
-**Decision**: `useStatusPix(trnGuid, habilitado)` — hook TanStack Query com `refetchInterval: habilitado ? 10_000 : false`. `habilitado` é `true` somente enquanto: o modal PIX está aberto **e** o pagamento está em `PENDENTE_INTEGRACAO`. Ao detectar `PagamentoRecebido`, `Expirada`, `Recusada` ou `Erro` (D8), o hook para de fato o polling (o call site desabilita `habilitado` na mesma renderização que processa o resultado) — nunca depende só do `refetchInterval` parar sozinho.
+**Decision**: `useStatusPix(trnGuid, habilitado)` — hook TanStack Query com `refetchInterval: habilitado ? 10_000 : false`. `habilitado` é `true` somente enquanto: o modal PIX está aberto **e** o pagamento está em `PENDENTE_INTEGRACAO`. Ao detectar qualquer literal fora de `'C'`/`'A'`/`'G'` (D8, AD-102) — ou seja, `'P'`/`'M'` (aprovado) ou `'X'`/`'R'`/`'E'`/`'F'`/`'O'` (falha terminal) —, o hook para de fato o polling (o call site desabilita `habilitado` na mesma renderização que processa o resultado) — nunca depende só do `refetchInterval` parar sozinho.
 
 **Rationale**: Intervalo fixo de 10s já decidido (AD-026, sem estratégia de backoff documentada — deliberado). TanStack Query é a mesma lib já usada pelo catálogo de pagamento (008) e pelo polling análogo de `GetStatusSistema` (AD-075/AD-080, 60s) — não introduz dependência nova. Habilitar só com o modal aberto evita polling órfão quando o operador já fechou a tela (mesmo raciocínio do UX de D11).
 

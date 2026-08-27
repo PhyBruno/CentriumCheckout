@@ -1040,6 +1040,30 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
+### AD-102: Literais reais de `StatusTransacao` (`StatusPIXOutput`) confirmados diretamente pelo usuário — resolve o item 33, corrige a leitura parcial de AD-100/D8 (2026-08-27)
+
+**Decision:** `StatusPIXOutput.StatusTransacao` (domain `VARCHAR(1)`) tem exatamente dez literais possíveis:
+
+| Literal | Significado | Situação para o Checkout |
+|---|---|---|
+| `'C'` | Criada | Pendente |
+| `'A'` | Aberta | Pendente |
+| `'G'` | Aguardando Pagamento | Pendente |
+| `'P'` | Pagamento Recebido | **Aprovado** |
+| `'M'` | Pagamento Liberado Manualmente | **Aprovado** |
+| `'X'` | Expirada | Falha terminal |
+| `'R'` | Recusada | Falha terminal |
+| `'E'` | Erro | Falha terminal |
+| `'F'` | Fechada | Falha terminal |
+| `'O'` | Removido Associação PIX | Falha terminal |
+
+`'P'` e `'M'` SHALL ser tratados de forma idêntica pelo Checkout — ambos indicam que o pagamento PIX foi recebido e o checkout pode dar continuidade (registrar o pagamento, prosseguir para finalização). Os cinco literais de falha terminal (`'X'`/`'R'`/`'E'`/`'F'`/`'O'`) SHALL reaproveitar o mesmo fluxo de UX já decidido para fechamento manual do modal PIX (AD-040) — aviso de desassociação manual, remoção do pagamento local, nenhuma chamada de cancelamento — nunca um segundo mecanismo de estado.
+**Reason:** Decisão direta do usuário (2026-08-27), fornecendo a lista completa e definitiva. Corrige a fase inicial de Design da feature 009 (mais cedo no mesmo dia), que havia confirmado só cinco *nomes* de estado (`Aguardando`, `PagamentoRecebido`, `Expirada`, `Recusada`, `Erro`, mais o literal `'G'`) lendo o código-fonte do ERP via KB GeneXus — alta confiança nos nomes, mas sem os literais exatos, e sem visibilidade de quatro estados adicionais (`'C'`, `'A'`, `'F'`, `'O'`) que a busca na KB não havia revelado.
+**Trade-off:** Nenhum — a lista fornecida é definitiva; a fronteira Zod continua aceitando qualquer `string` (não uma união fechada), com `interpretarStatusPix` mantendo um ramo `default`/`DESCONHECIDO` como guarda defensiva permanente contra um literal futuro ainda não documentado (Constitution IV).
+**Impact:** Fecha o **item 33** em `.specs/project/PENDENCIES.md` — removido da tabela de pendências. Corrige in-place `specs/009-pagamento-pix/research.md` (D8, D9), `data-model.md` (§2, invariante J2), `contracts/erp-pix-api.md` (§2) e `plan.md` (Summary, Constitution Check, Testing, Project Structure). Atualiza `.specs/features/pagamento-pix/spec.md` (Edge Cases — interpretação de `StatusTransacao`) e `quickstart.md` (Cenários 1 e 4, literais reais nos mocks).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

@@ -14,8 +14,8 @@ Cenários de validação end-to-end. Pré-requisito: feature 008 (`podeAplicarFo
 1. Carrinho com subtotal de R$ 65,50, nenhum pagamento aplicado.
 2. Operador seleciona a forma PIX → `resolverIntegracao` retorna `PIX_DINAMICO` → `ModalPix` abre.
 3. Mock de `GerarPIX` retorna `Trnbase64image`/`Trnbase64text` válidos → QR Code e "copia e cola" exibidos.
-4. Mock de `StatusPIX` retorna `{ StatusTransacao: 'Aguardando' }` na primeira consulta (t=0s) e `t=10s` — nenhuma transição.
-5. Mock de `StatusPIX` retorna `{ StatusTransacao: 'PagamentoRecebido' }` em `t=20s`.
+4. Mock de `StatusPIX` retorna `{ StatusTransacao: 'G' }` (Aguardando Pagamento) na primeira consulta (t=0s) e `t=10s` — nenhuma transição.
+5. Mock de `StatusPIX` retorna `{ StatusTransacao: 'P' }` (Pagamento Recebido) em `t=20s`. Repetir o cenário com `{ StatusTransacao: 'M' }` (Pagamento Liberado Manualmente) — mesmo resultado esperado.
 6. **Esperado**: modal fecha automaticamente; `PagamentoAplicado` correspondente muda para `status: 'APROVADO'` com `pixGuid` preenchido; evento `FORMA_PAGAMENTO_APLICADA` registrado na auditoria (008); saldo restante da venda cai para R$ 0,00.
 
 ## Cenário 2 — PIX oculto quando não configurado
@@ -26,15 +26,15 @@ Cenários de validação end-to-end. Pré-requisito: feature 008 (`podeAplicarFo
 ## Cenário 3 — Fechamento manual com PIX pendente
 
 1. Repetir passos 1-3 do Cenário 1.
-2. Mock de `StatusPIX` sempre retorna `Aguardando`.
+2. Mock de `StatusPIX` sempre retorna `'G'` (Aguardando Pagamento).
 3. Operador clica em fechar o modal.
 4. **Esperado**: aviso de desassociação manual exibido; `PagamentoAplicado` correspondente é removido da lista (não fica como `PENDENTE_INTEGRACAO` órfão); nenhuma chamada HTTP de cancelamento é disparada (verificar `list_network_requests` do harness de teste); operador consegue aplicar outra forma de pagamento no valor total restante.
 
-## Cenário 4 — Falha terminal reportada pela CentriumPag (Expirada/Recusada/Erro)
+## Cenário 4 — Falha terminal reportada pela CentriumPag/ERP (`'X'`/`'R'`/`'E'`/`'F'`/`'O'`)
 
 1. Repetir passos 1-3 do Cenário 1.
-2. Mock de `StatusPIX` retorna `{ StatusTransacao: 'Recusada' }` em `t=10s`.
-3. **Esperado**: mesmo tratamento do Cenário 3 (aviso + remoção do pagamento local, sem cancelamento) — a diferença é que o gatilho veio do polling, não de uma ação do operador. Repetir para `'Expirada'` e `'Erro'`.
+2. Mock de `StatusPIX` retorna `{ StatusTransacao: 'R' }` (Recusada) em `t=10s`.
+3. **Esperado**: mesmo tratamento do Cenário 3 (aviso + remoção do pagamento local, sem cancelamento) — a diferença é que o gatilho veio do polling, não de uma ação do operador. Repetir para `'X'` (Expirada), `'E'` (Erro), `'F'` (Fechada) e `'O'` (Removido Associação PIX).
 
 ## Cenário 5 — Valor mínimo bloqueado no cliente
 

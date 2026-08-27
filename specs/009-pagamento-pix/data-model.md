@@ -27,18 +27,35 @@ export interface CobrancaPix {
 ## 2. Resultado da interpretação de status
 
 ```ts
+export type StatusTransacaoLiteral = 'C' | 'A' | 'G' | 'P' | 'M' | 'X' | 'R' | 'E' | 'F' | 'O';
+
 export type ResultadoStatusPix =
   | { readonly situacao: 'PENDENTE' }
   | { readonly situacao: 'APROVADO' }
-  | { readonly situacao: 'FALHA_TERMINAL'; readonly motivo: 'EXPIRADA' | 'RECUSADA' | 'ERRO' | 'DESCONHECIDO' };
+  | { readonly situacao: 'FALHA_TERMINAL'; readonly motivo: 'EXPIRADA' | 'RECUSADA' | 'ERRO' | 'FECHADA' | 'ASSOCIACAO_REMOVIDA' | 'DESCONHECIDO' };
 
 export function interpretarStatusPix(statusTransacao: string): ResultadoStatusPix;
 ```
 
-- `'PagamentoRecebido'` → `{ situacao: 'APROVADO' }`.
-- `'Aguardando'` ou o literal inicial `'G'` → `{ situacao: 'PENDENTE' }` (`research.md`, D8).
-- `'Expirada'` → `{ situacao: 'FALHA_TERMINAL', motivo: 'EXPIRADA' }`; `'Recusada'` → `motivo: 'RECUSADA'`; `'Erro'` → `motivo: 'ERRO'`.
-- Qualquer outro valor → `{ situacao: 'FALHA_TERMINAL', motivo: 'DESCONHECIDO' }` — nunca `'APROVADO'` (Constitution IV, `research.md` D15).
+Literais confirmados diretamente pelo usuário (`research.md`, D8, AD-102 — resolve o item 33 de `PENDENCIES.md`):
+
+| Literal | Significado (ERP) |
+|---|---|
+| `'C'` | Criada |
+| `'A'` | Aberta |
+| `'G'` | Aguardando Pagamento |
+| `'P'` | Pagamento Recebido |
+| `'M'` | Pagamento Liberado Manualmente |
+| `'X'` | Expirada |
+| `'R'` | Recusada |
+| `'E'` | Erro |
+| `'F'` | Fechada |
+| `'O'` | Removido Associação PIX |
+
+- `'P'` ou `'M'` → `{ situacao: 'APROVADO' }` — **ambos** indicam que o PIX foi recebido e o Checkout pode dar continuidade (confirmado pelo usuário; `'M'` é liberação manual, tratada de forma idêntica a `'P'`).
+- `'C'`, `'A'` ou `'G'` → `{ situacao: 'PENDENTE' }`.
+- `'X'` → `motivo: 'EXPIRADA'`; `'R'` → `motivo: 'RECUSADA'`; `'E'` → `motivo: 'ERRO'`; `'F'` → `motivo: 'FECHADA'`; `'O'` → `motivo: 'ASSOCIACAO_REMOVIDA'`.
+- Qualquer valor fora dos 10 literais → `{ situacao: 'FALHA_TERMINAL', motivo: 'DESCONHECIDO' }` — nunca `'APROVADO'` (Constitution IV, `research.md` D15), guarda defensiva mantida mesmo com a união agora fechada.
 
 União discriminada — o call site não lê `motivo` sem checar `situacao === 'FALHA_TERMINAL'`, e nunca confunde `PENDENTE` com `APROVADO` por engano de tipo.
 
@@ -94,7 +111,7 @@ gerarCobrancaPix() ──► GERANDO ──sucesso──► EXIBINDO_QRCODE ─�
 | # | Invariante | Onde é garantida |
 |---|---|---|
 | J1 | No máximo uma `CobrancaPix` ativa por vez | modal é a única superfície que cria cobrança; fechar descarta antes de permitir nova |
-| J2 | `interpretarStatusPix` nunca devolve `APROVADO` para um valor de `StatusTransacao` que não seja exatamente `'PagamentoRecebido'` | `research.md` D8/D15, teste de fronteira cobrindo string vazia/valor desconhecido |
+| J2 | `interpretarStatusPix` nunca devolve `APROVADO` para um valor de `StatusTransacao` que não seja exatamente `'P'` ou `'M'` | `research.md` D8/D15 (AD-102), teste de fronteira cobrindo string vazia/valor desconhecido/os 8 literais não-aprovados |
 | J3 | O polling (`refetchInterval`) só roda enquanto o modal está montado e o pagamento está `PENDENTE_INTEGRACAO` — nunca em background após fechar | `research.md` D9 |
 | J4 | Toda tentativa de `GerarPIX` (inclusive retry) usa um `TrnGUID` novo, nunca reaproveitado | `research.md` D3/D12 |
 | J5 | Nenhuma chamada de cancelamento é feita para uma cobrança abandonada (fechamento manual ou falha terminal detectada) | `research.md` D11, mesmo teste negativo de rede da feature 008 (`FR-018`) |

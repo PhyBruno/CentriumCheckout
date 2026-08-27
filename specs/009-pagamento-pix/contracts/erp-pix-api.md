@@ -55,24 +55,39 @@ GET /api/erp/StatusPIX?Trnguid=b3a1c2d4-0000-4000-8000-000000000001
 **Response** (`StatusPIXOutput`, yaml linhas 742-747):
 
 ```jsonc
-{ "StatusTransacao": "Aguardando", "messages": [] }
+{ "StatusTransacao": "G", "messages": [] }
 ```
 
-**Interpretação** (`interpretarStatusPix`, `data-model.md` §2, `research.md` D8):
+**Interpretação** (`interpretarStatusPix`, `data-model.md` §2, `research.md` D8, **AD-102**): os dez literais reais de `StatusTransacao`, confirmados diretamente pelo usuário — fecha o item 33 de `.specs/project/PENDENCIES.md`.
+
+| Literal | Significado | Situação |
+|---|---|---|
+| `'C'` | Criada | `PENDENTE` |
+| `'A'` | Aberta | `PENDENTE` |
+| `'G'` | Aguardando Pagamento | `PENDENTE` |
+| `'P'` | Pagamento Recebido | `APROVADO` |
+| `'M'` | Pagamento Liberado Manualmente | `APROVADO` |
+| `'X'` | Expirada | `FALHA_TERMINAL` |
+| `'R'` | Recusada | `FALHA_TERMINAL` |
+| `'E'` | Erro | `FALHA_TERMINAL` |
+| `'F'` | Fechada | `FALHA_TERMINAL` |
+| `'O'` | Removido Associação PIX | `FALHA_TERMINAL` |
 
 ```ts
 // src/client/domain/pix/interpretarStatusPix.ts
 switch (resposta.StatusTransacao) {
-  case 'PagamentoRecebido': return { situacao: 'APROVADO' };
-  case 'Aguardando': case 'G': return { situacao: 'PENDENTE' };
-  case 'Expirada': return { situacao: 'FALHA_TERMINAL', motivo: 'EXPIRADA' };
-  case 'Recusada': return { situacao: 'FALHA_TERMINAL', motivo: 'RECUSADA' };
-  case 'Erro': return { situacao: 'FALHA_TERMINAL', motivo: 'ERRO' };
+  case 'P': case 'M': return { situacao: 'APROVADO' };
+  case 'C': case 'A': case 'G': return { situacao: 'PENDENTE' };
+  case 'X': return { situacao: 'FALHA_TERMINAL', motivo: 'EXPIRADA' };
+  case 'R': return { situacao: 'FALHA_TERMINAL', motivo: 'RECUSADA' };
+  case 'E': return { situacao: 'FALHA_TERMINAL', motivo: 'ERRO' };
+  case 'F': return { situacao: 'FALHA_TERMINAL', motivo: 'FECHADA' };
+  case 'O': return { situacao: 'FALHA_TERMINAL', motivo: 'ASSOCIACAO_REMOVIDA' };
   default: return { situacao: 'FALHA_TERMINAL', motivo: 'DESCONHECIDO' };
 }
 ```
 
-> ⚠️ **Pendência aberta (item 33 de `.specs/project/PENDENCIES.md`):** os nomes acima (`PagamentoRecebido`, `Aguardando`, `Expirada`, `Recusada`, `Erro`, mais o literal inicial `'G'`) foram confirmados lendo o código-fonte real do ERP (KB GeneXus, `PCheckout_StatusPIX`/`PTransacao_CentriumPag_GetStatusPAG`) — alta confiança nos nomes. Os **literais exatos** retornados pelo domain `StatusTransacao` (`VARCHAR(1)`) não foram confirmados por esta ferramenta de introspecção; o `switch` acima assume que a serialização JSON devolve o nome do valor do domain (comportamento padrão GeneXus para domains enumerados), não o char bruto. **Não remova o ramo `default`** enquanto este item estiver aberto — é o que impede um valor inesperado de ser lido como aprovado.
+`'P'` (Pagamento Recebido) e `'M'` (Pagamento Liberado Manualmente) são tratados de forma **idêntica** — ambos indicam que o PIX foi recebido e o Checkout pode dar continuidade (confirmado pelo usuário). O ramo `default` é mantido mesmo com a união agora fechada — guarda defensiva permanente (Constitution IV): um literal novo introduzido pelo ERP no futuro nunca é lido como aprovado por omissão.
 
 **Política de polling**: `refetchInterval: 10_000` enquanto o modal está aberto e o pagamento está `PENDENTE_INTEGRACAO` (`research.md`, D9). Parar de fato o polling é responsabilidade do call site, não do `refetchInterval` sozinho.
 
