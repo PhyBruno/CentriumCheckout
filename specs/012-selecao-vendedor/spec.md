@@ -36,7 +36,7 @@ Como operador de caixa, quero buscar e selecionar o vendedor que atendeu o clien
 - O que acontece ao retomar uma venda suspensa que já tem um vendedor registrado? Esse vendedor é pré-selecionado automaticamente.
 - O que acontece se a busca de vendedores não retornar nenhum resultado? O vendedor já selecionado (padrão ou anterior) é mantido, e o operador pode fechar a busca normalmente, sem bloqueio.
 - O que acontece se o operador fechar a busca sem selecionar ninguém? O vendedor da venda permanece o que já estava antes.
-- Qual o filtro padrão ao abrir a busca de vendedor? Só vendedores ativos, por padrão.
+- Qual o filtro padrão ao abrir a busca de vendedor? ~~Só vendedores ativos, por padrão.~~ **Corrigido (2026-08-27, AD-103 em `.specs/project/STATE.md`):** não há filtro de status — `GetListaVendedores` não tem campo `Ativo`/`Status` no contrato do ERP, não há como filtrar ou exibir isso. O modal lista todos os vendedores retornados pela busca, sem distinção de status.
 - O que acontece quando o vendedor da venda é selecionado ou trocado? O sistema registra o evento correspondente no histórico de auditoria da venda (ver feature de auditoria de ações do operador).
 
 ## Requirements *(mandatory)*
@@ -44,8 +44,8 @@ Como operador de caixa, quero buscar e selecionar o vendedor que atendeu o clien
 ### Functional Requirements
 
 - **FR-001**: O sistema MUST permitir que o operador busque um vendedor por nome, entre os vendedores da empresa do operador logado.
-- **FR-002**: O sistema MUST permitir que o operador filtre essa busca por status do vendedor (ex.: ativo).
-- **FR-003**: O sistema MUST restringir essa busca a vendedores ativos por padrão.
+- ~~**FR-002**: O sistema MUST permitir que o operador filtre essa busca por status do vendedor (ex.: ativo).~~ **Removido (2026-08-27, AD-103):** o contrato do ERP (`GetListaVendedores`) não expõe status de vendedor — nem como parâmetro de filtro, nem como campo de resposta. Não há dado disponível para implementar esse filtro.
+- ~~**FR-003**: O sistema MUST restringir essa busca a vendedores ativos por padrão.~~ **Removido (2026-08-27, AD-103):** mesma lacuna de contrato — não existe campo de status para restringir a listagem por padrão.
 - **FR-004**: O sistema MUST permitir que o operador selecione um vendedor dos resultados, associando-o imediatamente à venda.
 - **FR-005**: O sistema MUST pré-selecionar automaticamente um vendedor padrão em toda venda nova, sem exigir busca do operador, sempre que a empresa tiver um vendedor padrão configurado.
 - **FR-006**: O sistema MUST deixar o campo vendedor vazio, exigindo seleção manual antes de finalizar a venda, quando a empresa não tiver um vendedor padrão configurado.
