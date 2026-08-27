@@ -28,7 +28,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 
 | # | Feature | Status | Spec |
 |---|---|---|---|
-| 7 | Layout responsivo (wizard mobile) | Specify feito. **Design visual concluído** (3 telas completas em `design/CentriumCheckout.pen`) — falta só Design técnico (breakpoint, componentes de layout React, hook `useIsMobile`) | `.specs/features/layout-responsivo-mobile/spec.md` |
+| 7 | Layout responsivo (wizard mobile) | Specify e Design (visual + técnico) concluídos — artefatos em `specs/007-layout-responsivo-mobile/` (`plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`). Próximo passo: `/speckit-tasks` | `.specs/features/layout-responsivo-mobile/spec.md`, `specs/007-layout-responsivo-mobile/plan.md` |
 
 ## Infraestrutura (não é feature de usuário — tratado em `.specs/codebase/`)
 
