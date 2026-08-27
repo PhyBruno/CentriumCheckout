@@ -1788,278 +1788,40 @@
     "evidence": {}
   },
   {
-    "id": "mem:1787828335519",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/contracts/pix-domain-api.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/contracts/pix-domain-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.519269+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.519279+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335497",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/data-model.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/data-model.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.497723+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.497742+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335472",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/plan.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/plan.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.472699+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.472724+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335466",
+    "id": "mem:1787830000000",
     "kind": "decision",
-    "content": "Design (speckit-plan) da feature 009-pagamento-pix: research/data-model/contracts/quickstart/plan; AD-100 (dados do pagador) e item 33 (StatusTransacao) abertos",
+    "content": "Design (speckit-plan) da feature 004: novo slice identidadeVenda (origem/numeroNota), impressao local fora do proxy do BFF, falha de rede vs negocio distintas em FaturarNFCe",
     "tags": [
-      "design",
       "speckit",
       "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
+      "004",
+      "finalizacao",
+      "suspensao",
+      "faturarnfce",
+      "impressao",
+      "identidadevenda"
     ],
     "files": [
-      "specs/009-pagamento-pix/plan.md",
-      "specs/009-pagamento-pix/research.md",
-      "specs/009-pagamento-pix/data-model.md",
-      "specs/009-pagamento-pix/contracts/erp-pix-api.md",
-      "specs/009-pagamento-pix/contracts/pix-domain-api.md",
-      "specs/009-pagamento-pix/quickstart.md",
-      ".specs/project/STATE.md",
-      ".specs/project/PENDENCIES.md",
-      ".specs/features/pagamento-pix/spec.md",
-      ".specify/feature.json",
-      ".dual-graph/context-store.json"
+      "specs/004-finalizacao-suspensao-venda/plan.md",
+      "specs/004-finalizacao-suspensao-venda/research.md",
+      "specs/004-finalizacao-suspensao-venda/data-model.md",
+      "specs/004-finalizacao-suspensao-venda/contracts/faturamento-api.md",
+      "specs/004-finalizacao-suspensao-venda/contracts/impressao-local-api.md",
+      "specs/004-finalizacao-suspensao-venda/contracts/status-sistema-api.md",
+      "specs/004-finalizacao-suspensao-venda/quickstart.md"
     ],
-    "file_path": "specs/009-pagamento-pix/plan.md",
+    "file_path": "specs/004-finalizacao-suspensao-venda/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.466093+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.466102+00:00",
+    "created_at": "2026-08-26",
+    "created_epoch": 1787830000,
+    "updated_at": "2026-08-26",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787828335485",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/research.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/research.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.485762+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.485775+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335508",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/contracts/erp-pix-api.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/contracts/erp-pix-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.508710+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.508720+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335535",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/quickstart.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/quickstart.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.535163+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.535174+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335577",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      ".specify/feature.json"
-    ],
-    "file_path": ".specify/feature.json",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.577357+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.577368+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
+    "evidence": {}
+  }
+,
   {
     "id": "mem:1787830000000",
     "kind": "decision",
