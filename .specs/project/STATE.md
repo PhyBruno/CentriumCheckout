@@ -1031,6 +1031,15 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
+### AD-100: Dados do pagador em `GerarPIX` — cliente identificado, ou o cliente default da venda (2026-08-27)
+
+**Decision:** Ao chamar `POST /GerarPIX`, os campos `TrnPagadorNome`/`TrnPagadorCgc` do `SDTCentriumPag_Post` recebem `nome`/`documento` do cliente **atual** da venda (`ClienteVenda`, feature 005) — o cliente identificado explicitamente pelo operador, ou, na ausência de seleção explícita, o cliente default da empresa (a mesma fonte já pré-selecionada desde o início da venda por AD-032; nunca um valor vazio "sem cliente"). Quando o cliente atual tem `documento = null` (só ocorre para `origem = 'DEFAULT'`, já que `GetSessao` não devolve CPF/CNPJ do cliente default), `TrnPagadorCgc` é enviado como string vazia. `TrnPagadorEmail`/`TrnPagadorFone` são enviados vazios nesta versão — o snapshot `ClienteVenda` (feature 005) não retém e-mail/celular, nem para clientes de origem `CADASTRO_SIMPLIFICADO` (que os capturam no formulário mas não os persistem no estado da venda).
+**Reason:** Decisão direta do usuário (2026-08-27, fase Design da feature 009, via pergunta direta) — "preencher com o cliente identificado, sem cliente identificado (ou seja, só o cliente default), os dados a serem enviados são os do cliente Default".
+**Trade-off:** `TrnPagadorEmail`/`TrnPagadorFone` ficam sistematicamente vazios até que a feature 005 seja estendida para reter e-mail/celular no snapshot da venda — gap aceito, não depende do ERP, então não abre item em `PENDENCIES.md`.
+**Impact:** Atualiza `.specs/features/pagamento-pix/spec.md` (Edge Cases — dados do pagador). Documentado em `specs/009-pagamento-pix/research.md` (D7) e `contracts/erp-pix-api.md` (§1).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-26T16:56:24.689257+00:00",
+    "updated_at": "2026-08-27T10:58:55.546812+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -686,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-26T17:15:31.072911+00:00",
+    "updated_at": "2026-08-27T10:58:55.586865+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -880,7 +880,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T17:44:16.509506+00:00",
     "created_epoch": 1787334256,
-    "updated_at": "2026-08-26T16:56:24.709441+00:00",
+    "updated_at": "2026-08-27T10:58:55.556886+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1265,7 +1265,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-26T14:04:43.596032+00:00",
     "created_epoch": 1787753083,
-    "updated_at": "2026-08-26T14:18:53.846053+00:00",
+    "updated_at": "2026-08-27T10:58:55.566799+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1371,41 +1371,6 @@
       "recent_action_kinds": [],
       "recent_queries": [],
       "edited": true
-    }
-  },
-  {
-    "id": "mem:1787763384687",
-    "kind": "decision",
-    "content": "AD-089: gatilhos de UI de finalizacao/suspensao confirmados (desktop: botoes Cancelar Venda/Finalizar Venda; mobile: icone de lixeira + botao Finalizar Venda), resolve item 18 de PENDENCIES.md",
-    "tags": [
-      "089",
-      "gatilhos",
-      "finalizacao",
-      "suspensao",
-      "confirmados",
-      "desktop",
-      "botoes",
-      "cancelar"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/project/PENDENCIES.md",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26T16:56:24.687109+00:00",
-    "created_epoch": 1787763384,
-    "updated_at": "2026-08-26T16:56:24.687117+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
     }
   },
   {
@@ -1821,14 +1786,294 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
-  }
-,
+  },
+  {
+    "id": "mem:1787828335519",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/contracts/pix-domain-api.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/contracts/pix-domain-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.519269+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.519279+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787828335497",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/data-model.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.497723+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.497742+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787828335472",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/plan.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.472699+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.472724+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787828335466",
+    "kind": "decision",
+    "content": "Design (speckit-plan) da feature 009-pagamento-pix: research/data-model/contracts/quickstart/plan; AD-100 (dados do pagador) e item 33 (StatusTransacao) abertos",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/plan.md",
+      "specs/009-pagamento-pix/research.md",
+      "specs/009-pagamento-pix/data-model.md",
+      "specs/009-pagamento-pix/contracts/erp-pix-api.md",
+      "specs/009-pagamento-pix/contracts/pix-domain-api.md",
+      "specs/009-pagamento-pix/quickstart.md",
+      ".specs/project/STATE.md",
+      ".specs/project/PENDENCIES.md",
+      ".specs/features/pagamento-pix/spec.md",
+      ".specify/feature.json",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": "specs/009-pagamento-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.466093+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.466102+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1787828335485",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/research.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/research.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.485762+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.485775+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787828335508",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/contracts/erp-pix-api.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/contracts/erp-pix-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.508710+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.508720+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787828335535",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/quickstart.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/quickstart.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.535163+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.535174+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787828335577",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research"
+    ],
+    "files": [
+      ".specify/feature.json"
+    ],
+    "file_path": ".specify/feature.json",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.577357+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-27T10:58:55.577368+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
   {
     "id": "mem:1787830000000",
     "kind": "decision",
     "content": "AD-098: desconto de capa rateado igualmente entre itens, com clamp e redistribuicao",
-    "tags": ["pagamento", "desconto", "rateio", "ad-098"],
-    "files": ["specs/008-pagamento-geral/data-model.md", ".specs/project/STATE.md"],
+    "tags": [
+      "pagamento",
+      "desconto",
+      "rateio",
+      "ad-098"
+    ],
+    "files": [
+      "specs/008-pagamento-geral/data-model.md",
+      ".specs/project/STATE.md"
+    ],
     "file_path": "specs/008-pagamento-geral/data-model.md",
     "symbol_id": "",
     "symbol_hash": "",
@@ -1844,8 +2089,16 @@
     "id": "mem:1787830000001",
     "kind": "fact",
     "content": "AD-099: ValidaTicketDevolucao tem campo Valido no yaml; corrige AD-023, item 32 aberto",
-    "tags": ["pagamento", "ticket-devolucao", "contrato-erp", "ad-099"],
-    "files": ["specs/008-pagamento-geral/contracts/erp-pagamento-api.md", ".specs/project/PENDENCIES.md"],
+    "tags": [
+      "pagamento",
+      "ticket-devolucao",
+      "contrato-erp",
+      "ad-099"
+    ],
+    "files": [
+      "specs/008-pagamento-geral/contracts/erp-pagamento-api.md",
+      ".specs/project/PENDENCIES.md"
+    ],
     "file_path": "specs/008-pagamento-geral/contracts/erp-pagamento-api.md",
     "symbol_id": "",
     "symbol_hash": "",
@@ -1861,14 +2114,100 @@
     "id": "mem:1787830000002",
     "kind": "next",
     "content": "Feature 008 (pagamento geral) pronta para /speckit-tasks apos merge do design",
-    "tags": ["speckit", "feature-008"],
-    "files": ["specs/008-pagamento-geral/plan.md"],
+    "tags": [
+      "speckit",
+      "feature-008"
+    ],
+    "files": [
+      "specs/008-pagamento-geral/plan.md"
+    ],
     "file_path": "specs/008-pagamento-geral/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-26",
     "created_epoch": 1787830000,
     "updated_at": "2026-08-26",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787920000000",
+    "kind": "decision",
+    "content": "Design (speckit-plan) da feature 009: reage so ao veredito PIX_DINAMICO de 008; StatusTransacao tem 5 estados nomeados (KB real)",
+    "tags": [
+      "speckit",
+      "plan",
+      "009",
+      "pagamento-pix",
+      "status-transacao"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/plan.md",
+      "specs/009-pagamento-pix/research.md",
+      "specs/009-pagamento-pix/data-model.md",
+      "specs/009-pagamento-pix/contracts/erp-pix-api.md",
+      "specs/009-pagamento-pix/contracts/pix-domain-api.md",
+      "specs/009-pagamento-pix/quickstart.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27",
+    "created_epoch": 1787920000,
+    "updated_at": "2026-08-27",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787920000001",
+    "kind": "decision",
+    "content": "AD-100: dados do pagador em GerarPIX vem do cliente atual (identificado ou default); email/telefone sempre vazios (gap de escopo)",
+    "tags": [
+      "pagamento-pix",
+      "ad-100",
+      "gerarpix",
+      "cliente"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/features/pagamento-pix/spec.md",
+      "specs/009-pagamento-pix/research.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27",
+    "created_epoch": 1787920001,
+    "updated_at": "2026-08-27",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1787920000002",
+    "kind": "blocker",
+    "content": "Item 33 aberto: literais exatos do domain StatusTransacao (VARCHAR(1)) nao confirmados, so os nomes (via KB real do ERP)",
+    "tags": [
+      "pagamento-pix",
+      "item-33",
+      "statustransacao",
+      "pendencia-erp"
+    ],
+    "files": [
+      "specs/009-pagamento-pix/contracts/erp-pix-api.md",
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": "specs/009-pagamento-pix/contracts/erp-pix-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27",
+    "created_epoch": 1787920002,
+    "updated_at": "2026-08-27",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
