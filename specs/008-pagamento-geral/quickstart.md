@@ -103,10 +103,9 @@ Teste unitário puro sobre `resolverIntegracao`, sem montar componente. Matriz m
 | 2 | mesma resposta | `""` (vazio) | vale aplicado — vazio é elegível (AD-048) |
 | 3 | mesma resposta | valor explicitamente não-vale | bloqueado com toast, sem chamada de rede |
 | 4 | `{ ValorTicket: 0, Valido: false, Mensagem: "Ticket já utilizado" }` | `""` | recusado, toast com a mensagem do ERP, evento `PAGAMENTO_RECUSADO` |
-| 5 | `{ ValorTicket: 25.50, Mensagem: "Ticket Válido" }` (**sem** `Valido`) | `""` | vale aplicado — o fallback de AD-099 cobre o campo ausente |
-| 6 | finalizar a venda depois do passo 1 | — | **nenhuma** chamada a `ValidaTicketDevolucao` no painel de rede (`FR-009`) |
+| 5 | finalizar a venda depois do passo 1 | — | **nenhuma** chamada a `ValidaTicketDevolucao` no painel de rede (`FR-009`) |
 
-O passo 6 é a prova de `SC-001`: o vale nunca bloqueia a finalização por revalidação.
+O passo 5 é a prova de `SC-001`: o vale nunca bloqueia a finalização por revalidação. **Removido em 2026-08-27 (AD-101):** o cenário anterior (passo 5, `Valido` ausente na resposta) testava o fallback introduzido por AD-099 — confirmado por inspeção da KB que o campo é sempre preenchido pelo procedure, o cenário deixou de ser um caso real e foi retirado.
 
 ---
 

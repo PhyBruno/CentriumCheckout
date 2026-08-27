@@ -77,15 +77,14 @@ Nenhum `double` de dinheiro atravessa a fronteira: a conversão para `Centavos` 
 { "ValorTicket": 25.50, "Valido": true, "Mensagem": "Ticket Válido" }
 ```
 
-**Interpretação** (AD-099, `research.md` D9):
+**Interpretação** (AD-101, `research.md` D9 — corrige AD-099):
 
 ```ts
 // src/client/domain/pagamento/valeDevolucao.ts
-if (resposta.Valido !== undefined) return resposta.Valido;
-return resposta.Mensagem === 'Ticket Válido';
+return resposta.Valido;
 ```
 
-> ⚠️ **Pendência aberta (item 32 de `.specs/project/PENDENCIES.md`, AD-099):** o campo `Valido` **existe** neste contrato, mas AD-023 — a partir de inspeção da KB real (`PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`) — afirmava que a validade só era expressa pelo literal em `Mensagem`. Enquanto o ERP não confirmar que `Valido` é efetivamente preenchido, o fallback acima é obrigatório. **Não** remova o fallback nem o teste que o cobre.
+> ✅ **Item 32 de `.specs/project/PENDENCIES.md` resolvido (2026-08-27, AD-101):** nova inspeção direta da KB confirma que `PCheckout_ValidaTicketDevolucao` preenche `&Valido` explicitamente nos dois ramos (`true`/`false`) antes de retornar. O fallback que comparava `Mensagem === 'Ticket Válido'` (AD-099, motivado pela incerteza sobre o preenchimento do campo) não é mais necessário e foi removido — **não reintroduza** esse fallback.
 
 `ValorTicket` (`double`) é convertido para `Centavos` no schema Zod. Este endpoint é chamado **uma única vez por vale**, no momento da aplicação — a finalização nunca o chama de novo (`FR-009`, `PAY-06`).
 

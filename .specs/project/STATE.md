@@ -201,7 +201,7 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 - Host por tenant: decisão do usuário — ambiente local de dev não tem tenant, o bloco `servers:` do contrato é só a URL de dev do GeneXus; o padrão `TENANT.<domínio-base>` (AD-003/AD-019) permanece correto e não precisa de formalização adicional no contrato.
 - `DescontoConvenio` é percentual — confirmado no KB (`PGeraPedidoVenda`: `&ConvDsc = (1 - CliConvDsc / 100)`).
 - `FormaMeioPagtoNFe` — confirmado domain `NFCe_FormaPagto` no KB, com lista completa de valores (superset da tabela SEFAZ padrão).
-- Elegibilidade de `ValidaTicketDevolucao` — **⚠️ superado em 2026-08-26 por AD-099, leia lá antes de implementar.** A afirmação original desta linha ("não há campo booleano; a elegibilidade é indicada comparando `Mensagem` ao literal fixo `'Ticket Válido'`", confirmada no KB em `PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`) **está incorreta quanto à ausência do campo**: `ValidaTicketDevolucaoOutput` tem sim um campo `Valido: boolean` no contrato (`ApiCentriumOAuth.yaml`, linhas 668-676). A regra vigente é a de AD-099 — usar `Valido` quando presente, com fallback para a comparação de `Mensagem`. Segue em aberto (item 32 de `.specs/project/PENDENCIES.md`) se o procedure efetivamente preenche `Valido`.
+- Elegibilidade de `ValidaTicketDevolucao` — **⚠️ superado em 2026-08-27 por AD-101, leia lá antes de implementar.** A afirmação original desta linha ("não há campo booleano; a elegibilidade é indicada comparando `Mensagem` ao literal fixo `'Ticket Válido'`", confirmada no KB em `PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`) **está incorreta quanto à ausência do campo**: `ValidaTicketDevolucaoOutput` tem sim um campo `Valido: boolean` no contrato (`ApiCentriumOAuth.yaml`, linhas 668-676), e a AD-101 confirmou por nova inspeção da mesma procedure que ela **preenche `&Valido` explicitamente** em ambos os ramos (`true`/`false`). A regra vigente é a de AD-101 — usar só `Valido`, sem fallback de `Mensagem`. Item 32 de `.specs/project/PENDENCIES.md` resolvido.
 - Origem do `NumeroNota` em `FaturarNFCe` — confirmado no KB: `= 0` gera nota nova (100% Checkout, via `PNFeSerializaRascunhoNota`), `<> 0` usa nota pré-existente/importada (`AtualizarCapa`).
 - Estorno de TEF — resposta direta do usuário: depois de cobrado, o TEF não pode mais ser removido da venda (não é uma questão de endpoint, é regra de UI/negócio do Checkout).
 - Validação de IBGE no cadastro simplificado — decisão do usuário: campo de endereço fica livre, sem validação.
@@ -1022,12 +1022,12 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
-### AD-099: `ValidaTicketDevolucaoOutput` **tem** o campo `Valido` — corrige AD-023 e abre o item 32 (2026-08-26)
+### AD-099: `ValidaTicketDevolucaoOutput` **tem** o campo `Valido` — corrige AD-023 e abre o item 32 (2026-08-26; corrigido em 2026-08-27 pela AD-101 — o fallback para `Mensagem` definido aqui como obrigatório foi confirmado desnecessário e removido, item 32 resolvido)
 
-**Decision:** A validade do ticket devolução é decidida assim: usar `resposta.Valido` quando o campo vier presente; quando vier ausente/`undefined`, cair para a comparação `resposta.Mensagem === 'Ticket Válido'`. O valor aplicado é sempre `ValorTicket`. O fallback é **obrigatório** e não pode ser removido enquanto o item 32 de `.specs/project/PENDENCIES.md` estiver aberto.
+**Decision:** ⚠️ **Superado em 2026-08-27 por AD-101 — leia lá antes de implementar.** Redação original (2026-08-26): a validade do ticket devolução era decidida usando `resposta.Valido` quando o campo viesse presente, com fallback para a comparação `resposta.Mensagem === 'Ticket Válido'` quando ausente/`undefined`; o valor aplicado é sempre `ValorTicket`. O fallback era tratado como **obrigatório** e vedado de remoção enquanto o item 32 de `.specs/project/PENDENCIES.md` estivesse aberto — item que a AD-101 resolve, eliminando o fallback.
 **Reason:** Achado de contrato da fase Design da feature 008, resolvido por decisão direta do usuário. Há contradição real entre as fontes: `ApiCentriumOAuth.yaml` (linhas 668-676) declara `ValidaTicketDevolucaoOutput` com **três** campos — `ValorTicket`, `Valido: boolean` e `Mensagem: string` — enquanto **AD-023 afirmava que "não existe campo booleano de validade"** e fixava a comparação de `Mensagem` ao literal, a partir de inspeção da KB (`PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`). As duas leituras são compatíveis se o campo existir no contrato mas não for preenchido pelo procedure — daí o fallback. As alternativas "só `Mensagem`" (frágil a mudança de texto, inclusive acentuação) e "exigir os dois (AND)" (bloqueia a operação se o ERP preencher só um) foram apresentadas e rejeitadas.
-**Trade-off:** Dois caminhos de decisão em vez de um, ambos cobertos por teste, até o ERP confirmar o comportamento real do campo.
-**Impact:** **Corrige AD-023 in-place** (a afirmação "não existe campo booleano de validade" está superada — ver acima) e reescreve `PAY-05` em `.specs/features/pagamento-geral/spec.md`. Abre o **item 32** em `.specs/project/PENDENCIES.md` (seção 1, não-bloqueante): confirmar com a equipe do ERP se `PCheckout_ValidaTicketDevolucao` efetivamente preenche `Valido`. Documentado em `specs/008-pagamento-geral/research.md` (D9) e `contracts/erp-pagamento-api.md` (§2).
+**Trade-off:** Dois caminhos de decisão em vez de um, ambos cobertos por teste, até o ERP confirmar o comportamento real do campo. **Superado por AD-101 (2026-08-27):** a confirmação chegou por inspeção direta da KB, não pela equipe do ERP; o segundo caminho (fallback) foi removido.
+**Impact:** **Corrige AD-023 in-place** (a afirmação "não existe campo booleano de validade" está superada — ver acima) e reescreve `PAY-05` em `.specs/features/pagamento-geral/spec.md`. Abre o **item 32** em `.specs/project/PENDENCIES.md` (seção 1, não-bloqueante): confirmar com a equipe do ERP se `PCheckout_ValidaTicketDevolucao` efetivamente preenche `Valido`. Documentado em `specs/008-pagamento-geral/research.md` (D9) e `contracts/erp-pagamento-api.md` (§2). **Item 32 resolvido em 2026-08-27 pela AD-101** — ver lá para o impacto atualizado em cada arquivo.
 
 ---
 
@@ -1037,6 +1037,27 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 **Reason:** Decisão direta do usuário (2026-08-27, fase Design da feature 009, via pergunta direta) — "preencher com o cliente identificado, sem cliente identificado (ou seja, só o cliente default), os dados a serem enviados são os do cliente Default".
 **Trade-off:** `TrnPagadorEmail`/`TrnPagadorFone` ficam sistematicamente vazios até que a feature 005 seja estendida para reter e-mail/celular no snapshot da venda — gap aceito, não depende do ERP, então não abre item em `PENDENCIES.md`.
 **Impact:** Atualiza `.specs/features/pagamento-pix/spec.md` (Edge Cases — dados do pagador). Documentado em `specs/009-pagamento-pix/research.md` (D7) e `contracts/erp-pix-api.md` (§1).
+
+---
+
+### AD-101: `PCheckout_ValidaTicketDevolucao` confirma preenchimento de `Valido` — resolve o item 32, corrige AD-099 (2026-08-27)
+
+**Decision:** `interpretarRespostaTicket` usa **apenas** `resposta.Valido` para decidir a validade do ticket devolução — o fallback para a comparação `Mensagem === 'Ticket Válido'`, introduzido por AD-099 como medida defensiva, é **removido**. O valor aplicado continua sendo sempre `ValorTicket`.
+**Reason:** Nova inspeção direta do código-fonte real de `PCheckout_ValidaTicketDevolucao` na KB do GeneXus (`CentriumDEVU6`, via MCP) — diferente da inspeção de AD-023 (2026-08-21), que só tinha olhado a comparação de `Mensagem` dentro de `PValidaTicketNfCe.Call` sem notar a atribuição de `&Valido` no procedure chamador. O código completo do procedure é:
+```
+PValidaTicketNfCe.Call(&Empresa, 0, '', 'validar', &ticketDevolucao, &ValorTicket, &retorno, &msgPadrao)
+
+if &retorno = 0
+	&Mensagem = &msgPadrao
+	&Valido = false
+else
+	&Mensagem = 'Ticket Válido'
+	&Valido = true
+endif
+```
+`&Valido` é atribuído explicitamente nos dois ramos (`if`/`else`) — nunca fica indefinido. O campo é preenchido de fato, encerrando a dúvida do item 32 sem depender de resposta da equipe do ERP, seguindo o mesmo padrão de resolução por KB já usado em AD-076/AD-078/AD-088.
+**Trade-off:** Nenhum — remover o fallback simplifica `interpretarRespostaTicket` para um único caminho de decisão, sem perda de robustez (o campo é garantidamente preenchido pelo procedure).
+**Impact:** Corrige AD-099 e o achado original de AD-023 in-place (ambos com marcação no início do parágrafo apontando para esta AD). Fecha o **item 32** em `.specs/project/PENDENCIES.md` — removido da tabela de pendências, nota adicionada em Notas. Atualiza `PAY-05` em `.specs/features/pagamento-geral/spec.md` (Acceptance Criteria e Requirement Traceability, de "Verified com pendência" para Verified). Atualiza `specs/008-pagamento-geral/research.md` (D9), `contracts/erp-pagamento-api.md` (§2), `contracts/pagamento-domain-api.md`, `data-model.md`, `quickstart.md` (Cenário 5) e `plan.md`, todos removendo a referência ao fallback. Atualiza `.specs/codebase/CONCERNS.md` (achado original de elegibilidade).
 
 ---
 

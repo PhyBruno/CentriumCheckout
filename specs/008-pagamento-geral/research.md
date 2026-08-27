@@ -4,7 +4,7 @@
 
 Fontes consultadas: `specs/008-pagamento-geral/spec.md` (FR-001..FR-018), `.specs/features/pagamento-geral/spec.md` (`PAY-01`..`PAY-10`), `.specs/project/STATE.md` (AD-019, AD-023, AD-024, AD-030, AD-036, AD-039, AD-046, AD-048, AD-061, AD-064, AD-072, AD-073, AD-074, AD-078, AD-085), `.specs/project/PENDENCIES.md` (item 25 aberto), `.specs/codebase/ARCHITECTURE.md`, `.specify/memory/constitution.md`, o contrato real `Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml` e os designs já concluídos das features 001 e 003.
 
-Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Três decisões produziram **ADs novos** (AD-097, AD-098, AD-099) e uma **pendência nova** (item 32) — registrados em `.specs/project/STATE.md` e `.specs/project/PENDENCIES.md`.
+Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Três decisões produziram **ADs novos** (AD-097, AD-098, AD-099) e uma **pendência nova** (item 32) — registrados em `.specs/project/STATE.md` e `.specs/project/PENDENCIES.md`. **Item 32 resolvido em 2026-08-27 pela AD-101** (ver D9 abaixo), que corrige o fallback definido por AD-099.
 
 ---
 
@@ -106,15 +106,16 @@ O rateio é materializado **apenas na montagem do payload** (`PAY-10` AC3: "WHEN
 
 ---
 
-## D9 — Ticket devolução: `Valido` como fonte primária, `Mensagem` como fallback
+## D9 — Ticket devolução: validade decidida só por `Valido`
 
-**Decision** (decisão direta do usuário, 2026-08-26 → **AD-099**): `interpretarRespostaTicket` usa `resposta.Valido` quando o campo vem presente; quando vem ausente/`undefined`, cai para a comparação `resposta.Mensagem === 'Ticket Válido'`. O valor aplicado é sempre `ValorTicket`.
+**Decision** (2026-08-27 → **AD-101**, corrige a decisão original de 2026-08-26/AD-099): `interpretarRespostaTicket` usa **apenas** `resposta.Valido`. O valor aplicado é sempre `ValorTicket`.
 
-**Rationale**: Há contradição real entre as fontes. `ApiCentriumOAuth.yaml` (linhas 668-676) declara `ValidaTicketDevolucaoOutput` com **três** campos — `ValorTicket`, `Valido: boolean` e `Mensagem: string` — enquanto AD-023 afirma que "não existe campo booleano de validade" e fixa a comparação de `Mensagem` ao literal, a partir de inspeção da KB (`PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`). As duas leituras podem ser simultaneamente verdadeiras se o campo existir no contrato mas não for preenchido pelo procedure. O fallback cobre os dois mundos sem travar a operação de caixa. AD-023 foi corrigido in-place e o ponto virou o **item 32** de `PENDENCIES.md`, para o ERP confirmar se `Valido` é efetivamente preenchido.
+**Rationale**: A redação original desta seção (AD-099) introduzira um fallback para `Mensagem === 'Ticket Válido'` porque a inspeção da KB feita para AD-023 (2026-08-21) só tinha olhado a comparação de string dentro de `PValidaTicketNfCe.Call`, sem notar a atribuição de `&Valido` no procedure chamador (`PCheckout_ValidaTicketDevolucao`). Nova inspeção direta do código-fonte confirma que o procedure atribui `&Valido = false` no ramo de erro e `&Valido = true` no ramo de sucesso, sempre preenchendo o campo explicitamente. Isso encerra o **item 32** de `PENDENCIES.md` sem depender de resposta do ERP — o fallback deixa de ser necessário e é removido.
 
-**Alternatives considered**:
+**Alternatives considered** (histórico, avaliadas em 2026-08-26 antes da confirmação por KB):
 - *Só `Mensagem === 'Ticket Válido'`*: mais fiel a AD-023, mas frágil a qualquer mudança de texto no ERP (inclusive acentuação).
 - *Exigir `Valido === true` E `Mensagem === 'Ticket Válido'`*: mais seguro contra falso-positivo, rejeitado por bloquear a operação se o ERP preencher apenas um dos dois.
+- *`Valido` com fallback para `Mensagem` (AD-099, vigente até 2026-08-27)*: cobria a incerteza sobre o preenchimento do campo — superada pela confirmação direta da KB.
 
 ---
 

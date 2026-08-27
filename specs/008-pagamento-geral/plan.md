@@ -84,7 +84,7 @@ src/
 │   │       ├── roteamentoIntegracao.ts       # resolverIntegracao/formaDisponivel (PAY-08, AD-074)
 │   │       ├── saldoPagamento.ts             # calcularSaldo, podeAplicarForma, derivarValores
 │   │       ├── descontoCapa.ts               # resolverDescontoCapa, ratearDescontoCapa (AD-098)
-│   │       └── valeDevolucao.ts              # ehElegivelParaVale (AD-048), interpretarRespostaTicket (AD-099)
+│   │       └── valeDevolucao.ts              # ehElegivelParaVale (AD-048), interpretarRespostaTicket (AD-101, corrige AD-099)
 │   ├── stores/
 │   │   ├── vendaStore.ts                     # store combinado (feature 001) — passa a combinar o slice abaixo
 │   │   └── slices/
@@ -110,7 +110,7 @@ tests/
 │           ├── roteamentoIntegracao.spec.ts  # matriz flags × plataforma; mobile nunca TEF (FR-007)
 │           ├── saldoPagamento.spec.ts        # troco só p/ dinheiro, segunda forma dinheiro bloqueada
 │           ├── descontoCapa.spec.ts          # divisão igual, clamp, redistribuição, soma exata (AD-098)
-│           └── valeDevolucao.spec.ts         # FpgUtiCar vazio elegível; Valido ausente → fallback (AD-099)
+│           └── valeDevolucao.spec.ts         # FpgUtiCar vazio elegível; validade só por Valido (AD-101)
 ├── integration/
 │   └── pagamentoSlice.spec.ts                # I1-I10: bloqueio reversível/irreversível, duplicata sem impressão
 └── e2e/
