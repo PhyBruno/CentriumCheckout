@@ -22,7 +22,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 | # | Feature | Status | Spec |
 |---|---|---|---|
 | 6 | Importação e faturamento de DAV | Specify feito (pendência: endpoint de "marcar DAV como importado" não confirmado) | `.specs/features/importacao-dav/spec.md` |
-| 10 | Recuperação e retomada de rascunho de NFCe | Specify feito (2026-08-25, AD-041) — desktop-only, sem pendência bloqueante (busca restrita a nome de cliente/vendedor, limitação conhecida do `DataProvider` do ERP) | `.specs/features/recuperacao-nfce/spec.md` |
+| 10 | Recuperação e retomada de rascunho de NFCe | Specify e Design concluídos (2026-08-27) — desktop-only, sem pendência bloqueante (busca restrita a nome de cliente/vendedor, limitação conhecida do `DataProvider` do ERP); duas extensões declaradas, não aplicadas por este plano, a artefatos de outras features (`OrigemCliente`, snapshot parcial de linha congelada) — ver `research.md` D5/D6. Próximo passo: `/speckit-tasks` | `.specs/features/recuperacao-nfce/spec.md`, `specs/011-recuperacao-nfce/plan.md` |
 
 ## Milestone 3 — Mobile
 
