@@ -111,10 +111,10 @@ mapearVendaExistente(checkoutFaturarNFCe, davListadoSelecionado)
         ▼
 importarVendaExistente() [orquestração, davQueries.ts]
         ├─ carrinhoSlice.importarLinhasCongeladas(linhas)         // extensão nova, contracts/importacao-domain-api.md
-        ├─ clienteSlice.trocarCliente({codigo, nome})              // action já existente (005)
-        ├─ vendedorSlice.trocarVendedor({codigo, nome: null})      // action já existente (012)
-        ├─ pagamentoSlice.importarFormasDePagamento(formas)        // feature 008
-        ├─ auditoriaSlice.registrar('DAV_IMPORTADO', {numeroDav, numeroNota})
+        ├─ fetchClientePorCodigo(clienteCodigo) → clienteSlice.selecionarCliente(cliente, 'DAV')  // 005, AD-115
+        ├─ vendedorSlice.trocarVendedor({codigo, nome: null})      // 012, assinatura desenhada — stub até tasqueada
+        ├─ pagamentoSlice.importarFormasDePagamento(formas)        // 008 — ação nova, stub até tasqueada
+        ├─ registrarEventoAuditoria(criarEventoDavImportado({numeroDav, numeroNota, ...}))  // 001, tipo #20, AD-114
         └─ dispara em paralelo: GetProduto(codigoProduto) por SKU distinto
                  │  sucesso → atualiza snapshot.descricao da(s) linha(s) daquele SKU
                  └─ falha → mantém fallback (código no lugar do nome), sem bloquear as demais linhas

@@ -73,6 +73,7 @@ Como operador de caixa, quando o cliente não existe no cadastro, quero registr�
 - **FR-013**: O sistema MUST tratar os campos de endereço do cadastro simplificado como texto livre, sem validação de endereço postal oficial.
 - **FR-014**: O sistema MUST NOT incluir campos de limite de crédito ou permissão de venda a crédito no formulário de cadastro simplificado.
 - **FR-015**: O sistema MUST registrar, no histórico de auditoria da venda, a seleção, criação ou troca do cliente da venda.
+- **FR-016**: O sistema MUST expor uma forma de buscar cliente por código (`CodCliente`), reutilizável por outras features do Checkout que não dispõem do documento do cliente. **Adicionado 2026-08-31** — achado do `/speckit-tasks` da feature 006 (importação de DAV, AD-115): o DAV só traz o código do cliente, nunca o CPF/CNPJ, e o contrato `GetCliente` não tinha parâmetro para buscar por código até essa data.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -84,7 +85,7 @@ Como operador de caixa, quando o cliente não existe no cadastro, quero registr�
 ### Measurable Outcomes
 
 - **SC-001**: O operador nunca fica impedido de continuar a venda por não encontrar o cliente.
-- **SC-002**: Nenhuma venda é finalizada sem um cliente associado.
+- **SC-002**: Nenhuma venda é finalizada sem um cliente associado. **Nota de rastreabilidade**: o gate que bloqueia a finalização (`podeFinalizar`) é implementado pela feature 004 (`specs/004-finalizacao-suspensao-venda`) — esta feature (005) é responsável apenas por garantir que `clienteAtual` reflita corretamente o estado consultado por aquele gate (default pré-selecionado, seleção manual, ou `null` quando nada foi configurado/escolhido).
 - **SC-003**: Nenhuma venda é bloqueada por falha do fluxo de cadastro simplificado em condições normais de uso.
 
 ## Assumptions

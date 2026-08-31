@@ -1,6 +1,6 @@
 # Contract: API interna do módulo de Auditoria
 
-Este é o contrato que as demais features (003, 004, 005, 008, 009, 010, 012, 013, 014) consomem para disparar eventos de auditoria. Não é uma API HTTP — é a superfície pública do módulo `src/client/domain/auditoria/` + `src/client/stores/slices/auditoriaSlice.ts` (ver `plan.md`, "Project Structure"). **Acrescentado em 2026-08-31**: 013 (venda rápida) dispara `VENDA_RAPIDA_ACIONADA`; 014 (validação prévia) dispara `VALIDACAO_VENDA_RECUSADA` — ver `data-model.md`, tipos 18–19.
+Este é o contrato que as demais features (003, 004, 005, 006, 008, 009, 010, 012, 013, 014) consomem para disparar eventos de auditoria. Não é uma API HTTP — é a superfície pública do módulo `src/client/domain/auditoria/` + `src/client/stores/slices/auditoriaSlice.ts` (ver `plan.md`, "Project Structure"). **Acrescentado em 2026-08-31**: 013 (venda rápida) dispara `VENDA_RAPIDA_ACIONADA`; 014 (validação prévia) dispara `VALIDACAO_VENDA_RECUSADA`; 006 (importação de DAV) dispara `DAV_IMPORTADO`, achado durante `/speckit-tasks` da 006 (AD-114) — ver `data-model.md`, tipos 18–20.
 
 ## Dispatcher
 

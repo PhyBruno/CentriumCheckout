@@ -8,7 +8,7 @@ Fonte: `Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml`.
 
 ## `GET /api/erp/GetCliente`
 
-**Query params**: `Empresa` (int64, opcional — preenchido automaticamente pelo BFF a partir da sessão), `CPFCNPJ` (string).
+**Query params**: `Empresa` (int64, opcional — preenchido automaticamente pelo BFF a partir da sessão), `CPFCNPJ` (string, opcional), `CodCliente` (`int`, opcional — acrescentado em 2026-08-31, AD-115). Pelo menos um de `CPFCNPJ`/`CodCliente` é obrigatório; ambos vazios é erro de request. Quando `CodCliente` é informado, a busca ocorre por `CliCod` em vez de `CliCgc2` — o shape de resposta (`ClienteCheckout`) é o mesmo para os dois caminhos.
 
 **Response** (`GetClienteOutput.Cliente`, schema `ClienteCheckout`):
 
@@ -35,9 +35,9 @@ interface ClienteCheckout {
 }
 ```
 
-**Limitação de contrato (AD-094)**: não existe parâmetro `CodCliente`/`CodigoCliente` — a única forma de buscar é por documento. Não há caminho de contrato para resolver um cliente a partir só do código (ex.: `SessaoUsuario.ClienteDefaultCodigo`). **Deixou de ser um problema em 2026-08-31 (AD-108):** o Checkout **não** chama `GetCliente` para o cliente default — a lista de preço dele vem de `SessaoUsuario.ListaPrecoDefault` (`GetSessao`) e o desconto de convênio é inexistente por regra de negócio. `GetCliente` só é chamado quando o operador seleciona um cliente explicitamente.
+**Limitação de contrato (AD-094, histórico)**: até 2026-08-31, não existia parâmetro `CodCliente`/`CodigoCliente` — a única forma de buscar era por documento. Isso nunca chegou a bloquear o cliente default (resolvido por AD-108, que evita chamar `GetCliente` nesse caso — lista de preço vem de `SessaoUsuario.ListaPrecoDefault`, desconto de convênio é inexistente por regra de negócio). **`CodCliente` passou a existir em 2026-08-31 (AD-115)**, por necessidade de um consumidor diferente: a importação de DAV (feature 006), que só recebe o código do cliente, nunca o documento.
 
-**Uso no Checkout**: `fetchClientePorDocumento(cpfCnpj)` — chamada imperativa (não `useQuery` cacheado), disparada em dois pontos: (1) busca direta por documento (`CLI-01`), (2) depois de selecionar um candidato no modal de lista, usando o `CPF` do item selecionado (`research.md`, D1).
+**Uso no Checkout**: `fetchClientePorDocumento(cpfCnpj)` — chamada imperativa (não `useQuery` cacheado), disparada em dois pontos: (1) busca direta por documento (`CLI-01`), (2) depois de selecionar um candidato no modal de lista, usando o `CPF` do item selecionado (`research.md`, D1). `fetchClientePorCodigo(codigo)` — mesma natureza imperativa, usa `CodCliente` em vez de `CPFCNPJ`; consumida pela orquestração de importação da feature 006 (`contracts/importacao-domain-api.md`), não por nenhum fluxo desta feature (005).
 
 ---
 

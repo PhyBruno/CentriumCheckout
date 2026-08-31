@@ -21,7 +21,7 @@ export interface ClienteVenda {
   readonly origem: OrigemCliente;
 }
 
-export type OrigemCliente = 'DEFAULT' | 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'CADASTRO_SIMPLIFICADO';
+export type OrigemCliente = 'DEFAULT' | 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'CADASTRO_SIMPLIFICADO' | 'DAV'; // 'DAV' acrescentado em 2026-08-31 (AD-115) — importação de DAV, feature 006
 ```
 
 **Invariante**: `listaPreco`/`descontoConvenio` nunca recebem um valor de fallback inventado (`0`, `1`) — `null` significa "o cadastro deste cliente não define o campo" e, hoje, só ocorre em `CADASTRO_SIMPLIFICADO` (`research.md`, D10). Para `origem = 'DEFAULT'` os dois campos carregam **valores reais**, não `null`: a lista vem de `SessaoUsuario.ListaPrecoDefault` e o convênio é `0` por regra de negócio (AD-108). A feature 003, ao consumir este snapshot, MUST tratar `null` como ausência de dado, nunca como "sem desconto"/"lista padrão".
@@ -65,8 +65,9 @@ function inicializarClientePadrao(sessaoUsuario: SessaoUsuario): void;
 // Chamado uma única vez, no início/retomada de uma sessão de venda — mesmo call site que zera carrinho e auditoria.
 // Não dispara evento de auditoria (I3). Ver research.md D3.
 
-function selecionarCliente(cliente: ClienteCheckout, origem: 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE'): void;
+function selecionarCliente(cliente: ClienteCheckout, origem: 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'DAV'): void;
 // Aplica o predicado podeMutarCarrinho() antes de mutar, se houver carrinho populado (I4).
+// origem 'DAV' (AD-115) segue a mesma regra CLIENTE_SELECIONADO/CLIENTE_TROCADO de D9 — não é caso especial.
 // Dispara CLIENTE_SELECIONADO (primeira escolha) ou CLIENTE_TROCADO (substituição) — ver research.md D9.
 // Se o carrinho tem linhas ativas não-congeladas, dispara o re-fetch de GetProduto por SKU (research.md D7).
 

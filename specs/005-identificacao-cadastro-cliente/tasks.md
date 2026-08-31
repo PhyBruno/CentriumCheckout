@@ -86,7 +86,7 @@ tests/unit/domain/cliente/ | tests/unit/services/cliente/ | tests/integration/ |
 - [ ] T017 [US1] Implementar `src/client/features/cliente/ModalBuscaCliente.tsx`: campo de busca por documento (chama `fetchClientePorDocumento`, T005) e campo de busca livre (`useBuscaClientes`, T016, skeleton Boneyard enquanto carrega); selecionar um candidato da lista chama `fetchClientePorDocumento` pelo `CPF` do candidato antes de `selecionarCliente` (T014) — `research.md` D1 — depende de T005, T016, T014
 - [ ] T018 [US1] Implementar aviso de CNPJ (Goey Toast) em `ModalBuscaCliente.tsx` (T017): `classificarDocumento(termo) === 'CNPJ'` (T003) numa busca sem resultado **não** oferece o CTA de cadastro simplificado, exibe aviso de que o cadastro simplificado só admite pessoa física; busca por CNPJ **com** resultado segue seleção normal — `FR-010`, `research.md` D4 — depende de T003, T017
 - [ ] T019 [P] [US1] Implementar `src/client/features/cliente/CampoClienteVenda.tsx`: exibe `clienteAtual.nome`/`documento`, sem indicador de origem (`FR-006`, AD-053) — depende de T006
-- [ ] T020 [US1] E2E `tests/e2e/identificacao-cliente.spec.ts` (quickstart, Camada 3, passos 1, 2, 3, 6, 7, 8): default pré-selecionado sem interação; busca por documento conhecido; busca por termo livre + seleção de candidato dispara `GetCliente`; troca de cliente com carrinho populado (`TipoPreco = 9`) atualiza preço; repetir a troca com pagamento aprovado → bloqueada sem chamada de rede; repetir os passos 2-3 no layout mobile
+- [ ] T020 [US1] E2E `tests/e2e/identificacao-cliente.spec.ts` (quickstart, Camada 3, passos 1, 2, 3, 6, 7, 8): default pré-selecionado sem interação; busca por documento conhecido; busca por termo livre + seleção de candidato dispara `GetCliente`; troca de cliente com carrinho populado (`TipoPreco = 9`) atualiza preço; repetir a troca com pagamento aprovado → bloqueada sem chamada de rede; repetir os passos 2-3 no layout mobile; inserir um produto no carrinho **antes** de qualquer busca/seleção de cliente e confirmar que a inserção não é bloqueada nem exige cliente prévio — `FR-003`
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — busca, seleção, troca com reprecificação e bloqueio pós-pagamento (`FR-001` a `FR-006`, `FR-008`, `FR-009`, `FR-010`, `FR-015` parcial).
 
@@ -100,14 +100,14 @@ tests/unit/domain/cliente/ | tests/unit/services/cliente/ | tests/integration/ |
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Integration test `tests/integration/clienteSlice.spec.ts`: `cadastrarESelecionarCliente(dados)` com mock de `postCliente` retornando sucesso → evento `CLIENTE_CRIADO` (nunca `TROCADO`), `clienteAtual.origem === 'CADASTRO_SIMPLIFICADO'` — `CLI-03`, AD-061
+- [ ] T021 [P] [US2] Integration test `tests/integration/clienteSlice.spec.ts`: `cadastrarESelecionarCliente(dados)` com mock de `postCliente` retornando sucesso → evento `CLIENTE_CRIADO` (nunca `TROCADO`), `clienteAtual.origem === 'CADASTRO_SIMPLIFICADO'` — `CLI-03`, AD-061; **e** com mock de `postCliente` rejeitando (erro de rede/validação do ERP) → `clienteAtual` inalterado, nenhum evento disparado, erro propagado para a UI tratar (T024) sem deixar o slice em estado inconsistente — `SC-003`
 
 ### Implementation for User Story 2
 
 - [ ] T022 [US2] Implementar `postCliente(dados: CadastroSimplificadoInput)` em `clienteQueries.ts` (T005): monta `PostClienteInput.Cliente` com exatamente os 11 campos confirmados (`Empresa, nome, cpf, email, celular, cep, endereco, bairro, numero, cidade, uf` — AD-024, nunca `LimiteCredito`/`PermiteVendaCredito`, AD-026), chama `POST /api/erp/PostCliente`, depois `fetchClientePorDocumento(dados.cpf)` para obter o `ClienteCheckout` completo (`CodCliente` incluso) — depende de T005
 - [ ] T023 [US2] Implementar `cadastrarESelecionarCliente(dados)` em `clienteSlice.ts` (T006): chama `postCliente` (T022), aplica o resultado pelo mesmo caminho de `selecionarCliente` (T014) mas sempre dispara `CLIENTE_CRIADO` (nunca `TROCADO`) — depende de T014, T022
 - [ ] T024 [US2] Implementar `src/client/features/cliente/FormCadastroSimplificado.tsx`: campos `nome/cpf/email/celular/cep/endereco/bairro/numero/cidade/uf` (sem `LimiteCredito`/`PermiteVendaCredito`, `FR-014`), valida formato de CPF/CEP via T003 antes de habilitar o envio (`FR-012`); oferecido inline em `ModalBuscaCliente.tsx` (T018) quando a busca não retorna nada e o termo não é CNPJ — depende de T003, T018, T023
-- [ ] T025 [US2] E2E `tests/e2e/identificacao-cliente.spec.ts` (quickstart, Camada 3, passo 4, extensão do arquivo de T020): buscar CPF inexistente → sem resultado, cadastro simplificado oferecido; preencher e confirmar → `PostCliente` chamado, cliente passa a existir e é associado (`CLIENTE_CRIADO`) — depende de T020 (mesmo arquivo)
+- [ ] T025 [US2] E2E `tests/e2e/identificacao-cliente.spec.ts` (quickstart, Camada 3, passos 4 e 5, extensão do arquivo de T020): (4) buscar CPF inexistente → sem resultado, cadastro simplificado oferecido; preencher e confirmar → `PostCliente` chamado, cliente passa a existir e é associado (`CLIENTE_CRIADO`); (5) buscar CNPJ sem resultado → cadastro simplificado **não** oferecido, aviso de pessoa física exibido (`FR-010`, `research.md` D4); buscar CNPJ **com** resultado → seleção normal — depende de T020 (mesmo arquivo)
 
 **Checkpoint**: User Stories 1 e 2 funcionam de forma independente e integrada — feature completa (`FR-001` a `FR-015`).
 
@@ -119,6 +119,8 @@ tests/unit/domain/cliente/ | tests/unit/services/cliente/ | tests/integration/ |
 
 - [ ] T026 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
 - [ ] T027 Rodar as 3 camadas de `quickstart.md` (domínio puro, integração, E2E) e confirmar: nenhum fallback inventado para `descontoConvenio`/`listaPreco` (`research.md` D10); ausência visual do chip de filtro "Ativo" no modal de busca (AD-093); F5 no meio da venda descarta o cliente selecionado (Constitution VI)
+- [ ] T028 [P] Implementar `fetchClientePorCodigo(codigo: number)` em `clienteQueries.ts` (T005): `GET /api/erp/GetCliente` usando o parâmetro `CodCliente` (novo, AD-115), valida a resposta via T002 — mesma natureza imperativa de `fetchClientePorDocumento`, sem uso próprio nesta feature; consumida pela orquestração de importação da feature 006 (`specs/006-importacao-dav/contracts/importacao-domain-api.md`) — `FR-016` — depende de T002, T005
+- [ ] T029 Estender `OrigemCliente` (`data-model.md` §1) com o valor `'DAV'` e a assinatura de `selecionarCliente` em `clienteSlice.ts` (T014) para aceitá-lo — extensão puramente aditiva (AD-115): `houveEscolhaExplicita`/decisão `CLIENTE_SELECIONADO` vs. `CLIENTE_TROCADO` (D9) não muda para essa origem — `FR-016` — depende de T014
 
 ---
 

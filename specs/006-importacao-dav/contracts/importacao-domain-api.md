@@ -51,18 +51,20 @@ Reaproveitável tal e qual pela feature 011: `importarLinhasCongeladas` não sab
 ```ts
 export function useListaDavs(filtros: { txtBusca?: string; dataInicial?: string; dataFinal?: string; pagina: number }): UseQueryResult<CheckoutListaDAVsResponse>;
 
-export async function importarVendaExistente(numeroDav: string): Promise<void>;
+export async function importarVendaExistente(numeroDav: string, origemLista: { clienteNome: string }): Promise<void>;
 ```
+
+`origemLista` é capturado pela UI (`ModalImportacaoDav.tsx`) a partir da linha do `DavListado` selecionado, **antes** de `GetDav` responder (D4, `research.md`) — só carrega `clienteNome`, o único campo que `mapearVendaExistente` (§1) lê de `origemLista`. `clienteCodigo` **não** precisa ser capturado da lista: `VendaImportada.clienteCodigo` vem sempre de `resposta.clienteCodigo` (a própria resposta de `GetDav`), nunca de `origemLista`.
 
 `importarVendaExistente` é a função de orquestração (não pura — chama rede e muta slices):
 
 1. `GET /api/erp/GetDav` (via `fetchDav`).
-2. `mapearVendaExistente(resposta, davListadoSelecionado)`.
+2. `mapearVendaExistente(resposta, origemLista)`.
 3. `carrinhoSlice.importarLinhasCongeladas(vendaImportada.linhas)`.
-4. `clienteSlice.trocarCliente({ codigo: vendaImportada.clienteCodigo, nome: vendaImportada.clienteNome })` — reaproveita a action pública já exposta pela feature 005; sobrescreve incondicionalmente (FR-007), mesmo com cliente já selecionado.
-5. `vendedorSlice.trocarVendedor({ codigo: vendaImportada.vendedorCodigo, nome: null })` — reaproveita a action pública da feature 012, mesmo padrão de sobrescrita incondicional.
-6. `pagamentoSlice.importarFormasDePagamento(vendaImportada.formasDePagamento)` — feature 008.
-7. `auditoriaSlice.registrar('DAV_IMPORTADO', { numeroDav, numeroNota: vendaImportada.numeroNota, quantidadeLinhas, quantidadeFormasDePagamento })`.
+4. `fetchClientePorCodigo(vendaImportada.clienteCodigo)` (feature 005, novo parâmetro `CodCliente` de `GetCliente`, AD-115) seguido de `clienteSlice.selecionarCliente(clienteCompleto, 'DAV')` — **não** existe uma action `trocarCliente` separada; `selecionarCliente` é a única action pública de troca da feature 005 e exige o `ClienteCheckout` completo (`data-model.md` da 005), não só `{codigo, nome}`. Sobrescreve incondicionalmente (FR-007), mesmo com cliente já selecionado — mesma regra `houveEscolhaExplicita` de `CLIENTE_SELECIONADO`/`CLIENTE_TROCADO` (D9 de `specs/005-.../research.md`) se aplica normalmente à origem `'DAV'`.
+5. `vendedorSlice.trocarVendedor({ codigo: vendaImportada.vendedorCodigo, nome: null })` — assinatura já desenhada pela feature 012 (`data-model.md` daquela feature), consumida aqui por injeção de dependência com stub (012 ainda não tem `tasks.md`) — não é `import` direto.
+6. `pagamentoSlice.importarFormasDePagamento(vendaImportada.formasDePagamento)` — ação nova, ainda não existe no contrato atual da feature 008; consumida por injeção de dependência com stub, mesmo padrão do item 5.
+7. `registrarEventoAuditoria(criarEventoDavImportado({ numeroDav, numeroNota: vendaImportada.numeroNota, quantidadeLinhas, quantidadeFormasDePagamento }))` — **não** existe um método `auditoriaSlice.registrar(tipo, detalhes)`; o dispatcher real (`specs/001-.../contracts/auditoria-events.md`) é `registrarEventoAuditoria(evento)`, e o evento é montado por uma factory function tipada (`criarEventoDavImportado`, `src/client/domain/auditoria/eventos.ts`, tipo #20 do catálogo, AD-114) — mesmo padrão usado por toda outra feature consumidora.
 8. Dispara, sem aguardar (`Promise.allSettled`), um `GetProduto` por `codigoProduto` distinto de `vendaImportada.linhas` — cada sucesso atualiza `snapshot.descricao` da(s) linha(s) daquele SKU no `carrinhoSlice` (ação `editarSnapshotDescricao`, mutação direta de metadado, **não** passa por `editarItem`/`repricarSku` porque não altera preço/quantidade); falha é silenciosa (mantém fallback de `codigoProduto`).
 
 O carrinho **não importa** os slices de cliente/vendedor/pagamento diretamente — é esta camada de orquestração (serviço, não slice) que os conecta, preservando a mesma regra de Dependency Inversion já estabelecida pela feature 005 (`carrinhoSlice` nunca conhece `clienteSlice`).
@@ -75,7 +77,7 @@ O carrinho **não importa** os slices de cliente/vendedor/pagamento diretamente 
 |---|---|
 | 001 — auditoria | recebe o evento `DAV_IMPORTADO` pelo dispatcher tipado |
 | 003 — carrinho | `CarrinhoSlice` ganha `importarLinhasCongeladas`, sem alteração das actions existentes |
-| 005 — cliente | `importarVendaExistente` chama `trocarCliente`, já pública |
+| 005 — cliente | `importarVendaExistente` chama `fetchClientePorCodigo` + `selecionarCliente(cliente, 'DAV')`, já públicas (AD-115) |
 | 008 — pagamento | recebe `importarFormasDePagamento` com os dados já confirmados do DAV |
 | 011 — recuperação de rascunho de NFCe | reaproveita `mapearVendaExistente` e `importarLinhasCongeladas` sem alteração — só troca `fetchDav` por `fetchCarregarNFCe` |
-| 012 — seleção de vendedor | `importarVendaExistente` chama `trocarVendedor`, já pública |
+| 012 — seleção de vendedor | `importarVendaExistente` chama `trocarVendedor`, assinatura já desenhada mas consumida por stub até a 012 ser tasqueada |

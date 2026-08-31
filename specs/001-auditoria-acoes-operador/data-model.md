@@ -14,7 +14,7 @@ interface EventoAuditoriaBase<TTipo extends string, TDetalhes> {
 
 Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codigoProduto`, etc.) são identificadores internos do Checkout (camelCase), não necessariamente os nomes de campo brutos do contrato do ERP (que seguem convenção GeneXus, ex. `CadCliCod`) — a normalização desses valores é responsabilidade da feature de origem (cliente/vendedor/carrinho/pagamento), que já os recebe tipados de suas próprias chamadas ao ERP antes de montar o `detalhes` do evento.
 
-### Catálogo de tipos (19)
+### Catálogo de tipos (20)
 
 | # | `tipo` | Origem (feature) | `detalhes` |
 |---|---|---|---|
@@ -37,6 +37,7 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 | 17 | `VENDA_SUSPENSA` | 004-finalizacao-suspensao-venda | `{}` |
 | 18 | `VALIDACAO_VENDA_RECUSADA` | 014-validacao-previa-nfce | `{ origem: 'MANUAL' \| 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` — registra recusa por regra de negócio **e** indisponibilidade do ERP; avisos (`Valido = true` com mensagem) **não** são registrados (AD-113) |
 | 19 | `VENDA_RAPIDA_ACIONADA` | 013-venda-rapida-cenario-pagamento | `{ tecla: 'F6' \| 'F7' \| 'F8' \| 'F9', cenarioNome: string, condicaoCodigo: number, formaCodigo: number, valorLancado: number, finalizacaoAutomatica: boolean }` (`valorLancado` em centavos inteiros) — um evento por acionamento que alterou a venda; acionamento recusado em G1–G4 (`specs/013-.../data-model.md`) não gera evento (I12 da feature 013) |
+| 20 | `DAV_IMPORTADO` | 006-importacao-dav | `{ numeroDav: string, numeroNota: number, quantidadeLinhas: number, quantidadeFormasDePagamento: number }` — disparado uma única vez ao final de `importarVendaExistente`, depois que carrinho/cliente/vendedor/pagamento já foram populados (AD-114); `numeroDav` só existe nesta trilha — não é reenviado a `FaturarNFCe` (AD-107) |
 
 ### Regras de estado (state machine do slice)
 

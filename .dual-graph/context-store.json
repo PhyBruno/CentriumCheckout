@@ -2466,5 +2466,33 @@
       "specs/014-validacao-previa-nfce/plan.md"
     ],
     "date": "2026-08-31"
+  },
+  {
+    "type": "decision",
+    "content": "AD-114: DAV_IMPORTADO vira tipo #20 no catálogo de auditoria da 001, achado do tasks da 006",
+    "tags": ["speckit", "006", "001", "auditoria"],
+    "files": ["specs/001-auditoria-acoes-operador/data-model.md", "specs/001-auditoria-acoes-operador/tasks.md"],
+    "date": "2026-08-31"
+  },
+  {
+    "type": "decision",
+    "content": "AD-115: GetCliente/PCheckout_GetCliente passam a aceitar CodCliente, via MCP GenExus",
+    "tags": ["speckit", "006", "005", "genexus", "kb-change"],
+    "files": ["specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md", "specs/005-identificacao-cadastro-cliente/data-model.md", "specs/005-identificacao-cadastro-cliente/tasks.md"],
+    "date": "2026-08-31"
+  },
+  {
+    "type": "blocker",
+    "content": "Item 37: build real da KB (AD-115) não confirmado, só Specify; yaml exportado não regenerado",
+    "tags": ["genexus", "kb-change", "pendencia"],
+    "files": [".specs/project/PENDENCIES.md"],
+    "date": "2026-08-31"
+  },
+  {
+    "type": "task",
+    "content": "tasks.md da feature 006 (importação de DAV) gerado: 25 tarefas, 5 fases, 2 user stories P1",
+    "tags": ["speckit", "006"],
+    "files": ["specs/006-importacao-dav/tasks.md"],
+    "date": "2026-08-31"
   }
 ]
