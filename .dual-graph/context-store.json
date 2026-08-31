@@ -23,38 +23,6 @@
     "evidence": {}
   },
   {
-    "id": "mem:1787248030214",
-    "kind": "decision",
-    "content": "Atualiza ARCHITECTURE.md: remove persist\u00eancia de venda em F5 (Zustand sem persist + confirm de beforeunload), adiciona Boneyard/Goey Toast/shadcn-ui \u00e0 stack, detalha fluxo de busca/inser\u00e7\u00e3o de produto (GetListaProdutos vs GetProduto), finaliza\u00e7\u00e3o/suspens\u00e3o via FaturarNFCe+SuspenderOuFaturar, cancelamento agora confirmado como chamada ao ERP, credenciais em cookie HttpOnly, e resolve v\u00e1rios pontos em aberto da se\u00e7\u00e3o 7",
-    "tags": [
-      "atualiza",
-      "architecture",
-      "remove",
-      "persist",
-      "ncia",
-      "venda",
-      "zustand",
-      "sem"
-    ],
-    "files": [
-      "ARCHITECTURE.md"
-    ],
-    "file_path": "ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T17:47:10.214189+00:00",
-    "created_epoch": 1787248030,
-    "updated_at": "2026-08-20T17:47:10.214576+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787248030215",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -90,6 +58,38 @@
     }
   },
   {
+    "id": "mem:1787248030214",
+    "kind": "decision",
+    "content": "Atualiza ARCHITECTURE.md: remove persist\u00eancia de venda em F5 (Zustand sem persist + confirm de beforeunload), adiciona Boneyard/Goey Toast/shadcn-ui \u00e0 stack, detalha fluxo de busca/inser\u00e7\u00e3o de produto (GetListaProdutos vs GetProduto), finaliza\u00e7\u00e3o/suspens\u00e3o via FaturarNFCe+SuspenderOuFaturar, cancelamento agora confirmado como chamada ao ERP, credenciais em cookie HttpOnly, e resolve v\u00e1rios pontos em aberto da se\u00e7\u00e3o 7",
+    "tags": [
+      "atualiza",
+      "architecture",
+      "remove",
+      "persist",
+      "ncia",
+      "venda",
+      "zustand",
+      "sem"
+    ],
+    "files": [
+      "ARCHITECTURE.md"
+    ],
+    "file_path": "ARCHITECTURE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T17:47:10.214189+00:00",
+    "created_epoch": 1787248030,
+    "updated_at": "2026-08-20T17:47:10.214576+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
     "id": "mem:1787248391193",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-27T10:58:55.546812+00:00",
+    "updated_at": "2026-08-31T18:30:50.262120+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -158,7 +158,7 @@
     }
   },
   {
-    "id": "mem:1787256725886",
+    "id": "mem:1787256725872",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -174,14 +174,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/layout-responsivo-mobile/spec.md"
+      ".specs/features/importacao-dav/spec.md"
     ],
-    "file_path": ".specs/features/layout-responsivo-mobile/spec.md",
+    "file_path": ".specs/features/importacao-dav/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.886434+00:00",
+    "created_at": "2026-08-20T20:12:05.872471+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:34:58.083668+00:00",
+    "updated_at": "2026-08-26T14:18:53.835709+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -193,7 +193,7 @@
     }
   },
   {
-    "id": "mem:1787256725855",
+    "id": "mem:1787256725842",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -209,14 +209,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/finalizacao-suspensao-venda/spec.md"
+      ".specs/features/pagamento/spec.md"
     ],
-    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
+    "file_path": ".specs/features/pagamento/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.855121+00:00",
+    "created_at": "2026-08-20T20:12:05.842686+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:56:24.699417+00:00",
+    "updated_at": "2026-08-24T13:25:58.930133+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -228,42 +228,7 @@
     }
   },
   {
-    "id": "mem:1787256725831",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/features/carrinho-produto-precificacao/spec.md"
-    ],
-    "file_path": ".specs/features/carrinho-produto-precificacao/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.831415+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T14:04:43.619124+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725804",
+    "id": "mem:1787256725816",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -279,14 +244,14 @@
       "pend"
     ],
     "files": [
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
+      ".specs/features/identificacao-cadastro-cliente/spec.md"
     ],
-    "file_path": ".specs/features/autenticacao-sessao-bootstrap/spec.md",
+    "file_path": ".specs/features/identificacao-cadastro-cliente/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.804897+00:00",
+    "created_at": "2026-08-20T20:12:05.816973+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.391900+00:00",
+    "updated_at": "2026-08-25T11:16:33.244660+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -298,7 +263,44 @@
     }
   },
   {
-    "id": "mem:1787256725781",
+    "id": "mem:1787256725791",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap",
+      "018",
+      "boneyard"
+    ],
+    "files": [
+      ".specs/codebase/CONCERNS.md"
+    ],
+    "file_path": ".specs/codebase/CONCERNS.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.791283+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-25T17:05:28.526394+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [
+        "register_edit"
+      ],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725767",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -314,14 +316,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/codebase/INTEGRATIONS.md"
+      ".specs/codebase/STACK.md"
     ],
-    "file_path": ".specs/codebase/INTEGRATIONS.md",
+    "file_path": ".specs/codebase/STACK.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.781208+00:00",
+    "created_at": "2026-08-20T20:12:05.767088+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.691333+00:00",
+    "updated_at": "2026-08-21T12:57:28.359529+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -333,7 +335,7 @@
     }
   },
   {
-    "id": "mem:1787256725757",
+    "id": "mem:1787256725744",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -349,55 +351,22 @@
       "pend"
     ],
     "files": [
-      ".specs/codebase/ARCHITECTURE.md"
+      ".specs/project/ROADMAP.md"
     ],
-    "file_path": ".specs/codebase/ARCHITECTURE.md",
+    "file_path": ".specs/project/ROADMAP.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.757537+00:00",
+    "created_at": "2026-08-20T20:12:05.744910+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T16:56:00.658155+00:00",
+    "updated_at": "2026-08-26T16:16:58.303550+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725733",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/project/PROJECT.md"
-    ],
-    "file_path": ".specs/project/PROJECT.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.733016+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:34:58.072761+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
+      "recent_action_kinds": [
+        "register_edit"
+      ],
       "recent_queries": [],
       "edited": true
     }
@@ -449,7 +418,42 @@
     }
   },
   {
-    "id": "mem:1787256725744",
+    "id": "mem:1787256725733",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap",
+      "revis",
+      "cruzada"
+    ],
+    "files": [
+      ".specs/project/PROJECT.md"
+    ],
+    "file_path": ".specs/project/PROJECT.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.733016+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-26T16:34:58.072761+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725757",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -465,28 +469,26 @@
       "pend"
     ],
     "files": [
-      ".specs/project/ROADMAP.md"
+      ".specs/codebase/ARCHITECTURE.md"
     ],
-    "file_path": ".specs/project/ROADMAP.md",
+    "file_path": ".specs/codebase/ARCHITECTURE.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.744910+00:00",
+    "created_at": "2026-08-20T20:12:05.757537+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:16:58.303550+00:00",
+    "updated_at": "2026-08-25T16:56:00.658155+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
-      "recent_action_kinds": [
-        "register_edit"
-      ],
+      "recent_action_kinds": [],
       "recent_queries": [],
       "edited": true
     }
   },
   {
-    "id": "mem:1787256725767",
+    "id": "mem:1787256725781",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -502,14 +504,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/codebase/STACK.md"
+      ".specs/codebase/INTEGRATIONS.md"
     ],
-    "file_path": ".specs/codebase/STACK.md",
+    "file_path": ".specs/codebase/INTEGRATIONS.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.767088+00:00",
+    "created_at": "2026-08-20T20:12:05.781208+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.359529+00:00",
+    "updated_at": "2026-08-21T17:40:07.691333+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -521,44 +523,7 @@
     }
   },
   {
-    "id": "mem:1787256725791",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "018",
-      "boneyard"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.791283+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T17:05:28.526394+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [
-        "register_edit"
-      ],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725816",
+    "id": "mem:1787256725804",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -574,14 +539,14 @@
       "pend"
     ],
     "files": [
-      ".specs/features/identificacao-cadastro-cliente/spec.md"
+      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
     ],
-    "file_path": ".specs/features/identificacao-cadastro-cliente/spec.md",
+    "file_path": ".specs/features/autenticacao-sessao-bootstrap/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.816973+00:00",
+    "created_at": "2026-08-20T20:12:05.804897+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T11:16:33.244660+00:00",
+    "updated_at": "2026-08-21T12:57:28.391900+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -593,7 +558,7 @@
     }
   },
   {
-    "id": "mem:1787256725842",
+    "id": "mem:1787256725831",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -609,14 +574,14 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/pagamento/spec.md"
+      ".specs/features/carrinho-produto-precificacao/spec.md"
     ],
-    "file_path": ".specs/features/pagamento/spec.md",
+    "file_path": ".specs/features/carrinho-produto-precificacao/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.842686+00:00",
+    "created_at": "2026-08-20T20:12:05.831415+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.930133+00:00",
+    "updated_at": "2026-08-26T14:04:43.619124+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -628,7 +593,7 @@
     }
   },
   {
-    "id": "mem:1787256725872",
+    "id": "mem:1787256725855",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -644,14 +609,49 @@
       "cruzada"
     ],
     "files": [
-      ".specs/features/importacao-dav/spec.md"
+      ".specs/features/finalizacao-suspensao-venda/spec.md"
     ],
-    "file_path": ".specs/features/importacao-dav/spec.md",
+    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.872471+00:00",
+    "created_at": "2026-08-20T20:12:05.855121+00:00",
     "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T14:18:53.835709+00:00",
+    "updated_at": "2026-08-26T16:56:24.699417+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787256725886",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "reorganiza",
+      "specs",
+      "para",
+      "conformidade",
+      "com",
+      "sdd",
+      "project",
+      "roadmap",
+      "revis",
+      "cruzada"
+    ],
+    "files": [
+      ".specs/features/layout-responsivo-mobile/spec.md"
+    ],
+    "file_path": ".specs/features/layout-responsivo-mobile/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-20T20:12:05.886434+00:00",
+    "created_epoch": 1787256725,
+    "updated_at": "2026-08-26T16:34:58.083668+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -686,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-31T14:06:01.732884+00:00",
+    "updated_at": "2026-08-31T18:30:50.273720+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -735,6 +735,41 @@
     }
   },
   {
+    "id": "mem:1787317048462",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "revis",
+      "cruzada",
+      "toda",
+      "specs",
+      "subagentes",
+      "alinhamento",
+      "rebaixa",
+      "getlistaclientes",
+      "023",
+      "novo"
+    ],
+    "files": [
+      ".specs/features/selecao-vendedor/spec.md"
+    ],
+    "file_path": ".specs/features/selecao-vendedor/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-21T12:57:28.462281+00:00",
+    "created_epoch": 1787317048,
+    "updated_at": "2026-08-25T11:16:33.235748+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
     "id": "mem:1787317048331",
     "kind": "decision",
     "content": "Revis\u00e3o cruzada de toda .specs/ (15 subagentes) + alinhamento: rebaixa GetListaClientes/StatusPIX/ListaNFCEs a pendente, fecha lacuna vendedorCodigo em FaturarNFCe, corrige inventario CarregarNFCe, confirma menu gerencial desktop-only (AD-021)",
@@ -778,41 +813,6 @@
       "window_sec": 120,
       "recent_action_kinds": [],
       "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787317048462",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "revis",
-      "cruzada",
-      "toda",
-      "specs",
-      "subagentes",
-      "alinhamento",
-      "rebaixa",
-      "getlistaclientes",
-      "023",
-      "novo"
-    ],
-    "files": [
-      ".specs/features/selecao-vendedor/spec.md"
-    ],
-    "file_path": ".specs/features/selecao-vendedor/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:57:28.462281+00:00",
-    "created_epoch": 1787317048,
-    "updated_at": "2026-08-25T11:16:33.235748+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
     }
   },
   {
@@ -1174,6 +1174,39 @@
     "evidence": {}
   },
   {
+    "id": "mem:1787744912382",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "074",
+      "escopo",
+      "mobile",
+      "confirma",
+      "funcionalidades",
+      "normais",
+      "cliente",
+      "itens"
+    ],
+    "files": [
+      ".specs/features/pagamento-tef/spec.md"
+    ],
+    "file_path": ".specs/features/pagamento-tef/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T11:48:32.382935+00:00",
+    "created_epoch": 1787744912,
+    "updated_at": "2026-08-26T11:48:32.382949+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
     "id": "mem:1787744912404",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -1198,39 +1231,6 @@
     "created_at": "2026-08-26T11:48:32.404343+00:00",
     "created_epoch": 1787744912,
     "updated_at": "2026-08-26T14:04:43.570880+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787744912382",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "074",
-      "escopo",
-      "mobile",
-      "confirma",
-      "funcionalidades",
-      "normais",
-      "cliente",
-      "itens"
-    ],
-    "files": [
-      ".specs/features/pagamento-tef/spec.md"
-    ],
-    "file_path": ".specs/features/pagamento-tef/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26T11:48:32.382935+00:00",
-    "created_epoch": 1787744912,
-    "updated_at": "2026-08-26T11:48:32.382949+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1374,39 +1374,6 @@
     }
   },
   {
-    "id": "mem:1787764531062",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "instala",
-      "spec",
-      "kit",
-      "real",
-      "uvx",
-      "specify",
-      "init",
-      "here"
-    ],
-    "files": [
-      ".specify/memory/constitution.md"
-    ],
-    "file_path": ".specify/memory/constitution.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26T17:15:31.062697+00:00",
-    "created_epoch": 1787764531,
-    "updated_at": "2026-08-26T17:15:31.062708+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
     "id": "mem:1787764531060",
     "kind": "decision",
     "content": "Instala Spec Kit real (uvx specify init --here) e ratifica constitution v1.0.0",
@@ -1440,7 +1407,73 @@
     }
   },
   {
-    "id": "mem:1787767860251",
+    "id": "mem:1787764531062",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "instala",
+      "spec",
+      "kit",
+      "real",
+      "uvx",
+      "specify",
+      "init",
+      "here"
+    ],
+    "files": [
+      ".specify/memory/constitution.md"
+    ],
+    "file_path": ".specify/memory/constitution.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T17:15:31.062697+00:00",
+    "created_epoch": 1787764531,
+    "updated_at": "2026-08-26T17:15:31.062708+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787767860273",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "gera",
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "001",
+      "auditoria",
+      "acoes"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/quickstart.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/quickstart.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-26T18:11:00.273424+00:00",
+    "created_epoch": 1787767860,
+    "updated_at": "2026-08-26T18:11:00.273500+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787767860234",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1456,14 +1489,14 @@
       "emendas"
     ],
     "files": [
-      "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md"
+      "specs/001-auditoria-acoes-operador/data-model.md"
     ],
-    "file_path": "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md",
+    "file_path": "specs/001-auditoria-acoes-operador/data-model.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-26T18:11:00.251915+00:00",
+    "created_at": "2026-08-26T18:11:00.234760+00:00",
     "created_epoch": 1787767860,
-    "updated_at": "2026-08-31T14:06:01.721908+00:00",
+    "updated_at": "2026-08-31T14:06:01.703695+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1475,7 +1508,7 @@
     }
   },
   {
-    "id": "mem:1787767860217",
+    "id": "mem:1787767860197",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1489,14 +1522,14 @@
       "acoes"
     ],
     "files": [
-      "specs/001-auditoria-acoes-operador/research.md"
+      "specs/001-auditoria-acoes-operador/plan.md"
     ],
-    "file_path": "specs/001-auditoria-acoes-operador/research.md",
+    "file_path": "specs/001-auditoria-acoes-operador/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-26T18:11:00.217456+00:00",
+    "created_at": "2026-08-26T18:11:00.197266+00:00",
     "created_epoch": 1787767860,
-    "updated_at": "2026-08-26T18:11:00.217483+00:00",
+    "updated_at": "2026-08-26T18:11:00.197320+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1544,7 +1577,7 @@
     }
   },
   {
-    "id": "mem:1787767860197",
+    "id": "mem:1787767860217",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1558,14 +1591,14 @@
       "acoes"
     ],
     "files": [
-      "specs/001-auditoria-acoes-operador/plan.md"
+      "specs/001-auditoria-acoes-operador/research.md"
     ],
-    "file_path": "specs/001-auditoria-acoes-operador/plan.md",
+    "file_path": "specs/001-auditoria-acoes-operador/research.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-26T18:11:00.197266+00:00",
+    "created_at": "2026-08-26T18:11:00.217456+00:00",
     "created_epoch": 1787767860,
-    "updated_at": "2026-08-26T18:11:00.197320+00:00",
+    "updated_at": "2026-08-26T18:11:00.217483+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1577,7 +1610,7 @@
     }
   },
   {
-    "id": "mem:1787767860234",
+    "id": "mem:1787767860251",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1593,47 +1626,14 @@
       "emendas"
     ],
     "files": [
-      "specs/001-auditoria-acoes-operador/data-model.md"
+      "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md"
     ],
-    "file_path": "specs/001-auditoria-acoes-operador/data-model.md",
+    "file_path": "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-26T18:11:00.234760+00:00",
+    "created_at": "2026-08-26T18:11:00.251915+00:00",
     "created_epoch": 1787767860,
-    "updated_at": "2026-08-31T14:06:01.703695+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787767860273",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "gera",
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "001",
-      "auditoria",
-      "acoes"
-    ],
-    "files": [
-      "specs/001-auditoria-acoes-operador/quickstart.md"
-    ],
-    "file_path": "specs/001-auditoria-acoes-operador/quickstart.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26T18:11:00.273424+00:00",
-    "created_epoch": 1787767860,
-    "updated_at": "2026-08-26T18:11:00.273500+00:00",
+    "updated_at": "2026-08-31T14:06:01.721908+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1762,40 +1762,7 @@
     "evidence": {}
   },
   {
-    "id": "mem:1787828335577",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      ".specify/feature.json"
-    ],
-    "file_path": ".specify/feature.json",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.577357+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.577368+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335535",
+    "id": "mem:1787828335519",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1811,14 +1778,14 @@
       "corrige"
     ],
     "files": [
-      "specs/009-pagamento-pix/quickstart.md"
+      "specs/009-pagamento-pix/contracts/pix-domain-api.md"
     ],
-    "file_path": "specs/009-pagamento-pix/quickstart.md",
+    "file_path": "specs/009-pagamento-pix/contracts/pix-domain-api.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.535163+00:00",
+    "created_at": "2026-08-27T10:58:55.519269+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.585019+00:00",
+    "updated_at": "2026-08-27T11:20:33.566127+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1830,7 +1797,7 @@
     }
   },
   {
-    "id": "mem:1787828335508",
+    "id": "mem:1787828335497",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1846,14 +1813,14 @@
       "corrige"
     ],
     "files": [
-      "specs/009-pagamento-pix/contracts/erp-pix-api.md"
+      "specs/009-pagamento-pix/data-model.md"
     ],
-    "file_path": "specs/009-pagamento-pix/contracts/erp-pix-api.md",
+    "file_path": "specs/009-pagamento-pix/data-model.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.508710+00:00",
+    "created_at": "2026-08-27T10:58:55.497723+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.556782+00:00",
+    "updated_at": "2026-08-27T11:20:33.547991+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1865,7 +1832,7 @@
     }
   },
   {
-    "id": "mem:1787828335485",
+    "id": "mem:1787828335472",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1881,14 +1848,14 @@
       "corrige"
     ],
     "files": [
-      "specs/009-pagamento-pix/research.md"
+      "specs/009-pagamento-pix/plan.md"
     ],
-    "file_path": "specs/009-pagamento-pix/research.md",
+    "file_path": "specs/009-pagamento-pix/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.485762+00:00",
+    "created_at": "2026-08-27T10:58:55.472699+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.536158+00:00",
+    "updated_at": "2026-08-27T11:20:33.574329+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1942,7 +1909,7 @@
     }
   },
   {
-    "id": "mem:1787828335472",
+    "id": "mem:1787828335485",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1958,14 +1925,14 @@
       "corrige"
     ],
     "files": [
-      "specs/009-pagamento-pix/plan.md"
+      "specs/009-pagamento-pix/research.md"
     ],
-    "file_path": "specs/009-pagamento-pix/plan.md",
+    "file_path": "specs/009-pagamento-pix/research.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.472699+00:00",
+    "created_at": "2026-08-27T10:58:55.485762+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.574329+00:00",
+    "updated_at": "2026-08-27T11:20:33.536158+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1977,7 +1944,7 @@
     }
   },
   {
-    "id": "mem:1787828335497",
+    "id": "mem:1787828335508",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1993,14 +1960,14 @@
       "corrige"
     ],
     "files": [
-      "specs/009-pagamento-pix/data-model.md"
+      "specs/009-pagamento-pix/contracts/erp-pix-api.md"
     ],
-    "file_path": "specs/009-pagamento-pix/data-model.md",
+    "file_path": "specs/009-pagamento-pix/contracts/erp-pix-api.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.497723+00:00",
+    "created_at": "2026-08-27T10:58:55.508710+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.547991+00:00",
+    "updated_at": "2026-08-27T11:20:33.556782+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2012,7 +1979,7 @@
     }
   },
   {
-    "id": "mem:1787828335519",
+    "id": "mem:1787828335535",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -2028,14 +1995,49 @@
       "corrige"
     ],
     "files": [
-      "specs/009-pagamento-pix/contracts/pix-domain-api.md"
+      "specs/009-pagamento-pix/quickstart.md"
     ],
-    "file_path": "specs/009-pagamento-pix/contracts/pix-domain-api.md",
+    "file_path": "specs/009-pagamento-pix/quickstart.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.519269+00:00",
+    "created_at": "2026-08-27T10:58:55.535163+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.566127+00:00",
+    "updated_at": "2026-08-27T11:20:33.585019+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1787828335577",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "design",
+      "speckit",
+      "plan",
+      "feature",
+      "009",
+      "pagamento",
+      "pix",
+      "research",
+      "gerado",
+      "tasks"
+    ],
+    "files": [
+      ".specify/feature.json"
+    ],
+    "file_path": ".specify/feature.json",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-27T10:58:55.577357+00:00",
+    "created_epoch": 1787828335,
+    "updated_at": "2026-08-31T18:20:45.735028+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2085,17 +2087,20 @@
     }
   },
   {
-    "id": "mem:1787830000002",
-    "kind": "next",
-    "content": "Feature 008 (pagamento geral) pronta para /speckit-tasks apos merge do design",
+    "id": "mem:1787830000000",
+    "kind": "decision",
+    "content": "AD-098: desconto de capa rateado igualmente entre itens, com clamp e redistribuicao",
     "tags": [
-      "speckit",
-      "feature-008"
+      "pagamento",
+      "desconto",
+      "rateio",
+      "ad-098"
     ],
     "files": [
-      "specs/008-pagamento-geral/plan.md"
+      "specs/008-pagamento-geral/data-model.md",
+      ".specs/project/STATE.md"
     ],
-    "file_path": "specs/008-pagamento-geral/plan.md",
+    "file_path": "specs/008-pagamento-geral/data-model.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-26",
@@ -2132,20 +2137,17 @@
     "evidence": {}
   },
   {
-    "id": "mem:1787830000000",
-    "kind": "decision",
-    "content": "AD-098: desconto de capa rateado igualmente entre itens, com clamp e redistribuicao",
+    "id": "mem:1787830000002",
+    "kind": "next",
+    "content": "Feature 008 (pagamento geral) pronta para /speckit-tasks apos merge do design",
     "tags": [
-      "pagamento",
-      "desconto",
-      "rateio",
-      "ad-098"
+      "speckit",
+      "feature-008"
     ],
     "files": [
-      "specs/008-pagamento-geral/data-model.md",
-      ".specs/project/STATE.md"
+      "specs/008-pagamento-geral/plan.md"
     ],
-    "file_path": "specs/008-pagamento-geral/data-model.md",
+    "file_path": "specs/008-pagamento-geral/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-26",
@@ -2238,23 +2240,253 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788185161687",
-    "kind": "decision",
-    "content": "Propaga emendas de 014 em 004/001: podeFinalizar, montarRetratoVenda em data-model; evento VENDA_RAPIDA_ACIONADA (013) no catalogo de auditoria",
+    "id": "mem:1788201050235",
+    "kind": "task",
+    "content": "tasks.md da 007 corrigido: 27 -> 31 tarefas (DesktopLayout + 3 testes de cobertura)",
     "tags": [
-      "013",
-      "014",
-      "004",
-      "001",
-      "propagacao",
-      "emenda"
+      "speckit",
+      "007"
     ],
     "files": [
-      "specs/004-finalizacao-suspensao-venda/data-model.md",
-      "specs/001-auditoria-acoes-operador/data-model.md",
-      "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md"
+      "specs/007-layout-responsivo-mobile/tasks.md"
     ],
-    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788201050235",
+    "kind": "decision",
+    "content": "/speckit-analyze na 007: achou I1 CRITICO (DesktopLayout.tsx sem tarefa de criacao), corrigido",
+    "tags": [
+      "speckit",
+      "007",
+      "analyze"
+    ],
+    "files": [
+      "specs/007-layout-responsivo-mobile/tasks.md",
+      ".specs/project/STATE.md"
+    ],
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "task",
+    "content": "tasks.md da feature 007 (layout responsivo) gerado: 27 tarefas, 6 fases, 3 user stories P2/P2/P3",
+    "tags": [
+      "speckit",
+      "007"
+    ],
+    "files": [
+      "specs/007-layout-responsivo-mobile/tasks.md"
+    ],
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "AD-116: obterPlataforma() expoe layout fora de React p/ capacidades() da 008",
+    "tags": [
+      "speckit",
+      "007",
+      "008",
+      "gap-cruzado"
+    ],
+    "files": [
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+      "specs/007-layout-responsivo-mobile/tasks.md"
+    ],
+    "file_path": "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "task",
+    "content": "tasks.md da feature 006 (importa\u00e7\u00e3o de DAV) gerado: 25 tarefas, 5 fases, 2 user stories P1",
+    "tags": [
+      "speckit",
+      "006"
+    ],
+    "files": [
+      "specs/006-importacao-dav/tasks.md"
+    ],
+    "file_path": "specs/006-importacao-dav/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "blocker",
+    "content": "Item 37: build real da KB (AD-115) n\u00e3o confirmado, s\u00f3 Specify; yaml exportado n\u00e3o regenerado",
+    "tags": [
+      "genexus",
+      "kb-change",
+      "pendencia"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "AD-115: GetCliente/PCheckout_GetCliente passam a aceitar CodCliente, via MCP GenExus",
+    "tags": [
+      "speckit",
+      "006",
+      "005",
+      "genexus",
+      "kb-change"
+    ],
+    "files": [
+      "specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md",
+      "specs/005-identificacao-cadastro-cliente/data-model.md",
+      "specs/005-identificacao-cadastro-cliente/tasks.md"
+    ],
+    "file_path": "specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "AD-114: DAV_IMPORTADO vira tipo #20 no cat\u00e1logo de auditoria da 001, achado do tasks da 006",
+    "tags": [
+      "speckit",
+      "006",
+      "001",
+      "auditoria"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/data-model.md",
+      "specs/001-auditoria-acoes-operador/tasks.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "next",
+    "content": "Rodar /speckit-tasks na feature 014",
+    "tags": [
+      "speckit",
+      "014"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/plan.md"
+    ],
+    "file_path": "specs/014-validacao-previa-nfce/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "fact",
+    "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
+    "tags": [
+      "validarnfce",
+      "erp"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md"
+    ],
+    "file_path": "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
+    "tags": [
+      "validacao",
+      "pagamento",
+      "014"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/spec.md",
+      "specs/008-pagamento-geral/spec.md"
+    ],
+    "file_path": "specs/014-validacao-previa-nfce/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-31",
@@ -2267,16 +2499,18 @@
   },
   {
     "id": "mem:1788185161687",
-    "kind": "next",
-    "content": "Rodar /speckit-tasks na feature 014",
+    "kind": "decision",
+    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
     "tags": [
-      "speckit",
+      "validacao",
+      "pagamento",
       "014"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/plan.md"
+      "specs/014-validacao-previa-nfce/spec.md",
+      "specs/008-pagamento-geral/spec.md"
     ],
-    "file_path": "specs/014-validacao-previa-nfce/plan.md",
+    "file_path": "specs/014-validacao-previa-nfce/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-31",
@@ -2311,18 +2545,16 @@
   },
   {
     "id": "mem:1788185161687",
-    "kind": "decision",
-    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
+    "kind": "next",
+    "content": "Rodar /speckit-tasks na feature 014",
     "tags": [
-      "validacao",
-      "pagamento",
+      "speckit",
       "014"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/spec.md",
-      "specs/008-pagamento-geral/spec.md"
+      "specs/014-validacao-previa-nfce/plan.md"
     ],
-    "file_path": "specs/014-validacao-previa-nfce/spec.md",
+    "file_path": "specs/014-validacao-previa-nfce/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-31",
@@ -2332,6 +2564,67 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1788185161687",
+    "kind": "decision",
+    "content": "Propaga emendas de 014 em 004/001: podeFinalizar, montarRetratoVenda em data-model; evento VENDA_RAPIDA_ACIONADA (013) no catalogo de auditoria",
+    "tags": [
+      "013",
+      "014",
+      "004",
+      "001",
+      "propagacao",
+      "emenda"
+    ],
+    "files": [
+      "specs/004-finalizacao-suspensao-venda/data-model.md",
+      "specs/001-auditoria-acoes-operador/data-model.md",
+      "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md"
+    ],
+    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788185161691",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "propaga",
+      "emendas",
+      "013",
+      "014",
+      "004",
+      "001",
+      "podefinalizar",
+      "montarretratovenda"
+    ],
+    "files": [
+      "specs/004-finalizacao-suspensao-venda/data-model.md"
+    ],
+    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T14:06:01.691504+00:00",
+    "created_epoch": 1788185161,
+    "updated_at": "2026-08-31T14:06:01.691517+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
   },
   {
     "id": "mem:1788185161675",
@@ -2369,39 +2662,6 @@
     }
   },
   {
-    "id": "mem:1788185161691",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "propaga",
-      "emendas",
-      "013",
-      "014",
-      "004",
-      "001",
-      "podefinalizar",
-      "montarretratovenda"
-    ],
-    "files": [
-      "specs/004-finalizacao-suspensao-venda/data-model.md"
-    ],
-    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T14:06:01.691504+00:00",
-    "created_epoch": 1788185161,
-    "updated_at": "2026-08-31T14:06:01.691517+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
     "id": "mem:1788200000001",
     "kind": "decision",
     "content": "AD-108: cliente default usa SessaoUsuario.ListaPrecoDefault e nao tem desconto de convenio; fecha item 31",
@@ -2430,69 +2690,144 @@
     "evidence": {}
   },
   {
-    "type": "decision",
-    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
+    "id": "mem:1788200445704",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
     "tags": [
-      "validacao",
-      "pagamento",
-      "014"
+      "gerado",
+      "tasks",
+      "feature",
+      "007",
+      "layout",
+      "responsivo",
+      "tarefas",
+      "achado",
+      "aplicados",
+      "achados"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/spec.md",
-      "specs/008-pagamento-geral/spec.md"
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md"
     ],
-    "date": "2026-08-31"
+    "file_path": "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T18:20:45.704186+00:00",
+    "created_epoch": 1788200445,
+    "updated_at": "2026-08-31T18:30:50.250190+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
   },
   {
-    "type": "fact",
-    "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
+    "id": "mem:1788200445667",
+    "kind": "decision",
+    "content": "Gerado tasks.md da feature 007 (layout responsivo, 27 tarefas); achado AD-116 (obterPlataforma para capacidades() da 008) registrado em STATE.md e no contrato da 007",
     "tags": [
-      "validarnfce",
-      "erp"
+      "gerado",
+      "tasks",
+      "feature",
+      "007",
+      "layout",
+      "responsivo",
+      "tarefas",
+      "achado"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md"
+      "specs/007-layout-responsivo-mobile/tasks.md",
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+      ".specs/project/STATE.md",
+      ".specify/feature.json",
+      ".dual-graph/context-store.json"
     ],
-    "date": "2026-08-31"
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T18:20:45.667400+00:00",
+    "created_epoch": 1788200445,
+    "updated_at": "2026-08-31T18:20:45.667411+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
   },
   {
-    "type": "next",
-    "content": "Rodar /speckit-tasks na feature 014",
+    "id": "mem:1788200445685",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
     "tags": [
+      "gerado",
+      "tasks",
+      "feature",
+      "007",
+      "layout",
+      "responsivo",
+      "tarefas",
+      "achado",
+      "aplicados",
+      "achados"
+    ],
+    "files": [
+      "specs/007-layout-responsivo-mobile/tasks.md"
+    ],
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T18:20:45.685569+00:00",
+    "created_epoch": 1788200445,
+    "updated_at": "2026-08-31T18:30:50.237932+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788201050214",
+    "kind": "decision",
+    "content": "Aplicados 6 achados do /speckit-analyze na feature 007: T008 (DesktopLayout.tsx, achado critico I1), T019/T027/T028 (cobertura FR-008/009/010/SC-001), correcoes de documentacao no contrato e no tasks.md",
+    "tags": [
+      "aplicados",
+      "achados",
       "speckit",
-      "014"
+      "analyze",
+      "feature",
+      "007",
+      "t008",
+      "desktoplayout"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/plan.md"
+      "specs/007-layout-responsivo-mobile/tasks.md",
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+      ".specs/project/STATE.md",
+      ".dual-graph/context-store.json"
     ],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "decision",
-    "content": "AD-114: DAV_IMPORTADO vira tipo #20 no catálogo de auditoria da 001, achado do tasks da 006",
-    "tags": ["speckit", "006", "001", "auditoria"],
-    "files": ["specs/001-auditoria-acoes-operador/data-model.md", "specs/001-auditoria-acoes-operador/tasks.md"],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "decision",
-    "content": "AD-115: GetCliente/PCheckout_GetCliente passam a aceitar CodCliente, via MCP GenExus",
-    "tags": ["speckit", "006", "005", "genexus", "kb-change"],
-    "files": ["specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md", "specs/005-identificacao-cadastro-cliente/data-model.md", "specs/005-identificacao-cadastro-cliente/tasks.md"],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "blocker",
-    "content": "Item 37: build real da KB (AD-115) não confirmado, só Specify; yaml exportado não regenerado",
-    "tags": ["genexus", "kb-change", "pendencia"],
-    "files": [".specs/project/PENDENCIES.md"],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "task",
-    "content": "tasks.md da feature 006 (importação de DAV) gerado: 25 tarefas, 5 fases, 2 user stories P1",
-    "tags": ["speckit", "006"],
-    "files": ["specs/006-importacao-dav/tasks.md"],
-    "date": "2026-08-31"
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T18:30:50.214682+00:00",
+    "created_epoch": 1788201050,
+    "updated_at": "2026-08-31T18:30:50.214699+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
   }
 ]
