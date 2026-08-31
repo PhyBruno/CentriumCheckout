@@ -2,18 +2,17 @@
 
 Regras de fluxo de trabalho (git) e gates obrigatórios deste repositório. Convenções de código (lint, estilo, testes) continuam pendentes até o scaffolding existir — ver `CLAUDE.md` e `.specs/project/ROADMAP.md`.
 
-## Git: branch/worktree por alteração, nunca commitar direto em `master`
+## Git: branch por alteração, nunca commitar direto em `master`
 
 - **Toda alteração** (feature, fix, doc, chore) deve acontecer em uma branch dedicada, nunca commitada diretamente em `master`. Nomeie a branch pela natureza da mudança (ex.: `docs/ad-025-tooling`, `feat/carrinho-precificacao`).
-- Para isolar trabalho em paralelo (ex.: uma feature enquanto outra está em revisão), use `git worktree` em vez de trocar de branch no mesmo diretório de trabalho — evita perder estado não commitado. Ver skill `superpowers:using-git-worktrees`.
+- Trabalho em paralelo (ex.: uma feature enquanto outra está em revisão) também usa branch simples no mesmo diretório de trabalho — **não** usar `git worktree`. Decisão do usuário em 2026-08-31, substitui a orientação anterior de worktree por tarefa.
 - Merge em `master` só via PR revisado — **não** via push direto, mesmo por conveniência.
 - **Atenção:** hoje (2026-08-21) a branch `master` não tem proteção configurada no GitHub (confirmado via `gh api .../branches/master/protection` → `404 Branch not protected`). Ou seja, nada tecnicamente impede um push direto — esta regra depende de disciplina até que a proteção seja habilitada nas configurações do repositório no GitHub.
 - Mensagens de commit seguem o padrão já usado no histórico: `<tipo>: <descrição>` (`docs:`, `chore:`, `feat:`, `fix:`), referenciando o AD-NNN relevante quando a mudança decorre de uma decisão registrada em `.specs/project/STATE.md`.
 
-## Início de trabalho: verificar/criar branch e worktree
+## Início de trabalho: verificar/criar branch
 
-- Antes de tocar em qualquer arquivo para uma tarefa nova, verificar a branch/worktree atual (`git status`, `git worktree list`). Se o diretório de trabalho estiver em `master` (ou numa branch de outra tarefa), criar uma branch e um **worktree dedicado** para a tarefa (`git worktree add ../CentriumCheckout-<nome-da-tarefa> -b <tipo>/<nome-da-tarefa>`) antes de editar.
-- Exceção: trabalho que já está em andamento no diretório principal (ex.: continuação de uma tarefa iniciada antes desta regra existir) pode ser fechado com uma branch simples (`git checkout -b`) no próprio diretório, sem precisar migrar para worktree — a regra de worktree vale para o **início** de tarefas novas, não para reorganizar trabalho já em progresso.
+- Antes de tocar em qualquer arquivo para uma tarefa nova, verificar a branch atual (`git status`). Se o diretório de trabalho estiver em `master` (ou numa branch de outra tarefa), criar e trocar para uma branch dedicada no próprio diretório de trabalho (`git checkout -b <tipo>/<nome-da-tarefa>`) antes de editar.
 
 ## Fim de tarefa: commit + push obrigatórios
 
