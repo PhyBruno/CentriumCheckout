@@ -17,7 +17,7 @@ interface ClienteState {
 
 ```ts
 function inicializarClientePadrao(sessaoUsuario: SessaoUsuario): void;
-function selecionarCliente(cliente: ClienteCheckout, origem: 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE'): void;
+function selecionarCliente(cliente: ClienteCheckout, origem: 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'DAV'): void; // 'DAV' acrescentado em 2026-08-31 (AD-115), consumido pela orquestração de importação da feature 006
 function cadastrarESelecionarCliente(dados: CadastroSimplificadoInput): Promise<void>;
 ```
 

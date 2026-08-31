@@ -119,6 +119,8 @@ tests/unit/domain/cliente/ | tests/unit/services/cliente/ | tests/integration/ |
 
 - [ ] T026 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
 - [ ] T027 Rodar as 3 camadas de `quickstart.md` (domínio puro, integração, E2E) e confirmar: nenhum fallback inventado para `descontoConvenio`/`listaPreco` (`research.md` D10); ausência visual do chip de filtro "Ativo" no modal de busca (AD-093); F5 no meio da venda descarta o cliente selecionado (Constitution VI)
+- [ ] T028 [P] Implementar `fetchClientePorCodigo(codigo: number)` em `clienteQueries.ts` (T005): `GET /api/erp/GetCliente` usando o parâmetro `CodCliente` (novo, AD-115), valida a resposta via T002 — mesma natureza imperativa de `fetchClientePorDocumento`, sem uso próprio nesta feature; consumida pela orquestração de importação da feature 006 (`specs/006-importacao-dav/contracts/importacao-domain-api.md`) — depende de T002, T005
+- [ ] T029 Estender `OrigemCliente` (`data-model.md` §1) com o valor `'DAV'` e a assinatura de `selecionarCliente` em `clienteSlice.ts` (T014) para aceitá-lo — extensão puramente aditiva (AD-115): `houveEscolhaExplicita`/decisão `CLIENTE_SELECIONADO` vs. `CLIENTE_TROCADO` (D9) não muda para essa origem — depende de T014
 
 ---
 

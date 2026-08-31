@@ -10,7 +10,9 @@
 
 Dúvidas operacionais reais — não são ambiguidade de produto, dependem de resposta da equipe do ERP (ou, em alguns casos, de nova inspeção do KB GenExus).
 
-_Nenhum item nesta categoria no momento — o **item 36 foi fechado em 2026-08-31** (AD-109/AD-111), ver Notas._
+| # | Item | Onde mora | Nota |
+|---|---|---|---|
+| 37 | `PCheckout_GetCliente`/rota `GetCliente` alterados na KB (`CodCliente` novo, AD-115) via MCP GenExus, mas sem build/compilação completa confirmada (só *Specify*, `0 errors/0 warnings`) e sem `Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml` regenerado | `.specs/project/STATE.md` (AD-115) | Aberto em 2026-08-31 — verificar build real da KB antes de considerar a mudança pronta para produção; regenerar o yaml exportado para refletir `CodCliente` |
 
 ### Histórico do item 36 (fechado em 2026-08-31)
 

@@ -17,7 +17,7 @@ description: "Task list template for feature implementation"
 
 ## Escopo desta feature (importante)
 
-Este plano é dono apenas do **slice de auditoria**, da **união de tipos de evento** e da **serialização para o campo `Log`** (ver `plan.md`, "Structure Decision"). Os pontos de disparo (`registrarEventoAuditoria(...)`) dentro das features de negócio consumidoras — 003 (carrinho), 004 (finalização/suspensão), 005 (cliente), 008 (pagamento), 012 (vendedor) — **não são tarefas deste `tasks.md`**; são implementados pelos planos dessas features, referenciando o contrato em `contracts/auditoria-events.md`. Por isso os "Independent Test" abaixo são testes unitários do módulo em si, não os cenários ponta a ponta de `quickstart.md` (que só podem ser validados depois que as features consumidoras existirem).
+Este plano é dono apenas do **slice de auditoria**, da **união de tipos de evento** e da **serialização para o campo `Log`** (ver `plan.md`, "Structure Decision"). Os pontos de disparo (`registrarEventoAuditoria(...)`) dentro das features de negócio consumidoras — 003 (carrinho), 004 (finalização/suspensão), 005 (cliente), 006 (importação de DAV), 008 (pagamento), 012 (vendedor) — **não são tarefas deste `tasks.md`**; são implementados pelos planos dessas features, referenciando o contrato em `contracts/auditoria-events.md`. A única exceção é a própria **factory function** de cada tipo de evento (`eventos.ts`), que fica nesta feature mesmo quando o tipo é descoberto depois do fechamento inicial do catálogo — ver T018–T021, inseridas retroativamente pelas features 014 e 006. Por isso os "Independent Test" abaixo são testes unitários do módulo em si, não os cenários ponta a ponta de `quickstart.md` (que só podem ser validados depois que as features consumidoras existirem).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -64,9 +64,9 @@ Conforme `plan.md`, "Project Structure":
 
 ## Phase 3: User Story 1 - Registrar evento a cada ação relevante da venda (Priority: P1) 🎯 MVP
 
-**Goal**: Dispatcher tipado + as 14 factory functions de eventos de ação (cliente, vendedor, produto, pagamento, validação prévia) que as features de negócio (003, 005, 008, 012, 014) vão consumir via `registrarEventoAuditoria`.
+**Goal**: Dispatcher tipado + as 15 factory functions de eventos de ação (cliente, vendedor, produto, pagamento, validação prévia, importação de DAV) que as features de negócio (003, 005, 006, 008, 012, 014) vão consumir via `registrarEventoAuditoria`.
 
-**Independent Test**: Para cada tipo de evento de ação, chamar a factory correspondente e `registrarEventoAuditoria`, e verificar no array do slice o `tipo`, o shape de `detalhes` e o `timestamp` ISO 8601 estritamente crescente — testável sem depender das features consumidoras (003/005/008/012/014) ainda não implementadas.
+**Independent Test**: Para cada tipo de evento de ação, chamar a factory correspondente e `registrarEventoAuditoria`, e verificar no array do slice o `tipo`, o shape de `detalhes` e o `timestamp` ISO 8601 estritamente crescente — testável sem depender das features consumidoras (003/005/006/008/012/014) ainda não implementadas.
 
 ### Implementation for User Story 1
 
@@ -76,8 +76,10 @@ Conforme `plan.md`, "Project Structure":
 - [ ] T009 [US1] Teste unitário dos 13 tipos de evento de ação (shape de `detalhes` por tipo, `timestamp` ISO 8601, push via `registrarEventoAuditoria`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T008 e T005, mesmo arquivo)
 - [ ] T018 [US1] Implementar factory de `VALIDACAO_VENDA_RECUSADA` em `eventos.ts`: `{ origem: 'MANUAL' | 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` (FR-010, evento distinto de `PAGAMENTO_RECUSADO`) em `src/client/domain/auditoria/eventos.ts` (depende de T008, mesmo arquivo)
 - [ ] T019 [US1] Teste unitário de `VALIDACAO_VENDA_RECUSADA` (shape de `detalhes`, `timestamp` ISO 8601, distinção de `PAGAMENTO_RECUSADO`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T018 e T009, mesmo arquivo)
+- [ ] T020 [US1] Implementar factory de `DAV_IMPORTADO` em `eventos.ts`: `{ numeroDav: string, numeroNota: number, quantidadeLinhas: number, quantidadeFormasDePagamento: number }` (AD-114, achado de `/speckit-tasks` da feature 006) em `src/client/domain/auditoria/eventos.ts` (depende de T008, mesmo arquivo)
+- [ ] T021 [US1] Teste unitário de `DAV_IMPORTADO` (shape de `detalhes`, `timestamp` ISO 8601) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T020 e T019, mesmo arquivo)
 
-**Checkpoint**: User Story 1 completa e testável de forma independente — todos os 14 tipos de evento de ação disponíveis para as features consumidoras.
+**Checkpoint**: User Story 1 completa e testável de forma independente — todos os 15 tipos de evento de ação disponíveis para as features consumidoras.
 
 ---
 
@@ -127,8 +129,8 @@ Conforme `plan.md`, "Project Structure":
 ### Dentro de cada User Story
 
 - Factories antes dos testes que as cobrem
-- `eventos.ts` é editado sequencialmente entre T002 → T006 → T007 → T008 → T018 → T010 (mesmo arquivo, sem paralelismo entre essas tarefas)
-- `eventos.spec.ts` é editado sequencialmente entre T005 → T009 → T019 → T013 (mesmo arquivo)
+- `eventos.ts` é editado sequencialmente entre T002 → T006 → T007 → T008 → T018 → T020 → T010 (mesmo arquivo, sem paralelismo entre essas tarefas)
+- `eventos.spec.ts` é editado sequencialmente entre T005 → T009 → T019 → T021 → T013 (mesmo arquivo)
 - `serializarLog.ts`/`serializarLog.spec.ts` são arquivos próprios, paralelizáveis entre si e com o restante de US2
 
 ### Parallel Opportunities
@@ -163,8 +165,8 @@ Task: "Implementar serializarLogAuditoria() em src/client/domain/auditoria/seria
 1. Completar Fase 1: Setup
 2. Completar Fase 2: Foundational (CRITICAL — bloqueia as duas stories)
 3. Completar Fase 3: User Story 1
-4. **PARAR e VALIDAR**: rodar `eventos.spec.ts` e confirmar os 15 tipos de evento (1 foundational + 14 de ação) cobertos
-5. Nesse ponto, as features 005/008/012/014 já podem começar a integrar seus call sites de `registrarEventoAuditoria`, mesmo antes de US2 estar pronta
+4. **PARAR e VALIDAR**: rodar `eventos.spec.ts` e confirmar os 16 tipos de evento (1 foundational + 15 de ação) cobertos
+5. Nesse ponto, as features 005/006/008/012/014 já podem começar a integrar seus call sites de `registrarEventoAuditoria`, mesmo antes de US2 estar pronta
 
 ### Incremental Delivery
 
@@ -175,7 +177,7 @@ Task: "Implementar serializarLogAuditoria() em src/client/domain/auditoria/seria
 
 ### Nota sobre integração com outras features
 
-Este `tasks.md` fecha no módulo de domínio + slice. A validação ponta a ponta (Cenários 1–4 de `quickstart.md`) só é possível depois que as features 003, 004, 005, 008, 012 e 014 tiverem implementado seus próprios call sites de `registrarEventoAuditoria`, referenciando `contracts/auditoria-events.md` — acompanhar via T017.
+Este `tasks.md` fecha no módulo de domínio + slice. A validação ponta a ponta (Cenários 1–4 de `quickstart.md`) só é possível depois que as features 003, 004, 005, 006, 008, 012 e 014 tiverem implementado seus próprios call sites de `registrarEventoAuditoria`, referenciando `contracts/auditoria-events.md` — acompanhar via T017.
 
 ---
 
