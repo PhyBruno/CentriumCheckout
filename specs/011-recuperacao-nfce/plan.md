@@ -16,7 +16,7 @@ O maior achado desta fase (`research.md` D5) foi que uma linha congelada só pod
 
 **Language/Version**: TypeScript `strict`, React 19 + Vite — feature inteiramente client-side. O BFF (feature 002) participa só como proxy autenticado em `/api/erp/GetListaNFCes`/`/api/erp/CarregarNFCe`/`/api/erp/GetCliente`; nenhuma rota nova de servidor.
 
-**Primary Dependencies**: TanStack Query (`useListaRascunhos`, paginado/com busca — mesmo padrão de `GetListaClientes`/`GetListaVendedores`); Zod (validação de `GetListaNFCesOutput` e do schema já existente de `CheckoutFaturarNFCeOutput`, reaproveitado de `CarregarNFCeOutput`, D3); Zustand + Immer (`identidadeVenda`, `carrinho`, `pagamentos`, `cliente`, `auditoria` — todos slices **já existentes**, esta feature só escreve neles); shadcn/ui + Boneyard (modal, skeleton da listagem) + Goey Toast (erro de rascunho não encontrado). **Nenhum slice novo no Zustand** — diferente de 008/009, esta feature não introduz estado próprio além do estado efêmero de UI do modal (`data-model.md` §2).
+**Primary Dependencies**: TanStack Query (`useListaRascunhos`, paginado/com busca — mesmo padrão de `GetListaClientes`/`GetListaVendedores`); Zod (validação de `GetListaNFCesOutput` e do schema Zod do shape completo `CheckoutFaturarNFCe` já planejado pela feature 006 — `dav.schema.ts`, não o schema menor de `FaturarNFCeOutput`/`NotaFiscal` da feature 004 —, reaproveitado sem alteração para `CarregarNFCeOutput`, D3 corrigido/AD-117); Zustand + Immer (`identidadeVenda`, `carrinho`, `pagamentos`, `cliente`, `auditoria` — todos slices **já existentes**, esta feature só escreve neles); shadcn/ui + Boneyard (modal, skeleton da listagem) + Goey Toast (erro de rascunho não encontrado). **Nenhum slice novo no Zustand** — diferente de 008/009, esta feature não introduz estado próprio além do estado efêmero de UI do modal (`data-model.md` §2).
 
 **Storage**: N/A — nada desta feature sobrevive além da sessão de venda em memória (Constitution VI). A listagem de rascunhos não é cacheada com `staleTime` longo (reflete estado mutável de outros operadores).
 
@@ -88,7 +88,7 @@ src/
 │               └── ModalRecuperacaoNFCe.tsx       # FR-001..FR-009, frame Pencil "Modal Recuperação NFCe"
 └── shared/
     └── schemas/
-        └── recuperacaoNFCe.schema.ts              # Zod: GetListaNFCesOutput (CarregarNFCeOutput reaproveita o schema já existente de FaturarNFCeOutput)
+        └── recuperacaoNFCe.schema.ts              # Zod: GetListaNFCesOutput (CarregarNFCeOutput reaproveita o schema Zod do shape completo CheckoutFaturarNFCe já planejado pela feature 006, dav.schema.ts — não o schema menor de FaturarNFCeOutput/NotaFiscal da feature 004; correção AD-117, achado do /speckit-analyze de 2026-08-31)
 
 tests/
 ├── unit/
