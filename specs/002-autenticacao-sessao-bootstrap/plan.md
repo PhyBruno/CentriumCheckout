@@ -14,7 +14,7 @@ Um BFF mínimo (Node/Fastify, sem lógica de negócio, sem banco de dados — AD
 
 **Language/Version**: TypeScript `strict` em todo o código (frontend e BFF) — Node.js (versão LTS a fixar no `package.json`, imagem `node:<version>-slim`) para o BFF; React 19 + Vite para o frontend.
 
-**Primary Dependencies**: Fastify (BFF, AD-071); Zod (validação de fronteira — payload de bootstrap, resposta do `/oauth/access_token`); React + Vite, Zustand + Immer (estado de UI efêmero desta feature — sem estado de venda envolvido), TanStack Query (não usado diretamente nesta feature — bootstrap vai para Dexie, não para cache de query), Dexie.js (persistência do payload de bootstrap), Boneyard (skeleton da tela de carregamento bloqueante, AD-005/AD-007).
+**Primary Dependencies**: Fastify (BFF, AD-071); Zod (validação de fronteira — payload de bootstrap, resposta do `/oauth/access_token`); React + Vite, Zustand + Immer (estado de UI efêmero desta feature, sem `persist` próprio; **Correção (2026-08-31, achado I1 do `/speckit-analyze`): US3 lê — nunca modifica — o carrinho da venda em andamento em `vendaStore.ts`, store combinado criado pela feature 001 e estendido pela feature 003, só para decidir se avisa o operador antes de encerrar a sessão, FR-006/AUTH-06. Essa é uma dependência cruzada de leitura, não um estado de venda próprio desta feature**), TanStack Query (não usado diretamente nesta feature — bootstrap vai para Dexie, não para cache de query), Dexie.js (persistência do payload de bootstrap), Boneyard (skeleton da tela de carregamento bloqueante, AD-005/AD-007).
 
 **Storage**: Dexie (IndexedDB) para o payload de bootstrap normalizado, chaveado por `tenant`, com hash/versão calculado localmente para evitar re-fetch. Nenhum banco de dados do lado do servidor — a sessão inteira vive cifrada dentro do cookie `HttpOnly` (sem Redis/disco/DB no BFF).
 
@@ -26,7 +26,7 @@ Um BFF mínimo (Node/Fastify, sem lógica de negócio, sem banco de dados — AD
 
 **Performance Goals**: Bootstrap (~5MB) parseado/validado em Web Worker para não bloquear a thread principal; tela de venda só é liberada após o Dexie confirmar a gravação (sem meta de latência numérica definida na spec — o requisito é "completo antes de liberar", não um SLA de tempo).
 
-**Constraints**: Nenhuma credencial sensível (`client_secret`, `password`, `access_token`) pode ser acessível a JavaScript no navegador em nenhum momento (FR-002/SC-004); renovação de sessão nunca pode interromper uma venda em digitação (FR-005/SC-003); cache do Dexie deve isolar tenants diferentes que compartilhem o mesmo navegador/máquina (FR-009).
+**Constraints**: Nenhuma credencial sensível (`client_secret`, `password`, `access_token`) pode ser acessível a JavaScript no navegador em nenhum momento (FR-002/SC-004); renovação de sessão nunca pode interromper uma venda em digitação (FR-005/SC-003); cache do Dexie deve isolar tenants diferentes que compartilhem o mesmo navegador/máquina (FR-009); a decisão de avisar o operador antes de encerrar a sessão (FR-006) depende de ler o carrinho de `vendaStore.ts` (feature 001, estendido pela 003) — dependência cruzada de leitura, não implementada por esta feature (ver Primary Dependencies acima).
 
 **Scale/Scope**: 3 rotas expostas pelo BFF (`GET /session/start`, `GET /api/bootstrap`, `/api/erp/*` proxy) + 1 fluxo de renovação silenciosa + 1 tela de carregamento bloqueante (skeleton). Escopo desta feature não inclui as telas de negócio que consomem `/api/erp/*` (carrinho, pagamento, etc. — features separadas).
 
@@ -67,12 +67,17 @@ src/
 ├── client/                  # SPA React (build via Vite)
 │   ├── features/
 │   │   └── session-bootstrap/
-│   │       ├── LoadingSkeleton.tsx   # tela de carregamento bloqueante (Boneyard, AUTH-05)
-│   │       └── ErrorRetry.tsx        # tela de erro não-401 com "Tentar novamente" (AUTH-07)
+│   │       ├── LoadingSkeleton.tsx        # tela de carregamento bloqueante (Boneyard, AUTH-05)
+│   │       ├── ErrorRetry.tsx             # tela de erro não-401 com "Tentar novamente" (AUTH-07)
+│   │       └── SessionExpiredWarning.tsx  # aviso de venda perdida antes de encerrar sessão (AD-044/AUTH-06)
 │   ├── stores/
 │   │   └── sessionStore.ts           # estado efêmero de bootstrap (loading/error/ready), Zustand sem persist
+│   ├── db/
+│   │   └── bootstrapDb.ts            # schema Dexie do bootstrap, chaveado por tenant (FR-008/FR-009)
 │   └── services/
-│       └── bootstrapClient.ts        # chama GET /api/bootstrap, valida com Zod, grava no Dexie
+│       ├── bootstrapClient.ts        # chama GET /api/bootstrap, delega ao worker, decide reuso do Dexie
+│       ├── bootstrapWorker.ts        # Web Worker: parse/validação Zod do payload (~5MB) fora da thread principal
+│       └── erpClient.ts              # wrapper de fetch para /api/erp/*; trata 401 terminal (FR-006)
 ├── server/                   # BFF (Fastify) — só sessão/autenticação, sem lógica de negócio (AD-022)
 │   ├── routes/
 │   │   ├── session-start.ts          # GET /session/start
@@ -80,21 +85,25 @@ src/
 │   │   └── erp-proxy.ts              # /api/erp/* (proxy + renovação silenciosa)
 │   ├── session/
 │   │   ├── cookie.ts                 # cifra/decifra cookie HttpOnly (SESSION_SECRET)
-│   │   └── tokenExchange.ts          # POST /oauth/access_token (obtenção e renovação)
+│   │   └── tokenExchange.ts          # POST /oauth/access_token (obtenção e renovação; valida a resposta com token-response.schema.ts)
 │   └── config/
 │       └── env.ts                    # baseDomain, validationKey, SESSION_SECRET (variáveis Docker)
 └── shared/
     └── schemas/
-        └── bootstrap.schema.ts       # schema Zod do payload de GetSessao/bootstrap
+        ├── bootstrap.schema.ts       # schema Zod do payload de GetSessao/bootstrap
+        └── token-response.schema.ts  # schema Zod da resposta de POST /oauth/access_token — Correção (2026-08-31, achado C1 do /speckit-analyze): fecha a lacuna de validação de fronteira exigida pela Constitution IV para toda resposta externa do ERP, inclusive a de troca/renovação de token
 
 tests/
 ├── unit/
-│   └── server/session/               # cifra/decifra cookie, montagem de host por tenant
+│   ├── server/session/               # cifra/decifra cookie, montagem de host por tenant, renovação de token
+│   └── shared/                       # validação dos schemas Zod (bootstrap, token-response)
 ├── integration/
 │   └── bootstrap-cache.spec.ts       # reuso de cache Dexie por hash/versão, isolamento por tenant
 └── e2e/
     └── auth-bootstrap.spec.ts        # fluxo completo: redirect ERP → cookie → skeleton → tela liberada
 ```
+
+**Correção (2026-08-31, achado I2 do `/speckit-analyze`):** a árvore acima foi sincronizada com os arquivos reais de `tasks.md` (`bootstrapDb.ts`, `bootstrapWorker.ts`, `erpClient.ts`, `SessionExpiredWarning.tsx`, `token-response.schema.ts`, `tests/unit/shared/`) — a versão anterior desta seção listava só um subconjunto, gerado antes de `/speckit-tasks` detalhar a implementação.
 
 **Structure Decision**: Não se aplica nenhuma das três opções padrão do template (não é single-project nem "frontend/backend como dois projetos deployados separadamente", nem mobile+API). A arquitetura já decidida em `.specs/codebase/ARCHITECTURE.md`/`STACK.md` é um **único processo Node (BFF Fastify)** servindo tanto a API de sessão/proxy quanto os assets estáticos compilados da SPA, dentro do mesmo container Docker — por isso `src/client/` e `src/server/` convivem no mesmo repositório/processo em vez de dois projetos separados. Esta é a primeira feature a propor a árvore de diretórios inicial do projeto (`.specs/project/ROADMAP.md` registra que `STRUCTURE.md` só será gerado formalmente depois que o scaffolding existir); a estrutura acima cobre só os módulos desta feature — as demais features (carrinho, pagamento etc.) adicionam seus próprios diretórios sob `src/client/features/` sem alterar esta decisão de organização.
 
