@@ -15,8 +15,8 @@ export interface ClienteVenda {
   readonly codigoCliente: number;          // ClienteCheckout.CodCliente / SessaoUsuario.ClienteDefaultCodigo
   readonly nome: string;
   readonly documento: string | null;       // CPF/CNPJ — null só para origem 'DEFAULT' (GetSessao não devolve documento, ver D3)
-  readonly listaPreco: number | null;       // ClienteCheckout.ListaPreco — null quando indisponível (AD-094)
-  readonly descontoConvenio: number | null; // ClienteCheckout.DescontoConvenio — percentual 0-100, null quando ausente ou indisponível (AD-094)
+  readonly listaPreco: number | null;       // lista de preço do cliente — ClienteCheckout.ListaPreco, ou SessaoUsuario.ListaPrecoDefault quando origem = 'DEFAULT' (AD-108)
+  readonly descontoConvenio: number | null; // ClienteCheckout.DescontoConvenio — percentual 0-100; sempre 0 para origem = 'DEFAULT' (cliente default não tem convênio, AD-108)
   readonly codigoConvenio: number | null;   // ClienteCheckout.CodigoConvenio
   readonly origem: OrigemCliente;
 }
@@ -24,13 +24,13 @@ export interface ClienteVenda {
 export type OrigemCliente = 'DEFAULT' | 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'CADASTRO_SIMPLIFICADO';
 ```
 
-**Invariante**: `listaPreco`/`descontoConvenio` nunca recebem um valor de fallback inventado (`0`, `1`) — `null` é o único jeito de representar "indisponível" (`research.md`, D10). A feature 003, ao consumir este snapshot, MUST tratar `null` como ausência de dado, nunca como "sem desconto"/"lista padrão".
+**Invariante**: `listaPreco`/`descontoConvenio` nunca recebem um valor de fallback inventado (`0`, `1`) — `null` significa "o cadastro deste cliente não define o campo" e, hoje, só ocorre em `CADASTRO_SIMPLIFICADO` (`research.md`, D10). Para `origem = 'DEFAULT'` os dois campos carregam **valores reais**, não `null`: a lista vem de `SessaoUsuario.ListaPrecoDefault` e o convênio é `0` por regra de negócio (AD-108). A feature 003, ao consumir este snapshot, MUST tratar `null` como ausência de dado, nunca como "sem desconto"/"lista padrão".
 
 **Nota de origem por campo**:
 
 | Origem | `documento` | `listaPreco` | `descontoConvenio` |
 |---|---|---|---|
-| `DEFAULT` (pré-seleção automática, AD-032) | sempre `null` | sempre `null` (AD-094) | sempre `null` (AD-094) |
+| `DEFAULT` (pré-seleção automática, AD-032) | sempre `null` | `SessaoUsuario.ListaPrecoDefault` (AD-108) | sempre `0` — cliente default não tem convênio (AD-108) |
 | `BUSCA_DOCUMENTO` (`GetCliente` direto) | preenchido | preenchido se o cliente tiver | preenchido se o cliente tiver convênio |
 | `BUSCA_LIVRE` (seleção na lista → `GetCliente`, D1) | preenchido | preenchido se o cliente tiver | preenchido se o cliente tiver convênio |
 | `CADASTRO_SIMPLIFICADO` (`PostCliente`) | preenchido (o CPF informado no formulário) | `null` — cliente novo, sem lista de preço nem convênio configurados | `null` |

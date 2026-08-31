@@ -41,7 +41,7 @@ npm test -- tests/integration/clienteSlice.spec.ts
 
 | Cenário | Como montar | Esperado | Requisito |
 |---|---|---|---|
-| Pré-seleção do default | `inicializarClientePadrao({ ClienteDefaultCodigo: 42, ClienteDefaultNome: 'Fulano' })` | `clienteAtual = { codigoCliente: 42, nome: 'Fulano', documento: null, listaPreco: null, descontoConvenio: null, origem: 'DEFAULT' }`; **nenhum** evento de auditoria disparado | `FR-004`, AD-032, AD-094 |
+| Pré-seleção do default | `inicializarClientePadrao({ ClienteDefaultCodigo: 42, ClienteDefaultNome: 'Fulano', ListaPrecoDefault: 3 })` | `clienteAtual = { codigoCliente: 42, nome: 'Fulano', documento: null, listaPreco: 3, descontoConvenio: 0, origem: 'DEFAULT' }`; **nenhum** evento de auditoria disparado; **nenhuma** chamada a `GetCliente` | `FR-004`, AD-032, AD-108 |
 | Default vazio | `inicializarClientePadrao({ ClienteDefaultCodigo: null })` | `clienteAtual === null` | `FR-005`, `CLI-06` |
 | Primeira seleção explícita | `selecionarCliente(clienteX, 'BUSCA_DOCUMENTO')` numa venda nova | evento `CLIENTE_SELECIONADO` com `{ codigoCliente, nome }` de `clienteX` | `research.md` D9 |
 | Troca subsequente | selecionar `clienteX`, depois `selecionarCliente(clienteY, 'BUSCA_LIVRE')` | evento `CLIENTE_TROCADO` com `{ codigoClienteAnterior: X, codigoClienteNovo: Y }` | `research.md` D9 |
@@ -91,6 +91,6 @@ Percurso, contra o ambiente de dev do ERP:
 | Achado | Resolução | Onde está |
 |---|---|---|
 | `GetListaClientes`/`GetCliente` sem campo/parâmetro de status | **AD-093** — filtro "Ativo" removido do modal de cliente, decisão de produto, nada bloqueado | `research.md`, achados desta fase |
-| `GetCliente` só busca por documento, sem forma de completar dados do cliente default por código | **AD-094** — registrado como **pendência bloqueante** (item 31 de `.specs/project/PENDENCIES.md`), aguardando a equipe do ERP; a feature é implementável hoje com o limite documentado (`ClienteVenda` parcial para `origem = 'DEFAULT'`) | `research.md`, D3, D10, achados desta fase |
+| `GetCliente` só busca por documento, sem forma de completar dados do cliente default por código | **AD-094**, **resolvido em 2026-08-31 por AD-108** — a lista de preço do cliente default vem de `SessaoUsuario.ListaPrecoDefault` e o convênio é inexistente (`descontoConvenio = 0`), então `GetCliente` nunca é chamado para ele; item 31 de `.specs/project/PENDENCIES.md` **fechado** | `research.md`, D3, D10, achados desta fase |
 
-A feature 005 não fica bloqueada para `/speckit-tasks` — a pendência AD-094 é um limite conhecido e documentado, não uma ambiguidade de requisito.
+A feature 005 não fica bloqueada para `/speckit-tasks` — e, desde AD-108 (2026-08-31), não tem mais nenhuma limitação conhecida em aberto.

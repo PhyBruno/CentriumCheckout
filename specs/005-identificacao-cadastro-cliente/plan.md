@@ -30,7 +30,7 @@ Um slice `cliente`, combinado no mesmo store Zustand+Immer da venda em andamento
 - Endereço do cadastro simplificado é texto livre, sem validação de IBGE — só a máscara de formato do CEP (AD-023).
 - Filtro "Ativo" **não** implementado no modal de busca — contrato não tem campo de status (AD-093).
 - Troca de cliente bloqueada a partir de qualquer pagamento aprovado — reaproveita o predicado `podeMutarCarrinho()` já definido pela feature 003 (D8), sem `clienteSlice` importar o slice de pagamento.
-- Cliente default pré-selecionado (AD-032) fica sem `ListaPreco`/`DescontoConvenio` até o operador interagir com o modal — pendência bloqueante de contrato (AD-094), documentada, não contornável nesta fase.
+- Cliente default pré-selecionado (AD-032) nasce **completo** já no bootstrap: `listaPreco = SessaoUsuario.ListaPrecoDefault` e `descontoConvenio = 0`, sem nenhuma chamada a `GetCliente` (AD-108, 2026-08-31 — fecha o item 31 de `PENDENCIES.md` e supera AD-094). Só o `documento` (CPF/CNPJ) segue indisponível para esse cliente.
 - Nenhuma reprecificação automática do default gera evento de auditoria (mesma filosofia da feature 003, D11).
 
 **Scale/Scope**: 1 slice Zustand (`clienteSlice`) + 1 módulo de domínio puro (`documento.ts`, classificação/máscara CPF-CNPJ-CEP) + 1 camada de query (`clienteQueries.ts`: busca, lookup por documento, `postCliente`) + 1 schema Zod de fronteira + 3 superfícies de UI (modal de busca, formulário de cadastro simplificado inline no mesmo modal, campo de cliente na tela principal). Fora do escopo deste plano: o motor de precificação em si (feature 003 — este plano só dispara o re-fetch, não recalcula preço), a seleção de vendedor (feature 012, mesmo padrão de modal), e a implementação do slice de auditoria (feature 001 — este plano só consome o dispatcher).
@@ -100,7 +100,7 @@ tests/
 │   │       └── documento.spec.ts            # CPF/CNPJ/CEP válidos e inválidos, limites de dígito
 │   └── services/
 │       └── cliente/
-│           └── clienteMapper.spec.ts        # ClienteCheckout → ClienteVenda, campos ausentes (ex.: cliente default parcial, AD-094)
+│           └── clienteMapper.spec.ts        # ClienteCheckout → ClienteVenda; e SessaoUsuario → ClienteVenda do cliente default (listaPreco = ListaPrecoDefault, descontoConvenio = 0, documento = null — AD-108)
 ├── integration/
 │   └── clienteSlice.spec.ts                 # CLIENTE_SELECIONADO vs. CLIENTE_TROCADO, pré-seleção sem evento, bloqueio pós-pagamento, re-fetch por SKU ao trocar
 └── e2e/

@@ -2262,5 +2262,33 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1788200000001",
+    "kind": "decision",
+    "content": "AD-108: cliente default usa SessaoUsuario.ListaPrecoDefault e nao tem desconto de convenio; fecha item 31",
+    "tags": [
+      "ad-108",
+      "cliente-default",
+      "lista-preco",
+      "item-31",
+      "item-36"
+    ],
+    "files": [
+      ".specs/project/STATE.md",
+      ".specs/project/PENDENCIES.md",
+      "specs/005-identificacao-cadastro-cliente/research.md",
+      "specs/003-carrinho-produto-precificacao/contracts/erp-produto-api.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788200000,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   }
 ]

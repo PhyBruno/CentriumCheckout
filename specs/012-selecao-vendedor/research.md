@@ -35,9 +35,9 @@ Este documento resolve as incógnitas técnicas do Technical Context de `plan.md
 
 ---
 
-## D3 — Pré-seleção do vendedor default: snapshot completo desde o bootstrap, sem gap equivalente a AD-094
+## D3 — Pré-seleção do vendedor default: snapshot completo desde o bootstrap
 
-**Natureza**: Confirmação (`AD-032`, `AD-053`, `AD-056`) quanto ao gatilho e à forma — sem a limitação que `AD-094` impôs ao caso análogo de cliente.
+**Natureza**: Confirmação (`AD-032`, `AD-053`, `AD-056`) quanto ao gatilho e à forma. Redações anteriores contrastavam este caso com a limitação que `AD-094` impunha ao cliente default — contraste que deixou de existir: `AD-108` (2026-08-31) fechou aquela lacuna, e hoje **os dois** snapshots default nascem completos a partir do `GetSessao`.
 
 **Decision**: Ao iniciar/retomar uma venda (mesmo call site que zera carrinho, cliente e auditoria — features 001/003/005), `vendedorSlice.inicializarVendedorPadrao(sessaoUsuario)` roda **sem nenhuma chamada de rede**:
 
@@ -55,7 +55,7 @@ if (sessaoUsuario.VendedorCodigo) {
 
 Nenhum evento de auditoria é disparado por esta inicialização (D6).
 
-**Rationale**: Diferente do cliente default (`AD-094` — `GetCliente` não busca por código, então `ListaPreco`/`DescontoConvenio` ficam indisponíveis até seleção manual), o vendedor default não tem campo derivado nenhum: `SessaoUsuario.VendedorCodigo`/`VendedorNome` (confirmados como campos distintos de `UsuarioCodigo` pela Fato F1/`AD-056`, linhas 802-808 do contrato) já são exatamente os dois campos que `VendedorVenda` precisa. O snapshot nasce **completo**, sem `null` parcial — não há pendência equivalente a `AD-094` para esta feature.
+**Rationale**: `SessaoUsuario.VendedorCodigo`/`VendedorNome` (confirmados como campos distintos de `UsuarioCodigo` pela Fato F1/`AD-056`, linhas 802-808 do contrato) já são exatamente os dois campos que `VendedorVenda` precisa — o snapshot nasce **completo**, sem `null` parcial, e sem nenhum campo derivado a buscar. O cliente default chegou a ter uma limitação análoga (`AD-094`: `GetCliente` não busca por código, deixando `ListaPreco`/`DescontoConvenio` indisponíveis), **resolvida em 2026-08-31 por `AD-108`** — a lista vem de `SessaoUsuario.ListaPrecoDefault` e o cliente default não tem convênio. Não há pendência aberta em nenhum dos dois casos.
 
 **Alternatives considered**: nenhuma — não há lacuna a contornar.
 
@@ -112,4 +112,4 @@ Nenhum evento de auditoria é disparado por esta inicialização (D6).
 |---|---|---|---|
 | A1 | `GetListaVendedores` não tem parâmetro de status nem campo `Ativo`/`Status` na resposta; a coluna "subtítulo de função" da UI também não tem campo correspondente — mesma lacuna já confirmada para cliente (`AD-093`) | **AD-103** | Removido do design/spec desta tela — decisão de design, sem pendência ao ERP |
 
-Nada bloqueia `/speckit-tasks` — a feature é implementável hoje sem nenhuma pendência aberta (diferente de `identificacao-cadastro-cliente`, que carrega `AD-094`).
+Nada bloqueia `/speckit-tasks` — a feature é implementável hoje sem nenhuma pendência aberta. (Nota: `identificacao-cadastro-cliente` chegou a carregar `AD-094` como pendência bloqueante; ela foi **fechada em 2026-08-31 por `AD-108`**.)

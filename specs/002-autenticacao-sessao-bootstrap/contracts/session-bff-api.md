@@ -47,13 +47,15 @@ Este contrato cobre só as rotas que o **BFF do Checkout** expõe para a própri
   "SessaoUsuario": {
     "TipoPreco": 1,
     "CadMaqCod": "PDV01",
-    "listaPrecoPadrao": "0",
+    "ListaPrecoDefault": 3,
     "CenarioPagamento": "[\"1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6\"]"
   }
 }
 ```
 
 Nunca inclui `access_token`, `client_secret` ou `password`.
+
+**Nota sobre `ListaPrecoDefault`** (acrescentado ao contrato do ERP na versão `20260827192357`, ver AD-108): é a lista de preço **do cliente default** — o ERP o popula a partir do `CliListCod` desse cliente, com fallback `1`. O BFF apenas repassa e o Dexie persiste; quem consome é a feature 005 (monta o `ClienteVenda` do cliente default sem chamar `GetCliente`) e, por consequência, a feature 003 (parâmetro `Listapreco` de `GetProduto` quando `TipoPreco = 9`). **Correção:** o campo `listaPrecoPadrao` que aparecia neste exemplo em redações anteriores nunca existiu no contrato do ERP, e não existe "lista de preço padrão da empresa" no domínio (AD-092).
 
 **Nota sobre `CenarioPagamento`** (acrescentado ao contrato do ERP na versão `20260827192357`, ver AD-104): o BFF repassa o campo **como está**, sem interpretar nem reformatar — é `string` no contrato do ERP e continua `string` na resposta do bootstrap. Toda a estrutura interna (array JSON de strings com 7 campos delimitados por `;`) é responsabilidade da feature 013, que a valida na fronteira do cliente — ver `specs/013-venda-rapida-cenario-pagamento/contracts/erp-cenario-pagamento-api.md`. Esta feature apenas garante que o campo chegue íntegro ao navegador e seja persistido no Dexie com o restante do payload.
 

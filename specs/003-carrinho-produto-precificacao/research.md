@@ -152,11 +152,11 @@ O DV do EAN-13 é validado antes de aceitar o ramo 2. Se o DV falhar, a entrada 
 
 **Natureza**: Confirmação (AD-023).
 
-**Decision**: Quando o cliente da venda tem `DescontoConvenio` (campo `number/double` em `SDTCheckout_GetCliente`, linha 1067 do yaml), o preço aplicado à linha recebe o fator `(1 - DescontoConvenio / 100)`, calculado em centavos com arredondamento por linha. Aplicação automática, sem entrada manual do operador.
+**Decision**: Quando o cliente da venda tem `DescontoConvenio` (campo `number/double` em `SDTCheckout_GetCliente`, linha 1067 do yaml), o preço aplicado à linha recebe o fator `(1 - DescontoConvenio / 100)`, calculado em centavos com arredondamento por linha. Aplicação automática, sem entrada manual do operador. **Precisão (2026-08-31, AD-108):** o **cliente default** não tem convênio — para `origem = 'DEFAULT'` o fator é sempre `1` (`descontoConvenio = 0`), sem nenhuma chamada a `GetCliente`.
 
 **Rationale**: `PGeraPedidoVenda` na KB do GenExus calcula `&ConvDsc = (1 - CliConvDsc / 100)` — é fator percentual confirmado, não valor absoluto. Trocar o cliente da venda muda esse fator, portanto a troca de cliente dispara reprecificação (`FR-018`), pelo mesmo caminho de `TipoPreco = 9`.
 
-**Nota de fronteira**: a origem do dado do cliente é a feature 005 (`identificacao-cadastro-cliente`). Este plano consome `DescontoConvenio` e `ListaPreco` do cliente já selecionado; não implementa a seleção.
+**Nota de fronteira**: a origem do dado do cliente é a feature 005 (`identificacao-cadastro-cliente`). Este plano consome `DescontoConvenio` e `ListaPreco` do cliente já selecionado; não implementa a seleção. **Atualização (2026-08-31, AD-108):** para o cliente default, esses dois valores vêm do bootstrap (`SessaoUsuario.ListaPrecoDefault` e `descontoConvenio = 0`), não de `GetCliente`.
 
 ---
 
@@ -164,7 +164,7 @@ O DV do EAN-13 é validado antes de aceitar o ramo 2. Se o DV falhar, a entrada 
 
 **Natureza**: Confirmação — nasceu como achado desta fase e foi **resolvida por decisão direta do usuário em 2026-08-26, registrada como AD-092** em `.specs/project/STATE.md`.
 
-**Decision**: Quando `TipoPreco = 9`, enviar **sempre** `ClienteCheckout.ListaPreco` (a lista do cadastro do cliente) no parâmetro `Listapreco` de `GetProduto`. Para `TipoPreco ≠ 9`, **não** enviar nada nesse parâmetro (regra de negócio confirmada em 2026-08-24). **Não há fallback** — `TipoPreco = 9` significa exatamente "o tipo de preço é por lista, e a lista é a do cliente".
+**Decision**: Quando `TipoPreco = 9`, enviar **sempre** `ClienteCheckout.ListaPreco` (a lista do cadastro do cliente) no parâmetro `Listapreco` de `GetProduto`. Para `TipoPreco ≠ 9`, **não** enviar nada nesse parâmetro (regra de negócio confirmada em 2026-08-24). **Não há fallback** — `TipoPreco = 9` significa exatamente "o tipo de preço é por lista, e a lista é a do cliente". **Precisão (2026-08-31, AD-108):** quando a venda corre com o **cliente default**, a lista a enviar é `SessaoUsuario.ListaPrecoDefault` — a mesma lista do cadastro desse cliente (`CliListCod`, com fallback `1` aplicado pelo ERP), só que publicada pelo `GetSessao` em vez de lida por `GetCliente`. Continua não existindo lista padrão *da empresa*.
 
 **Achado que originou a decisão**: `.specs/codebase/CONCERNS.md` e `.specs/project/STATE.md` (AD-025) instruíam, para o caso de cliente sem lista própria, a usar a lista padrão da empresa "carregada em `SessaoUsuario.listaPrecoPadrao`" — **campo que não existe em `APICentriumOAuth.yaml`**. O schema `SessaoUsuario` (linhas 799-864) contém `TipoPreco`, `QtdMinCharParaConsulta`, `UsuarioTipoCodigoProduto`, `CadMaqCod`, `CadSerieNFCe` e demais, mas nenhum campo de lista de preço padrão; busca por `listaPrecoPadrao`/`ListaPrecoPadrao` no yaml não retorna ocorrência alguma.
 
@@ -207,6 +207,6 @@ Os dois achados de contrato levantados durante este Design foram **fechados no m
 | # | Achado | AD | Documentos corrigidos |
 |---|---|---|---|
 | A1 | `GetListaProdutos` não devolve `PrecoVenda` nem `ProdutoPesavelEditavel`, e não aceita `Tipopreco`/`Codcliente`/`Listapreco` — o modal de lista só capta/seleciona, e `GetProduto` é sempre quem resolve a linha (D1) | **AD-091** | `.specs/project/STATE.md` (AD-025 e nova AD-091), `.specs/codebase/CONCERNS.md`, `.specs/features/carrinho-produto-precificacao/spec.md` — todos corrigidos **no ponto do texto**, conforme `docs/agents/domain.md` |
-| A2 | `SessaoUsuario.listaPrecoPadrao` não existe no `APICentriumOAuth.yaml` — e não deveria existir: não há lista de preço padrão da empresa. `TipoPreco = 9` usa sempre a lista do cliente, sem fallback (D10) | **AD-092** | mesmos documentos acima, mais `.specs/project/PENDENCIES.md` (nota de atualização; nenhum item aberto) |
+| A2 | `SessaoUsuario.listaPrecoPadrao` não existe no `APICentriumOAuth.yaml` — e não deveria existir: não há lista de preço padrão da empresa. `TipoPreco = 9` usa sempre a lista do cliente, sem fallback (D10). **Nota (2026-08-31, AD-108):** o contrato `20260827192357` passou a expor `SessaoUsuario.ListaPrecoDefault`, que **não** reabre este achado — não é a lista padrão da empresa, é a lista do *cliente default*, e existe justamente para dispensar a chamada a `GetCliente` nesse cenário | **AD-092** (+ **AD-108**) | mesmos documentos acima, mais `.specs/project/PENDENCIES.md` (nota de atualização; nenhum item aberto) |
 
 Nada bloqueia `/speckit-tasks`.

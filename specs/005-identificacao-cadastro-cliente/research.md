@@ -33,9 +33,9 @@ Este documento resolve as incógnitas técnicas do Technical Context de `plan.md
 
 ---
 
-## D3 — Pré-seleção do cliente default: snapshot parcial, sem chamada de rede automática
+## D3 — Pré-seleção do cliente default: snapshot completo a partir do `GetSessao`, sem chamada de rede
 
-**Natureza**: Confirmação (AD-032, AD-053) quanto ao gatilho; Nova quanto à forma do snapshot, por causa de AD-094.
+**Natureza**: Confirmação (AD-032, AD-053) quanto ao gatilho; **revista em 2026-08-31 por AD-108** quanto à forma do snapshot — a redação anterior descrevia um snapshot *parcial* (`listaPreco`/`descontoConvenio` em `null`) por causa de AD-094, que deixou de valer.
 
 **Decision**: Ao iniciar/retomar uma venda (mesmo call site que zera o carrinho e a auditoria, feature 001), `clienteSlice.inicializarClientePadrao(sessaoUsuario)` roda **sem nenhuma chamada de rede**:
 
@@ -45,8 +45,8 @@ if (sessaoUsuario.ClienteDefaultCodigo) {
     codigoCliente: sessaoUsuario.ClienteDefaultCodigo,
     nome: sessaoUsuario.ClienteDefaultNome,
     documento: null,          // indisponível — GetSessao não devolve CPF/CNPJ
-    listaPreco: null,         // indisponível — AD-094
-    descontoConvenio: null,   // indisponível — AD-094
+    listaPreco: sessaoUsuario.ListaPrecoDefault, // lista do cliente default, do próprio GetSessao (AD-108)
+    descontoConvenio: 0,      // cliente default não tem convênio (AD-108)
     codigoConvenio: null,
     origem: 'DEFAULT',
   };
@@ -57,12 +57,12 @@ if (sessaoUsuario.ClienteDefaultCodigo) {
 
 Nenhum evento de auditoria é disparado por esta inicialização (D9).
 
-**Rationale**: `GetSessao` só devolve código e nome do cliente default (AD-032); não há endpoint capaz de completar os demais campos por código (AD-094, `GetCliente` só aceita `CPFCNPJ`). Tentar adivinhar ou deixar o snapshot em um formato "completo com zeros" esconderia a limitação real — o snapshot parcial, com campos explicitamente `null`, é o que permite à feature 003 saber que não tem `listaPreco`/`descontoConvenio` confiáveis para esse cliente até uma seleção explícita acontecer.
+**Rationale**: `GetSessao` devolve código e nome do cliente default (AD-032) **e** a lista de preço dele em `SessaoUsuario.ListaPrecoDefault` (contrato `20260827192357`, populado pelo ERP a partir do `CliListCod` do cliente default, com fallback `1`). Somado à regra de negócio de que o cliente default não tem convênio, o bootstrap já carrega tudo o que a feature 003 precisa para resolver `TipoPreco = 9` — nenhuma chamada de rede é necessária, e `GetCliente` **não** é chamado para esse cliente (AD-108). A redação anterior desta decisão montava um snapshot parcial, com `listaPreco`/`descontoConvenio` em `null`, por falta desses dados (AD-094); isso está superado.
 
-**Consequência para a feature 003**: enquanto `origem === 'DEFAULT'` e `listaPreco === null`, uma linha inserida com `TipoPreco = 9` usa `Codcliente` (o código, que `GetProduto` aceita) mas **sem** `Listapreco` — o comportamento exato do ERP nesse caso (usar a lista do próprio cadastro do cliente internamente, já que `GetProduto` recebe o código?) não foi verificado nesta fase; documentado como parte da pendência AD-094, não resolvido aqui.
+**Consequência para a feature 003**: com `origem === 'DEFAULT'`, uma linha inserida sob `TipoPreco = 9` vai a `GetProduto` com `Codcliente = ClienteDefaultCodigo` **e** `Listapreco = ListaPrecoDefault` — sem parâmetro faltando e sem depender de o ERP adivinhar a lista a partir do código. O fator de convênio aplicado localmente é `1` (nenhum desconto), porque `descontoConvenio = 0`.
 
 **Alternatives considered**:
-- *Chamar `GetListaClientes` com `Txtbusca = ClienteDefaultNome` para tentar encontrar o registro completo*: rejeitado — nome não é chave única, risco real de resolver o cliente errado (dois clientes com nome igual/parecido) e atribuir `descontoConvenio` incorreto a uma venda; pior que deixar `null`.
+- *Chamar `GetListaClientes` com `Txtbusca = ClienteDefaultNome` para tentar encontrar o registro completo*: rejeitado — nome não é chave única, risco real de resolver o cliente errado (dois clientes com nome igual/parecido) e atribuir `descontoConvenio` incorreto a uma venda. Rejeitado antes de AD-108 por esse motivo, e desnecessário depois dela: a lista de preço vem pronta na sessão e o convênio é inexistente por regra de negócio.
 
 ---
 
@@ -149,13 +149,13 @@ Linhas congeladas (origem rascunho/DAV) **não** são tocadas — mesma regra I3
 
 ---
 
-## D10 — `DescontoConvenio`/`ListaPreco` como campos opcionais no snapshot, nunca com valor de fallback inventado
+## D10 — `descontoConvenio`/`listaPreco` no snapshot: valores reais para o cliente default, `null` só onde o dado não existe
 
-**Natureza**: Nova (decisão de modelagem, consequência direta de D3/AD-094).
+**Natureza**: Nova (decisão de modelagem, consequência direta de D3); **revista em 2026-08-31 por AD-108**.
 
-**Decision**: `ClienteVenda.listaPreco` e `ClienteVenda.descontoConvenio` são `number | null`, nunca um valor default como `0` ou `1`. `null` significa explicitamente "não disponível para este cliente no momento" — a feature 003 deve tratar `null` como "sem dado", não como "zero desconto"/"lista 1".
+**Decision**: `ClienteVenda.listaPreco` e `ClienteVenda.descontoConvenio` continuam tipados como `number | null`, mas `null` nunca é usado para disfarçar um dado que existe. Para `origem = 'DEFAULT'`, os dois campos são **valores reais**: `listaPreco = SessaoUsuario.ListaPrecoDefault` e `descontoConvenio = 0` (AD-108). `null` fica reservado a `CADASTRO_SIMPLIFICADO` — cliente recém-criado, que ainda não tem lista nem convênio configurados no ERP. Em nenhum caso se inventa um fallback (`1` para lista, por exemplo) para um cliente cujo cadastro o Checkout não leu.
 
-**Rationale**: Um `0` ou `1` "seguro" esconderia a limitação real (AD-094) atrás de um valor que parece válido — o tipo de bug mais perigoso neste domínio, porque não quebra em teste óbvio, só produz preço sutilmente errado em produção para o cliente default. `null` explícito força qualquer consumidor (feature 003) a lidar com o caso ausente deliberadamente.
+**Rationale**: Um valor "seguro" inventado esconderia uma limitação real atrás de algo que parece válido — o tipo de bug mais perigoso neste domínio, porque não quebra em teste óbvio, só produz preço sutilmente errado em produção. A diferença que AD-108 introduz é que, para o cliente default, o valor **não é inventado**: `ListaPrecoDefault` vem do próprio ERP e o `0` de convênio é regra de negócio explícita. Onde o dado genuinamente não existe (`CADASTRO_SIMPLIFICADO`), `null` continua sendo a única representação aceita, e a feature 003 deve tratá-lo como ausência de dado, nunca como "sem desconto"/"lista padrão".
 
 ---
 
@@ -166,6 +166,6 @@ Os dois achados de contrato levantados durante este Design foram levados ao usu�
 | # | Achado | AD | Resolução |
 |---|---|---|---|
 | A1 | `GetListaClientes`/`GetCliente` não têm parâmetro de status nem campo `Ativo`/`Status` na resposta — o filtro "Ativo" pré-marcado (AD-053) não tem dado real por trás para o modal de cliente | **AD-093** | Removido do design/spec desta tela — decisão direta do usuário |
-| A2 | `GetCliente` só aceita `CPFCNPJ`; `GetSessao` só devolve código+nome do cliente default — não há como completar `ListaPreco`/`DescontoConvenio` do cliente default sem interação do operador | **AD-094** | Registrado como pendência bloqueante (item 31 de `.specs/project/PENDENCIES.md`) para a equipe do ERP — decisão direta do usuário |
+| A2 | `GetCliente` só aceita `CPFCNPJ`; `GetSessao` só devolvia código+nome do cliente default — não havia como completar `ListaPreco`/`DescontoConvenio` do cliente default sem interação do operador | **AD-094**, **superada por AD-108 (2026-08-31)** | Registrado como pendência bloqueante (item 31 de `.specs/project/PENDENCIES.md`) em 2026-08-26; **fechado em 2026-08-31** por decisão direta do usuário — a lista vem de `SessaoUsuario.ListaPrecoDefault` e o cliente default não tem convênio, então `GetCliente` nunca é chamado para ele |
 
-Nada bloqueia `/speckit-tasks` além da pendência já documentada e explicitamente aceita (AD-094) — a feature é implementável hoje com o limite conhecido.
+Nada bloqueia `/speckit-tasks` — e, desde AD-108 (2026-08-31), a feature não tem nenhuma limitação conhecida pendente.
