@@ -23,6 +23,7 @@ Como operador de caixa, ao realizar qualquer ação relevante da venda (identifi
 1. **Given** uma venda nova sendo iniciada, **When** o operador identifica ou troca o cliente, seleciona ou troca o vendedor, ou insere/altera/cancela um produto, **Then** cada uma dessas ações gera um registro de auditoria com data/hora, sem interação adicional do operador.
 2. **Given** uma venda em andamento, **When** o operador aplica ou remove uma condição/forma de pagamento, ou usa um vale devolução, **Then** o sistema registra o evento correspondente.
 3. **Given** uma tentativa de pagamento, **When** a forma de pagamento é recusada, **Then** o sistema registra a recusa (não só os pagamentos aceitos).
+4. **Given** uma tentativa de inserção de forma de pagamento, **When** a validação prévia da venda recusa essa inserção antes que o pagamento chegue a ser aplicado (por regra de negócio ou por indisponibilidade do ERP), **Then** o sistema registra essa recusa como um evento distinto da recusa da própria forma de pagamento (cenário 3 acima).
 
 ---
 
@@ -60,6 +61,7 @@ Como Checkout, quero enviar o histórico acumulado da venda ao ERP sempre que el
 - **FR-007**: O sistema MUST descartar o histórico local acumulado somente após uma entrega bem-sucedida ao ERP.
 - **FR-008**: O sistema MUST NOT reconstruir ou herdar o histórico de uma sessão anterior quando uma venda é retomada a partir de rascunho ou documento importado — o histórico dessa nova sessão começa vazio.
 - **FR-009**: O sistema MUST NOT oferecer, dentro do Checkout, uma tela para o operador revisar o histórico de auditoria — o histórico é destinado exclusivamente ao ERP.
+- **FR-010**: O sistema MUST registrar um evento de auditoria quando a validação prévia da venda (executada antes da inserção de uma forma de pagamento) recusar essa inserção, seja por regra de negócio ou por indisponibilidade do ERP, distinguindo esse registro da recusa da própria forma de pagamento (FR-003).
 
 ### Key Entities *(include if feature involves data)*
 
