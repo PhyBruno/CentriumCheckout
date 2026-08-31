@@ -1,6 +1,6 @@
 # Contract: Consumo de `ListaDAVs`/`GetDav` via `/api/erp/*`
 
-Superfície de rede consumida por esta feature — sempre via o proxy autenticado do BFF (`/api/erp/*`, feature 002, AD-022), nunca chamando `ApiCentriumOAuth.yaml` diretamente do navegador. Nomes/tipos de campo abaixo vêm do contrato real (`Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml`, `info.version: 20260826163735`).
+Superfície de rede consumida por esta feature — sempre via o proxy autenticado do BFF (`/api/erp/*`, feature 002, AD-022), nunca chamando `ApiCentriumOAuth.yaml` diretamente do navegador. Nomes/tipos de campo abaixo vêm do contrato real (`Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml`, `info.version: 20260827192357` — revisado nesta versão em 2026-08-31, junto de AD-107; a versão anterior citada aqui era `20260826163735`).
 
 ---
 
@@ -57,10 +57,13 @@ interface CheckoutFaturarNFCe {
   clienteCodigo: number;
   vendedorCodigo: number;
   CondicaoPagamentoCodigo: number;
-  NumeroNota: number;           // preservar — reenviar em FaturarNFCe (NFCE-02, mesma regra de recuperacao-nfce)
+  NumeroNota: number;           // preservar e reenviar INTACTO em FaturarNFCe (NFCE-02, mesma regra de recuperacao-nfce).
+                                // Único elo com o DAV de origem desde a remoção de DavNum (AD-107): é por este
+                                // rascunho que o ERP reconhece a origem em DAV. Zerar/omitir quebra o vínculo.
   CadSerieNFCe: string;
   UsuarioCodigo: number;
-  DavNum: string;                // preservar — vínculo interno com o DAV de origem (AD-058)
+  // SEM DavNum — removido do contrato em 20260827192357 e desnecessário: o ERP identifica sozinho
+  // que a NFCe faturada veio de um DAV (AD-107, mesma mecânica de AD-058)
   Log: string;                   // não usado na importação — auditoria do Checkout é trilha própria (feature 001)
   produtos: Array<{
     sequencial: number;
@@ -79,6 +82,8 @@ interface CheckoutFaturarNFCe {
     FormaMeioPagtoNFe: string;
     FormaValor: number;
     FormaIntegracaoCartao: string;
+    FormaFpgUtiCar: string;      // presente no shape real; não consumido por esta feature (ressalva de AD-048)
+    FormaEntrada: string;        // novo em 20260827192357; não consumido por esta feature — tratamento pertence à 008 (item 36 de PENDENCIES.md)
     TEFidentificacao: number;
     TEFCNPJ: string;
     TEFBandeira: string;

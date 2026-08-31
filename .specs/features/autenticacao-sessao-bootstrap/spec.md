@@ -104,7 +104,7 @@ Implementação segue via Boneyard (AD-005/AD-007 em `.specs/project/STATE.md`),
 |---|---|---|---|
 | AUTH-01 | Login automático — troca de credenciais por token | - | Verified (requisito confirmado, aguarda Design/Tasks) |
 | AUTH-02 | Login automático — armazenamento em cookie HttpOnly | - | Verified |
-| AUTH-03 | Bootstrap — chamada automática a GetSessao | - | Verified |
+| AUTH-03 | Bootstrap — chamada automática a GetSessao | - | Verified (campo `CenarioPagamento` acrescentado ao payload em 2026-08-31, AD-104 — repassado como `string` sem interpretação; consumido pela feature 013) |
 | AUTH-04 | Bootstrap — persistência Dexie com versionamento (chave inclui `tenant`, hash calculado localmente) | - | Verified (2026-08-25, AD-045) |
 | AUTH-05 | Bootstrap — tela de carregamento bloqueante | - | Verified |
 | AUTH-06 | Renovação silenciosa de sessão (aviso equivalente a `beforeunload` com venda em digitação) | - | Verified (2026-08-25, AD-044) |

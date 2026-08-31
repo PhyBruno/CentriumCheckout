@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: "APICentriumOAuth"
   description: "APICentrium OAuth"
-  version: "20260826163735"
+  version: "20260827192357"
 servers:
   - url: http://localhost/Centrium1600Web/APICentriumOAuth
 paths:
@@ -380,6 +380,31 @@ paths:
         404:
           description: "Not found"
 
+  /ValidarNFCe:
+    post:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.ValidarNFCe"
+      summary: "ValidarNFCe"
+      security: 
+        - oAuthGXGAM: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidarNFCeInput"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidarNFCeOutput"
+        404:
+          description: "Not found"
+
   /CarregarNFCe:
     get:
       tags:
@@ -708,6 +733,16 @@ components:
           items:
             $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
 
+    ValidarNFCeOutput:
+      properties:
+        Valido:
+          type: "boolean"
+        messages:
+          description: "Messages"
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
+
     CarregarNFCeOutput:
       properties:
         OutCheckoutFaturarNFCe:
@@ -785,6 +820,12 @@ components:
           description: "Checkout Faturar NFCe"
           $ref: "#/components/schemas/CheckoutFaturarNFCe"
 
+    ValidarNFCeInput:  
+      properties:
+        CheckoutFaturarNFCe:
+          description: "Checkout Faturar NFCe"
+          $ref: "#/components/schemas/CheckoutFaturarNFCe"
+
 
 
     GerarPIXInput:  
@@ -852,8 +893,15 @@ components:
           description: "Tipo de Preço Padrão"
           type: "integer"
           format: "int32"
+        ListaPrecoDefault:
+          description: "Lista"
+          type: "integer"
+          format: "int64"
         TipoImpressao:
           description: "Tipo Impressao"
+          type: "string"
+        CenarioPagamento:
+          description: "Cenario Pagamento"
           type: "string"
         ImagemLogoBase64:
           description: "Imagem Logo Base64"
@@ -1443,9 +1491,6 @@ components:
           description: "Usuario Codigo"
           type: "integer"
           format: "int64"
-        DavNum:
-          description: "Número do DAV"
-          type: "string"
         Log:
           description: "Log"
           type: "string"
@@ -1522,6 +1567,12 @@ components:
           format: "double"
         FormaIntegracaoCartao:
           description: "Forma Integracao Cartao"
+          type: "string"
+        FormaFpgUtiCar:
+          description: "FpgUtiCar"
+          type: "string"
+        FormaEntrada:
+          description: "Entrada?"
           type: "string"
         TEFidentificacao:
           description: "TEFidentificacao"

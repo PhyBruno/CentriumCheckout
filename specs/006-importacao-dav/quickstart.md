@@ -36,7 +36,7 @@ Guia de validação ponta a ponta para confirmar que a feature funciona conforme
 2. Confirmar que o novo item segue o motor de precificação normal (`specs/003-carrinho-produto-precificacao/`), enquanto as linhas importadas permanecem com o preço congelado.
 3. Finalizar a venda pelo fluxo normal (`specs/004-finalizacao-suspensao-venda/`, quando planejada).
 
-**Esperado**: `FaturarNFCe` é chamado uma única vez, incluindo tanto as linhas congeladas quanto a linha nova; o ERP fecha o DAV internamente (AD-058), sem chamada adicional do Checkout para "marcar como importado".
+**Esperado**: `FaturarNFCe` é chamado uma única vez, incluindo tanto as linhas congeladas quanto a linha nova; o ERP fecha o DAV internamente (AD-058), sem chamada adicional do Checkout para "marcar como importado". Conferir no payload enviado que **`NumeroNota` é o mesmo devolvido por `GetDav`** (único elo com o DAV, AD-107) e que **nenhum campo de DAV é enviado** — `DavNum` não existe mais no contrato. Se o DAV não fechar no ERP após o faturamento, o primeiro suspeito é `NumeroNota` alterado/zerado no caminho, não um campo de vínculo faltando.
 
 ## Cenário 4 — Fallbacks de exibição (AD-095, AD-096)
 

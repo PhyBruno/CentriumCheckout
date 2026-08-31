@@ -28,8 +28,9 @@ export interface DavListado {
 
 ```ts
 export interface VendaImportada {
-  readonly numeroNota: number;              // CheckoutFaturarNFCe.NumeroNota — reenviado em FaturarNFCe (mesma regra de recuperacao-nfce, NFCE-02)
-  readonly davNum: string;                  // CheckoutFaturarNFCe.DavNum — preservado para o vínculo interno do ERP (AD-058)
+  readonly numeroNota: number;              // CheckoutFaturarNFCe.NumeroNota — reenviado INTACTO em FaturarNFCe (NFCE-02).
+                                            // Único elo com o DAV de origem (AD-107): sem DavNum no contrato, é por este
+                                            // rascunho que o ERP reconhece a origem em DAV e fecha o DAV (AD-058).
   readonly clienteCodigo: number;           // .clienteCodigo — sempre sobrescreve o cliente atual (FR-007)
   readonly clienteNome: string;             // capturado do DavListado selecionado (D4) — não vem de GetDav
   readonly vendedorCodigo: number;          // .vendedorCodigo — sempre sobrescreve o vendedor atual (FR-007)

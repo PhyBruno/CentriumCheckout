@@ -12,6 +12,8 @@ Modal PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de s
 
 - [ ] Status de PIX confirmado de forma confiável via consulta ativa, sem SSE.
 
+**Atualização (2026-08-31, AD-104):** a **feature 013 — Venda Rápida por Cenário de Pagamento (`specs/013-venda-rapida-cenario-pagamento/`)** pode acionar este fluxo por atalho de teclado. Se um cenário de pagamento cadastrado no ERP apontar para uma forma de PIX dinâmico, a tecla (F6–F9) apenas substitui o gesto de selecionar a forma — **todo o fluxo de PIX especificado aqui vale integralmente**, sem atalho, sem etapa suprimida e sem confirmação antecipada. Duas consequências: o pagamento só é dado por lançado após a confirmação do PIX; e, quando o cenário estiver marcado para encerrar a operação, a finalização automática da venda ocorre **depois** dessa confirmação, nunca no instante em que a tecla foi pressionada. Esta spec não muda em nada por causa da 013 — a nota existe para que o caminho "PIX iniciado por atalho" não seja lido como um fluxo alternativo não especificado.
+
 ## Out of Scope
 
 | Feature | Reason |

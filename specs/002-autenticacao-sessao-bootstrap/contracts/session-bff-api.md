@@ -47,12 +47,15 @@ Este contrato cobre só as rotas que o **BFF do Checkout** expõe para a própri
   "SessaoUsuario": {
     "TipoPreco": 1,
     "CadMaqCod": "PDV01",
-    "listaPrecoPadrao": "0"
+    "listaPrecoPadrao": "0",
+    "CenarioPagamento": "[\"1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6\"]"
   }
 }
 ```
 
 Nunca inclui `access_token`, `client_secret` ou `password`.
+
+**Nota sobre `CenarioPagamento`** (acrescentado ao contrato do ERP na versão `20260827192357`, ver AD-104): o BFF repassa o campo **como está**, sem interpretar nem reformatar — é `string` no contrato do ERP e continua `string` na resposta do bootstrap. Toda a estrutura interna (array JSON de strings com 7 campos delimitados por `;`) é responsabilidade da feature 013, que a valida na fronteira do cliente — ver `specs/013-venda-rapida-cenario-pagamento/contracts/erp-cenario-pagamento-api.md`. Esta feature apenas garante que o campo chegue íntegro ao navegador e seja persistido no Dexie com o restante do payload.
 
 **Erros**: `401` do ERP → o BFF tenta renovação silenciosa (ver `/api/erp/*` abaixo) antes de responder; se a renovação falhar, `401` ao cliente (aciona AUTH-06). Qualquer outro erro (`500`, timeout) → repassado como está, aciona a tela "Tentar novamente" (AUTH-07), sem forçar novo login.
 

@@ -53,7 +53,7 @@ OutCheckoutFaturarNFCe:  # $ref CheckoutFaturarNFCe — mesmo shape de FaturarNF
   NumeroNota: integer
   CadSerieNFCe: string
   UsuarioCodigo: integer
-  DavNum: string                # ignorado — só relevante ao fluxo de DAV (feature 006, futura)
+  # SEM DavNum — campo removido do contrato em 20260827192357; o ERP identifica sozinho a origem em DAV (AD-107)
   Log: string                   # ignorado — log de auditoria da suspensão original, não reaproveitado (auditoria reinicia zerada, D10)
   produtos:
     - sequencial: integer
@@ -70,6 +70,8 @@ OutCheckoutFaturarNFCe:  # $ref CheckoutFaturarNFCe — mesmo shape de FaturarNF
       FormaMeioPagtoNFe: string
       FormaValor: number
       FormaIntegracaoCartao: string
+      FormaFpgUtiCar: string        # presente no shape real; não consumido aqui (ressalva de AD-048)
+      FormaEntrada: string          # novo em 20260827192357; não consumido aqui — tratamento pertence à 008 (item 36)
       TEFidentificacao: integer
       TEFCNPJ: string
       TEFBandeira: string
