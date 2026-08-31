@@ -26,7 +26,7 @@ interface IdentidadeVenda {
 
 ## 2. Payload de Requisição — `CheckoutFaturarNFCe` (corpo de `POST /api/erp/FaturarNFCe`)
 
-Contrato completo em `contracts/faturamento-api.md`. Campos que **esta feature** é responsável por preencher:
+Contrato completo em `contracts/faturamento-api.md`. **Emenda de 2026-08-31 (AD-111, feature 014):** o payload não é mais montado por uma função exclusiva desta feature — `montarPayloadFaturarNFCe` virou `src/client/domain/venda/montarRetratoVenda.ts`, compartilhado com a validação prévia (`ValidarNFCe`), parametrizado por operação (`'FATURAR' | 'SUSPENDER' | 'VALIDAR'`) e pela lista de pagamentos a considerar. Os campos abaixo continuam sendo os que esta feature fornece como entrada para essa função; o que muda é que o retrato enviado ao gate e o retrato emitido passam a ser garantidamente idênticos (exceto `SuspenderOuFaturar`), por construção. Campos que **esta feature** é responsável por preencher:
 
 | Campo | Tipo | Origem |
 |---|---|---|
@@ -65,9 +65,11 @@ type EstadoEnvio =
   | { tipo: 'falha-rede'; operacao: 'FATURAR' | 'SUSPENDER' }; // aguardando confirmação manual, AD-038
 ```
 
+**Emenda de 2026-08-31 (AD-113, feature 014):** para `operacao = 'FATURAR'`, a transição `ocioso` → `enviando` exige `podeFinalizar() === true` (veredito favorável vigente da validação prévia, obtido na última inserção de pagamento aceita) — sem essa pré-condição, o botão "Finalizar Venda" fica bloqueado e nenhuma requisição é disparada (`FR-014`). Não há nova consulta ao ERP neste ponto. `operacao = 'SUSPENDER'` **não** tem essa pré-condição (`FR-016`).
+
 | Transição | Gatilho | Efeito |
 |---|---|---|
-| `ocioso` → `enviando` | Operador aciona "Finalizar Venda"/"Cancelar Venda", ou confirma reenvio a partir de `falha-negocio` | Dispara a mutation |
+| `ocioso` → `enviando` | Operador aciona "Finalizar Venda"/"Cancelar Venda", ou confirma reenvio a partir de `falha-negocio` | Dispara a mutation — para `FATURAR`, só após `podeFinalizar()` (ver acima) |
 | `enviando` → `sucesso` | `FaturarNFCe` retorna 2xx com `NotaFiscal` válida | Descarta carrinho + cache de produto + auditoria + `identidadeVenda` (`FR-012`); decide mecanismo de impressão (§5) |
 | `enviando` → `falha-negocio` | `FaturarNFCe` retorna erro com resposta HTTP (ver `research.md`, D2) | Exibe erro; `ocioso` liberado para nova tentativa sem exigir confirmação extra |
 | `enviando` → `falha-rede` | `fetch` rejeita sem resposta (ver `research.md`, D2) | Bloqueia novo envio até confirmação manual (`FR-004`); o log de auditoria acumulado **não** é descartado — evento `FATURAMENTO_FALHOU` é anexado (contrato da feature 001) |
@@ -120,3 +122,5 @@ Este módulo não persiste nenhum estado próprio além do `intervalId` do polli
 | `vendedorCodigo` selecionado | 012 (seleção de vendedor, ainda não planejada) | Campo `vendedorCodigo` do payload (§2) |
 | `refetchBootstrap()` | 002 (`bootstrapClient.ts`, já planejada) | Chamado pelo polling de `GetStatusSistema` (§6) quando detecta mudança |
 | Setter de `identidadeVenda` ao carregar rascunho/DAV | 006 (DAV) / 011 (recuperação de NFCe), ainda não planejadas | Popula `identidadeVenda` (§1) fora do fluxo "venda nova" |
+| `podeFinalizar(): boolean` | 014 (validação prévia da venda, `specs/014-validacao-previa-nfce/`) | **Acrescentado em 2026-08-31 (AD-113).** Pré-condição da transição `ocioso` → `enviando` para `FATURAR` (§4) — só finaliza com veredito favorável vigente, sem revalidar aqui |
+| `montarRetratoVenda(snapshot, operacao, pagamentos)` | 014 (`src/client/domain/venda/montarRetratoVenda.ts`) | **Acrescentado em 2026-08-31 (AD-111).** Substitui a montagem de payload que antes era exclusiva desta feature (§2) — módulo compartilhado com a validação prévia |
