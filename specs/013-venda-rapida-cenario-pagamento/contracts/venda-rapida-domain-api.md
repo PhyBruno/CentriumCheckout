@@ -59,7 +59,7 @@ Pós-condições: todo item devolvido tem exatamente os 7 campos convertidos; ne
 
 | Operação | Entrada | Saída | Contrato |
 |---|---|---|---|
-| `acionarCenario` | `TeclaAtalho` | `Promise<ResultadoAcionamento>` | executa G1–P7; nunca lança para o chamador; sempre limpa o guard (I9) |
+| `acionarCenario` | `TeclaAtalho` | `Promise<ResultadoAcionamento>` | executa G1–P7; nunca lança para o chamador; sempre limpa o guard (I9); pode levar de instantâneo a ~90s quando a forma exige TEF/PIX — o chamador não deve tratar como síncrono |
 
 **Dependências injetadas** (portas — a feature 013 define a interface, as features 008/004/001 fornecem a implementação):
 
@@ -77,9 +77,10 @@ Pós-condições: todo item devolvido tem exatamente os 7 campos convertidos; ne
 **Invariantes que este contrato impõe ao chamador**:
 
 - `aplicarForma` recebe **sempre** o saldo em aberto integral em `Centavos` — nunca um valor parcial, nunca um `number` de reais (I6, Constitution V).
+- **Correção (2026-08-31, remediação de `/speckit-analyze` — achado C1):** a Promise de `aplicarForma` só resolve depois que o pagamento está de fato aplicado — se a forma exigir TEF/PIX, ela aguarda internamente o mesmo ciclo `PENDENTE_INTEGRACAO` → `confirmarPagamentoIntegrado`/`recusarPagamentoIntegrado` que a feature 008 já implementa (`specs/008-pagamento-geral/tasks.md`, T021/T022). `acionarCenario` nunca retorna ao chamador enquanto essa integração está em andamento, e não existe mecanismo de retomada separado em 013 — substitui a leitura anterior de um retorno antecipado `AGUARDANDO_INTEGRACAO` (removido de `ResultadoAcionamento`, ver `data-model.md` §1.4).
 - `finalizarVenda` só é invocada quando o saldo em aberto for exatamente `0` **e** `encerraOperacao` for `true` (I7).
-- Nenhuma chamada a `finalizarVenda` quando `aplicarForma` rejeitou (I8).
-- `registrarEvento` é chamado uma única vez por acionamento que alterou a venda; acionamentos recusados em G1–G4 não geram evento (I12).
+- Nenhuma chamada a `finalizarVenda` quando `aplicarForma` rejeitou — inclusive TEF/PIX recusado, `RECUSADO(LANCAMENTO_FALHOU)` (I8).
+- `registrarEvento` é chamado uma única vez por acionamento que alterou a venda, **depois** da decisão de P5 (para que `finalizacaoAutomatica` reflita o desfecho correto); acionamentos recusados em G1–G4 ou em P4 não geram evento (I12).
 
 ---
 
