@@ -75,8 +75,8 @@ Chamado em **todos** os caminhos de inserção: código bipado, código digitado
 | `Codigoproduto` | string | código digitado/bipado, ou o código reduzido extraído do EAN-13 de balança, ou o `CodigoProduto` do candidato selecionado na busca |
 | `Tipocodproduto` | string | **sempre** `SessaoUsuario.UsuarioTipoCodigoProduto` (AD-033) — nunca inferido por chamada |
 | `Tipopreco` | int32 | `SessaoUsuario.TipoPreco` |
-| `Codcliente` | int64 | código do cliente selecionado na venda (feature 005) |
-| `Listapreco` | int64 | **só quando `TipoPreco = 9`**, sempre com `ClienteCheckout.ListaPreco` do cliente. Para `TipoPreco ≠ 9`, o parâmetro é **omitido**. Não existe lista de preço padrão da empresa e não há fallback (AD-092) |
+| `Codcliente` | int64 | código do cliente atual da venda (feature 005) — inclusive o cliente default (`SessaoUsuario.ClienteDefaultCodigo`), que existe desde o início da venda (AD-032) |
+| `Listapreco` | int64 | **só quando `TipoPreco = 9`**. Para um cliente selecionado explicitamente, `ClienteCheckout.ListaPreco`; para o **cliente default** (`origem = 'DEFAULT'`), `SessaoUsuario.ListaPrecoDefault`, sem chamar `GetCliente` (AD-108). Para `TipoPreco ≠ 9`, o parâmetro é **omitido**. Não existe lista de preço padrão da empresa e não há fallback (AD-092) |
 
 ### Resposta — `SDTCheckout_GetProduto`
 

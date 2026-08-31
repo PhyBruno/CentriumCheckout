@@ -154,8 +154,8 @@ A leitura de `PCheckout_GetSessao` e do diff de `ApiCentriumOAuth.yaml` (`202608
 
 1. **`ValidarNFCe`** — novo endpoint (`POST`, recebe `CheckoutFaturarNFCe`, devolve `Valido` + `messages`). Afeta a feature 004 (validação prévia à finalização).
 2. **`DavNum` removido** de `CheckoutFaturarNFCe`. **Resolvido em 2026-08-31 (AD-107), sem impacto:** o ERP identifica sozinho que a NFCe faturada veio de um DAV, então o Checkout nunca precisou levar o número do DAV à NFCe (mesma mecânica de AD-058). A feature 006 apenas deixou de modelar o campo.
-3. **`ListaPrecoDefault`** acrescentado a `SessaoUsuario` e populado por `PCheckout_GetSessao` a partir de `CliListCod` do cliente default (com fallback `1`). Isso é material para o item 31 de `PENDENCIES.md` (feature 005/003, `TipoPreco = 9` sem lista do cliente default) — parte do gap pode estar fechado.
+3. **`ListaPrecoDefault`** acrescentado a `SessaoUsuario` e populado por `PCheckout_GetSessao` a partir de `CliListCod` do cliente default (com fallback `1`). **Resolvido em 2026-08-31 (AD-108):** é a lista de preço do **cliente default** e fecha por completo o item 31 de `PENDENCIES.md` — com o cliente default, o Checkout envia esse valor em `Listapreco` de `GetProduto` quando `TipoPreco = 9`, não chama `GetCliente` e trata o convênio como inexistente (`descontoConvenio = 0`). Features 005 e 003 atualizadas.
 4. **`FormaEntrada`** (`FpgEnt`) acrescentado a `CondicaoFormasDePagamento[]`. Afeta a feature 008.
 5. **`FormaFpgUtiCar` continua não sendo preenchido no branch de fallback** ("puxa todos") de `PCheckout_GetSessao` — confirma a ressalva de AD-048 e mantém válida a decisão de tratar vazio como elegível.
 
-Estes cinco pontos ficam registrados em `.specs/project/PENDENCIES.md` (item 36) para tratamento nas features às quais pertencem — **nenhum deles é resolvido por esta feature**.
+Destes cinco pontos, dois já foram resolvidos fora desta feature (`DavNum` em AD-107 e `ListaPrecoDefault` em AD-108); os três restantes seguem registrados em `.specs/project/PENDENCIES.md` (item 36) para tratamento nas features às quais pertencem — **nenhum deles é resolvido por esta feature**.

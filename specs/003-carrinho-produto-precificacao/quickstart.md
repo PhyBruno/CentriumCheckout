@@ -114,4 +114,4 @@ Nenhuma pendência aberta bloqueia esta validação. Os dois achados de contrato
 | Achado | Resolução | Onde está |
 |---|---|---|
 | `GetListaProdutos` não devolve `PrecoVenda`/`ProdutoPesavelEditavel` e não aceita `Tipopreco`/`Codcliente`/`Listapreco` | **AD-091** — o modal de lista só capta e seleciona produtos; `GetProduto` é sempre quem resolve a linha do carrinho | `research.md`, D1 |
-| `SessaoUsuario.listaPrecoPadrao` não existe no contrato | **AD-092** — não existe lista de preço padrão da empresa; `TipoPreco = 9` usa **sempre** a lista do cliente, sem fallback. Nenhum ramo de fallback a implementar ou testar | `research.md`, D10 |
+| `SessaoUsuario.listaPrecoPadrao` não existe no contrato | **AD-092** — não existe lista de preço padrão da empresa; `TipoPreco = 9` usa **sempre** a lista do cliente, sem fallback. Nenhum ramo de fallback a implementar ou testar. **AD-108 (2026-08-31)** acrescenta o caso do **cliente default**: a lista dele chega em `SessaoUsuario.ListaPrecoDefault` e o convênio é `0`, sem chamada a `GetCliente` | `research.md`, D10 |

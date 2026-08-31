@@ -35,7 +35,7 @@ interface ClienteCheckout {
 }
 ```
 
-**Limitação confirmada (AD-094, pendência bloqueante)**: não existe parâmetro `CodCliente`/`CodigoCliente` — a única forma de buscar é por documento. Não há caminho de contrato para resolver um cliente a partir só do código (ex.: `SessaoUsuario.ClienteDefaultCodigo`).
+**Limitação de contrato (AD-094)**: não existe parâmetro `CodCliente`/`CodigoCliente` — a única forma de buscar é por documento. Não há caminho de contrato para resolver um cliente a partir só do código (ex.: `SessaoUsuario.ClienteDefaultCodigo`). **Deixou de ser um problema em 2026-08-31 (AD-108):** o Checkout **não** chama `GetCliente` para o cliente default — a lista de preço dele vem de `SessaoUsuario.ListaPrecoDefault` (`GetSessao`) e o desconto de convênio é inexistente por regra de negócio. `GetCliente` só é chamado quando o operador seleciona um cliente explicitamente.
 
 **Uso no Checkout**: `fetchClientePorDocumento(cpfCnpj)` — chamada imperativa (não `useQuery` cacheado), disparada em dois pontos: (1) busca direta por documento (`CLI-01`), (2) depois de selecionar um candidato no modal de lista, usando o `CPF` do item selecionado (`research.md`, D1).
 
