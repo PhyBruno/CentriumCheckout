@@ -13,7 +13,7 @@ description: "Task list template for feature implementation"
 
 **Organization**: Uma única user story (US1, P1) — não há segunda story nesta spec.
 
-**⚠️ Ordem de implementação e dependências cruzadas**: esta feature depende de **002** (scaffolding + proxy autenticado `/api/erp/*` + `SessaoUsuario` em Dexie) e **001** (`vendaStore.ts`, slice `auditoria`, `registrarEventoAuditoria`, mesmo call site de `resetarAuditoria` que passa a chamar `inicializarVendedorPadrao`). A integração com **008** (`podeMutarCarrinho()`, injetado na composição do `vendaStore`) é consumida por contrato de injeção (Dependency Inversion) — `vendedorSlice` nunca importa `pagamentoSlice`/`carrinhoSlice`/`clienteSlice`. A action pública `trocarVendedor` é consumida por **004/011** (retomada de rascunho via `CarregarNFCe`) e por **006** (importação de DAV, que já reservou a mesma assinatura em `specs/006-importacao-dav/contracts/importacao-domain-api.md`) — os call sites que invocam `trocarVendedor` a partir desses fluxos são responsabilidade das fases Design/Tasks dessas features, **fora do escopo** deste `tasks.md` (`plan.md` § Scale/Scope). A verificação end-to-end de que `CheckoutFaturarNFCe` envia `vendedorCodigo` corretamente (T014) depende do payload de finalização já implementado pela feature 004.
+**⚠️ Ordem de implementação e dependências cruzadas**: esta feature depende de **002** (scaffolding + proxy autenticado `/api/erp/*` + `SessaoUsuario` em Dexie) e **001** (`vendaStore.ts`, slice `auditoria`, `registrarEventoAuditoria`, mesmo call site de `resetarAuditoria` que passa a chamar `inicializarVendedorPadrao`). A integração com **008** (`podeMutarCarrinho()`, injetado na composição do `vendaStore`) é consumida por contrato de injeção (Dependency Inversion) — `vendedorSlice` nunca importa `pagamentoSlice`/`carrinhoSlice`/`clienteSlice`. A action pública `trocarVendedor` é consumida por **004/011** (retomada de rascunho via `CarregarNFCe`, MUST passar `origem: 'RASCUNHO'` explicitamente) e por **006** (importação de DAV, que já reservou a chamada de 2 argumentos em `specs/006-importacao-dav/contracts/importacao-domain-api.md` — continua válida porque `origem` é opcional com default `'DAV'`) — os call sites que invocam `trocarVendedor` a partir desses fluxos são responsabilidade das fases Design/Tasks dessas features, **fora do escopo** deste `tasks.md` (`plan.md` § Scale/Scope). A verificação end-to-end de que `CheckoutFaturarNFCe` envia `vendedorCodigo` corretamente (T015) depende do payload de finalização já implementado pela feature 004; o **bloqueio do botão "Finalizar" quando `vendedorAtual === null`** (`FR-006`, `SC-003`) é, pelo mesmo motivo, responsabilidade da feature 004 — este `tasks.md` só garante que o estado (`vendedorAtual`) fica correto para essa feature consumir.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -51,9 +51,10 @@ tests/integration/ | tests/e2e/
 
 **⚠️ CRITICAL**: A user story não pode começar até esta fase terminar.
 
-- [ ] T002 [P] Implementar `src/shared/schemas/vendedor.schema.ts` (Zod): `CheckoutListaVendedores { PaginaAtual, RegistrosPorPagina, TotalRegistros, TotalPaginas, Vendedores: VendedoresItem[] }` e `VendedoresItem { VendedorCodigo, VendedorNome, VendedorCGC, VendedorFone }` — exatamente os campos de `contracts/erp-vendedor-api.md`, sem inventar `Ativo`/`Status`/campo de função (AD-103)
+- [ ] T002 [P] Implementar `src/shared/schemas/vendedor.schema.ts` (Zod): `CheckoutListaVendedores { PaginaAtual, RegistrosPorPagina, TotalRegistros, TotalPaginas, Vendedores: VendedoresItem[] }` e `VendedoresItem { VendedorCodigo, VendedorNome, VendedorCGC, VendedorFone }` — exatamente os campos de `contracts/erp-vendedor-api.md` (confirmado contra `Fluxograma - Diagrama - Alinhamentos/ApiCentriumOAuth.yaml`, schema `CheckoutListaVendedores.Vendedores_Vendedores`), sem inventar `Ativo`/`Status`/campo de função (AD-103)
 - [ ] T003 Implementar núcleo de `src/client/stores/slices/vendedorSlice.ts`: estado `VendedorState { vendedorAtual: VendedorVenda | null; houveEscolhaExplicita: boolean }` (`data-model.md` §2) + `inicializarVendedorPadrao(sessaoUsuario)` — lê `SessaoUsuario.VendedorCodigo`/`VendedorNome` **sem chamada de rede**; `vendedorAtual = null` quando `VendedorCodigo` vazio (`FR-006`/`VEND-07`); chamado uma única vez no mesmo call site de `resetarAuditoria`/`inicializarClientePadrao` (features 001/005); combinado em `vendaStore.ts` — depende de T002
 - [ ] T004 [P] Integration test `tests/integration/vendedorSlice.spec.ts`: `inicializarVendedorPadrao({ VendedorCodigo: 7, VendedorNome: 'Fulano' })` produz `vendedorAtual = { codigo: 7, nome: 'Fulano', origem: 'DEFAULT' }`, nenhum evento de auditoria, nenhuma chamada a `GetListaVendedores`; `VendedorCodigo` vazio/zero → `vendedorAtual === null` — `FR-005`, `FR-006`, `research.md` D3
+- [ ] T005 [P] Integration test `tests/integration/vendedorSlice.spec.ts`: `inicializarVendedorPadrao({ VendedorCodigo: 7, VendedorNome: 'Fulano', UsuarioCodigo: 99 })` (operador logado com código diferente do vendedor) produz `vendedorAtual.codigo === 7`, nunca `99` — confirma por teste, não só por design de tipo, que `VendedorVenda` nunca deriva de `UsuarioCodigo` — `FR-008`, `SC-001`, `data-model.md` I6
 
 **Checkpoint**: Schema e núcleo do slice prontos — a user story ainda não expõe UI nem ações de seleção/troca.
 
@@ -67,21 +68,21 @@ tests/integration/ | tests/e2e/
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: `selecionarVendedor({ codigo: 10, nome: 'Ciclana' })` numa venda nova (sem escolha explícita anterior) dispara `VENDEDOR_SELECIONADO` com `{ codigoVendedor: 10, nome: 'Ciclana' }` — `data-model.md` §4, `research.md` D6
-- [ ] T006 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: selecionar um vendedor, depois `selecionarVendedor` de um segundo vendedor dispara `VENDEDOR_TROCADO` com `{ codigoVendedorAnterior, codigoVendedorNovo }` — `data-model.md` §4, `research.md` D6
-- [ ] T007 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: com `podeMutarCarrinho()` injetado retornando `false`, `selecionarVendedor` é no-op — `vendedorAtual` inalterado, nenhum evento disparado — `FR-013`, `VEND-09`, AD-043
-- [ ] T008 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: `trocarVendedor({ codigo, nome: null })` sobrescreve `vendedorAtual` incondicionalmente (inclusive com `podeMutarCarrinho()` retornando `false`), nunca dispara evento de auditoria, não altera `houveEscolhaExplicita` — `data-model.md` I3, `research.md` D4
+- [ ] T006 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: `selecionarVendedor({ codigo: 10, nome: 'Ciclana' })` numa venda nova (sem escolha explícita anterior) dispara `VENDEDOR_SELECIONADO` com `{ codigoVendedor: 10, nome: 'Ciclana' }` — `data-model.md` §4, `research.md` D6
+- [ ] T007 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: com carrinho **já populado** (≥1 linha ativa) e `podeMutarCarrinho()` retornando `true`, selecionar um vendedor, depois `selecionarVendedor` de um segundo vendedor dispara `VENDEDOR_TROCADO` com `{ codigoVendedorAnterior, codigoVendedorNovo }`, sem reprecificar nenhuma linha (diferente de cliente/`TipoPreco=9`) — `FR-012`, `data-model.md` §4, `research.md` D6, `plan.md` Constraints
+- [ ] T008 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: com `podeMutarCarrinho()` injetado retornando `false`, `selecionarVendedor` é no-op — `vendedorAtual` inalterado, nenhum evento disparado — `FR-013`, `VEND-09`, AD-043
+- [ ] T009 [P] [US1] Integration test `tests/integration/vendedorSlice.spec.ts`: `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')` sobrescreve `vendedorAtual` incondicionalmente (inclusive com `podeMutarCarrinho()` retornando `false`), nunca dispara evento de auditoria, não altera `houveEscolhaExplicita`; chamar sem o segundo argumento aplica o default `'DAV'` (compatibilidade com a chamada de 2 argumentos já reservada pela feature 006) — `data-model.md` I3, `research.md` D4, `contracts/vendedor-domain-api.md`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implementar `selecionarVendedor(vendedor)` em `vendedorSlice.ts` (T003): consulta `podeMutarCarrinho()` (dependência injetada, feature 008) antes de mutar — no-op com toast (Goey Toast) se `false` (I4); decide `VENDEDOR_SELECIONADO` vs. `VENDEDOR_TROCADO` via `houveEscolhaExplicita` (`research.md` D6); dispara `registrarEventoAuditoria` (feature 001) — depende de T003
-- [ ] T010 [US1] Implementar `trocarVendedor(vendedor)` em `vendedorSlice.ts` (T003): sobrescreve `vendedorAtual` incondicionalmente com a origem correspondente (`'RASCUNHO'`/`'DAV'`, decidida internamente a partir de qual fluxo invoca a action — `contracts/vendedor-domain-api.md` nota final), nunca dispara evento, não altera `houveEscolhaExplicita` — depende de T003
-- [ ] T011 [P] [US1] Implementar `useBuscaVendedores(txtBusca, pagina)` em `src/client/services/vendedor/vendedorQueries.ts`: `GET /api/erp/GetListaVendedores`, valida a resposta via T002 (Constitution IV), `enabled: txtBusca.length >= SessaoUsuario.QtdMinCharParaConsulta` (piso lido da sessão, nunca hardcodado — AD-024), `staleTime: 0` — depende de T002
-- [ ] T012 [US1] Implementar `src/client/features/vendedor/ModalBuscaVendedor.tsx`: busca por nome (skeleton Boneyard enquanto carrega, T011), sem chip/filtro de status (`AD-103`); clicar numa linha monta `{ codigo: VendedorCodigo, nome: VendedorNome }` **diretamente** do item da lista (`research.md` D1 — sem segunda chamada) e chama `selecionarVendedor` (T009); fecha o modal sem exigir confirmação separada; buscar sem resultado mantém o vendedor atual e permite fechar normalmente (`FR-010`); fechar sem selecionar mantém o vendedor atual (`FR-011`) — depende de T011, T009
-- [ ] T013 [P] [US1] Implementar `src/client/features/vendedor/CampoVendedorVenda.tsx`: exibe `vendedorAtual.nome`, ou `"Vendedor #<codigo>"` quando `nome === null` (`AD-095`/`research.md` D4); sem indicador de `origem` (`AD-053`) — depende de T003
-- [ ] T014 [US1] E2E `tests/e2e/selecao-vendedor.spec.ts` (`quickstart.md`, Cenários 1-6): vendedor default pré-selecionado sem interação; buscar e selecionar um vendedor diferente do default (`VENDEDOR_SELECIONADO`); selecionar um terceiro vendedor (`VENDEDOR_TROCADO`); finalizar a venda e confirmar que `CheckoutFaturarNFCe` envia `vendedorCodigo = vendedorAtual.codigo`, nunca `sessaoUsuario.UsuarioCodigo` (`FR-007`, depende do payload de finalização da feature 004); empresa sem vendedor default → `vendedorAtual = null`, UI exige seleção manual antes de finalizar (`FR-006`); busca sem resultado mantém a seleção e fecha sem bloqueio; troca bloqueada após pagamento aprovado, com toast informando o bloqueio — `FR-001` a `FR-006`, `FR-010`, `FR-011`, `FR-013`
+- [ ] T010 [US1] Implementar `selecionarVendedor(vendedor)` em `vendedorSlice.ts` (T003): consulta `podeMutarCarrinho()` (dependência injetada, feature 008) antes de mutar — no-op com toast (Goey Toast) se `false` (I4); decide `VENDEDOR_SELECIONADO` vs. `VENDEDOR_TROCADO` via `houveEscolhaExplicita` (`research.md` D6); dispara `registrarEventoAuditoria` (feature 001) — depende de T003
+- [ ] T011 [US1] Implementar `trocarVendedor(vendedor, origem = 'DAV')` em `vendedorSlice.ts` (T003): sobrescreve `vendedorAtual` incondicionalmente com a `origem` recebida (segundo parâmetro opcional, default `'DAV'` — `contracts/vendedor-domain-api.md`), nunca dispara evento, não altera `houveEscolhaExplicita` — depende de T003
+- [ ] T012 [P] [US1] Implementar `useBuscaVendedores(txtBusca, pagina)` em `src/client/services/vendedor/vendedorQueries.ts`: `GET /api/erp/GetListaVendedores`, valida a resposta via T002 (Constitution IV), `enabled: txtBusca.length >= SessaoUsuario.QtdMinCharParaConsulta` (piso lido da sessão, nunca hardcodado — AD-024), `staleTime: 0` — depende de T002
+- [ ] T013 [US1] Implementar `src/client/features/vendedor/ModalBuscaVendedor.tsx`: busca por nome (skeleton Boneyard enquanto carrega, T012), sem chip/filtro de status (`AD-103`); clicar numa linha monta `{ codigo: VendedorCodigo, nome: VendedorNome }` **diretamente** do item da lista (`research.md` D1 — sem segunda chamada) e chama `selecionarVendedor` (T010); fecha o modal sem exigir confirmação separada; buscar sem resultado mantém o vendedor atual e permite fechar normalmente (`FR-010`); fechar sem selecionar mantém o vendedor atual (`FR-011`) — depende de T012, T010
+- [ ] T014 [P] [US1] Implementar `src/client/features/vendedor/CampoVendedorVenda.tsx`: exibe `vendedorAtual.nome`, ou `"Vendedor #<codigo>"` quando `nome === null` (`AD-095`/`research.md` D4); sem indicador de `origem` (`AD-053`) — depende de T003
+- [ ] T015 [US1] E2E `tests/e2e/selecao-vendedor.spec.ts` (`quickstart.md`, Cenários 1-6): vendedor default pré-selecionado sem interação; inserir ao menos um item no carrinho, então buscar e selecionar um vendedor diferente do default (`VENDEDOR_SELECIONADO`, `FR-012` — troca permitida com carrinho populado); selecionar um terceiro vendedor (`VENDEDOR_TROCADO`); finalizar a venda e confirmar que `CheckoutFaturarNFCe` envia `vendedorCodigo = vendedorAtual.codigo`, nunca `sessaoUsuario.UsuarioCodigo` (`FR-007`, depende do payload de finalização da feature 004); empresa sem vendedor default → `vendedorAtual = null`, UI exige seleção manual antes de finalizar (`FR-006`, bloqueio implementado pela feature 004 — este teste só confirma que `vendedorAtual` chega `null` a tempo de a 004 bloquear); busca sem resultado mantém a seleção e fecha sem bloqueio; troca bloqueada após pagamento aprovado, com toast informando o bloqueio — `FR-001` a `FR-006`, `FR-010` a `FR-013`
 
-**Checkpoint**: User Story 1 funcional e testável de forma independente — feature completa (`FR-001` a `FR-015`; `FR-009` e `FR-014` cobertos por `trocarVendedor`/`selecionarVendedor`, T009/T010; `FR-015` é um requisito negativo, sem tarefa própria — nenhum formulário de cadastro é criado por este `tasks.md`).
+**Checkpoint**: User Story 1 funcional e testável de forma independente — feature completa (`FR-001` a `FR-015`; `FR-009` e `FR-014` cobertos por `trocarVendedor`/`selecionarVendedor`, T010/T011; `FR-015` é um requisito negativo, sem tarefa própria — nenhum formulário de cadastro é criado por este `tasks.md`).
 
 ---
 
@@ -89,8 +90,8 @@ tests/integration/ | tests/e2e/
 
 **Purpose**: Gates finais e verificações manuais que o E2E não cobre.
 
-- [ ] T015 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
-- [ ] T016 Rodar o Cenário 7 de `quickstart.md` manualmente (mock de `trocarVendedor({ codigo, nome: null })`, simulando o call site futuro de `CarregarNFCe`): confirmar que `CampoVendedorVenda.tsx` (T013) exibe `"Vendedor #<codigo>"` até o operador reabrir `ModalBuscaVendedor.tsx` (T012) e reselecionar; confirmar ausência visual do chip/filtro "Ativo" (AD-103); confirmar que F5 no meio da venda descarta `vendedorAtual` (Constitution VI)
+- [ ] T016 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
+- [ ] T017 Rodar o Cenário 7 de `quickstart.md` manualmente (mock de `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')`, simulando o call site futuro de `CarregarNFCe`): confirmar que `CampoVendedorVenda.tsx` (T014) exibe `"Vendedor #<codigo>"` até o operador reabrir `ModalBuscaVendedor.tsx` (T013) e reselecionar; confirmar ausência visual do chip/filtro "Ativo" (AD-103); confirmar que F5 no meio da venda descarta `vendedorAtual` (Constitution VI)
 
 ---
 
@@ -117,9 +118,9 @@ tests/integration/ | tests/e2e/
 ### Parallel Opportunities
 
 - T002 (schema) não depende de nada — pode iniciar imediatamente
-- T004 (teste Foundational) em paralelo a T003, desde que rode após T003 estar implementado (é teste do comportamento de T003)
-- T005–T008 (testes US1) em paralelo entre si
-- T011, T013 (arquivos independentes de T009/T010/T012) em paralelo
+- T004, T005 (testes Foundational) em paralelo entre si, desde que rodem após T003 estar implementado (são testes do comportamento de T003)
+- T006–T009 (testes US1) em paralelo entre si
+- T012, T014 (arquivos independentes de T010/T011/T013) em paralelo
 
 ---
 
@@ -135,7 +136,7 @@ Task: "Implementar vendedor.schema.ts em src/shared/schemas/vendedor.schema.ts"
 ```bash
 # Os 4 testes de integração de vendedorSlice.spec.ts (arquivos/blocos independentes):
 Task: "Integration test VENDEDOR_SELECIONADO em tests/integration/vendedorSlice.spec.ts"
-Task: "Integration test VENDEDOR_TROCADO em tests/integration/vendedorSlice.spec.ts"
+Task: "Integration test VENDEDOR_TROCADO com carrinho populado em tests/integration/vendedorSlice.spec.ts"
 Task: "Integration test bloqueio pós-pagamento em tests/integration/vendedorSlice.spec.ts"
 Task: "Integration test trocarVendedor incondicional em tests/integration/vendedorSlice.spec.ts"
 ```
@@ -149,7 +150,7 @@ Task: "Integration test trocarVendedor incondicional em tests/integration/vended
 1. Completar Phase 1: Setup (pressupõe 002 e 001 já implementadas)
 2. Completar Phase 2: Foundational (bloqueia tudo)
 3. Completar Phase 3: User Story 1
-4. **PARAR e VALIDAR**: vendedor default pré-selecionado, busca, seleção, troca e bloqueio pós-pagamento funcionando isoladamente
+4. **PARAR e VALIDAR**: vendedor default pré-selecionado, busca, seleção, troca (com carrinho populado) e bloqueio pós-pagamento funcionando isoladamente
 5. Nesse ponto a feature está completa — não há segunda story
 
 ### Incremental Delivery
@@ -160,7 +161,7 @@ Task: "Integration test trocarVendedor incondicional em tests/integration/vended
 
 ### Parallel Team Strategy
 
-Com mais de um desenvolvedor: completar Setup + Foundational juntos; depois um desenvolvedor segue com `selecionarVendedor`/`ModalBuscaVendedor.tsx` (T009, T011, T012), outro prepara `trocarVendedor`/`CampoVendedorVenda.tsx` (T010, T013) em paralelo — ambos dependem só de T003, sem dependência cruzada entre si.
+Com mais de um desenvolvedor: completar Setup + Foundational juntos; depois um desenvolvedor segue com `selecionarVendedor`/`ModalBuscaVendedor.tsx` (T010, T012, T013), outro prepara `trocarVendedor`/`CampoVendedorVenda.tsx` (T011, T014) em paralelo — ambos dependem só de T003, sem dependência cruzada entre si.
 
 ---
 
@@ -171,5 +172,5 @@ Com mais de um desenvolvedor: completar Setup + Foundational juntos; depois um d
 - Verificar que os testes falham antes de implementar (TDD onde aplicável) — prioridade no núcleo do slice (`vendedorSlice.ts`)
 - Commit após cada tarefa ou grupo lógico
 - Parar no checkpoint da Phase 3 para validar a story isoladamente
-- `podeMutarCarrinho()` (T009) é uma dependência injetada (Dependency Inversion) — `vendedorSlice.ts` nunca importa `pagamentoSlice`/`carrinhoSlice`/`clienteSlice`, mesmo padrão já usado por carrinho (003) e cliente (005)
-- Os call sites que invocam `trocarVendedor` a partir de `CarregarNFCe` (004/011) e da importação de DAV (006) são responsabilidade das fases Design/Tasks dessas features — este `tasks.md` só implementa a action pública (T010)
+- `podeMutarCarrinho()` (T010) é uma dependência injetada (Dependency Inversion) — `vendedorSlice.ts` nunca importa `pagamentoSlice`/`carrinhoSlice`/`clienteSlice`, mesmo padrão já usado por carrinho (003) e cliente (005)
+- Os call sites que invocam `trocarVendedor` a partir de `CarregarNFCe` (004/011, com `origem: 'RASCUNHO'`) e da importação de DAV (006, usa o default `'DAV'`) são responsabilidade das fases Design/Tasks dessas features — este `tasks.md` só implementa a action pública (T011); o bloqueio do botão "Finalizar" quando `vendedorAtual === null` (`FR-006`, `SC-003`) também é responsabilidade da feature 004 — mesma lógica de escopo
