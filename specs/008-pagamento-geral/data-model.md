@@ -133,6 +133,8 @@ Nada disso é gravado no estado — é seletor puro sobre carrinho + pagamentos 
 | I8 | `descontoCapa.valorResolvido <= subtotal` do carrinho | guarda de entrada de `aplicarDescontoCapa`, `research.md` D8 passo 1 |
 | I9 | Ao trocar a condição de pagamento, a lista de pagamentos é esvaziada | `selecionarCondicao`, `research.md` D2 |
 | I10 | Nenhum caminho de código invoca impressão para `DuplicataMercantil` | teste negativo, `FR-018`/AD-064 |
+| I11 | Nenhum pagamento entra na lista sem um veredito favorável da validação prévia obtido **para aquele gesto** | `aplicarPagamento` só muta após `await validarInsercao(...)`; `FR-019`, feature 014 (I1) |
+| I12 | Havendo qualquer pagamento aplicado, além do carrinho (I7) também ficam congelados **cliente, vendedor e desconto de capa** | guardas de `aplicarDescontoCapa` e predicado exposto às features 005/012; `FR-023`, AD-113 |
 
 ---
 

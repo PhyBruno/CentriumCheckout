@@ -70,6 +70,9 @@ Como operador de caixa, ao cancelar uma venda em digitação, quero que ela fiqu
 - **FR-011**: O sistema MUST incluir, em toda solicitação de finalização ou suspensão, o histórico de auditoria completo acumulado durante aquela sessão de venda.
 - **FR-012**: Ao finalizar ou suspender com sucesso, o sistema MUST descartar por completo o estado local da venda (carrinho e qualquer dado de produto em cache), garantindo que a próxima venda nunca herde dados da anterior.
 - **FR-013**: O sistema MUST verificar periodicamente, apenas enquanto nenhuma venda estiver em andamento, se a configuração do operador mudou, atualizando-a localmente quando necessário.
+- **FR-014**: O sistema MUST NOT emitir o documento fiscal sem um veredito favorável vigente da validação prévia da venda (feature 014), ainda que o total esteja coberto; e MUST NOT repetir essa validação no momento da finalização — vale o veredito obtido na última inserção de pagamento aceita (AD-113).
+- **FR-015**: O sistema MUST produzir a representação da venda enviada ao ERP por um **único** mecanismo, compartilhado entre a validação prévia, a finalização e a suspensão, de modo que a venda validada e a venda emitida nunca possam divergir (AD-111).
+- **FR-016**: A suspensão da venda MUST NOT depender da validação prévia — suspender não emite documento fiscal.
 
 ### Key Entities *(include if feature involves data)*
 

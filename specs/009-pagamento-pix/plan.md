@@ -109,3 +109,11 @@ tests/
 ## Complexity Tracking
 
 > Nenhuma violação de Constitution Check identificada nesta fase — seção não preenchida.
+
+## Emenda de 2026-08-31 — validação prévia da venda (feature 014)
+
+**Nenhuma mudança de mecanismo nesta feature.** O registro existe para que a ordem fique explícita e ninguém a reintroduza ao contrário:
+
+1. `GerarPIX` só é alcançado **depois** de a feature 014 ter dado veredito favorável para a inserção da forma PIX (`FR-012` de `spec.md`). O gate mora em `aplicarPagamento` (feature 008), que é quem dispara o roteamento ao qual esta feature reage — logo, nenhuma cobrança PIX nasce numa venda que o ERP recusou, sem que esta feature precise conhecer o gate.
+2. Isso vale igualmente quando a forma PIX entra por atalho de venda rápida (feature 013), que usa o mesmo caminho.
+3. O cenário 6 de `specs/014-validacao-previa-nfce/quickstart.md` é o teste que prova essa ordem: venda recusada ⇒ nenhum QR Code, nenhum código "copia e cola", nenhum registro no adquirente.

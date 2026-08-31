@@ -18,7 +18,7 @@ Um slice dedicado `auditoria`, combinado no mesmo store Zustand+Immer da venda e
 
 **Storage**: N/A — sem persistência. O array de eventos vive só em memória, com o mesmo ciclo de vida do carrinho (AD-006): não sobrevive a F5, é descartado ao final da venda (sucesso) e nunca é gravado em Dexie/localStorage/IndexedDB.
 
-**Testing**: Vitest + Testing Library — teste unitário por tipo de evento (17 variantes, ver `data-model.md`) cobrindo a action creator e o formato de `detalhes`; teste de integração do slice cobrindo ordem cronológica estritamente crescente e a serialização para o campo `Log` (parse de volta ao array original). Sem E2E dedicado (mecanismo sem tela, FR-009) — a cobertura E2E do campo `Log` é responsabilidade do teste ponta a ponta de finalização/suspensão (feature 004, `specs/004-finalizacao-suspensao-venda/`), que só precisa afirmar que `Log` chega preenchido e parseável.
+**Testing**: Vitest + Testing Library — teste unitário por tipo de evento (18 variantes, ver `data-model.md`) cobrindo a action creator e o formato de `detalhes`; teste de integração do slice cobrindo ordem cronológica estritamente crescente e a serialização para o campo `Log` (parse de volta ao array original). Sem E2E dedicado (mecanismo sem tela, FR-009) — a cobertura E2E do campo `Log` é responsabilidade do teste ponta a ponta de finalização/suspensão (feature 004, `specs/004-finalizacao-suspensao-venda/`), que só precisa afirmar que `Log` chega preenchido e parseável.
 
 **Target Platform**: Navegador (mesma SPA das demais features) — sem mudança de plataforma ou processo.
 
@@ -30,11 +30,11 @@ Um slice dedicado `auditoria`, combinado no mesmo store Zustand+Immer da venda e
 - Nenhuma tela própria (FR-009) — mecanismo inteiramente de bastidor.
 - Timestamp em ISO 8601 completo, com segundos (AD-061) — `new Date().toISOString()` (UTC, com milissegundos, satisfaz o requisito de precisão de segundos).
 - Toda feature de negócio que gera um evento MUST chamar um dispatcher tipado (`registrarEventoAuditoria(...)`) — não há interceptação genérica de mutações Zustand (descartada, AD-061 "Out of Scope").
-- Slice zerado só no evento `VENDA_INICIADA` (início ou retomada); nunca reconstrói histórico de sessão anterior (FR-008, AUDIT-10).
-- Slice preservado (nunca descartado) em falha de rede de `FaturarNFCe`; descartado só após entrega bem-sucedida (FR-006/FR-007, AUDIT-09).
+- Slice zerado só no evento `VENDA_INICIADA` (início ou retomada); nunca reconstrói histórico de sessão anterior (FR-008, AUDIT-10 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 88).
+- Slice preservado (nunca descartado) em falha de rede de `FaturarNFCe`; descartado só após entrega bem-sucedida (FR-006/FR-007, AUDIT-09 — mesma referência, linha 87).
 - Nenhum campo de identidade do operador por evento — autoria é implícita à sessão autenticada (Assumptions da spec).
 
-**Scale/Scope**: 1 slice Zustand (`auditoriaSlice`) + união discriminada de 17 tipos de evento + 1 módulo de serialização para o campo `Log` + pontos de disparo em 5 outras features (identificação de cliente — spec 005, seleção de vendedor — spec 012, carrinho — spec 003, pagamento — spec 008, finalização/suspensão — spec 004). Este plano é dono do slice, da união de tipos e da serialização; os pontos de disparo em cada feature de negócio são implementados pelos planos dessas features, referenciando o contrato definido aqui (`contracts/auditoria-events.md`).
+**Scale/Scope**: 1 slice Zustand (`auditoriaSlice`) + união discriminada de 18 tipos de evento + 1 módulo de serialização para o campo `Log` + pontos de disparo em 6 outras features (identificação de cliente — spec 005, seleção de vendedor — spec 012, carrinho — spec 003, pagamento — spec 008, finalização/suspensão — spec 004, validação prévia — spec 014). Este plano é dono do slice, da união de tipos e da serialização; os pontos de disparo em cada feature de negócio são implementados pelos planos dessas features, referenciando o contrato definido aqui (`contracts/auditoria-events.md`).
 
 ## Constitution Check
 
@@ -76,7 +76,7 @@ src/client/
 │       └── auditoriaSlice.ts          # slice desta feature: array de eventos + registrarEventoAuditoria() + resetarAuditoria() + descartarAuditoria()
 └── domain/
     └── auditoria/
-        ├── eventos.ts                  # união discriminada dos 17 tipos de evento (ver data-model.md) + factory functions tipadas por tipo
+        ├── eventos.ts                  # união discriminada dos 18 tipos de evento (ver data-model.md) + factory functions tipadas por tipo
         └── serializarLog.ts            # monta a string JSON do campo Log a partir do array acumulado
 
 tests/

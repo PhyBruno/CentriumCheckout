@@ -184,6 +184,8 @@ interface PagamentoDeps {
   capacidades(): CapacidadesPagamento;             // features 002 + 007
   validarTicket(codigo: string): Promise<ResultadoTicket>;  // camada de query
   iniciarIntegracao(integracao: IntegracaoPagamento, ctx: ContextoIntegracao): void; // features 009/010
+  validarInsercao(candidata: FormaCandidata): Promise<Veredito>;  // feature 014 — gate pré-inserção
+  invalidarVeredito(): void;                                      // feature 014 — ao remover pagamento
 }
 ```
 
@@ -194,10 +196,10 @@ O slice de pagamento **não importa** o slice de carrinho, o hook de layout, nem
 | Action | Pré-condição | Efeito | Auditoria |
 |---|---|---|---|
 | `selecionarCondicao` | — | Define `condicaoSelecionada`; se já havia pagamentos, **esvazia** a lista após confirmação do operador (I9) | `CONDICAO_PAGAMENTO_APLICADA` |
-| `aplicarPagamento` | `podeAplicarForma(...).ok`; `saldoRestante > 0` | Chama `derivarValores`, cria `PagamentoAplicado`. Se `resolverIntegracao !== 'NENHUMA'`, entra como `PENDENTE_INTEGRACAO` e dispara `iniciarIntegracao`; senão entra direto como `APROVADO` | `FORMA_PAGAMENTO_APLICADA` (só quando `APROVADO`) |
+| `aplicarPagamento` | `podeAplicarForma(...).ok`; `saldoRestante > 0`; **e** `validarInsercao(candidata)` com veredito `ACEITA` (feature 014, `FR-019`) | Ordem obrigatória: (1) validações locais puras — falhou aqui, **nenhuma** consulta ao ERP (`FR-020`); (2) `validarInsercao` — recusa ou indisponibilidade encerram sem mutação; (3) só então chama `derivarValores` e cria `PagamentoAplicado`. Se `resolverIntegracao !== 'NENHUMA'`, entra como `PENDENTE_INTEGRACAO` e dispara `iniciarIntegracao` — que assim **nunca** é alcançado numa venda recusada | `FORMA_PAGAMENTO_APLICADA` (só quando `APROVADO`) |
 | `confirmarPagamentoIntegrado` | pagamento em `PENDENTE_INTEGRACAO` | Transiciona para `APROVADO`, anexa `dadosTEF`/`pixGuid` | `FORMA_PAGAMENTO_APLICADA` |
 | `recusarPagamentoIntegrado` | pagamento em `PENDENTE_INTEGRACAO` | Marca `RECUSADO` e remove da lista | `PAGAMENTO_RECUSADO` |
-| `removerPagamento` | pagamento com `integracao === 'NENHUMA'` — em integração aprovada é no-op com toast (I6) | Remove da lista; pode devolver a mutabilidade do carrinho | `FORMA_PAGAMENTO_REMOVIDA` |
+| `removerPagamento` | pagamento com `integracao === 'NENHUMA'` — em integração aprovada é no-op com toast (I6) | Remove da lista; chama `invalidarVeredito()` (`FR-021`); pode devolver a mutabilidade do carrinho e, com a lista vazia, do cliente/vendedor/desconto de capa (I12) | `FORMA_PAGAMENTO_REMOVIDA` |
 | `aplicarDescontoCapa` | `resolverDescontoCapa(...) <= subtotalCarrinho()` (I8) — acima disso é no-op com toast | Substitui o `descontoCapa` (nunca acumula) | — (o desconto é auditado pela feature 004 na finalização) |
 | `removerDescontoCapa` | — | Zera o desconto de capa | — |
 | `aplicarValeDevolucao` | `ehElegivelParaVale(forma)` — inelegível é no-op com toast | `await validarTicket(codigo)`; se `valido`, vincula ao pagamento e soma o valor; se não, toast com `mensagem` | `VALE_DEVOLUCAO_USADO` (só quando válido); `PAGAMENTO_RECUSADO` quando inválido |
