@@ -19,7 +19,7 @@ export function mapearVendaExistente(
 
 Função **pura**: sem rede, sem Zustand, sem React. Contrato de comportamento:
 
-1. Copia `NumeroNota` sem transformação (preservado para reenvio em `FaturarNFCe`). O DAV de origem **não** é modelado nem reenviado — o ERP identifica sozinho que a NFCe veio de um DAV (AD-107).
+1. Copia `NumeroNota` sem transformação — preservado para reenvio **intacto** em `FaturarNFCe`. O DAV de origem **não** é modelado nem reenviado: o ERP identifica sozinho que a NFCe veio de um DAV (AD-107). Com `DavNum` fora do contrato, `NumeroNota` passou a ser o **único** elo com o DAV, por isso o item 5 abaixo trata sua ausência como erro de contrato, não como dado opcional.
 2. Mapeia cada item de `produtos[]` para `LinhaImportada` com `descricao: null` (resolução best-effort acontece fora desta função, na orquestração — ver §2).
 3. Mapeia `clienteCodigo`/`vendedorCodigo` diretamente; `clienteNome` vem de `origemLista?.clienteNome` (fallback: string vazia se ausente); `vendedorNome` é sempre `null` (AD-095 — nenhuma fonte disponível).
 4. Mapeia `FormasDePagamento[]` 1:1, sem reclassificação (D6, `research.md`).

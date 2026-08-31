@@ -2,7 +2,7 @@
 
 **Feature**: `specs/006-importacao-dav/` | **Date**: 2026-08-26
 
-Nenhum `NEEDS CLARIFICATION` restou no Technical Context do `plan.md` — a spec de produto (`specs/006-importacao-dav/spec.md`) e a especificação de domínio (`.specs/features/importacao-dav/spec.md`) já chegavam a esta fase com a maioria das decisões de contrato fechadas (AD-023, AD-024, AD-035, AD-046, AD-052, AD-055, AD-057, AD-058, AD-077, AD-087). Este documento cobre as decisões de **design** tomadas nesta fase — como implementar o que a spec já exige — e dois achados de contrato novos.
+Nenhum `NEEDS CLARIFICATION` restou no Technical Context do `plan.md` — a spec de produto (`specs/006-importacao-dav/spec.md`) e a especificação de domínio (`.specs/features/importacao-dav/spec.md`) já chegavam a esta fase com a maioria das decisões de contrato fechadas (AD-023, AD-024, AD-035, AD-046, AD-052, AD-055, AD-057, AD-058, AD-077, AD-087; mais AD-107, acrescentado em 2026-08-31). Este documento cobre as decisões de **design** tomadas nesta fase — como implementar o que a spec já exige — e dois achados de contrato novos.
 
 ---
 
@@ -60,11 +60,20 @@ Nenhum `NEEDS CLARIFICATION` restou no Technical Context do `plan.md` — a spec
 
 ---
 
+## D8 — O DAV de origem não é informado ao ERP; `NumeroNota` é o único elo (AD-107, 2026-08-31)
+
+**Decision**: `mapearVendaExistente`/`VendaImportada` **não** modelam o número do DAV para envio ao ERP, e `FaturarNFCe` não carrega nenhum campo de DAV. O `numeroDav` selecionado na lista continua em memória apenas para a UI e para o evento de auditoria `DAV_IMPORTADO` (trilha local, feature 001). Em contrapartida, `NumeroNota` passa a ser tratado como **elo obrigatório**: reenviado intacto em `FaturarNFCe` e sua ausência no payload validado é erro de contrato (lança), não dado opcional.
+**Rationale**: O campo `DavNum` de `CheckoutFaturarNFCe`, presente até `20260826163735`, foi removido em `20260827192357`. O usuário confirmou (AD-107) que o ERP identifica sozinho que a NFCe faturada veio de um DAV — o vínculo é interno, criado pelo rascunho que `GetDav` já gera (AD-057/AD-058). O campo era redundante: o Checkout nunca precisou preenchê-lo. Nada no fluxo desta feature muda além de deixar de modelar o campo.
+**Alternatives considered**: Continuar preservando `DavNum` "por segurança" — descartado, o campo não existe mais no schema e um Zod que o exigisse quebraria a validação de fronteira. Enviar o número do DAV em `Log` — descartado, `Log` é a trilha de auditoria do Checkout (AD-061), não canal de vínculo fiscal, e reintroduziria um acoplamento que o ERP não pede.
+
+---
+
 ## Resumo dos achados de contrato desta fase
 
 | Achado | AD | Severidade | Resolução |
 |---|---|---|---|
 | `ListaDAVs`/`GetDav` sem `VendedorNome` | AD-095 | Baixa (exibição) | Fallback por código |
 | `CheckoutFaturarNFCe.produtos` sem `Descricao` | AD-096 | Baixa (exibição) | Lote `GetProduto` best-effort |
+| `DavNum` removido de `CheckoutFaturarNFCe` (`20260827192357`) | AD-107 | Nenhuma (campo era redundante) | Campo não modelado; `NumeroNota` vira o único elo (D8) |
 
 Nenhum dos dois é pendência bloqueante — ambos resolvidos por decisão de design nesta própria fase, sem depender de mudança de contrato pela equipe do ERP.

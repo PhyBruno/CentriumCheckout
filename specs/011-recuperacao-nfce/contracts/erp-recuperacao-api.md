@@ -70,6 +70,8 @@ OutCheckoutFaturarNFCe:  # $ref CheckoutFaturarNFCe — mesmo shape de FaturarNF
       FormaMeioPagtoNFe: string
       FormaValor: number
       FormaIntegracaoCartao: string
+      FormaFpgUtiCar: string        # presente no shape real; não consumido aqui (ressalva de AD-048)
+      FormaEntrada: string          # novo em 20260827192357; não consumido aqui — tratamento pertence à 008 (item 36)
       TEFidentificacao: integer
       TEFCNPJ: string
       TEFBandeira: string
