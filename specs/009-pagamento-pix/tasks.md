@@ -15,6 +15,8 @@ description: "Task list template for feature implementation"
 
 **⚠️ Ordem de implementação e dependências cruzadas**: esta feature depende de **002** (bootstrap + proxy `/api/erp/*`, `ConfiguracoesPIX.MinimoPix`), **003** (`Centavos`, tipo importado, nunca redefinido), **005** (`ClienteVenda`/`clienteAtual` para `montarDadosPagador`) e **008** (`PagamentoAplicado`, `SaldoPagamento.saldoRestante`, `resolverIntegracao`, e as actions já expostas `confirmarPagamentoIntegrado`/`recusarPagamentoIntegrado` do `pagamentoSlice`). Esta feature **implementa** o lado PIX do ponto de injeção `iniciarIntegracao` que a feature 008 deixou stubado (`specs/008-pagamento-geral/tasks.md`, T041) — a Fase 6 (Polish) desta feature substitui esse stub por uma implementação real, tocando `ListaPagamentosAplicados.tsx` (arquivo de 008). Nenhum estado novo é acrescentado ao `vendaStore` (Constitution VI) — `CobrancaPix` é estado efêmero local ao `ModalPix`.
 
+**Nota de escopo — `FR-012`**: `FR-012` ("MUST NOT gerar cobrança PIX sem veredito favorável da validação prévia da venda") não tem nenhuma tarefa nesta feature, pelo mesmo motivo estrutural de `FR-003`/US2 (ver Fase 5): o gate mora em `aplicarPagamento` (feature 008), acionado pela validação prévia da feature 014 (`FR-019`/AD-109 de 008), e é alcançado **antes** de `iniciarIntegracao('PIX_DINAMICO', ...)` disparar qualquer código desta feature — 009 nunca chega a existir numa venda recusada, então não há o que testar aqui. O teste que prova essa ordem é o cenário 6 de `specs/014-validacao-previa-nfce/quickstart.md` (venda recusada ⇒ nenhum QR Code, nenhum "copia e cola", nenhum registro no adquirente), já referenciado em `plan.md` ("Emenda de 2026-08-31").
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Pode rodar em paralelo (arquivos diferentes, sem dependência de tarefas incompletas)
@@ -97,8 +99,8 @@ tests/unit/domain/pix/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Integration test `tests/integration/ModalPix.spec.tsx`: `StatusPIX` sempre retorna `'G'`; operador fecha o modal manualmente → aviso de desassociação manual exibido, `PagamentoAplicado` removido (não fica `PENDENTE_INTEGRACAO` órfão), nenhuma chamada HTTP de cancelamento disparada (`list_network_requests`), operador consegue aplicar outra forma no valor total restante — `FR-004`/`FR-005`/`FR-006`/`FR-007` (quickstart Cenário 3) — depende de T007
-- [ ] T020 [P] [US3] Integration test `tests/integration/ModalPix.spec.tsx`: `StatusPIX` retorna `'X'`/`'R'`/`'E'`/`'F'`/`'O'` em `t=10s` (um teste por literal) — mesmo tratamento do Cenário 3 (aviso + remoção do pagamento local), diferença é que o gatilho vem da sondagem, não de uma ação do operador; nenhuma chamada de cancelamento — `data-model.md` §4 (quickstart Cenário 4) — depende de T002, T017
+- [ ] T019 [P] [US3] Integration test `tests/integration/ModalPix.spec.tsx`: `StatusPIX` sempre retorna `'G'`; operador fecha o modal manualmente → aviso de desassociação manual exibido, `PagamentoAplicado` removido (não fica `PENDENTE_INTEGRACAO` órfão), nenhuma chamada HTTP de cancelamento disparada (`list_network_requests`), operador consegue aplicar outra forma no valor total restante; avançar o relógio de teste por mais de 10s após o fechamento e confirmar que **nenhuma nova chamada a `GET StatusPIX` ocorre** (invariante J3, `data-model.md` §5 — o polling não continua em background) — `FR-004`/`FR-005`/`FR-006`/`FR-007` (quickstart Cenário 3) — depende de T007
+- [ ] T020 [P] [US3] Integration test `tests/integration/ModalPix.spec.tsx`: `StatusPIX` retorna `'X'`/`'R'`/`'E'`/`'F'`/`'O'` em `t=10s` (um teste por literal) — mesmo tratamento do Cenário 3 (aviso + remoção do pagamento local), diferença é que o gatilho vem da sondagem, não de uma ação do operador; nenhuma chamada de cancelamento; avançar o relógio de teste após a falha terminal detectada e confirmar que o polling não emite nenhuma chamada adicional a `StatusPIX` (invariante J3) — `data-model.md` §4/§5 (quickstart Cenário 4) — depende de T002, T017
 
 ### Implementation for User Story 3
 
@@ -119,7 +121,7 @@ tests/unit/domain/pix/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Integration test `tests/integration/ModalPix.spec.tsx` (ou suíte equivalente do ponto de montagem em 008): com `ConfiguracoesPIX.UtilizaCentriumPAG = false`, `resolverIntegracao(...)` nunca devolve `PIX_DINAMICO` e `ModalPix` nunca é montado — nenhum request a `GerarPIX` é possível (quickstart Cenário 2) — depende do stub/mock de `resolverIntegracao` (008)
+- [ ] T023 [P] [US2] Integration test `tests/integration/ModalPix.spec.tsx`: com `ConfiguracoesPIX.UtilizaCentriumPAG = false`, `resolverIntegracao(...)` nunca devolve `PIX_DINAMICO` e `ModalPix` nunca é montado — nenhum request a `GerarPIX` é possível (quickstart Cenário 2) — depende do stub/mock de `resolverIntegracao` (008)
 
 **Checkpoint**: Todas as 3 user stories completas e independentes.
 
