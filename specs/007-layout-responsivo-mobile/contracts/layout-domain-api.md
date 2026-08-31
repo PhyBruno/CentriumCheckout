@@ -29,15 +29,17 @@ Pura. `true` somente para Chrome em Android com `BarcodeDetector` presente (`dat
 
 ---
 
-## 2. Hook — `src/client/layout/useIsMobile.ts`
+## 2. Hook e leitura síncrona — `src/client/layout/`
+
+### `useIsMobile.ts` (hook React)
 
 ```ts
 export function useIsMobile(): boolean;
 ```
 
-Único hook que conecta `classificarLayout` a `matchMedia('(max-width: 767.98px)')`, reativo a mudança de viewport (`research.md` D1). Não recebe parâmetros nem depende de nenhum slice do `vendaStore`.
+Único hook que conecta `classificarLayout` a `matchMedia('(max-width: 767.98px)')`, reativo a mudança de viewport (`research.md` D1). Não recebe parâmetros nem depende de nenhum slice do `vendaStore`. Só pode ser chamado dentro de um componente React (regras de hooks) — para leitura fora de React, ver `obterPlataforma.ts` abaixo.
 
-### `obterPlataforma.ts` (AD-116, 2026-08-31)
+### `obterPlataforma.ts` (AD-116, 2026-08-31) — **não é um hook**
 
 ```ts
 export function obterPlataforma(): 'DESKTOP' | 'MOBILE';
