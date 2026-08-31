@@ -37,6 +37,9 @@ O roteamento de integração é uma **função pura de tabela** — `resolverInt
 - Desconto manual sem teto e sem autorização (`FR-014`/`FR-015`, AD-039), limitado apenas por `descontoCapa <= subtotal` (I8), que é o que faz o algoritmo de clamp terminar.
 - Desconto de **item** não é implementado aqui — é delegado a `carrinhoSlice.editarItem(..., 'descontoLinha', ...)` da feature 003 (`research.md`, D7).
 - Nenhum documento impresso para `DuplicataMercantil` (`FR-018`, AD-064).
+- **Toda inserção passa pelo gate da feature 014 antes de mutar o estado** (`FR-019`, AD-109): validações locais primeiro (`FR-020`, sem ida ao ERP quando a recusa é local), depois `validarInsercao`, e só então a mutação e a integração externa — o que garante que nenhuma cobrança PIX/TEF nasça numa venda recusada.
+- `removerPagamento` invalida o veredito vigente (`FR-021`, AD-113); e o congelamento da venda com pagamento aplicado passa a abranger cliente, vendedor e desconto de capa, não só o carrinho (`FR-023`, I12).
+- O catálogo de formas precisa carregar `FormaEntrada` (`FpgEnt`) além de `FormaFpgUtiCar` (`FR-022`, AD-111) — sem esse campo o ERP calcula crediário zero e o gate aprova o que deveria barrar.
 
 **Scale/Scope**: 1 slice Zustand (`pagamentoSlice`) + 5 módulos de domínio puro (`formaPagamento`, `roteamentoIntegracao`, `saldoPagamento`, `descontoCapa`, `valeDevolucao`) + 1 camada de query (catálogo + validação de ticket) + 2 schemas Zod de fronteira + 4 superfícies de UI (seletor de condição/forma, lista de formas aplicadas com saldo/troco, modal de desconto de capa, modal de vale devolução). Fora do escopo: o fluxo de PIX (feature 009), o de TEF (feature 010), a montagem e o envio de `FaturarNFCe` (feature 004 — esta feature entrega os dados prontos) e a adaptação de layout mobile em si (feature 007 — esta feature só consome `plataforma`).
 
@@ -122,3 +125,15 @@ tests/
 ## Complexity Tracking
 
 > Nenhuma violação de Constitution Check identificada nesta fase — seção não preenchida.
+
+## Emenda de 2026-08-31 — validação prévia da venda (feature 014)
+
+Aplicada **no ponto** em `spec.md` (`FR-019`..`FR-023`), `data-model.md` (I11/I12), `contracts/pagamento-domain-api.md` (injeções e contrato de `aplicarPagamento`/`removerPagamento`) e nas Constraints deste plano. Resumo:
+
+1. **`aplicarPagamento` ganha um gate.** Ordem obrigatória: validações locais puras → `validarInsercao` (feature 014) → mutação → integração externa. Uma recusa encerra sem tocar no estado, e por isso `iniciarIntegracao` nunca é alcançado numa venda recusada — o que satisfaz o requisito de "nenhuma cobrança PIX/TEF em venda recusada" **sem mudar nada nas features 009 e 010**.
+2. **Vale para cada forma do split** (`FR-019`): a segunda e as seguintes inserções são validadas de novo, com as formas já aplicadas somadas à candidata. Acrescentar uma forma muda o total de crediário e pode inverter o desfecho.
+3. **`removerPagamento` invalida o veredito** (`FR-021`), o que é o que torna seguro não revalidar na finalização (AD-113).
+4. **O congelamento pós-pagamento cresceu.** A invariante I7 cobria só o carrinho; agora cliente, vendedor e desconto de capa também ficam congelados enquanto houver pagamento aplicado (I12, `FR-023`). Impacta as features 003, 005 e 012, que consomem o predicado por injeção.
+5. **O catálogo passa a carregar `FormaEntrada` (`FpgEnt`)** de `SessaoUsuario.CondicoesDePagamento[]` (`FR-022`, AD-111). Sem esse campo o ERP calcula crediário zero e aprova exatamente o que o gate existe para barrar — é o encerramento da última sub-pendência do item 36 de `PENDENCIES.md`.
+
+O slice recebe `validarInsercao`/`invalidarVeredito` **injetados**: esta feature continua sem importar nada da 014.

@@ -32,9 +32,10 @@ Finalizar e suspender a venda são a mesma operação de rede — `POST /api/erp
 - Log de auditoria (campo `Log`, string) é sempre incluído, `FATURAR` e `SUSPENDER` (`FR-011`, contrato já definido por `specs/001-auditoria-acoes-operador/contracts/auditoria-events.md`).
 - Descarte de estado local (carrinho + cache de produto + log de auditoria + identidade da venda) só ocorre após sucesso — nunca antes do envio, nunca após falha (`FR-012`).
 - A chamada ao serviço de impressão local não valida formato de resposta — sucesso é só "a requisição não lançou erro de rede" (AD-083); falha aciona pergunta de fallback para PDF, nunca falha silenciosa (`FR-009`).
+- **Faturar exige veredito favorável vigente da validação prévia** (`FR-014`, feature 014/AD-113) — obtido na última inserção de pagamento aceita, **sem** nova consulta no momento de faturar. Suspender não tem essa pré-condição (`FR-016`). O retrato enviado é produzido por `montarRetratoVenda`, o mesmo módulo que a validação usa (`FR-015`/AD-111), o que impede que a venda validada e a emitida divirjam.
 - Polling de `GetStatusSistema` só roda quando carrinho vazio **e** nenhum cliente identificado — nunca durante venda ativa (`FR-013`, AD-088); depende de estado das features 003 (carrinho) e 005 (cliente), lido, não mutado, por esta feature.
 
-**Scale/Scope**: 1 slice Zustand (`identidadeVendaSlice`) + 2 módulos de domínio puro (`montarPayloadFaturarNFCe`, `decidirMecanismoImpressao`) + 3 módulos de serviço (mutation de `FaturarNFCe`, chamada ao serviço de impressão local, polling de `GetStatusSistema`) + 1 hook orquestrador + 4 superfícies de UI (botões de finalizar/cancelar, diálogo de confirmação de reenvio, diálogo do documento fiscal). Fora do escopo: a UI/lógica de pagamento que decide se há pagamento removível ou não-removível (feature 008 — este plano só consome o predicado), a seleção de vendedor (feature 012) e a identificação de cliente (feature 005) — este plano só lê o que essas features escrevem no `vendaStore`.
+**Scale/Scope**: 1 slice Zustand (`identidadeVendaSlice`) + 2 módulos de domínio puro (`montarRetratoVenda` — compartilhado com a feature 014, AD-111 — e `decidirMecanismoImpressao`) + 3 módulos de serviço (mutation de `FaturarNFCe`, chamada ao serviço de impressão local, polling de `GetStatusSistema`) + 1 hook orquestrador + 4 superfícies de UI (botões de finalizar/cancelar, diálogo de confirmação de reenvio, diálogo do documento fiscal). Fora do escopo: a UI/lógica de pagamento que decide se há pagamento removível ou não-removível (feature 008 — este plano só consome o predicado), a seleção de vendedor (feature 012) e a identificação de cliente (feature 005) — este plano só lê o que essas features escrevem no `vendaStore`.
 
 ## Constitution Check
 
@@ -75,8 +76,9 @@ specs/004-finalizacao-suspensao-venda/
 ```text
 src/client/
 ├── domain/
+│   ├── venda/                                # COMPARTILHADO — o que pertence à venda como um todo, não a um fluxo
+│   │   └── montarRetratoVenda.ts             # generaliza o antigo montarPayloadFaturarNFCe: FATURAR|SUSPENDER|VALIDAR + lista de pagamentos parametrizada (AD-111, feature 014)
 │   └── finalizacaoVenda/                     # camada pura — sem React, Zustand, Query ou fetch
-│       ├── montarPayloadFaturarNFCe.ts       # combina carrinho+auditoria+identidadeVenda+sessão em CheckoutFaturarNFCe (FR-001..FR-003, FR-010, FR-011)
 │       └── decidirMecanismoImpressao.ts      # SessaoUsuario.TipoImpressao -> 'direta' | 'pdf' (FR-008)
 ├── stores/
 │   ├── vendaStore.ts                          # store combinado (feature 001) — passa a combinar o slice abaixo
@@ -101,8 +103,9 @@ src/client/
 tests/
 ├── unit/
 │   └── domain/
+│       ├── venda/
+│       │   └── montarRetratoVenda.spec.ts         # NumeroNota 0 vs. preenchido, CadSerieNFCe/vendedorCodigo sempre presentes, Log serializado; e o retrato VALIDAR ≡ retrato FATURAR exceto SuspenderOuFaturar (I5 da feature 014)
 │       └── finalizacaoVenda/
-│           ├── montarPayloadFaturarNFCe.spec.ts   # NumeroNota 0 vs. preenchido, CadSerieNFCe/vendedorCodigo sempre presentes, Log serializado
 │           └── decidirMecanismoImpressao.spec.ts  # 'E' -> direta, 'P' -> pdf, valor inesperado tratado como erro de fronteira
 ├── integration/
 │   └── finalizacaoSuspensao.spec.ts               # falha de rede -> aguarda confirmação -> reenvio; falha de negócio -> reenvio livre; sucesso -> descarta carrinho/cache/auditoria/identidade
@@ -115,3 +118,14 @@ tests/
 ## Complexity Tracking
 
 > Nenhuma violação de Constitution Check identificada nesta fase — seção não preenchida.
+
+## Emenda de 2026-08-31 — validação prévia da venda (feature 014)
+
+Aplicada **no ponto** em todo este plano (árvore de código e testes) e resumida aqui para quem chegar pelo final:
+
+1. **`montarPayloadFaturarNFCe` não existe mais com esse nome nem nesse lugar.** Virou `src/client/domain/venda/montarRetratoVenda.ts`, compartilhado com a feature 014, parametrizado por operação (`'FATURAR' | 'SUSPENDER' | 'VALIDAR'`) e pela lista de pagamentos a considerar (AD-111). A lógica não mudou — mudou a fronteira: a venda validada e a venda emitida passam a ser produzidas pela mesma função, e divergir entre elas deixa de ser possível por construção (I5 da feature 014).
+2. **A emissão passa a ter uma pré-condição nova**: `podeFinalizar()` — o veredito favorável obtido na última inserção de pagamento aceita (`FR-014`). Não há revalidação no momento de faturar (AD-113): a venda está congelada desde o primeiro pagamento aplicado, e remover esse pagamento é o que derruba o veredito.
+3. **A suspensão não é afetada** (`FR-016`) — não emite documento fiscal, não passa pelo gate.
+4. `limparPagamentos`, já chamada por esta feature ao finalizar/suspender com sucesso, passa a zerar também o veredito vigente.
+
+Ver `specs/014-validacao-previa-nfce/` (`plan.md`, `contracts/validacao-domain-api.md`).

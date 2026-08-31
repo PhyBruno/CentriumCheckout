@@ -2428,5 +2428,43 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "type": "decision",
+    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
+    "tags": [
+      "validacao",
+      "pagamento",
+      "014"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/spec.md",
+      "specs/008-pagamento-geral/spec.md"
+    ],
+    "date": "2026-08-31"
+  },
+  {
+    "type": "fact",
+    "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
+    "tags": [
+      "validarnfce",
+      "erp"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md"
+    ],
+    "date": "2026-08-31"
+  },
+  {
+    "type": "next",
+    "content": "Rodar /speckit-tasks na feature 014",
+    "tags": [
+      "speckit",
+      "014"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/plan.md"
+    ],
+    "date": "2026-08-31"
   }
 ]

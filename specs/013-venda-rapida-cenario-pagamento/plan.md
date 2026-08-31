@@ -122,3 +122,12 @@ Os dois pontos de contrato levantados por AD-105 e AD-106 foram **fechados por d
 ## Próximo passo
 
 `/speckit-tasks` para gerar `tasks.md` em ordem topológica. A ordem natural é: tipos e schema de fronteira → parser → projeção → comando → registro de atalhos → UI → e2e; os testes de I1–I5 podem ser escritos antes do parser (RED/GREEN via `ecc:tdd-workflow`), já que dependem apenas de `data-model.md`.
+
+## Emenda de 2026-08-31 — validação prévia da venda (feature 014)
+
+O atalho **não** ganha caminho próprio de validação: ele chama `aplicarPagamento` da feature 008, que já contém o gate. As consequências, aplicadas em `spec.md` (`FR-021`/`FR-022`):
+
+1. Toda tecla acionada dispara a mesma consulta a `ValidarNFCe` que o botão da tela de pagamento dispararia — inclusive quando o atalho é usado para lançar a segunda forma de um pagamento dividido.
+2. **Recusa aborta o encadeamento inteiro**: nada é lançado e a finalização automática do cenário "encerra a operação" **não** começa, mesmo com saldo que seria zerado. É o caso concreto do que `FR-011` já dizia de forma genérica ("o lançamento falhou").
+3. A exclusão mútua do gate (`emValidacao`) soma-se a `FR-015` desta feature: dois toques rápidos na mesma tecla produzem, no máximo, uma consulta e um pagamento.
+4. O achado colateral `ValidarNFCe`, registrado por esta feature no item 36 de `PENDENCIES.md` com destino provisório "feature 004", teve o destino corrigido: virou a feature 014, e o momento correto é a **inserção do pagamento**, não a finalização (AD-109).

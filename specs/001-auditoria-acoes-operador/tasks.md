@@ -60,9 +60,9 @@ Conforme `plan.md`, "Project Structure":
 
 ## Phase 3: User Story 1 - Registrar evento a cada ação relevante da venda (Priority: P1) 🎯 MVP
 
-**Goal**: Dispatcher tipado + as 13 factory functions de eventos de ação (cliente, vendedor, produto, pagamento) que as features de negócio (003, 005, 008, 012) vão consumir via `registrarEventoAuditoria`.
+**Goal**: Dispatcher tipado + as 14 factory functions de eventos de ação (cliente, vendedor, produto, pagamento, validação prévia) que as features de negócio (003, 005, 008, 012, 014) vão consumir via `registrarEventoAuditoria`.
 
-**Independent Test**: Para cada tipo de evento de ação, chamar a factory correspondente e `registrarEventoAuditoria`, e verificar no array do slice o `tipo`, o shape de `detalhes` e o `timestamp` ISO 8601 estritamente crescente — testável sem depender das features consumidoras (003/005/008/012) ainda não implementadas.
+**Independent Test**: Para cada tipo de evento de ação, chamar a factory correspondente e `registrarEventoAuditoria`, e verificar no array do slice o `tipo`, o shape de `detalhes` e o `timestamp` ISO 8601 estritamente crescente — testável sem depender das features consumidoras (003/005/008/012/014) ainda não implementadas.
 
 ### Implementation for User Story 1
 
@@ -70,8 +70,10 @@ Conforme `plan.md`, "Project Structure":
 - [ ] T007 [US1] Implementar factories de produto em `eventos.ts`: `PRODUTO_INSERIDO`, `PRODUTO_ALTERADO`, `PRODUTO_CANCELADO` — `precoUnitario`/`desconto`/`valorAnterior`/`valorNovo` em centavos inteiros, sem recálculo (Constitution V) em `src/client/domain/auditoria/eventos.ts` (depende de T006, mesmo arquivo)
 - [ ] T008 [US1] Implementar factories de pagamento em `eventos.ts`: `CONDICAO_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_REMOVIDA`, `VALE_DEVOLUCAO_USADO`, `PAGAMENTO_RECUSADO` em `src/client/domain/auditoria/eventos.ts` (depende de T007, mesmo arquivo)
 - [ ] T009 [US1] Teste unitário dos 13 tipos de evento de ação (shape de `detalhes` por tipo, `timestamp` ISO 8601, push via `registrarEventoAuditoria`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T008 e T005, mesmo arquivo)
+- [ ] T018 [US1] Implementar factory de `VALIDACAO_VENDA_RECUSADA` em `eventos.ts`: `{ origem: 'MANUAL' | 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` (FR-010, evento distinto de `PAGAMENTO_RECUSADO`) em `src/client/domain/auditoria/eventos.ts` (depende de T008, mesmo arquivo)
+- [ ] T019 [US1] Teste unitário de `VALIDACAO_VENDA_RECUSADA` (shape de `detalhes`, `timestamp` ISO 8601, distinção de `PAGAMENTO_RECUSADO`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T018 e T009, mesmo arquivo)
 
-**Checkpoint**: User Story 1 completa e testável de forma independente — todos os 13 tipos de evento de ação disponíveis para as features consumidoras.
+**Checkpoint**: User Story 1 completa e testável de forma independente — todos os 14 tipos de evento de ação disponíveis para as features consumidoras.
 
 ---
 
@@ -87,7 +89,7 @@ Conforme `plan.md`, "Project Structure":
 - [ ] T011 [US2] Implementar `descartarAuditoria()` (esvazia o array sem registrar evento; só deve ser chamado após entrega bem-sucedida ao ERP) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T004)
 - [ ] T012 [P] [US2] Implementar `serializarLogAuditoria(eventos)` (`JSON.stringify` puro, sem dependência do slice) em `src/client/domain/auditoria/serializarLog.ts`
 - [ ] T013 [US2] Teste unitário dos 3 tipos de evento de finalização em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T010 e T009, mesmo arquivo)
-- [ ] T014 [US2] Teste de integração em `tests/unit/domain/auditoria/serializarLog.spec.ts`: ordem cronológica estritamente crescente, round-trip `JSON.stringify`/`JSON.parse`, e cenário de reenvio após `FATURAMENTO_FALHOU` sem reset do array (FR-006/FR-007, AUDIT-09) (depende de T011, T012)
+- [ ] T014 [US2] Teste de integração em `tests/unit/domain/auditoria/serializarLog.spec.ts`: ordem cronológica estritamente crescente, round-trip `JSON.stringify`/`JSON.parse`, e cenário de reenvio após `FATURAMENTO_FALHOU` sem reset do array (FR-006/FR-007, AUDIT-09 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 87) (depende de T011, T012)
 
 **Checkpoint**: User Story 2 completa — histórico pronto para ser consumido pela feature 004 no payload de `FaturarNFCe`.
 
@@ -99,7 +101,7 @@ Conforme `plan.md`, "Project Structure":
 
 - [ ] T015 [P] Rodar a suíte completa (`eventos.spec.ts` + `serializarLog.spec.ts`) e confirmar compilação limpa em TypeScript `strict` (sem `any`)
 - [ ] T016 Revisão de responsabilidade única (Constitution II/SOLID): confirmar que `auditoriaSlice.ts`/`eventos.ts` não contêm regra de negócio de cliente/vendedor/produto/pagamento — só recebem `detalhes` já normalizados
-- [ ] T017 Registrar como pendência de integração a execução dos Cenários 1–4 de `quickstart.md`, que só podem ser validados ponta a ponta depois que as features consumidoras (003/004/005/008/012) implementarem seus próprios call sites de `registrarEventoAuditoria` — não bloqueia o fechamento desta feature (FR-009, mecanismo sem tela própria)
+- [ ] T017 Registrar como pendência de integração a execução dos Cenários 1–4 de `quickstart.md`, que só podem ser validados ponta a ponta depois que as features consumidoras (003/004/005/008/012/014) implementarem seus próprios call sites de `registrarEventoAuditoria` — não bloqueia o fechamento desta feature (FR-009, mecanismo sem tela própria)
 
 ---
 
@@ -121,8 +123,8 @@ Conforme `plan.md`, "Project Structure":
 ### Dentro de cada User Story
 
 - Factories antes dos testes que as cobrem
-- `eventos.ts` é editado sequencialmente entre T002 → T006 → T007 → T008 → T010 (mesmo arquivo, sem paralelismo entre essas tarefas)
-- `eventos.spec.ts` é editado sequencialmente entre T005 → T009 → T013 (mesmo arquivo)
+- `eventos.ts` é editado sequencialmente entre T002 → T006 → T007 → T008 → T018 → T010 (mesmo arquivo, sem paralelismo entre essas tarefas)
+- `eventos.spec.ts` é editado sequencialmente entre T005 → T009 → T019 → T013 (mesmo arquivo)
 - `serializarLog.ts`/`serializarLog.spec.ts` são arquivos próprios, paralelizáveis entre si e com o restante de US2
 
 ### Parallel Opportunities
@@ -157,19 +159,19 @@ Task: "Implementar serializarLogAuditoria() em src/client/domain/auditoria/seria
 1. Completar Fase 1: Setup
 2. Completar Fase 2: Foundational (CRITICAL — bloqueia as duas stories)
 3. Completar Fase 3: User Story 1
-4. **PARAR e VALIDAR**: rodar `eventos.spec.ts` e confirmar os 14 tipos de evento (1 foundational + 13 de ação) cobertos
-5. Nesse ponto, as features 005/008/012 já podem começar a integrar seus call sites de `registrarEventoAuditoria`, mesmo antes de US2 estar pronta
+4. **PARAR e VALIDAR**: rodar `eventos.spec.ts` e confirmar os 15 tipos de evento (1 foundational + 14 de ação) cobertos
+5. Nesse ponto, as features 005/008/012/014 já podem começar a integrar seus call sites de `registrarEventoAuditoria`, mesmo antes de US2 estar pronta
 
 ### Incremental Delivery
 
 1. Setup + Foundational → base do slice pronta
-2. Adicionar User Story 1 → testar isoladamente → factories de ação disponíveis para 003/005/008/012
+2. Adicionar User Story 1 → testar isoladamente → factories de ação disponíveis para 003/005/008/012/014
 3. Adicionar User Story 2 → testar isoladamente → serialização para `Log` disponível para a feature 004
 4. Cada story soma valor sem quebrar a anterior — não há acoplamento funcional entre US1 e US2, só compartilhamento de arquivo (`eventos.ts`/`eventos.spec.ts`)
 
 ### Nota sobre integração com outras features
 
-Este `tasks.md` fecha no módulo de domínio + slice. A validação ponta a ponta (Cenários 1–4 de `quickstart.md`) só é possível depois que as features 003, 004, 005, 008 e 012 tiverem implementado seus próprios call sites de `registrarEventoAuditoria`, referenciando `contracts/auditoria-events.md` — acompanhar via T017.
+Este `tasks.md` fecha no módulo de domínio + slice. A validação ponta a ponta (Cenários 1–4 de `quickstart.md`) só é possível depois que as features 003, 004, 005, 008, 012 e 014 tiverem implementado seus próprios call sites de `registrarEventoAuditoria`, referenciando `contracts/auditoria-events.md` — acompanhar via T017.
 
 ---
 
