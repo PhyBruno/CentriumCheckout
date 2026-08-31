@@ -9,6 +9,8 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/auditoria-events.md, quickstart.md (todos presentes)
 
+**Pré-requisito de ordem de implementação**: a Fase 1 (Setup) desta feature cria subdiretórios *dentro* de `src/client/` — pressupõe que o scaffolding do projeto (`package.json`, `tsconfig.json`, Vite, `src/client/` como raiz válida) já exista. Esse scaffolding é criado pela **Fase 1 (Setup) de `specs/002-autenticacao-sessao-bootstrap/tasks.md`**, não por esta feature (ver `plan.md` desta feature, "Structure Decision": 001 é a *segunda* feature a propor estrutura de diretórios, a primeira é a 002). **T001 desta feature só pode rodar depois que a Fase 1 de 002 estiver concluída**, apesar da numeração da feature sugerir a ordem inversa.
+
 **Tests**: Solicitados explicitamente pela seção "Testing" do `plan.md` (Vitest + Testing Library) e pela "Project Structure" (`tests/unit/domain/auditoria/`) — incluídos abaixo.
 
 **Organization**: Tarefas agrupadas por user story (ambas Priority: P1 em `spec.md`, na ordem em que aparecem na spec) para permitir implementação e teste independentes.
@@ -38,6 +40,8 @@ Conforme `plan.md`, "Project Structure":
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Inicialização da estrutura de diretórios desta feature
+
+**⚠️ Depende de**: Fase 1 (Setup) de `specs/002-autenticacao-sessao-bootstrap/tasks.md` já concluída — é lá que `src/client/` é criado pela primeira vez.
 
 - [ ] T001 Criar estrutura de diretórios: `src/client/stores/`, `src/client/stores/slices/`, `src/client/domain/auditoria/`, `tests/unit/domain/auditoria/`
 
