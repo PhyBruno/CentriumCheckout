@@ -3962,9 +3962,157 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "y3cr1",
+                      "id": "I10H4d",
                       "x": 16,
                       "y": 16,
+                      "name": "Métodos de pagamento rápidos",
+                      "width": "fill_container(360)",
+                      "height": 36,
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "dtpNI",
+                          "name": "Botão PIX",
+                          "width": "fill_container",
+                          "height": 36,
+                          "fill": "$cb-blue",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "L70YjK",
+                              "name": "Ícone PIX",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "qr-code",
+                              "library": "lucide",
+                              "fill": "$on-primary"
+                            },
+                            {
+                              "type": "text",
+                              "id": "mjZUA",
+                              "name": "Texto PIX",
+                              "fill": "$on-primary",
+                              "content": "PIX (F6)",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "PCTi8",
+                          "name": "Botão Dinheiro",
+                          "width": "fill_container",
+                          "height": 36,
+                          "fill": "$surface-strong",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "m3N9L",
+                              "name": "Ícone Dinheiro",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "banknote",
+                              "library": "lucide",
+                              "fill": "$body"
+                            },
+                            {
+                              "type": "text",
+                              "id": "IURKy",
+                              "name": "Texto Dinheiro",
+                              "fill": "$ink",
+                              "content": "Dinheiro (F7)",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "BhBOI",
+                          "name": "Botão Cartão de Débito",
+                          "width": "fill_container",
+                          "height": 36,
+                          "fill": "$surface-strong",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "VuVKD",
+                              "name": "Ícone Cartão de Débito",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "credit-card",
+                              "library": "lucide",
+                              "fill": "$body"
+                            },
+                            {
+                              "type": "text",
+                              "id": "A1ucw3",
+                              "name": "Texto Cartão de Débito",
+                              "fill": "$ink",
+                              "content": "Débito (F8)",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "R6XpfE",
+                          "name": "Botão Cartão de Crédito",
+                          "width": "fill_container",
+                          "height": 36,
+                          "fill": "$surface-strong",
+                          "cornerRadius": 12,
+                          "gap": 6,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "YcIRT",
+                              "name": "Ícone Cartão de Crédito",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "credit-card",
+                              "library": "lucide",
+                              "fill": "$body"
+                            },
+                            {
+                              "type": "text",
+                              "id": "bfr0X",
+                              "name": "Texto Cartão de Crédito",
+                              "fill": "$ink",
+                              "content": "Crédito (F9)",
+                              "fontFamily": "$font-sans",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "y3cr1",
+                      "x": 16,
+                      "y": 60,
                       "name": "Cabeçalho pagamento",
                       "width": "fill_container(360)",
                       "height": 36,
@@ -4041,7 +4189,7 @@
                       "type": "frame",
                       "id": "oGiPa",
                       "x": 16,
-                      "y": 60,
+                      "y": 104,
                       "name": "Condição de pagamento",
                       "width": "fill_container(360)",
                       "layout": "vertical",
@@ -4121,7 +4269,7 @@
                       "type": "frame",
                       "id": "Jup0R",
                       "x": 16,
-                      "y": 134,
+                      "y": 178,
                       "name": "Desconto e acréscimo",
                       "width": "fill_container(360)",
                       "layout": "vertical",
@@ -4353,7 +4501,7 @@
                       "type": "frame",
                       "id": "uZUQX",
                       "x": 16,
-                      "y": 230,
+                      "y": 274,
                       "name": "Seleção de pagamentos",
                       "width": "fill_container(360)",
                       "layout": "vertical",
@@ -4433,7 +4581,7 @@
                       "type": "frame",
                       "id": "J3Y1L",
                       "x": 16,
-                      "y": 306,
+                      "y": 350,
                       "name": "Campo valor recebido",
                       "width": "fill_container(360)",
                       "layout": "vertical",
@@ -4583,7 +4731,7 @@
                       "type": "frame",
                       "id": "COoLE",
                       "x": 16,
-                      "y": 391,
+                      "y": 435,
                       "name": "Pagamentos aplicados",
                       "width": "fill_container(360)",
                       "layout": "vertical",
@@ -4707,98 +4855,6 @@
                               ]
                             }
                           ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "RIDul",
-                          "x": 0,
-                          "y": 58,
-                          "name": "Cartão aplicado",
-                          "enabled": false,
-                          "width": "fill_container(360)",
-                          "height": 34,
-                          "fill": "$surface-soft",
-                          "cornerRadius": 12,
-                          "padding": [
-                            0,
-                            12
-                          ],
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "va9yN",
-                              "name": "Nome Cartão aplicado",
-                              "gap": 8,
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "tJYDO",
-                                  "name": "Ícone Cartão aplicado",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "credit-card",
-                                  "library": "lucide",
-                                  "fill": "$body"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "C9QUeg",
-                                  "name": "Forma Cartão aplicado",
-                                  "fill": "$ink",
-                                  "content": "Cartão 2x",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": 13,
-                                  "fontWeight": "600"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "g0hm1G",
-                              "name": "Valor e limpar cartão",
-                              "gap": 6,
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "F0dykR",
-                                  "name": "Valor Cartão aplicado",
-                                  "fill": "$ink",
-                                  "content": "R$ 83,29",
-                                  "fontFamily": "$font-mono",
-                                  "fontSize": 13,
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "BWUDl",
-                                  "name": "Remover pagamento cartão",
-                                  "width": 26,
-                                  "height": 26,
-                                  "fill": "$surface-strong",
-                                  "cornerRadius": 100,
-                                  "layout": "vertical",
-                                  "justifyContent": "center",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "icon",
-                                      "id": "w4gRH",
-                                      "name": "Lixeira cartão",
-                                      "width": 14,
-                                      "height": 14,
-                                      "icon": "trash-2",
-                                      "library": "lucide",
-                                      "fill": "$body"
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
                         }
                       ]
                     },
@@ -4806,7 +4862,7 @@
                       "type": "frame",
                       "id": "LcGwh",
                       "x": 16,
-                      "y": 569,
+                      "y": 576,
                       "name": "Total da venda",
                       "width": "fill_container(360)",
                       "fill": "$surface-dark",
@@ -4974,97 +5030,6 @@
                               "fontFamily": "$font-sans",
                               "fontSize": 15,
                               "fontWeight": "700"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "BA0vq",
-                      "x": 16,
-                      "y": 449,
-                      "name": "PIX aplicado",
-                      "width": "fill_container(360)",
-                      "height": 34,
-                      "fill": "$surface-soft",
-                      "cornerRadius": 12,
-                      "padding": [
-                        0,
-                        12
-                      ],
-                      "justifyContent": "space_between",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "W6kuGG",
-                          "name": "Nome PIX aplicado",
-                          "gap": 8,
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "j2Uu9i",
-                              "name": "Ícone PIX aplicado",
-                              "width": 16,
-                              "height": 16,
-                              "icon": "credit-card",
-                              "library": "lucide",
-                              "fill": "$body"
-                            },
-                            {
-                              "type": "text",
-                              "id": "nMTsq",
-                              "name": "Forma PIX aplicado",
-                              "fill": "$ink",
-                              "content": "Cartão Débito",
-                              "fontFamily": "$font-sans",
-                              "fontSize": 13,
-                              "fontWeight": "600"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "FBRyo",
-                          "name": "Valor e limpar PIX",
-                          "gap": 6,
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "cvLv9",
-                              "name": "Valor PIX aplicado",
-                              "fill": "$ink",
-                              "content": "R$ 100,00",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 13,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "annqL",
-                              "name": "Remover pagamento PIX",
-                              "width": 26,
-                              "height": 26,
-                              "fill": "$surface-strong",
-                              "cornerRadius": 100,
-                              "layout": "vertical",
-                              "justifyContent": "center",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "ePJJF",
-                                  "name": "Lixeira PIX",
-                                  "width": 14,
-                                  "height": 14,
-                                  "icon": "trash-2",
-                                  "library": "lucide",
-                                  "fill": "$body"
-                                }
-                              ]
                             }
                           ]
                         }
