@@ -1,11 +1,17 @@
 <!--
 Sync Impact Report
-- Version change: [template] → 1.0.0 (initial ratification)
-- Modified principles: n/a (first formal constitution; consolidates pre-existing AD-085 and process rules already in force in CLAUDE.md/rules.md)
-- Added sections: Core Principles (I–VI), Additional Constraints, Development Workflow, Governance
+- Version change: 1.0.0 → 1.0.1 (patch: wording clarification, no principle redefinition)
+- Modified principles: none
+- Modified sections: Development Workflow — "Branch/worktree por alteração" item rewritten to
+  remove `git worktree` entirely; user decision 2026-08-31 discontinues worktree usage, all work
+  (including parallel task isolation) now uses a plain dedicated branch in the same working
+  directory. Removes the prior distinction between "início de tarefa nova" (worktree required)
+  and "continuação de trabalho em andamento" (plain branch allowed) — that distinction no longer
+  applies since both cases now use a plain branch.
+- Added sections: none
 - Removed sections: none
-- Templates requiring follow-up: none — plan-template.md, spec-template.md, tasks-template.md, checklist-template.md already reference "Constitution Check" generically and need no textual change
-- Deferred placeholders: none (RATIFICATION_DATE set to date of this ratification, 2026-08-26, since no earlier formal constitution existed)
+- Templates requiring follow-up: none — no template references worktree
+- Deferred placeholders: none
 -->
 
 # CentriumCheckout Constitution
@@ -77,10 +83,10 @@ partir de um estado local que já divergiu do que o ERP tem como verdade.
 
 ## Development Workflow
 
-- **Branch/worktree por alteração:** toda mudança (feature, fix, doc, chore) MUST acontecer em
-  branch dedicada; nunca commit direto em `master`. Início de tarefa nova MUST usar `git
-  worktree` dedicado; continuação de trabalho já em andamento pode usar branch simples no
-  diretório principal.
+- **Branch por alteração:** toda mudança (feature, fix, doc, chore) MUST acontecer em branch
+  dedicada, no mesmo diretório de trabalho; nunca commit direto em `master`. Isolamento de
+  trabalho em paralelo (múltiplas tarefas simultâneas) também usa branch simples — `git worktree`
+  MUST NOT ser usado (descontinuado por decisão do usuário em 2026-08-31).
 - **Merge via PR revisado:** merge em `master` só ocorre via PR revisado, nunca via push direto,
   mesmo quando tecnicamente possível.
 - **Commit + push obrigatórios ao fim de tarefa:** ao concluir uma tarefa coerente, commitar e
@@ -111,4 +117,4 @@ complexidade que viole um princípio MUST ser justificada explicitamente na desc
 recusada. Uso de `CLAUDE.md` para orientação operacional de desenvolvimento no dia a dia
 permanece válido e é o lugar onde esta constitution é referenciada.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-26 | **Last Amended**: 2026-08-26
+**Version**: 1.0.1 | **Ratified**: 2026-08-26 | **Last Amended**: 2026-08-31

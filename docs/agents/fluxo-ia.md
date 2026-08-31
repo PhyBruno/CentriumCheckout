@@ -68,7 +68,7 @@ Válidos para todo projeto novo, salvo decisão registrada em contrário (ADR/`S
 Regra padrão em todo projeto (detalhe completo em `rules.md` — este documento só resume, `rules.md` é a fonte de verdade):
 
 - **Nunca commitar direto em `main`/`master`.** Toda alteração (feature, fix, doc, chore) acontece em branch dedicada, nomeada pela natureza da mudança (ex.: `docs/fluxo-ia`, `feat/carrinho-precificacao`).
-- **Branch/worktree por tarefa.** Antes de tocar em qualquer arquivo para uma tarefa nova, verificar a branch/worktree atual; se estiver em `main`/`master` (ou numa branch de outra tarefa), criar branch e **worktree dedicado** antes de editar (`git worktree add ../<repo>-<tarefa> -b <tipo>/<tarefa>`) — evita perder estado não commitado ao trabalhar em paralelo. Ver skill `superpowers:using-git-worktrees`.
+- **Branch por tarefa.** Antes de tocar em qualquer arquivo para uma tarefa nova, verificar a branch atual; se estiver em `main`/`master` (ou numa branch de outra tarefa), criar e trocar para uma branch dedicada no próprio diretório de trabalho (`git checkout -b <tipo>/<tarefa>`) antes de editar — **não** usar `git worktree` (descontinuado por decisão do usuário em 2026-08-31).
 - **Commit + push obrigatórios ao final de cada tarefa.** Ao concluir uma tarefa coerente (não a cada edição individual de arquivo), sempre `git commit` + `git push` na branch da tarefa, sem esperar o usuário pedir — nunca deixar trabalho concluído sem commit.
 - **Merge só via PR revisado**, nunca push direto para `main`/`master`, mesmo por conveniência.
 
@@ -91,7 +91,7 @@ Monorepo `pnpm` + Turborepo (`apps/`, `packages/`, `services/`).
 - **API First:** todo endpoint/contrato nasce como OpenAPI 3.1 (rotas HTTP) ou tipos TypeScript (módulos internos) antes de código; frontend consome mocks (MSW) antes do backend pronto.
 - **Documentação de código:** JSDoc obrigatório em todo símbolo exportado; cada `packages/*` tem `README.md` com propósito, exports públicos e como rodar testes.
 - **Resolução obrigatória de issues de revisão:** toda issue de review (qualquer severidade) termina Corrigida ou Won't-fix documentado (com justificativa em `STATE.md`/`tasks.md`) antes de avançar de task.
-- **Git é mais permissivo que aqui:** commit + push imediato após qualquer alteração, sem abrir PR automaticamente (aguarda pedido explícito). Este repo (`CentriumCheckout`) já é mais rígido — exige branch/worktree dedicado por tarefa e merge só via PR revisado (`rules.md`).
+- **Git é mais permissivo que aqui:** commit + push imediato após qualquer alteração, sem abrir PR automaticamente (aguarda pedido explícito). Este repo (`CentriumCheckout`) já é mais rígido — exige branch dedicada por tarefa e merge só via PR revisado (`rules.md`).
 
 ## Pendências
 
