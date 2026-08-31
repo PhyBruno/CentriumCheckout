@@ -1257,6 +1257,18 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 
 ---
 
+### AD-117: Schema Zod canônico do shape completo `CheckoutFaturarNFCe` é `dav.schema.ts` (feature 006), não `faturarNFCe.schema.ts` (feature 004) — achado de `/speckit-analyze` da feature 011 (2026-08-31)
+
+**Decision:** Quando um endpoint do ERP devolve o shape completo `CheckoutFaturarNFCe` (`produtos[]`/`FormasDePagamento[]`/`clienteCodigo`/`vendedorCodigo`/`CondicaoPagamentoCodigo`/`NumeroNota`) como **resposta** — hoje `GetDAV` (feature 006) e `CarregarNFCe` (feature 011) — o schema Zod de fronteira (Constitution IV) que os valida SHALL ser `src/shared/schemas/dav.schema.ts` (feature 006), reaproveitado sem alteração. `src/shared/schemas/faturarNFCe.schema.ts` (feature 004) SHALL continuar validando só a resposta de `POST FaturarNFCe`, que é um objeto bem menor (`{ NotaFiscal: { PDFImpressao, XMLImpressao } }`) — o corpo de `FaturarNFCe`, onde o shape completo aparece como requisição, é construído internamente pelo Checkout (003/008), nunca recebido como dado externo, e por isso não precisa (nem deve) ser validado por esse schema.
+
+**Reason:** `research.md` D3 da feature 011 (2026-08-27) assumiu que `CarregarNFCeOutput` reaproveitaria "o schema já existente de `FaturarNFCeOutput`" — uma confusão entre o shape de **tipo** `CheckoutFaturarNFCe` (compartilhado pelos três endpoints) e o schema Zod que **valida cada resposta específica** (que não é o mesmo objeto em todos os casos). `/speckit-analyze` da feature 011 (2026-08-31) achou a divergência: o contrato real de `faturarNFCe.schema.ts` (`specs/004-finalizacao-suspensao-venda/contracts/faturamento-api.md`) só valida `NotaFiscal`; o contrato de `dav.schema.ts` (`specs/006-importacao-dav/contracts/erp-dav-api.md`, revisado 2026-08-31) já validava o shape completo corretamente e já previa esse reaproveitamento pela 011. Sem esta correção, `parseCarregarNFCeOutput` (011) ficaria sem validação de fronteira real sobre os campos monetários que mais importam (`precoUnitario`/`FormaValor`) — violação do Princípio IV.
+
+**Trade-off:** Nenhum identificado — `dav.schema.ts` já existia como o candidato correto (006 já apontava para si mesmo); a correção é só de referência textual em 011 (`plan.md`, `research.md`, `contracts/erp-recuperacao-api.md`, `tasks.md`), sem impacto em 004 ou 006.
+
+**Impact:** Corrige `specs/011-recuperacao-nfce/research.md` D3, `plan.md` (Technical Context e Project Structure) e `contracts/erp-recuperacao-api.md` no ponto exato da suposição errada (não anexado ao final); `specs/011-recuperacao-nfce/tasks.md` T003/T021 e o parágrafo de dependências cruzadas passam a citar a feature 006 como dependência (schema), não a 004, para esse propósito específico. Nenhum artefato de `specs/004-finalizacao-suspensao-venda/` ou `specs/006-importacao-dav/` muda — ambos já estavam corretos.
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

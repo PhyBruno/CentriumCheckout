@@ -83,6 +83,6 @@ OutCheckoutFaturarNFCe:  # $ref CheckoutFaturarNFCe — mesmo shape de FaturarNF
 messages: GeneXus.Common.Messages_Message[]
 ```
 
-Validado pelo **mesmo** schema Zod já usado para `FaturarNFCeOutput`/`GetDavOutput` (`research.md` D3) → `RascunhoCarregado` (`data-model.md` §3), descartando os campos marcados "ignorado" acima.
+Validado pelo **mesmo** schema Zod já usado para `GetDavOutput` (feature 006, `src/shared/schemas/dav.schema.ts`, `research.md` D3 corrigido — AD-117) → `RascunhoCarregado` (`data-model.md` §3), descartando os campos marcados "ignorado" acima. **Não** é o schema de `FaturarNFCeOutput` (feature 004, `faturarNFCe.schema.ts`) — esse só valida a resposta menor de `POST FaturarNFCe` (`{ NotaFiscal }`), nunca o shape completo.
 
 **404**: rascunho não encontrado (ex.: já faturado por outro operador entre a listagem e a seleção, ou expirou a janela de 30 dias) — tratado como erro de negócio (mensagem ao operador, sem retry automático), nunca como lista vazia silenciosa.

@@ -22,13 +22,13 @@
 
 ---
 
-## D3 — `CarregarNFCe` reaproveita exatamente o shape de `FaturarNFCeOutput`/`GetDavOutput`
+## D3 — `CarregarNFCe` reaproveita exatamente o shape de `GetDavOutput` (correção 2026-08-31, AD-117: não é o schema de `FaturarNFCeOutput`)
 
-**Decision**: `GET /ApiCentriumOAuth/CarregarNFCe` (params `Empresa`/`Numeronota`/`Serienota`, `ApiCentriumOAuth.yaml:383-417`) retorna `CarregarNFCeOutput.OutCheckoutFaturarNFCe`, que é o **mesmo schema** `CheckoutFaturarNFCe` (`ApiCentriumOAuth.yaml:1414-1507`) usado em `FaturarNFCe`/`GetDAV`. Um único parser/schema Zod cobre os três endpoints.
+**Decision**: `GET /ApiCentriumOAuth/CarregarNFCe` (params `Empresa`/`Numeronota`/`Serienota`, `ApiCentriumOAuth.yaml:383-417`) retorna `CarregarNFCeOutput.OutCheckoutFaturarNFCe`, que é o **mesmo shape de tipo** `CheckoutFaturarNFCe` (`ApiCentriumOAuth.yaml:1414-1507`) que aparece no corpo da requisição de `FaturarNFCe` e na resposta de `GetDAV`. Isso **não** significa reaproveitar `src/shared/schemas/faturarNFCe.schema.ts` (feature 004) — esse schema valida só a **resposta** de `POST FaturarNFCe`, que é um objeto bem menor (`{ NotaFiscal: { PDFImpressao, XMLImpressao } }`); o corpo de `FaturarNFCe` (onde o shape completo aparece como requisição) é construído internamente pelo Checkout, não validado por Zod. O schema Zod que de fato valida o shape completo `CheckoutFaturarNFCe` como dado **recebido** de fronteira é `src/shared/schemas/dav.schema.ts`, introduzido pela feature 006 para a resposta de `GetDAV` (`specs/006-importacao-dav/contracts/erp-dav-api.md`) — é esse schema que `CarregarNFCe` reaproveita sem alteração, não o de 004. Um único parser/schema Zod cobre os dois endpoints que **recebem** esse shape como resposta (`GetDAV` e `CarregarNFCe`).
 
-**Rationale**: Mesmo achado de AD-057 (`.specs/project/STATE.md`) já aplicado à importação de DAV — o ERP devolve deliberadamente o formato de rascunho de NFCe em qualquer um dos três casos. Reaproveitar o parser evita triplicar a validação de fronteira (Constitution IV).
+**Rationale**: Mesmo achado de AD-057 (`.specs/project/STATE.md`) já aplicado à importação de DAV — o ERP devolve deliberadamente o formato de rascunho de NFCe tanto em `GetDAV` quanto em `CarregarNFCe`. Reaproveitar o parser de 006 evita duplicar a validação de fronteira (Constitution IV) sem inventar uma segunda leitura do mesmo shape.
 
-**Alternatives considered**: Schema Zod próprio para `CarregarNFCeOutput` — rejeitado, duplicaria validação já necessária para `FaturarNFCeOutput`.
+**Alternatives considered**: Schema Zod próprio para `CarregarNFCeOutput` — rejeitado, duplicaria validação já necessária para `GetDavOutput` (006). Reaproveitar `faturarNFCe.schema.ts` (004) — rejeitado após achado do `/speckit-analyze` de 2026-08-31 (AD-117): esse schema nunca validou o shape completo, só a resposta menor de `FaturarNFCe`; usá-lo deixaria `produtos[]`/`FormasDePagamento[]`/`clienteCodigo` sem validação de fronteira real, violação do Princípio IV da Constitution.
 
 ---
 
