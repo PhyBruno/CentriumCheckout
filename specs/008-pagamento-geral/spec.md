@@ -96,6 +96,8 @@ Como operador de caixa, quero aplicar desconto direto em um item ou no total da 
 - Como o sistema distingue, dentro dos pagamentos por cartão, entre um cartão integrado ao terminal físico e um cartão avulso (fora dessa integração)? Essa informação está disponível por forma de pagamento configurada para a empresa, permitindo esse refinamento quando necessário.
 - O que acontece quando uma forma de pagamento é aplicada ou removida, um vale devolução é usado, ou um pagamento é recusado? O sistema registra o evento correspondente no histórico de auditoria da venda (ver feature de auditoria de ações do operador).
 - O sistema imprime algum documento para uma forma de pagamento por nota promissória/duplicata? Não — não há requisito de impressão associado a esse tipo de pagamento.
+- O que acontece quando o ERP recusa a venda no momento da inserção (limite de crédito, crédito bloqueado, venda a prazo para cliente não identificado)? A inserção não acontece, a venda fica intacta e o motivo devolvido pelo ERP é exibido ao operador — regra completa na feature 014 (validação prévia da venda), acionada por `FR-019`.
+- E quando o ERP aceita a venda mas devolve um aviso? A inserção acontece normalmente e o aviso é exibido sem bloquear — a severidade da mensagem **não** decide bloqueio, só o veredito do ERP decide (AD-110).
 
 ## Requirements *(mandatory)*
 
@@ -119,6 +121,11 @@ Como operador de caixa, quero aplicar desconto direto em um item ou no total da 
 - **FR-016**: Ao aplicar um desconto sobre o total da venda, o sistema MUST distribuir esse valor entre os itens da venda, usando arredondamento em centavos inteiros com qualquer sobra distribuída um centavo por vez aos itens com maior parte fracionária descartada, da maior para a menor.
 - **FR-017**: O sistema MUST registrar, no histórico de auditoria da venda, toda aplicação ou remoção de forma/condição de pagamento, todo uso de vale devolução e todo pagamento recusado.
 - **FR-018**: O sistema MUST NOT gerar nem oferecer um documento impresso para uma forma de pagamento que representa uma nota promissória/duplicata.
+- **FR-019**: O sistema MUST submeter toda inserção de forma/condição de pagamento à validação prévia da venda no ERP (feature 014) **antes** de efetivar a inserção, e MUST NOT aplicar o pagamento nem acionar qualquer integração externa enquanto não houver veredito favorável. Isso vale para **cada** forma de um pagamento dividido — a segunda e as seguintes são validadas de novo, com as formas já aplicadas somadas à candidata, porque acrescentar uma forma pode inverter o desfecho (`FR-011`).
+- **FR-020**: O sistema MUST aplicar primeiro as suas próprias validações locais (venda sem itens, saldo em aberto zerado, segunda forma "dinheiro", desconto acima do subtotal) e MUST NOT consultar o ERP quando o gesto já for recusado localmente.
+- **FR-021**: Ao remover uma forma de pagamento aplicada, o sistema MUST invalidar o veredito de validação vigente, de modo que a próxima inserção seja validada de novo.
+- **FR-022**: O sistema MUST carregar, para cada forma de pagamento do catálogo da sessão, a indicação de **entrada** (`FormaEntrada`/`FpgEnt`) além da elegibilidade de crediário, e MUST enviá-la em cada forma do retrato da venda — sem esse campo o ERP não consegue avaliar o crediário e a validação prévia aprova vendas que deveria barrar (AD-111).
+- **FR-023**: Enquanto houver qualquer forma de pagamento aplicada à venda, o sistema MUST bloquear a alteração do carrinho, do cliente, do vendedor e do desconto sobre o total; alterar qualquer um deles MUST exigir a remoção prévia da forma aplicada (AD-113).
 
 ### Key Entities *(include if feature involves data)*
 

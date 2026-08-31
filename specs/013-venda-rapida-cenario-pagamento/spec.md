@@ -126,6 +126,8 @@ Como Checkout, quero descartar silenciosamente qualquer cenário que não sirva 
 - **FR-016**: No layout desktop, o sistema MUST exibir ao operador, para cada atalho ativo, a tecla correspondente e o nome do cenário; e MUST omitir integralmente essa área quando não houver atalho ativo.
 - **FR-017**: O acionamento de um atalho MUST ser registrado na trilha de auditoria da venda, identificando a tecla, o cenário, a condição, a forma, o valor lançado e se houve finalização automática.
 - **FR-018**: O sistema MUST tratar o campo "encerra a operação" como falso sempre que seu valor não puder ser interpretado com segurança como verdadeiro — na dúvida, não finaliza sozinho.
+- **FR-021**: O lançamento disparado por atalho MUST passar pela mesma validação prévia da venda no ERP exigida de qualquer outra inserção de pagamento (feature 014, `FR-001`) — a tecla substitui o gesto do operador, nunca o gate.
+- **FR-022**: Quando a validação prévia recusar a venda (ou não puder ser concluída), o sistema MUST NOT lançar o pagamento e MUST NOT iniciar a finalização automática, mesmo com "encerra a operação" ligado; MUST exibir o motivo devolvido pelo ERP e preservar a venda no estado anterior ao acionamento — é o caso concreto já previsto de forma genérica por `FR-011`.
 
 ### Key Entities *(include if feature involves data)*
 

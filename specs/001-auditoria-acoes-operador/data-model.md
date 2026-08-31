@@ -35,6 +35,7 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 | 15 | `FATURAMENTO_FALHOU` | 004-finalizacao-suspensao-venda | `{ operacao: 'FATURAR' \| 'SUSPENDER' }` |
 | 16 | `VENDA_FINALIZADA` | 004-finalizacao-suspensao-venda | `{}` |
 | 17 | `VENDA_SUSPENSA` | 004-finalizacao-suspensao-venda | `{}` |
+| 18 | `VALIDACAO_VENDA_RECUSADA` | 014-validacao-previa-nfce | `{ origem: 'MANUAL' \| 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` — registra recusa por regra de negócio **e** indisponibilidade do ERP; avisos (`Valido = true` com mensagem) **não** são registrados (AD-113) |
 
 ### Regras de estado (state machine do slice)
 

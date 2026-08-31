@@ -8,6 +8,10 @@ Fonte dos campos: `Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml` (
 
 ## `POST /api/erp/FaturarNFCe`
 
+> **Pré-condição (2026-08-31, AD-113):** esta chamada só acontece com um **veredito favorável vigente** da validação prévia (feature 014), obtido na última inserção de pagamento aceita — não há nova consulta aqui. Vale para `FATURAR`; `SUSPENDER` não tem essa pré-condição.
+>
+> **Origem do corpo (2026-08-31, AD-111):** o objeto abaixo é produzido por `montarRetratoVenda` (`src/client/domain/venda/`), o **mesmo** módulo que monta o corpo de `ValidarNFCe` — ver `specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md`. Os dois retratos diferem apenas em `SuspenderOuFaturar`. O nome anterior deste módulo (`montarPayloadFaturarNFCe`) não existe mais.
+
 ### Corpo da requisição — `CheckoutFaturarNFCe`
 
 ```jsonc

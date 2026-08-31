@@ -61,6 +61,7 @@ Como operador de caixa, quero poder fechar a tela de PIX mesmo com uma cobrança
 - O que acontece se o operador tentar gerar uma cobrança PIX abaixo do valor mínimo configurado para o ambiente? O sistema bloqueia a geração antes mesmo de enviar a solicitação.
 - Como o valor da cobrança PIX é calculado quando a venda já tem outras formas de pagamento aplicadas (pagamento dividido)? Usa o saldo ainda não coberto da venda, não o total cheio.
 - O que acontece quando a própria geração da cobrança PIX falha (diferente de uma falha ao consultar o status depois)? O sistema exibe um erro simples e oferece a opção de tentar novamente.
+- E se o ERP recusar a venda no momento em que o operador escolhe pagar com PIX? A cobrança nunca chega a ser gerada — a validação prévia da venda (feature 014) acontece antes da inserção da forma, e uma recusa impede tanto o lançamento quanto a chamada de geração. Esta feature não muda de mecanismo por causa disso: ela continua reagindo ao roteamento da feature 008, que agora só é alcançado depois do veredito favorável.
 
 ## Requirements *(mandatory)*
 
@@ -77,6 +78,7 @@ Como operador de caixa, quero poder fechar a tela de PIX mesmo com uma cobrança
 - **FR-009**: O sistema MUST bloquear a geração de uma cobrança PIX abaixo do valor mínimo configurado para o ambiente, validando isso antes de enviar a solicitação.
 - **FR-010**: Ao gerar uma cobrança PIX numa venda que já tem outras formas de pagamento aplicadas, o sistema MUST cobrar apenas o saldo ainda não coberto, não o total cheio da venda.
 - **FR-011**: Quando a geração da cobrança PIX falhar (diferente de uma falha posterior ao consultar seu status), o sistema MUST exibir um erro simples e oferecer a opção de tentar novamente.
+- **FR-012**: O sistema MUST NOT gerar cobrança PIX enquanto a validação prévia da venda no ERP (feature 014) não tiver dado veredito favorável para a inserção dessa forma de pagamento — uma venda recusada MUST NOT produzir QR Code, código "copia e cola" nem qualquer registro de cobrança no adquirente.
 
 ### Key Entities *(include if feature involves data)*
 
