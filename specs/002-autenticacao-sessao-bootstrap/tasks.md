@@ -1,0 +1,237 @@
+---
+
+description: "Task list template for feature implementation"
+---
+
+# Tasks: Autenticação, Sessão e Bootstrap
+
+**Input**: Design documents from `specs/002-autenticacao-sessao-bootstrap/` (`plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/session-bff-api.md`, `quickstart.md`)
+
+**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅, quickstart.md ✅
+
+**Tests**: Incluídos — `plan.md` define explicitamente Vitest+Testing Library e Playwright com arquivos-alvo (`tests/unit/server/session/`, `tests/integration/bootstrap-cache.spec.ts`, `tests/e2e/auth-bootstrap.spec.ts`), e `quickstart.md` mapeia 5 cenários E2E concretos — não é um caso ambíguo de "só incluir se pedido explicitamente".
+
+**Organization**: Tarefas agrupadas pelas 3 user stories da spec (todas P1) — US1 (login automático), US2 (bootstrap completo antes da tela de venda), US3 (renovação de sessão sem interromper venda).
+
+**Nota de contexto**: Esta é a primeira feature do projeto — não existe ainda scaffolding (`package.json`, `tsconfig.json`, etc.). A Fase 1 (Setup) cria a árvore de diretórios e configuração inicial descrita em `plan.md` § Project Structure, que as demais features reaproveitarão sem recriar.
+
+**⚠️ Ordem de implementação** (atualizado 2026-08-31, achados I1/I2 do `/speckit-analyze`): as Fases 1-2 (Setup/Foundational) desta feature devem ser implementadas **antes** da `001` (auditoria) — a Fase 1 da 001 cria subdiretórios dentro de `src/client/`, que só existe depois que a Fase 1 desta feature terminar (ver `specs/001-auditoria-acoes-operador/tasks.md`, nota "Pré-requisito de ordem de implementação"). Na direção oposta, a **Fase 5 (US3)** desta feature — que precisa ler o carrinho da venda em andamento para decidir se avisa o operador antes de encerrar a sessão (FR-006) — depende de `vendaStore.ts` (criado pela Foundational da feature **001**, T003) e do slice de carrinho (`carrinhoSlice.ts`, criado pela Foundational da feature **003**, T009 — ver `specs/003-carrinho-produto-precificacao/tasks.md`). **Ordem prática resultante**: 002 (Fases 1-2) → 001 → 003 (ao menos T009) → 002 (Fase 5, US3). As Fases 3-4 desta feature (US1/US2) não têm essa dependência e seguem a sequência normal logo após a Fase 2.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Pode rodar em paralelo (arquivos diferentes, sem dependência de tarefas incompletas)
+- **[Story]**: A qual user story a tarefa pertence (US1, US2, US3)
+- Caminhos de arquivo exatos em cada descrição
+
+## Path Conventions
+
+Estrutura de único processo Node (BFF Fastify + SPA no mesmo container) — ver `plan.md` § Project Structure / Structure Decision:
+
+```text
+src/client/    # SPA React (Vite)
+src/server/    # BFF Fastify
+src/shared/    # Schemas Zod compartilhados
+tests/unit/ | tests/integration/ | tests/e2e/
+```
+
+---
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: Criar o scaffolding inicial do projeto (primeira feature a fazê-lo — ver `plan.md` § Structure Decision).
+
+- [ ] T001 Inicializar `package.json` (TypeScript `strict`), `tsconfig.json`, `.gitignore` e ESLint/Prettier na raiz do repositório
+- [ ] T002 [P] Configurar Vite para a SPA React em `vite.config.ts`, com `index.html` e `src/client/main.tsx`/`src/client/App.tsx` placeholder
+- [ ] T003 [P] Criar entrypoint do BFF Fastify em `src/server/index.ts` (registra rotas, serve assets estáticos compilados da SPA em produção)
+- [ ] T004 [P] Criar `Dockerfile` (multi-stage: build da SPA + processo Node do BFF) e `docker-compose.yml` de dev (hot-reload via volume) — variáveis `baseDomain`, `validationKey`, `SESSION_SECRET`
+- [ ] T005 [P] Configurar Vitest + Testing Library em `vitest.config.ts`
+- [ ] T006 [P] Configurar Playwright em `playwright.config.ts`
+- [ ] T007 Criar árvore de diretórios vazia conforme `plan.md` § Project Structure (`src/client/features/`, `src/client/stores/`, `src/client/db/`, `src/client/services/`, `src/server/routes/`, `src/server/session/`, `src/server/config/`, `src/shared/schemas/`, `tests/unit/`, `tests/integration/`, `tests/e2e/`)
+
+**Checkpoint**: Projeto inicializa (`npm run dev` sobe Vite + Fastify vazios), suíte de testes roda (vazia).
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Módulos de sessão server-side usados pelas 3 user stories — nenhuma pode ser implementada sem eles.
+
+**⚠️ CRITICAL**: Nenhuma user story pode começar até esta fase terminar.
+
+- [ ] T008 Criar módulo de configuração de ambiente em `src/server/config/env.ts` (lê `baseDomain`, `validationKey`, `SESSION_SECRET` de `process.env`, falha rápido se ausente)
+- [ ] T009 [P] Criar schema Zod da resposta de `POST /oauth/access_token` em `src/shared/schemas/token-response.schema.ts` (campo `access_token` obrigatório, demais campos conforme contrato OAuth do ERP em `.specs/codebase/INTEGRATIONS.md`) — **adicionado 2026-08-31 (achado C1 do `/speckit-analyze`)**: fecha a lacuna de validação de fronteira exigida pela Constitution IV para toda resposta externa do ERP, inclusive a de troca/renovação de token
+- [ ] T010 [P] Implementar cifra/decifra do cookie de sessão em `src/server/session/cookie.ts` (usa `SESSION_SECRET` de T008; cookie `HttpOnly`/`Secure`/`SameSite=Lax`; campos conforme `data-model.md` § Sessão do Operador: `access_token`, `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`, `codigoEmpresa`)
+- [ ] T011 Implementar troca/renovação de token em `src/server/session/tokenExchange.ts` (`POST /oauth/access_token`, `grant_type=password`, `additionalParameters={"AuthenticationTypeName":"local","Repository":"<Repository>"}`, host `tenant.<baseDomain>` de T008; **valida a resposta com o schema de T009 antes de repassá-la ao chamador**) — função reaproveitada tanto pelo login inicial (US1) quanto pela renovação silenciosa em 401 (US2/US3) (depende de T008, T009)
+
+**Checkpoint**: Módulos de sessão prontos — implementação das user stories pode começar.
+
+---
+
+## Phase 3: User Story 1 - Entrada automática vindo do ERP (Priority: P1) 🎯 MVP
+
+**Goal**: Operador acionado a partir do ERP chega ao Checkout sem digitar credenciais, e nenhum dado sensível aparece na URL final.
+
+**Independent Test**: Acionar o Checkout a partir do ERP (ou simular o redirect) e verificar tela de venda liberada sem campo de login, com `Set-Cookie` presente e URL de destino limpa.
+
+### Tests for User Story 1
+
+- [ ] T012 [P] [US1] Unit test da cifra/decifra do cookie (round-trip, campos íntegros) em `tests/unit/server/session/cookie.spec.ts`
+- [ ] T013 [P] [US1] Unit test da troca inicial de token (`tokenExchange`, grant inicial, valida resposta com o schema de T009) em `tests/unit/server/session/tokenExchange.spec.ts`
+
+### Implementation for User Story 1
+
+- [ ] T014 [US1] Implementar rota `GET /session/start` em `src/server/routes/session-start.ts` (valida `validationKey` contra T008 sem chamar o ERP se inválida; monta host `tenant.baseDomain`; chama T011; cifra resposta com T010; responde `302` para URL limpa da SPA — ver `contracts/session-bff-api.md`)
+- [ ] T015 [US1] Registrar rota `session-start` em `src/server/index.ts`
+- [ ] T016 [US1] E2E — Cenário 1 do quickstart (redirect ERP → `302` com `Set-Cookie`, URL sem query params sensíveis; `validationKey` inválida → `401` sem chamar o mock do ERP) em `tests/e2e/auth-bootstrap.spec.ts`
+
+**Checkpoint**: User Story 1 funcional e testável de forma independente — login automático completo (FR-001, FR-002, SC-001, SC-004 para esta rota).
+
+---
+
+## Phase 4: User Story 2 - Tela principal só aparece com tudo carregado (Priority: P1)
+
+**Goal**: A tela de venda só é liberada depois que toda a configuração do PDV (formas de pagamento, condições, terminal) termina de carregar; F5 sem mudança reaproveita o cache.
+
+**Independent Test**: Observar que a tela de venda nunca aparece parcialmente configurada; recarregar (F5) sem mudança no mock e confirmar zero chamadas de rede novas a `/api/bootstrap`.
+
+### Tests for User Story 2
+
+- [ ] T017 [P] [US2] Unit test do schema Zod de bootstrap (payload válido/inválido) em `tests/unit/shared/bootstrap.schema.spec.ts`
+
+### Implementation for User Story 2
+
+- [ ] T018 [P] [US2] Criar schema Zod do payload de bootstrap em `src/shared/schemas/bootstrap.schema.ts` — campos conforme `data-model.md` § Configuração do Ponto de Venda: `tenant`, `codigoEmpresa`, `SessaoUsuario.TipoPreco` (integer 1–11), `SessaoUsuario.CadMaqCod` (string), `SessaoUsuario.ListaPrecoDefault` (integer), `SessaoUsuario.CenarioPagamento` (string, repassada sem reformatar — validação estrutural é da feature 013)
+- [ ] T019 [US2] Implementar rota `GET /api/bootstrap` em `src/server/routes/bootstrap.ts` (decifra cookie com T010; chama `GET /ApiCentriumOAuth/GetSessao` com `Authorization`/`Empresa`/`Login`; em `401` tenta renovação via T011 antes de responder; outros erros repassados como estão — ver `contracts/session-bff-api.md`)
+- [ ] T020 [US2] Registrar rota `bootstrap` em `src/server/index.ts`
+- [ ] T021 [P] [US2] Criar módulo Dexie em `src/client/db/bootstrapDb.ts` (tabela chaveada por `tenant`, campos de `data-model.md` + `_versionHash` calculado localmente)
+- [ ] T022 [US2] Criar Web Worker de parse/validação em `src/client/services/bootstrapWorker.ts` (valida payload com o schema de T018 fora da thread principal, ~5MB)
+- [ ] T023 [US2] Implementar `src/client/services/bootstrapClient.ts` (chama `GET /api/bootstrap`, delega ao worker de T022, calcula `_versionHash`, decide reuso vs. gravação no Dexie de T021, FR-008)
+- [ ] T024 [US2] Implementar `src/client/stores/sessionStore.ts` (Zustand, sem `persist` — estados `carregando`/`pronto`/`erro-recuperável`/`reaproveitado` de `data-model.md`)
+- [ ] T025 [P] [US2] Implementar `src/client/features/session-bootstrap/LoadingSkeleton.tsx` (Boneyard, AUTH-05)
+- [ ] T026 [P] [US2] Implementar `src/client/features/session-bootstrap/ErrorRetry.tsx` (erro não-401, botão "Tentar novamente", AUTH-07 — sem forçar novo login)
+- [ ] T027 [US2] Orquestrar em `src/client/App.tsx`: dispara `bootstrapClient` (T023) no mount, alterna `LoadingSkeleton`/`ErrorRetry`/tela de venda conforme `sessionStore` (T024), libera a tela de venda só após confirmação de gravação no Dexie
+- [ ] T028 [US2] Integration tests — reuso de cache por hash (Cenário 2 passo 4) e isolamento por tenant (Cenário 3, FR-009) em `tests/integration/bootstrap-cache.spec.ts`
+- [ ] T029 [US2] E2E — Cenário 2 (skeleton até resposta, tela liberada, registro Dexie por `tenant`, F5 sem nova chamada) e Cenário 4 (falha `500` → tela "Tentar novamente") em `tests/e2e/auth-bootstrap.spec.ts`
+
+**Checkpoint**: User Stories 1 e 2 funcionam juntas — login automático + bootstrap completo antes da venda (FR-003 a FR-004, FR-008, FR-009, SC-002).
+
+---
+
+## Phase 5: User Story 3 - Sessão renovada sem interromper a venda (Priority: P1)
+
+**Goal**: Expiração de sessão durante o uso normal é resolvida silenciosamente; só quando a renovação falha a sessão é encerrada, com aviso prévio se houver venda em digitação.
+
+**Independent Test**: Forçar expiração de sessão durante uma venda em andamento e confirmar que a operação continua sem exigir novo login; forçar falha de renovação com carrinho vazio (encerra direto) e com itens (avisa antes).
+
+**⚠️ Depende de** (fora desta feature, achado I1 do `/speckit-analyze`, 2026-08-31): `vendaStore.ts` (feature 001, Foundational T003) e o slice de carrinho da venda (`carrinhoSlice.ts`, feature 003, Foundational T009 — ver `specs/003-carrinho-produto-precificacao/tasks.md`) — T033/T035 abaixo leem esse carrinho, em modo **somente leitura**, para decidir se avisam o operador antes de encerrar a sessão (FR-006). Ver a nota "Ordem de implementação" no topo deste documento — a validação de ponta a ponta desta fase (T036) só fecha depois que 001 e 003 (ao menos T009) existirem.
+
+### Tests for User Story 3
+
+- [ ] T030 [P] [US3] Unit test da renovação de token em `401` (sucesso e falha; valida resposta com o schema de T009) em `tests/unit/server/session/tokenExchange.spec.ts`
+
+### Implementation for User Story 3
+
+- [ ] T031 [US3] Implementar rota de proxy `/api/erp/*` em `src/server/routes/erp-proxy.ts` (injeta `Authorization`/`Empresa` do cookie decifrado via T010; em `401` do ERP chama renovação via T011, regrava cookie, refaz a chamada original; se a renovação falhar, invalida o cookie e responde `401` — ver `contracts/session-bff-api.md`)
+- [ ] T032 [US3] Registrar rota `erp-proxy` (catch-all) em `src/server/index.ts`
+- [ ] T033 [US3] Criar `src/client/services/erpClient.ts` (wrapper de fetch para `/api/erp/*`; ao receber `401` terminal do BFF, consulta — só leitura — o carrinho em `vendaStore.ts`, feature 001/003, antes de decidir a mensagem)
+- [ ] T034 [US3] Implementar `src/client/features/session-bootstrap/SessionExpiredWarning.tsx` (reaproveita o padrão de diálogo `beforeunload` já validado, AD-044/AUTH-06 — avisa que a sessão será encerrada e a venda pode ser perdida)
+- [ ] T035 [US3] Conectar em `src/client/services/erpClient.ts`/`src/client/App.tsx`: `401` terminal com carrinho vazio → mensagem "reabra pelo ERP" e encerra; com carrinho com itens → exibe `SessionExpiredWarning` (T034) antes de encerrar (FR-006) — lê `vendaStore.ts` (feature 001/003) somente leitura, nunca modifica
+- [ ] T036 [US3] E2E — Cenário 5 completo (renovação silenciosa sem carrinho, falha de renovação sem carrinho, falha de renovação com carrinho + aviso) em `tests/e2e/auth-bootstrap.spec.ts` — só roda de ponta a ponta depois que `vendaStore.ts` (001) e o slice de carrinho (003) existirem
+
+**Checkpoint**: As 3 user stories funcionam de forma independente e integrada — feature completa (FR-005, FR-006, SC-003).
+
+---
+
+## Phase 6: Polish & Cross-Cutting Concerns
+
+**Purpose**: Fechamento documental e validação final de tipo/segurança/aceite.
+
+- [ ] T037 [P] Atualizar `.specs/codebase/ARCHITECTURE.md` § Code Organization e `.specs/project/ROADMAP.md` registrando que o scaffolding inicial foi criado por esta feature
+- [ ] T038 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`, "Gates obrigatórios antes de push/merge") — **adicionado 2026-08-31 (achado G1 do `/speckit-analyze`)**
+- [ ] T039 Revisão de segurança (SC-004): confirmar por inspeção de código e nas respostas de `/api/bootstrap`/`/api/erp/*`/erros que `access_token`, `client_secret` e `password` nunca são serializados para o cliente
+- [ ] T040 Rodar os 5 cenários de `quickstart.md` ponta a ponta e confirmar o critério de aceite da feature
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Setup (Phase 1)**: Sem dependências — pode começar imediatamente
+- **Foundational (Phase 2)**: Depende do Setup — BLOQUEIA todas as user stories
+- **User Stories (Phase 3-5)**: Todas dependem do Foundational
+  - US1 pode começar assim que Phase 2 terminar
+  - US2 depende do cookie de sessão existir (US1) para o quickstart fim-a-fim, mas sua implementação de rota/cliente pode ser codificada em paralelo — testar em conjunto exige US1 completo
+  - US3 depende de T011 (Foundational) e reaproveita o padrão de proxy — mas T033/T035/T036 também dependem de `vendaStore.ts` (feature 001) e do slice de carrinho `carrinhoSlice.ts` (feature 003, T009) — não pode ser validada de ponta a ponta antes de 001 e 003 (ao menos T009) existirem
+- **Polish (Phase 6)**: Depende das 3 user stories completas
+
+### User Story Dependencies
+
+- **US1 (P1)**: Sem dependência de outras stories
+- **US2 (P1)**: Depende de Foundational; integração E2E completa pressupõe US1 (cookie já setado)
+- **US3 (P1)**: Depende de Foundational (T011); integração E2E completa pressupõe US2 (chamada de negócio via `/api/erp/*` só existe depois do bootstrap) **e** de `vendaStore.ts`/slice de carrinho fora desta feature (001/003)
+
+### Within Each User Story
+
+- Tests antes da implementação correspondente
+- Módulos server-side antes das rotas que os usam
+- Rotas antes do registro em `src/server/index.ts`
+- Serviços/cliente antes dos componentes de UI que os consomem
+- Story completa antes do checkpoint
+
+### Parallel Opportunities
+
+- T002–T006 (Setup) em paralelo
+- T009–T010 (Foundational) em paralelo após T008
+- T012–T013 (testes US1) em paralelo
+- T017–T018 podem ser paralelos entre si dentro de US2 (arquivos diferentes)
+- T021, T025, T026 em paralelo dentro de US2 (arquivos diferentes, sem dependência entre si)
+- T030 pode rodar em paralelo a outras tarefas de US3 que não toquem o mesmo arquivo
+
+---
+
+## Parallel Example: User Story 2
+
+```bash
+# Schema e teste do schema (arquivos diferentes):
+Task: "Criar schema Zod do payload de bootstrap em src/shared/schemas/bootstrap.schema.ts"
+Task: "Unit test do schema Zod de bootstrap em tests/unit/shared/bootstrap.schema.spec.ts"
+
+# Componentes de UI independentes:
+Task: "Implementar LoadingSkeleton.tsx em src/client/features/session-bootstrap/LoadingSkeleton.tsx"
+Task: "Implementar ErrorRetry.tsx em src/client/features/session-bootstrap/ErrorRetry.tsx"
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (User Story 1 Only)
+
+1. Completar Phase 1: Setup
+2. Completar Phase 2: Foundational (bloqueia tudo)
+3. Completar Phase 3: User Story 1
+4. **PARAR e VALIDAR**: login automático funcionando isoladamente (mock de ERP)
+5. Nesse ponto o operador ainda não teria tela de venda real (depende de US2), mas o mecanismo de sessão está validável
+
+### Incremental Delivery
+
+1. Setup + Foundational → base pronta
+2. US1 → validar isoladamente (Cenário 1 do quickstart)
+3. US2 → validar isoladamente + em conjunto com US1 (Cenários 2, 3, 4)
+4. US3 → implementação de rota/proxy (T031–T035) pode avançar assim que Foundational terminar, mas a validação de ponta a ponta (T036, Cenário 5) só fecha depois que `vendaStore.ts` (001) e o slice de carrinho (003) existirem — feature completa
+
+### Parallel Team Strategy
+
+Com mais de um desenvolvedor: completar Setup + Foundational juntos; depois um desenvolvedor segue com US1, outro inicia a implementação de rota/schema de US2 em paralelo (sem poder validar E2E até US1 fechar); US3 pode começar assim que T011 estiver pronto, mas seu checkpoint final depende de 001/003.
+
+---
+
+## Notes
+
+- [P] = arquivos diferentes, sem dependências
+- [Story] mapeia cada tarefa à user story correspondente para rastreabilidade
+- Verificar que os testes falham antes de implementar (TDD onde aplicável)
+- Commit após cada tarefa ou grupo lógico
+- Parar em cada checkpoint para validar a story isoladamente
+- Achados do `/speckit-analyze` de 2026-08-31 (C1, I1, I2, G1) já aplicados nesta versão — ver `plan.md` para o mesmo histórico de correção
