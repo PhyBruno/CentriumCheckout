@@ -113,7 +113,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T17:53:11.193520+00:00",
     "created_epoch": 1787248391,
-    "updated_at": "2026-08-27T10:58:55.546812+00:00",
+    "updated_at": "2026-08-31T18:20:45.719440+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -686,7 +686,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-20T20:27:52.011277+00:00",
     "created_epoch": 1787257672,
-    "updated_at": "2026-08-31T14:06:01.732884+00:00",
+    "updated_at": "2026-08-31T18:20:45.747804+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1773,7 +1773,9 @@
       "009",
       "pagamento",
       "pix",
-      "research"
+      "research",
+      "gerado",
+      "tasks"
     ],
     "files": [
       ".specify/feature.json"
@@ -1783,7 +1785,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-27T10:58:55.577357+00:00",
     "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.577368+00:00",
+    "updated_at": "2026-08-31T18:20:45.735028+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2334,6 +2336,218 @@
     "evidence": {}
   },
   {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
+    "tags": [
+      "validacao",
+      "pagamento",
+      "014"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/spec.md",
+      "specs/008-pagamento-geral/spec.md"
+    ],
+    "file_path": "specs/014-validacao-previa-nfce/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "fact",
+    "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
+    "tags": [
+      "validarnfce",
+      "erp"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md"
+    ],
+    "file_path": "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "next",
+    "content": "Rodar /speckit-tasks na feature 014",
+    "tags": [
+      "speckit",
+      "014"
+    ],
+    "files": [
+      "specs/014-validacao-previa-nfce/plan.md"
+    ],
+    "file_path": "specs/014-validacao-previa-nfce/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "AD-114: DAV_IMPORTADO vira tipo #20 no cat\u00e1logo de auditoria da 001, achado do tasks da 006",
+    "tags": [
+      "speckit",
+      "006",
+      "001",
+      "auditoria"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/data-model.md",
+      "specs/001-auditoria-acoes-operador/tasks.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "AD-115: GetCliente/PCheckout_GetCliente passam a aceitar CodCliente, via MCP GenExus",
+    "tags": [
+      "speckit",
+      "006",
+      "005",
+      "genexus",
+      "kb-change"
+    ],
+    "files": [
+      "specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md",
+      "specs/005-identificacao-cadastro-cliente/data-model.md",
+      "specs/005-identificacao-cadastro-cliente/tasks.md"
+    ],
+    "file_path": "specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "blocker",
+    "content": "Item 37: build real da KB (AD-115) n\u00e3o confirmado, s\u00f3 Specify; yaml exportado n\u00e3o regenerado",
+    "tags": [
+      "genexus",
+      "kb-change",
+      "pendencia"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "task",
+    "content": "tasks.md da feature 006 (importa\u00e7\u00e3o de DAV) gerado: 25 tarefas, 5 fases, 2 user stories P1",
+    "tags": [
+      "speckit",
+      "006"
+    ],
+    "files": [
+      "specs/006-importacao-dav/tasks.md"
+    ],
+    "file_path": "specs/006-importacao-dav/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "decision",
+    "content": "AD-116: obterPlataforma() expoe layout fora de React p/ capacidades() da 008",
+    "tags": [
+      "speckit",
+      "007",
+      "008",
+      "gap-cruzado"
+    ],
+    "files": [
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+      "specs/007-layout-responsivo-mobile/tasks.md"
+    ],
+    "file_path": "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788200445679",
+    "kind": "task",
+    "content": "tasks.md da feature 007 (layout responsivo) gerado: 27 tarefas, 6 fases, 3 user stories P2/P2/P3",
+    "tags": [
+      "speckit",
+      "007"
+    ],
+    "files": [
+      "specs/007-layout-responsivo-mobile/tasks.md"
+    ],
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31",
+    "created_epoch": 1788145200,
+    "updated_at": "2026-08-31",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
     "id": "mem:1788185161675",
     "kind": "decision",
     "content": "Propaga emendas de 013/014 em 004/001: podeFinalizar/montarRetratoVenda no data-model de 004; evento VENDA_RAPIDA_ACIONADA no catalogo de auditoria (001)",
@@ -2430,69 +2644,105 @@
     "evidence": {}
   },
   {
-    "type": "decision",
-    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
+    "id": "mem:1788200445685",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
     "tags": [
-      "validacao",
-      "pagamento",
-      "014"
+      "gerado",
+      "tasks",
+      "feature",
+      "007",
+      "layout",
+      "responsivo",
+      "tarefas",
+      "achado"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/spec.md",
-      "specs/008-pagamento-geral/spec.md"
+      "specs/007-layout-responsivo-mobile/tasks.md"
     ],
-    "date": "2026-08-31"
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T18:20:45.685569+00:00",
+    "created_epoch": 1788200445,
+    "updated_at": "2026-08-31T18:20:45.685586+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
   },
   {
-    "type": "fact",
-    "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
+    "id": "mem:1788200445667",
+    "kind": "decision",
+    "content": "Gerado tasks.md da feature 007 (layout responsivo, 27 tarefas); achado AD-116 (obterPlataforma para capacidades() da 008) registrado em STATE.md e no contrato da 007",
     "tags": [
-      "validarnfce",
-      "erp"
+      "gerado",
+      "tasks",
+      "feature",
+      "007",
+      "layout",
+      "responsivo",
+      "tarefas",
+      "achado"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md"
+      "specs/007-layout-responsivo-mobile/tasks.md",
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+      ".specs/project/STATE.md",
+      ".specify/feature.json",
+      ".dual-graph/context-store.json"
     ],
-    "date": "2026-08-31"
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T18:20:45.667400+00:00",
+    "created_epoch": 1788200445,
+    "updated_at": "2026-08-31T18:20:45.667411+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
   },
   {
-    "type": "next",
-    "content": "Rodar /speckit-tasks na feature 014",
+    "id": "mem:1788200445704",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
     "tags": [
-      "speckit",
-      "014"
+      "gerado",
+      "tasks",
+      "feature",
+      "007",
+      "layout",
+      "responsivo",
+      "tarefas",
+      "achado"
     ],
     "files": [
-      "specs/014-validacao-previa-nfce/plan.md"
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md"
     ],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "decision",
-    "content": "AD-114: DAV_IMPORTADO vira tipo #20 no catálogo de auditoria da 001, achado do tasks da 006",
-    "tags": ["speckit", "006", "001", "auditoria"],
-    "files": ["specs/001-auditoria-acoes-operador/data-model.md", "specs/001-auditoria-acoes-operador/tasks.md"],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "decision",
-    "content": "AD-115: GetCliente/PCheckout_GetCliente passam a aceitar CodCliente, via MCP GenExus",
-    "tags": ["speckit", "006", "005", "genexus", "kb-change"],
-    "files": ["specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md", "specs/005-identificacao-cadastro-cliente/data-model.md", "specs/005-identificacao-cadastro-cliente/tasks.md"],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "blocker",
-    "content": "Item 37: build real da KB (AD-115) não confirmado, só Specify; yaml exportado não regenerado",
-    "tags": ["genexus", "kb-change", "pendencia"],
-    "files": [".specs/project/PENDENCIES.md"],
-    "date": "2026-08-31"
-  },
-  {
-    "type": "task",
-    "content": "tasks.md da feature 006 (importação de DAV) gerado: 25 tarefas, 5 fases, 2 user stories P1",
-    "tags": ["speckit", "006"],
-    "files": ["specs/006-importacao-dav/tasks.md"],
-    "date": "2026-08-31"
+    "file_path": "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T18:20:45.704186+00:00",
+    "created_epoch": 1788200445,
+    "updated_at": "2026-08-31T18:20:45.704254+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
   }
 ]
