@@ -51,7 +51,7 @@ Guia de validação end-to-end desta feature. Não é um plano de testes automat
 ## Cenário 7 — Retomada de rascunho com vendedor sem nome
 
 1. Carregar um rascunho de NFCe existente via `CarregarNFCe` (feature 004/011), cujo payload traz `vendedorCodigo` preenchido.
-2. **Esperado**: `trocarVendedor({ codigo: vendedorCodigo, nome: null })` é chamado; o campo de vendedor na UI exibe `"Vendedor #<codigo>"` até o operador reabrir o modal e reselecionar; nenhum evento de auditoria é registrado por essa sobrescrita (ver `data-model.md`, I3).
+2. **Esperado**: `trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO')` é chamado; o campo de vendedor na UI exibe `"Vendedor #<codigo>"` até o operador reabrir o modal e reselecionar; nenhum evento de auditoria é registrado por essa sobrescrita (ver `data-model.md`, I3).
 
 ---
 

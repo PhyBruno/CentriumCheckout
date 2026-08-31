@@ -8,12 +8,12 @@ Todas as estruturas abaixo vivem **em memória**, no slice `vendedor` do `vendaS
 
 ## 1. `VendedorVenda` — snapshot do vendedor atual da venda
 
-Cópia dos dois campos relevantes de `Vendedores_Vendedores` (ou de `GetSessao`, no caso do default) — nunca uma referência viva ao cache do TanStack Query, mesma regra de fronteira já usada por produto (003) e cliente (005). Ao contrário de `ClienteVenda` (005), não há campo indisponível por lacuna de contrato (`research.md` D3) — o único caso de dado parcial é `nome: null`, quando a origem é uma retomada/importação sem nome disponível (`research.md` D4).
+Cópia dos dois campos relevantes de `VendedoresItem` (nome TS-facing do schema `CheckoutListaVendedores.Vendedores_Vendedores`, ver `contracts/erp-vendedor-api.md`) (ou de `GetSessao`, no caso do default) — nunca uma referência viva ao cache do TanStack Query, mesma regra de fronteira já usada por produto (003) e cliente (005). Ao contrário de `ClienteVenda` (005), não há campo indisponível por lacuna de contrato (`research.md` D3) — o único caso de dado parcial é `nome: null`, quando a origem é uma retomada/importação sem nome disponível (`research.md` D4).
 
 ```ts
 export interface VendedorVenda {
-  readonly codigo: number;           // Vendedores_Vendedores.VendedorCodigo / SessaoUsuario.VendedorCodigo
-  readonly nome: string | null;      // Vendedores_Vendedores.VendedorNome / SessaoUsuario.VendedorNome — null só para origem 'RASCUNHO'/'DAV' (research.md D4)
+  readonly codigo: number;           // VendedoresItem.VendedorCodigo / SessaoUsuario.VendedorCodigo
+  readonly nome: string | null;      // VendedoresItem.VendedorNome / SessaoUsuario.VendedorNome — null só para origem 'RASCUNHO'/'DAV' (research.md D4)
   readonly origem: OrigemVendedor;
 }
 
@@ -26,7 +26,7 @@ export type OrigemVendedor = 'DEFAULT' | 'BUSCA' | 'RASCUNHO' | 'DAV';
 |---|---|---|
 | `DEFAULT` (pré-seleção automática, AD-032) | preenchido — `SessaoUsuario.VendedorNome` sempre acompanha `VendedorCodigo` | `inicializarVendedorPadrao`, sem chamada de rede |
 | `BUSCA` (seleção no modal, `GetListaVendedores`) | preenchido — vem direto do item da lista (`research.md` D1) | `selecionarVendedor` |
-| `RASCUNHO` (retomada via `CarregarNFCe`) | `null` — `CheckoutFaturarNFCe` só tem `vendedorCodigo` (`research.md` D4) | `trocarVendedor({ codigo, nome: null })`, chamado pela feature 004/011 |
+| `RASCUNHO` (retomada via `CarregarNFCe`) | `null` — `CheckoutFaturarNFCe` só tem `vendedorCodigo` (`research.md` D4) | `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')`, chamado pela feature 004/011 |
 | `DAV` (importação, feature 006) | `null` — mesma lacuna de `ListaDAVs`/`GetDav` (AD-095) | `trocarVendedor({ codigo, nome: null })`, já reservado por `specs/006-importacao-dav/contracts/importacao-domain-api.md` |
 
 **UI**: quando `nome === null`, o campo de vendedor da venda exibe `"Vendedor #<codigo>"` até o operador reabrir o modal e selecionar explicitamente (mesmo padrão de `AD-095`).
@@ -67,9 +67,11 @@ function selecionarVendedor(vendedor: { codigo: number; nome: string }): void;
 // Aplica o predicado podeMutarCarrinho() antes de mutar, se houver carrinho populado (I4).
 // Dispara VENDEDOR_SELECIONADO (primeira escolha) ou VENDEDOR_TROCADO (substituição) — ver research.md D6.
 
-function trocarVendedor(vendedor: { codigo: number; nome: string | null }): void;
-// Superfície pública já reservada por specs/006-importacao-dav/contracts/importacao-domain-api.md.
-// Usada por origens que não passam pelo modal — importação de DAV (006) e retomada de rascunho (004/011) —
+function trocarVendedor(vendedor: { codigo: number; nome: string | null }, origem: 'RASCUNHO' | 'DAV' = 'DAV'): void;
+// Superfície pública já reservada por specs/006-importacao-dav/contracts/importacao-domain-api.md
+// (chamada de 2 argumentos da 006 continua válida — `origem` é opcional, default 'DAV').
+// Usada por origens que não passam pelo modal — importação de DAV (006, usa o default) e
+// retomada de rascunho (004/011, MUST passar origem: 'RASCUNHO' explicitamente) —
 // sempre sobrescreve incondicionalmente (research.md D4), nunca dispara evento de auditoria (I3),
 // e não altera houveEscolhaExplicita (a escolha não foi feita nesta sessão).
 ```
