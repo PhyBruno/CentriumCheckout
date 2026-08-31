@@ -8,6 +8,8 @@ O operador precisa aplicar uma forma de pagamento TEF à venda, cobrada no termi
 
 TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal TEF Aprovado`. Tela principal e área "Pagamento e totais": ver `.specs/features/pagamento-geral/spec.md`.
 
+**Atualização (2026-08-31, AD-104):** a **feature 013 — Venda Rápida por Cenário de Pagamento (`specs/013-venda-rapida-cenario-pagamento/`)** pode acionar este fluxo por atalho de teclado. Se um cenário cadastrado no ERP apontar para uma forma de cartão com integração TEF, a tecla (F6–F9) apenas substitui o gesto de selecionar a forma — **todo o fluxo de TEF especificado aqui vale integralmente**, e o pagamento só é dado por lançado após a aprovação da transação; a finalização automática, quando o cenário a exigir, ocorre depois dela. Duas restrições já vigentes continuam valendo sem exceção: `TEFAtivo = false` mantém a forma indisponível (logo o cenário correspondente nunca vira atalho, por `FR-005` da 013), e no layout mobile o TEF nunca é acionado (AD-074) — o que é redundante aqui, já que a venda rápida é restrita ao desktop (`FR-020` da 013).
+
 ## Bloqueio deliberado
 
 **Protocolo de comunicação com o TEF (2026-08-25, AD-037 em `.specs/project/STATE.md`):** o mecanismo técnico de comunicação com o terminal TEF — protocolo de invocação, formato de mensagem, tratamento de timeout/erro — fica deliberadamente como bloqueio, **não especificado nesta rodada**. Decisão direta do usuário: o parceiro de TEF atual será trocado, então desenhar o contrato para o parceiro atual seria retrabalho. Este documento **não infere nem inventa** esse comportamento — ver item 25 em `.specs/project/PENDENCIES.md`.
