@@ -60,7 +60,8 @@ interface CheckoutFaturarNFCe {
   NumeroNota: number;           // preservar — reenviar em FaturarNFCe (NFCE-02, mesma regra de recuperacao-nfce)
   CadSerieNFCe: string;
   UsuarioCodigo: number;
-  DavNum: string;                // preservar — vínculo interno com o DAV de origem (AD-058)
+  // SEM DavNum — removido do contrato em 20260827192357 e desnecessário: o ERP identifica sozinho
+  // que a NFCe faturada veio de um DAV (AD-107, mesma mecânica de AD-058)
   Log: string;                   // não usado na importação — auditoria do Checkout é trilha própria (feature 001)
   produtos: Array<{
     sequencial: number;

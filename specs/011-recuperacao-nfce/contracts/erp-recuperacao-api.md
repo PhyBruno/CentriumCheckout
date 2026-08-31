@@ -53,7 +53,7 @@ OutCheckoutFaturarNFCe:  # $ref CheckoutFaturarNFCe — mesmo shape de FaturarNF
   NumeroNota: integer
   CadSerieNFCe: string
   UsuarioCodigo: integer
-  DavNum: string                # ignorado — só relevante ao fluxo de DAV (feature 006, futura)
+  # SEM DavNum — campo removido do contrato em 20260827192357; o ERP identifica sozinho a origem em DAV (AD-107)
   Log: string                   # ignorado — log de auditoria da suspensão original, não reaproveitado (auditoria reinicia zerada, D10)
   produtos:
     - sequencial: integer

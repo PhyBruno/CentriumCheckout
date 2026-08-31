@@ -18,7 +18,7 @@ Uma janela de importação (desktop-only, AD-046) lista DAVs prontos para fatura
 
 **Storage**: N/A — o resultado da importação vive só em memória, dentro dos slices já existentes (Constitution VI, AD-006). Nada é gravado em Dexie/localStorage por esta feature.
 
-**Testing**: Vitest + Testing Library. Unitário puro (sem React) para `mapearVendaExistente`: `CheckoutFaturarNFCe` sintético → `LinhaCarrinho[]` congeladas + `ClienteVenda`/`VendedorVenda` sobrescritos + `NumeroNota`/`DavNum` preservados; casos de borda (documento sem forma de pagamento, produto com `GetProduto` de descrição falhando). Integração para a orquestração de importação: substituição de cliente/vendedor mesmo com default já selecionado (FR-007), ausência de evento de auditoria de reprecificação para as linhas congeladas, emissão de `DAV_IMPORTADO` (auditoria). Playwright (E2E) para o fluxo dourado: abrir janela → buscar → filtrar por período → selecionar DAV → confirmar carrinho populado → finalizar como uma venda normal.
+**Testing**: Vitest + Testing Library. Unitário puro (sem React) para `mapearVendaExistente`: `CheckoutFaturarNFCe` sintético → `LinhaCarrinho[]` congeladas + `ClienteVenda`/`VendedorVenda` sobrescritos + `NumeroNota` preservado (sem `DavNum` — AD-107); casos de borda (documento sem forma de pagamento, produto com `GetProduto` de descrição falhando). Integração para a orquestração de importação: substituição de cliente/vendedor mesmo com default já selecionado (FR-007), ausência de evento de auditoria de reprecificação para as linhas congeladas, emissão de `DAV_IMPORTADO` (auditoria). Playwright (E2E) para o fluxo dourado: abrir janela → buscar → filtrar por período → selecionar DAV → confirmar carrinho populado → finalizar como uma venda normal.
 
 **Target Platform**: Desktop apenas (AD-046) — mesma decisão já tomada para o modal de recuperação de NFCe (011); sem equivalente no wizard mobile.
 
@@ -29,7 +29,7 @@ Uma janela de importação (desktop-only, AD-046) lista DAVs prontos para fatura
 - Cliente e vendedor da venda são **sempre** sobrescritos pelos dados do DAV, mesmo que já houvesse um default pré-selecionado (FR-007, AD-055) — nunca um merge/preservação parcial.
 - Sem lock otimista/pessimista entre operadores no mesmo DAV — resolução de conflito é 100% responsabilidade do ERP (AD-052); a única defesa do Checkout é tratar o erro que `GetDav`/`FaturarNFCe` devolver se o DAV já tiver sido faturado por outro operador.
 - Ação de reimpressão por linha, presente no design do Pencil, **não é implementada** (AD-035) — removida na fase de UI.
-- Sem mecanismo próprio de "marcar DAV como importado" — o vínculo é interno ao ERP a partir do rascunho gerado por `GetDav`; `FaturarNFCe` fecha o DAV sozinho (AD-058).
+- Sem mecanismo próprio de "marcar DAV como importado" e sem informar o DAV ao ERP (AD-107) — o vínculo é interno ao ERP a partir do rascunho gerado por `GetDav`; `FaturarNFCe` fecha o DAV sozinho (AD-058).
 - `VendedorNome` não disponível na importação (AD-095) — exibição só por código até reseleção manual. `Descricao` de produto resolvida best-effort via `GetProduto` em paralelo, nunca bloqueante para a importação em si (AD-096).
 
 **Scale/Scope**: 1 módulo de domínio puro (`mapearVendaExistente.ts`) + 1 camada de query (`davQueries.ts`: `useListaDavs`, `fetchDav`) + 1 ação de orquestração (`importarVendaExistente`, cross-slice) + 1 extensão pontual do `CarrinhoSlice` (`importarLinhasCongeladas`, reaproveitável pela feature 011) + 1 schema Zod de fronteira + 1 superfície de UI (Modal DAV: tabela paginada + filtros de busca/data). Fora do escopo: o motor de precificação em si (003 — aqui só se evita chamá-lo), a UI de seleção de cliente/vendedor (005/012 — aqui só se chamam as ações públicas de sobrescrita que esses slices já expõem), e a implementação da feature 011 (que reaproveita o mecanismo criado aqui, mas não é implementada por este plano).
@@ -74,7 +74,7 @@ src/
 ├── client/
 │   ├── domain/
 │   │   └── importacaoVenda/
-│   │       └── mapearVendaExistente.ts     # CheckoutFaturarNFCe → { linhas, cliente, vendedor, formasDePagamento, numeroNota, davNum } — puro, sem React/Zustand/Query; reaproveitado pela feature 011
+│   │       └── mapearVendaExistente.ts     # CheckoutFaturarNFCe → { linhas, cliente, vendedor, formasDePagamento, numeroNota } — puro, sem React/Zustand/Query; reaproveitado pela feature 011
 │   ├── stores/
 │   │   └── slices/
 │   │       └── carrinhoSlice.ts            # extensão pontual: importarLinhasCongeladas(linhas) — nova action, não altera as existentes (003)
@@ -92,7 +92,7 @@ tests/
 ├── unit/
 │   └── domain/
 │       └── importacaoVenda/
-│           └── mapearVendaExistente.spec.ts # shape sintético → linhas congeladas, cliente/vendedor sobrescritos, NumeroNota/DavNum preservados, formas de pagamento sem forma nenhuma
+│           └── mapearVendaExistente.spec.ts # shape sintético → linhas congeladas, cliente/vendedor sobrescritos, NumeroNota preservado, formas de pagamento sem forma nenhuma
 ├── integration/
 │   └── importacaoDav.spec.ts                # sobrescrita de cliente/vendedor com default já selecionado, sem evento de reprecificação, DAV_IMPORTADO emitido, falha isolada de GetProduto não bloqueia importação
 └── e2e/

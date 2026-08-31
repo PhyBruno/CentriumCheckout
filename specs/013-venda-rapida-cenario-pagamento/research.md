@@ -153,7 +153,7 @@ Em contrapartida, três coisas que o ERP **não** garante e que a implementaçã
 A leitura de `PCheckout_GetSessao` e do diff de `ApiCentriumOAuth.yaml` (`20260826163735` → `20260827192357`) revelou mudanças que **não** pertencem a esta feature, mas que afetam features já especificadas e precisam de tratamento próprio:
 
 1. **`ValidarNFCe`** — novo endpoint (`POST`, recebe `CheckoutFaturarNFCe`, devolve `Valido` + `messages`). Afeta a feature 004 (validação prévia à finalização).
-2. **`DavNum` removido** de `CheckoutFaturarNFCe`. Afeta diretamente a feature 006 (importação de DAV), que precisa revisar como o número do DAV é levado à NFCe.
+2. **`DavNum` removido** de `CheckoutFaturarNFCe`. **Resolvido em 2026-08-31 (AD-107), sem impacto:** o ERP identifica sozinho que a NFCe faturada veio de um DAV, então o Checkout nunca precisou levar o número do DAV à NFCe (mesma mecânica de AD-058). A feature 006 apenas deixou de modelar o campo.
 3. **`ListaPrecoDefault`** acrescentado a `SessaoUsuario` e populado por `PCheckout_GetSessao` a partir de `CliListCod` do cliente default (com fallback `1`). Isso é material para o item 31 de `PENDENCIES.md` (feature 005/003, `TipoPreco = 9` sem lista do cliente default) — parte do gap pode estar fechado.
 4. **`FormaEntrada`** (`FpgEnt`) acrescentado a `CondicaoFormasDePagamento[]`. Afeta a feature 008.
 5. **`FormaFpgUtiCar` continua não sendo preenchido no branch de fallback** ("puxa todos") de `PCheckout_GetSessao` — confirma a ressalva de AD-048 e mantém válida a decisão de tratar vazio como elegível.

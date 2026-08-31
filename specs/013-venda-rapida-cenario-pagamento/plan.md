@@ -95,7 +95,7 @@ tests/
 
 ## Phase 0 — Research
 
-Concluída. Ver `research.md`: 13 decisões (D1–D13) e cinco achados de contrato colaterais que **não** pertencem a esta feature (novo endpoint `ValidarNFCe`, remoção de `DavNum`, `ListaPrecoDefault`, `FormaEntrada`, e a confirmação da ressalva de AD-048 sobre `FormaFpgUtiCar`), registrados para tratamento nas features 004, 005/003, 006 e 008.
+Concluída. Ver `research.md`: 13 decisões (D1–D13) e cinco achados de contrato colaterais que **não** pertencem a esta feature (novo endpoint `ValidarNFCe`, remoção de `DavNum` — já resolvida em AD-107, `ListaPrecoDefault`, `FormaEntrada`, e a confirmação da ressalva de AD-048 sobre `FormaFpgUtiCar`), registrados para tratamento nas features 004, 005/003, 006 e 008.
 
 Nenhum `NEEDS CLARIFICATION` restou: as três questões abertas na especificação foram resolvidas por decisão direta do usuário em 2026-08-31 (elegibilidade de formas com TEF/PIX, acionamento em qualquer momento da venda, exclusividade de desktop).
 
@@ -117,7 +117,7 @@ Os dois pontos de contrato levantados por AD-105 e AD-106 foram **fechados por d
 
 | Item | Conteúdo | Bloqueia? |
 |---|---|---|
-| 36 | Tratar os cinco achados colaterais de contrato nas features 004, 005/003, 006 e 008 | Não para esta feature; **sim** para a 006 (`DavNum` removido) |
+| 36 | Tratar os achados colaterais de contrato nas features 004, 005/003 e 008 (o quinto, remoção de `DavNum`, foi resolvido em AD-107 e não bloqueia a 006) | Não |
 
 ## Próximo passo
 
