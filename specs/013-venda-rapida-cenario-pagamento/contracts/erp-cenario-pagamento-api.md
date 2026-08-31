@@ -37,7 +37,7 @@ Consequências diretas, todas tratadas no parser:
 1. O valor é um **array JSON serializado em string** — exige dois níveis de parse.
 2. O `For each` **não filtra** por tecla preenchida: cenários sem atalho vêm junto, com o último campo vazio.
 3. Não há limite de quantidade nem restrição de tecla no lado do ERP.
-4. Os campos de texto livre (`CPgFpgDes`, `CPgPraDes`, `CPgNome`) podem conter o próprio separador `;`.
+4. Os campos de texto livre (`CPgFpgDes`, `CPgPraDes`, `CPgNome`) ficam **no meio** da sequência, o que tornaria um item com `;` extra genuinamente ambíguo. Por decisão do usuário (2026-08-31, AD-105), o ERP **garante que esses campos não conterão `;`** — o parser mantém o descarte por contagem de campos como defesa contra dado inesperado, não como tratamento de caso esperado (ver seção 7).
 
 ## 3. Forma esperada (exemplo sintético)
 
@@ -78,11 +78,13 @@ Sem essa checagem, um cenário legado apontando para uma forma desativada produz
 - Não usa `PCenarioPagamento_BuscaPorTeclaAtalho`: é procedure interna da KB, não exposta na API REST.
 - Não grava, corrige nem reordena cenários no ERP; a leitura é estritamente unidirecional (Constitution III).
 
-## 7. Pendências abertas contra o ERP
+## 7. Pontos fechados com o ERP (sem pendência aberta)
 
-| Item em `PENDENCIES.md` | Pedido | Impacto se atendido |
+Ambos resolvidos por decisão direta do usuário em 2026-08-31 — este contrato é definitivo:
+
+| Ponto | Decisão | Consequência no parser |
 |---|---|---|
-| 34 | Serializar `CenarioPagamento` como array JSON estruturado (como já é feito em `CondicoesDePagamento[]`), ou impedir `;` nos campos de texto do cadastro | elimina a ambiguidade de D3; o descarte por contagem de campos deixa de ser necessário |
-| 35 | Confirmar o literal exato produzido por `CPgIsEncerraOperacao.ToString()` em resposta real | permite estreitar o conjunto aceito em D4, removendo a tolerância defensiva |
+| Formato delimitado (AD-105) | Serialização estruturada **não é viável**; o formato com `;` é definitivo, e em contrapartida os campos de texto do cadastro **não conterão `;`** | o descarte por contagem de campos ≠ 7 **permanece**, agora como defesa contra dado inesperado — não se espera que descarte cenário legítimo |
+| Literal do booleano (AD-106) | O conjunto fechado de literais é a solução **definitiva**, não provisória | o conjunto aceito (`true`/`1`/`s`/`sim`/`y`/`yes`, sem distinção de caixa) **não será estreitado**; o padrão `false` na dúvida é permanente |
 
-Nenhuma das duas bloqueia a implementação: ambas apenas permitiriam simplificar o parser depois.
+Não há nada a confirmar com a equipe do ERP sobre este campo.

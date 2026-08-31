@@ -10,7 +10,7 @@ O ERP passou a expor, no payload de sessão, um catálogo de **cenários de paga
 
 O desenho é deliberadamente **fino**: a feature 013 não implementa pagamento nem finalização — ela é uma camada de comando sobre o domínio já existente das features 008 e 004, com todas as dependências injetadas por porta (`contracts/venda-rapida-domain-api.md`). O valor lançado é o saldo em aberto integral em `Centavos` vindo do domínio da 008, nunca um cálculo novo (Constitution V), e a finalização reaproveita integralmente as validações da 004 — o atalho substitui o gesto do operador, jamais as regras.
 
-O peso real do trabalho está na **fronteira**. `SessaoUsuario.CenarioPagamento` é declarado como `string` no OpenAPI e, por dentro, é um array JSON de strings com sete campos posicionais separados por `;` (AD-104). O ERP não impõe nenhuma das restrições que a feature precisa: não limita a quatro cenários, não restringe a tecla a F6–F9 (`CPgTeclaAtalho` é `VARCHAR(40)` sem domínio), e nem sequer filtra cenários sem atalho na consulta. Pior, três dos sete campos são texto livre e podem conter o próprio delimitador, tornando itens malformados genuinamente ambíguos (AD-105). O plano responde com um pipeline de normalização total de seis etapas puras, no qual todo item duvidoso é descartado em silêncio e o pior desfecho possível é "nenhum atalho disponível" — nunca um pagamento na condição errada. A interpretação do booleano de encerramento é assimétrica de propósito (AD-106): na dúvida, **não** finaliza, porque errar para "false" custa um clique e errar para "true" emite uma NFCe que o operador não pediu.
+O peso real do trabalho está na **fronteira**. `SessaoUsuario.CenarioPagamento` é declarado como `string` no OpenAPI e, por dentro, é um array JSON de strings com sete campos posicionais separados por `;` (AD-104). O ERP não impõe nenhuma das restrições que a feature precisa: não limita a quatro cenários, não restringe a tecla a F6–F9 (`CPgTeclaAtalho` é `VARCHAR(40)` sem domínio), e nem sequer filtra cenários sem atalho na consulta. Três dos sete campos são texto livre e ficam no meio da sequência, o que tornaria um item com delimitador extra genuinamente ambíguo — risco fechado por decisão do usuário (AD-105): serialização estruturada não é viável no ERP, mas os textos do cadastro não conterão `;`, de modo que o descarte por contagem de campos permanece como defesa contra dado inesperado. O plano responde com um pipeline de normalização total de seis etapas puras, no qual todo item duvidoso é descartado em silêncio e o pior desfecho possível é "nenhum atalho disponível" — nunca um pagamento na condição errada. A interpretação do booleano de encerramento é assimétrica de propósito (AD-106): na dúvida, **não** finaliza, porque errar para "false" custa um clique e errar para "true" emite uma NFCe que o operador não pediu.
 
 ## Technical Context
 
@@ -28,7 +28,7 @@ O peso real do trabalho está na **fronteira**. `SessaoUsuario.CenarioPagamento`
 
 **Constraints**:
 - Parser **total**: nenhuma entrada do ERP pode lançar exceção; catálogo ilegível degrada para "sem atalhos" (I4).
-- Item com número de campos diferente de 7 é descartado, sem heurística de recuperação (AD-105) — em pagamento, "provavelmente certo" é pior que ausente.
+- Item com número de campos diferente de 7 é descartado, sem heurística de recuperação (AD-105) — em pagamento, "provavelmente certo" é pior que ausente. Com a garantia do ERP de que os textos não contêm `;`, esse descarte é defesa contra dado inesperado, não tratamento de caso esperado.
 - `encerraOperacao` indeterminado ⇒ `false` (AD-106).
 - Valor lançado é sempre o saldo em aberto **integral**, em `Centavos` inteiros, não editável no ato (`FR-008`).
 - Finalização automática sem diálogo de confirmação (`FR-010`), mas **jamais** com saldo em aberto ou após falha de lançamento (I7, I8).
@@ -44,7 +44,7 @@ O peso real do trabalho está na **fronteira**. `SessaoUsuario.CenarioPagamento`
 
 | Princípio | Avaliação (pré-Phase 0) | Re-avaliação (pós-Phase 1) |
 |---|---|---|
-| I. Spec-Driven Development | ✅ Resultado de `/speckit-specify` + `/speckit-plan` sobre `spec.md`, na sequência obrigatória. | ✅ Mantido — todo artefato rastreia a um `FR-xxx`; os três achados de contrato viraram AD numerados (AD-104/105/106) e duas pendências de ERP (itens 34 e 35), em vez de decisão implícita no código. |
+| I. Spec-Driven Development | ✅ Resultado de `/speckit-specify` + `/speckit-plan` sobre `spec.md`, na sequência obrigatória. | ✅ Mantido — todo artefato rastreia a um `FR-xxx`; os três achados de contrato viraram AD numerados (AD-104/105/106), todos fechados por decisão direta do usuário em 2026-08-31 — sem pendência aberta com o ERP e sem decisão implícita no código. |
 | II. Arquitetura SOLID | ✅ Planejado em camadas com responsabilidade única: parser ↔ projeção ↔ comando ↔ UI. | ✅ Confirmado em `contracts/venda-rapida-domain-api.md`: o comando recebe saldo, aplicação de forma, roteamento, finalização e auditoria como **portas injetadas** (Dependency Inversion) e não importa PIX, TEF, layout nem componentes. A UI recebe `ListaAtalhos` pronta e não filtra nada — qualquer regra que apareça no componente é violação explícita do contrato. |
 | III. ERP como Fonte Única de Verdade | ✅ O Checkout não decide quais cenários existem — lê o que o ERP publicou na sessão. | ✅ Confirmado e reforçado: leitura estritamente unidirecional, sem gravação nem correção de cenários no ERP. As restrições que o ERP não impõe (faixa de tecla, teto de 4) são reconhecidas como regra **do Checkout** e documentadas como tal, em vez de atribuídas erroneamente ao ERP. |
 | IV. Tipagem Estrita e Validação de Fronteira | ✅ Zod obrigatório sobre `CenarioPagamento`, campo declarado apenas como `string` no OpenAPI. | ✅ Confirmado: `TeclaAtalho` é união fechada, então um atalho com tecla inválida é inconstruível; `ResultadoAcionamento` é união discriminada, impedindo ler `valorLancado` sem checar o desfecho; `AtalhoVendaRapida` só existe válido — não há estado "atalho inválido" para alguém esquecer de tratar. |
@@ -108,15 +108,15 @@ Concluída. Artefatos: `data-model.md`, `contracts/erp-cenario-pagamento-api.md`
 | AD | Conteúdo | Onde |
 |---|---|---|
 | **AD-104** | O catálogo de cenários de pagamento vem embutido em `SessaoUsuario.CenarioPagamento` (string com array JSON de 7 campos delimitados por `;`), **não** existe endpoint dedicado — mesmo padrão de AD-097 | `research.md` D1–D2 |
-| **AD-105** | Item do catálogo com número de campos diferente de 7 é descartado sem heurística de recuperação; pedido ao ERP de serialização estruturada fica como pendência (item 34) | `research.md` D3 |
-| **AD-106** | `CPgIsEncerraOperacao` é interpretado por conjunto fechado de literais, com `false` como padrão fail-safe; literal exato a confirmar contra resposta real (item 35) | `research.md` D4 |
+| **AD-105** | Item do catálogo com número de campos diferente de 7 é descartado sem heurística de recuperação, como defesa; formato delimitado é definitivo (serialização estruturada inviável no ERP), com a garantia de que os textos do cadastro não conterão `;` | `research.md` D3 |
+| **AD-106** | `CPgIsEncerraOperacao` é interpretado por conjunto fechado de literais, com `false` como padrão fail-safe — solução definitiva, não provisória | `research.md` D4 |
 
 ## Pendências abertas em `.specs/project/PENDENCIES.md`
 
+Os dois pontos de contrato levantados por AD-105 e AD-106 foram **fechados por decisão direta do usuário em 2026-08-31** e não geram pendência: o formato delimitado é definitivo (com a garantia de que os textos do cadastro não conterão `;`) e o conjunto de literais aceitos para o booleano de encerramento é a solução definitiva. Resta apenas o item herdado abaixo, que não pertence a esta feature:
+
 | Item | Conteúdo | Bloqueia? |
 |---|---|---|
-| 34 | Pedir ao ERP serialização estruturada de `CenarioPagamento` (ou proibição de `;` nos textos do cadastro) | Não — o descarte cobre o caso |
-| 35 | Confirmar o literal exato de `CPgIsEncerraOperacao` em resposta real de homologação | Não — o padrão fail-safe cobre o caso |
 | 36 | Tratar os cinco achados colaterais de contrato nas features 004, 005/003, 006 e 008 | Não para esta feature; **sim** para a 006 (`DavNum` removido) |
 
 ## Próximo passo

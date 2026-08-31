@@ -50,7 +50,7 @@
 - **Ancorar pela cauda** (últimos dois campos são sempre `encerra` e `tecla`, o primeiro é sempre `FpgCod`) — recupera parte do item, mas deixa `CPgPraCod` ambíguo exatamente quando `CPgFpgDes` contém `;`. Rejeitada por ser heurística não determinística sobre o campo que define a condição de pagamento.
 - **Aceitar e truncar em 7 partes** — silenciosamente deslocaria os campos. Rejeitada.
 
-**Pendência aberta com o ERP** (item 34 de `.specs/project/PENDENCIES.md`): solicitar que `CenarioPagamento` passe a ser um array JSON estruturado, ou que o ERP proíba/escape `;` nos campos de texto do cadastro de cenários. Enquanto não houver resposta, o Checkout opera com descarte. **Registrado como AD-105.**
+**Fechado (2026-08-31, decisão direta do usuário)**: serialização estruturada **não é viável** no ERP — o formato delimitado é definitivo. Em contrapartida, fica garantido que os campos de texto do cadastro **não conterão `;`**, de modo que a ambiguidade acima não deve ocorrer na prática. O descarte permanece implementado como **defesa** contra dado inesperado, não como tratamento de caso esperado. Sem pendência aberta. **Registrado como AD-105.**
 
 ---
 
@@ -62,7 +62,7 @@
 
 **Alternativas consideradas**: aceitar qualquer valor não vazio como verdadeiro — rejeitada pela assimetria de dano acima (`False` não vazio viraria `true`).
 
-**Pendência aberta** (item 35 de `.specs/project/PENDENCIES.md`): confirmar o literal exato contra uma resposta real de `GetSessao` de ambiente de homologação e, confirmado, estreitar o conjunto aceito. **Registrado como AD-106.**
+**Fechado (2026-08-31, decisão direta do usuário)**: aceitar um conjunto de literais é a solução **definitiva**, não uma tolerância provisória — o conjunto não será estreitado depois e não há literal a confirmar com o ERP. Sem pendência aberta. **Registrado como AD-106.**
 
 ---
 
