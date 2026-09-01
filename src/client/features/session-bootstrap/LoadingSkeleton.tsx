@@ -25,7 +25,13 @@ configureBoneyard({
  */
 export function LoadingSkeleton(): ReactElement {
   return (
-    <div className="cc-pdv-shell" role="status" aria-busy="true" aria-live="polite">
+    <div
+      className="cc-pdv-shell"
+      data-testid="skeleton-carregamento"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
       <span className="cc-visualmente-oculto">Carregando a configuração do ponto de venda…</span>
 
       <header className="cc-pdv-topbar">
@@ -79,11 +85,7 @@ function EstruturaTelaVenda(props: { 'aria-hidden'?: boolean }): ReactElement {
         <section className="cc-pdv-card cc-pdv-card--produtos">
           <div className="cc-pdv-linhas">
             {Array.from({ length: 7 }, (_, indice) => (
-              <div
-                key={indice}
-                className="cc-pdv-linha"
-                style={{ width: `${95 - indice * 6}%` }}
-              />
+              <div key={indice} className="cc-pdv-linha" style={{ width: `${95 - indice * 6}%` }} />
             ))}
           </div>
         </section>
@@ -96,14 +98,17 @@ function EstruturaTelaVenda(props: { 'aria-hidden'?: boolean }): ReactElement {
       </div>
 
       <aside className="cc-pdv-pagamento">
-        {['Condição de pagamento', 'Desconto e acréscimo', 'Forma de pagamento', 'Valor recebido'].map(
-          (rotulo) => (
-            <div className="cc-pdv-bloco" key={rotulo}>
-              <span>{rotulo}</span>
-              <div className="cc-pdv-campo" />
-            </div>
-          ),
-        )}
+        {[
+          'Condição de pagamento',
+          'Desconto e acréscimo',
+          'Forma de pagamento',
+          'Valor recebido',
+        ].map((rotulo) => (
+          <div className="cc-pdv-bloco" key={rotulo}>
+            <span>{rotulo}</span>
+            <div className="cc-pdv-campo" />
+          </div>
+        ))}
 
         <div className="cc-pdv-total">
           <span>Total da venda</span>

@@ -40,10 +40,13 @@ export interface SessionState {
   encerrarSessao(itensNaVenda: number): void;
 }
 
-const ESTADO_INICIAL = {
-  estado: 'carregando' as EstadoSessao,
-  registro: null as RegistroBootstrap | null,
-  mensagemErro: null as string | null,
+/** Só os dados do store, sem as actions — derivado para não repetir os tipos. */
+type DadosSessao = Pick<SessionState, 'estado' | 'registro' | 'mensagemErro' | 'itensNaVenda'>;
+
+const ESTADO_INICIAL: DadosSessao = {
+  estado: 'carregando',
+  registro: null,
+  mensagemErro: null,
   itensNaVenda: 0,
 };
 

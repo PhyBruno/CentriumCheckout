@@ -54,37 +54,5 @@
   margin-top: var(--cc-space-xs);
 }
 
-.cc-botao {
-  min-height: 44px;
-  padding: 0 var(--cc-space-lg);
-  border: 1px solid transparent;
-  border-radius: var(--cc-radius-pill);
-  font-family: inherit;
-  font-size: var(--cc-text-md);
-  font-weight: var(--cc-weight-semibold);
-  cursor: pointer;
-}
-
-.cc-botao--primario {
-  background: var(--cc-color-primary);
-  color: var(--cc-color-on-primary);
-}
-
-.cc-botao--primario:hover:not(:disabled) {
-  background: var(--cc-color-primary-active);
-}
-
-.cc-botao--primario:disabled {
-  background: var(--cc-color-primary-disabled);
-  cursor: default;
-}
-
-.cc-botao--secundario {
-  background: var(--cc-color-surface-strong);
-  color: var(--cc-color-ink);
-}
-
-.cc-botao:focus-visible {
-  outline: 2px solid var(--cc-color-primary-active);
-  outline-offset: 2px;
-}
+/* Os botões destes painéis usam `<Button>` do shadcn/ui, que já lê os tokens
+   do Pencil pela ponte de variáveis em `styles/global.css`. */

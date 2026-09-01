@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { Button } from '@/components/ui/button';
 import { PainelMensagem } from './PainelMensagem';
 
 export interface ErrorRetryProps {
@@ -24,14 +25,9 @@ export function ErrorRetry({
       titulo="Não foi possível carregar o ponto de venda"
       texto={mensagem}
       acoes={
-        <button
-          type="button"
-          className="cc-botao cc-botao--primario"
-          onClick={onTentarNovamente}
-          disabled={tentando}
-        >
+        <Button type="button" size="lg" onClick={onTentarNovamente} disabled={tentando}>
           {tentando ? 'Tentando…' : 'Tentar novamente'}
-        </button>
+        </Button>
       }
     />
   );

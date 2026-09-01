@@ -53,7 +53,9 @@ function fnv1a32(texto: string): number {
 export function calcularVersionHash(payload: unknown): string {
   const canonico = serializarCanonico(payload);
   const direto = fnv1a32(canonico);
-  const alternado = fnv1a32(`${canonico.length}:${canonico.slice(-4096)}:${canonico.slice(0, 4096)}`);
+  const alternado = fnv1a32(
+    `${canonico.length}:${canonico.slice(-4096)}:${canonico.slice(0, 4096)}`,
+  );
 
   return `${direto.toString(16).padStart(8, '0')}${alternado.toString(16).padStart(8, '0')}`;
 }

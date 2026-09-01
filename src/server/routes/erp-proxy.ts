@@ -41,7 +41,7 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
       return reply.code(401).send({ erro: 'Sessão ausente ou inválida' });
     }
 
-    const caminhoSemQuery = request.url.split('?')[0] ?? '';
+    const [caminhoSemQuery = '', queryString = ''] = request.url.split('?');
     const caminhoNoErp = caminhoSemQuery.slice(PREFIXO.length);
 
     let resultado;
@@ -51,7 +51,8 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
         {
           caminho: caminhoNoErp,
           method: request.method,
-          query: request.query as Record<string, string>,
+          // Query crua: preserva chaves repetidas e a codificação original.
+          queryString,
           body: corpoDaRequisicao(request.body),
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },

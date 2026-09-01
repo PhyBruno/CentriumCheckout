@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { Button } from '@/components/ui/button';
 import { PainelMensagem } from './PainelMensagem';
 
 export interface SessionExpiredWarningProps {
@@ -33,9 +34,9 @@ export function SessionExpiredWarning({
         'pode ser perdida. Reabra o Checkout a partir do ERP para começar de novo.'
       }
       acoes={
-        <button type="button" className="cc-botao cc-botao--primario" onClick={onEncerrar}>
+        <Button type="button" size="lg" onClick={onEncerrar}>
           Entendi, encerrar sessão
-        </button>
+        </Button>
       }
     />
   );

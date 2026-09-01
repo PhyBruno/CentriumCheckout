@@ -37,7 +37,10 @@ const envSchema = z.object({
   validationKey: z.string().min(1, 'validationKey é obrigatório'),
   SESSION_SECRET: z
     .string()
-    .min(SESSION_SECRET_MIN_LENGTH, `SESSION_SECRET deve ter ao menos ${SESSION_SECRET_MIN_LENGTH} caracteres`),
+    .min(
+      SESSION_SECRET_MIN_LENGTH,
+      `SESSION_SECRET deve ter ao menos ${SESSION_SECRET_MIN_LENGTH} caracteres`,
+    ),
   PORT: z.coerce.number().int().positive().default(3000),
   ERP_PROTOCOL: z.enum(['http', 'https']).default('https'),
   ERP_HOST_OVERRIDE: z.string().min(1).optional(),

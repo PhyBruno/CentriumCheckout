@@ -21,7 +21,13 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true
+    "noEmit": true,
+
+    /* Alias usado pelos componentes do shadcn/ui (espelhado em vite.config.ts). */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/client/*"]
+    }
   },
   "include": ["src", "tests", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
 }

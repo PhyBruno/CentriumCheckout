@@ -128,4 +128,36 @@ describe('chamarErpComRenovacao', () => {
     expect(erro).toBeInstanceOf(ErroSessaoEncerrada);
     expect((erro as ErroSessaoEncerrada).causa.motivo).toBe('contrato');
   });
+
+  it('repassa a query string crua sem achatar chaves repetidas', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(json({ ok: true }));
+
+    await chamarErpComRenovacao(
+      sessao,
+      {
+        caminho: '/ApiCentriumOAuth/GetListaProdutos',
+        queryString: 'Codigo=1&Codigo=2&Nome=a%20b',
+      },
+      { env, fetchImpl },
+    );
+
+    // Um Record<string, string> viraria `Codigo=1,2` e corromperia a chamada.
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe(
+      'https://acme.apps.example.test/ApiCentriumOAuth/GetListaProdutos?Codigo=1&Codigo=2&Nome=a%20b',
+    );
+  });
+
+  it('não acrescenta "?" quando não há query', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(json({ ok: true }));
+
+    await chamarErpComRenovacao(
+      sessao,
+      { caminho: '/ApiCentriumOAuth/GetStatusSistema', queryString: '' },
+      { env, fetchImpl },
+    );
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe(
+      'https://acme.apps.example.test/ApiCentriumOAuth/GetStatusSistema',
+    );
+  });
 });

@@ -1,5 +1,8 @@
 import { montarBaseUrlErp, type Env } from '../config/env';
-import { tokenResponseSchema, type TokenResponse } from '../../shared/schemas/token-response.schema';
+import {
+  tokenResponseSchema,
+  type TokenResponse,
+} from '../../shared/schemas/token-response.schema';
 
 /** Credenciais originais do redirect do ERP, guardadas cifradas no cookie. */
 export interface CredenciaisSessao {

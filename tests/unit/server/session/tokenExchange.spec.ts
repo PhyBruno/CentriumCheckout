@@ -35,22 +35,20 @@ function respostaJson(corpo: unknown, status = 200): Response {
 
 describe('trocarCredenciaisPorToken', () => {
   it('monta o host do ERP como <tenant>.<baseDomain> (AD-019)', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      respostaJson({ access_token: 'token-sintetico' }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaJson({ access_token: 'token-sintetico' }));
 
     await trocarCredenciaisPorToken(credenciais, { env: envDeTeste(), fetchImpl });
 
     expect(fetchImpl).toHaveBeenCalledOnce();
-    expect(fetchImpl.mock.calls[0]?.[0]).toBe(
-      'https://acme.apps.example.test/oauth/access_token',
-    );
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe('https://acme.apps.example.test/oauth/access_token');
   });
 
   it('envia o grant de senha em form urlencoded com additionalParameters', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      respostaJson({ access_token: 'token-sintetico' }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaJson({ access_token: 'token-sintetico' }));
 
     await trocarCredenciaisPorToken(credenciais, { env: envDeTeste(), fetchImpl });
 
@@ -73,9 +71,11 @@ describe('trocarCredenciaisPorToken', () => {
   });
 
   it('devolve a resposta validada pelo schema de fronteira', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      respostaJson({ access_token: 'token-sintetico', token_type: 'bearer', expires_in: 3600 }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        respostaJson({ access_token: 'token-sintetico', token_type: 'bearer', expires_in: 3600 }),
+      );
 
     const resultado = await trocarCredenciaisPorToken(credenciais, {
       env: envDeTeste(),
@@ -87,9 +87,9 @@ describe('trocarCredenciaisPorToken', () => {
   });
 
   it('preserva campos extras do ERP (contrato loose)', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      respostaJson({ access_token: 'token-sintetico', campo_novo_do_erp: 'x' }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaJson({ access_token: 'token-sintetico', campo_novo_do_erp: 'x' }));
 
     const resultado = await trocarCredenciaisPorToken(credenciais, {
       env: envDeTeste(),
@@ -100,9 +100,9 @@ describe('trocarCredenciaisPorToken', () => {
   });
 
   it('usa ERP_HOST_OVERRIDE quando configurado (dev/teste com ERP mockado)', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      respostaJson({ access_token: 'token-sintetico' }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaJson({ access_token: 'token-sintetico' }));
 
     await trocarCredenciaisPorToken(credenciais, {
       env: envDeTeste({ ERP_PROTOCOL: 'http', ERP_HOST_OVERRIDE: '127.0.0.1:4010' }),

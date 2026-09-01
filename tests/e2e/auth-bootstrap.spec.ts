@@ -107,11 +107,13 @@ test.describe('Cenário 2 — Bootstrap completo antes da tela de venda (AUTH-03
     await page.goto(urlSessionStart());
 
     // FR-004: indicador de carregamento, nunca a tela de venda parcial.
-    await expect(page.getByRole('status')).toBeVisible();
+    // (O `<GooeyToaster />` da raiz também tem role="status", por isso o alvo
+    // aqui é o testid do skeleton, e não o papel ARIA.)
+    await expect(page.getByTestId('skeleton-carregamento')).toBeVisible();
     await expect(page.getByTestId('tela-de-venda')).toHaveCount(0);
 
     await expect(page.getByTestId('tela-de-venda')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(page.getByTestId('skeleton-carregamento')).toHaveCount(0);
   });
 
   test('persiste um registro chaveado por tenant e não retransmite o payload no F5', async ({

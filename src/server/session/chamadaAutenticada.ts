@@ -25,6 +25,12 @@ export interface RequisicaoErp {
   readonly caminho: string;
   readonly method?: string;
   readonly query?: Record<string, string>;
+  /**
+   * Query string crua, já codificada, usada pelo proxy `/api/erp/*`.
+   * Tem precedência sobre `query`: repassar o texto original preserva chaves
+   * repetidas (`?a=1&a=2`), que um `Record<string, string>` achataria.
+   */
+  readonly queryString?: string;
   readonly headersExtras?: Record<string, string>;
   /** Usa o `BodyInit` do próprio fetch para não divergir do runtime. */
   readonly body?: BodyInit | undefined;
@@ -43,6 +49,12 @@ export interface ChamadaAutenticadaDeps {
 
 function montarUrl(env: Env, sessao: SessaoOperador, requisicao: RequisicaoErp): string {
   const base = montarBaseUrlErp(env, sessao.tenant);
+
+  if (requisicao.queryString !== undefined) {
+    const crua = requisicao.queryString;
+    return `${base}${requisicao.caminho}${crua === '' ? '' : `?${crua}`}`;
+  }
+
   const query = new URLSearchParams(requisicao.query ?? {});
   const sufixo = query.size > 0 ? `?${query.toString()}` : '';
   return `${base}${requisicao.caminho}${sufixo}`;

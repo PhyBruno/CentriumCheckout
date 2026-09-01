@@ -1,3 +1,5 @@
+@import 'tailwindcss';
+
 /**
  * Design tokens do Centrium Checkout.
  *
@@ -46,8 +48,7 @@
   /* --- Tipografia ------------------------------------------------------- */
   /* Inter é o substituto documentado de CoinbaseSans/CoinbaseDisplay
      (`DESIGN-coinbase.md` § Type substitution) — as licenciadas não são redistribuíveis. */
-  --cc-font-sans:
-    Inter, -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --cc-font-sans: Inter, -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   --cc-text-xs: 11px;
   --cc-text-sm: 12px;
@@ -90,6 +91,67 @@
     var(--cc-skeleton-highlight) 50%,
     var(--cc-skeleton-base) 93.867%
   );
+}
+
+/**
+ * Ponte shadcn/ui → tokens do Pencil.
+ *
+ * O shadcn/ui espera um conjunto fixo de variáveis semânticas
+ * (`--background`, `--primary`, `--border`…). Em vez de aceitar a paleta padrão
+ * dele, cada uma aponta para o token correspondente do design aprovado — assim
+ * qualquer componente shadcn adicionado ao projeto já nasce com a identidade do
+ * Checkout, sem tema paralelo.
+ */
+:root {
+  --background: var(--cc-color-canvas);
+  --foreground: var(--cc-color-ink);
+  --card: var(--cc-color-surface-card);
+  --card-foreground: var(--cc-color-ink);
+  --popover: var(--cc-color-surface-card);
+  --popover-foreground: var(--cc-color-ink);
+  --primary: var(--cc-color-primary);
+  --primary-foreground: var(--cc-color-on-primary);
+  --secondary: var(--cc-color-surface-strong);
+  --secondary-foreground: var(--cc-color-ink);
+  --muted: var(--cc-color-surface-soft);
+  --muted-foreground: var(--cc-color-body);
+  --accent: var(--cc-color-surface-strong);
+  --accent-foreground: var(--cc-color-ink);
+  --destructive: var(--cc-color-down);
+  --destructive-foreground: var(--cc-color-on-dark);
+  --border: var(--cc-color-hairline);
+  --input: var(--cc-color-hairline);
+  --ring: var(--cc-color-primary-active);
+  --radius: var(--cc-radius-lg);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--cc-font-sans);
+
+  --radius-sm: var(--cc-radius-sm);
+  --radius-md: var(--cc-radius-md);
+  --radius-lg: var(--cc-radius-lg);
+  --radius-xl: var(--cc-radius-xl);
 }
 
 *,

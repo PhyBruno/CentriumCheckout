@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { bootstrapDb, criarRepositorioBootstrap, type RepositorioBootstrap } from './db/bootstrapDb';
+import {
+  bootstrapDb,
+  criarRepositorioBootstrap,
+  type RepositorioBootstrap,
+} from './db/bootstrapDb';
 import {
   carregarBootstrap,
   criarAnalisadorViaWorker,

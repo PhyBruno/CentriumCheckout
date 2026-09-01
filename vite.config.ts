@@ -1,5 +1,7 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 const BFF_DEV_TARGET = process.env.BFF_DEV_TARGET ?? 'http://127.0.0.1:3000';
 
@@ -7,7 +9,11 @@ const BFF_DEV_TARGET = process.env.BFF_DEV_TARGET ?? 'http://127.0.0.1:3000';
 // Decision): o build vai para `dist/client`, de onde `@fastify/static` o serve.
 // Em dev, o Vite roda separado e faz proxy de `/session/*` e `/api/*` para o BFF.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    // `@` aponta para a SPA — é o alias que o shadcn/ui usa em seus imports.
+    alias: { '@': fileURLToPath(new URL('./src/client', import.meta.url)) },
+  },
   build: {
     outDir: 'dist/client',
     emptyOutDir: true,

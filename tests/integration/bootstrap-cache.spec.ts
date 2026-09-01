@@ -5,7 +5,10 @@ import {
   criarRepositorioBootstrap,
   type RepositorioBootstrap,
 } from '../../src/client/db/bootstrapDb';
-import { carregarBootstrap, type AnalisadorBootstrap } from '../../src/client/services/bootstrapClient';
+import {
+  carregarBootstrap,
+  type AnalisadorBootstrap,
+} from '../../src/client/services/bootstrapClient';
 import { bootstrapPayloadSchema } from '../../src/shared/schemas/bootstrap.schema';
 import { calcularVersionHash } from '../../src/shared/versionHash';
 
@@ -52,7 +55,8 @@ function criarFetchFalso(corpo: Record<string, unknown>): {
   const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
     total += 1;
     const hash = calcularVersionHash(bootstrapPayloadSchema.parse(corpo));
-    const cabecalho = (init?.headers as Record<string, string> | undefined)?.['If-None-Match'] ?? '';
+    const cabecalho =
+      (init?.headers as Record<string, string> | undefined)?.['If-None-Match'] ?? '';
 
     if (cabecalho.includes(hash)) {
       return new Response(null, { status: 304, headers: { ETag: `"${hash}"` } });
