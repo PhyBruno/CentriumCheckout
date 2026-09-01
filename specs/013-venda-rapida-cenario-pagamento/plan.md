@@ -24,7 +24,7 @@ O peso real do trabalho está na **fronteira**. `SessaoUsuario.CenarioPagamento`
 
 **Target Platform**: Navegador desktop (Chrome prioritário). O layout mobile é explicitamente excluído (`FR-020`) — não por limitação técnica, mas por decisão de produto do usuário; a exclusão é expressa como capacidade `plataforma` injetada, no mesmo padrão de AD-074.
 
-**Performance Goals**: O parse do catálogo ocorre **uma vez por sessão**, sobre dezenas de itens — custo desprezível e fora do caminho crítico da venda. O acionamento é síncrono e local até o ponto em que uma integração externa entra em cena, atendendo `SC-002` (< 1s) para cenários sem TEF/PIX. Nenhuma chamada nova ao ERP é introduzida.
+**Performance Goals**: O parse do catálogo ocorre **uma vez por sessão**, sobre dezenas de itens — custo estimado abaixo de 5ms, fora do caminho crítico da venda. O acionamento é síncrono e local até o ponto em que uma integração externa entra em cena, atendendo `SC-002` (< 1s) para cenários sem TEF/PIX. Nenhuma chamada nova ao ERP é introduzida.
 
 **Constraints**:
 - Parser **total**: nenhuma entrada do ERP pode lançar exceção; catálogo ilegível degrada para "sem atalhos" (I4).

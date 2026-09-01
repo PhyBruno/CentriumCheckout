@@ -42,13 +42,14 @@ Projeção validada de um `CenarioPagamentoBruto` que passou por todos os filtro
 
 O acionamento nunca devolve "sucesso parcial ambíguo". Modelar como união discriminada impede que o chamador leia o valor lançado sem antes checar o desfecho.
 
+**Correção (2026-08-31, remediação de `/speckit-analyze` — achado C1):** a variante `AGUARDANDO_INTEGRACAO` foi removida. `aplicarForma` (porta injetada de 008) só resolve sua Promise depois que o pagamento está de fato aplicado — inclusive quando depende de confirmação de TEF/PIX, reaproveitando o mesmo ciclo `PENDENTE_INTEGRACAO` → `confirmarPagamentoIntegrado`/`recusarPagamentoIntegrado` que a feature 008 já implementa (`specs/008-pagamento-geral/tasks.md`, T021/T022). `acionarCenario` dá um único `await aplicarForma(...)`; P5/P6/P7 só executam depois desse `await` resolver, com ou sem integração externa envolvida — nenhuma retomada assíncrona separada é necessária. Enquanto a integração está em andamento, a UI observa `PENDENTE_INTEGRACAO` diretamente no estado já exposto por 008 (`pagamentoSlice`), sem que 013 precise de sinal próprio (ver `contracts/venda-rapida-domain-api.md` §4). Esta leitura já era o que `research.md` D10, `spec.md` FR-013 e `quickstart.md` C5 diziam — a inconsistência estava só nesta tabela.
+
 | Variante | Campos | Quando |
 |---|---|---|
-| `{ tipo: 'LANCADO' }` | `valorLancado: Centavos`, `finalizacaoIniciada: boolean` | pagamento aplicado; `finalizacaoIniciada` reflete `FR-010` |
-| `{ tipo: 'AGUARDANDO_INTEGRACAO' }` | `integracao: 'TEF' \| 'PIX_DINAMICO'` | forma exige integração externa; desfecho definido depois (D10) |
-| `{ tipo: 'RECUSADO' }` | `motivo: MotivoRecusa` | nada foi alterado na venda |
+| `{ tipo: 'LANCADO' }` | `valorLancado: Centavos`, `finalizacaoIniciada: boolean` | pagamento aplicado (com ou sem integração externa); `finalizacaoIniciada` reflete `FR-010` |
+| `{ tipo: 'RECUSADO' }` | `motivo: MotivoRecusa` | nada foi alterado na venda (G1–G4) ou o lançamento em si falhou/foi recusado (P4, inclusive TEF/PIX recusado) |
 
-`MotivoRecusa` = `'SEM_ITENS' \| 'SEM_SALDO_EM_ABERTO' \| 'ACIONAMENTO_EM_ANDAMENTO' \| 'ATALHO_INEXISTENTE' \| 'PLATAFORMA_NAO_SUPORTADA'`.
+`MotivoRecusa` = `'SEM_ITENS' \| 'SEM_SALDO_EM_ABERTO' \| 'ACIONAMENTO_EM_ANDAMENTO' \| 'ATALHO_INEXISTENTE' \| 'PLATAFORMA_NAO_SUPORTADA' \| 'LANCAMENTO_FALHOU'`.
 
 ### 1.5 Estado de venda introduzido
 
@@ -102,13 +103,13 @@ acionarCenario(tecla)
   ├─ P2  garante etapa de pagamento              (FR-019)
   ├─ P3  seleciona condição do cenário           (domínio da feature 008)
   ├─ P4  aplica forma do cenário por saldoEmAberto integral   (FR-008)
-  │        └─ exige integração externa? → AGUARDANDO_INTEGRACAO; retoma em P5 após aprovação
+  │        └─ `await aplicarForma(...)` só resolve após o pagamento estar de fato aplicado — inclusive aguardando confirmação de TEF/PIX quando aplicável (D10); rejeição ⇒ RECUSADO(LANCAMENTO_FALHOU), pula P5
   ├─ P5  saldoEmAberto === 0 && encerraOperacao? → inicia finalização (FR-010)
   ├─ P6  emite evento de auditoria               (FR-017)
   └─ P7  limpa acionamentoEmAndamento (sempre, inclusive em falha)
 ```
 
-Nenhum passo entre P3 e P5 tem diálogo de confirmação (`FR-010`). Falha em P3/P4 aborta antes de P5, preserva o estado anterior da venda e devolve o erro ao operador (`FR-011`).
+Nenhum passo entre P3 e P5 tem diálogo de confirmação (`FR-010`). Falha em P3/P4 — inclusive TEF/PIX recusado — aborta antes de P5, preserva o estado anterior da venda e devolve o erro ao operador (`FR-011`).
 
 ---
 
