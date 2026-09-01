@@ -24,13 +24,13 @@ O projeto roda 100% em Docker (`.specs/codebase/ARCHITECTURE.md`). Comandos abai
 ## Camada 1 — Domínio puro
 
 ```bash
-npm test -- tests/unit/domain/finalizacaoVenda
+npm test -- tests/unit/domain/venda tests/unit/domain/finalizacaoVenda
 ```
 
 | Arquivo | Cenários mínimos | Requisito |
 |---|---|---|
-| `montarPayloadFaturarNFCe.spec.ts` | `NumeroNota = 0` para venda `origem: 'NOVA'`; `NumeroNota` preenchido para `'RASCUNHO'`/`'DAV'`; `CadSerieNFCe` e `vendedorCodigo` sempre presentes, nunca vazios; `Log` é o resultado de `serializarLogAuditoria` aplicado ao array corrente, round-trip parseável | `FR-001` a `FR-003`, `FR-010`, `FR-011` |
-| `decidirMecanismoImpressao.spec.ts` | `'E'` → `'direta'`; `'P'` → `'pdf'`; valor fora de `{'E','P'}` lança erro de fronteira | `FR-008`, AD-082 |
+| `montarRetratoVenda.spec.ts` (em `tests/unit/domain/venda/` — Emenda de 2026-08-31, substitui o antigo `montarPayloadFaturarNFCe.spec.ts`) | `NumeroNota = 0` para venda `origem: 'NOVA'`; `NumeroNota` preenchido para `'RASCUNHO'`/`'DAV'`; `CadSerieNFCe` e `vendedorCodigo` sempre presentes, nunca vazios; `Log` é o resultado de `serializarLogAuditoria` aplicado ao array corrente, round-trip parseável; retrato `'VALIDAR'` ≡ retrato `'FATURAR'` exceto `SuspenderOuFaturar` (I5 da feature 014) | `FR-001` a `FR-003`, `FR-010`, `FR-011`, `FR-015` |
+| `decidirMecanismoImpressao.spec.ts` (em `tests/unit/domain/finalizacaoVenda/`) | `'E'` → `'direta'`; `'P'` → `'pdf'`; valor fora de `{'E','P'}` lança erro de fronteira | `FR-008`, AD-082 |
 
 ---
 
@@ -80,7 +80,7 @@ Com o serviço de impressão local **stubado** (a chamada real depende da rede l
 | Gate | Comando | Quando |
 |---|---|---|
 | TypeScript `strict` sem erro | `npx tsc --noEmit` | antes de **qualquer** `git push` (Constitution, Development Workflow) |
-| Suíte unitária do domínio verde | `npm test -- tests/unit/domain/finalizacaoVenda` | antes do push |
+| Suíte unitária do domínio verde | `npm test -- tests/unit/domain/venda tests/unit/domain/finalizacaoVenda` | antes do push |
 | Suíte de integração verde | `npm test -- tests/integration/finalizacaoSuspensao.spec.ts` | antes do push |
 | `/owasp-security` | skill | antes de merge para `master`/deploy de produção |
 
