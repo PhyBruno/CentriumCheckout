@@ -70,13 +70,13 @@ Isso é seguro porque `AD-067` (`.specs/project/STATE.md`) já garante que uma l
 
 ---
 
-## D7 — Vendedor: pré-seleção é responsabilidade da feature 012 (ainda não planejada)
+## D7 — Vendedor: pré-seleção via `trocarVendedor(..., 'RASCUNHO')`, já reservado pela feature 012 (correção 2026-09-01, auditoria de lacunas: 012 já tem `data-model.md`)
 
-**Decision**: `CheckoutFaturarNFCe.vendedorCodigo` vem pronto no rascunho (FR-009/NFCE-04) — esta feature só expõe esse valor como parte do `RascunhoCarregado` (`data-model.md` §3). A pré-seleção efetiva no estado de vendedor (`.specs/features/selecao-vendedor/spec.md`, AD-024) é implementada quando a feature 012 (`specs/012-selecao-vendedor/`) passar por `/speckit-plan` — hoje só tem `spec.md`, sem `data-model.md`/slice definido.
+**Decision**: `CheckoutFaturarNFCe.vendedorCodigo` vem pronto no rascunho (FR-009/NFCE-04). Esta feature SHALL chamar `trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO')` (`specs/012-selecao-vendedor/data-model.md` §3) como parte do mesmo efeito colateral de `retomarRascunho` (`data-model.md` §6) — a pré-seleção efetiva (acceptance scenario 5 da spec) é satisfeita diretamente por esta feature, não apenas declarada como dependência pendente.
 
-**Rationale**: Mesmo padrão de "dependência declarada, não implementada" já usado por `specs/004-finalizacao-suspensao-venda/data-model.md` para o mesmo campo `vendedorCodigo` (seção final) — não há tipo de estado de vendedor ainda desenhado para esta feature consumir.
+**Rationale**: `specs/012-selecao-vendedor/data-model.md` §1/§3 (já com `plan.md`/`data-model.md`/`tasks.md` completos) nomeia explicitamente "retomada de rascunho (004/011, MUST passar origem: 'RASCUNHO' explicitamente)" como consumidor de `trocarVendedor` — o slice de vendedor e a semântica de `nome: null` para origem `'RASCUNHO'` (`specs/012-selecao-vendedor/research.md` D4) já estão fixados por 012; esta feature só precisa chamar a action já contratada, mesmo padrão já usado para `identidadeVenda` (D9) e `auditoria` (D10) desta mesma lista.
 
-**Alternatives considered**: Nenhuma — não há como implementar contra um slice que ainda não existe.
+**Alternatives considered**: Apenas expor `vendedorCodigo` sem chamar `trocarVendedor` — era a leitura correta enquanto 012 não tinha `data-model.md` (estado original desta decisão, 2026-08-27); superada agora que a action existe e está publicamente contratada para este uso exato.
 
 ---
 

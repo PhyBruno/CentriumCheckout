@@ -18,7 +18,7 @@ Um slice dedicado `auditoria`, combinado no mesmo store Zustand+Immer da venda e
 
 **Storage**: N/A — sem persistência. O array de eventos vive só em memória, com o mesmo ciclo de vida do carrinho (AD-006): não sobrevive a F5, é descartado ao final da venda (sucesso) e nunca é gravado em Dexie/localStorage/IndexedDB.
 
-**Testing**: Vitest + Testing Library — teste unitário por tipo de evento (18 variantes, ver `data-model.md`) cobrindo a action creator e o formato de `detalhes`; teste de integração do slice cobrindo ordem cronológica estritamente crescente e a serialização para o campo `Log` (parse de volta ao array original). Sem E2E dedicado (mecanismo sem tela, FR-009) — a cobertura E2E do campo `Log` é responsabilidade do teste ponta a ponta de finalização/suspensão (feature 004, `specs/004-finalizacao-suspensao-venda/`), que só precisa afirmar que `Log` chega preenchido e parseável.
+**Testing**: Vitest + Testing Library — teste unitário por tipo de evento (20 variantes, ver `data-model.md`) cobrindo a action creator e o formato de `detalhes`; teste de integração do slice cobrindo ordem cronológica estritamente crescente e a serialização para o campo `Log` (parse de volta ao array original). Sem E2E dedicado (mecanismo sem tela, FR-009) — a cobertura E2E do campo `Log` é responsabilidade do teste ponta a ponta de finalização/suspensão (feature 004, `specs/004-finalizacao-suspensao-venda/`), que só precisa afirmar que `Log` chega preenchido e parseável.
 
 **Target Platform**: Navegador (mesma SPA das demais features) — sem mudança de plataforma ou processo.
 
@@ -34,7 +34,7 @@ Um slice dedicado `auditoria`, combinado no mesmo store Zustand+Immer da venda e
 - Slice preservado (nunca descartado) em falha de rede de `FaturarNFCe`; descartado só após entrega bem-sucedida (FR-006/FR-007, AUDIT-09 — mesma referência, linha 87).
 - Nenhum campo de identidade do operador por evento — autoria é implícita à sessão autenticada (Assumptions da spec).
 
-**Scale/Scope**: 1 slice Zustand (`auditoriaSlice`) + união discriminada de 18 tipos de evento + 1 módulo de serialização para o campo `Log` + pontos de disparo em 6 outras features (identificação de cliente — spec 005, seleção de vendedor — spec 012, carrinho — spec 003, pagamento — spec 008, finalização/suspensão — spec 004, validação prévia — spec 014). Este plano é dono do slice, da união de tipos e da serialização; os pontos de disparo em cada feature de negócio são implementados pelos planos dessas features, referenciando o contrato definido aqui (`contracts/auditoria-events.md`).
+**Scale/Scope**: 1 slice Zustand (`auditoriaSlice`) + união discriminada de 20 tipos de evento + 1 módulo de serialização para o campo `Log` + pontos de disparo em 10 outras features (identificação de cliente — spec 005, seleção de vendedor — spec 012, carrinho — spec 003, pagamento — spec 008/009/010, finalização/suspensão — spec 004, validação prévia — spec 014, venda rápida — spec 013, importação de DAV — spec 006). Este plano é dono do slice, da união de tipos e da serialização; os pontos de disparo em cada feature de negócio são implementados pelos planos dessas features, referenciando o contrato definido aqui (`contracts/auditoria-events.md`).
 
 ## Constitution Check
 
@@ -45,7 +45,7 @@ Um slice dedicado `auditoria`, combinado no mesmo store Zustand+Immer da venda e
 | I. Spec-Driven Development | ✅ Este plano é o resultado de `/speckit-plan` sobre `specs/001-auditoria-acoes-operador/spec.md`, seguindo a sequência obrigatória. |
 | II. Arquitetura SOLID | ✅ O slice `auditoria` tem responsabilidade única (acumular + serializar eventos); não conhece regras de negócio de cliente/vendedor/produto/pagamento — só recebe `detalhes` já normalizados via dispatcher tipado. Cada feature de negócio permanece responsável por decidir *quando* disparar seu próprio evento (Open/Closed: novo tipo de evento não exige alterar o slice, só estender a união em `data-model.md`). |
 | III. ERP como Fonte Única de Verdade | ✅ O Checkout não interpreta, audita ou reprocessa o log — só acumula e repassa ao ERP como string opaca no campo `Log`; nenhuma tela de revisão é oferecida (FR-009), evitando que o Checkout vire uma segunda fonte de verdade de auditoria. |
-| IV. Tipagem Estrita e Validação de Fronteira | ✅ União TypeScript discriminada (`tipo` como discriminante) cobre os 17 eventos sem `any`. Zod não se aplica à entrada — todo dado do evento é gerado internamente pela própria aplicação (não cruza uma fronteira externa); a única saída de fronteira é a serialização para `Log`, que é sempre `JSON.stringify` de um tipo já validado em compile-time. |
+| IV. Tipagem Estrita e Validação de Fronteira | ✅ União TypeScript discriminada (`tipo` como discriminante) cobre os 20 eventos sem `any`. Zod não se aplica à entrada — todo dado do evento é gerado internamente pela própria aplicação (não cruza uma fronteira externa); a única saída de fronteira é a serialização para `Log`, que é sempre `JSON.stringify` de um tipo já validado em compile-time. |
 | V. Precisão Monetária Inegociável | ✅ Parcial — os eventos que carregam valor monetário (`PRODUTO_INSERIDO.precoUnitario`, `PRODUTO_ALTERADO.valorAnterior/valorNovo`) reaproveitam a representação em centavos inteiros já validada pela feature de origem (carrinho/precificação, spec 003); este módulo não recalcula nem arredonda nada, só transporta o valor recebido. |
 | VI. Sem Estado de Venda Persistido no Cliente | ✅ Slice Zustand sem `persist`, mesmo ciclo de vida do carrinho (AD-006) — não sobrevive a F5, nunca é gravado em Dexie/localStorage. |
 
@@ -76,7 +76,7 @@ src/client/
 │       └── auditoriaSlice.ts          # slice desta feature: array de eventos + registrarEventoAuditoria() + resetarAuditoria() + descartarAuditoria()
 └── domain/
     └── auditoria/
-        ├── eventos.ts                  # união discriminada dos 18 tipos de evento (ver data-model.md) + factory functions tipadas por tipo
+        ├── eventos.ts                  # união discriminada dos 20 tipos de evento (ver data-model.md) + factory functions tipadas por tipo
         └── serializarLog.ts            # monta a string JSON do campo Log a partir do array acumulado
 
 tests/

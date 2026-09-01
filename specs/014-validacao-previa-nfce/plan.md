@@ -1,6 +1,6 @@
 # Implementation Plan: Validação Prévia da Venda no ERP (`ValidarNFCe`)
 
-**Branch**: `docs/014-validacao-previa-nfce` | **Date**: 2026-08-31 | **Spec**: `specs/014-validacao-previa-nfce/spec.md`
+**Branch**: `014-validacao-previa-nfce` | **Date**: 2026-08-31 | **Spec**: `specs/014-validacao-previa-nfce/spec.md`
 
 **Input**: Feature specification from `specs/014-validacao-previa-nfce/spec.md`, o contrato real `Fluxograma - Diagrama - Alinhamentos/ApiCentriumOAuth.yaml` (`20260827192357`), o código-fonte de `PCheckout_ValidarNFCe` lido diretamente na KB GeneXus (`CentriumDEVU6`, via MCP) e as decisões arquiteturais de `.specs/project/STATE.md` (AD-030, AD-036, AD-048, AD-061, AD-074, AD-085, AD-097, AD-098, AD-101, AD-104, AD-108, e os novos AD-109 a AD-113 abertos por esta fase).
 

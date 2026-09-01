@@ -51,7 +51,7 @@ function parseCarregarNFCeOutput(json: unknown): RascunhoCarregado;       // mes
 function retomarRascunho(rascunho: RascunhoCarregado): void;
 // Efeito colateral único, síncrono do ponto de vista do operador (data-model.md §6, ordem de aplicação):
 // resetarAuditoria() → setIdentidadeVenda() → setLinhasCarrinho() → setPagamentos()+setCondicao()
-// → setCliente(await GetCliente) → expõe vendedorCodigo para 012.
+// → setCliente(await GetCliente) → trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO') (012 §3).
 // Chamado uma única vez, a partir do modal, ao confirmar a seleção de um rascunho.
 ```
 

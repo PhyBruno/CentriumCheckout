@@ -14,7 +14,7 @@ Mesma divisão da feature 008/003: **domínio puro** (sem React, sem rede) e **c
 export type ResultadoStatusPix =
   | { readonly situacao: 'PENDENTE' }
   | { readonly situacao: 'APROVADO' }
-  | { readonly situacao: 'FALHA_TERMINAL'; readonly motivo: 'EXPIRADA' | 'RECUSADA' | 'ERRO' | 'DESCONHECIDO' };
+  | { readonly situacao: 'FALHA_TERMINAL'; readonly motivo: 'EXPIRADA' | 'RECUSADA' | 'ERRO' | 'FECHADA' | 'ASSOCIACAO_REMOVIDA' | 'DESCONHECIDO' };
 
 export function interpretarStatusPix(statusTransacao: string): ResultadoStatusPix;
 ```

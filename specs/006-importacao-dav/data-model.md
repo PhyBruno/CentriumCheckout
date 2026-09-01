@@ -87,9 +87,17 @@ export interface FormaPagamentoImportada {
   readonly formaCodigo: number;             // FormasDePagamento[].FormaCodigo
   readonly formaMeioPagtoNFe: string;       // .FormaMeioPagtoNFe
   readonly valor: Centavos;                 // .FormaValor
-  readonly tef: TefImportado | null;        // campos TEFidentificacao/TEFCNPJ/TEFBandeira/TEFNumeroAutorizacao/TEFTipoIntegracao, agrupados quando presentes
+  readonly tef: TefImportado | null;        // agrupamento dos campos TEF* abaixo — null quando o item não é TEF
   readonly pixGuid: string | null;          // .FormaPixGUID
   readonly ticketDevolucao: string | null;  // .TicketDevolucao
+}
+
+export interface TefImportado {
+  readonly identificacao: number;   // .TEFidentificacao
+  readonly cnpj: string;            // .TEFCNPJ
+  readonly bandeira: string;        // .TEFBandeira
+  readonly numeroAutorizacao: string; // .TEFNumeroAutorizacao
+  readonly tipoIntegracao: string;  // .TEFTipoIntegracao
 }
 ```
 
@@ -113,7 +121,7 @@ importarVendaExistente() [orquestração, davQueries.ts]
         ├─ carrinhoSlice.importarLinhasCongeladas(linhas)         // extensão nova, contracts/importacao-domain-api.md
         ├─ fetchClientePorCodigo(clienteCodigo) → clienteSlice.selecionarCliente(cliente, 'DAV')  // 005, AD-115
         ├─ vendedorSlice.trocarVendedor({codigo, nome: null})      // 012, assinatura desenhada — stub até tasqueada
-        ├─ pagamentoSlice.importarFormasDePagamento(formas)        // 008 — ação nova, stub até tasqueada
+        ├─ pagamentoSlice.importarFormasDePagamento(formas)        // 008, contrato definido (pula validarInsercao/checagem de dinheiro único, sempre APROVADO/NENHUMA) — stub até tasqueada
         ├─ registrarEventoAuditoria(criarEventoDavImportado({numeroDav, numeroNota, ...}))  // 001, tipo #20, AD-114
         └─ dispara em paralelo: GetProduto(codigoProduto) por SKU distinto
                  │  sucesso → atualiza snapshot.descricao da(s) linha(s) daquele SKU
