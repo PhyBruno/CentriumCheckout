@@ -121,7 +121,7 @@ importarVendaExistente() [orquestração, davQueries.ts]
         ├─ carrinhoSlice.importarLinhasCongeladas(linhas)         // extensão nova, contracts/importacao-domain-api.md
         ├─ fetchClientePorCodigo(clienteCodigo) → clienteSlice.selecionarCliente(cliente, 'DAV')  // 005, AD-115
         ├─ vendedorSlice.trocarVendedor({codigo, nome: null})      // 012, assinatura desenhada — stub até tasqueada
-        ├─ pagamentoSlice.importarFormasDePagamento(formas)        // 008 — ação nova, stub até tasqueada
+        ├─ pagamentoSlice.importarFormasDePagamento(formas)        // 008, contrato definido (pula validarInsercao/checagem de dinheiro único, sempre APROVADO/NENHUMA) — stub até tasqueada
         ├─ registrarEventoAuditoria(criarEventoDavImportado({numeroDav, numeroNota, ...}))  // 001, tipo #20, AD-114
         └─ dispara em paralelo: GetProduto(codigoProduto) por SKU distinto
                  │  sucesso → atualiza snapshot.descricao da(s) linha(s) daquele SKU

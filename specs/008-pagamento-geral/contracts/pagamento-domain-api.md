@@ -165,6 +165,7 @@ export interface PagamentoSlice {
   removerDescontoCapa(): void;
   aplicarValeDevolucao(codigo: string, idPagamento: string): Promise<void>;
   limparPagamentos(): void;
+  importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;  // feature 006 — tipo definido em specs/006-importacao-dav/data-model.md §6
 
   // seletores
   podeMutarCarrinho(): boolean;
@@ -204,6 +205,7 @@ O slice de pagamento **não importa** o slice de carrinho, o hook de layout, nem
 | `removerDescontoCapa` | — | Zera o desconto de capa | — |
 | `aplicarValeDevolucao` | `ehElegivelParaVale(forma)` — inelegível é no-op com toast | `await validarTicket(codigo)`; se `valido`, vincula ao pagamento e soma o valor; se não, toast com `mensagem` | `VALE_DEVOLUCAO_USADO` (só quando válido); `PAGAMENTO_RECUSADO` quando inválido |
 | `limparPagamentos` | — | Esvazia pagamentos, condição, desconto e vale. Chamada pela feature 004 após entrega bem-sucedida, junto com `limparCarrinho` e `descartarAuditoria` | — |
+| `importarFormasDePagamento` | chamada só pela orquestração de importação da feature 006 (`importarVendaExistente`), nunca pelo operador diretamente | Para cada forma da lista, cria um `PagamentoAplicado` com `status: 'APROVADO'` e `integracao: 'NENHUMA'` sempre — **sem** chamar `validarInsercao` (o veredito do ERP já está implícito no próprio DAV/rascunho existir, decisão do usuário) e **sem** a checagem de forma única em dinheiro de `podeAplicarForma` (o DAV pode legitimamente já trazer mais de uma forma Dinheiro). Substitui a lista inteira de `pagamentos` — nunca acumula com pagamentos pré-existentes, que não deveriam existir nesse ponto do fluxo | — (a feature 006 já dispara `DAV_IMPORTADO`, que cobre a importação inteira; nenhum `FORMA_PAGAMENTO_APLICADA` por forma individual) |
 
 `aplicarValeDevolucao` é a **única** action assíncrona do slice, e chama `ValidaTicketDevolucao` exatamente uma vez por vale — a finalização nunca revalida (`FR-009`/`PAY-06`).
 
