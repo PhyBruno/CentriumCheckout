@@ -23,7 +23,7 @@ description: "Task list template for feature implementation"
 
 ## Path Conventions
 
-Extensão da árvore já proposta pela feature 002 (ver `plan.md` § Structure Decision — quarta feature a estendê-la):
+Extensão da árvore já proposta pela feature 002 (ver `plan.md` § Structure Decision — quinta feature a estendê-la):
 
 ```text
 src/client/domain/cliente/           # documento.ts — camada pura
