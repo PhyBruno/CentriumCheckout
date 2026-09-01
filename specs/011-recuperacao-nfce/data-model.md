@@ -117,7 +117,7 @@ Além disso, `condicaoPagamentoCodigo` do rascunho seta `condicaoSelecionada` (0
 | Efeito | Mecanismo |
 |---|---|
 | Cliente | `GET /ApiCentriumOAuth/GetCliente(clienteCodigo)` (feature 005) monta `ClienteVenda` completo; `origem: 'RASCUNHO'` — extensão declarada em `research.md` D6, não aplicada por este plano ao artefato de 005 |
-| Vendedor | `vendedorCodigo` exposto por `RascunhoCarregado` para a feature 012 pré-selecionar quando ela tiver `data-model.md` próprio (`research.md` D7) |
+| Vendedor | `trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO')` (`specs/012-selecao-vendedor/data-model.md` §3) — pré-seleção efetiva, `research.md` D7 |
 | Identidade da venda | `identidadeVenda = { origem: 'RASCUNHO', numeroNota }` (004 §1) — implementado por esta feature (`research.md` D9) |
 | Auditoria | `resetarAuditoria()` + `VENDA_INICIADA({ origem: 'RASCUNHO' })` (001) — implementado por esta feature (`research.md` D10) |
 

@@ -26,7 +26,7 @@ export type OrigemVendedor = 'DEFAULT' | 'BUSCA' | 'RASCUNHO' | 'DAV';
 |---|---|---|
 | `DEFAULT` (pré-seleção automática, AD-032) | preenchido — `SessaoUsuario.VendedorNome` sempre acompanha `VendedorCodigo` | `inicializarVendedorPadrao`, sem chamada de rede |
 | `BUSCA` (seleção no modal, `GetListaVendedores`) | preenchido — vem direto do item da lista (`research.md` D1) | `selecionarVendedor` |
-| `RASCUNHO` (retomada via `CarregarNFCe`) | `null` — `CheckoutFaturarNFCe` só tem `vendedorCodigo` (`research.md` D4) | `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')`, chamado pela feature 004/011 |
+| `RASCUNHO` (retomada via `CarregarNFCe`) | `null` — `CheckoutFaturarNFCe` só tem `vendedorCodigo` (`research.md` D4) | `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')`, chamado pela feature 011 (exclusiva — 004 não chama `CarregarNFCe`) |
 | `DAV` (importação, feature 006) | `null` — mesma lacuna de `ListaDAVs`/`GetDav` (AD-095) | `trocarVendedor({ codigo, nome: null })`, já reservado por `specs/006-importacao-dav/contracts/importacao-domain-api.md` |
 
 **UI**: quando `nome === null`, o campo de vendedor da venda exibe `"Vendedor #<codigo>"` até o operador reabrir o modal e selecionar explicitamente (mesmo padrão de `AD-095`).
@@ -71,7 +71,7 @@ function trocarVendedor(vendedor: { codigo: number; nome: string | null }, orige
 // Superfície pública já reservada por specs/006-importacao-dav/contracts/importacao-domain-api.md
 // (chamada de 2 argumentos da 006 continua válida — `origem` é opcional, default 'DAV').
 // Usada por origens que não passam pelo modal — importação de DAV (006, usa o default) e
-// retomada de rascunho (004/011, MUST passar origem: 'RASCUNHO' explicitamente) —
+// retomada de rascunho (011, MUST passar origem: 'RASCUNHO' explicitamente) —
 // sempre sobrescreve incondicionalmente (research.md D4), nunca dispara evento de auditoria (I3),
 // e não altera houveEscolhaExplicita (a escolha não foi feita nesta sessão).
 ```
