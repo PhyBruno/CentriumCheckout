@@ -87,9 +87,17 @@ export interface FormaPagamentoImportada {
   readonly formaCodigo: number;             // FormasDePagamento[].FormaCodigo
   readonly formaMeioPagtoNFe: string;       // .FormaMeioPagtoNFe
   readonly valor: Centavos;                 // .FormaValor
-  readonly tef: TefImportado | null;        // campos TEFidentificacao/TEFCNPJ/TEFBandeira/TEFNumeroAutorizacao/TEFTipoIntegracao, agrupados quando presentes
+  readonly tef: TefImportado | null;        // agrupamento dos campos TEF* abaixo — null quando o item não é TEF
   readonly pixGuid: string | null;          // .FormaPixGUID
   readonly ticketDevolucao: string | null;  // .TicketDevolucao
+}
+
+export interface TefImportado {
+  readonly identificacao: number;   // .TEFidentificacao
+  readonly cnpj: string;            // .TEFCNPJ
+  readonly bandeira: string;        // .TEFBandeira
+  readonly numeroAutorizacao: string; // .TEFNumeroAutorizacao
+  readonly tipoIntegracao: string;  // .TEFTipoIntegracao
 }
 ```
 
