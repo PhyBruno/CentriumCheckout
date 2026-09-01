@@ -78,6 +78,7 @@ src/
 │   │       └── suportaScannerCamera.ts     # (userAgent, hasBarcodeDetector) => boolean — Chrome/Android apenas (AD-086), puro
 │   ├── layout/
 │   │   ├── useIsMobile.ts                  # hook: matchMedia + classificarLayout, reativo a resize
+│   │   ├── obterPlataforma.ts              # AD-116 (achado da fase de tasks, 2026-08-31): leitura síncrona fora de React, reaproveita classificarLayout — consumida por capacidades().plataforma do pagamentoSlice (008)
 │   │   ├── AppShell.tsx                    # decide DesktopLayout vs MobileWizard; único ponto que lê useIsMobile
 │   │   ├── desktop/
 │   │   │   └── DesktopLayout.tsx           # tela única — compõe carrinho (003), cliente (005), vendedor (012), pagamento (008), finalização (004), menu gerencial, DAV/recuperação (006/011)
