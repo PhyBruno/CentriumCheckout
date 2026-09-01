@@ -71,17 +71,21 @@ export function useValidarNFCe(): {
 ## 3. Slice — `src/client/stores/slices/validacaoVendaSlice.ts`
 
 ```ts
+export type OrigemAcionamento = 'MANUAL' | 'ATALHO_CENARIO';
+
 export interface ValidacaoVendaSlice {
   vereditoVigente: Veredito | null;
   emValidacao: boolean;
 
-  validarInsercao(candidata: FormaCandidata): Promise<Veredito>;
+  validarInsercao(candidata: FormaCandidata, origem: OrigemAcionamento): Promise<Veredito>;
   invalidarVeredito(): void;
 
   // seletor
   podeFinalizar(): boolean;
 }
 ```
+
+**`origem` — achado do `/speckit-analyze` de 2026-09-01 (I1)**: o evento `VALIDACAO_VENDA_RECUSADA` (`data-model.md`, tipo 18 do catálogo de `specs/001-auditoria-acoes-operador/data-model.md`) exige o caminho de acionamento, e só o chamador sabe qual foi. `origem` **não** é passado explicitamente pelas UIs de 008/013 — cada um dos dois pontos de entrada já existentes em `pagamentoSlice.ts` (008) embute o literal correspondente ao chamar `validarInsercao`: `aplicarPagamento` (botão da tela de pagamento) sempre passa `'MANUAL'`; `aplicarForma` (porta consumida pelo atalho de cenário da feature 013, `contracts/venda-rapida-domain-api.md` §4) sempre passa `'ATALHO_CENARIO'`. Nenhuma das duas assinaturas públicas (`aplicarPagamento(input)`, `aplicarForma(codigo, valor)`) muda — a distinção fica inteiramente dentro de `pagamentoSlice.ts`.
 
 ### Dependências injetadas (Dependency Inversion)
 
@@ -100,7 +104,7 @@ O slice **não importa** o slice de pagamento, o de carrinho, nem os módulos de
 
 | Action | Pré-condição | Efeito | Auditoria |
 |---|---|---|---|
-| `validarInsercao` | `emValidacao === false` — caso contrário devolve imediatamente o veredito de "ocupado" sem consultar (`FR-011`, I8) | Projeta a candidata, monta o retrato, consulta, interpreta. `ACEITA` ⇒ grava `vereditoVigente`; `RECUSADA`/`INDISPONIVEL` ⇒ **não** toca `vereditoVigente` (o anterior, se houver, também não é apagado — a venda não mudou) | `VALIDACAO_VENDA_RECUSADA` em `RECUSADA` e `INDISPONIVEL` |
+| `validarInsercao` | `emValidacao === false` — caso contrário devolve imediatamente o veredito de "ocupado" sem consultar (`FR-011`, I8) | Projeta a candidata, monta o retrato, consulta, interpreta. `ACEITA` ⇒ grava `vereditoVigente`; `RECUSADA`/`INDISPONIVEL` ⇒ **não** toca `vereditoVigente` (o anterior, se houver, também não é apagado — a venda não mudou) | `VALIDACAO_VENDA_RECUSADA` em `RECUSADA` e `INDISPONIVEL`, com `origem` ecoado do parâmetro |
 | `invalidarVeredito` | — | `vereditoVigente = null` | — |
 | `podeFinalizar` | — | `autorizaFinalizacao(vereditoVigente)` | — |
 
