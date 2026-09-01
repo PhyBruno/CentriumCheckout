@@ -1,0 +1,126 @@
+/**
+ * Design tokens do Centrium Checkout.
+ *
+ * Fonte: `design/DESIGN-coinbase.md` (frontmatter `colors`/`spacing`/`typography`)
+ * e o export do Pencil em `design/HTML - Pencil/CentriumCheckout.html`, que é o
+ * design aprovado do PDV (`.specs/codebase/STACK.md` § Frontend).
+ *
+ * Regra do guia de design: usar sempre a referência de token, nunca hex inline.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* --- Cor: marca ------------------------------------------------------- */
+  --cc-color-primary: #2563eb;
+  --cc-color-primary-active: #1d4ed8;
+  --cc-color-primary-disabled: #a8b8cc;
+  --cc-color-on-primary: #ffffff;
+
+  /* --- Cor: texto ------------------------------------------------------- */
+  --cc-color-ink: #0a0b0d;
+  --cc-color-body: #5b616e;
+  --cc-color-body-strong: #0a0b0d;
+  --cc-color-muted: #7c828a;
+  --cc-color-muted-soft: #a8acb3;
+
+  /* --- Cor: superfície -------------------------------------------------- */
+  --cc-color-canvas: #ffffff;
+  --cc-color-surface-soft: #f7f7f7;
+  --cc-color-surface-card: #ffffff;
+  --cc-color-surface-strong: #eef0f3;
+  --cc-color-surface-dark: #0a0b0d;
+  --cc-color-surface-dark-elevated: #16181c;
+  --cc-color-on-dark: #ffffff;
+  --cc-color-on-dark-soft: #a8acb3;
+
+  /* --- Cor: divisores --------------------------------------------------- */
+  --cc-color-hairline: #dee1e6;
+  --cc-color-hairline-soft: #eef0f3;
+
+  /* --- Cor: semântica --------------------------------------------------- */
+  --cc-color-up: #05b169;
+  --cc-color-down: #cf202f;
+  --cc-color-accent-yellow: #f4b000;
+
+  /* --- Tipografia ------------------------------------------------------- */
+  /* Inter é o substituto documentado de CoinbaseSans/CoinbaseDisplay
+     (`DESIGN-coinbase.md` § Type substitution) — as licenciadas não são redistribuíveis. */
+  --cc-font-sans:
+    Inter, -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --cc-text-xs: 11px;
+  --cc-text-sm: 12px;
+  --cc-text-base: 13px;
+  --cc-text-md: 14px;
+  --cc-text-lg: 16px;
+  --cc-text-xl: 20px;
+  --cc-text-2xl: 32px;
+
+  --cc-weight-regular: 400;
+  --cc-weight-medium: 500;
+  --cc-weight-semibold: 600;
+
+  /* --- Espaçamento ------------------------------------------------------ */
+  --cc-space-xxs: 4px;
+  --cc-space-xs: 8px;
+  --cc-space-sm: 12px;
+  --cc-space-base: 16px;
+  --cc-space-md: 20px;
+  --cc-space-lg: 24px;
+  --cc-space-xl: 32px;
+  --cc-space-xxl: 48px;
+
+  /* --- Raio ------------------------------------------------------------- */
+  --cc-radius-sm: 4px;
+  --cc-radius-md: 8px;
+  --cc-radius-lg: 12px;
+  --cc-radius-xl: 24px;
+  --cc-radius-pill: 100px;
+
+  /* --- Skeleton de carregamento (AUTH-05) -------------------------------
+     Valores extraídos do frame "PDV Online Web - Skeleton Carregamento"
+     (`data-pencil-id="BIu92"`) do export do Pencil — inclusive o ângulo e as
+     paradas do gradiente, que são os do design, não aproximações. */
+  --cc-skeleton-base: #e3e6eb;
+  --cc-skeleton-highlight: #f4f5f7;
+  --cc-skeleton-gradient: linear-gradient(
+    -99.778deg,
+    var(--cc-skeleton-base) 6.133%,
+    var(--cc-skeleton-highlight) 50%,
+    var(--cc-skeleton-base) 93.867%
+  );
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--cc-color-surface-soft);
+  color: var(--cc-color-ink);
+  font-family: var(--cc-font-sans);
+  font-size: var(--cc-text-base);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/** Texto só para leitores de tela (anúncio de carregamento e de erro). */
+.cc-visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

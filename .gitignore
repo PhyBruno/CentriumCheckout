@@ -18,3 +18,19 @@ dist/
 
 # OMO: estado de continuação de sessão local (regenerado a cada sessão)
 .omo/
+
+# variáveis de ambiente (segredos do BFF — ver .env.example)
+.env
+.env.*
+!.env.example
+
+# saídas de teste
+coverage/
+playwright-report/
+test-results/
+.vite/
+
+# logs e artefatos de editor
+*.log
+.DS_Store
+Thumbs.db

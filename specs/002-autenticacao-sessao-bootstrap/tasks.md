@@ -40,13 +40,13 @@ tests/unit/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Criar o scaffolding inicial do projeto (primeira feature a fazê-lo — ver `plan.md` § Structure Decision).
 
-- [ ] T001 Inicializar `package.json` (TypeScript `strict`), `tsconfig.json`, `.gitignore` e ESLint/Prettier na raiz do repositório
-- [ ] T002 [P] Configurar Vite para a SPA React em `vite.config.ts`, com `index.html` e `src/client/main.tsx`/`src/client/App.tsx` placeholder
-- [ ] T003 [P] Criar entrypoint do BFF Fastify em `src/server/index.ts` (registra rotas, serve assets estáticos compilados da SPA em produção)
-- [ ] T004 [P] Criar `Dockerfile` (multi-stage: build da SPA + processo Node do BFF) e `docker-compose.yml` de dev (hot-reload via volume) — variáveis `baseDomain`, `validationKey`, `SESSION_SECRET`
-- [ ] T005 [P] Configurar Vitest + Testing Library em `vitest.config.ts`
-- [ ] T006 [P] Configurar Playwright em `playwright.config.ts`
-- [ ] T007 Criar árvore de diretórios vazia conforme `plan.md` § Project Structure (`src/client/features/`, `src/client/stores/`, `src/client/db/`, `src/client/services/`, `src/server/routes/`, `src/server/session/`, `src/server/config/`, `src/shared/schemas/`, `tests/unit/`, `tests/integration/`, `tests/e2e/`)
+- [X] T001 Inicializar `package.json` (TypeScript `strict`), `tsconfig.json`, `.gitignore` e ESLint/Prettier na raiz do repositório
+- [X] T002 [P] Configurar Vite para a SPA React em `vite.config.ts`, com `index.html` e `src/client/main.tsx`/`src/client/App.tsx` placeholder
+- [X] T003 [P] Criar entrypoint do BFF Fastify em `src/server/index.ts` (registra rotas, serve assets estáticos compilados da SPA em produção)
+- [X] T004 [P] Criar `Dockerfile` (multi-stage: build da SPA + processo Node do BFF) e `docker-compose.yml` de dev (hot-reload via volume) — variáveis `baseDomain`, `validationKey`, `SESSION_SECRET`
+- [X] T005 [P] Configurar Vitest + Testing Library em `vitest.config.ts`
+- [X] T006 [P] Configurar Playwright em `playwright.config.ts`
+- [X] T007 Criar árvore de diretórios vazia conforme `plan.md` § Project Structure (`src/client/features/`, `src/client/stores/`, `src/client/db/`, `src/client/services/`, `src/server/routes/`, `src/server/session/`, `src/server/config/`, `src/shared/schemas/`, `tests/unit/`, `tests/integration/`, `tests/e2e/`)
 
 **Checkpoint**: Projeto inicializa (`npm run dev` sobe Vite + Fastify vazios), suíte de testes roda (vazia).
 
@@ -58,10 +58,10 @@ tests/unit/ | tests/integration/ | tests/e2e/
 
 **⚠️ CRITICAL**: Nenhuma user story pode começar até esta fase terminar.
 
-- [ ] T008 Criar módulo de configuração de ambiente em `src/server/config/env.ts` (lê `baseDomain`, `validationKey`, `SESSION_SECRET` de `process.env`, falha rápido se ausente)
-- [ ] T009 [P] Criar schema Zod da resposta de `POST /oauth/access_token` em `src/shared/schemas/token-response.schema.ts` (campo `access_token` obrigatório, demais campos conforme contrato OAuth do ERP em `.specs/codebase/INTEGRATIONS.md`) — **adicionado 2026-08-31 (achado C1 do `/speckit-analyze`)**: fecha a lacuna de validação de fronteira exigida pela Constitution IV para toda resposta externa do ERP, inclusive a de troca/renovação de token
-- [ ] T010 [P] Implementar cifra/decifra do cookie de sessão em `src/server/session/cookie.ts` (usa `SESSION_SECRET` de T008; cookie `HttpOnly`/`Secure`/`SameSite=Lax`; campos conforme `data-model.md` § Sessão do Operador: `access_token`, `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`, `codigoEmpresa`)
-- [ ] T011 Implementar troca/renovação de token em `src/server/session/tokenExchange.ts` (`POST /oauth/access_token`, `grant_type=password`, `additionalParameters={"AuthenticationTypeName":"local","Repository":"<Repository>"}`, host `tenant.<baseDomain>` de T008; **valida a resposta com o schema de T009 antes de repassá-la ao chamador**) — função reaproveitada tanto pelo login inicial (US1) quanto pela renovação silenciosa em 401 (US2/US3) (depende de T008, T009)
+- [X] T008 Criar módulo de configuração de ambiente em `src/server/config/env.ts` (lê `baseDomain`, `validationKey`, `SESSION_SECRET` de `process.env`, falha rápido se ausente)
+- [X] T009 [P] Criar schema Zod da resposta de `POST /oauth/access_token` em `src/shared/schemas/token-response.schema.ts` (campo `access_token` obrigatório, demais campos conforme contrato OAuth do ERP em `.specs/codebase/INTEGRATIONS.md`) — **adicionado 2026-08-31 (achado C1 do `/speckit-analyze`)**: fecha a lacuna de validação de fronteira exigida pela Constitution IV para toda resposta externa do ERP, inclusive a de troca/renovação de token
+- [X] T010 [P] Implementar cifra/decifra do cookie de sessão em `src/server/session/cookie.ts` (usa `SESSION_SECRET` de T008; cookie `HttpOnly`/`Secure`/`SameSite=Lax`; campos conforme `data-model.md` § Sessão do Operador: `access_token`, `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`, `codigoEmpresa`)
+- [X] T011 Implementar troca/renovação de token em `src/server/session/tokenExchange.ts` (`POST /oauth/access_token`, `grant_type=password`, `additionalParameters={"AuthenticationTypeName":"local","Repository":"<Repository>"}`, host `tenant.<baseDomain>` de T008; **valida a resposta com o schema de T009 antes de repassá-la ao chamador**) — função reaproveitada tanto pelo login inicial (US1) quanto pela renovação silenciosa em 401 (US2/US3) (depende de T008, T009)
 
 **Checkpoint**: Módulos de sessão prontos — implementação das user stories pode começar.
 
@@ -75,14 +75,14 @@ tests/unit/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Unit test da cifra/decifra do cookie (round-trip, campos íntegros) em `tests/unit/server/session/cookie.spec.ts`
-- [ ] T013 [P] [US1] Unit test da troca inicial de token (`tokenExchange`, grant inicial, valida resposta com o schema de T009) em `tests/unit/server/session/tokenExchange.spec.ts`
+- [X] T012 [P] [US1] Unit test da cifra/decifra do cookie (round-trip, campos íntegros) em `tests/unit/server/session/cookie.spec.ts`
+- [X] T013 [P] [US1] Unit test da troca inicial de token (`tokenExchange`, grant inicial, valida resposta com o schema de T009) em `tests/unit/server/session/tokenExchange.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implementar rota `GET /session/start` em `src/server/routes/session-start.ts` (valida `validationKey` contra T008 sem chamar o ERP se inválida; monta host `tenant.baseDomain`; chama T011; cifra resposta com T010; responde `302` para URL limpa da SPA — ver `contracts/session-bff-api.md`)
-- [ ] T015 [US1] Registrar rota `session-start` em `src/server/index.ts`
-- [ ] T016 [US1] E2E — Cenário 1 do quickstart (redirect ERP → `302` com `Set-Cookie`, URL sem query params sensíveis; `validationKey` inválida → `401` sem chamar o mock do ERP) em `tests/e2e/auth-bootstrap.spec.ts`
+- [X] T014 [US1] Implementar rota `GET /session/start` em `src/server/routes/session-start.ts` (valida `validationKey` contra T008 sem chamar o ERP se inválida; monta host `tenant.baseDomain`; chama T011; cifra resposta com T010; responde `302` para URL limpa da SPA — ver `contracts/session-bff-api.md`)
+- [X] T015 [US1] Registrar rota `session-start` em `src/server/index.ts`
+- [X] T016 [US1] E2E — Cenário 1 do quickstart (redirect ERP → `302` com `Set-Cookie`, URL sem query params sensíveis; `validationKey` inválida → `401` sem chamar o mock do ERP) em `tests/e2e/auth-bootstrap.spec.ts`
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — login automático completo (FR-001, FR-002, SC-001, SC-004 para esta rota).
 
@@ -96,22 +96,22 @@ tests/unit/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Unit test do schema Zod de bootstrap (payload válido/inválido) em `tests/unit/shared/bootstrap.schema.spec.ts`
+- [X] T017 [P] [US2] Unit test do schema Zod de bootstrap (payload válido/inválido) em `tests/unit/shared/bootstrap.schema.spec.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T018 [P] [US2] Criar schema Zod do payload de bootstrap em `src/shared/schemas/bootstrap.schema.ts` — campos conforme `data-model.md` § Configuração do Ponto de Venda: `tenant`, `codigoEmpresa`, `SessaoUsuario.TipoPreco` (integer 1–11), `SessaoUsuario.CadMaqCod` (string), `SessaoUsuario.ListaPrecoDefault` (integer), `SessaoUsuario.CenarioPagamento` (string, repassada sem reformatar — validação estrutural é da feature 013)
-- [ ] T019 [US2] Implementar rota `GET /api/bootstrap` em `src/server/routes/bootstrap.ts` (decifra cookie com T010; chama `GET /ApiCentriumOAuth/GetSessao` com `Authorization`/`Empresa`/`Login`; em `401` tenta renovação via T011 antes de responder; outros erros repassados como estão — ver `contracts/session-bff-api.md`)
-- [ ] T020 [US2] Registrar rota `bootstrap` em `src/server/index.ts`
-- [ ] T021 [P] [US2] Criar módulo Dexie em `src/client/db/bootstrapDb.ts` (tabela chaveada por `tenant`, campos de `data-model.md` + `_versionHash` calculado localmente)
-- [ ] T022 [US2] Criar Web Worker de parse/validação em `src/client/services/bootstrapWorker.ts` (valida payload com o schema de T018 fora da thread principal, ~5MB)
-- [ ] T023 [US2] Implementar `src/client/services/bootstrapClient.ts` (chama `GET /api/bootstrap`, delega ao worker de T022, calcula `_versionHash`, decide reuso vs. gravação no Dexie de T021, FR-008)
-- [ ] T024 [US2] Implementar `src/client/stores/sessionStore.ts` (Zustand, sem `persist` — estados `carregando`/`pronto`/`erro-recuperável`/`reaproveitado` de `data-model.md`)
-- [ ] T025 [P] [US2] Implementar `src/client/features/session-bootstrap/LoadingSkeleton.tsx` (Boneyard, AUTH-05)
-- [ ] T026 [P] [US2] Implementar `src/client/features/session-bootstrap/ErrorRetry.tsx` (erro não-401, botão "Tentar novamente", AUTH-07 — sem forçar novo login)
-- [ ] T027 [US2] Orquestrar em `src/client/App.tsx`: dispara `bootstrapClient` (T023) no mount, alterna `LoadingSkeleton`/`ErrorRetry`/tela de venda conforme `sessionStore` (T024), libera a tela de venda só após confirmação de gravação no Dexie
-- [ ] T028 [US2] Integration tests — reuso de cache por hash (Cenário 2 passo 4) e isolamento por tenant (Cenário 3, FR-009) em `tests/integration/bootstrap-cache.spec.ts`
-- [ ] T029 [US2] E2E — Cenário 2 (skeleton até resposta, tela liberada, registro Dexie por `tenant`, F5 sem nova chamada) e Cenário 4 (falha `500` → tela "Tentar novamente") em `tests/e2e/auth-bootstrap.spec.ts`
+- [X] T018 [P] [US2] Criar schema Zod do payload de bootstrap em `src/shared/schemas/bootstrap.schema.ts` — campos conforme `data-model.md` § Configuração do Ponto de Venda: `tenant`, `codigoEmpresa`, `SessaoUsuario.TipoPreco` (integer 1–11), `SessaoUsuario.CadMaqCod` (string), `SessaoUsuario.ListaPrecoDefault` (integer), `SessaoUsuario.CenarioPagamento` (string, repassada sem reformatar — validação estrutural é da feature 013)
+- [X] T019 [US2] Implementar rota `GET /api/bootstrap` em `src/server/routes/bootstrap.ts` (decifra cookie com T010; chama `GET /ApiCentriumOAuth/GetSessao` com `Authorization`/`Empresa`/`Login`; em `401` tenta renovação via T011 antes de responder; outros erros repassados como estão — ver `contracts/session-bff-api.md`)
+- [X] T020 [US2] Registrar rota `bootstrap` em `src/server/index.ts`
+- [X] T021 [P] [US2] Criar módulo Dexie em `src/client/db/bootstrapDb.ts` (tabela chaveada por `tenant`, campos de `data-model.md` + `_versionHash` calculado localmente)
+- [X] T022 [US2] Criar Web Worker de parse/validação em `src/client/services/bootstrapWorker.ts` (valida payload com o schema de T018 fora da thread principal, ~5MB)
+- [X] T023 [US2] Implementar `src/client/services/bootstrapClient.ts` (chama `GET /api/bootstrap`, delega ao worker de T022, calcula `_versionHash`, decide reuso vs. gravação no Dexie de T021, FR-008)
+- [X] T024 [US2] Implementar `src/client/stores/sessionStore.ts` (Zustand, sem `persist` — estados `carregando`/`pronto`/`erro-recuperável`/`reaproveitado` de `data-model.md`)
+- [X] T025 [P] [US2] Implementar `src/client/features/session-bootstrap/LoadingSkeleton.tsx` (Boneyard, AUTH-05)
+- [X] T026 [P] [US2] Implementar `src/client/features/session-bootstrap/ErrorRetry.tsx` (erro não-401, botão "Tentar novamente", AUTH-07 — sem forçar novo login)
+- [X] T027 [US2] Orquestrar em `src/client/App.tsx`: dispara `bootstrapClient` (T023) no mount, alterna `LoadingSkeleton`/`ErrorRetry`/tela de venda conforme `sessionStore` (T024), libera a tela de venda só após confirmação de gravação no Dexie
+- [X] T028 [US2] Integration tests — reuso de cache por hash (Cenário 2 passo 4) e isolamento por tenant (Cenário 3, FR-009) em `tests/integration/bootstrap-cache.spec.ts`
+- [X] T029 [US2] E2E — Cenário 2 (skeleton até resposta, tela liberada, registro Dexie por `tenant`, F5 sem nova chamada) e Cenário 4 (falha `500` → tela "Tentar novamente") em `tests/e2e/auth-bootstrap.spec.ts`
 
 **Checkpoint**: User Stories 1 e 2 funcionam juntas — login automático + bootstrap completo antes da venda (FR-003 a FR-004, FR-008, FR-009, SC-002).
 
@@ -127,16 +127,16 @@ tests/unit/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 3
 
-- [ ] T030 [P] [US3] Unit test da renovação de token em `401` (sucesso e falha; valida resposta com o schema de T009) em `tests/unit/server/session/tokenExchange.spec.ts`
+- [X] T030 [P] [US3] Unit test da renovação de token em `401` (sucesso e falha; valida resposta com o schema de T009) em `tests/unit/server/session/tokenExchange.spec.ts` — **implementado em `tests/unit/server/session/chamadaAutenticada.spec.ts`**: a renovação em `401` não vive em `tokenExchange.ts` (que só faz o grant), e sim em `src/server/session/chamadaAutenticada.ts`, extraído porque T019 e T031 exigem exatamente o mesmo comportamento (Constitution II); o teste acompanha o módulo testado
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Implementar rota de proxy `/api/erp/*` em `src/server/routes/erp-proxy.ts` (injeta `Authorization`/`Empresa` do cookie decifrado via T010; em `401` do ERP chama renovação via T011, regrava cookie, refaz a chamada original; se a renovação falhar, invalida o cookie e responde `401` — ver `contracts/session-bff-api.md`)
-- [ ] T032 [US3] Registrar rota `erp-proxy` (catch-all) em `src/server/index.ts`
-- [ ] T033 [US3] Criar `src/client/services/erpClient.ts` (wrapper de fetch para `/api/erp/*`; ao receber `401` terminal do BFF, consulta — só leitura — o carrinho em `vendaStore.ts`, feature 001/003, antes de decidir a mensagem)
-- [ ] T034 [US3] Implementar `src/client/features/session-bootstrap/SessionExpiredWarning.tsx` (reaproveita o padrão de diálogo `beforeunload` já validado, AD-044/AUTH-06 — avisa que a sessão será encerrada e a venda pode ser perdida)
-- [ ] T035 [US3] Conectar em `src/client/services/erpClient.ts`/`src/client/App.tsx`: `401` terminal com carrinho vazio → mensagem "reabra pelo ERP" e encerra; com carrinho com itens → exibe `SessionExpiredWarning` (T034) antes de encerrar (FR-006) — lê `vendaStore.ts` (feature 001/003) somente leitura, nunca modifica
-- [ ] T036 [US3] E2E — Cenário 5 completo (renovação silenciosa sem carrinho, falha de renovação sem carrinho, falha de renovação com carrinho + aviso) em `tests/e2e/auth-bootstrap.spec.ts` — só roda de ponta a ponta depois que `vendaStore.ts` (001) e o slice de carrinho (003) existirem
+- [X] T031 [US3] Implementar rota de proxy `/api/erp/*` em `src/server/routes/erp-proxy.ts` (injeta `Authorization`/`Empresa` do cookie decifrado via T010; em `401` do ERP chama renovação via T011, regrava cookie, refaz a chamada original; se a renovação falhar, invalida o cookie e responde `401` — ver `contracts/session-bff-api.md`)
+- [X] T032 [US3] Registrar rota `erp-proxy` (catch-all) em `src/server/index.ts`
+- [X] T033 [US3] Criar `src/client/services/erpClient.ts` (wrapper de fetch para `/api/erp/*`; ao receber `401` terminal do BFF, consulta — só leitura — o carrinho em `vendaStore.ts`, feature 001/003, antes de decidir a mensagem)
+- [X] T034 [US3] Implementar `src/client/features/session-bootstrap/SessionExpiredWarning.tsx` (reaproveita o padrão de diálogo `beforeunload` já validado, AD-044/AUTH-06 — avisa que a sessão será encerrada e a venda pode ser perdida)
+- [X] T035 [US3] Conectar em `src/client/services/erpClient.ts`/`src/client/App.tsx`: `401` terminal com carrinho vazio → mensagem "reabra pelo ERP" e encerra; com carrinho com itens → exibe `SessionExpiredWarning` (T034) antes de encerrar (FR-006) — lê `vendaStore.ts` (feature 001/003) somente leitura, nunca modifica
+- [ ] T036 [US3] E2E — Cenário 5 completo (renovação silenciosa sem carrinho, falha de renovação sem carrinho, falha de renovação com carrinho + aviso) em `tests/e2e/auth-bootstrap.spec.ts` — só roda de ponta a ponta depois que `vendaStore.ts` (001) e o slice de carrinho (003) existirem. **Parcial em 2026-09-01:** os dois primeiros casos estão implementados e passando; o terceiro (falha de renovação **com carrinho populado** → `SessionExpiredWarning`) continua aberto, pois exige a venda em andamento das features 001/003. O caminho já está pronto dos dois lados: `App.tsx` decide pelo `itensNaVenda` e `erpClient.ts` expõe a porta `LeitorCarrinho` — fechar esta tarefa é injetar o leitor real e acrescentar o caso ao spec
 
 **Checkpoint**: As 3 user stories funcionam de forma independente e integrada — feature completa (FR-005, FR-006, SC-003).
 
@@ -146,10 +146,10 @@ tests/unit/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Fechamento documental e validação final de tipo/segurança/aceite.
 
-- [ ] T037 [P] Atualizar `.specs/codebase/ARCHITECTURE.md` § Code Organization e `.specs/project/ROADMAP.md` registrando que o scaffolding inicial foi criado por esta feature
-- [ ] T038 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`, "Gates obrigatórios antes de push/merge") — **adicionado 2026-08-31 (achado G1 do `/speckit-analyze`)**
-- [ ] T039 Revisão de segurança (SC-004): confirmar por inspeção de código e nas respostas de `/api/bootstrap`/`/api/erp/*`/erros que `access_token`, `client_secret` e `password` nunca são serializados para o cliente
-- [ ] T040 Rodar os 5 cenários de `quickstart.md` ponta a ponta e confirmar o critério de aceite da feature
+- [X] T037 [P] Atualizar `.specs/codebase/ARCHITECTURE.md` § Code Organization e `.specs/project/ROADMAP.md` registrando que o scaffolding inicial foi criado por esta feature
+- [X] T038 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`, "Gates obrigatórios antes de push/merge") — **adicionado 2026-08-31 (achado G1 do `/speckit-analyze`)**
+- [X] T039 Revisão de segurança (SC-004): confirmar por inspeção de código e nas respostas de `/api/bootstrap`/`/api/erp/*`/erros que `access_token`, `client_secret` e `password` nunca são serializados para o cliente
+- [X] T040 Rodar os 5 cenários de `quickstart.md` ponta a ponta e confirmar o critério de aceite da feature
 
 ---
 
@@ -235,3 +235,25 @@ Com mais de um desenvolvedor: completar Setup + Foundational juntos; depois um d
 - Commit após cada tarefa ou grupo lógico
 - Parar em cada checkpoint para validar a story isoladamente
 - Achados do `/speckit-analyze` de 2026-08-31 (C1, I1, I2, G1) já aplicados nesta versão — ver `plan.md` para o mesmo histórico de correção
+
+---
+
+## Notas de implementação (`/speckit-implement`, 2026-09-01)
+
+Decisões tomadas durante a implementação que não estavam fixadas nos artefatos de design. Cada uma vale como registro para `/speckit-analyze` e para as features seguintes.
+
+1. **Módulo `src/server/session/chamadaAutenticada.ts` (novo, não previsto no `plan.md`).** T019 e T031 descrevem o mesmo comportamento de renovação em `401`. Implementá-lo duas vezes violaria Single Responsibility e criaria duas razões para mudar a mesma regra, então ele foi extraído para um módulo próprio, consumido pelas duas rotas. `plan.md` § Project Structure precisa ganhar esta entrada.
+
+2. **`ETag`/`If-None-Match` em `GET /api/bootstrap`.** O `quickstart.md` (Cenário 2, passo 4) pede "nenhuma nova chamada de rede a `/api/bootstrap`" no F5, mas AD-022 proíbe o JS de descobrir o `tenant` por qualquer via que não seja essa mesma rota — sem o `tenant`, a SPA não tem como escolher o registro do Dexie antes de chamar. O conflito foi resolvido pelo objetivo de FR-008/AD-045 (não retransmitir os ~5MB): a SPA envia em `If-None-Match` os hashes que tem, e o BFF responde `304` sem corpo quando um deles bate. Há uma requisição no F5, mas nenhum payload trafega. **Requer decisão do usuário** se o texto do quickstart deve ser ajustado ou se outra solução é preferida.
+
+3. **`ERP_HOST_OVERRIDE` e `ERP_PROTOCOL` em `env.ts`.** Não estavam previstos. `ERP_PROTOCOL` é necessário para falar com um ERP mockado em HTTP; `ERP_HOST_OVERRIDE` existe porque subdomínios de `localhost` não resolvem em todos os sistemas operacionais (confirmado neste ambiente: `acme.localhost` → `ENOTFOUND`), o que impediria rodar os cenários do `quickstart.md`. Ambos documentados em `.env.example` como exclusivos de dev/teste.
+
+4. **Divergência de contrato não resolvida — `Empresa` header vs. query.** A spec de domínio (`AUTH-03`) e `contracts/session-bff-api.md` mandam enviar `Empresa` como **header** e `Login` como query em `GetSessao`. O `ApiCentriumOAuth.yaml` (versão `20260827192357`, linhas 17-29) declara **ambos como query params**. A implementação seguiu a spec (header `Empresa` + query `Login`), que é o artefato normativo da feature. **Precisa de confirmação contra o ERP real antes do primeiro deploy** — se o contrato estiver certo, a correção é de uma linha em `chamadaAutenticada.ts`.
+
+5. **Caminho de `POST /oauth/access_token`.** A spec usa `/oauth/access_token` na raiz do host do tenant; o `securityScheme` do YAML aponta `\/Centrium1600Web/oauth/gam/v2.0/access_token` — mas esse bloco descreve o ambiente de dev (`.specs/codebase/INTEGRATIONS.md` registra que `servers:` é só URL de dev). Implementado conforme a spec; mesma observação de confirmação do item 4.
+
+6. **`LeitorCarrinho` como porta (T033/T035).** A leitura do carrinho entra por uma interface com implementação default vazia, em vez de um import direto de `vendaStore.ts`. Assim esta feature não depende de código que ainda não existe, e a 001/003 só precisam injetar o leitor real — sem alterar `erpClient.ts` nem `App.tsx`.
+
+7. **Skeleton com Boneyard.** `boneyard-js@1.10.0` instalado como dependência real (AD-018). O tarball publicado no npm **não** contém `SKILL.md`/`CLAUDE.md` — o vetor descrito em AD-084 existe só no repositório GitHub, não no pacote. Sem `postinstall` próprio; `playwright` vem como dependency real, mas já era devDependency do projeto para E2E. `LoadingSkeleton.tsx` envolve a estrutura real da tela no `<Skeleton>` e o Boneyard gera os bones em runtime; cor e ângulo do shimmer saem dos tokens do frame `BIu92` do Pencil via `configureBoneyard`.
+
+8. **Design tokens.** `src/client/styles/global.css` deriva de `design/DESIGN-coinbase.md` e do export `design/HTML - Pencil/CentriumCheckout.html` — cores, tipografia, espaçamento, raios e o gradiente exato do shimmer, em vez de valores inventados.

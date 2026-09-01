@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+package-lock.json
+
+# Documentação e artefatos de especificação (formatação manual preservada)
+.specs/
+specs/
+docs/
+design/
+Fluxograma - Diagrama - Alinhamentos/
