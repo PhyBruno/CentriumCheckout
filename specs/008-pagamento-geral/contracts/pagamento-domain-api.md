@@ -184,7 +184,7 @@ interface PagamentoDeps {
   capacidades(): CapacidadesPagamento;             // features 002 + 007
   validarTicket(codigo: string): Promise<ResultadoTicket>;  // camada de query
   iniciarIntegracao(integracao: IntegracaoPagamento, ctx: ContextoIntegracao): void; // features 009/010
-  validarInsercao(candidata: FormaCandidata): Promise<Veredito>;  // feature 014 — gate pré-inserção
+  validarInsercao(candidata: FormaCandidata, origem: 'MANUAL' | 'ATALHO_CENARIO'): Promise<Veredito>;  // feature 014 — gate pré-inserção (OrigemAcionamento, specs/014-validacao-previa-nfce/contracts/validacao-domain-api.md §3); aplicarPagamento sempre passa 'MANUAL', aplicarForma sempre passa 'ATALHO_CENARIO' — achado I1 do /speckit-analyze da 014 (2026-09-01)
   invalidarVeredito(): void;                                      // feature 014 — ao remover pagamento
 }
 ```
