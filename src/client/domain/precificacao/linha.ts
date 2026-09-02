@@ -56,8 +56,23 @@ export interface LinhaCarrinho {
   quantidade: Milesimos;
   /** Preço unitário base corrente — resultado de `resolvePrecoUnitario`. */
   precoUnitario: Centavos;
-  /** Desconto absoluto sobre o **total** da linha (convênio ou manual em `'E'`). */
-  descontoLinha: Centavos;
+  /**
+   * Desconto de convênio, absoluto sobre o **total** da linha (AD-023).
+   *
+   * Campo **derivado**: só `repricarSku`/`repricarTodosOsSkus` escrevem aqui,
+   * recalculando a cada reprecificação a partir do `descontoConvenio` do
+   * cliente atual — inclusive para zerar quando o cliente muda para um sem
+   * convênio (AD-108). Nunca preserva valor de um cliente anterior.
+   */
+  descontoConvenio: Centavos;
+  /**
+   * Desconto manual, absoluto sobre o **total** da linha, digitado pelo
+   * operador num produto `'E'` (`FR-014`).
+   *
+   * Campo **independente** de `descontoConvenio`: `repricarSku` nunca o
+   * escreve, então sobrevive intacto a qualquer troca de cliente.
+   */
+  descontoManual: Centavos;
   /** `CART-08` — a linha nunca sai do array; cancelar só marca (invariante I1). */
   cancelada: boolean;
   /** `true` só quando `origem ∈ {'RASCUNHO','DAV'}` (AD-067, invariantes I5/I6). */
@@ -106,7 +121,11 @@ export function totalBruto(linha: LinhaCarrinho): Centavos {
 }
 
 export function totalLinha(linha: LinhaCarrinho): Centavos {
-  return calcularTotalLinha(linha.precoUnitario, linha.quantidade, linha.descontoLinha);
+  return calcularTotalLinha(
+    linha.precoUnitario,
+    linha.quantidade,
+    somar(linha.descontoConvenio, linha.descontoManual),
+  );
 }
 
 /**

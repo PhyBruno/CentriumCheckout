@@ -5,12 +5,11 @@ import {
   eventoProdutoCancelado,
   eventoProdutoInserido,
 } from '../../domain/auditoria/eventos';
-import { ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
+import { somar, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import {
   origemCongelaPreco,
   participaDaPrecificacao,
   type LinhaCarrinho,
-  type OrigemLinha,
   type SnapshotPrecoProduto,
 } from '../../domain/precificacao/linha';
 import type { Milesimos } from '../../domain/precificacao/quantidade';
@@ -57,21 +56,37 @@ export interface CarrinhoDeps {
   gerarIdLinha?: () => string;
 }
 
-export interface InserirItemInput {
+interface InserirItemInputComum {
   readonly snapshot: SnapshotPrecoProduto;
   readonly quantidade: Milesimos;
-  readonly origem: OrigemLinha;
-  /**
-   * Preço a preservar. Obrigatório na prática para `RASCUNHO`/`DAV`, que trazem
-   * o preço congelado do documento de origem (`FR-017`, AD-067); nas demais
-   * origens, quando omitido, o preço sai de `resolvePrecoUnitario`.
-   */
-  readonly precoUnitario?: Centavos;
   /** Desconto manual informado antes da inserção, em produto `'E'` (`FR-014`). */
-  readonly descontoLinha?: Centavos;
+  readonly descontoManual?: Centavos;
 }
 
-export type CampoEditavel = 'quantidade' | 'precoUnitario' | 'descontoLinha';
+/**
+ * `precoUnitario` é **obrigatório** quando `origem` é `'RASCUNHO'` ou `'DAV'`:
+ * essas origens trazem o preço já congelado do documento de origem (`FR-017`,
+ * AD-067) — usar `snapshot.precoBase` (o preço vivo de hoje) violaria essa
+ * invariante em silêncio. A união discriminada por `origem` torna esse estado
+ * irrepresentável em tempo de compilação; nas demais origens, quando omitido,
+ * o preço sai de `snapshot.precoBase`.
+ *
+ * `inserirItem` ainda repete a checagem em runtime (ver corpo da action)
+ * porque a entrada pode vir de um caller não totalmente tipado — ex.: parse
+ * de payload do ERP na importação de DAV (feature 006) ou na retomada de
+ * rascunho (feature 004).
+ */
+export type InserirItemInput =
+  | (InserirItemInputComum & {
+      readonly origem: 'RASCUNHO' | 'DAV';
+      readonly precoUnitario: Centavos;
+    })
+  | (InserirItemInputComum & {
+      readonly origem: 'MANUAL' | 'BUSCA' | 'BALANCA';
+      readonly precoUnitario?: Centavos;
+    });
+
+export type CampoEditavel = 'quantidade' | 'precoUnitario' | 'descontoManual';
 
 export interface CarrinhoSlice {
   /** Ordem de inserção, **incluindo canceladas** (invariante I1). */
@@ -143,6 +158,17 @@ export function criarCarrinhoSlice(
           return;
         }
 
+        // Reforço em runtime da invariante que `InserirItemInput` já expressa
+        // em tipo: a entrada pode vir de um caller não totalmente tipado (ex.:
+        // parse de payload do ERP na importação de DAV/rascunho), então o tipo
+        // sozinho não basta — sem esta checagem, uma origem congelada sem
+        // `precoUnitario` criaria a linha com o preço vivo de hoje em silêncio.
+        if (origemCongelaPreco(input.origem) && input.precoUnitario === undefined) {
+          throw new Error(
+            `inserirItem: origem '${input.origem}' exige preço congelado (\`precoUnitario\`), mas nenhum foi informado (FR-017, AD-067).`,
+          );
+        }
+
         // Invariante I5 por construção: `precoCongelado` é derivado da origem,
         // não informado pelo call site, então não existe estado impossível.
         const precoCongelado = origemCongelaPreco(input.origem);
@@ -152,7 +178,8 @@ export function criarCarrinhoSlice(
           snapshot: input.snapshot,
           quantidade: input.quantidade,
           precoUnitario: input.precoUnitario ?? input.snapshot.precoBase,
-          descontoLinha: input.descontoLinha ?? ZERO_CENTAVOS,
+          descontoConvenio: ZERO_CENTAVOS,
+          descontoManual: input.descontoManual ?? ZERO_CENTAVOS,
           cancelada: false,
           precoCongelado,
           origem: input.origem,
@@ -170,7 +197,7 @@ export function criarCarrinhoSlice(
             codigoProduto,
             quantidade: inserida.quantidade,
             precoUnitario: inserida.precoUnitario,
-            desconto: inserida.descontoLinha,
+            desconto: somar(inserida.descontoConvenio, inserida.descontoManual),
           }),
         );
       },

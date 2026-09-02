@@ -72,8 +72,17 @@ export interface PendenteDeEdicao {
 export type ResultadoInsercao =
   { readonly situacao: 'inserido' } | { readonly situacao: 'recusado' } | PendenteDeEdicao;
 
+/**
+ * Origens que este caminho de inserção pode produzir — nunca as congeladas
+ * (`'RASCUNHO'`/`'DAV'`, `InserirItemInput` em `carrinhoSlice.ts`), que exigem
+ * `precoUnitario` obrigatório e entram por um caminho dedicado ainda não
+ * implementado (retomada de rascunho da feature 004, importação de DAV da
+ * feature 006) — nunca por `useInsercaoDeProduto`.
+ */
+type OrigemInsercaoViva = Exclude<OrigemLinha, 'RASCUNHO' | 'DAV'>;
+
 export interface OpcoesInsercao {
-  readonly origem?: OrigemLinha;
+  readonly origem?: OrigemInsercaoViva;
   readonly quantidade?: Milesimos;
 }
 
@@ -100,7 +109,7 @@ function mensagemDeErro(erro: unknown): string {
 function quantidadeEOrigem(
   entrada: EntradaCodigo,
   snapshot: SnapshotPrecoProduto,
-): { quantidade: Milesimos; origem: OrigemLinha } {
+): { quantidade: Milesimos; origem: OrigemInsercaoViva } {
   if (entrada.tipo === 'BALANCA') {
     return {
       quantidade: quantidadePesavel(entrada.valorEtiqueta, snapshot.precoBase),
@@ -121,7 +130,7 @@ export interface ApiInsercao {
   /** Confirma a inserção de um produto `'E'` depois da revisão do operador. */
   confirmarEdicao(
     pendente: PendenteDeEdicao,
-    ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoLinha: Centavos },
+    ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
   ): void;
 }
 
@@ -187,7 +196,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
       }
 
       let quantidade: Milesimos;
-      let origem: OrigemLinha;
+      let origem: OrigemInsercaoViva;
       try {
         const derivado = quantidadeEOrigem(entrada, snapshot);
         quantidade = opcoes.quantidade ?? derivado.quantidade;
@@ -248,7 +257,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
           quantidade: ajustes.quantidade,
           origem: 'MANUAL',
           precoUnitario: ajustes.precoUnitario,
-          descontoLinha: ajustes.descontoLinha,
+          descontoManual: ajustes.descontoManual,
         });
       },
       [inserirItem],

@@ -28,6 +28,7 @@ export function ModalBuscaProduto({
   onFechar,
 }: ModalBuscaProdutoProps): ReactElement | null {
   const [termo, setTermo] = useState('');
+  const [pagina, setPagina] = useState(1);
   const [pendente, setPendente] = useState<PendenteDeEdicao | null>(null);
   const { inserirPorSelecao, confirmarEdicao } = useInsercaoDeProduto();
   const qtdMinChar = useQtdMinCharParaConsulta();
@@ -36,7 +37,7 @@ export function ModalBuscaProduto({
   // inalcançável mantém a busca desligada — melhor não buscar do que buscar com
   // um mínimo inventado.
   const minimo = qtdMinChar ?? Number.POSITIVE_INFINITY;
-  const busca = useBuscaProdutos(termo, { qtdMinCharParaConsulta: minimo });
+  const busca = useBuscaProdutos(termo, { qtdMinCharParaConsulta: minimo, pagina });
 
   if (!aberto) {
     return null;
@@ -84,6 +85,10 @@ export function ModalBuscaProduto({
             value={termo}
             onChange={(evento) => {
               setTermo(evento.target.value);
+              // Nova busca sempre começa na página 1 — trocar o termo com a
+              // página em 3, por exemplo, não deve reconsultar a página 3 do
+              // resultado novo (que pode nem existir).
+              setPagina(1);
             }}
           />
         </label>
@@ -124,9 +129,40 @@ export function ModalBuscaProduto({
         </div>
 
         {busca.data === undefined || abaixoDoMinimo ? null : (
-          <footer className="text-sm text-muted-foreground" data-testid="paginacao-busca">
-            Página {busca.data.PaginaAtual} de {busca.data.TotalPaginas} ·{' '}
-            {busca.data.TotalRegistros} produto(s)
+          <footer
+            className="flex items-center justify-between gap-sm text-sm text-muted-foreground"
+            data-testid="paginacao-busca"
+          >
+            <span>
+              Página {busca.data.PaginaAtual} de {busca.data.TotalPaginas} ·{' '}
+              {busca.data.TotalRegistros} produto(s)
+            </span>
+            <div className="flex items-center gap-xs">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="pagina-anterior"
+                disabled={pagina <= 1}
+                onClick={() => {
+                  setPagina((atual) => Math.max(1, atual - 1));
+                }}
+              >
+                Anterior
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="pagina-proxima"
+                disabled={busca.data.PaginaAtual >= busca.data.TotalPaginas}
+                onClick={() => {
+                  setPagina((atual) => atual + 1);
+                }}
+              >
+                Próxima
+              </Button>
+            </div>
           </footer>
         )}
 

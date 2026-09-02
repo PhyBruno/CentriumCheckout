@@ -7,7 +7,7 @@ import { totalVenda } from '../../src/client/domain/precificacao/linha';
 import { milesimosDeUnidades } from '../../src/client/domain/precificacao/quantidade';
 import { useInsercaoDeProduto } from '../../src/client/features/carrinho/useCarrinho';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
-import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
+import type { CarrinhoDeps, InserirItemInput } from '../../src/client/stores/slices/carrinhoSlice';
 import { criarVendaStore, useVendaStore } from '../../src/client/stores/vendaStore';
 import { respostaGetProduto, snapshotDe, unidades } from '../support/precificacao';
 
@@ -176,6 +176,65 @@ describe('carrinhoSlice — linha congelada (FR-017, AD-067, D3)', () => {
   });
 });
 
+describe('carrinhoSlice — precoUnitario obrigatório para origem congelada (FR-017, AD-067)', () => {
+  it('recusa em tempo de compilação inserir origem DAV sem precoUnitario', () => {
+    const store = montarStore();
+
+    expect(() => {
+      // @ts-expect-error — `InserirItemInput` exige `precoUnitario` quando
+      // `origem` é `'DAV'`; sem essa checagem em tipo, o preço vivo de hoje
+      // entraria em silêncio no lugar do preço congelado do documento.
+      store.getState().inserirItem({ snapshot: produto, quantidade: unidades(1), origem: 'DAV' });
+    }).toThrow(/precoUnitario/);
+  });
+
+  it('recusa em tempo de compilação inserir origem RASCUNHO sem precoUnitario', () => {
+    const store = montarStore();
+
+    expect(() => {
+      // @ts-expect-error — mesma invariante para `'RASCUNHO'`.
+      store.getState().inserirItem({
+        snapshot: produto,
+        quantidade: unidades(1),
+        origem: 'RASCUNHO',
+      });
+    }).toThrow(/precoUnitario/);
+  });
+
+  it('recusa em runtime mesmo quando o caller não é totalmente tipado (ex.: payload do ERP)', () => {
+    const store = montarStore();
+
+    // Simula uma entrada vinda de fora do domínio TS — ex.: um objeto
+    // resultante do parse de um payload de importação de DAV (feature 006)
+    // ou de retomada de rascunho (feature 004) — onde o compilador não pode
+    // garantir a invariante e só a checagem em runtime a protege.
+    const payloadNaoTipado: unknown = {
+      snapshot: produto,
+      quantidade: unidades(1),
+      origem: 'DAV',
+    };
+
+    expect(() => {
+      store.getState().inserirItem(payloadNaoTipado as InserirItemInput);
+    }).toThrow('precoUnitario');
+    expect(store.getState().linhas).toHaveLength(0);
+  });
+
+  it('aceita normalmente quando precoUnitario é informado para origem congelada', () => {
+    const store = montarStore();
+
+    expect(() => {
+      store.getState().inserirItem({
+        snapshot: produto,
+        quantidade: unidades(1),
+        origem: 'DAV',
+        precoUnitario: centavos(500),
+      });
+    }).not.toThrow();
+    expect(store.getState().linhas).toHaveLength(1);
+  });
+});
+
 describe('carrinhoSlice — desconto de convênio e troca de cliente (T028/T029, FR-018)', () => {
   it('aplica o desconto de convênio do cliente atual sobre o total da linha', () => {
     const store = montarStore({
@@ -185,7 +244,7 @@ describe('carrinhoSlice — desconto de convênio e troca de cliente (T028/T029,
     store.getState().inserirItem({ snapshot: produto, quantidade: unidades(6), origem: 'MANUAL' });
 
     // Faixa 2 (900) × 6 = 5400; 10% = 540.
-    expect(store.getState().linhas[0]?.descontoLinha).toBe(540);
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(540);
   });
 
   it('reprecifica todas as linhas ativas quando o cliente da venda muda', () => {
@@ -193,12 +252,51 @@ describe('carrinhoSlice — desconto de convênio e troca de cliente (T028/T029,
       null;
     const store = montarStore({ clienteAtual: () => cliente });
     store.getState().inserirItem({ snapshot: produto, quantidade: unidades(6), origem: 'MANUAL' });
-    expect(store.getState().linhas[0]?.descontoLinha).toBe(0);
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(0);
 
     cliente = { codigo: 7, listaPreco: null, descontoConvenio: 10 };
     store.getState().reprecificarPorTrocaDeCliente();
 
-    expect(store.getState().linhas[0]?.descontoLinha).toBe(540);
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(540);
+  });
+
+  it('zera só o desconto de convênio ao trocar para um cliente sem convênio (AD-108, bug confirmado na revisão)', () => {
+    let cliente: { codigo: number; listaPreco: number | null; descontoConvenio: number } = {
+      codigo: 7,
+      listaPreco: null,
+      descontoConvenio: 10,
+    };
+    const store = montarStore({ clienteAtual: () => cliente });
+    store.getState().inserirItem({ snapshot: produto, quantidade: unidades(6), origem: 'MANUAL' });
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(540);
+
+    // Cliente default (AD-108): sem convênio.
+    cliente = { codigo: 1, listaPreco: null, descontoConvenio: 0 };
+    store.getState().reprecificarPorTrocaDeCliente();
+
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(0);
+  });
+
+  it("preserva o desconto manual de um produto 'E' quando o cliente ativo passa a ter convênio", () => {
+    let cliente: { codigo: number; listaPreco: number | null; descontoConvenio: number } | null =
+      null;
+    const store = montarStore({ clienteAtual: () => cliente });
+    // Produto 'E' revisado pelo operador: desconto manual de 100 centavos.
+    store.getState().inserirItem({
+      snapshot: produto,
+      quantidade: unidades(6),
+      origem: 'MANUAL',
+      descontoManual: centavos(100),
+    });
+    expect(store.getState().linhas[0]?.descontoManual).toBe(100);
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(0);
+
+    cliente = { codigo: 7, listaPreco: null, descontoConvenio: 10 };
+    store.getState().reprecificarPorTrocaDeCliente();
+
+    // O desconto manual sobrevive intacto; o de convênio entra à parte.
+    expect(store.getState().linhas[0]?.descontoManual).toBe(100);
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(540);
   });
 });
 

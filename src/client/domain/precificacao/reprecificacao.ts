@@ -58,9 +58,14 @@ export function descontoDeConvenio(
  * `quantidade` (T028) — recalcular em duas etapas deixaria a linha
  * momentaneamente com preço novo e desconto velho.
  *
- * Com `percentual = 0` o `descontoLinha` existente é **preservado**, e não
- * zerado: é assim que o desconto manual de um produto `'E'` sobrevive a uma
- * reprecificação numa venda sem convênio (o caso dominante, AD-108).
+ * `descontoConvenio` é sempre **recalculado do zero** a cada chamada —
+ * inclusive para `ZERO_CENTAVOS` quando `percentual = 0` (cliente sem
+ * convênio, AD-108) — porque, ao contrário de `descontoManual`, ele não é
+ * informado pelo operador: preservar o valor antigo faria um desconto de
+ * convênio de um cliente anterior sobreviver à troca para um cliente sem
+ * convênio. `descontoManual` mora num campo separado da linha, que
+ * `repricarSku` nunca escreve, e por isso sobrevive intacto a qualquer
+ * reprecificação, com ou sem convênio.
  */
 export function repricarSku(
   linhas: readonly LinhaCarrinho[],
@@ -87,16 +92,16 @@ export function repricarSku(
       return linha;
     }
 
-    const descontoLinha =
+    const descontoConvenio =
       descontoConvenioPercentual > 0
         ? descontoDeConvenio(precoUnitario, linha.quantidade, descontoConvenioPercentual)
-        : linha.descontoLinha;
+        : ZERO_CENTAVOS;
 
-    if (linha.precoUnitario === precoUnitario && linha.descontoLinha === descontoLinha) {
+    if (linha.precoUnitario === precoUnitario && linha.descontoConvenio === descontoConvenio) {
       return linha;
     }
 
-    return { ...linha, precoUnitario, descontoLinha };
+    return { ...linha, precoUnitario, descontoConvenio };
   });
 }
 

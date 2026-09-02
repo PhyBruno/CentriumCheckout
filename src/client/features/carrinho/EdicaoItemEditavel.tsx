@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
-import { centavos, formatarCentavos, type Centavos } from '../../domain/precificacao/dinheiro';
+import {
+  calcularTotalLinha,
+  centavos,
+  formatarCentavos,
+  type Centavos,
+} from '../../domain/precificacao/dinheiro';
 import { milesimosDeUnidades, type Milesimos } from '../../domain/precificacao/quantidade';
 import type { PendenteDeEdicao } from './useCarrinho';
 
@@ -18,7 +23,7 @@ import type { PendenteDeEdicao } from './useCarrinho';
 export interface AjustesDeItem {
   readonly quantidade: Milesimos;
   readonly precoUnitario: Centavos;
-  readonly descontoLinha: Centavos;
+  readonly descontoManual: Centavos;
 }
 
 export interface EdicaoItemEditavelProps {
@@ -51,16 +56,32 @@ function paraTextoDecimal(valorEmCentavos: number): string {
   return (valorEmCentavos / CENTAVOS_POR_REAL).toFixed(2).replace('.', ',');
 }
 
+function paraTextoQuantidade(valorEmMilesimos: number): string {
+  return (valorEmMilesimos / 1000).toFixed(3).replace('.', ',');
+}
+
 export function EdicaoItemEditavel({
   pendente,
   onConfirmar,
   onCancelar,
 }: EdicaoItemEditavelProps): ReactElement {
-  const [quantidade, setQuantidade] = useState(() =>
-    (pendente.quantidade / 1000).toFixed(3).replace('.', ','),
-  );
+  const [quantidade, setQuantidade] = useState(() => paraTextoQuantidade(pendente.quantidade));
   const [preco, setPreco] = useState(() => paraTextoDecimal(pendente.snapshot.precoBase));
   const [desconto, setDesconto] = useState('0,00');
+
+  // `quantidade`/`preco`/`desconto` só são lidos da prop `pendente` no
+  // lazy-initializer do `useState` acima — sem isto, trocar de item pendente
+  // (ex.: selecionar outro produto `'E'` na busca antes de confirmar/cancelar o
+  // atual) não remonta o componente, então os campos ficavam mostrando os
+  // valores do item anterior enquanto descrição/unidade (lidas direto da prop
+  // em cada render) já refletiam o novo. `[pendente]` é a mesma referência que
+  // só muda quando o pai troca de item (ver `useEffect` de foco abaixo) — nunca
+  // enquanto o operador digita, já que os inputs são estado local.
+  useEffect(() => {
+    setQuantidade(paraTextoQuantidade(pendente.quantidade));
+    setPreco(paraTextoDecimal(pendente.snapshot.precoBase));
+    setDesconto('0,00');
+  }, [pendente]);
 
   // O foco pula para os campos editáveis assim que o produto `'E'` é resolvido
   // (`FR-014`) — o operador não precisa alcançá-los com o mouse.
@@ -87,7 +108,7 @@ export function EdicaoItemEditavel({
         onConfirmar({
           quantidade: quantidadeLida,
           precoUnitario: precoLido,
-          descontoLinha: descontoLido,
+          descontoManual: descontoLido,
         });
       }}
     >
@@ -157,9 +178,10 @@ export function EdicaoItemEditavel({
 
       <p className="text-sm text-muted-foreground" aria-live="polite">
         {valido
-          ? `Total do item: ${formatarCentavos(
-              centavos(Math.max(0, Math.round((precoLido * quantidadeLida) / 1000) - descontoLido)),
-            )}`
+          ? // Mesma função de domínio usada para persistir o total ao confirmar
+            // (`calcularTotalLinha`, `dinheiro.ts`) — nunca reimplementar a
+            // matemática aqui, sob risco da prévia divergir do total real da linha.
+            `Total do item: ${formatarCentavos(calcularTotalLinha(precoLido, quantidadeLida, descontoLido))}`
           : 'Informe quantidade, preço e desconto válidos.'}
       </p>
     </form>

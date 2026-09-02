@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ErroFaixaSemPreco,
   ErroTipoPrecoDesconhecido,
   resolvePrecoUnitario,
 } from '../../../../src/client/domain/precificacao/tabelaPreco';
@@ -71,5 +72,26 @@ describe('resolvePrecoUnitario — TipoPreco 8 (faixa flat)', () => {
     });
 
     expect(resolvePrecoUnitario(8, semFaixas, unidades(1000))).toBe(1000);
+  });
+
+  it('lança ErroFaixaSemPreco quando a faixa atingida tem QtdMinimaPreco configurado mas PrecoVenda em 0 (bug confirmado na revisão)', () => {
+    // QtdMinimaPreco2 = 5 está configurado no ERP, mas PrecoVenda2 nunca foi
+    // cadastrado (ficou em 0): resolver em silêncio para R$0,00 esconderia o
+    // erro de configuração em vez de sinalizá-lo.
+    const faixaSemPreco = snapshotDe({
+      precosFaixa: [1000, 0, 0, 0, 0],
+      limiaresFaixaEmUnidades: [5, 0, 0, 0],
+    });
+
+    expect(() => resolvePrecoUnitario(8, faixaSemPreco, unidades(5))).toThrow(ErroFaixaSemPreco);
+  });
+
+  it('preço R$0,00 na faixa 1 (preço-base) não lança erro — faixa 1 não depende de limiar', () => {
+    const precoBaseZero = snapshotDe({
+      precosFaixa: [0, 900, 0, 0, 0],
+      limiaresFaixaEmUnidades: [5, 0, 0, 0],
+    });
+
+    expect(resolvePrecoUnitario(8, precoBaseZero, unidades(1))).toBe(0);
   });
 });

@@ -58,7 +58,8 @@ export interface OpcoesLinha {
   readonly snapshot?: SnapshotPrecoProduto;
   readonly quantidadeEmUnidades?: number;
   readonly precoUnitario?: number;
-  readonly descontoLinha?: number;
+  readonly descontoConvenio?: number;
+  readonly descontoManual?: number;
   readonly cancelada?: boolean;
   readonly precoCongelado?: boolean;
   readonly origem?: OrigemLinha;
@@ -75,7 +76,8 @@ export function linhaDe(opcoes: OpcoesLinha = {}): LinhaCarrinho {
     snapshot,
     quantidade: milesimosDeUnidades(opcoes.quantidadeEmUnidades ?? 1),
     precoUnitario: centavos(opcoes.precoUnitario ?? snapshot.precoBase),
-    descontoLinha: centavos(opcoes.descontoLinha ?? 0),
+    descontoConvenio: centavos(opcoes.descontoConvenio ?? 0),
+    descontoManual: centavos(opcoes.descontoManual ?? 0),
     cancelada: opcoes.cancelada ?? false,
     precoCongelado: opcoes.precoCongelado ?? false,
     origem: opcoes.origem ?? 'MANUAL',

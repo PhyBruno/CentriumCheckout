@@ -13,7 +13,7 @@
  * (`research.md`, D2).
  */
 
-import type { Centavos } from './dinheiro';
+import { ZERO_CENTAVOS, type Centavos } from './dinheiro';
 import type { SnapshotPrecoProduto } from './linha';
 import type { Milesimos } from './quantidade';
 
@@ -85,7 +85,19 @@ export function resolvePrecoUnitario(
 
   const faixa = resolverFaixa(snapshot.limiaresFaixa, quantidadeAgregada);
   const preco = snapshot.precosFaixa[faixa - 1];
-  if (preco === undefined) {
+  // `preco === undefined` nunca ocorre em tempo de execução — `precosFaixa` é
+  // uma tupla de 5 posições sempre preenchida pelo mapper de bootstrap — mas o
+  // `noUncheckedIndexedAccess` do TypeScript exige o guard.
+  //
+  // `faixa > 1` significa que um `QtdMinimaPreco{faixa}` foi de fato atingido
+  // (`resolverFaixa` só avança além de 1 quando o limiar é `> 0` e a
+  // quantidade agregada o alcança). Se o `PrecoVenda{faixa}` correspondente
+  // ficou em `0`, o ERP nunca teve esse preço cadastrado: resolver em silêncio
+  // para R$0,00 esconderia o erro de configuração. A faixa 1 (`PrecoVenda1`)
+  // fica de fora dessa checagem porque é o preço-base sempre aplicável, não
+  // uma faixa que dependa de limiar — R$0,00 ali é preço intencional, não
+  // configuração ausente.
+  if (preco === undefined || (faixa > 1 && preco === ZERO_CENTAVOS)) {
     throw new ErroFaixaSemPreco(snapshot.codigoProduto, faixa);
   }
   return preco;

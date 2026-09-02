@@ -158,7 +158,7 @@ describe('repricarSku — desconto de convênio recalculado junto', () => {
 
     // Faixa 2 (900) × 6 = 5400; 10% = 540.
     expect(resultado[0]?.precoUnitario).toBe(900);
-    expect(resultado[0]?.descontoLinha).toBe(540);
+    expect(resultado[0]?.descontoConvenio).toBe(540);
   });
 
   it('preserva o desconto manual quando não há convênio', () => {
@@ -168,11 +168,47 @@ describe('repricarSku — desconto de convênio recalculado junto', () => {
         snapshot: produto,
         quantidadeEmUnidades: 6,
         precoUnitario: 1000,
-        descontoLinha: 250,
+        descontoManual: 250,
       }),
     ];
 
-    expect(repricarSku(linhas, SKU, 8, 0)[0]?.descontoLinha).toBe(250);
+    expect(repricarSku(linhas, SKU, 8, 0)[0]?.descontoManual).toBe(250);
+  });
+
+  it('zera o desconto de convênio de um cliente anterior ao reprecificar sem convênio (bug confirmado na revisão)', () => {
+    const linhas = [
+      linhaDe({
+        idLinha: 'a',
+        snapshot: produto,
+        quantidadeEmUnidades: 6,
+        precoUnitario: 900,
+        descontoConvenio: 540,
+      }),
+    ];
+
+    // Cliente novo sem convênio (AD-108): percentual 0 não deve preservar o
+    // desconto de convênio do cliente anterior.
+    const resultado = repricarSku(linhas, SKU, 8, 0);
+
+    expect(resultado[0]?.descontoConvenio).toBe(0);
+  });
+
+  it('desconto manual sobrevive a uma reprecificação que introduz convênio', () => {
+    const linhas = [
+      linhaDe({
+        idLinha: 'a',
+        snapshot: produto,
+        quantidadeEmUnidades: 6,
+        precoUnitario: 1000,
+        descontoManual: 250,
+      }),
+    ];
+
+    const resultado = repricarSku(linhas, SKU, 8, 10);
+
+    // Faixa 2 (900) × 6 = 5400; 10% = 540 de convênio, e o manual continua 250.
+    expect(resultado[0]?.descontoConvenio).toBe(540);
+    expect(resultado[0]?.descontoManual).toBe(250);
   });
 });
 
