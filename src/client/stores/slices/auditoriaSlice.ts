@@ -3,6 +3,7 @@ import type { VendaState } from '../vendaStore';
 import { eventoVendaIniciada } from '../../domain/auditoria/eventos';
 import type {
   EventoAuditoria,
+  EventoAuditoriaRegistravel,
   EventoAuditoriaSemTimestamp,
   HistoricoAuditoriaVenda,
   OrigemVenda,
@@ -28,8 +29,12 @@ export interface AuditoriaSlice {
   /**
    * Registra um evento ao final do histórico, carimbando o `timestamp` no
    * momento do `push` — o call site nunca fornece a data/hora.
+   *
+   * Aceita `EventoAuditoriaRegistravel`, não a união inteira: `VENDA_INICIADA`
+   * é excluído em tempo de compilação porque só `resetarAuditoria` pode
+   * produzi-lo (ver TSDoc de `EventoAuditoriaRegistravel` em `eventos.ts`).
    */
-  registrarEventoAuditoria(evento: EventoAuditoriaSemTimestamp): void;
+  registrarEventoAuditoria(evento: EventoAuditoriaRegistravel): void;
 
   /**
    * Zera o histórico e já registra `VENDA_INICIADA`. Chamado uma única vez no
@@ -62,6 +67,18 @@ export const criarAuditoriaSlice: StateCreator<
 
   registrarEventoAuditoria: (evento) =>
     set((state) => {
+      if (state.eventos.length === 0 && import.meta.env.DEV) {
+        // Histórico vazio no momento do registro: `resetarAuditoria` deveria
+        // ter sido chamado antes para abrir a sessão com `VENDA_INICIADA`
+        // como primeiro evento (FR-002). Não lança exceção — perder o
+        // primeiro evento de auditoria é ruim, mas derrubar a venda do
+        // operador de caixa por causa disso é pior.
+        console.warn(
+          '[auditoria] registrarEventoAuditoria foi chamado com o histórico vazio — ' +
+            'resetarAuditoria deveria ter sido chamado antes para abrir a sessão de ' +
+            'venda com VENDA_INICIADA como primeiro evento (FR-002).',
+        );
+      }
       state.eventos.push(carimbar(evento));
     }),
 

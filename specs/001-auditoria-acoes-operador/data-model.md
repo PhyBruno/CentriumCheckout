@@ -33,8 +33,8 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 | 13 | `VALE_DEVOLUCAO_USADO` | 008-pagamento-geral | `{ codigoVale: string, valor: number }` (centavos inteiros) |
 | 14 | `PAGAMENTO_RECUSADO` | 008-pagamento-geral / 009-pagamento-pix / 010-pagamento-tef | `{ tipo: string, motivo?: string }` |
 | 15 | `FATURAMENTO_FALHOU` | 004-finalizacao-suspensao-venda | `{ operacao: 'FATURAR' \| 'SUSPENDER' }` |
-| 16 | `VENDA_FINALIZADA` | 004-finalizacao-suspensao-venda | `{}` |
-| 17 | `VENDA_SUSPENSA` | 004-finalizacao-suspensao-venda | `{}` |
+| 16 | `VENDA_FINALIZADA` | 004-finalizacao-suspensao-venda | `Record<string, never>` — não `{}`: em TypeScript, `{}` como tipo aceita quase qualquer valor não-nulo e não expressa "objeto vazio" |
+| 17 | `VENDA_SUSPENSA` | 004-finalizacao-suspensao-venda | `Record<string, never>` — mesmo motivo da linha acima |
 | 18 | `VALIDACAO_VENDA_RECUSADA` | 014-validacao-previa-nfce | `{ origem: 'MANUAL' \| 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` — registra recusa por regra de negócio **e** indisponibilidade do ERP; avisos (`Valido = true` com mensagem) **não** são registrados (AD-113) |
 | 19 | `VENDA_RAPIDA_ACIONADA` | 013-venda-rapida-cenario-pagamento | `{ tecla: 'F6' \| 'F7' \| 'F8' \| 'F9', cenarioNome: string, condicaoCodigo: number, formaCodigo: number, valorLancado: number, finalizacaoAutomatica: boolean }` (`valorLancado` em centavos inteiros) — um evento por acionamento que alterou a venda; acionamento recusado em G1–G4 (`specs/013-.../data-model.md`) não gera evento (I12 da feature 013) |
 | 20 | `DAV_IMPORTADO` | 006-importacao-dav | `{ numeroDav: string, numeroNota: number, quantidadeLinhas: number, quantidadeFormasDePagamento: number }` — disparado uma única vez ao final de `importarVendaExistente`, depois que carrinho/cliente/vendedor/pagamento já foram populados (AD-114); `numeroDav` só existe nesta trilha — não é reenviado a `FaturarNFCe` (AD-107) |
@@ -42,7 +42,7 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 ### Regras de estado (state machine do slice)
 
 - **Zerado** → só no evento `VENDA_INICIADA` (início de venda nova ou retomada de rascunho/DAV). Nunca herda eventos de uma sessão anterior (FR-008).
-- **Acumulando** → todo evento subsequente é `push`ado ao final do array na ordem em que ocorre (ordem cronológica estritamente crescente por `timestamp`).
+- **Acumulando** → todo evento subsequente é `push`ado ao final do array na ordem em que ocorre. **A ordem autoritativa é a posição no próprio array (ordem de inserção via `push`), não o valor de `timestamp`**: `new Date().toISOString()` tem resolução de milissegundo, e dois eventos originados no mesmo milissegundo real (ex.: duas bipagens de código de barras em sequência rápida, produzindo dois `PRODUTO_INSERIDO`; ou dois `push` disparados no mesmo frame) recebem `timestamp` **iguais**. A sequência de `timestamp` é, portanto, **não-decrescente** — nunca estritamente crescente. O ERP deve tratar a ordem do array como autoritativa ao ler o campo `Log`, não reordenar por `timestamp`.
 - **Enviado, descartado** → após `FaturarNFCe` retornar sucesso (`FATURAR` ou `SUSPENDER`), o array é serializado para `Log` e o slice é resetado junto com carrinho/cache (FR-007).
 - **Enviado, preservado** → se `FaturarNFCe` falhar por rede, o evento `FATURAMENTO_FALHOU` é adicionado ao array e o slice **não** é resetado — a próxima tentativa reenvia o array completo, incluindo a falha anterior (FR-006, AUDIT-09 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 87).
 

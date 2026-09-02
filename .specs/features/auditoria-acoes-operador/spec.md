@@ -45,7 +45,7 @@ Não se aplica — mecanismo de bastidor, sem tela própria. Nenhuma tela existe
 7. WHEN o operador confirma finalizar ou suspender a venda THEN o sistema SHALL registrar `VENDA_FINALIZADA` ou `VENDA_SUSPENSA` como último evento antes de montar o payload.
 8. WHEN uma chamada a `FaturarNFCe` (`FATURAR` ou `SUSPENDER`) falha por problema de rede (sem resposta, ver `.specs/features/finalizacao-suspensao-venda/spec.md`, AD-038) THEN o sistema SHALL registrar `FATURAMENTO_FALHOU` (`detalhes.operacao`: `FATURAR` | `SUSPENDER`) e **não** descartar o slice `auditoria` — o evento de falha entra no log reenviado na tentativa seguinte.
 
-**Independent Test**: Rodar uma venda completa (trocar cliente, inserir 2 produtos, aplicar pagamento, finalizar) e verificar que o array de eventos tem, na ordem certa, `VENDA_INICIADA`, `CLIENTE_*`, 2× `PRODUTO_INSERIDO`, `FORMA_PAGAMENTO_APLICADA`, `VENDA_FINALIZADA`, com timestamps estritamente crescentes.
+**Independent Test**: Rodar uma venda completa (trocar cliente, inserir 2 produtos, aplicar pagamento, finalizar) e verificar que o array de eventos tem, **na ordem de inserção** (ordem autoritativa — `timestamp` é não-decrescente, não estritamente crescente, por causa da resolução de milissegundo, ver `specs/001-auditoria-acoes-operador/data-model.md`, "Regras de estado"): `VENDA_INICIADA`, `CLIENTE_*`, 2× `PRODUTO_INSERIDO`, `FORMA_PAGAMENTO_APLICADA`, `VENDA_FINALIZADA`.
 
 ---
 

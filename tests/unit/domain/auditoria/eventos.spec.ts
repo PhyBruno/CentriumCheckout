@@ -21,7 +21,7 @@ import {
   eventoVendedorSelecionado,
   eventoVendedorTrocado,
 } from '../../../../src/client/domain/auditoria/eventos';
-import type { EventoAuditoriaSemTimestamp } from '../../../../src/client/domain/auditoria/eventos';
+import type { EventoAuditoriaRegistravel } from '../../../../src/client/domain/auditoria/eventos';
 
 /**
  * Catálogo de eventos + dispatcher do slice de auditoria (feature 001).
@@ -38,7 +38,7 @@ function historico() {
   return useVendaStore.getState().eventos;
 }
 
-function registrar(evento: EventoAuditoriaSemTimestamp): void {
+function registrar(evento: EventoAuditoriaRegistravel): void {
   useVendaStore.getState().registrarEventoAuditoria(evento);
 }
 
@@ -46,6 +46,11 @@ beforeEach(() => {
   // O store é singleton de módulo: sem isto, um teste herdaria o histórico do
   // anterior — exatamente o que FR-008 proíbe em produção.
   useVendaStore.getState().descartarAuditoria();
+  // `import.meta.env.DEV` é `true` sob Vitest e o `descartarAuditoria()` acima
+  // deixa o array vazio, então o aviso de "histórico vazio" (correção 2)
+  // dispararia em quase todo teste. Silenciado aqui; `restoreMocks: true` no
+  // `vitest.config.ts` restaura `console.warn` sozinho a cada teste.
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -88,9 +93,75 @@ describe('VENDA_INICIADA e resetarAuditoria (T005)', () => {
   });
 });
 
+describe('Aviso de histórico vazio e ordenação real (correção 2 e 3)', () => {
+  it('registra o evento mesmo sem sessão aberta e avisa em desenvolvimento (FR-002)', () => {
+    // beforeEach já chamou descartarAuditoria(): histórico vazio, sem
+    // VENDA_INICIADA — simula um call site que esqueceu de chamar
+    // resetarAuditoria antes (erro de sequenciamento em efeito React, corrida
+    // no bootstrap).
+    registrar(eventoVendaSuspensa());
+
+    // O evento não é engolido: perder um dado de auditoria é pior do que
+    // registrá-lo fora de ordem.
+    expect(historico()).toHaveLength(1);
+    expect(historico()[0]?.tipo).toBe('VENDA_SUSPENSA');
+
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('FR-002'));
+  });
+
+  it('não avisa quando a sessão foi aberta com resetarAuditoria antes', () => {
+    useVendaStore.getState().resetarAuditoria('NOVA');
+
+    registrar(eventoClienteSelecionado({ codigoCliente: 101, nome: 'Cliente Sintético' }));
+
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('preserva a ordem de chamada no array mesmo com timestamps iguais (relógio real)', () => {
+    // Sem vi.useFakeTimers(): relógio real de propósito. `new Date().toISOString()`
+    // tem resolução de milissegundo, então dois registros no mesmo tick real
+    // (ex.: bipagem rápida de código de barras gerando dois PRODUTO_INSERIDO em
+    // sequência) podem produzir timestamps IGUAIS. A garantia real do slice é a
+    // ORDEM DO ARRAY — ela nunca depende do timestamp e nunca quebra. Por isso a
+    // asserção de timestamp abaixo é "não-decrescente" (`>=`), não "estritamente
+    // crescente" (`>`): afirmar `>` documentaria uma garantia mais forte do que
+    // o slice realmente oferece.
+    registrar(eventoProdutoCancelado({ codigoProduto: 'PROD-A' }));
+    registrar(eventoProdutoCancelado({ codigoProduto: 'PROD-B' }));
+    registrar(eventoProdutoCancelado({ codigoProduto: 'PROD-C' }));
+    registrar(eventoProdutoCancelado({ codigoProduto: 'PROD-D' }));
+
+    const registrados = historico();
+    expect(registrados.map((evento) => evento.detalhes)).toEqual([
+      { codigoProduto: 'PROD-A' },
+      { codigoProduto: 'PROD-B' },
+      { codigoProduto: 'PROD-C' },
+      { codigoProduto: 'PROD-D' },
+    ]);
+
+    const timestamps = registrados.map((evento) => evento.timestamp);
+    expect(timestamps).toHaveLength(4);
+    for (const timestamp of timestamps) {
+      expect(timestamp).toMatch(ISO_8601_MS);
+    }
+
+    const naoDecrescente = timestamps.every((atual, indice) => {
+      if (indice === 0) {
+        return true;
+      }
+      const anterior = timestamps[indice - 1];
+      // `noUncheckedIndexedAccess`: comparar `>=` só depois de garantir que o
+      // vizinho existe — nunca com non-null assertion (`!`).
+      return anterior !== undefined && atual >= anterior;
+    });
+    expect(naoDecrescente).toBe(true);
+  });
+});
+
 describe('Eventos de ação (T009)', () => {
   /** Um por tipo, tipos 2–14 do catálogo (`data-model.md`). Valores sintéticos. */
-  const EVENTOS_DE_ACAO: readonly EventoAuditoriaSemTimestamp[] = [
+  const EVENTOS_DE_ACAO: readonly EventoAuditoriaRegistravel[] = [
     eventoClienteSelecionado({ codigoCliente: 101, nome: 'Cliente Sintético' }),
     eventoClienteCriado({ codigoCliente: 102, nome: 'Cliente Recém-Criado' }),
     eventoClienteTrocado({ codigoClienteAnterior: 101, codigoClienteNovo: 102 }),
@@ -155,7 +226,7 @@ describe('Eventos de ação (T009)', () => {
     });
   });
 
-  it('carimba o timestamp no push, em ordem estritamente crescente', () => {
+  it('carimba o timestamp no push, acompanhando o relógio', () => {
     // Relógio controlado: `toISOString()` tem resolução de milissegundo, então
     // dois registros no mesmo tick teriam timestamps iguais. Em produção as
     // ações do operador são segundos entre si; aqui o avanço é explícito para
@@ -185,7 +256,7 @@ describe('Eventos de ação (T009)', () => {
     registrar({
       ...eventoProdutoCancelado({ codigoProduto: 'PROD-1' }),
       timestamp: '1999-12-31T23:59:59.999Z',
-    } as EventoAuditoriaSemTimestamp);
+    } as EventoAuditoriaRegistravel);
 
     expect(historico()[0]?.timestamp).toBe('2026-01-01T10:00:00.000Z');
   });

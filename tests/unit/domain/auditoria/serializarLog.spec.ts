@@ -69,11 +69,12 @@ describe('serializarLogAuditoria (T012)', () => {
     expect(JSON.parse(log)).toEqual(historico());
   });
 
-  it('preserva a ordem cronológica estritamente crescente', () => {
+  it('preserva a ordem de inserção do array, com timestamps não-decrescentes', () => {
     encenarVendaAteOPagamento();
 
     const eventos = JSON.parse(serializarLogAuditoria(historico())) as EventoAuditoria[];
 
+    // A ordem autoritativa para o ERP é a posição no array, não o `timestamp`.
     expect(eventos.map((evento) => evento.tipo)).toEqual([
       'VENDA_INICIADA',
       'CLIENTE_SELECIONADO',
@@ -82,6 +83,9 @@ describe('serializarLogAuditoria (T012)', () => {
     ]);
     const timestamps = eventos.map((evento) => evento.timestamp);
     expect([...timestamps].sort()).toEqual(timestamps);
+    // Os timestamps saem distintos aqui só porque `encenarVendaAteOPagamento`
+    // avança o relógio entre as ações. Com relógio real, dois eventos no mesmo
+    // milissegundo empatam — ver o teste de ordenação real em `eventos.spec.ts`.
     expect(new Set(timestamps).size).toBe(timestamps.length);
   });
 

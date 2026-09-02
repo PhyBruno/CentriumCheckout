@@ -253,6 +253,29 @@ type SemTimestamp<T> = T extends unknown ? Omit<T, 'timestamp'> : never;
 export type EventoAuditoriaSemTimestamp = SemTimestamp<EventoAuditoria>;
 
 /**
+ * O que o dispatcher (`registrarEventoAuditoria`) aceita — `EventoAuditoriaSemTimestamp`
+ * **menos** `VENDA_INICIADA`.
+ *
+ * `VENDA_INICIADA` é privativo de `resetarAuditoria`: é o único evento que
+ * precisa **zerar** o histórico antes de entrar (FR-002 — início/retomada é o
+ * primeiro evento da sessão). Se `VENDA_INICIADA` pudesse passar por
+ * `registrarEventoAuditoria`, qualquer uma das features consumidoras poderia
+ * empilhá-lo no meio de uma venda em andamento sem zerar o array, violando
+ * FR-002 em silêncio — sem exceção, sem tela de revisão (FR-009), sem chance
+ * de detecção antes da auditoria fiscal. Excluir o membro em tempo de
+ * compilação fecha esse call site errado antes que ele exista.
+ *
+ * `Exclude` distribui sobre a união (mesma lógica de `SemTimestamp` acima):
+ * cada um dos 20 membros de `EventoAuditoriaSemTimestamp` é testado
+ * isoladamente contra `{ tipo: 'VENDA_INICIADA' }`, então o resultado continua
+ * uma união discriminada por `tipo` — com 19 membros, não um objeto colapsado.
+ */
+export type EventoAuditoriaRegistravel = Exclude<
+  EventoAuditoriaSemTimestamp,
+  { tipo: 'VENDA_INICIADA' }
+>;
+
+/**
  * Coleção ordenada dos eventos de **uma única** sessão de venda. Sem
  * identificador próprio: é um campo do slice `auditoria`, nunca uma entidade
  * persistida (Constitution VI).
@@ -263,6 +286,14 @@ export type HistoricoAuditoriaVenda = EventoAuditoria[];
  * Factory functions (uma por tipo)
  * ------------------------------------------------------------------ */
 
+/**
+ * Só `resetarAuditoria` deve chamar esta factory. `VENDA_INICIADA` não faz
+ * parte de `EventoAuditoriaRegistravel` — não é aceito por
+ * `registrarEventoAuditoria` — porque é o evento que zera o histórico, não um
+ * evento que se acumula nele (ver TSDoc de `EventoAuditoriaRegistravel`).
+ * Continua exportada porque alguma feature de bootstrap pode precisar do tipo
+ * `EventoVendaIniciada`/`OrigemVenda`, não para ser passada ao dispatcher.
+ */
 export function eventoVendaIniciada(
   detalhes: EventoVendaIniciada['detalhes'],
 ): SemTimestamp<EventoVendaIniciada> {
