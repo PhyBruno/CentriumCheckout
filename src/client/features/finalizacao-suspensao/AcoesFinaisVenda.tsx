@@ -2,11 +2,12 @@ import { createContext, useContext, type ReactElement, type ReactNode } from 're
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
-import { linhasAtivas } from '../../domain/precificacao/linha';
+import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
 import { DialogoDocumentoFiscal } from './DialogoDocumentoFiscal';
+import { DialogoErroFaturamento } from './DialogoErroFaturamento';
 import {
   useFinalizarOuSuspenderVenda,
   type ApiFinalizacaoVenda,
@@ -55,6 +56,10 @@ export function ProvedorFinalizacaoVenda({
     <ContextoFinalizacao.Provider value={api}>
       {children}
 
+      {estado.tipo === 'falha-negocio' && (
+        <DialogoErroFaturamento mensagem={estado.mensagem} onFechar={descartar} />
+      )}
+
       {estado.tipo === 'falha-rede' && (
         <DialogoConfirmarReenvio
           operacao={estado.operacao}
@@ -89,6 +94,20 @@ export function ProvedorFinalizacaoVenda({
  */
 function useVendaTemItem(): boolean {
   return useVendaStore((estado) => linhasAtivas(estado.linhas).length > 0);
+}
+
+/**
+ * Só se fatura o que tem valor: sem linha ativa, ou com subtotal zerado, não há
+ * NFCe a emitir e o botão fica desabilitado (pedido do usuário, 2026-09-02).
+ *
+ * A feature 008 **estende** esta condição — lá o botão também fica desabilitado
+ * enquanto os pagamentos aplicados não cobrirem o subtotal. Por isso a regra
+ * mora num seletor só, e não espalhada pelo componente.
+ */
+function useVendaTemValorAFaturar(): boolean {
+  return useVendaStore(
+    (estado) => linhasAtivas(estado.linhas).length > 0 && totalVenda(estado.linhas) > 0,
+  );
 }
 
 function useFinalizacaoVenda(): ApiFinalizacaoVenda {
@@ -141,25 +160,16 @@ export function BarraAtalhosVenda(): ReactElement {
  */
 export function AcoesFinaisVenda(): ReactElement {
   const { estado, finalizar } = useFinalizacaoVenda();
+  const haValorAFaturar = useVendaTemValorAFaturar();
 
   return (
     <div className="flex w-full flex-col gap-xs" data-testid="acoes-finais-venda">
-      {estado.tipo === 'falha-negocio' && (
-        <p
-          role="alert"
-          data-testid="erro-finalizacao"
-          className="text-sm text-[var(--cc-color-down)]"
-        >
-          {estado.mensagem}
-        </p>
-      )}
-
       <BotaoFinalizarVenda
         onFinalizar={() => {
           void finalizar();
         }}
         enviando={estado.tipo === 'enviando'}
-        bloqueado={estado.tipo === 'falha-rede'}
+        bloqueado={!haValorAFaturar || estado.tipo === 'falha-rede'}
       />
     </div>
   );

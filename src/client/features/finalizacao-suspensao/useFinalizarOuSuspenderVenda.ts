@@ -15,6 +15,7 @@ import {
   type ResultadoFaturamento,
 } from '../../services/faturamento/faturarNFCeMutation';
 import type { NotaFiscalResposta } from '../../../shared/schemas/faturarNFCe.schema';
+import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
 import { useSessionStore } from '../../stores/sessionStore';
 import { abrirSessaoDeVenda, useVendaStore } from '../../stores/vendaStore';
 import { useEncerrarVenda } from '../carrinho/useCarrinho';
@@ -97,6 +98,9 @@ const AVISO_SUSPENSAO_BLOQUEADA =
 
 const ERRO_SEM_CONFIGURACAO =
   'Configuração do ponto de venda indisponível: a venda não pode ser finalizada nem suspensa.';
+
+const AVISO_SEM_VALOR_A_FATURAR =
+  'Não há valor a faturar: insira ao menos um item com valor antes de finalizar.';
 
 const MENSAGEM_VENDA_SUSPENSA = 'Venda suspensa. O rascunho continua disponível para retomada.';
 
@@ -238,6 +242,17 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       // `confirmarReenvio` (`FR-004`, AD-038).
       if (atual.tipo === 'enviando' || atual.tipo === 'falha-rede') {
         return;
+      }
+
+      // Não há NFCe a emitir sem valor. O botão já nasce desabilitado nesse
+      // estado; a guarda aqui cobre o acionamento por teclado ou por código,
+      // que não passa pelo `disabled` do DOM.
+      if (operacao === 'FATURAR') {
+        const { linhas } = useVendaStore.getState();
+        if (linhasAtivas(linhas).length === 0 || totalVenda(linhas) <= 0) {
+          avisar(AVISO_SEM_VALOR_A_FATURAR);
+          return;
+        }
       }
 
       // Gate da validação prévia: só `FATURAR` (`FR-014`); `SUSPENDER` não emite

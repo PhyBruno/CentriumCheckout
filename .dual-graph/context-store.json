@@ -4727,5 +4727,17 @@
       "src/client/main.tsx"
     ],
     "date": "2026-09-02"
+  },
+  {
+    "type": "decision",
+    "content": "AD-127: caminho feliz sem modal; PDF em aba nova via blob; finalizar exige valor",
+    "tags": [
+      "004",
+      "ui"
+    ],
+    "files": [
+      "src/client/services/impressao/abrirPdfNFCe.ts"
+    ],
+    "date": "2026-09-02"
   }
 ]

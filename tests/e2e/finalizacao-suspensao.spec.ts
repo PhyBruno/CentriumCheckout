@@ -92,8 +92,11 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
 
     await page.getByTestId('botao-finalizar-venda').click();
 
-    await expect(page.getByTestId('dialogo-documento-fiscal')).toBeVisible();
-    await expect(page.getByText(/enviado para impressão/i)).toBeVisible();
+    // Caminho feliz não tem modal (pedido do usuário, 2026-09-02): o cupom sai
+    // na impressora e a tela volta para a próxima venda. O sinal observável é o
+    // carrinho zerado, não um diálogo a fechar.
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
 
     const { retrato } = await ultimoRetrato(request);
     expect(retrato?.SuspenderOuFaturar).toBe('FATURAR');
@@ -106,10 +109,6 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     const eventos: { tipo: string }[] = JSON.parse(retrato?.Log ?? '[]');
     expect(eventos[0]?.tipo).toBe('VENDA_INICIADA');
     expect(eventos.at(-1)?.tipo).toBe('VENDA_FINALIZADA');
-
-    // `FR-012`: o estado local é descartado na mesma transação.
-    await page.getByTestId('fechar-documento-fiscal').click();
-    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
   });
 
   test('falha de rede exige confirmação manual antes de qualquer novo envio (passo 5)', async ({
@@ -143,7 +142,7 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
 
     await page.getByTestId('confirmar-reenvio').click();
 
-    await expect(page.getByTestId('dialogo-documento-fiscal')).toBeVisible();
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
     expect((await contadores(request)).faturarNFCe).toBe(1);
 
     // O `Log` reenviado inclui a falha anterior e é estritamente maior.
@@ -164,7 +163,8 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
 
     await expect(page.getByTestId('dialogo-documento-fiscal')).toBeVisible();
     await expect(page.getByTestId('dialogo-documento-fiscal').getByRole('alert')).toBeVisible();
-    await expect(page.getByTestId('link-pdf-documento-fiscal')).toBeVisible();
+    // Abre em outra aba, nunca baixa (pedido do usuário, 2026-09-02).
+    await expect(page.getByTestId('abrir-pdf-documento-fiscal')).toBeVisible();
   });
 
   test('recusa de negócio do ERP não abre confirmação de reenvio (research.md D2)', async ({
@@ -178,12 +178,32 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
 
     await page.getByTestId('botao-finalizar-venda').click();
 
+    // Erro de transmissão da NFCe abre modal próprio, não um texto ao pé do
+    // botão (pedido do usuário, 2026-09-02).
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
     await expect(page.getByTestId('erro-finalizacao')).toContainText(/não autorizada/i);
     await expect(page.getByTestId('dialogo-confirmar-reenvio')).toHaveCount(0);
+
+    await page.getByTestId('fechar-erro-faturamento').click();
+
     // Reenvio livre: o botão volta a ficar disponível sem confirmação extra.
     await expect(page.getByTestId('botao-finalizar-venda')).toBeEnabled();
     // A venda **não** foi descartada: nada de sucesso aconteceu (`FR-012`).
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+  });
+
+  test('"Finalizar venda" nasce desabilitado e só libera com valor no carrinho', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    await expect(page.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    await expect(page.getByTestId('botao-cancelar-venda')).toBeDisabled();
+
+    await biparProduto(page);
+
+    await expect(page.getByTestId('botao-finalizar-venda')).toBeEnabled();
+    await expect(page.getByTestId('botao-cancelar-venda')).toBeEnabled();
   });
 });
 
@@ -225,7 +245,7 @@ test.describe('User Story 2 — suspender a venda em digitação (T026)', () => 
 
     await page.getByTestId('botao-finalizar-venda').click();
 
-    await expect(page.getByTestId('dialogo-documento-fiscal')).toBeVisible();
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
     expect((await contadores(request)).faturarNFCe).toBe(1);
   });
 });

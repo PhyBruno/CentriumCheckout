@@ -1390,6 +1390,21 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 **Nota de teste:** o texto do toast aparece **duas vezes** no DOM (região `live` do Goey e corpo do toast), então asserções de E2E sobre ele precisam de âncora (`.first()`), senão caem em violação de modo estrito do Playwright.
 
 
+### AD-127: O caminho feliz da entrega do documento fiscal deixa de ter modal; PDF sempre abre em aba nova (nunca baixa); `Finalizar venda` exige valor a faturar (2026-09-02)
+
+**Decision:** Três correções diretas do usuário sobre a feature 004:
+
+1. **`Finalizar venda` fica desabilitado sem valor a faturar** — carrinho sem linha ativa **ou** subtotal zerado. A regra mora num seletor único (`useVendaTemValorAFaturar`), e não espalhada no componente, porque a feature 008 vai **estendê-la**: lá o botão também fica desabilitado enquanto os pagamentos aplicados não cobrirem o subtotal. Há guarda equivalente dentro de `iniciar` no hook orquestrador — o `disabled` do DOM não cobre acionamento por teclado nem por código.
+2. **O caminho feliz não tem mais modal.** `TipoImpressao = 'P'` abre o PDF numa aba nova e sai de cena; impressão direta bem-sucedida também não mostra nada. Fechar um diálogo que só diz "deu certo" é trabalho que o operador de caixa repete dezenas de vezes por turno sem receber nada em troca. O modal passa a aparecer **só** em três situações, todas em que ele precisa decidir ou saber de algo: enquanto o serviço de impressão local não respondeu; quando a impressão direta falhou (aí ele escolhe abrir o PDF — `FR-009`, nunca falhar em silêncio); e quando o navegador recusou a aba do PDF. O aviso de `CadMaqHost` default virou toast.
+3. **O PDF nunca é baixado — sempre abre em aba nova.** O operador precisa conferir o cupom na hora, não acumular arquivos na pasta de downloads de um PDV compartilhado entre turnos.
+
+**Erro de transmissão da NFCe ganhou modal próprio** (`DialogoErroFaturamento`), substituindo o texto que ficava ao pé do botão: uma venda **não emitida** é o desfecho mais grave do fluxo e uma linha de texto ali era fácil demais de não ver — o operador podia achar que finalizou. Continua sendo `falha-negocio`, com reenvio livre (`research.md`, D2); distinto de `DialogoConfirmarReenvio`, que trata a falha **sem resposta** e cobra confirmação explícita (`FR-004`/AD-038).
+
+**Achado técnico:** o PDF vai como `Blob` + `blob:` URL, não como `data:` URI — o Chrome **bloqueia navegação de topo para `data:`**, e `window.open('data:application/pdf;base64,…')` abre uma aba em branco e falha em silêncio. Como o `'P'` abre a aba **depois** de a resposta do ERP chegar (fora da janela de gesto do usuário), o bloqueador de pop-up pode recusá-la: `abrirPdfNFCe` devolve `bloqueado-pelo-navegador` e o modal entra com um botão que abre com clique de verdade, em vez de perder o documento.
+
+**Impact:** `src/client/services/impressao/abrirPdfNFCe.ts` (novo), `src/client/features/finalizacao-suspensao/{DialogoDocumentoFiscal,DialogoErroFaturamento,AcoesFinaisVenda,useFinalizarOuSuspenderVenda}.tsx?`, `tests/integration/finalizacaoSuspensao.spec.ts`, `tests/e2e/finalizacao-suspensao.spec.ts`.
+
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

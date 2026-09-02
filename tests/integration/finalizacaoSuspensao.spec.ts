@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { CheckoutFaturarNFCe } from '../../src/client/domain/venda/montarRetratoVenda';
 import { DialogoDocumentoFiscal } from '../../src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal';
 import {
+  AcoesFinaisVenda,
   BarraAtalhosVenda,
   ProvedorFinalizacaoVenda,
 } from '../../src/client/features/finalizacao-suspensao/AcoesFinaisVenda';
@@ -14,6 +15,7 @@ import {
   type FinalizacaoDeps,
 } from '../../src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda';
 import type { ResultadoFaturamento } from '../../src/client/services/faturamento/faturarNFCeMutation';
+import type { abrirPdfNFCe } from '../../src/client/services/impressao/abrirPdfNFCe';
 import { CHAVE_RAIZ_PRODUTO } from '../../src/client/services/produto/produtoQueries';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
@@ -352,39 +354,76 @@ describe('descartar', () => {
   });
 });
 
-describe('fallback de impressão (T015, FR-009, research.md D5)', () => {
-  function renderizarDocumento(
+describe('entrega do documento fiscal (T015, FR-009; correções do usuário 2026-09-02)', () => {
+  function renderizarEntrega(
     tipoImpressao: 'E' | 'P',
-    fetchImpl: typeof fetch,
-    protocoloDaPagina = 'http:',
+    opcoes: {
+      fetchImpl?: typeof fetch;
+      protocoloDaPagina?: string;
+      abrirPdf?: typeof abrirPdfNFCe;
+      onFechar?: () => void;
+    } = {},
   ) {
+    const fetchImpl =
+      opcoes.fetchImpl ?? vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
     return render(
       createElement(DialogoDocumentoFiscal, {
         notaFiscal: NOTA_FISCAL_VALIDA,
         tipoImpressao,
         cadMaqHost: '127.0.0.1:4545',
-        onFechar: () => undefined,
-        impressaoDeps: { fetchImpl, protocoloDaPagina },
+        onFechar: opcoes.onFechar ?? (() => undefined),
+        impressaoDeps: {
+          fetchImpl,
+          protocoloDaPagina: opcoes.protocoloDaPagina ?? 'http:',
+        },
+        abrirPdf: opcoes.abrirPdf ?? (() => ({ estado: 'aberto' })),
       }),
     );
   }
 
-  it("imprime direto quando TipoImpressao = 'E' e o serviço local responde", async () => {
+  it("com TipoImpressao = 'P' abre o PDF em outra aba e não mostra modal nenhum", async () => {
+    const abrirPdf = vi.fn<typeof abrirPdfNFCe>(() => ({ estado: 'aberto' }));
+    const onFechar = vi.fn();
+
+    renderizarEntrega('P', { abrirPdf, onFechar });
+
+    await waitFor(() => {
+      expect(abrirPdf).toHaveBeenCalledTimes(1);
+    });
+    expect(abrirPdf).toHaveBeenCalledWith(NOTA_FISCAL_VALIDA.PDFImpressao);
+    expect(screen.queryByTestId('dialogo-documento-fiscal')).not.toBeInTheDocument();
+    expect(onFechar).toHaveBeenCalled();
+  });
+
+  it('impressão direta bem-sucedida também não mostra modal', async () => {
     const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
+    const onFechar = vi.fn();
 
-    renderizarDocumento('E', fetchImpl);
+    renderizarEntrega('E', { fetchImpl, onFechar });
 
-    expect(await screen.findByText(/enviado para impressão/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('link-pdf-documento-fiscal')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(onFechar).toHaveBeenCalled();
+    });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('dialogo-documento-fiscal')).not.toBeInTheDocument();
+  });
+
+  it('mostra o modal enquanto conversa com a impressora', () => {
+    // `fetch` que nunca resolve: mantém a entrega no estado de espera.
+    const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(() => undefined));
+
+    renderizarEntrega('E', { fetchImpl });
+
+    expect(screen.getByTestId('dialogo-documento-fiscal')).toBeInTheDocument();
+    expect(screen.getByText(/enviando para a impressora/i)).toBeInTheDocument();
   });
 
   it('oferece o PDF quando o serviço local não responde — nunca falha em silêncio', async () => {
     const fetchImpl = vi.fn<typeof fetch>(() => Promise.reject(new TypeError('Failed to fetch')));
 
-    renderizarDocumento('E', fetchImpl);
+    renderizarEntrega('E', { fetchImpl });
 
-    expect(await screen.findByTestId('link-pdf-documento-fiscal')).toBeInTheDocument();
+    expect(await screen.findByTestId('abrir-pdf-documento-fiscal')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/serviço de impressão da máquina/i);
   });
 
@@ -393,21 +432,21 @@ describe('fallback de impressão (T015, FR-009, research.md D5)', () => {
     // tentar. A remediação é de política de TI, não de impressora.
     const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
 
-    renderizarDocumento('E', fetchImpl, 'https:');
+    renderizarEntrega('E', { fetchImpl, protocoloDaPagina: 'https:' });
 
-    expect(await screen.findByTestId('link-pdf-documento-fiscal')).toBeInTheDocument();
+    expect(await screen.findByTestId('abrir-pdf-documento-fiscal')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/navegador bloqueou/i);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("apresenta o PDF direto quando TipoImpressao = 'P', sem tentar o serviço local", async () => {
-    const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
+  it('mostra o modal quando o navegador recusa a aba do PDF, sem perder o documento', async () => {
+    const abrirPdf = vi.fn<typeof abrirPdfNFCe>(() => ({ estado: 'bloqueado-pelo-navegador' }));
 
-    renderizarDocumento('P', fetchImpl);
+    renderizarEntrega('P', { abrirPdf });
 
-    expect(await screen.findByTestId('link-pdf-documento-fiscal')).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('dialogo-documento-fiscal')).toBeInTheDocument();
+    expect(screen.getByText(/bloqueou a aba do pdf/i)).toBeInTheDocument();
+    expect(screen.getByTestId('abrir-pdf-documento-fiscal')).toBeInTheDocument();
   });
 });
 
@@ -505,17 +544,89 @@ describe('correções do usuário (2026-09-02)', () => {
 
   it('fecha o modal do documento fiscal com ESC', async () => {
     const fechado = vi.fn();
+    // `fetch` que nunca resolve: segura o modal no estado de espera, que é o
+    // único caminho em que ele fica na tela esperando o operador.
     render(
       createElement(DialogoDocumentoFiscal, {
         notaFiscal: NOTA_FISCAL_VALIDA,
-        tipoImpressao: 'P',
+        tipoImpressao: 'E',
         cadMaqHost: '127.0.0.1:4545',
         onFechar: fechado,
+        impressaoDeps: { fetchImpl: () => new Promise<Response>(() => undefined) },
       }),
     );
+    expect(screen.getByTestId('dialogo-documento-fiscal')).toBeInTheDocument();
 
     await userEvent.keyboard('{Escape}');
 
     expect(fechado).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () => {
+  function renderizarAcoes(cenario: Cenario) {
+    return render(
+      createElement(
+        cenario.wrapper,
+        null,
+        createElement(ProvedorFinalizacaoVenda, {
+          deps: cenario.deps,
+          children: createElement(AcoesFinaisVenda),
+        }),
+      ),
+    );
+  }
+
+  it('desabilita "Finalizar venda" com o carrinho vazio', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    useVendaStore.getState().limparCarrinho();
+
+    renderizarAcoes(cenario);
+
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+  });
+
+  it('desabilita "Finalizar venda" quando o subtotal é zero', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    useVendaStore.setState({
+      linhas: [linhaDe({ quantidadeEmUnidades: 1, precoUnitario: 0 })],
+    });
+
+    renderizarAcoes(cenario);
+
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+  });
+
+  it('habilita "Finalizar venda" com item e subtotal positivo', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+
+    renderizarAcoes(cenario);
+
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeEnabled();
+  });
+
+  it('recusa FATURAR sem valor mesmo quando acionado fora do botão', async () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    useVendaStore.getState().limparCarrinho();
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(cenario.enviados).toHaveLength(0);
+    expect(cenario.avisos).toHaveLength(1);
+    expect(result.current.estado).toEqual({ tipo: 'ocioso' });
+  });
+
+  it('não aplica a guarda a SUSPENDER — o bloqueio de venda vazia é do atalho', async () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.suspender();
+    });
+
+    expect(cenario.enviados).toHaveLength(1);
   });
 });
