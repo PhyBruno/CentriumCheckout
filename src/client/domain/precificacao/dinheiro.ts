@@ -172,3 +172,18 @@ export function calcularTotalLinha(
   const bruto = multiplicarPorQuantidade(precoUnitario, quantidade);
   return centavos(Math.max(0, bruto - descontoLinha));
 }
+
+const CENTAVOS_POR_REAL = 100;
+
+/**
+ * Exibição em pt-BR, com aritmética inteira: converter para `number` decimal só
+ * para formatar reintroduziria o ponto flutuante que este módulo evita.
+ */
+export function formatarCentavos(valor: Centavos): string {
+  const sinal = valor < 0 ? '-' : '';
+  const absoluto = Math.abs(valor);
+  const reais = Math.trunc(absoluto / CENTAVOS_POR_REAL);
+  const resto = absoluto % CENTAVOS_POR_REAL;
+  const inteiros = String(reais).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${sinal}R$ ${inteiros},${String(resto).padStart(2, '0')}`;
+}

@@ -76,15 +76,15 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 1
 
-- [ ] T013 [US1] Integration test: seleção no modal de busca nunca monta `LinhaCarrinho` a partir de `GetListaProdutos` — sempre dispara `fetchProduto`/`GetProduto` para o `CodigoProduto` selecionado (AD-091) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T013 [US1] Integration test: seleção no modal de busca nunca monta `LinhaCarrinho` a partir de `GetListaProdutos` — sempre dispara `fetchProduto`/`GetProduto` para o `CodigoProduto` selecionado (AD-091) em `tests/integration/carrinhoSlice.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Implementar `useBuscaProdutos` (`GET /api/erp/GetListaProdutos`) em `src/client/services/produto/produtoQueries.ts` — só dispara quando `Txtbusca.length >= SessaoUsuario.QtdMinCharParaConsulta` (AD-024, piso vem do ERP, nunca hardcoded)
-- [ ] T015 [US1] Implementar `src/client/features/carrinho/ModalBuscaProduto.tsx` (`CART-01`): busca com skeleton Boneyard, lista paginada; seleção de candidato chama `fetchProduto` (T006), nunca monta a linha do resultado da busca
-- [ ] T016 [P] [US1] Implementar `src/client/features/carrinho/GridItens.tsx`: grid desktop exibindo linhas ativas do carrinho (base para riscar cancelada, estendido em US4)
-- [ ] T017 [P] [US1] Implementar `src/client/features/carrinho/ListaItensMobile.tsx`: mesma fonte de estado do carrinho, layout mobile
-- [ ] T018 [US1] E2E — busca (quickstart, Camada 3, passos 2-4): termo abaixo do mínimo não dispara `GetListaProdutos`; termo completo lista com skeleton; seleção insere via `GetProduto` — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T014 [P] [US1] Implementar `useBuscaProdutos` (`GET /api/erp/GetListaProdutos`) em `src/client/services/produto/produtoQueries.ts` — só dispara quando `Txtbusca.length >= SessaoUsuario.QtdMinCharParaConsulta` (AD-024, piso vem do ERP, nunca hardcoded)
+- [X] T015 [US1] Implementar `src/client/features/carrinho/ModalBuscaProduto.tsx` (`CART-01`): busca com skeleton Boneyard, lista paginada; seleção de candidato chama `fetchProduto` (T006), nunca monta a linha do resultado da busca
+- [X] T016 [P] [US1] Implementar `src/client/features/carrinho/GridItens.tsx`: grid desktop exibindo linhas ativas do carrinho (base para riscar cancelada, estendido em US4)
+- [X] T017 [P] [US1] Implementar `src/client/features/carrinho/ListaItensMobile.tsx`: mesma fonte de estado do carrinho, layout mobile
+- [X] T018 [US1] E2E — busca (quickstart, Camada 3, passos 2-4): termo abaixo do mínimo não dispara `GetListaProdutos`; termo completo lista com skeleton; seleção insere via `GetProduto` — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — busca e seleção completas (FR-001).
 
@@ -103,11 +103,11 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 ### Implementation for User Story 2
 
 - [X] T020 [US2] Implementar `src/client/domain/precificacao/codigoProduto.ts`: `interpretarEntradaCodigo` (ordem `*` → balança (13 dígitos, prefixo `2`, DV EAN-13 válido) → simples, D6), `quantidadePesavel` (`round(trunc(valorEtiqueta/precoVenda,5),3)`, AD-076) — depende de T002, T003
-- [ ] T021 [US2] Implementar `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`CART-02`): campo de código/bipagem + TAB/Enter, usa T020 para classificar a entrada, chama `fetchProduto` (T006) e `inserirItem` (T009)
-- [ ] T022 [US2] Implementar `src/client/features/carrinho/EdicaoItemEditavel.tsx`: fluxo `'E'` — foco pula para campos editáveis (preço/unidade/quantidade/desconto), insere só ao acionar `+` (`FR-014`); `'S'`/`'B'` insere direto somente-leitura com quantidade/preço da etiqueta/balança (`FR-013`/`FR-015`); `''` insere direto somente-leitura (`FR-015`) — compartilhado pelo caminho de busca (US1) e código direto (US2)
-- [ ] T023 [US2] Wire bloqueio de inserção de produto pesável sem `PrecoVenda` disponível: toast de aviso, nenhuma linha inserida, foco permanece no campo (`FR-013`)
-- [ ] T024 [US2] Integration test: reinserir o mesmo SKU não gera nova chamada a `GetProduto` (`staleTime: Infinity`, `CART-03`) em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T025 [US2] E2E — código direto (quickstart, Camada 3, passos 7-9): `codigo*3` insere quantidade 3, código simples insere quantidade 1, EAN-13 de balança deriva quantidade/preço com campos somente-leitura, produto `'E'` não insere ao TAB — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T021 [US2] Implementar `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`CART-02`): campo de código/bipagem + TAB/Enter, usa T020 para classificar a entrada, chama `fetchProduto` (T006) e `inserirItem` (T009)
+- [X] T022 [US2] Implementar `src/client/features/carrinho/EdicaoItemEditavel.tsx`: fluxo `'E'` — foco pula para campos editáveis (preço/unidade/quantidade/desconto), insere só ao acionar `+` (`FR-014`); `'S'`/`'B'` insere direto somente-leitura com quantidade/preço da etiqueta/balança (`FR-013`/`FR-015`); `''` insere direto somente-leitura (`FR-015`) — compartilhado pelo caminho de busca (US1) e código direto (US2)
+- [X] T023 [US2] Wire bloqueio de inserção de produto pesável sem `PrecoVenda` disponível: toast de aviso, nenhuma linha inserida, foco permanece no campo (`FR-013`)
+- [X] T024 [US2] Integration test: reinserir o mesmo SKU não gera nova chamada a `GetProduto` (`staleTime: Infinity`, `CART-03`) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T025 [US2] E2E — código direto (quickstart, Camada 3, passos 7-9): `codigo*3` insere quantidade 3, código simples insere quantidade 1, EAN-13 de balança deriva quantidade/preço com campos somente-leitura, produto `'E'` não insere ao TAB — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: User Stories 1 e 2 funcionam juntas — os dois caminhos de inserção completos (FR-002 a FR-004, FR-013 a FR-015).
 
@@ -126,11 +126,11 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Implementar desconto de convênio: `aplicarPercentual` (T002) sobre o total bruto da linha com o `DescontoConvenio` do cliente atual (AD-023) — cliente default sempre fator `1` (AD-108); recalculado junto com `repricarSku`
-- [ ] T029 [US3] Implementar `reprecificarPorTrocaDeCliente()` no `carrinhoSlice` (T009): chama T008 para cada SKU distinto com linha ativa não-congelada quando `TipoPreco = 9` ou o `DescontoConvenio` do cliente muda (`FR-018`) — sem evento de auditoria próprio (auditado pela feature 005 como `CLIENTE_TROCADO`)
-- [ ] T030 [US3] Wire `editarItem(idLinha, 'quantidade', ...)` no `carrinhoSlice` (T009) para chamar `repricarSku` (`FR-007`)
-- [ ] T031 [US3] Integration test — cenário de aceitação central (quickstart, Camada 1): inserir 3un (preço 1000) → inserir +3un em nova linha (agregado 6, cruza faixa, ambas linhas passam a 900) → cancelar a 2ª linha (agregado volta a 3, remanescente volta a 1000, linha cancelada permanece no array) — em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T032 [US3] E2E — faixa de preço (quickstart, Camada 3, passo 5): bipar/digitar quantidade que cruza o limiar → todas as linhas do SKU exibem o novo preço — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T028 [US3] Implementar desconto de convênio: `aplicarPercentual` (T002) sobre o total bruto da linha com o `DescontoConvenio` do cliente atual (AD-023) — cliente default sempre fator `1` (AD-108); recalculado junto com `repricarSku`
+- [X] T029 [US3] Implementar `reprecificarPorTrocaDeCliente()` no `carrinhoSlice` (T009): chama T008 para cada SKU distinto com linha ativa não-congelada quando `TipoPreco = 9` ou o `DescontoConvenio` do cliente muda (`FR-018`) — sem evento de auditoria próprio (auditado pela feature 005 como `CLIENTE_TROCADO`)
+- [X] T030 [US3] Wire `editarItem(idLinha, 'quantidade', ...)` no `carrinhoSlice` (T009) para chamar `repricarSku` (`FR-007`)
+- [X] T031 [US3] Integration test — cenário de aceitação central (quickstart, Camada 1): inserir 3un (preço 1000) → inserir +3un em nova linha (agregado 6, cruza faixa, ambas linhas passam a 900) → cancelar a 2ª linha (agregado volta a 3, remanescente volta a 1000, linha cancelada permanece no array) — em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T032 [US3] E2E — faixa de preço (quickstart, Camada 3, passo 5): bipar/digitar quantidade que cruza o limiar → todas as linhas do SKU exibem o novo preço — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: User Stories 1, 2 e 3 funcionam juntas — motor de precificação completo (FR-005 a FR-008, FR-018, SC-001, SC-002).
 
@@ -144,14 +144,14 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 4
 
-- [ ] T033 [US4] Integration test: linha cancelada preservada no array (`linhas.length` inalterado), excluída de `quantidadeAgregada`/`totalVenda` (`FR-009`) em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T034 [US4] Integration test: `cancelarItem` (T009) executa sem nenhum prompt de supervisor/reautenticação (`FR-012`, AD-065) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T033 [US4] Integration test: linha cancelada preservada no array (`linhas.length` inalterado), excluída de `quantidadeAgregada`/`totalVenda` (`FR-009`) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T034 [US4] Integration test: `cancelarItem` (T009) executa sem nenhum prompt de supervisor/reautenticação (`FR-012`, AD-065) em `tests/integration/carrinhoSlice.spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T035 [US4] Estender `GridItens.tsx` (T016): linha com `cancelada = true` exibida riscada, permanece visível (`CART-08`)
-- [ ] T036 [US4] Wire ação de cancelar na UI (`GridItens.tsx`/`ListaItensMobile.tsx`) chamando `cancelarItem` (T009) — sem modal de confirmação/supervisor
-- [ ] T037 [US4] E2E — cancelamento (quickstart, Camada 3, passos 6 e 10): cancelar → linha riscada e visível, demais linhas do SKU recalculadas, subtotal exclui a cancelada; repetir no layout mobile — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T035 [US4] Estender `GridItens.tsx` (T016): linha com `cancelada = true` exibida riscada, permanece visível (`CART-08`)
+- [X] T036 [US4] Wire ação de cancelar na UI (`GridItens.tsx`/`ListaItensMobile.tsx`) chamando `cancelarItem` (T009) — sem modal de confirmação/supervisor
+- [X] T037 [US4] E2E — cancelamento (quickstart, Camada 3, passos 6 e 10): cancelar → linha riscada e visível, demais linhas do SKU recalculadas, subtotal exclui a cancelada; repetir no layout mobile — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: As 4 user stories funcionam de forma independente e integrada — feature completa (FR-009, FR-012, SC-003).
 
@@ -161,11 +161,11 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Fechamento das dependências injetadas (D8), integração com fim de venda, e gates finais.
 
-- [ ] T038 [P] Wire `podeMutarCarrinho()` como predicado injetado consumido por `editarItem`/`cancelarItem` (T009) — stub `() => true` até a feature 008 (pagamento) fornecer a implementação real; **dependência por injeção, não por import** (D8) — não bloqueia esta feature
-- [ ] T039 [P] Integration test: bloqueio pós-pagamento via predicado injetado `() => false` — `editarItem`/`cancelarItem` viram no-op, `linhas` inalterado (`FR-010`) em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T040 Wire invalidação do cache de produto (`queryClient.removeQueries({ queryKey: ['produto'] })`) e `limparCarrinho()` (T009) nos dois únicos momentos permitidos: finalização e suspensão da venda — integração real fica pendente da feature 004 (só chama os hooks já prontos aqui)
-- [ ] T041 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
-- [ ] T042 Rodar as 3 camadas de `quickstart.md` (domínio puro, slice, E2E) e confirmar o critério de aceite da feature
+- [X] T038 [P] Wire `podeMutarCarrinho()` como predicado injetado consumido por `editarItem`/`cancelarItem` (T009) — stub `() => true` até a feature 008 (pagamento) fornecer a implementação real; **dependência por injeção, não por import** (D8) — não bloqueia esta feature
+- [X] T039 [P] Integration test: bloqueio pós-pagamento via predicado injetado `() => false` — `editarItem`/`cancelarItem` viram no-op, `linhas` inalterado (`FR-010`) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T040 Wire invalidação do cache de produto (`queryClient.removeQueries({ queryKey: ['produto'] })`) e `limparCarrinho()` (T009) nos dois únicos momentos permitidos: finalização e suspensão da venda — integração real fica pendente da feature 004 (só chama os hooks já prontos aqui)
+- [X] T041 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
+- [X] T042 Rodar as 3 camadas de `quickstart.md` (domínio puro, slice, E2E) e confirmar o critério de aceite da feature
 
 ---
 

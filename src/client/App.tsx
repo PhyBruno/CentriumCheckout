@@ -16,6 +16,11 @@ import { LoadingSkeleton } from './features/session-bootstrap/LoadingSkeleton';
 import { ErrorRetry } from './features/session-bootstrap/ErrorRetry';
 import { SessionExpiredWarning } from './features/session-bootstrap/SessionExpiredWarning';
 import { PainelMensagem } from './features/session-bootstrap/PainelMensagem';
+import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
+import { GridItens } from './features/carrinho/GridItens';
+import { ListaItensMobile } from './features/carrinho/ListaItensMobile';
+import { ModalBuscaProduto } from './features/carrinho/ModalBuscaProduto';
+import { Button } from '@/components/ui/button';
 
 export interface AppProps {
   /** Injetáveis para teste — em produção usam os padrões reais. */
@@ -139,16 +144,73 @@ export function App({
   return <TelaDeVenda />;
 }
 
+/** Limiar `md` do Tailwind — o layout condicional definitivo é da feature 007. */
+const CONSULTA_LAYOUT_COMPACTO = '(max-width: 767px)';
+
+function useLayoutCompacto(): boolean {
+  const [compacto, setCompacto] = useState(
+    () => window.matchMedia(CONSULTA_LAYOUT_COMPACTO).matches,
+  );
+
+  useEffect(() => {
+    const consulta = window.matchMedia(CONSULTA_LAYOUT_COMPACTO);
+    const aoMudar = (evento: MediaQueryListEvent): void => {
+      setCompacto(evento.matches);
+    };
+
+    // Reavalia na montagem: a largura pode ter mudado entre o estado inicial e
+    // o efeito (o próprio E2E redimensiona a janela antes de navegar).
+    setCompacto(consulta.matches);
+    consulta.addEventListener('change', aoMudar);
+    return () => {
+      consulta.removeEventListener('change', aoMudar);
+    };
+  }, []);
+
+  return compacto;
+}
+
 /**
- * Espaço da tela de venda. O conteúdo real vem das features de carrinho,
- * pagamento e finalização — esta feature só garante que ela é liberada com a
- * configuração do PDV inteira já carregada.
+ * Tela de venda. A configuração do PDV já está inteira carregada aqui (a
+ * feature 002 garante isso); o conteúdo é das features de venda — por ora o
+ * carrinho (003), depois pagamento (008) e finalização (004).
+ *
+ * A grid desktop e a lista mobile leem o **mesmo** estado de carrinho; só uma
+ * das duas é montada por vez.
  */
 function TelaDeVenda(): ReactElement {
+  const [buscaAberta, setBuscaAberta] = useState(false);
+  const compacto = useLayoutCompacto();
+
   return (
-    <main data-testid="tela-de-venda">
-      <h1>Centrium Checkout</h1>
-      <p>Ponto de venda pronto para operação.</p>
+    <main className="flex min-h-screen flex-col gap-base p-base" data-testid="tela-de-venda">
+      <header className="flex items-center justify-between gap-sm">
+        <h1 className="text-lg font-semibold">Centrium Checkout</h1>
+        <Button
+          type="button"
+          variant="outline"
+          data-testid="abrir-busca-produto"
+          onClick={() => {
+            setBuscaAberta(true);
+          }}
+        >
+          Buscar produto
+        </Button>
+      </header>
+
+      <EntradaRapidaProduto />
+
+      {/* Montagem condicional, não `display: none`: as duas superfícies leem o
+          mesmo carrinho, e manter as duas árvores no DOM duplicaria cada item
+          para leitores de tela. */}
+      {compacto ? <ListaItensMobile /> : <GridItens />}
+
+      <ModalBuscaProduto
+        aberto={buscaAberta}
+        onFechar={() => {
+          setBuscaAberta(false);
+        }}
+      />
     </main>
   );
 }
