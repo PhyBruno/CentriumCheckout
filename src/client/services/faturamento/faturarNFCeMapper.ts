@@ -26,7 +26,8 @@ export type ResultadoMapeamento =
 
 const MENSAGEM_PADRAO_FATURAR =
   'O ERP respondeu sem a nota fiscal pronta para impressão. A venda não foi emitida.';
-const MENSAGEM_PADRAO_SUSPENDER = 'O ERP respondeu em formato inesperado. A venda não foi suspensa.';
+const MENSAGEM_PADRAO_SUSPENDER =
+  'O ERP respondeu em formato inesperado. A venda não foi suspensa.';
 
 /**
  * Texto que o ERP mandou junto, quando mandou.

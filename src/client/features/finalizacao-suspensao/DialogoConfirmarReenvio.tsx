@@ -14,6 +14,10 @@ import type { SuspenderOuFaturar } from '../../domain/venda/montarRetratoVenda';
  * Este diálogo não tem botão de "tentar de novo automaticamente" nem contagem
  * regressiva de propósito — as duas coisas reintroduziriam o reenvio automático
  * por outro nome.
+ *
+ * Mesma anatomia de modal do "Modal pagamento aprovado TEF" (`A9MNZI`) do
+ * Pencil, na família de alerta: cabeçalho de 78px com hairline, corpo de 32/24
+ * com ícone circular de 96px e rodapé de 60px com borda superior.
  */
 export interface DialogoConfirmarReenvioProps {
   readonly operacao: SuspenderOuFaturar;
@@ -44,31 +48,59 @@ export function DialogoConfirmarReenvio({
         role="alertdialog"
         aria-modal="true"
         aria-label="Confirmar reenvio"
-        className="flex w-full max-w-[440px] flex-col gap-base rounded-3xl bg-background p-lg shadow-lg"
+        className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
       >
-        <header className="flex items-center gap-sm">
-          <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
-            <AlertTriangle className="size-5 text-[var(--cc-color-accent-yellow)]" aria-hidden />
+        <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
+          <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-warning-soft)]">
+            <AlertTriangle
+              className="size-5 text-[var(--cc-color-accent-yellow)]"
+              aria-hidden="true"
+            />
           </span>
-          <h2 className="text-lg font-semibold">Sem resposta do servidor</h2>
+          <span className="flex flex-col gap-[2px]">
+            <strong className="text-md font-semibold text-foreground">
+              Sem resposta do servidor
+            </strong>
+            <span className="text-sm text-[var(--cc-color-body)]">
+              A {nome} pode ou não ter sido processada
+            </span>
+          </span>
         </header>
 
-        <div className="flex flex-col gap-xs text-[var(--cc-color-body)]">
-          <p>
-            A {nome} foi enviada, mas nenhuma resposta chegou. Não é possível saber, daqui, se ela
-            já foi processada.
-          </p>
-          <p className="font-semibold text-foreground">
-            Confirme no ERP antes de reenviar: reenviar uma venda já processada emite um segundo
-            documento fiscal.
+        <div className="flex flex-col items-center gap-lg px-lg py-xl">
+          <span className="flex size-24 items-center justify-center rounded-full bg-[var(--cc-color-warning-soft)]">
+            <AlertTriangle
+              className="size-14 text-[var(--cc-color-accent-yellow)]"
+              aria-hidden="true"
+            />
+          </span>
+
+          <span className="flex flex-col items-center gap-xs text-center">
+            <strong className="text-lg font-semibold text-foreground">
+              Confirme no ERP antes de reenviar
+            </strong>
+            <span className="text-sm text-[var(--cc-color-body)]">
+              A {nome} foi enviada, mas nenhuma resposta chegou. Daqui não é possível saber se ela
+              já foi processada.
+            </span>
+          </span>
+
+          <p className="w-full rounded-2xl border border-border bg-[var(--cc-color-surface-soft)] p-base text-center text-sm font-semibold text-foreground">
+            Reenviar uma venda já processada emite um segundo documento fiscal.
           </p>
         </div>
 
-        <footer className="flex justify-end gap-xs">
-          <Button variant="secondary" onClick={onCancelar} data-testid="cancelar-reenvio">
+        <footer className="flex h-[60px] shrink-0 items-center justify-center gap-sm border-t border-border px-lg">
+          <Button
+            variant="secondary"
+            className="h-9 rounded-full px-lg"
+            onClick={onCancelar}
+            data-testid="cancelar-reenvio"
+          >
             Agora não
           </Button>
           <Button
+            className="h-9 rounded-full px-lg"
             onClick={onConfirmar}
             disabled={enviando}
             aria-busy={enviando}

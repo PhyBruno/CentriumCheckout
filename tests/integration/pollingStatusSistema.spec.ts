@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import type {
-  ErpClient,
-  ResultadoChamadaErp,
-} from '../../src/client/services/erpClient';
+import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import {
   INTERVALO_STATUS_SISTEMA_MS,
   usePollingStatusSistema,

@@ -4702,5 +4702,18 @@
       "src/client/stores/vendaStore.ts"
     ],
     "date": "2026-09-02"
+  },
+  {
+    "type": "decision",
+    "content": "AD-125: finalizar dentro do card de pagamento; cancelar a esquerda; resumo sempre visivel",
+    "tags": [
+      "004",
+      "ui",
+      "pencil"
+    ],
+    "files": [
+      "src/client/App.tsx"
+    ],
+    "date": "2026-09-02"
   }
 ]

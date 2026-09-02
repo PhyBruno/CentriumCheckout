@@ -1,4 +1,4 @@
-import { AlertTriangle, CircleCheck, FileText, Printer } from 'lucide-react';
+import { AlertTriangle, Check, FileText, Printer } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,12 @@ import type { NotaFiscalResposta } from '../../../shared/schemas/faturarNFCe.sch
  * (`FR-009`): mostra a causa — serviço indisponível vs. bloqueio de navegador,
  * que têm remediações completamente diferentes (`research.md`, D5) — e oferece
  * o mesmo PDF como alternativa.
+ *
+ * **Anatomia**: o Pencil não desenhou um modal próprio para o documento fiscal;
+ * este segue nó a nó o "Modal pagamento aprovado TEF" (`A9MNZI`), que é o modal
+ * de "operação concluída" do produto — cartão de 480px com raio 24 e hairline,
+ * cabeçalho de 78px com borda inferior, corpo de 32/24 com ícone circular de
+ * 96px, e rodapé de 60px com borda superior e ação centralizada.
  *
  * Só aparece em `FATURAR`: suspender não emite documento fiscal.
  */
@@ -93,6 +99,7 @@ export function DialogoDocumentoFiscal({
   }, [cadMaqHost, impressaoDeps, mecanismo, notaFiscal.XMLImpressao]);
 
   const pdfHref = `data:application/pdf;base64,${notaFiscal.PDFImpressao}`;
+  const houveFalha = estado.tipo === 'pdf' && estado.falhaDaImpressao !== null;
 
   return (
     <div
@@ -103,63 +110,112 @@ export function DialogoDocumentoFiscal({
         role="dialog"
         aria-modal="true"
         aria-label="Documento fiscal"
-        className="flex w-full max-w-[440px] flex-col gap-base rounded-3xl bg-background p-lg shadow-lg"
+        className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
       >
-        <header className="flex items-center gap-sm">
-          <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
-            {estado.tipo === 'impresso' ? (
-              <CircleCheck className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+        <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
+          <span
+            className={
+              houveFalha
+                ? 'flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-warning-soft)]'
+                : 'flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]'
+            }
+          >
+            {houveFalha ? (
+              <AlertTriangle
+                className="size-5 text-[var(--cc-color-accent-yellow)]"
+                aria-hidden="true"
+              />
             ) : (
-              <FileText className="size-5 text-[var(--cc-color-body)]" aria-hidden="true" />
+              <Check className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
             )}
           </span>
-          <h2 className="text-lg font-semibold">Venda finalizada</h2>
+          <span className="flex flex-col gap-[2px]">
+            <strong className="text-md font-semibold text-foreground">Venda finalizada</strong>
+            <span className="text-sm text-[var(--cc-color-up)]">NFCe autorizada com sucesso</span>
+          </span>
         </header>
 
-        {estado.tipo === 'imprimindo' && (
-          <p className="flex items-center gap-xs text-[var(--cc-color-body)]">
-            <Printer className="size-4" aria-hidden="true" />
-            Enviando o cupom para a impressora do caixa…
-          </p>
-        )}
-
-        {estado.tipo === 'impresso' && (
-          <div className="flex flex-col gap-xs">
-            <p className="text-[var(--cc-color-body)]">Cupom enviado para impressão.</p>
-            {estado.avisoDeHost !== null && (
-              <p className="text-sm text-[var(--cc-color-muted)]">{estado.avisoDeHost}</p>
+        <div className="flex flex-col items-center gap-lg px-lg py-xl">
+          <span
+            className={
+              houveFalha
+                ? 'flex size-24 items-center justify-center rounded-full bg-[var(--cc-color-warning-soft)]'
+                : 'flex size-24 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]'
+            }
+          >
+            {estado.tipo === 'imprimindo' && (
+              <Printer className="size-14 text-[var(--cc-color-body)]" aria-hidden="true" />
             )}
-          </div>
-        )}
-
-        {estado.tipo === 'pdf' && (
-          <div className="flex flex-col gap-sm">
-            {estado.falhaDaImpressao !== null && (
-              <p
-                role="alert"
-                className="flex items-start gap-xs rounded-lg bg-secondary p-sm text-[var(--cc-color-down)]"
-              >
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                {estado.falhaDaImpressao}
-              </p>
+            {estado.tipo === 'impresso' && (
+              <Check className="size-14 text-[var(--cc-color-up)]" aria-hidden="true" />
             )}
-            <p className="text-[var(--cc-color-body)]">
-              O documento fiscal está pronto para visualização ou download.
+            {estado.tipo === 'pdf' && (
+              <FileText
+                className={
+                  houveFalha
+                    ? 'size-14 text-[var(--cc-color-accent-yellow)]'
+                    : 'size-14 text-[var(--cc-color-up)]'
+                }
+                aria-hidden="true"
+              />
+            )}
+          </span>
+
+          <span className="flex flex-col items-center gap-xs text-center">
+            <strong className="text-lg font-semibold text-foreground">
+              {estado.tipo === 'imprimindo' && 'Enviando para a impressora'}
+              {estado.tipo === 'impresso' && 'Cupom enviado para impressão'}
+              {estado.tipo === 'pdf' && 'Documento fiscal disponível'}
+            </strong>
+
+            {estado.tipo === 'imprimindo' && (
+              <span className="text-sm text-[var(--cc-color-body)]">
+                Aguarde o cupom sair na impressora do caixa.
+              </span>
+            )}
+            {estado.tipo === 'impresso' && estado.avisoDeHost !== null && (
+              <span className="text-sm text-[var(--cc-color-muted)]">{estado.avisoDeHost}</span>
+            )}
+            {estado.tipo === 'pdf' && (
+              <span className="text-sm text-[var(--cc-color-body)]">
+                O documento fiscal está pronto para visualização ou download.
+              </span>
+            )}
+          </span>
+
+          {estado.tipo === 'pdf' && estado.falhaDaImpressao !== null && (
+            <p
+              role="alert"
+              className="flex w-full items-start gap-xs rounded-2xl border border-border bg-[var(--cc-color-surface-soft)] p-base text-sm text-[var(--cc-color-body)]"
+            >
+              <AlertTriangle
+                className="mt-[2px] size-4 shrink-0 text-[var(--cc-color-accent-yellow)]"
+                aria-hidden="true"
+              />
+              {estado.falhaDaImpressao}
             </p>
+          )}
+
+          {estado.tipo === 'pdf' && (
             <a
               href={pdfHref}
               download="nfce.pdf"
               data-testid="link-pdf-documento-fiscal"
-              className="flex h-10 items-center justify-center gap-xs rounded-full bg-primary text-md font-semibold text-primary-foreground"
+              className="flex h-11 w-full items-center justify-center gap-xs rounded-full bg-primary text-md font-semibold text-primary-foreground"
             >
               <FileText className="size-4" aria-hidden="true" />
               Abrir/baixar o PDF
             </a>
-          </div>
-        )}
+          )}
+        </div>
 
-        <footer className="flex justify-end">
-          <Button variant="secondary" onClick={onFechar} data-testid="fechar-documento-fiscal">
+        <footer className="flex h-[60px] shrink-0 items-center justify-center border-t border-border px-lg">
+          <Button
+            variant="secondary"
+            className="h-9 rounded-full px-lg"
+            onClick={onFechar}
+            data-testid="fechar-documento-fiscal"
+          >
             Concluir
           </Button>
         </footer>

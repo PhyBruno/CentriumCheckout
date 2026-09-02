@@ -19,7 +19,12 @@ import { PainelMensagem } from './features/session-bootstrap/PainelMensagem';
 import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
 import { GridItens } from './features/carrinho/GridItens';
 import { ListaItensMobile } from './features/carrinho/ListaItensMobile';
-import { AcoesFinaisVenda } from './features/finalizacao-suspensao/AcoesFinaisVenda';
+import {
+  AcoesVendaCompactas,
+  BarraAtalhosVenda,
+  ProvedorFinalizacaoVenda,
+} from './features/finalizacao-suspensao/AcoesFinaisVenda';
+import { PainelPagamentoETotais } from './features/pagamento/PainelPagamentoETotais';
 import { usePollingStatusSistema } from './services/statusSistema/pollingStatusSistema';
 import { abrirSessaoDeVenda, useVendaStore } from './stores/vendaStore';
 
@@ -229,32 +234,42 @@ function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement 
   });
 
   return (
+    // "Área operacional" do Pencil (nó `J9t3a`): fundo `$surface-soft`, duas
+    // colunas com 20px entre elas e folga de 20/24/24 ao redor.
     <main
-      className="flex h-screen flex-col gap-base overflow-hidden p-base"
+      className="flex h-screen flex-col overflow-hidden bg-[var(--cc-color-surface-soft)]"
       data-testid="tela-de-venda"
     >
-      <header className="flex items-center justify-between gap-sm">
+      <header className="flex shrink-0 items-center justify-between gap-sm px-lg py-base">
         <h1 className="text-lg font-semibold">Centrium Checkout</h1>
       </header>
 
-      <EntradaRapidaProduto />
+      {/* Um provider só para as duas superfícies da finalização, que no desenho
+          ficam em colunas diferentes: o atalho "Cancelar venda" à esquerda,
+          embaixo dos produtos, e "Finalizar venda" dentro do cartão de
+          pagamento à direita. Ver o TSDoc de `ProvedorFinalizacaoVenda`. */}
+      <ProvedorFinalizacaoVenda>
+        <div className="flex min-h-0 flex-1 gap-[20px] px-lg pb-lg">
+          {/* "Venda e produtos" (nó `imX5b`): coluna vertical, gap 16. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-base">
+            <EntradaRapidaProduto />
 
-      {/* Montagem condicional, não `display: none`. As duas superfícies leem o
-          mesmo carrinho; manter as duas árvores no DOM duplicaria cada item
-          para leitores de tela. É também o que a 007 exige de forma mais ampla:
-          ausência estrutural, não flag de "oculto" (MOB-05, FR-008). */}
-      {compacto ? <ListaItensMobile /> : <GridItens />}
+            {/* Montagem condicional, não `display: none`. As duas superfícies
+                leem o mesmo carrinho; manter as duas árvores no DOM duplicaria
+                cada item para leitores de tela. É também o que a 007 exige de
+                forma mais ampla: ausência estrutural, não flag de "oculto"
+                (MOB-05, FR-008). */}
+            {compacto ? <ListaItensMobile /> : <GridItens />}
 
-      {/* Uma única instância, nos dois layouts: os dois botões e os dois
-          diálogos precisam compartilhar a mesma máquina de estados (ver TSDoc
-          de `AcoesFinaisVenda`). No Pencil a lixeira mobile aparece na barra
-          superior (AD-089); reposicioná-la para lá pertence ao `MobileWizard`
-          da feature 007, que é quem passa a possuir o shell mobile — dividir a
-          máquina de estados entre dois pontos do DOM agora reabriria o caminho
-          de reenvio que `FR-004` fecha. */}
-      <footer className="mt-auto w-full self-end sm:max-w-[360px]">
-        <AcoesFinaisVenda compacto={compacto} />
-      </footer>
+            {compacto ? <AcoesVendaCompactas /> : <BarraAtalhosVenda />}
+          </div>
+
+          {/* O cartão de pagamento é a coluna da direita do desenho e não cabe
+              no layout compacto — lá as ações ficam empilhadas no rodapé até o
+              `MobileWizard` da feature 007 existir. */}
+          {!compacto && <PainelPagamentoETotais />}
+        </div>
+      </ProvedorFinalizacaoVenda>
     </main>
   );
 }
