@@ -11,6 +11,9 @@ function payloadValido(): Record<string, unknown> {
       CadMaqCod: 'PDV01',
       ListaPrecoDefault: 3,
       CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
+      QtdMinCharParaConsulta: 3,
+      UsuarioTipoCodigoProduto: 'I',
+      ClienteDefaultCodigo: 1,
     },
   };
 }
@@ -71,7 +74,15 @@ describe('bootstrapPayloadSchema', () => {
     expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
   });
 
-  it.each(['TipoPreco', 'CadMaqCod', 'ListaPrecoDefault', 'CenarioPagamento'])(
+  it.each([
+    'TipoPreco',
+    'CadMaqCod',
+    'ListaPrecoDefault',
+    'CenarioPagamento',
+    'QtdMinCharParaConsulta',
+    'UsuarioTipoCodigoProduto',
+    'ClienteDefaultCodigo',
+  ])(
     'recusa SessaoUsuario sem %s',
     (campo) => {
       const payload = payloadValido();

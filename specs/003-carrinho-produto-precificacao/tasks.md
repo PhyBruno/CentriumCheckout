@@ -40,7 +40,7 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Criar os diretórios específicos desta feature sobre a árvore já existente (002/001).
 
-- [ ] T001 Criar estrutura de diretórios desta feature: `src/client/domain/precificacao/`, `src/client/services/produto/`, `src/client/features/carrinho/` (`src/client/stores/slices/` já existe, criado pela feature 001)
+- [X] T001 Criar estrutura de diretórios desta feature: `src/client/domain/precificacao/`, `src/client/services/produto/`, `src/client/features/carrinho/` (`src/client/stores/slices/` já existe, criado pela feature 001)
 
 **Checkpoint**: Diretórios prontos — depende de `src/client/` já existir (Fase 1 da 002) e `src/client/stores/vendaStore.ts` já existir (Foundational da 001).
 
@@ -52,17 +52,17 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 **⚠️ CRITICAL**: Nenhuma user story pode começar até esta fase terminar.
 
-- [ ] T002 [P] Implementar `src/client/domain/precificacao/dinheiro.ts`: `Centavos` (branded), `centavos()`, `somar()`, `multiplicarPorQuantidade()` (`arredondar(preço × qtd ÷ 1000)`), `aplicarPercentual()`, `distribuirPorMaiorResto()` (AD-072), `calcularTotalLinha()` (única forma de obter o valor de uma linha — `data-model.md` §1, I9)
-- [ ] T003 [P] Implementar `src/client/domain/precificacao/quantidade.ts`: `Milesimos` (branded), `milesimosDeUnidades()`, `formatarQuantidade()`
-- [ ] T004 [P] Criar `src/shared/schemas/produto.schema.ts` (Zod): `SDTCheckout_GetProduto` e `CheckoutListaProdutos` — converte `PrecoVenda`/`PrecoVenda1..5`/`PrecoMinimo` (double) para `Centavos` (`Math.round(v*100)`), `QtdMinimaPreco2..5` para `Milesimos`, restringe `ProdutoPesavelEditavel` a `z.enum(['S','B','','E'])` (Constitution IV, `contracts/erp-produto-api.md`)
-- [ ] T005 Implementar `src/client/services/produto/produtoMapper.ts`: mapeia `SDTCheckout_GetProduto` validado (T004) para `SnapshotPrecoProduto` (`data-model.md` §2) — depende de T004
-- [ ] T006 Implementar `fetchProduto` (`GET /api/erp/GetProduto`) em `src/client/services/produto/produtoQueries.ts` — parâmetros `Empresa`/`Codigoproduto`/`Tipocodproduto` (`SessaoUsuario.UsuarioTipoCodigoProduto`, AD-033)/`Tipopreco`/`Codcliente`/`Listapreco` (só quando `TipoPreco=9`); `queryKey: ['produto', codigoProduto, tipoCodProduto, tipoPreco, listaPreco ?? null]`, `staleTime: Infinity` (`CART-03`) — depende de T004, T005; consome o proxy `/api/erp/*` da feature 002
-- [ ] T007 Implementar `src/client/domain/precificacao/tabelaPreco.ts`: `resolvePrecoUnitario(tipoPreco, snapshot, quantidadeAgregada)` — `1..7,9,10,11` retorna `snapshot.precoBase`; `8` resolve faixa flat por `QtdMinimaPreco2..5`/`PrecoVenda1..5` (limiar `0` = não configurada); lança erro de domínio fora de `1..11` — depende de T002, T003
-- [ ] T008 Implementar `src/client/domain/precificacao/reprecificacao.ts`: `repricarSku(linhas, codigoProduto, tipoPreco)` — função pura; agrega quantidade das linhas ativas não-congeladas do SKU (I2/I3 de `data-model.md`), chama T007 uma vez, aplica a **todas** as linhas ativas não-congeladas do SKU (`CART-06`), linhas canceladas/congeladas/outros SKUs retornam por identidade — depende de T007
-- [ ] T009 Implementar `src/client/stores/slices/carrinhoSlice.ts`: estado `linhas: LinhaCarrinho[]`; `CarrinhoDeps` injetado (`podeMutarCarrinho()`, `tipoPrecoAtual()`, `clienteAtual()` — ver nota de dependência cruzada acima); `inserirItem`, `editarItem`, `cancelarItem`, `limparCarrinho`; cada mutação chama T008 e emite o evento de auditoria correspondente via dispatcher da feature 001 (`PRODUTO_INSERIDO`/`PRODUTO_ALTERADO`/`PRODUTO_CANCELADO`); seletores `linhasAtivas`/`quantidadeAgregada`/`totalBruto`/`totalLinha`/`totalVenda` (nunca campos armazenados) — depende de T002, T006, T007, T008; combinado em `vendaStore.ts` (feature 001)
-- [ ] T010 [P] Unit test `tests/unit/domain/precificacao/dinheiro.spec.ts`: soma/multiplicação sem drift de ponto flutuante; `distribuirPorMaiorResto` — soma das parcelas sempre exatamente o total; `calcularTotalLinha` com quantidade inteira/fracionária, desconto > total bruto → piso `0`, desconto `0` → `preço × quantidade` (`FR-016`, AD-072, I8)
-- [ ] T011 [P] Unit test `tests/unit/domain/precificacao/quantidade.spec.ts`: conversão e formatação de `Milesimos`
-- [ ] T012 [P] Unit test `tests/unit/shared/produto.schema.spec.ts`: `SDTCheckout_GetProduto`/`CheckoutListaProdutos` válidos e inválidos, conversão double→Centavos/Milesimos, `ProdutoPesavelEditavel` fora do enum é erro de fronteira
+- [X] T002 [P] Implementar `src/client/domain/precificacao/dinheiro.ts`: `Centavos` (branded), `centavos()`, `somar()`, `multiplicarPorQuantidade()` (`arredondar(preço × qtd ÷ 1000)`), `aplicarPercentual()`, `distribuirPorMaiorResto()` (AD-072), `calcularTotalLinha()` (única forma de obter o valor de uma linha — `data-model.md` §1, I9)
+- [X] T003 [P] Implementar `src/client/domain/precificacao/quantidade.ts`: `Milesimos` (branded), `milesimosDeUnidades()`, `formatarQuantidade()`
+- [X] T004 [P] Criar `src/shared/schemas/produto.schema.ts` (Zod): `SDTCheckout_GetProduto` e `CheckoutListaProdutos` — converte `PrecoVenda`/`PrecoVenda1..5`/`PrecoMinimo` (double) para `Centavos` (`Math.round(v*100)`), `QtdMinimaPreco2..5` para `Milesimos`, restringe `ProdutoPesavelEditavel` a `z.enum(['S','B','','E'])` (Constitution IV, `contracts/erp-produto-api.md`)
+- [X] T005 Implementar `src/client/services/produto/produtoMapper.ts`: mapeia `SDTCheckout_GetProduto` validado (T004) para `SnapshotPrecoProduto` (`data-model.md` §2) — depende de T004
+- [X] T006 Implementar `fetchProduto` (`GET /api/erp/GetProduto`) em `src/client/services/produto/produtoQueries.ts` — parâmetros `Empresa`/`Codigoproduto`/`Tipocodproduto` (`SessaoUsuario.UsuarioTipoCodigoProduto`, AD-033)/`Tipopreco`/`Codcliente`/`Listapreco` (só quando `TipoPreco=9`); `queryKey: ['produto', codigoProduto, tipoCodProduto, tipoPreco, listaPreco ?? null]`, `staleTime: Infinity` (`CART-03`) — depende de T004, T005; consome o proxy `/api/erp/*` da feature 002
+- [X] T007 Implementar `src/client/domain/precificacao/tabelaPreco.ts`: `resolvePrecoUnitario(tipoPreco, snapshot, quantidadeAgregada)` — `1..7,9,10,11` retorna `snapshot.precoBase`; `8` resolve faixa flat por `QtdMinimaPreco2..5`/`PrecoVenda1..5` (limiar `0` = não configurada); lança erro de domínio fora de `1..11` — depende de T002, T003
+- [X] T008 Implementar `src/client/domain/precificacao/reprecificacao.ts`: `repricarSku(linhas, codigoProduto, tipoPreco)` — função pura; agrega quantidade das linhas ativas não-congeladas do SKU (I2/I3 de `data-model.md`), chama T007 uma vez, aplica a **todas** as linhas ativas não-congeladas do SKU (`CART-06`), linhas canceladas/congeladas/outros SKUs retornam por identidade — depende de T007
+- [X] T009 Implementar `src/client/stores/slices/carrinhoSlice.ts`: estado `linhas: LinhaCarrinho[]`; `CarrinhoDeps` injetado (`podeMutarCarrinho()`, `tipoPrecoAtual()`, `clienteAtual()` — ver nota de dependência cruzada acima); `inserirItem`, `editarItem`, `cancelarItem`, `limparCarrinho`; cada mutação chama T008 e emite o evento de auditoria correspondente via dispatcher da feature 001 (`PRODUTO_INSERIDO`/`PRODUTO_ALTERADO`/`PRODUTO_CANCELADO`); seletores `linhasAtivas`/`quantidadeAgregada`/`totalBruto`/`totalLinha`/`totalVenda` (nunca campos armazenados) — depende de T002, T006, T007, T008; combinado em `vendaStore.ts` (feature 001)
+- [X] T010 [P] Unit test `tests/unit/domain/precificacao/dinheiro.spec.ts`: soma/multiplicação sem drift de ponto flutuante; `distribuirPorMaiorResto` — soma das parcelas sempre exatamente o total; `calcularTotalLinha` com quantidade inteira/fracionária, desconto > total bruto → piso `0`, desconto `0` → `preço × quantidade` (`FR-016`, AD-072, I8)
+- [X] T011 [P] Unit test `tests/unit/domain/precificacao/quantidade.spec.ts`: conversão e formatação de `Milesimos`
+- [X] T012 [P] Unit test `tests/unit/shared/produto.schema.spec.ts`: `SDTCheckout_GetProduto`/`CheckoutListaProdutos` válidos e inválidos, conversão double→Centavos/Milesimos, `ProdutoPesavelEditavel` fora do enum é erro de fronteira
 
 **Checkpoint**: Domínio puro, validação de fronteira e slice básico prontos — inserção mínima é possível (ainda sem UI).
 
@@ -98,11 +98,11 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Unit test `tests/unit/domain/precificacao/codigoProduto.spec.ts`: `"001234*3"` → `COM_QTD`; `"001234"` → `SIMPLES` (quantidade 1); EAN-13 válido iniciado em `2` → `BALANCA`; DV inválido cai em `SIMPLES`; `quantidadePesavel` com `precoVenda <= 0` lança (`FR-004`, `FR-013`, AD-028/AD-029/AD-076)
+- [X] T019 [P] [US2] Unit test `tests/unit/domain/precificacao/codigoProduto.spec.ts`: `"001234*3"` → `COM_QTD`; `"001234"` → `SIMPLES` (quantidade 1); EAN-13 válido iniciado em `2` → `BALANCA`; DV inválido cai em `SIMPLES`; `quantidadePesavel` com `precoVenda <= 0` lança (`FR-004`, `FR-013`, AD-028/AD-029/AD-076)
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implementar `src/client/domain/precificacao/codigoProduto.ts`: `interpretarEntradaCodigo` (ordem `*` → balança (13 dígitos, prefixo `2`, DV EAN-13 válido) → simples, D6), `quantidadePesavel` (`round(trunc(valorEtiqueta/precoVenda,5),3)`, AD-076) — depende de T002, T003
+- [X] T020 [US2] Implementar `src/client/domain/precificacao/codigoProduto.ts`: `interpretarEntradaCodigo` (ordem `*` → balança (13 dígitos, prefixo `2`, DV EAN-13 válido) → simples, D6), `quantidadePesavel` (`round(trunc(valorEtiqueta/precoVenda,5),3)`, AD-076) — depende de T002, T003
 - [ ] T021 [US2] Implementar `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`CART-02`): campo de código/bipagem + TAB/Enter, usa T020 para classificar a entrada, chama `fetchProduto` (T006) e `inserirItem` (T009)
 - [ ] T022 [US2] Implementar `src/client/features/carrinho/EdicaoItemEditavel.tsx`: fluxo `'E'` — foco pula para campos editáveis (preço/unidade/quantidade/desconto), insere só ao acionar `+` (`FR-014`); `'S'`/`'B'` insere direto somente-leitura com quantidade/preço da etiqueta/balança (`FR-013`/`FR-015`); `''` insere direto somente-leitura (`FR-015`) — compartilhado pelo caminho de busca (US1) e código direto (US2)
 - [ ] T023 [US2] Wire bloqueio de inserção de produto pesável sem `PrecoVenda` disponível: toast de aviso, nenhuma linha inserida, foco permanece no campo (`FR-013`)
@@ -121,8 +121,8 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] Unit test `tests/unit/domain/precificacao/tabelaPreco.spec.ts`: um caso por `TipoPreco` de `1` a `11`; para `8`, quantidade abaixo/igual/acima de cada limiar; limiar `0` ignorado como faixa não configurada (`FR-005`, `FR-006`, AD-059/AD-060)
-- [ ] T027 [P] [US3] Unit test `tests/unit/domain/precificacao/reprecificacao.spec.ts`: cruzar faixa recalcula todas as linhas ativas do SKU; cancelamento derruba as remanescentes para a faixa inferior; linha congelada não é alterada nem entra no agregado (D3); linhas de outros SKUs retornam inalteradas por identidade
+- [X] T026 [P] [US3] Unit test `tests/unit/domain/precificacao/tabelaPreco.spec.ts`: um caso por `TipoPreco` de `1` a `11`; para `8`, quantidade abaixo/igual/acima de cada limiar; limiar `0` ignorado como faixa não configurada (`FR-005`, `FR-006`, AD-059/AD-060)
+- [X] T027 [P] [US3] Unit test `tests/unit/domain/precificacao/reprecificacao.spec.ts`: cruzar faixa recalcula todas as linhas ativas do SKU; cancelamento derruba as remanescentes para a faixa inferior; linha congelada não é alterada nem entra no agregado (D3); linhas de outros SKUs retornam inalteradas por identidade
 
 ### Implementation for User Story 3
 

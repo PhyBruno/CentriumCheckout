@@ -51,6 +51,9 @@ function payload(tenant: string, cadMaqCod = 'PDV01'): Record<string, unknown> {
       CadMaqCod: cadMaqCod,
       ListaPrecoDefault: 3,
       CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
+      QtdMinCharParaConsulta: 3,
+      UsuarioTipoCodigoProduto: 'I',
+      ClienteDefaultCodigo: 1,
     },
   };
 }

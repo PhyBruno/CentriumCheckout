@@ -46,6 +46,9 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       CadMaqCod: config.cadMaqCod,
       ListaPrecoDefault: 3,
       CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
+      QtdMinCharParaConsulta: 3,
+      UsuarioTipoCodigoProduto: 'I',
+      ClienteDefaultCodigo: 1,
     },
     messages: [],
   };
