@@ -96,7 +96,7 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     useEdicaoItemStore.setState({ linhaEmEdicao: null });
   });
 
-  it('carrega quantidade/preço/desconto/total da linha editável (\'E\') e aplica os três ajustes ao confirmar', async () => {
+  it("carrega quantidade/preço/desconto/total da linha editável ('E') e aplica os três ajustes ao confirmar", async () => {
     const usuario = userEvent.setup();
     const linha = linhaDe({
       idLinha: 'linha-1',
@@ -134,7 +134,7 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     expect(screen.getByTestId('campo-codigo-produto')).toHaveValue('');
   });
 
-  it('produto pesável (\'S\') só libera a quantidade — preço e desconto ficam somente leitura', async () => {
+  it("produto pesável ('S') só libera a quantidade — preço e desconto ficam somente leitura", async () => {
     const usuario = userEvent.setup();
     const linha = linhaDe({
       idLinha: 'linha-1',
@@ -266,7 +266,7 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
     expect(screen.getByTestId('previa-confirmar')).toBeDisabled();
   });
 
-  it('produto editável (\'E\') escolhido no modal continua exigindo revisão — não insere sozinho', async () => {
+  it("produto editável ('E') escolhido no modal continua exigindo revisão — não insere sozinho", async () => {
     stubarFetch('E');
     const usuario = userEvent.setup();
     renderBarra();

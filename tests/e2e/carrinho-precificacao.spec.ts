@@ -103,16 +103,14 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
     await expect(page.getByTestId('campo-codigo-produto')).toHaveValue('');
   });
 
-  test('produto editável (\'E\') escolhido no modal continua exigindo revisão do operador', async ({
+  test("produto editável ('E') escolhido no modal continua exigindo revisão do operador", async ({
     page,
   }) => {
     await abrirTelaDeVenda(page);
     await page.getByTestId('abrir-busca-produto').click();
     await page.getByTestId('campo-busca-produto').fill('PRODUTO EDITAVEL');
 
-    const candidato = page
-      .getByTestId('candidato-produto')
-      .filter({ hasText: 'PRODUTO EDITAVEL' });
+    const candidato = page.getByTestId('candidato-produto').filter({ hasText: 'PRODUTO EDITAVEL' });
     await expect(candidato).toBeVisible();
     await candidato.click();
 

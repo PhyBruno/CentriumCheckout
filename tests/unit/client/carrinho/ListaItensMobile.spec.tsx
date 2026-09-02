@@ -37,7 +37,7 @@ describe('ListaItensMobile — lápis carrega o item na barra de entrada rápida
     useEdicaoItemStore.setState({ linhaEmEdicao: null });
   });
 
-  it('desabilita o lápis quando o produto não é editável (ProdutoPesavelEditavel = \'\')', () => {
+  it("desabilita o lápis quando o produto não é editável (ProdutoPesavelEditavel = '')", () => {
     useVendaStore.setState({
       linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: '' }) })],
     });
@@ -46,7 +46,7 @@ describe('ListaItensMobile — lápis carrega o item na barra de entrada rápida
     expect(screen.getByRole('button', { name: 'Editar item' })).toBeDisabled();
   });
 
-  it('habilita o lápis para produto pesável (\'S\'/\'B\') e editável (\'E\')', () => {
+  it("habilita o lápis para produto pesável ('S'/'B') e editável ('E')", () => {
     useVendaStore.setState({
       linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'S' }) })],
     });
@@ -72,7 +72,10 @@ describe('ListaItensMobile — lápis carrega o item na barra de entrada rápida
       linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) })],
     });
     useEdicaoItemStore.setState({
-      linhaEmEdicao: linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) }),
+      linhaEmEdicao: linhaDe({
+        idLinha: 'linha-1',
+        snapshot: snapshotDe({ pesavelEditavel: 'E' }),
+      }),
     });
     render(<ListaItensMobile />);
 

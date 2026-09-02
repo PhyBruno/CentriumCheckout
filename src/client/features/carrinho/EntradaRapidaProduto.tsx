@@ -405,7 +405,9 @@ export function EntradaRapidaProduto(): ReactElement {
 
   const precoExibido = editavel
     ? precoTexto
-    : formatarCentavos(linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? ZERO_CENTAVOS);
+    : formatarCentavos(
+        linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? ZERO_CENTAVOS,
+      );
   // Não editável mostra o desconto real da linha (convênio + manual, mesma
   // soma da coluna "Desconto" da grid) — não `0,00` fixo — quando há uma
   // linha existente carregada; numa inserção nova ainda não há desconto de
@@ -563,7 +565,9 @@ export function EntradaRapidaProduto(): ReactElement {
           ref={botaoConfirmar}
           type="button"
           className="h-11.5 w-[70px] shrink-0 rounded-full"
-          aria-label={linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'}
+          aria-label={
+            linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'
+          }
           data-testid="previa-confirmar"
           disabled={!podeConfirmar}
           onClick={confirmar}

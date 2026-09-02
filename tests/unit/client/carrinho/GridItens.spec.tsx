@@ -39,7 +39,7 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
     useEdicaoItemStore.setState({ linhaEmEdicao: null });
   });
 
-  it('desabilita o lápis quando o produto não é editável (ProdutoPesavelEditavel = \'\')', () => {
+  it("desabilita o lápis quando o produto não é editável (ProdutoPesavelEditavel = '')", () => {
     useVendaStore.setState({
       linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: '' }) })],
     });
@@ -52,9 +52,7 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
     'habilita o lápis quando ProdutoPesavelEditavel = %s',
     (pesavelEditavel) => {
       useVendaStore.setState({
-        linhas: [
-          linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel }) }),
-        ],
+        linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel }) })],
       });
       render(<GridItens />);
 
@@ -65,9 +63,7 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
   it('carrega a linha em useEdicaoItemStore ao clicar no lápis', async () => {
     const usuario = userEvent.setup();
     useVendaStore.setState({
-      linhas: [
-        linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) }),
-      ],
+      linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) })],
     });
     render(<GridItens />);
 
@@ -78,12 +74,13 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
 
   it('trava o lápis e a lixeira da linha carregada na barra', () => {
     useVendaStore.setState({
-      linhas: [
-        linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) }),
-      ],
+      linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) })],
     });
     useEdicaoItemStore.setState({
-      linhaEmEdicao: linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) }),
+      linhaEmEdicao: linhaDe({
+        idLinha: 'linha-1',
+        snapshot: snapshotDe({ pesavelEditavel: 'E' }),
+      }),
     });
     render(<GridItens />);
 
