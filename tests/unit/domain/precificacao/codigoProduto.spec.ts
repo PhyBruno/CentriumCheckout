@@ -3,6 +3,7 @@ import {
   ErroPrecoIndisponivelParaPesagem,
   interpretarEntradaCodigo,
   quantidadePesavel,
+  rotuloTipoCodigoProduto,
 } from '../../../../src/client/domain/precificacao/codigoProduto';
 import { emCentavos } from '../../../support/precificacao';
 
@@ -91,5 +92,21 @@ describe('quantidadePesavel (AD-076)', () => {
     expect(() => quantidadePesavel(emCentavos(1500), emCentavos(0))).toThrow(
       ErroPrecoIndisponivelParaPesagem,
     );
+  });
+});
+
+/** Domain `EnumTipoCodigoProduto` da KB GeneXus — `ControlValues` real. */
+describe('rotuloTipoCodigoProduto', () => {
+  it.each([
+    ['', 'Código reduzido'],
+    ['D', 'Código de barras'],
+    ['C', 'Referência'],
+    ['P', 'Código de barras pesável'],
+  ])('mapeia UsuarioTipoCodigoProduto=%j para %j', (valor, esperado) => {
+    expect(rotuloTipoCodigoProduto(valor)).toBe(esperado);
+  });
+
+  it('valor fora do domínio conhecido cai num rótulo genérico, sem lançar', () => {
+    expect(rotuloTipoCodigoProduto('X')).toBe('Código do produto');
   });
 });

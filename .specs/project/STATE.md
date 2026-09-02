@@ -1329,6 +1329,21 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 
 ---
 
+### AD-123: Barra de entrada rápida reconstruída fiel ao Pencil — TAB revisa (qualquer produto), Enter insere direto; `UsuarioTipoCodigoProduto` confirmado na KB (2026-09-02)
+
+**Decision:** Duas mudanças em `EntradaRapidaProduto.tsx`/`useCarrinho.ts`, motivadas por revisão direta do usuário contra `design/HTML - Pencil/CentriumCheckout.html` (frame "Entrada rápida de produto"):
+
+1. **Enter** continua o caminho de inserção rápida (comportamento inalterado): confirma a entrada e insere direto, sem exibir nada, exceto produto `'E'` que sempre pausa para revisão (`FR-014`, inalterado). **TAB** passa a ser a tecla de **revisão universal**: resolve o produto via `GetProduto` (novo `revisarPorCodigo`/`RevisaoProduto` em `useCarrinho.ts`, espelhando `inserirResolvido` mas nunca inserindo sozinho) e mostra uma prévia completa — nome, quantidade (stepper `-`/`+`), unidade, preço unitário, desconto do item, total — **para qualquer `ProdutoPesavelEditavel`**, não só `'E'`. Preço/desconto só ficam editáveis quando `'E'` (reaproveita `EdicaoItemEditavel`, sem mudança de comportamento); nos demais casos (`PreviaInsercaoProduto`, novo componente) só a quantidade é ajustável, os demais campos são somente leitura vindos do snapshot resolvido. Produto não editável: o foco pousa direto no botão de confirmar assim que a prévia carrega, então Enter já insere sem precisar de mouse.
+2. `SessaoUsuario.UsuarioTipoCodigoProduto` (rótulo do campo de código) tem domain confirmado por inspeção direta da KB GeneXus real (`CentriumDEVU6`, via MCP, domain `EnumTipoCodigoProduto`, propriedade `ControlValues`): `''`→"Código Reduzido", `'D'`→"Código de Barras", `'C'`→"Referência", `'P'`→"Codigo de Barra Pesavel". Novo `rotuloTipoCodigoProduto` em `domain/precificacao/codigoProduto.ts` mapeia os quatro literais (fallback genérico "Código do produto" para qualquer valor fora do domínio, mesma postura defensiva de `interpretarEntradaCodigo` — nunca lança). O rótulo do campo na barra passa a ser dinâmico em vez do texto fixo "Código de barras" que a implementação original da feature 003 tinha.
+
+**Reason:** Achado direto do usuário comparando a implementação já em produção contra o export do Pencil: a barra tinha textos em vez de ícones (corrigido antes, ver histórico de commits), fonte errada (Inter/Geist Mono não estavam de fato carregadas — corrigido self-hospedando via `@fontsource`) e, nesta rodada, layout completamente distinto (faltava lupa embutida, stepper de quantidade, preview de preço/desconto/total) e rótulo do campo fixo quando na verdade depende de configuração da empresa. `AD-091` já documentava que `GetProduto` é sempre a fonte da linha — esta AD só estende **quando** essa chamada acontece (TAB, além do já existente em qualquer inserção) e como o resultado é apresentado antes de confirmar.
+
+**Trade-off:** `useCarrinho.ts` ganha uma segunda função de resolução (`revisarResolvido`, paralela a `inserirResolvido`) — duplica a chamada a `resolverProduto`/`quantidadeEOrigem`, mas o cache por SKU (`CART-03`, `staleTime: 'static'`) evita qualquer chamada de rede extra quando o operador revisa e depois confirma o mesmo código. A alternativa (uma função única parametrizada por modo) foi descartada por acoplar dois fluxos com semânticas de retorno diferentes (`ResultadoInsercao` insere; `ResultadoRevisao` nunca insere) numa única assinatura.
+
+**Impact:** `src/client/features/carrinho/{useCarrinho,EntradaRapidaProduto,App}.tsx` (busca movida do header para a própria barra, mesmo `data-testid="abrir-busca-produto"`); novo `PreviaInsercaoProduto.tsx`; `src/client/domain/precificacao/codigoProduto.ts` (`rotuloTipoCodigoProduto`); `tests/unit/domain/precificacao/codigoProduto.spec.ts` (5 casos novos); `tests/e2e/support/erp-mock.ts` (`UsuarioTipoCodigoProduto: 'I'` → `'D'`, valor real do domain); `tests/e2e/carrinho-precificacao.spec.ts` (2 cenários novos: prévia completa + foco, rótulo dinâmico). `EdicaoItemEditavel.tsx` **não muda de comportamento**, só passa a ser alcançável também via TAB para produto `'E'` (já era via Enter). Nenhuma pendência aberta — os quatro literais do domain são exaustivos e confirmados por leitura direta do `ControlValues`, não inferência.
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

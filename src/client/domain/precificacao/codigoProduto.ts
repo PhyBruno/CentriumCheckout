@@ -109,6 +109,33 @@ export function interpretarEntradaCodigo(texto: string): EntradaCodigo {
 }
 
 /**
+ * Rótulo do campo de entrada conforme `SessaoUsuario.UsuarioTipoCodigoProduto`
+ * (`GetSessao`) — o tipo de código que o operador bipa/digita é configuração da
+ * empresa, não um valor fixo (KB GeneXus, domain `EnumTipoCodigoProduto`,
+ * `ControlValues`: `''`→Código Reduzido, `'D'`→Código de Barras,
+ * `'C'`→Referência, `'P'`→Codigo de Barra Pesavel). Mesmo valor vai em
+ * `Tipocodproduto` na chamada a `GetProduto` (AD-033) — este rótulo só troca o
+ * texto mostrado ao operador, nunca a lógica de inserção.
+ *
+ * Um valor fora do domínio conhecido não pode travar a tela (mesma postura de
+ * `interpretarEntradaCodigo`, que também nunca lança): cai num rótulo genérico.
+ */
+export function rotuloTipoCodigoProduto(usuarioTipoCodigoProduto: string): string {
+  switch (usuarioTipoCodigoProduto) {
+    case '':
+      return 'Código reduzido';
+    case 'D':
+      return 'Código de barras';
+    case 'C':
+      return 'Referência';
+    case 'P':
+      return 'Código de barras pesável';
+    default:
+      return 'Código do produto';
+  }
+}
+
+/**
  * Quantidade de um produto pesável: `round(trunc(valorEtiqueta / precoVenda, 5), 3)`
  * (AD-076).
  *

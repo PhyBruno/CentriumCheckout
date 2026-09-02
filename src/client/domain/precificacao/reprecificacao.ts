@@ -85,12 +85,27 @@ export function repricarSku(
   }
 
   const agregado = quantidadeAgregada(linhas, codigoProduto);
-  const precoUnitario = resolvePrecoUnitario(tipoPreco, referencia.snapshot, agregado);
+  // Produto `'E'` (`ProdutoPesavelEditavel`) não tem `PrecoVenda` significativo
+  // no ERP — é por isso que o operador digita o preço na revisão (`FR-014`,
+  // `EdicaoItemEditavel`). Chamar `resolvePrecoUnitario` para essa linha
+  // devolveria o cadastro (tipicamente `0`) e sobrescreveria silenciosamente o
+  // preço digitado assim que qualquer mutação disparasse `repricarSku` —
+  // inclusive a própria inserção. Tratado como `descontoManual`: só o
+  // operador escreve.
+  const precoDaTabela =
+    referencia.snapshot.pesavelEditavel === 'E'
+      ? null
+      : resolvePrecoUnitario(tipoPreco, referencia.snapshot, agregado);
 
   return linhas.map((linha) => {
     if (linha.snapshot.codigoProduto !== codigoProduto || !participaDaPrecificacao(linha)) {
       return linha;
     }
+
+    const precoUnitario =
+      linha.snapshot.pesavelEditavel === 'E'
+        ? linha.precoUnitario
+        : (precoDaTabela ?? linha.precoUnitario);
 
     const descontoConvenio =
       descontoConvenioPercentual > 0

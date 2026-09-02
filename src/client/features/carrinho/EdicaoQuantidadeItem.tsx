@@ -77,7 +77,7 @@ export function EdicaoQuantidadeItem({
       <input
         id={idCampo}
         ref={campoRef}
-        className="h-8 w-20 rounded-md border border-border px-2 text-right tabular-nums"
+        className="h-8 w-20 rounded-md border border-border px-2 text-right font-mono tabular-nums"
         inputMode="decimal"
         data-testid="editar-quantidade-input"
         value={quantidade}

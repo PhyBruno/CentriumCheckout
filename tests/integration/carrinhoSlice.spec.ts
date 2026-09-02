@@ -407,10 +407,18 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     });
     vi.stubGlobal('fetch', fetchFalso);
 
+    // Caminho real desde a Fase 8 (`EntradaRapidaProduto.selecionarDaBusca`):
+    // o modal só devolve o código, quem resolve é `revisarPorCodigo` (com
+    // `origemForcada: 'BUSCA'`) seguido de `confirmarPrevia` — nunca um
+    // atalho de inserção direta a partir do resultado da busca.
     const { result } = renderHook(() => useInsercaoDeProduto(), {
       wrapper: envolverComQueryClient(),
     });
-    await result.current.inserirPorSelecao(SKU);
+    const revisao = await result.current.revisarPorCodigo(SKU, 'BUSCA');
+    if (revisao.situacao !== 'revisao') {
+      throw new Error('esperava revisão bem-sucedida');
+    }
+    result.current.confirmarPrevia(revisao, revisao.quantidade);
 
     await waitFor(() => {
       expect(useVendaStore.getState().linhas).toHaveLength(1);

@@ -73,7 +73,7 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
     expect((await contadores(request)).getListaProdutos).toBe(0);
   });
 
-  test('termo completo lista candidatos e a seleção insere via GetProduto (AD-091)', async ({
+  test('termo completo lista candidatos e a seleção só carrega o código — quem resolve e insere é a barra (AD-091)', async ({
     page,
     request,
   }) => {
@@ -89,9 +89,22 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
 
     await candidato.click();
 
-    // A linha é montada a partir de `GetProduto`, nunca do resultado da busca.
-    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    // O modal só devolveu o código — fechou, e o campo de código da barra
+    // mostra o código escolhido. Nada foi inserido ainda.
+    await expect(page.getByTestId('modal-busca-produto')).toHaveCount(0);
+    await expect(page.getByTestId('campo-codigo-produto')).toHaveValue(SKU_COM_FAIXA);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+
+    // A barra resolveu via `GetProduto` (nunca monta a linha a partir do
+    // resultado da busca, AD-091) e mostra a revisão — produto não editável,
+    // então o foco já pousa no "+".
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 10,00');
     expect((await contadores(request)).getProduto).toBe(1);
+    await expect(page.getByTestId('previa-confirmar')).toBeFocused();
+
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 10,00');
   });
 });
@@ -131,17 +144,64 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     await campo.fill(SKU_EDITAVEL);
     await campo.press('Tab');
 
-    // O formulário de revisão aparece e nenhuma linha foi criada.
-    await expect(page.getByTestId('edicao-item-editavel')).toBeVisible();
+    // A revisão aparece na própria barra e nenhuma linha foi criada.
+    await expect(page.getByTestId('previa-insercao-produto')).toBeVisible();
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
-    // A unidade vem do cadastro e não é editável no PDV.
-    await expect(page.getByTestId('edicao-unidade')).toHaveAttribute('readonly', '');
+    // Produto editável: o foco pousa na quantidade — primeiro campo da
+    // sequência de revisão — nunca direto no botão de inserir.
+    await expect(page.getByTestId('previa-quantidade')).toBeFocused();
+    // A unidade vem do cadastro e nunca é editável no PDV, mesmo em produto
+    // 'E' — é um campo real (participa do TAB), só que sempre somente leitura.
+    await expect(page.getByTestId('previa-unidade')).toHaveValue('UN');
+    await expect(page.getByTestId('previa-unidade')).not.toBeEditable();
 
-    await page.getByTestId('edicao-quantidade').fill('2');
-    await page.getByTestId('confirmar-item-editavel').click();
+    // Produto editável: preço e desconto viram campos que aceitam digitação.
+    await expect(page.getByTestId('previa-preco-unitario')).toBeEditable();
+    await page.getByTestId('previa-preco-unitario').fill('15,00');
+    await page.getByTestId('previa-desconto-item').fill('2,00');
+    await page.getByTestId('previa-quantidade-aumentar').click();
+
+    await page.getByTestId('previa-confirmar').click();
 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
-    await expect(page.getByTestId('total-venda')).toHaveText('R$ 40,00');
+    // 2 × R$ 15,00 − R$ 2,00 de desconto manual = R$ 28,00.
+    await expect(page.getByTestId('total-venda')).toHaveText('R$ 28,00');
+  });
+
+  test('TAB num produto não editável mostra a prévia completa e foca o botão de inserir', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU_COM_FAIXA);
+    await campo.press('Tab');
+
+    // Prévia carrega todos os dados do `GetProduto`, não só o nome.
+    await expect(page.getByTestId('previa-insercao-produto')).toBeVisible();
+    await expect(page.getByTestId('previa-quantidade')).toHaveValue('1,000');
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 10,00');
+    await expect(page.getByTestId('previa-preco-unitario')).not.toBeEditable();
+    await expect(page.getByTestId('previa-desconto-item')).toHaveValue('R$ 0,00');
+    await expect(page.getByTestId('previa-total-item')).toHaveText('R$ 10,00');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+
+    // Produto não editável: nada mais a decidir além da quantidade, então o
+    // foco já pousa no "+" — Enter insere sem precisar de mouse.
+    await expect(page.getByTestId('previa-confirmar')).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    await expect(page.getByTestId('total-venda')).toHaveText('R$ 10,00');
+  });
+
+  test('o rótulo do campo de código reflete SessaoUsuario.UsuarioTipoCodigoProduto', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    // Mock configurado com `'D'` (Código de Barras — domain `EnumTipoCodigoProduto`).
+    await expect(page.getByTestId('entrada-rapida-produto')).toContainText('Código de barras');
   });
 
   test('reinserir o mesmo SKU não gera nova chamada a GetProduto (CART-03)', async ({

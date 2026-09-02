@@ -98,6 +98,29 @@ describe('repricarSku — cruzar faixa recalcula todas as linhas do SKU', () => 
     expect(repricarSku(linhas, SKU, 8)).toBe(linhas);
   });
 
+  it("produto 'E' preserva o preço digitado pelo operador — nunca chama resolvePrecoUnitario (bug real da FR-014)", () => {
+    const produtoEditavel = snapshotDe({
+      codigoProduto: SKU,
+      pesavelEditavel: 'E',
+      precoBase: 2000,
+    });
+    const linhas = [
+      linhaDe({
+        idLinha: 'a',
+        snapshot: produtoEditavel,
+        quantidadeEmUnidades: 2,
+        precoUnitario: 1500,
+      }),
+    ];
+
+    // `repricarSku` roda a cada mutação do carrinho (inclusive a própria
+    // inserção) — se ela sobrescrevesse o preço `'E'` pelo `precoBase` do
+    // cadastro (2000), o valor digitado pelo operador (1500) se perderia.
+    const resultado = repricarSku(linhas, SKU, 1);
+
+    expect(resultado[0]?.precoUnitario).toBe(1500);
+  });
+
   it('devolve a linha por identidade quando o preço não muda', () => {
     const linhas = [
       linhaDe({ idLinha: 'a', snapshot: produto, quantidadeEmUnidades: 3, precoUnitario: 1000 }),

@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,7 @@ function ItemMobile({ linha, onCancelar, onEditarQuantidade }: ItemMobileProps):
           {linha.snapshot.descricao}
           {linha.cancelada ? <span className="sr-only"> (item cancelado)</span> : null}
         </span>
-        <strong className="tabular-nums">{formatarCentavos(totalLinha(linha))}</strong>
+        <strong className="font-mono tabular-nums">{formatarCentavos(totalLinha(linha))}</strong>
       </div>
 
       <div className="flex items-center justify-between gap-sm text-sm text-muted-foreground">
@@ -102,7 +103,7 @@ function ItemMobile({ linha, onCancelar, onEditarQuantidade }: ItemMobileProps):
             }}
           />
         ) : (
-          <span className="tabular-nums">
+          <span className="font-mono tabular-nums">
             {formatarQuantidade(linha.quantidade, 3)} {linha.snapshot.unidadeMedida} ×{' '}
             <span data-testid="preco-unitario">{formatarCentavos(linha.precoUnitario)}</span>
           </span>
@@ -112,25 +113,29 @@ function ItemMobile({ linha, onCancelar, onEditarQuantidade }: ItemMobileProps):
           <div className="flex gap-xs">
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
+              variant="secondary"
+              size="icon-sm"
+              className="size-7 rounded-full text-primary"
+              aria-label="Editar quantidade"
               data-testid="editar-quantidade-item"
               onClick={() => {
                 setEmEdicaoDeQuantidade(true);
               }}
             >
-              Editar quantidade
+              <Pencil className="size-3.5" aria-hidden="true" />
             </Button>
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
+              variant="secondary"
+              size="icon-sm"
+              className="size-7 rounded-full text-muted-foreground"
+              aria-label="Cancelar"
               data-testid="cancelar-item"
               onClick={() => {
                 onCancelar(linha.idLinha);
               }}
             >
-              Cancelar
+              <Trash2 className="size-3.5" aria-hidden="true" />
             </Button>
           </div>
         )}

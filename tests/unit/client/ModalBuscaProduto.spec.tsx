@@ -134,15 +134,21 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
     mockUseBuscaProdutos.mockReset();
   });
 
-  function renderModal() {
+  function renderModal(
+    onFechar: () => void = () => {},
+    onProdutoSelecionado: (codigoProduto: string) => void = () => {},
+  ) {
     const Wrapper = envolverComQueryClient();
-    return render(
-      createElement(
-        Wrapper,
-        null,
-        createElement(ModalBuscaProduto, { aberto: true, onFechar: () => {} }),
-      ),
-    );
+    const props = { aberto: true, onFechar, onProdutoSelecionado };
+    const utils = render(createElement(Wrapper, null, createElement(ModalBuscaProduto, props)));
+    return {
+      ...utils,
+      rerenderComAberto(aberto: boolean) {
+        utils.rerender(
+          createElement(Wrapper, null, createElement(ModalBuscaProduto, { ...props, aberto })),
+        );
+      },
+    };
   }
 
   it('desabilita "Anterior" na página 1', async () => {
@@ -162,6 +168,12 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
     renderModal();
 
     await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    // O debounce (`DEBOUNCE_BUSCA_MS`) precisa passar antes do rodapé de
+    // paginação existir — sem esperar, o clique abaixo lançaria "elemento não
+    // encontrado".
+    await waitFor(() => {
+      expect(screen.getByTestId('pagina-proxima')).toBeInTheDocument();
+    });
     // Avança até a última página (3) clicando em "Próxima" — o mock ecoa a
     // página pedida a cada chamada, como o ERP faria.
     await userEvent.click(screen.getByTestId('pagina-proxima'));
@@ -182,6 +194,12 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
     renderModal();
 
     await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    // Espera o debounce disparar a busca inicial antes de limpar o mock —
+    // limpar cedo demais apagaria essa chamada pendente e ela ainda chegaria
+    // depois, contaminando a asserção de `pagina: 2` abaixo.
+    await waitFor(() => {
+      expect(screen.getByTestId('pagina-proxima')).toBeInTheDocument();
+    });
     mockUseBuscaProdutos.mockClear();
 
     await userEvent.click(screen.getByTestId('pagina-proxima'));
@@ -199,6 +217,9 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
     renderModal();
 
     await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    await waitFor(() => {
+      expect(screen.getByTestId('pagina-proxima')).toBeInTheDocument();
+    });
     await userEvent.click(screen.getByTestId('pagina-proxima'));
     await waitFor(() => {
       expect(screen.getByText(/Página 2 de 3/)).toBeInTheDocument();
@@ -215,5 +236,51 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
         mockUseBuscaProdutos.mock.calls[mockUseBuscaProdutos.mock.calls.length - 1];
       expect(ultimaChamada?.[1]).toEqual(expect.objectContaining({ pagina: 1 }));
     });
+  });
+
+  it('fechar e reabrir o modal limpa o termo de busca da consulta anterior', async () => {
+    configurarMock(1);
+    const { rerenderComAberto } = renderModal();
+
+    await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    expect(screen.getByTestId('campo-busca-produto')).toHaveValue('caneta');
+
+    rerenderComAberto(false);
+    rerenderComAberto(true);
+
+    expect(screen.getByTestId('campo-busca-produto')).toHaveValue('');
+  });
+
+  it('selecionar um candidato só devolve o código e fecha — não resolve nem insere nada sozinho', async () => {
+    configurarMock(1);
+    const onFechar = vi.fn();
+    const onProdutoSelecionado = vi.fn();
+    renderModal(onFechar, onProdutoSelecionado);
+
+    await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    await waitFor(() => {
+      expect(screen.getByTestId('candidato-produto')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('candidato-produto'));
+
+    // O código devolvido é o do candidato sintético (`produtoDe`, página 1).
+    expect(onProdutoSelecionado).toHaveBeenCalledOnce();
+    expect(onProdutoSelecionado).toHaveBeenCalledWith('001');
+    expect(onFechar).toHaveBeenCalledOnce();
+  });
+
+  it('Esc fecha o modal', async () => {
+    configurarMock(1);
+    const onFechar = vi.fn();
+    renderModal(onFechar);
+
+    // Foca explicitamente dentro do modal: o handler de Esc está no `onKeyDown`
+    // do overlay e só recebe o evento por bubbling de um descendente focado —
+    // depender do `autoFocus` do campo seria frágil no jsdom.
+    await userEvent.click(screen.getByTestId('campo-busca-produto'));
+    await userEvent.keyboard('{Escape}');
+
+    expect(onFechar).toHaveBeenCalledOnce();
   });
 });

@@ -125,7 +125,11 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       ListaPrecoDefault: 3,
       CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
       QtdMinCharParaConsulta: 3,
-      UsuarioTipoCodigoProduto: 'I',
+      // Domain `EnumTipoCodigoProduto` da KB GeneXus (`ControlValues`):
+      // `''`→Código Reduzido, `'D'`→Código de Barras, `'C'`→Referência,
+      // `'P'`→Codigo de Barra Pesavel. `'D'` aqui é só o cenário padrão dos
+      // testes — não é o único valor válido.
+      UsuarioTipoCodigoProduto: 'D',
       ClienteDefaultCodigo: 1,
     },
     messages: [],
@@ -200,7 +204,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     },
   );
 
-  app.get<{ Querystring: { Txtbusca?: string } }>(
+  app.get<{ Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string } }>(
     '/ApiCentriumOAuth/GetListaProdutos',
     async (request, reply) => {
       contadores.negocio += 1;
@@ -210,7 +214,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // A lista devolve **apenas** os campos de exibição/seleção: sem
       // `PrecoVenda` e sem `ProdutoPesavelEditavel`, como o contrato real
       // (AD-091). É o que impede o Checkout de montar a linha daqui.
-      const produtos = Object.values(CATALOGO)
+      const todos = Object.values(CATALOGO)
         .filter((produto) => String(produto['Descricao']).toUpperCase().includes(termo))
         .map((produto) => ({
           CodigoProduto: produto['CodigoProduto'],
@@ -220,12 +224,24 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
           UDM: produto['UDM'],
         }));
 
+      // Pagina de verdade em cima de `Pagina`/`Tamanhopagina` (achado da revisão
+      // de código): a versão anterior ignorava os dois parâmetros e sempre
+      // devolvia tudo numa página só, o que nunca exercitava "Anterior"/
+      // "Próxima" contra um comportamento parecido com o do ERP real — só o
+      // teste unitário (com o hook mockado) cobria paginação de fato.
+      const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
+      const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
+      const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
+      const paginaAtual = Math.min(paginaPedida, totalPaginas);
+      const inicio = (paginaAtual - 1) * registrosPorPagina;
+      const produtos = todos.slice(inicio, inicio + registrosPorPagina);
+
       return reply.send({
         ListaProdutos: {
-          PaginaAtual: 1,
-          RegistrosPorPagina: 20,
-          TotalRegistros: produtos.length,
-          TotalPaginas: 1,
+          PaginaAtual: paginaAtual,
+          RegistrosPorPagina: registrosPorPagina,
+          TotalRegistros: todos.length,
+          TotalPaginas: totalPaginas,
           Produtos: produtos,
         },
         messages: [],

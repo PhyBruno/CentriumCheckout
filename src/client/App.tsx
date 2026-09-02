@@ -19,8 +19,6 @@ import { PainelMensagem } from './features/session-bootstrap/PainelMensagem';
 import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
 import { GridItens } from './features/carrinho/GridItens';
 import { ListaItensMobile } from './features/carrinho/ListaItensMobile';
-import { ModalBuscaProduto } from './features/carrinho/ModalBuscaProduto';
-import { Button } from '@/components/ui/button';
 
 export interface AppProps {
   /** Injetáveis para teste — em produção usam os padrões reais. */
@@ -189,23 +187,15 @@ function useLayoutCompacto(): boolean {
  * das duas é montada por vez.
  */
 function TelaDeVenda(): ReactElement {
-  const [buscaAberta, setBuscaAberta] = useState(false);
   const compacto = useLayoutCompacto();
 
   return (
-    <main className="flex min-h-screen flex-col gap-base p-base" data-testid="tela-de-venda">
+    <main
+      className="flex h-screen flex-col gap-base overflow-hidden p-base"
+      data-testid="tela-de-venda"
+    >
       <header className="flex items-center justify-between gap-sm">
         <h1 className="text-lg font-semibold">Centrium Checkout</h1>
-        <Button
-          type="button"
-          variant="outline"
-          data-testid="abrir-busca-produto"
-          onClick={() => {
-            setBuscaAberta(true);
-          }}
-        >
-          Buscar produto
-        </Button>
       </header>
 
       <EntradaRapidaProduto />
@@ -215,13 +205,6 @@ function TelaDeVenda(): ReactElement {
           para leitores de tela. É também o que a 007 exige de forma mais ampla:
           ausência estrutural, não flag de "oculto" (MOB-05, FR-008). */}
       {compacto ? <ListaItensMobile /> : <GridItens />}
-
-      <ModalBuscaProduto
-        aberto={buscaAberta}
-        onFechar={() => {
-          setBuscaAberta(false);
-        }}
-      />
     </main>
   );
 }

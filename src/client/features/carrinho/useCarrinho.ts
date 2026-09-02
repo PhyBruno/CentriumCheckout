@@ -73,6 +73,23 @@ export type ResultadoInsercao =
   { readonly situacao: 'inserido' } | { readonly situacao: 'recusado' } | PendenteDeEdicao;
 
 /**
+ * Produto resolvido para revisão sob demanda (TAB no campo de código, barra de
+ * entrada rápida) — nunca insere sozinho, ao contrário de `inserirPorCodigo`.
+ * `editavel` espelha `ProdutoPesavelEditavel = 'E'` e decide, no componente, se
+ * preço/desconto podem ser ajustados (`EdicaoItemEditavel`) ou só a quantidade
+ * (`PreviaInsercaoProduto`).
+ */
+export interface RevisaoProduto {
+  readonly situacao: 'revisao';
+  readonly snapshot: SnapshotPrecoProduto;
+  readonly quantidade: Milesimos;
+  readonly origem: OrigemInsercaoViva;
+  readonly editavel: boolean;
+}
+
+export type ResultadoRevisao = RevisaoProduto | { readonly situacao: 'recusado' };
+
+/**
  * Origens que este caminho de inserção pode produzir — nunca as congeladas
  * (`'RASCUNHO'`/`'DAV'`, `InserirItemInput` em `carrinhoSlice.ts`), que exigem
  * `precoUnitario` obrigatório e entram por um caminho dedicado ainda não
@@ -125,13 +142,26 @@ function quantidadeEOrigem(
 export interface ApiInsercao {
   /** Resolve o produto por código e decide o fluxo pelo `ProdutoPesavelEditavel`. */
   inserirPorCodigo(texto: string): Promise<ResultadoInsercao>;
-  /** Caminho da busca: já se conhece o código do candidato escolhido (AD-091). */
-  inserirPorSelecao(codigoProduto: string): Promise<ResultadoInsercao>;
   /** Confirma a inserção de um produto `'E'` depois da revisão do operador. */
   confirmarEdicao(
     pendente: PendenteDeEdicao,
     ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
   ): void;
+  /**
+   * TAB no campo de código (ou seleção no modal de busca, que carrega o
+   * código no campo e chama isto do mesmo jeito): resolve o produto **sem
+   * inserir**, para a barra de entrada rápida mostrar a prévia (nome,
+   * unidade, preço, total) antes de confirmar — nunca insere sozinho, ao
+   * contrário de `inserirPorCodigo`.
+   *
+   * `origemForcada` existe só para o caminho da busca (`CART-01`, AD-091):
+   * o texto resolvido é sempre um código simples digitado pela própria
+   * barra, então `quantidadeEOrigem` classificaria como `'MANUAL'` — sem o
+   * override a proveniência "veio da busca" se perderia da linha inserida.
+   */
+  revisarPorCodigo(texto: string, origemForcada?: 'BUSCA'): Promise<ResultadoRevisao>;
+  /** Confirma a prévia de um produto **não editável** — só a quantidade é ajustável. */
+  confirmarPrevia(revisao: RevisaoProduto, quantidade: Milesimos): void;
 }
 
 /**
@@ -223,6 +253,44 @@ export function useInsercaoDeProduto(): ApiInsercao {
     [inserirItem, resolverProduto],
   );
 
+  /**
+   * Mesma resolução de `inserirResolvido` (cache por SKU, quantidade/origem
+   * derivadas da entrada), mas devolve a prévia em vez de inserir — para
+   * **qualquer** `pesavelEditavel`, ao contrário de `inserirResolvido` (que só
+   * pausa em `'E'`). É o que a barra usa para decidir se mostra preço/desconto
+   * editáveis (`editavel`) ou só a quantidade.
+   */
+  const revisarResolvido = useCallback(
+    async (
+      codigoProduto: string,
+      entrada: EntradaCodigo,
+      origemForcada?: 'BUSCA',
+    ): Promise<ResultadoRevisao> => {
+      let snapshot: SnapshotPrecoProduto;
+      try {
+        snapshot = await resolverProduto(codigoProduto);
+      } catch (erro) {
+        gooeyToast.error(mensagemDeErro(erro));
+        return { situacao: 'recusado' };
+      }
+
+      try {
+        const { quantidade, origem } = quantidadeEOrigem(entrada, snapshot);
+        return {
+          situacao: 'revisao',
+          snapshot,
+          quantidade,
+          origem: origemForcada ?? origem,
+          editavel: snapshot.pesavelEditavel === 'E',
+        };
+      } catch (erro) {
+        gooeyToast.error(mensagemDeErro(erro));
+        return { situacao: 'recusado' };
+      }
+    },
+    [resolverProduto],
+  );
+
   return {
     inserirPorCodigo: useCallback(
       async (texto) => {
@@ -236,18 +304,23 @@ export function useInsercaoDeProduto(): ApiInsercao {
       [inserirResolvido],
     ),
 
-    inserirPorSelecao: useCallback(
-      async (codigoProduto) =>
-        // A linha nunca é montada a partir do resultado de `GetListaProdutos`:
-        // sempre `GetProduto` para o código selecionado (AD-091, D1).
-        inserirResolvido(
-          codigoProduto,
-          { tipo: 'SIMPLES', codigo: codigoProduto },
-          {
-            origem: 'BUSCA',
-          },
-        ),
-      [inserirResolvido],
+    revisarPorCodigo: useCallback(
+      async (texto, origemForcada) => {
+        const entrada = interpretarEntradaCodigo(texto);
+        const codigo = entrada.tipo === 'BALANCA' ? entrada.codigoReduzido : entrada.codigo;
+        if (codigo === '') {
+          return { situacao: 'recusado' };
+        }
+        return revisarResolvido(codigo, entrada, origemForcada);
+      },
+      [revisarResolvido],
+    ),
+
+    confirmarPrevia: useCallback(
+      (revisao, quantidade) => {
+        inserirItem({ snapshot: revisao.snapshot, quantidade, origem: revisao.origem });
+      },
+      [inserirItem],
     ),
 
     confirmarEdicao: useCallback(
