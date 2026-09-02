@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Circle, PackageSearch, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleCheck, PackageSearch, Search, X } from 'lucide-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
@@ -303,8 +303,11 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
                 onSelecionar(produto.CodigoProduto);
               }}
             >
+              {/* `circle-check` do Pencil (MCP, nó `UM0Ej`, "Resultado produto
+                  ... check"): indica que escolher a linha carrega o código no
+                  campo — correção do usuário, 2026-09-03 (era `Circle`). */}
               <span className="flex w-11 shrink-0 items-center justify-center">
-                <Circle className="size-4 text-muted-foreground/60" aria-hidden="true" />
+                <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
               <span className="w-32 shrink-0 px-sm font-mono text-sm font-bold tabular-nums">
                 {produto.CodigoProduto}

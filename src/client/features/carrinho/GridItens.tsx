@@ -1,5 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { useState, type ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,9 +10,9 @@ import {
   totalVenda,
   type LinhaCarrinho,
 } from '../../domain/precificacao/linha';
-import { formatarQuantidade, type Milesimos } from '../../domain/precificacao/quantidade';
+import { formatarQuantidade } from '../../domain/precificacao/quantidade';
+import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useVendaStore } from '../../stores/vendaStore';
-import { EdicaoQuantidadeItem } from './EdicaoQuantidadeItem';
 
 /**
  * Grid de itens da venda no desktop (T016, estendida em T035/T036).
@@ -22,11 +22,20 @@ import { EdicaoQuantidadeItem } from './EdicaoQuantidadeItem';
  * derivados, nunca campos armazenados (invariante I9).
  */
 export function GridItens(): ReactElement {
-  const { linhas, cancelarItem, editarItem } = useVendaStore(
+  const { linhas, cancelarItem } = useVendaStore(
     useShallow((estado) => ({
       linhas: estado.linhas,
       cancelarItem: estado.cancelarItem,
-      editarItem: estado.editarItem,
+    })),
+  );
+  // Correção do usuário (2026-09-03): o lápis não edita mais a quantidade
+  // inline — carrega a linha inteira na barra de entrada rápida
+  // (`EntradaRapidaProduto`, irmã desta grid em `TelaDeVenda`), por isso a
+  // coordenação sai de `useEdicaoItemStore`, não de `useVendaStore`.
+  const { carregarParaEdicao, idLinhaEmEdicao } = useEdicaoItemStore(
+    useShallow((estado) => ({
+      carregarParaEdicao: estado.carregarParaEdicao,
+      idLinhaEmEdicao: estado.linhaEmEdicao?.idLinha ?? null,
     })),
   );
 
@@ -84,9 +93,8 @@ export function GridItens(): ReactElement {
                   numeroItem={indice + 1}
                   zebrada={indice % 2 === 1}
                   onCancelar={cancelarItem}
-                  onEditarQuantidade={(idLinha, quantidade) => {
-                    editarItem(idLinha, 'quantidade', quantidade);
-                  }}
+                  onEditar={carregarParaEdicao}
+                  emEdicaoNaBarra={linha.idLinha === idLinhaEmEdicao}
                 />
               ))
             )}
@@ -136,9 +144,15 @@ interface LinhaDaGridProps {
    * por estado da linha (cancelada ou não). */
   readonly zebrada: boolean;
   readonly onCancelar: (idLinha: string) => void;
-  /** `FR-007`/T030 — corrigir a quantidade de uma linha já inserida, sem
-   * precisar cancelá-la e reinseri-la. */
-  readonly onEditarQuantidade: (idLinha: string, quantidade: Milesimos) => void;
+  /** `FR-007`/T030, redirecionado pela correção do usuário (2026-09-03):
+   * carrega a linha inteira na barra de entrada rápida em vez de abrir edição
+   * inline de quantidade — quantidade, preço, desconto e total só ficam
+   * ajustáveis lá, e só quando a linha for editável (ver `editavel` abaixo). */
+  readonly onEditar: (linha: LinhaCarrinho) => void;
+  /** `true` quando esta é a linha atualmente carregada na barra — trava as
+   * ações da linha até o operador confirmar ou cancelar (Escape) lá, evitando
+   * disparar um segundo carregamento por cima do primeiro. */
+  readonly emEdicaoNaBarra: boolean;
 }
 
 function LinhaDaGrid({
@@ -146,12 +160,15 @@ function LinhaDaGrid({
   numeroItem,
   zebrada,
   onCancelar,
-  onEditarQuantidade,
+  onEditar,
+  emEdicaoNaBarra,
 }: LinhaDaGridProps): ReactElement {
-  // Estado local por linha: só esta linha entra em modo de edição de
-  // quantidade por vez, sem afetar as demais nem sobreviver a um F5 (o
-  // carrinho já não sobrevive, `AD-006`) — não pertence ao `vendaStore`.
-  const [emEdicaoDeQuantidade, setEmEdicaoDeQuantidade] = useState(false);
+  // `''` é o único valor de `ProdutoPesavelEditavel` sem nada ajustável na
+  // barra (AD-063/AD-070): nem preço/desconto (só `'E'` tem) nem sequer
+  // quantidade faria sentido reabrir para revisão. `'E'`, `'S'` e `'B'`
+  // liberam o lápis — pesável mantém preço/desconto somente leitura na barra,
+  // igual à inserção, mas a quantidade continua ajustável.
+  const editavel = linha.snapshot.pesavelEditavel !== '';
 
   return (
     <tr
@@ -177,20 +194,7 @@ function LinhaDaGrid({
         {linha.cancelada ? <span className="sr-only"> (item cancelado)</span> : null}
       </td>
       <td className="px-base py-sm text-right font-mono tabular-nums">
-        {emEdicaoDeQuantidade ? (
-          <EdicaoQuantidadeItem
-            quantidadeAtual={linha.quantidade}
-            onConfirmar={(quantidade) => {
-              onEditarQuantidade(linha.idLinha, quantidade);
-              setEmEdicaoDeQuantidade(false);
-            }}
-            onCancelar={() => {
-              setEmEdicaoDeQuantidade(false);
-            }}
-          />
-        ) : (
-          formatarQuantidade(linha.quantidade, 3)
-        )}
+        {formatarQuantidade(linha.quantidade, 3)}
       </td>
       <td className="px-base py-sm">{linha.snapshot.unidadeMedida}</td>
       <td className="px-base py-sm text-right font-mono tabular-nums" data-testid="preco-unitario">
@@ -203,17 +207,20 @@ function LinhaDaGrid({
         {formatarCentavos(totalLinha(linha))}
       </td>
       <td className="px-base py-sm text-right">
-        {linha.cancelada || emEdicaoDeQuantidade ? null : (
+        {linha.cancelada ? null : (
           <div className="flex justify-end gap-xs">
             <Button
               type="button"
               variant="secondary"
               size="icon-sm"
               className="size-7 rounded-full text-primary"
-              aria-label="Editar quantidade"
-              data-testid="editar-quantidade-item"
+              aria-label="Editar item"
+              data-testid="editar-item"
+              // Só `''` (não editável, AD-063/AD-070) fica sem nada
+              // ajustável na barra — correção do usuário (2026-09-03).
+              disabled={!editavel || emEdicaoNaBarra}
               onClick={() => {
-                setEmEdicaoDeQuantidade(true);
+                onEditar(linha);
               }}
             >
               <Pencil className="size-3.5" aria-hidden="true" />
@@ -226,6 +233,10 @@ function LinhaDaGrid({
               aria-label="Cancelar"
               data-testid="cancelar-item"
               // Sem modal de confirmação e sem supervisor (`FR-012`, AD-065).
+              // Travado enquanto a linha está carregada na barra: cancelar
+              // por baixo do que está em revisão deixaria a barra confirmando
+              // uma linha que não existe mais.
+              disabled={emEdicaoNaBarra}
               onClick={() => {
                 onCancelar(linha.idLinha);
               }}

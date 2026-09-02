@@ -1344,6 +1344,22 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 
 ---
 
+### AD-124: Lápis da grid/lista mobile passa a recarregar a linha na barra de entrada rápida (não editar só a quantidade inline); modal de busca insere direto produto não editável; ícone do modal vira `circle-check` (2026-09-03)
+
+**Decision:** Três correções diretas do usuário sobre a UI já implementada do carrinho (`AD-123`):
+
+1. **Lápis da grid (`GridItens.tsx`) e da lista mobile (`ListaItensMobile.tsx`)** deixa de abrir `EdicaoQuantidadeItem` (removido) e passa a carregar a linha inteira em `EntradaRapidaProduto` — mesma barra da inserção, agora também destino de edição de item já inserido. Coordenação entre os dois (irmãos em `TelaDeVenda`, sem relação de pai/filho) por um store novo e minúsculo, `src/client/stores/edicaoItemStore.ts` (fora do `vendaStore`: é sinal efêmero de UI, não estado de venda). O lápis fica **desabilitado só quando `ProdutoPesavelEditavel = ''`** (não editável) — em `'E'` a barra libera quantidade/preço/desconto; em `'S'`/`'B'` (pesável) libera só a quantidade, preço e desconto ficam somente leitura (mesma regra já usada na inserção de um produto pesável). Ao confirmar, `useEdicaoDeItemExistente` (novo hook em `useCarrinho.ts`) chama `editarItem` uma vez por campo alterado (`quantidade`/`precoUnitario`/`descontoManual`) — reaproveita a auditoria por campo que a action já faz, sem endpoint novo.
+2. **Seleção no modal de busca (`ModalBuscaProduto`)** continua carregando o código na barra e resolvendo via `GetProduto` como hoje — **exceto** quando o produto resolvido é não editável (`''`): nesse caso não há nada a revisar (sem preço/desconto ajustável e sem etiqueta de balança a interpretar), então `EntradaRapidaProduto.selecionarDaBusca` insere direto no grid, sem exigir clique/Enter extra do operador. Produto `'E'`/`'S'`/`'B'` continuam mostrando a prévia normalmente.
+3. **Ícone da coluna de seleção do modal** (`ModalBuscaProduto.tsx`) troca de `Circle` (lucide) para `CircleCheck` — alinhado ao Pencil (MCP, nó `UM0Ej`, frame "PDV Online Web - Modal produto": as linhas de resultado usam `icon: "circle-check"`, nunca `circle`), e semanticamente mais correto: indica que escolher a linha carrega o código no campo.
+
+**Reason:** Pedido direto do usuário (2026-09-03) corrigindo o comportamento da feature 003 já implementada — a edição inline de quantidade duplicava uma barra que já existe para essa finalidade, a exigência de confirmação extra para produto não editável no caminho da busca era um passo sem propósito (nada para o operador decidir), e o ícone divergia do Pencil.
+
+**Trade-off:** A barra de entrada rápida acumula um segundo modo (`linhaEmEdicao`, além de `resolvido`) — aceito porque os dois nunca coexistem (cada revisão nova cancela a edição pendente, e vice-versa) e a UI é literalmente a mesma superfície visual nos dois casos. `descontoConvenio` da linha em edição nunca é editável neste formulário (só `repricarSku` escreve) — some ao total exibido sem entrar no campo de desconto, que representa exclusivamente `descontoManual`.
+
+**Impact:** `src/client/stores/edicaoItemStore.ts` (novo); `src/client/features/carrinho/{GridItens,ListaItensMobile,EntradaRapidaProduto,ModalBuscaProduto,useCarrinho}.tsx/.ts`; remove `EdicaoQuantidadeItem.tsx` (órfão); `tests/unit/client/carrinho/{GridItens,ListaItensMobile,EntradaRapidaProduto}.spec.tsx` (dois reescritos, um novo); `tests/e2e/carrinho-precificacao.spec.ts` (cenário de seleção no modal atualizado para inserção direta + cenário novo de produto `'E'` no modal). Atualiza `.specs/features/carrinho-produto-precificacao/spec.md` (Edge Cases de `ProdutoPesavelEditavel`/CART-01).
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

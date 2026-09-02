@@ -1,29 +1,35 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { useState, type ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { totalLinha, totalVenda, type LinhaCarrinho } from '../../domain/precificacao/linha';
-import { formatarQuantidade, type Milesimos } from '../../domain/precificacao/quantidade';
+import { formatarQuantidade } from '../../domain/precificacao/quantidade';
+import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useVendaStore } from '../../stores/vendaStore';
-import { EdicaoQuantidadeItem } from './EdicaoQuantidadeItem';
 
 /**
  * Lista de itens no mobile (T017).
  *
  * Layout diferente, **mesma fonte de estado** da grid desktop: o carrinho é um
  * só, e cancelar aqui produz exatamente o mesmo efeito de cancelar lá — inclusive
- * a linha riscada que permanece visível (`CART-08`). O mesmo vale para editar
- * quantidade (`FR-007`, T030): a `EdicaoQuantidadeItem` compartilhada garante
- * que os dois layouts chamem `editarItem` com a mesma semântica.
+ * a linha riscada que permanece visível (`CART-08`). O mesmo vale para o lápis
+ * (correção do usuário, 2026-09-03): carrega a linha na barra de entrada
+ * rápida via `useEdicaoItemStore`, compartilhado com `GridItens.tsx`, para os
+ * dois layouts produzirem exatamente o mesmo efeito.
  */
 export function ListaItensMobile(): ReactElement {
-  const { linhas, cancelarItem, editarItem } = useVendaStore(
+  const { linhas, cancelarItem } = useVendaStore(
     useShallow((estado) => ({
       linhas: estado.linhas,
       cancelarItem: estado.cancelarItem,
-      editarItem: estado.editarItem,
+    })),
+  );
+  const { carregarParaEdicao, idLinhaEmEdicao } = useEdicaoItemStore(
+    useShallow((estado) => ({
+      carregarParaEdicao: estado.carregarParaEdicao,
+      idLinhaEmEdicao: estado.linhaEmEdicao?.idLinha ?? null,
     })),
   );
 
@@ -42,9 +48,8 @@ export function ListaItensMobile(): ReactElement {
               key={linha.idLinha}
               linha={linha}
               onCancelar={cancelarItem}
-              onEditarQuantidade={(idLinha, quantidade) => {
-                editarItem(idLinha, 'quantidade', quantidade);
-              }}
+              onEditar={carregarParaEdicao}
+              emEdicaoNaBarra={linha.idLinha === idLinhaEmEdicao}
             />
           ))}
         </ul>
@@ -63,14 +68,20 @@ export function ListaItensMobile(): ReactElement {
 interface ItemMobileProps {
   readonly linha: LinhaCarrinho;
   readonly onCancelar: (idLinha: string) => void;
-  readonly onEditarQuantidade: (idLinha: string, quantidade: Milesimos) => void;
+  /** Mesma semântica de `LinhaDaGrid` (`GridItens.tsx`): carrega a linha na
+   * barra de entrada rápida em vez de editar quantidade inline. */
+  readonly onEditar: (linha: LinhaCarrinho) => void;
+  readonly emEdicaoNaBarra: boolean;
 }
 
-function ItemMobile({ linha, onCancelar, onEditarQuantidade }: ItemMobileProps): ReactElement {
-  // Estado local por item, mesmo raciocínio de `LinhaDaGrid` em `GridItens.tsx`:
-  // não é estado da venda, não sobrevive a um F5, e é irrelevante para as
-  // demais linhas.
-  const [emEdicaoDeQuantidade, setEmEdicaoDeQuantidade] = useState(false);
+function ItemMobile({
+  linha,
+  onCancelar,
+  onEditar,
+  emEdicaoNaBarra,
+}: ItemMobileProps): ReactElement {
+  // Mesma regra de `LinhaDaGrid`: só `''` (não editável) fica sem lápis.
+  const editavel = linha.snapshot.pesavelEditavel !== '';
 
   return (
     <li
@@ -91,35 +102,23 @@ function ItemMobile({ linha, onCancelar, onEditarQuantidade }: ItemMobileProps):
       </div>
 
       <div className="flex items-center justify-between gap-sm text-sm text-muted-foreground">
-        {emEdicaoDeQuantidade ? (
-          <EdicaoQuantidadeItem
-            quantidadeAtual={linha.quantidade}
-            onConfirmar={(quantidade) => {
-              onEditarQuantidade(linha.idLinha, quantidade);
-              setEmEdicaoDeQuantidade(false);
-            }}
-            onCancelar={() => {
-              setEmEdicaoDeQuantidade(false);
-            }}
-          />
-        ) : (
-          <span className="font-mono tabular-nums">
-            {formatarQuantidade(linha.quantidade, 3)} {linha.snapshot.unidadeMedida} ×{' '}
-            <span data-testid="preco-unitario">{formatarCentavos(linha.precoUnitario)}</span>
-          </span>
-        )}
+        <span className="font-mono tabular-nums">
+          {formatarQuantidade(linha.quantidade, 3)} {linha.snapshot.unidadeMedida} ×{' '}
+          <span data-testid="preco-unitario">{formatarCentavos(linha.precoUnitario)}</span>
+        </span>
 
-        {linha.cancelada || emEdicaoDeQuantidade ? null : (
+        {linha.cancelada ? null : (
           <div className="flex gap-xs">
             <Button
               type="button"
               variant="secondary"
               size="icon-sm"
               className="size-7 rounded-full text-primary"
-              aria-label="Editar quantidade"
-              data-testid="editar-quantidade-item"
+              aria-label="Editar item"
+              data-testid="editar-item"
+              disabled={!editavel || emEdicaoNaBarra}
               onClick={() => {
-                setEmEdicaoDeQuantidade(true);
+                onEditar(linha);
               }}
             >
               <Pencil className="size-3.5" aria-hidden="true" />
@@ -131,6 +130,7 @@ function ItemMobile({ linha, onCancelar, onEditarQuantidade }: ItemMobileProps):
               className="size-7 rounded-full text-muted-foreground"
               aria-label="Cancelar"
               data-testid="cancelar-item"
+              disabled={emEdicaoNaBarra}
               onClick={() => {
                 onCancelar(linha.idLinha);
               }}

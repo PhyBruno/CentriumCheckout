@@ -8,7 +8,11 @@ import {
   type EntradaCodigo,
 } from '../../domain/precificacao/codigoProduto';
 import type { Centavos } from '../../domain/precificacao/dinheiro';
-import type { OrigemLinha, SnapshotPrecoProduto } from '../../domain/precificacao/linha';
+import type {
+  LinhaCarrinho,
+  OrigemLinha,
+  SnapshotPrecoProduto,
+} from '../../domain/precificacao/linha';
 import { milesimosDeUnidades, type Milesimos } from '../../domain/precificacao/quantidade';
 import {
   ErroProdutoNaoEncontrado,
@@ -334,6 +338,40 @@ export function useInsercaoDeProduto(): ApiInsercao {
         });
       },
       [inserirItem],
+    ),
+  };
+}
+
+export interface ApiEdicaoItem {
+  /**
+   * Aplica ajustes de quantidade/preço/desconto manual a uma linha **já
+   * inserida** — caminho novo da barra de entrada rápida quando o operador
+   * clica no lápis de uma linha da grid/lista mobile (correção do usuário,
+   * 2026-09-03), em vez de editar só a quantidade inline
+   * (`EdicaoQuantidadeItem`, removido).
+   *
+   * Cada campo passa por `editarItem`, que já é idempotente (no-op quando o
+   * valor não mudou, `carrinhoSlice.ts`) e audita por campo — chamar os três
+   * incondicionalmente é seguro mesmo quando só a quantidade mudou (produto
+   * pesável, `'S'`/`'B'`: preço e desconto chegam inalterados).
+   */
+  confirmarEdicaoDeLinha(
+    linha: LinhaCarrinho,
+    ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
+  ): void;
+}
+
+export function useEdicaoDeItemExistente(): ApiEdicaoItem {
+  const editarItem = useVendaStore((estado) => estado.editarItem);
+
+  return {
+    confirmarEdicaoDeLinha: useCallback(
+      (linha, ajustes) => {
+        editarItem(linha.idLinha, 'quantidade', ajustes.quantidade);
+        editarItem(linha.idLinha, 'precoUnitario', ajustes.precoUnitario);
+        editarItem(linha.idLinha, 'descontoManual', ajustes.descontoManual);
+      },
+      [editarItem],
     ),
   };
 }

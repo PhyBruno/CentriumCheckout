@@ -73,7 +73,7 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
     expect((await contadores(request)).getListaProdutos).toBe(0);
   });
 
-  test('termo completo lista candidatos e a seleção só carrega o código — quem resolve e insere é a barra (AD-091)', async ({
+  test('termo completo lista candidatos e a seleção carrega o código — quem resolve é a barra (AD-091)', async ({
     page,
     request,
   }) => {
@@ -89,23 +89,38 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
 
     await candidato.click();
 
-    // O modal só devolveu o código — fechou, e o campo de código da barra
-    // mostra o código escolhido. Nada foi inserido ainda.
+    // O modal só devolveu o código — fechou. Quem resolve via `GetProduto` é
+    // a barra, nunca monta a linha a partir do resultado da busca (AD-091).
     await expect(page.getByTestId('modal-busca-produto')).toHaveCount(0);
-    await expect(page.getByTestId('campo-codigo-produto')).toHaveValue(SKU_COM_FAIXA);
-    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
-
-    // A barra resolveu via `GetProduto` (nunca monta a linha a partir do
-    // resultado da busca, AD-091) e mostra a revisão — produto não editável,
-    // então o foco já pousa no "+".
-    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 10,00');
     expect((await contadores(request)).getProduto).toBe(1);
-    await expect(page.getByTestId('previa-confirmar')).toBeFocused();
 
-    await page.keyboard.press('Enter');
-
+    // Correção do usuário (2026-09-03): produto não editável (`''`) não tem
+    // nada a revisar — sem preço/desconto ajustável e sem etiqueta de balança
+    // — então insere direto no grid, sem exigir confirmação extra.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 10,00');
+    // A barra volta ao estado vazio, pronta para o próximo código.
+    await expect(page.getByTestId('campo-codigo-produto')).toHaveValue('');
+  });
+
+  test('produto editável (\'E\') escolhido no modal continua exigindo revisão do operador', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+    await page.getByTestId('abrir-busca-produto').click();
+    await page.getByTestId('campo-busca-produto').fill('PRODUTO EDITAVEL');
+
+    const candidato = page
+      .getByTestId('candidato-produto')
+      .filter({ hasText: 'PRODUTO EDITAVEL' });
+    await expect(candidato).toBeVisible();
+    await candidato.click();
+
+    await expect(page.getByTestId('modal-busca-produto')).toHaveCount(0);
+    await expect(page.getByTestId('campo-codigo-produto')).toHaveValue(SKU_EDITAVEL);
+    // Ainda não inseriu: produto `'E'` sempre exige revisão de preço/desconto.
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByTestId('previa-preco-unitario')).toBeEditable();
   });
 });
 

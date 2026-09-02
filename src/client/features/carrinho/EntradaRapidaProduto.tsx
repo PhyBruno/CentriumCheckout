@@ -8,6 +8,7 @@ import {
   calcularTotalLinha,
   centavos,
   formatarCentavos,
+  somar,
   type Centavos,
 } from '../../domain/precificacao/dinheiro';
 import {
@@ -18,8 +19,14 @@ import {
   somarQuantidades,
   type Milesimos,
 } from '../../domain/precificacao/quantidade';
+import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { ModalBuscaProduto } from './ModalBuscaProduto';
-import { useContextoPrecificacao, useInsercaoDeProduto, type RevisaoProduto } from './useCarrinho';
+import {
+  useContextoPrecificacao,
+  useEdicaoDeItemExistente,
+  useInsercaoDeProduto,
+  type RevisaoProduto,
+} from './useCarrinho';
 
 const CENTAVOS_POR_REAL = 100;
 const UMA_UNIDADE = milesimos(MILESIMOS_POR_UNIDADE);
@@ -84,10 +91,24 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
  * chama `GetProduto` e mostra a revisão — o mesmo caminho de TAB no código
  * digitado. Achado do usuário (2026-09-03): a revisão vivia por engano
  * dentro do modal, duplicando esta UI.
+ *
+ * Também é o destino do lápis de uma linha **já inserida** (`GridItens.tsx`,
+ * `ListaItensMobile.tsx`) — correção do usuário, 2026-09-03: em vez de editar
+ * só a quantidade inline, o lápis carrega a linha inteira aqui (via
+ * `useEdicaoItemStore`), preservando quantidade/unidade/preço/desconto/total,
+ * e só libera preço/desconto para edição quando `ProdutoPesavelEditavel = 'E'`
+ * — em `'S'`/`'B'` (pesável) só a quantidade fica ajustável, mesma regra da
+ * inserção; em `''` (não editável) o lápis fica desabilitado na origem.
  */
 export function EntradaRapidaProduto(): ReactElement {
   const { inserirPorCodigo, confirmarEdicao, revisarPorCodigo, confirmarPrevia } =
     useInsercaoDeProduto();
+  const { confirmarEdicaoDeLinha } = useEdicaoDeItemExistente();
+  // Correção do usuário (2026-09-03): lápis da grid/lista mobile carrega uma
+  // linha já inserida de volta para cá via `useEdicaoItemStore` (irmãos em
+  // `TelaDeVenda`, sem relação de pai/filho) — ver `linhaEmEdicao` abaixo.
+  const linhaEmEdicao = useEdicaoItemStore((estado) => estado.linhaEmEdicao);
+  const limparEdicao = useEdicaoItemStore((estado) => estado.limparEdicao);
   const [buscaAberta, setBuscaAberta] = useState(false);
   // Rótulo do campo depende de `SessaoUsuario.UsuarioTipoCodigoProduto`
   // (`GetSessao`) — é configuração da empresa, nunca um texto fixo (mesmo
@@ -111,16 +132,35 @@ export function EntradaRapidaProduto(): ReactElement {
   const campoQuantidade = useRef<HTMLInputElement>(null);
   const botaoConfirmar = useRef<HTMLButtonElement>(null);
 
-  const editavel = resolvido?.editavel ?? false;
-  const semResolucao = resolvido === null;
+  // `linhaEmEdicao` (item já inserido, recarregado pelo lápis) e `resolvido`
+  // (produto novo em revisão, TAB/busca) nunca coexistem — cada um "vence" o
+  // outro no ponto em que passa a existir (ver `aplicarRevisao`/efeito abaixo)
+  // — mas os derivados leem os dois porque a UI é a mesma barra.
+  const editavel = linhaEmEdicao
+    ? linhaEmEdicao.snapshot.pesavelEditavel === 'E'
+    : (resolvido?.editavel ?? false);
+  const semResolucao = linhaEmEdicao === null && resolvido === null;
+  const snapshotAtivo = linhaEmEdicao?.snapshot ?? resolvido?.snapshot ?? null;
+  // Desconto de convênio da linha em edição: fixo, nunca digitado pelo
+  // operador aqui — só `repricarSku` escreve (`descontoDeConvenio`,
+  // `reprecificacao.ts`) — soma no total sem entrar no campo de desconto, que
+  // representa exclusivamente o `descontoManual` que este formulário grava.
+  const descontoConvenioFixo = linhaEmEdicao?.descontoConvenio ?? ZERO_CENTAVOS;
   const quantidadeLida = lerQuantidadeTexto(quantidadeTexto);
-  const precoLido = editavel ? lerCentavos(precoTexto) : (resolvido?.snapshot.precoBase ?? null);
-  const descontoLido = editavel ? lerCentavos(descontoTexto) : ZERO_CENTAVOS;
+  const precoLido = editavel
+    ? lerCentavos(precoTexto)
+    : (linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? null);
+  const descontoManualLido = editavel
+    ? lerCentavos(descontoTexto)
+    : (linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS);
+  const descontoTotalLido =
+    descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
 
-  // Foco automático ao resolver (TAB): produto editável pousa na quantidade —
-  // primeiro campo da sequência de revisão, nunca no botão de inserir; não
-  // editável não tem nada a decidir além do que o stepper já resolve, então
-  // pousa direto no "+" (Enter já insere, sem exigir mouse).
+  // Foco automático ao resolver (TAB) ou ao recarregar uma linha existente
+  // (lápis): produto editável pousa na quantidade — primeiro campo da
+  // sequência de revisão, nunca no botão de inserir; não editável não tem
+  // nada a decidir além do que o stepper já resolve, então pousa direto no
+  // "+" (Enter/clique já confirma, sem exigir mouse).
   useEffect(() => {
     if (resolvido === null) {
       return;
@@ -133,12 +173,32 @@ export function EntradaRapidaProduto(): ReactElement {
     }
   }, [resolvido]);
 
+  useEffect(() => {
+    if (linhaEmEdicao === null) {
+      return;
+    }
+    // Nova revisão de inserção "vence" uma edição pendente por baixo, se
+    // houver (guarda espelhada em `aplicarRevisao`).
+    setResolvido(null);
+    setTexto(linhaEmEdicao.snapshot.codigoProduto);
+    setQuantidadeTexto(formatarQuantidade(linhaEmEdicao.quantidade, 3));
+    setPrecoTexto(paraTextoDecimal(linhaEmEdicao.precoUnitario));
+    setDescontoTexto(paraTextoDecimal(linhaEmEdicao.descontoManual));
+    if (linhaEmEdicao.snapshot.pesavelEditavel === 'E') {
+      campoQuantidade.current?.focus();
+      campoQuantidade.current?.select();
+    } else {
+      botaoConfirmar.current?.focus();
+    }
+  }, [linhaEmEdicao]);
+
   function resetar(): void {
     setResolvido(null);
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
     setPrecoTexto('');
     setDescontoTexto('0,00');
+    limparEdicao();
     campoCodigo.current?.focus();
   }
 
@@ -161,6 +221,9 @@ export function EntradaRapidaProduto(): ReactElement {
       if (resultado.situacao === 'edicao') {
         // Produto `'E'`: a linha não entra ainda; vira revisão editável,
         // mesmo caminho de quando o TAB resolve um produto `'E'` (`FR-014`).
+        // Uma edição de linha existente pendente perde para esta revisão
+        // nova (mesma guarda de `aplicarRevisao`).
+        limparEdicao();
         setResolvido({
           situacao: 'revisao',
           snapshot: resultado.snapshot,
@@ -188,11 +251,27 @@ export function EntradaRapidaProduto(): ReactElement {
   }
 
   /**
+   * Aplica uma revisão resolvida (`GetProduto`) ao estado local — usada tanto
+   * por `resolverEExibir` (TAB) quanto por `selecionarDaBusca` (produto
+   * editável/pesável escolhido no modal). Uma edição de linha existente
+   * pendente perde para esta revisão nova (mesma guarda de
+   * `confirmarEntradaRapida`): o operador está deliberadamente resolvendo
+   * outro produto.
+   */
+  function aplicarRevisao(revisao: RevisaoProduto): void {
+    limparEdicao();
+    setResolvido(revisao);
+    setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
+    setPrecoTexto(paraTextoDecimal(revisao.snapshot.precoBase));
+    setDescontoTexto('0,00');
+  }
+
+  /**
    * Núcleo compartilhado por TAB (`revisarEntrada`, usa `texto` digitado) e
-   * pela seleção no modal de busca (`selecionarDaBusca`, usa o código
-   * escolhido direto) — os dois caminhos terminam no mesmo lugar: `GetProduto`
-   * via `revisarPorCodigo` e a revisão aparece na barra, nunca inserindo
-   * sozinho.
+   * pela seleção no modal de busca de produto editável/pesável
+   * (`selecionarDaBusca`, usa o código escolhido direto) — os dois caminhos
+   * terminam no mesmo lugar: `GetProduto` via `revisarPorCodigo` e a revisão
+   * aparece na barra, nunca inserindo sozinho.
    */
   async function resolverEExibir(codigo: string, origemForcada?: 'BUSCA'): Promise<void> {
     setOcupado(true);
@@ -202,12 +281,9 @@ export function EntradaRapidaProduto(): ReactElement {
         campoCodigo.current?.focus();
         return;
       }
-      setResolvido(resultado);
-      setQuantidadeTexto(formatarQuantidade(resultado.quantidade, 3));
-      setPrecoTexto(paraTextoDecimal(resultado.snapshot.precoBase));
-      setDescontoTexto('0,00');
       // Mesma razão do caminho rápido: o código digitado fica visível durante
       // a revisão, só `resetar()` (confirmar/cancelar) o limpa.
+      aplicarRevisao(resultado);
     } finally {
       setOcupado(false);
     }
@@ -226,16 +302,56 @@ export function EntradaRapidaProduto(): ReactElement {
    * `CodigoProduto`; carregar no campo, resolver via `GetProduto` e mostrar a
    * revisão (quantidade/unidade/preço/desconto, foco na quantidade ou no "+"
    * conforme `pesavelEditavel`) é responsabilidade desta barra, não do modal.
+   *
+   * Exceção (correção do usuário, 2026-09-03): produto identificado como
+   * **não editável** (`ProdutoPesavelEditavel === ''`) não tem nada a
+   * revisar aqui — sem preço/desconto ajustável (`'E'`) e sem etiqueta de
+   * balança a interpretar (`'S'`/`'B'`) — então insere direto no grid, sem
+   * exigir confirmação extra do operador.
    */
   async function selecionarDaBusca(codigoProduto: string): Promise<void> {
     if (ocupado) {
       return;
     }
     setTexto(codigoProduto);
-    await resolverEExibir(codigoProduto, 'BUSCA');
+    setOcupado(true);
+    try {
+      const resultado = await revisarPorCodigo(codigoProduto, 'BUSCA');
+      if (resultado.situacao === 'recusado') {
+        campoCodigo.current?.focus();
+        return;
+      }
+      if (resultado.snapshot.pesavelEditavel === '') {
+        confirmarPrevia(resultado, resultado.quantidade);
+        resetar();
+        return;
+      }
+      aplicarRevisao(resultado);
+    } finally {
+      setOcupado(false);
+    }
   }
 
   function confirmar(): void {
+    // Correção do usuário (2026-09-03): lápis da grid/lista mobile — edita a
+    // linha já inserida em vez de criar uma nova (`editarItem` por campo, via
+    // `confirmarEdicaoDeLinha`). Produto pesável (`'S'`/`'B'`) só libera a
+    // quantidade: `precoLido`/`descontoManualLido` chegam iguais aos da
+    // própria linha (campos somente leitura), então `editarItem` não muda
+    // nada neles (é idempotente, `carrinhoSlice.ts`).
+    if (linhaEmEdicao !== null) {
+      if (quantidadeLida === null || precoLido === null || descontoManualLido === null) {
+        return;
+      }
+      confirmarEdicaoDeLinha(linhaEmEdicao, {
+        quantidade: quantidadeLida,
+        precoUnitario: precoLido,
+        descontoManual: descontoManualLido,
+      });
+      resetar();
+      return;
+    }
+
     if (resolvido === null) {
       void confirmarEntradaRapida();
       return;
@@ -244,12 +360,16 @@ export function EntradaRapidaProduto(): ReactElement {
       return;
     }
     if (resolvido.editavel) {
-      if (precoLido === null || descontoLido === null) {
+      if (precoLido === null || descontoManualLido === null) {
         return;
       }
       confirmarEdicao(
         { situacao: 'edicao', snapshot: resolvido.snapshot, quantidade: quantidadeLida },
-        { quantidade: quantidadeLida, precoUnitario: precoLido, descontoManual: descontoLido },
+        {
+          quantidade: quantidadeLida,
+          precoUnitario: precoLido,
+          descontoManual: descontoManualLido,
+        },
       );
     } else {
       confirmarPrevia(resolvido, quantidadeLida);
@@ -272,9 +392,9 @@ export function EntradaRapidaProduto(): ReactElement {
   }
 
   const podeConfirmar =
-    resolvido === null
+    resolvido === null && linhaEmEdicao === null
       ? !ocupado && texto.trim() !== ''
-      : quantidadeLida !== null && precoLido !== null && descontoLido !== null;
+      : quantidadeLida !== null && precoLido !== null && descontoTotalLido !== null;
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -285,15 +405,21 @@ export function EntradaRapidaProduto(): ReactElement {
 
   const precoExibido = editavel
     ? precoTexto
-    : formatarCentavos(resolvido === null ? ZERO_CENTAVOS : resolvido.snapshot.precoBase);
-  const descontoExibido = editavel ? descontoTexto : formatarCentavos(ZERO_CENTAVOS);
+    : formatarCentavos(linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? ZERO_CENTAVOS);
+  // Não editável mostra o desconto real da linha (convênio + manual, mesma
+  // soma da coluna "Desconto" da grid) — não `0,00` fixo — quando há uma
+  // linha existente carregada; numa inserção nova ainda não há desconto de
+  // convênio a mostrar (`descontoConvenioFixo` é `0` nesse caso).
+  const descontoExibido = editavel
+    ? descontoTexto
+    : formatarCentavos(somar(descontoConvenioFixo, linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS));
 
   return (
     <div
       className="flex flex-col gap-xs rounded-3xl border border-border bg-background p-base"
       data-testid="entrada-rapida-produto"
       onKeyDown={(evento) => {
-        if (evento.key === 'Escape' && resolvido !== null) {
+        if (evento.key === 'Escape' && (resolvido !== null || linhaEmEdicao !== null)) {
           resetar();
         }
       }}
@@ -312,7 +438,7 @@ export function EntradaRapidaProduto(): ReactElement {
             autoFocus
             placeholder="Bipe ou digite (use * p/ quantidade)"
             value={texto}
-            disabled={resolvido !== null}
+            disabled={resolvido !== null || linhaEmEdicao !== null}
             onChange={(evento) => {
               setTexto(evento.target.value);
             }}
@@ -382,7 +508,7 @@ export function EntradaRapidaProduto(): ReactElement {
             className={cn(classeCampoValor, semResolucao && 'text-muted-foreground')}
             data-testid="previa-unidade"
             readOnly
-            value={resolvido?.snapshot.unidadeMedida ?? 'UN'}
+            value={snapshotAtivo?.unidadeMedida ?? 'UN'}
           />
         </label>
 
@@ -427,9 +553,9 @@ export function EntradaRapidaProduto(): ReactElement {
             )}
             data-testid="previa-total-item"
           >
-            {quantidadeLida === null || precoLido === null || descontoLido === null
+            {quantidadeLida === null || precoLido === null || descontoTotalLido === null
               ? formatarCentavos(ZERO_CENTAVOS)
-              : formatarCentavos(calcularTotalLinha(precoLido, quantidadeLida, descontoLido))}
+              : formatarCentavos(calcularTotalLinha(precoLido, quantidadeLida, descontoTotalLido))}
           </strong>
         </label>
 
@@ -437,7 +563,7 @@ export function EntradaRapidaProduto(): ReactElement {
           ref={botaoConfirmar}
           type="button"
           className="h-11.5 w-[70px] shrink-0 rounded-full"
-          aria-label="Adicionar item à venda"
+          aria-label={linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'}
           data-testid="previa-confirmar"
           disabled={!podeConfirmar}
           onClick={confirmar}
@@ -447,7 +573,7 @@ export function EntradaRapidaProduto(): ReactElement {
       </div>
 
       <p className="text-sm font-medium text-foreground" data-testid="previa-descricao-produto">
-        {resolvido?.snapshot.descricao ?? ' '}
+        {snapshotAtivo?.descricao ?? ' '}
       </p>
 
       <ModalBuscaProduto
