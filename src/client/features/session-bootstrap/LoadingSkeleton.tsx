@@ -11,7 +11,8 @@ configureBoneyard({
   shimmerAngle: -99.778,
 });
 
-const SHIMMER_PILL = 'cc-shimmer motion-reduce:animate-none motion-reduce:bg-none motion-reduce:bg-[var(--cc-skeleton-base)]';
+const SHIMMER_PILL =
+  'cc-shimmer motion-reduce:animate-none motion-reduce:bg-none motion-reduce:bg-[var(--cc-skeleton-base)]';
 
 /**
  * Tela de carregamento bloqueante do bootstrap (T025, AUTH-05 / FR-004).
@@ -67,7 +68,10 @@ export function LoadingSkeleton(): ReactElement {
  */
 function EstruturaTelaVenda(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
-    <div className="flex flex-1 flex-row gap-md pt-md px-lg pb-lg" aria-hidden={props['aria-hidden']}>
+    <div
+      className="flex flex-1 flex-row gap-md pt-md px-lg pb-lg"
+      aria-hidden={props['aria-hidden']}
+    >
       <div className="flex flex-1 flex-col gap-base">
         <section className="h-38 rounded-xl border border-border bg-background p-base">
           <div className="flex flex-col gap-sm">
