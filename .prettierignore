@@ -14,3 +14,11 @@ specs/
 docs/
 design/
 Fluxograma - Diagrama - Alinhamentos/
+AGENTS.md
+CLAUDE.md
+rules.md
+SPECKIT.md
+
+# Configuração/estado de ferramentas de agente (Claude Code, Spec Kit) — não é código do produto
+.claude/
+.specify/
