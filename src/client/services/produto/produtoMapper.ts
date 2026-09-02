@@ -10,9 +10,7 @@
 import type { SnapshotPrecoProduto } from '../../domain/precificacao/linha';
 import type { SdtCheckoutGetProduto } from '../../../shared/schemas/produto.schema';
 
-export function paraSnapshotPrecoProduto(
-  produto: SdtCheckoutGetProduto,
-): SnapshotPrecoProduto {
+export function paraSnapshotPrecoProduto(produto: SdtCheckoutGetProduto): SnapshotPrecoProduto {
   return {
     codigoProduto: produto.CodigoProduto,
     descricao: produto.Descricao,

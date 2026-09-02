@@ -3460,5 +3460,18 @@
       "src/client/domain/precificacao/reprecificacao.ts"
     ],
     "date": "2026-09-02"
+  },
+  {
+    "type": "decision",
+    "content": "AD-119/120/121 registram os achados da implementacao da 003",
+    "tags": [
+      "003",
+      "adr",
+      "specs"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
+    ],
+    "date": "2026-09-02"
   }
 ]

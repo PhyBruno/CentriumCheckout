@@ -24,7 +24,10 @@ async function contadores(request: APIRequestContext): Promise<ContadoresMock> {
   return (await resposta.json()) as ContadoresMock;
 }
 
-async function configurar(request: APIRequestContext, config: Record<string, unknown>): Promise<void> {
+async function configurar(
+  request: APIRequestContext,
+  config: Record<string, unknown>,
+): Promise<void> {
   await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: config });
 }
 
@@ -56,7 +59,10 @@ test.beforeEach(async ({ request }) => {
 });
 
 test.describe('User Story 1 — busca de produto por termo livre (T018)', () => {
-  test('termo abaixo do mínimo não dispara GetListaProdutos (AD-024)', async ({ page, request }) => {
+  test('termo abaixo do mínimo não dispara GetListaProdutos (AD-024)', async ({
+    page,
+    request,
+  }) => {
     await abrirTelaDeVenda(page);
     await page.getByTestId('abrir-busca-produto').click();
 
@@ -91,7 +97,9 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
 });
 
 test.describe('User Story 2 — inserção direta por código conhecido (T025)', () => {
-  test('"codigo*3" insere quantidade 3 e o código simples insere quantidade 1', async ({ page }) => {
+  test('"codigo*3" insere quantidade 3 e o código simples insere quantidade 1', async ({
+    page,
+  }) => {
     await abrirTelaDeVenda(page);
 
     await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
@@ -162,7 +170,9 @@ test.describe('User Story 3 — faixa de quantidade (T032, TipoPreco 8)', () => 
     await configurar(request, { tipoPreco: 8 });
   });
 
-  test('cruzar o limiar aplica o novo preço a todas as linhas do SKU (FR-006)', async ({ page }) => {
+  test('cruzar o limiar aplica o novo preço a todas as linhas do SKU (FR-006)', async ({
+    page,
+  }) => {
     await abrirTelaDeVenda(page);
 
     await bipar(page, `${SKU_COM_FAIXA}*3`, 1);

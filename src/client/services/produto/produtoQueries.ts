@@ -72,7 +72,10 @@ export class ErroSessaoEncerrada extends Error {
 
 /** Resposta que não passou na validação de fronteira — nunca inserir com dado parcial. */
 export class ErroRespostaInvalida extends Error {
-  constructor(endpoint: string, readonly detalhe: string) {
+  constructor(
+    endpoint: string,
+    readonly detalhe: string,
+  ) {
     super(`Resposta inválida de ${endpoint}: ${detalhe}`);
     this.name = 'ErroRespostaInvalida';
   }

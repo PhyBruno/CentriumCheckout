@@ -94,7 +94,9 @@ export function multiplicarPorQuantidade(preco: Centavos, qtd: Milesimos): Centa
  */
 export function aplicarPercentual(valor: Centavos, percentual: number): Centavos {
   if (!Number.isFinite(percentual)) {
-    throw new ErroPrecisaoMonetaria(`Percentual precisa ser finito; recebido ${String(percentual)}.`);
+    throw new ErroPrecisaoMonetaria(
+      `Percentual precisa ser finito; recebido ${String(percentual)}.`,
+    );
   }
   return centavos(Math.round((valor * percentual) / 100));
 }

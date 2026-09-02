@@ -51,7 +51,9 @@ export const ZERO_MILESIMOS = milesimos(0);
 /** Converte unidades (inteiras ou fracionárias) para milésimos. */
 export function milesimosDeUnidades(unidades: number): Milesimos {
   if (!Number.isFinite(unidades)) {
-    throw new ErroQuantidadeInvalida(`Quantidade precisa ser finita; recebido ${String(unidades)}.`);
+    throw new ErroQuantidadeInvalida(
+      `Quantidade precisa ser finita; recebido ${String(unidades)}.`,
+    );
   }
   return milesimos(Math.round(unidades * MILESIMOS_POR_UNIDADE));
 }

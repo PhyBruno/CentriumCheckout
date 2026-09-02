@@ -73,11 +73,7 @@ describe('distribuirPorMaiorResto (AD-072, FR-016)', () => {
   });
 
   it('distribui a sobra pelos maiores restos, não pelos maiores pesos', () => {
-    const parcelas = distribuirPorMaiorResto(centavos(10), [
-      centavos(3),
-      centavos(3),
-      centavos(4),
-    ]);
+    const parcelas = distribuirPorMaiorResto(centavos(10), [centavos(3), centavos(3), centavos(4)]);
 
     expect(parcelas.reduce<number>((total, parcela) => total + parcela, 0)).toBe(10);
   });

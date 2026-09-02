@@ -7,7 +7,12 @@
  */
 
 import { centavos, type Centavos } from './dinheiro';
-import { milesimos, milesimosDeUnidades, MILESIMOS_POR_UNIDADE, type Milesimos } from './quantidade';
+import {
+  milesimos,
+  milesimosDeUnidades,
+  MILESIMOS_POR_UNIDADE,
+  type Milesimos,
+} from './quantidade';
 
 export type EntradaCodigo =
   | { readonly tipo: 'SIMPLES'; readonly codigo: string }

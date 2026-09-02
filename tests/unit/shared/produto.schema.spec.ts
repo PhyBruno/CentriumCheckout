@@ -60,9 +60,9 @@ describe('sdtCheckoutGetProdutoSchema', () => {
   );
 
   it('recusa PrecoVenda em formato não numérico', () => {
-    expect(sdtCheckoutGetProdutoSchema.safeParse(respostaGetProduto({ PrecoVenda: '10' })).success).toBe(
-      false,
-    );
+    expect(
+      sdtCheckoutGetProdutoSchema.safeParse(respostaGetProduto({ PrecoVenda: '10' })).success,
+    ).toBe(false);
   });
 
   it('preserva campos extras do ERP sem transformá-los (Constitution III)', () => {
@@ -98,9 +98,9 @@ describe('checkoutListaProdutosSchema', () => {
   });
 
   it('aceita lista vazia de candidatos', () => {
-    expect(
-      checkoutListaProdutosSchema.safeParse({ ...listaValida(), Produtos: [] }).success,
-    ).toBe(true);
+    expect(checkoutListaProdutosSchema.safeParse({ ...listaValida(), Produtos: [] }).success).toBe(
+      true,
+    );
   });
 
   it('recusa candidato sem CodigoProduto — é o único campo que a busca precisa entregar', () => {

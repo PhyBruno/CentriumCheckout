@@ -75,11 +75,7 @@ export function resolvePrecoUnitario(
   snapshot: SnapshotPrecoProduto,
   quantidadeAgregada: Milesimos,
 ): Centavos {
-  if (
-    !Number.isInteger(tipoPreco) ||
-    tipoPreco < TIPO_PRECO_MIN ||
-    tipoPreco > TIPO_PRECO_MAX
-  ) {
+  if (!Number.isInteger(tipoPreco) || tipoPreco < TIPO_PRECO_MIN || tipoPreco > TIPO_PRECO_MAX) {
     throw new ErroTipoPrecoDesconhecido(tipoPreco);
   }
 

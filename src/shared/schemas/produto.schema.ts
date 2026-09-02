@@ -24,7 +24,10 @@ import { milesimosDeUnidades } from '../../client/domain/precificacao/quantidade
 const precoEmCentavos = z.number().transform((valor) => centavos(Math.round(valor * 100)));
 
 /** `QtdMinimaPreco2..5` chegam como unidades inteiras (`int64`) → `Milesimos`. */
-const unidadesEmMilesimos = z.number().int().transform((valor) => milesimosDeUnidades(valor));
+const unidadesEmMilesimos = z
+  .number()
+  .int()
+  .transform((valor) => milesimosDeUnidades(valor));
 
 /**
  * `ProdutoPesavelEditavel` restrito aos quatro valores discretos do campo

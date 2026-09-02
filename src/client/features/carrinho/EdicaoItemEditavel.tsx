@@ -158,12 +158,7 @@ export function EdicaoItemEditavel({
       <p className="text-sm text-muted-foreground" aria-live="polite">
         {valido
           ? `Total do item: ${formatarCentavos(
-              centavos(
-                Math.max(
-                  0,
-                  Math.round((precoLido * quantidadeLida) / 1000) - descontoLido,
-                ),
-              ),
+              centavos(Math.max(0, Math.round((precoLido * quantidadeLida) / 1000) - descontoLido)),
             )}`
           : 'Informe quantidade, preço e desconto válidos.'}
       </p>

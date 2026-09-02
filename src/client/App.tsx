@@ -144,8 +144,18 @@ export function App({
   return <TelaDeVenda />;
 }
 
-/** Limiar `md` do Tailwind — o layout condicional definitivo é da feature 007. */
-const CONSULTA_LAYOUT_COMPACTO = '(max-width: 767px)';
+/**
+ * Breakpoint canônico de MOB-01 (`specs/007-layout-responsivo-mobile/plan.md`):
+ * `768px`, expresso como `max-width: 767.98px` para não deixar buraco em telas
+ * de largura fracionária.
+ *
+ * Provisório: a feature 007 substitui isto por `useIsMobile` em
+ * `src/client/layout/`, lido por um único `AppShell` que decide entre
+ * `DesktopLayout` e `MobileWizard`. O valor é o mesmo de propósito — divergir
+ * aqui criaria uma faixa de larguras em que a 003 e a 007 discordariam sobre
+ * qual árvore está montada.
+ */
+const CONSULTA_LAYOUT_COMPACTO = '(max-width: 767.98px)';
 
 function useLayoutCompacto(): boolean {
   const [compacto, setCompacto] = useState(
@@ -200,9 +210,10 @@ function TelaDeVenda(): ReactElement {
 
       <EntradaRapidaProduto />
 
-      {/* Montagem condicional, não `display: none`: as duas superfícies leem o
-          mesmo carrinho, e manter as duas árvores no DOM duplicaria cada item
-          para leitores de tela. */}
+      {/* Montagem condicional, não `display: none`. As duas superfícies leem o
+          mesmo carrinho; manter as duas árvores no DOM duplicaria cada item
+          para leitores de tela. É também o que a 007 exige de forma mais ampla:
+          ausência estrutural, não flag de "oculto" (MOB-05, FR-008). */}
       {compacto ? <ListaItensMobile /> : <GridItens />}
 
       <ModalBuscaProduto

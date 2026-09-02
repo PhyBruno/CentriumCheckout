@@ -18,7 +18,7 @@
 - Notificações (toast): Goey Toast
 - Navegação por teclado: react-hotkeys-hook (desativado no layout mobile — ver `.specs/features/layout-responsivo-mobile/spec.md`)
 - State Management (venda em andamento): Zustand + Immer, sem `persist` (ver AD-006 em `.specs/project/STATE.md`)
-- Server state / cache: TanStack Query (produtos, formas de pagamento — dados vindos do ERP)
+- Server state / cache: TanStack Query 5.x (produtos, formas de pagamento — dados vindos do ERP). Leitura **imperativa** com reaproveitamento de cache é `queryClient.query({ ...opcoes, staleTime: 'static' })` — `fetchQuery` e `ensureQueryData` estão `@deprecated` na v5 (AD-121 em `.specs/project/STATE.md`). `QueryClient` sem retry automático: no ritmo de um PDV, uma tentativa silenciosa que atrasa a resposta é pior que um erro imediato que o operador refaz bipando de novo.
 - Persistência local: Dexie.js (IndexedDB) — só para o payload de bootstrap (configurações/flags do tenant), não para a venda em andamento
 
 ## Backend

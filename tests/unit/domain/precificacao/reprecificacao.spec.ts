@@ -59,7 +59,12 @@ describe('repricarSku — cruzar faixa recalcula todas as linhas do SKU', () => 
         precoCongelado: true,
         origem: 'DAV',
       }),
-      linhaDe({ idLinha: 'ativa', snapshot: produto, quantidadeEmUnidades: 3, precoUnitario: 1000 }),
+      linhaDe({
+        idLinha: 'ativa',
+        snapshot: produto,
+        quantidadeEmUnidades: 3,
+        precoUnitario: 1000,
+      }),
     ];
 
     const resultado = repricarSku(linhas, SKU, 8);

@@ -13,11 +13,7 @@ import {
   ZERO_CENTAVOS,
   type Centavos,
 } from './dinheiro';
-import {
-  participaDaPrecificacao,
-  quantidadeAgregada,
-  type LinhaCarrinho,
-} from './linha';
+import { participaDaPrecificacao, quantidadeAgregada, type LinhaCarrinho } from './linha';
 import { resolvePrecoUnitario } from './tabelaPreco';
 import type { Milesimos } from './quantidade';
 

@@ -129,9 +129,13 @@ O resultado da validação é mapeado para `SnapshotPrecoProduto` (`data-model.m
 ```ts
 queryKey: ['produto', codigoProduto, tipoCodProduto, tipoPreco, listaPreco ?? null]
 staleTime: Infinity
+
+// Leitura imperativa (fora de componente reativo), no caminho de inserção:
+queryClient.query({ ...opcoesProduto(codigoProduto, contexto), staleTime: 'static' })
 ```
 
 - `staleTime: Infinity` durante toda a venda — reinserir o mesmo SKU não gera nova chamada (`CART-03`) e o mesmo SKU nunca produz linhas de tabelas divergentes.
+- A inserção resolve o produto **imperativamente**, não por `useQuery`: quem dispara é uma bipagem ou um clique, não um render. Na v5 do TanStack Query isso é `queryClient.query({ ..., staleTime: 'static' })` — `fetchQuery` e `ensureQueryData` estão `@deprecated` (AD-121). `staleTime: 'static'` é o "nunca considerar obsoleto enquanto estiver em cache", que é literalmente a garantia que `CART-03` pede.
 - `listaPreco` faz parte da chave porque trocar o cliente em `TipoPreco = 9` muda o preço do mesmo código (`FR-018`, AD-043).
 - Invalidação total (`removeQueries({ queryKey: ['produto'] })`) em exatamente dois momentos: finalização e suspensão da venda.
 - O cache é otimização de rede. `repricarSku` **nunca** o consulta — opera sobre o snapshot copiado para dentro da linha (`CART-05`, AC5).

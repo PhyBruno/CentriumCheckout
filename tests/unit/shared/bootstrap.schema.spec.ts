@@ -82,15 +82,12 @@ describe('bootstrapPayloadSchema', () => {
     'QtdMinCharParaConsulta',
     'UsuarioTipoCodigoProduto',
     'ClienteDefaultCodigo',
-  ])(
-    'recusa SessaoUsuario sem %s',
-    (campo) => {
-      const payload = payloadValido();
-      delete (payload['SessaoUsuario'] as Record<string, unknown>)[campo];
+  ])('recusa SessaoUsuario sem %s', (campo) => {
+    const payload = payloadValido();
+    delete (payload['SessaoUsuario'] as Record<string, unknown>)[campo];
 
-      expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
-    },
-  );
+    expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
+  });
 
   it('recusa tenant vazio (quebraria o isolamento por tenant, FR-009)', () => {
     const payload = payloadValido();

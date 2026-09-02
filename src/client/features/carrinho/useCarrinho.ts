@@ -70,9 +70,7 @@ export interface PendenteDeEdicao {
 }
 
 export type ResultadoInsercao =
-  | { readonly situacao: 'inserido' }
-  | { readonly situacao: 'recusado' }
-  | PendenteDeEdicao;
+  { readonly situacao: 'inserido' } | { readonly situacao: 'recusado' } | PendenteDeEdicao;
 
 export interface OpcoesInsercao {
   readonly origem?: OrigemLinha;
@@ -233,9 +231,13 @@ export function useInsercaoDeProduto(): ApiInsercao {
       async (codigoProduto) =>
         // A linha nunca é montada a partir do resultado de `GetListaProdutos`:
         // sempre `GetProduto` para o código selecionado (AD-091, D1).
-        inserirResolvido(codigoProduto, { tipo: 'SIMPLES', codigo: codigoProduto }, {
-          origem: 'BUSCA',
-        }),
+        inserirResolvido(
+          codigoProduto,
+          { tipo: 'SIMPLES', codigo: codigoProduto },
+          {
+            origem: 'BUSCA',
+          },
+        ),
       [inserirResolvido],
     ),
 

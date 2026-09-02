@@ -1281,6 +1281,42 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 
 ---
 
+### AD-119: Todo campo de `SessaoUsuario` que uma feature consome SHALL ser declarado em `sessaoUsuarioSchema` — `z.looseObject` preserva o campo, mas não o tipa — achado da implementação da feature 003 (2026-09-02)
+
+**Decision:** `src/shared/schemas/bootstrap.schema.ts` SHALL declarar explicitamente todo campo de `SessaoUsuario` que qualquer feature consome, mesmo que o objeto continue `z.looseObject`. Os três campos que a feature 003 precisa foram acrescentados agora: `QtdMinCharParaConsulta` (`z.number().int().min(1)`, AD-024), `UsuarioTipoCodigoProduto` (`z.string()`, AD-033) e `ClienteDefaultCodigo` (`z.number().int()`, AD-032). Uma feature que passe a consumir um campo novo do `GetSessao` SHALL acrescentá-lo ao schema na mesma tarefa, junto com as fixtures de teste, em vez de ler o campo pelo índice `Record<string, unknown>` que o `looseObject` expõe.
+
+**Reason:** O `looseObject` da feature 002 existe para **repassar** o payload de ~5MB íntegro ao Dexie sem reinterpretá-lo (Constitution III) — não para dispensar tipagem de fronteira. O efeito colateral é que um campo não declarado atravessa validado como "extra", chega ao consumidor como `unknown` e só falha em runtime: exatamente o oposto do que a Constitution IV pede. Na implementação da 003, `T006` (`Tipocodproduto` sempre igual a `SessaoUsuario.UsuarioTipoCodigoProduto`) e `T014` (piso de busca vindo do ERP, nunca hardcoded) não eram implementáveis conforme os contratos sem esses três campos tipados. A distinção que importa: *repassar sem interpretar* e *consumir sem tipar* são coisas diferentes, e só a primeira é o que AD-019/Constitution III pedem.
+
+**Trade-off:** Acrescentar campo obrigatório ao schema quebra toda fixture de bootstrap que não o traga — três arquivos precisaram ser atualizados nesta rodada (`tests/unit/shared/bootstrap.schema.spec.ts`, `tests/integration/bootstrap-cache.spec.ts`, `tests/e2e/support/erp-mock.ts`). O custo é real mas linear e local; a alternativa — declarar os campos como `.optional()` para não quebrar fixture — devolveria ao consumidor o `undefined` que a fronteira existe para eliminar.
+
+**Impact:** `src/shared/schemas/bootstrap.schema.ts` e as três fixtures acima. `specs/002-autenticacao-sessao-bootstrap/data-model.md` (§ Configuração do Ponto de Venda) e `tasks.md` T018 passam a listar os três campos, corrigidos no ponto do texto. Features futuras que consumam `SessaoUsuario` (004 `CadSerieNFCe`/`TipoImpressao`, 008 `CondicoesDePagamento`, 012 vendedores, 013 `CenarioPagamento`) devem prever essa tarefa no seu próprio `tasks.md`.
+
+---
+
+### AD-120: `repricarSku` recebe o desconto de convênio como quarto parâmetro opcional — preço e desconto derivado são recalculados na mesma passagem (2026-09-02)
+
+**Decision:** A assinatura real de `repricarSku` é `(linhas, codigoProduto, tipoPreco, descontoConvenioPercentual = 0)`. Quando o percentual é maior que zero, o `descontoLinha` de cada linha recalculada é derivado do preço novo pela regra de AD-023 (`totalBruto − aplicarPercentual(totalBruto, 100 − DescontoConvenio)`). Quando é `0` — o caso do cliente default (AD-108) — o `descontoLinha` existente é **preservado**, nunca zerado.
+
+**Reason:** `contracts/precificacao-domain-api.md` especificava três parâmetros e `T028` exigia que o desconto de convênio fosse "recalculado junto com `repricarSku`". Fazer isso em duas passagens (reprecificar, depois aplicar convênio) deixaria a linha, entre as duas chamadas, com preço novo e desconto calculado sobre o preço velho — um estado intermediário incoerente que qualquer seletor lendo no meio observaria. Como o parâmetro é opcional, toda chamada de três argumentos escrita contra o contrato original continua válida: é extensão, não quebra. A preservação em `percentual = 0` é o que faz o desconto manual de um produto `'E'` (`FR-014`) sobreviver a uma reprecificação numa venda sem convênio, que é o cenário dominante.
+
+**Trade-off:** `repricarSku` passa a conhecer um conceito de cliente (o percentual), ainda que só como número — antes conhecia apenas preço e quantidade. A fronteira permanece limpa: é um `number`, não o objeto cliente, e a função continua pura e sem import do slice de cliente (D8 segue valendo). A alternativa considerada — uma função `aplicarDescontoConvenio(linhas, percentual)` separada, chamada em seguida — foi rejeitada pelo estado intermediário descrito acima.
+
+**Impact:** `src/client/domain/precificacao/reprecificacao.ts` (que também expõe `descontoDeConvenio` e `repricarTodosOsSkus`, esta última usada por `reprecificarPorTrocaDeCliente`, `FR-018`); `specs/003-carrinho-produto-precificacao/contracts/precificacao-domain-api.md` corrigido no ponto da assinatura. Features 005 (troca de cliente) e 006/011 (linhas congeladas) consomem a mesma superfície sem mudança.
+
+---
+
+### AD-121: Leitura imperativa com cache no TanStack Query v5 é `queryClient.query({ staleTime: 'static' })` — `fetchQuery` e `ensureQueryData` estão deprecated (2026-09-02)
+
+**Decision:** O Checkout usa `@tanstack/react-query` 5.x. Onde uma feature precisa resolver um dado **fora de um componente reativo** e reaproveitar o cache — o caso de `CART-03`, em que reinserir um SKU já presente na venda não pode gerar nova chamada — a API SHALL ser `queryClient.query({ ...opcoes, staleTime: 'static' })`. `queryClient.fetchQuery` e `queryClient.ensureQueryData` estão marcados `@deprecated` na v5.102 e serão removidos na próxima major.
+
+**Reason:** `staleTime: 'static'` é o "nunca considerar obsoleto enquanto estiver em cache" da v5 — semanticamente é exatamente a garantia que `CART-03` pede, e mais explícito que `staleTime: Infinity` combinado com uma chamada imperativa. `staleTime: Infinity` continua correto nas opções da query usada por `useQuery`; o que muda é só o verbo da leitura imperativa. Registrado como AD porque as features 004, 005, 006, 008, 011 e 012 vão fazer a mesma leitura imperativa contra o ERP e copiariam o método deprecated se olhassem só para a documentação anterior.
+
+**Trade-off:** Amarra o código a uma API introduzida na 5.x; em compensação, evita a migração forçada na próxima major. A dependência não constava do `package.json` até esta data, apesar de `.specs/codebase/STACK.md` e o `plan.md` da 003 a declararem desde o design — foi instalada na implementação da 003.
+
+**Impact:** `package.json`, `src/client/main.tsx` (`QueryClientProvider`, sem retry — no ritmo de um PDV, um retry silencioso que atrasa a resposta é pior que um erro imediato), `src/client/features/carrinho/useCarrinho.ts` e `src/client/services/produto/produtoQueries.ts`. `.specs/codebase/STACK.md` e `specs/003-carrinho-produto-precificacao/contracts/erp-produto-api.md` §3 corrigidos no ponto do texto.
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

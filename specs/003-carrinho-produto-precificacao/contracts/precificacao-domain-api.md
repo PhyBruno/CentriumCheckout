@@ -63,10 +63,27 @@ export function repricarSku(
   linhas: readonly LinhaCarrinho[],
   codigoProduto: string,
   tipoPreco: number,
+  descontoConvenioPercentual?: number,   // default 0 — AD-120
+): readonly LinhaCarrinho[];
+
+export function descontoDeConvenio(
+  precoUnitario: Centavos,
+  quantidade: Milesimos,
+  descontoConvenioPercentual: number,
+): Centavos;
+
+export function repricarTodosOsSkus(
+  linhas: readonly LinhaCarrinho[],
+  tipoPreco: number,
+  descontoConvenioPercentual?: number,
 ): readonly LinhaCarrinho[];
 ```
 
 Função **pura**: recebe as linhas, devolve linhas novas. Não conhece Zustand, rede, pagamento ou cliente.
+
+O quarto parâmetro é **opcional e default `0`** (AD-120, 2026-09-02): toda chamada de três argumentos escrita contra a versão anterior deste contrato continua válida. Ele existe porque o `descontoLinha` de convênio deriva de `precoUnitario` e `quantidade` (AD-023) — calculá-lo numa segunda passagem deixaria a linha, entre as duas chamadas, com preço novo e desconto calculado sobre o preço velho. Com `percentual = 0` — o caso do cliente default (AD-108) — o `descontoLinha` existente é **preservado**, nunca zerado: é assim que o desconto manual de um produto `'E'` (`FR-014`) sobrevive a uma reprecificação numa venda sem convênio.
+
+`repricarTodosOsSkus` é o que `reprecificarPorTrocaDeCliente` chama (`FR-018`): aplica `repricarSku` a cada SKU distinto com linha ativa não-congelada.
 
 Contrato de comportamento:
 

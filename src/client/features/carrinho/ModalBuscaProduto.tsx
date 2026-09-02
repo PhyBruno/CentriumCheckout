@@ -23,7 +23,10 @@ export interface ModalBuscaProdutoProps {
   readonly onFechar: () => void;
 }
 
-export function ModalBuscaProduto({ aberto, onFechar }: ModalBuscaProdutoProps): ReactElement | null {
+export function ModalBuscaProduto({
+  aberto,
+  onFechar,
+}: ModalBuscaProdutoProps): ReactElement | null {
   const [termo, setTermo] = useState('');
   const [pendente, setPendente] = useState<PendenteDeEdicao | null>(null);
   const { inserirPorSelecao, confirmarEdicao } = useInsercaoDeProduto();
@@ -87,7 +90,10 @@ export function ModalBuscaProduto({ aberto, onFechar }: ModalBuscaProdutoProps):
 
         <div className="min-h-40 flex-1 overflow-y-auto" aria-live="polite">
           {abaixoDoMinimo ? (
-            <p className="p-base text-sm text-muted-foreground" data-testid="busca-abaixo-do-minimo">
+            <p
+              className="p-base text-sm text-muted-foreground"
+              data-testid="busca-abaixo-do-minimo"
+            >
               {qtdMinChar === null
                 ? 'Aguardando a configuração do ponto de venda.'
                 : `Digite ao menos ${String(qtdMinChar)} caracteres para buscar.`}
