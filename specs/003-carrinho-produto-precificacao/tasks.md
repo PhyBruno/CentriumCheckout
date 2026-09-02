@@ -34,6 +34,8 @@ src/shared/schemas/                # produto.schema.ts
 tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T015, T016, T017, T021, T022, T023, T035, T036.
+
 ---
 
 ## Phase 1: Setup
@@ -81,9 +83,9 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 ### Implementation for User Story 1
 
 - [X] T014 [P] [US1] Implementar `useBuscaProdutos` (`GET /api/erp/GetListaProdutos`) em `src/client/services/produto/produtoQueries.ts` — só dispara quando `Txtbusca.length >= SessaoUsuario.QtdMinCharParaConsulta` (AD-024, piso vem do ERP, nunca hardcoded)
-- [X] T015 [US1] Implementar `src/client/features/carrinho/ModalBuscaProduto.tsx` (`CART-01`): busca com skeleton Boneyard, lista paginada; seleção de candidato chama `fetchProduto` (T006), nunca monta a linha do resultado da busca
-- [X] T016 [P] [US1] Implementar `src/client/features/carrinho/GridItens.tsx`: grid desktop exibindo linhas ativas do carrinho (base para riscar cancelada, estendido em US4)
-- [X] T017 [P] [US1] Implementar `src/client/features/carrinho/ListaItensMobile.tsx`: mesma fonte de estado do carrinho, layout mobile
+- [X] T015 [US1] Implementar `src/client/features/carrinho/ModalBuscaProduto.tsx` (`CART-01`): busca com skeleton Boneyard, lista paginada; seleção de candidato chama `fetchProduto` (T006), nunca monta a linha do resultado da busca — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
+- [X] T016 [P] [US1] Implementar `src/client/features/carrinho/GridItens.tsx`: grid desktop exibindo linhas ativas do carrinho (base para riscar cancelada, estendido em US4) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T017 [P] [US1] Implementar `src/client/features/carrinho/ListaItensMobile.tsx`: mesma fonte de estado do carrinho, layout mobile — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [X] T018 [US1] E2E — busca (quickstart, Camada 3, passos 2-4): termo abaixo do mínimo não dispara `GetListaProdutos`; termo completo lista com skeleton; seleção insere via `GetProduto` — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — busca e seleção completas (FR-001).
@@ -103,9 +105,9 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 ### Implementation for User Story 2
 
 - [X] T020 [US2] Implementar `src/client/domain/precificacao/codigoProduto.ts`: `interpretarEntradaCodigo` (ordem `*` → balança (13 dígitos, prefixo `2`, DV EAN-13 válido) → simples, D6), `quantidadePesavel` (`round(trunc(valorEtiqueta/precoVenda,5),3)`, AD-076) — depende de T002, T003
-- [X] T021 [US2] Implementar `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`CART-02`): campo de código/bipagem + TAB/Enter, usa T020 para classificar a entrada, chama `fetchProduto` (T006) e `inserirItem` (T009)
-- [X] T022 [US2] Implementar `src/client/features/carrinho/EdicaoItemEditavel.tsx`: fluxo `'E'` — foco pula para campos editáveis (preço/unidade/quantidade/desconto), insere só ao acionar `+` (`FR-014`); `'S'`/`'B'` insere direto somente-leitura com quantidade/preço da etiqueta/balança (`FR-013`/`FR-015`); `''` insere direto somente-leitura (`FR-015`) — compartilhado pelo caminho de busca (US1) e código direto (US2)
-- [X] T023 [US2] Wire bloqueio de inserção de produto pesável sem `PrecoVenda` disponível: toast de aviso, nenhuma linha inserida, foco permanece no campo (`FR-013`)
+- [X] T021 [US2] Implementar `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`CART-02`): campo de código/bipagem + TAB/Enter, usa T020 para classificar a entrada, chama `fetchProduto` (T006) e `inserirItem` (T009) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T022 [US2] Implementar `src/client/features/carrinho/EdicaoItemEditavel.tsx`: fluxo `'E'` — foco pula para campos editáveis (preço/unidade/quantidade/desconto), insere só ao acionar `+` (`FR-014`); `'S'`/`'B'` insere direto somente-leitura com quantidade/preço da etiqueta/balança (`FR-013`/`FR-015`); `''` insere direto somente-leitura (`FR-015`) — compartilhado pelo caminho de busca (US1) e código direto (US2) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T023 [US2] Wire bloqueio de inserção de produto pesável sem `PrecoVenda` disponível: toast de aviso, nenhuma linha inserida, foco permanece no campo (`FR-013`) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [X] T024 [US2] Integration test: reinserir o mesmo SKU não gera nova chamada a `GetProduto` (`staleTime: Infinity`, `CART-03`) em `tests/integration/carrinhoSlice.spec.ts`
 - [X] T025 [US2] E2E — código direto (quickstart, Camada 3, passos 7-9): `codigo*3` insere quantidade 3, código simples insere quantidade 1, EAN-13 de balança deriva quantidade/preço com campos somente-leitura, produto `'E'` não insere ao TAB — em `tests/e2e/carrinho-precificacao.spec.ts`
 
@@ -149,8 +151,8 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Implementation for User Story 4
 
-- [X] T035 [US4] Estender `GridItens.tsx` (T016): linha com `cancelada = true` exibida riscada, permanece visível (`CART-08`)
-- [X] T036 [US4] Wire ação de cancelar na UI (`GridItens.tsx`/`ListaItensMobile.tsx`) chamando `cancelarItem` (T009) — sem modal de confirmação/supervisor
+- [X] T035 [US4] Estender `GridItens.tsx` (T016): linha com `cancelada = true` exibida riscada, permanece visível (`CART-08`) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T036 [US4] Wire ação de cancelar na UI (`GridItens.tsx`/`ListaItensMobile.tsx`) chamando `cancelarItem` (T009) — sem modal de confirmação/supervisor — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [X] T037 [US4] E2E — cancelamento (quickstart, Camada 3, passos 6 e 10): cancelar → linha riscada e visível, demais linhas do SKU recalculadas, subtotal exclui a cancelada; repetir no layout mobile — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: As 4 user stories funcionam de forma independente e integrada — feature completa (FR-009, FR-012, SC-003).

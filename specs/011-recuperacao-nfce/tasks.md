@@ -40,6 +40,8 @@ src/shared/schemas/                           # recuperacaoNFCe.schema.ts (diret
 tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T009, T023.
+
 `domain/recuperacao/` (não `domain/nfce/`) é nome pensado deliberadamente para reuso futuro pela feature 006/DAV (AD-057) — nenhum arquivo desta feature importa ou é importado por código de DAV; a integração real fica para o `/speckit-plan`/`/speckit-tasks` da feature 006.
 
 ---
@@ -83,7 +85,7 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 ### Implementation for User Story 1
 
 - [ ] T008 [US1] Implementar `src/client/services/recuperacao/recuperacaoQueries.ts` (`useListaRascunhos`): `GET /api/erp/GetListaNFCes` com `Tamanhopagina = min(tamanhoSolicitado, 50)` (`research.md` D2), `staleTime` curto (a listagem reflete rascunhos de outros operadores, não deve envelhecer no cache), resposta validada por `parseGetListaNFCesOutput` (T003) → `EstadoListaRascunhos` — `contracts/recuperacao-domain-api.md` §2 — depende de T003
-- [ ] T009 [US1] Implementar `src/client/features/venda/recuperacao/ModalRecuperacaoNFCe.tsx` (parte listagem): estado `EstadoListaRascunhos` (`data-model.md` §2) local ao componente, campo de busca com debounce (mesmo padrão de busca de cliente/produto/vendedor), chama `useListaRascunhos` (T008), Boneyard skeleton durante carregamento, paginação via `paginaAtual`/`totalPaginas` — frame Pencil "PDV Online Web - Modal Recuperação NFCe" — `FR-001`/`FR-002`/`FR-003`/`FR-004` — depende de T008
+- [ ] T009 [US1] Implementar `src/client/features/venda/recuperacao/ModalRecuperacaoNFCe.tsx` (parte listagem): estado `EstadoListaRascunhos` (`data-model.md` §2) local ao componente, campo de busca com debounce (mesmo padrão de busca de cliente/produto/vendedor), chama `useListaRascunhos` (T008), Boneyard skeleton durante carregamento, paginação via `paginaAtual`/`totalPaginas` — frame Pencil "PDV Online Web - Modal Recuperação NFCe" — `FR-001`/`FR-002`/`FR-003`/`FR-004` — depende de T008 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — lista, busca e paginação prontos (seleção de linha ainda não dispara retomada, isso é US2).
 
@@ -113,7 +115,7 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 - [ ] T020 [US2] Implementar `src/client/domain/recuperacao/mapearRascunhoCarregado.ts` (orquestra T018, T019, ainda sem efeito colateral) — `contracts/recuperacao-domain-api.md` — depende de T018, T019 (teste T012 deve falhar antes desta implementação)
 - [ ] T021 [US2] Implementar `useCarregarRascunho` em `src/client/services/recuperacao/recuperacaoQueries.ts`: `GET /api/erp/CarregarNFCe` sob demanda (mutation, não query — ação única, não recacheada), `Serienota` sempre `SessaoUsuario.CadSerieNFCe` (`research.md` D4), resposta validada via `parseCarregarNFCeOutput` (T003) → `RascunhoCarregado` — depende de T003
 - [ ] T022 [US2] Implementar `src/client/features/venda/retomarRascunho.ts`: efeito colateral único, síncrono do ponto de vista do operador, na ordem exata — `resetarAuditoria()` → `setIdentidadeVenda({ origem: 'RASCUNHO', numeroNota })` → `setLinhasCarrinho(linhas)` → `setPagamentos(pagamentos)`+`setCondicao(condicaoPagamentoCodigo)` → `setCliente(await GetCliente(clienteCodigo))` → `trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO')` (`specs/012-selecao-vendedor/data-model.md` §3, `research.md` D7) — `data-model.md` §6, `research.md` D6/D9/D10 — depende de T020, T021
-- [ ] T023 [US2] Wire a seleção de rascunho em `ModalRecuperacaoNFCe.tsx` (T009): ao confirmar, chama `useCarregarRascunho` (T021); em sucesso, chama `retomarRascunho` (T022) e fecha o modal; em `404`, exibe toast (Goey Toast) de erro de negócio sem retry automático — `FR-004`/`FR-005`/`FR-006`/`FR-007`/`FR-009` — depende de T009, T021, T022
+- [ ] T023 [US2] Wire a seleção de rascunho em `ModalRecuperacaoNFCe.tsx` (T009): ao confirmar, chama `useCarregarRascunho` (T021); em sucesso, chama `retomarRascunho` (T022) e fecha o modal; em `404`, exibe toast (Goey Toast) de erro de negócio sem retry automático — `FR-004`/`FR-005`/`FR-006`/`FR-007`/`FR-009` — depende de T009, T021, T022 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 
 **Checkpoint**: User Stories 1 e 2 completas e testáveis de forma independente — retomada ponta a ponta funcional.
 

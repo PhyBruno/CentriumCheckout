@@ -4642,5 +4642,29 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "type": "decision",
+    "content": "PR #44: marca Pencil MCP obrigatorio nas tasks de UI em 11/13 tasks.md (001,014 sem UI)",
+    "tags": [
+      "pencil-mcp",
+      "tasks",
+      "ui",
+      "docs"
+    ],
+    "files": [
+      "specs/002-autenticacao-sessao-bootstrap/tasks.md",
+      "specs/003-carrinho-produto-precificacao/tasks.md",
+      "specs/004-finalizacao-suspensao-venda/tasks.md",
+      "specs/005-identificacao-cadastro-cliente/tasks.md",
+      "specs/006-importacao-dav/tasks.md",
+      "specs/007-layout-responsivo-mobile/tasks.md",
+      "specs/008-pagamento-geral/tasks.md",
+      "specs/009-pagamento-pix/tasks.md",
+      "specs/011-recuperacao-nfce/tasks.md",
+      "specs/012-selecao-vendedor/tasks.md",
+      "specs/013-venda-rapida-cenario-pagamento/tasks.md"
+    ],
+    "date": "2026-09-02"
   }
 ]

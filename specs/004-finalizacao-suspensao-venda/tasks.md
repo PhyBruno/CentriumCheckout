@@ -37,6 +37,8 @@ src/shared/schemas/                         # faturarNFCe.schema.ts
 tests/unit/domain/venda/ | tests/unit/domain/finalizacaoVenda/ | tests/integration/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T018, T019, T020, T025.
+
 ---
 
 ## Phase 1: Setup
@@ -87,9 +89,9 @@ tests/unit/domain/venda/ | tests/unit/domain/finalizacaoVenda/ | tests/integrati
 
 - [ ] T016 [US1] Implementar `src/client/services/impressao/imprimirNFCeLocal.ts`: `POST http://{CadMaqHost}` (fallback `127.0.0.1:4545` com aviso ao operador quando `CadMaqHost` vazio), `Content-Type: text/plain`, corpo = `XMLImpressao` cru; sucesso = ausência de erro de rede (não valida resposta); classifica falha em "serviço indisponível" vs. "bloqueio de navegador" (`TypeError` específico do Chrome, antes de qualquer tentativa de conexão) com mensagens distintas — `contracts/impressao-local-api.md`, `research.md` D4/D5
 - [ ] T017 [US1] Wire o gate `FR-014` em `useFinalizarOuSuspenderVenda.ts` (T008): antes de disparar `FATURAR`, consulta `podeFinalizar()` (dependência injetada da feature 014, mesmo padrão de injeção de `temPagamentoNaoRemovivel` em `research.md` D7); bloqueado ⇒ nenhuma chamada de rede, sem alterar o estado da máquina — depende de T008
-- [ ] T018 [US1] Implementar `src/client/features/finalizacao-suspensao/BotaoFinalizarVenda.tsx`: botão desktop "Finalizar Venda" / equivalente mobile na etapa 03 (AD-089); aciona `FATURAR` via T008/T017
-- [ ] T019 [US1] Implementar `src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal.tsx`: em sucesso de `FATURAR`, decide o mecanismo via T007 — `'direta'` chama T016 (falha aciona o fallback de T015 dentro deste diálogo); `'pdf'` exibe/oferece download do `PDFImpressao` diretamente — `FR-007`, `FR-008`, `FR-009`
-- [ ] T020 [US1] Implementar `src/client/features/finalizacao-suspensao/DialogoConfirmarReenvio.tsx`: confirmação manual pós-`falha-rede` (`FR-004`, AD-038) — ao confirmar, reenvia o mesmo payload recomposto por T008 (o `Log` já inclui o evento de falha anterior)
+- [ ] T018 [US1] Implementar `src/client/features/finalizacao-suspensao/BotaoFinalizarVenda.tsx`: botão desktop "Finalizar Venda" / equivalente mobile na etapa 03 (AD-089); aciona `FATURAR` via T008/T017 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
+- [ ] T019 [US1] Implementar `src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal.tsx`: em sucesso de `FATURAR`, decide o mecanismo via T007 — `'direta'` chama T016 (falha aciona o fallback de T015 dentro deste diálogo); `'pdf'` exibe/oferece download do `PDFImpressao` diretamente — `FR-007`, `FR-008`, `FR-009` — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [ ] T020 [US1] Implementar `src/client/features/finalizacao-suspensao/DialogoConfirmarReenvio.tsx`: confirmação manual pós-`falha-rede` (`FR-004`, AD-038) — ao confirmar, reenvia o mesmo payload recomposto por T008 (o `Log` já inclui o evento de falha anterior) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [ ] T021 [US1] E2E `tests/e2e/finalizacao-suspensao.spec.ts` (quickstart, Camada 3, passos 1, 2, 5, 6), com o serviço de impressão local stubado: finalizar venda nova (`NumeroNota=0`) e venda retomada (`NumeroNota` do rascunho) → documento apresentado conforme `TipoImpressao`; falha de rede → confirmação manual exigida → reenvio ocorre; `TipoImpressao='E'` com stub retornando erro de conexão → oferece PDF como fallback
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — finalização completa (`FR-001`, `FR-003`, `FR-004`, `FR-007` a `FR-009`, `FR-014`).
@@ -110,7 +112,7 @@ tests/unit/domain/venda/ | tests/unit/domain/finalizacaoVenda/ | tests/integrati
 ### Implementation for User Story 2
 
 - [ ] T024 [US2] Wire o predicado injetado `temPagamentoNaoRemovivel()` em `useFinalizarOuSuspenderVenda.ts` (T008): bloqueia `SUSPENDER` quando `true` (mesma origem/semântica de `CART-09`, `research.md` D7); nunca se aplica a `FATURAR` — depende de T008
-- [ ] T025 [US2] Implementar `src/client/features/finalizacao-suspensao/BotaoCancelarVenda.tsx`: botão desktop "Cancelar Venda" / ícone de lixeira mobile disponível em todas as etapas (AD-089); aciona `SUSPENDER` via T008/T024; sucesso não passa por `DialogoDocumentoFiscal` (suspender não gera documento fiscal)
+- [ ] T025 [US2] Implementar `src/client/features/finalizacao-suspensao/BotaoCancelarVenda.tsx`: botão desktop "Cancelar Venda" / ícone de lixeira mobile disponível em todas as etapas (AD-089); aciona `SUSPENDER` via T008/T024; sucesso não passa por `DialogoDocumentoFiscal` (suspender não gera documento fiscal) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [ ] T026 [US2] E2E `tests/e2e/finalizacao-suspensao.spec.ts` (quickstart, Camada 3, passos 3, 4, 7): suspender com pagamento removível aplicado → `SUSPENDER` enviado, carrinho/cache/auditoria/identidade limpos, pagamento removível persiste ao retomar o rascunho; tentar suspender com pagamento TEF/PIX aprovado → bloqueado sem chamada de rede; repetir o fluxo de finalização (passo 1) no layout mobile
 
 **Checkpoint**: User Stories 1 e 2 funcionam de forma independente e integrada — feature completa (`FR-001` a `FR-012`, `FR-014`, `FR-016`).
