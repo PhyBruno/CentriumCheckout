@@ -33,6 +33,8 @@ src/client/hotkeys/              # mapaAtalhos.ts (mapa central já existente, e
 tests/unit/vendaRapida/ | tests/integration/vendaRapida/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T022.
+
 ---
 
 ## Phase 1: Setup
@@ -137,7 +139,7 @@ tests/unit/vendaRapida/ | tests/integration/vendaRapida/ | tests/e2e/
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Implementar `src/client/features/vendaRapida/DicaAtalhos.tsx`: consome `ListaAtalhos` (T007) já pronta, sem filtrar, ordenar ou reinterpretar nada; cada entrada chama `acionarCenario` (T013) ao clicar; omite a área inteira quando a lista está vazia — inclusive no mobile, onde `projetarAtalhos` já devolve `[]` (D11/I10), sem `if (isMobile)` no componente — depende de T007, T013
+- [ ] T022 [US3] Implementar `src/client/features/vendaRapida/DicaAtalhos.tsx`: consome `ListaAtalhos` (T007) já pronta, sem filtrar, ordenar ou reinterpretar nada; cada entrada chama `acionarCenario` (T013) ao clicar; omite a área inteira quando a lista está vazia — inclusive no mobile, onde `projetarAtalhos` já devolve `[]` (D11/I10), sem `if (isMobile)` no componente — depende de T007, T013 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
 
 **Checkpoint**: As quatro user stories completas e independentemente testáveis (`FR-001` a `FR-020`).
 

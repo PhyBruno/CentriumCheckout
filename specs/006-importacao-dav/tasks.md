@@ -34,6 +34,8 @@ src/shared/schemas/                    # dav.schema.ts
 tests/unit/domain/importacaoVenda/ | tests/integration/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T008, T018.
+
 ---
 
 ## Phase 1: Setup
@@ -71,7 +73,7 @@ tests/unit/domain/importacaoVenda/ | tests/integration/ | tests/e2e/
 ### Implementation for User Story 1
 
 - [ ] T007 [P] [US1] Implementar `useListaDavs(filtros: {txtBusca?, dataInicial?, dataFinal?, pagina})` em `src/client/services/dav/davQueries.ts`: `GET /api/erp/ListaDAVs`, valida via T002; declarar o tipo `DavListado` (`data-model.md` §1: `numeroDav/titulo/dataEmissao/clienteCodigo/clienteNome/vendedorCodigo/valorTotal`, sem `Senha`) neste mesmo arquivo, mapeando cada item de `CheckoutListaDAVsResponse.DAV[]`; `Tamanhopagina` **limitado explicitamente no request** (bug de paginação do servidor anula o cap de 50 quando o parâmetro vem preenchido, AD-024) — depende de T002
-- [ ] T008 [US1] Implementar `src/client/features/dav/ModalImportacaoDav.tsx` (DAV-01): tabela paginada com skeleton Boneyard (`useListaDavs`, T007), campo de busca livre e filtro de período de data de emissão; desktop-only (AD-046, sem equivalente mobile); **sem** ação de reimpressão por linha (FR-009, AD-035, removida na fase de UI) — depende de T007
+- [ ] T008 [US1] Implementar `src/client/features/dav/ModalImportacaoDav.tsx` (DAV-01): tabela paginada com skeleton Boneyard (`useListaDavs`, T007), campo de busca livre e filtro de período de data de emissão; desktop-only (AD-046, sem equivalente mobile); **sem** ação de reimpressão por linha (FR-009, AD-035, removida na fase de UI) — depende de T007 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
 
 ### Tests for User Story 1
 
@@ -97,7 +99,7 @@ tests/unit/domain/importacaoVenda/ | tests/integration/ | tests/e2e/
 - [ ] T015 [US2] Wire `auditoriaSlice.registrarEventoAuditoria` em `importarVendaExistente` (T012): dispara `DAV_IMPORTADO` (factory de `specs/001-.../eventos.ts`, T020, AD-114) com `{numeroDav, numeroNota: vendaImportada.numeroNota, quantidadeLinhas, quantidadeFormasDePagamento}` — depende de T012
 - [ ] T016 [US2] Wire lote best-effort de `GetProduto` em `importarVendaExistente` (T012): `Promise.allSettled`, uma chamada por `codigoProduto` distinto via `fetchProduto` (feature 003, já implementada, `src/client/services/produto/produtoQueries.ts`) — **nunca** para `PrecoVenda`, só `Descricao`/`UDM`; sucesso → `editarSnapshotDescricao` (T005); falha isolada não bloqueia as demais linhas nem a importação (AD-096) — depende de T005, T012
 - [ ] T017 [US2] Wire tratamento de erro de importação (D7, AD-052, `FR-010`): falha de `fetchDav` (T011) ou de `importarVendaExistente` (T012) exibe Goey Toast e mantém a janela de importação aberta, **sem** popular o carrinho com dado parcial — `FR-010` (sem mecanismo de bloqueio no Checkout) é satisfeito por omissão: nenhum lock otimista/pessimista é implementado, o Checkout só reage ao erro que o ERP devolver — depende de T012
-- [ ] T018 [US2] Wire seleção/confirmação em `ModalImportacaoDav.tsx` (T008): selecionar um DAV captura `clienteNome` da própria linha da lista, antes de `GetDav` responder (D4, `research.md`) — `clienteCodigo` não precisa ser capturado aqui, resolve dentro de `importarVendaExistente` a partir da resposta de `GetDav`; botão de confirmar importação chama `importarVendaExistente(numeroDav, {clienteNome})` (T012-T017); sucesso fecha o modal, erro mantém aberto com toast (T017) — depende de T008, T012, T017
+- [ ] T018 [US2] Wire seleção/confirmação em `ModalImportacaoDav.tsx` (T008): selecionar um DAV captura `clienteNome` da própria linha da lista, antes de `GetDav` responder (D4, `research.md`) — `clienteCodigo` não precisa ser capturado aqui, resolve dentro de `importarVendaExistente` a partir da resposta de `GetDav`; botão de confirmar importação chama `importarVendaExistente(numeroDav, {clienteNome})` (T012-T017); sucesso fecha o modal, erro mantém aberto com toast (T017) — depende de T008, T012, T017 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 
 ### Tests for User Story 2
 
