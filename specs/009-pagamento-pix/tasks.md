@@ -35,6 +35,8 @@ src/shared/schemas/                          # pix.schema.ts (diretório já exi
 tests/unit/domain/pix/ | tests/integration/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T016, T018, T021, T024.
+
 ---
 
 ## Phase 1: Setup
@@ -83,9 +85,9 @@ tests/unit/domain/pix/ | tests/integration/ | tests/e2e/
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implementar `src/client/features/pagamento/pix/ModalPix.tsx`: ao abrir, valida `validarValorMinimoPix` (T003); se falhar, toast e não chama rede; senão chama `useGerarPix().gerar({ formaCodigo, valor: saldoRestante, pagador: montarDadosPagador(clienteAtual) })` (T004, T007); em sucesso, decodifica e exibe QR Code (`<img src="data:image/jpeg;base64,...">`) e "copia e cola" (`atob` + botão "Copiar" via Clipboard API) — `FR-008`/`FR-009`/`FR-010`, `contracts/pix-domain-api.md` §3 — depende de T003, T004, T007
+- [ ] T016 [US1] Implementar `src/client/features/pagamento/pix/ModalPix.tsx`: ao abrir, valida `validarValorMinimoPix` (T003); se falhar, toast e não chama rede; senão chama `useGerarPix().gerar({ formaCodigo, valor: saldoRestante, pagador: montarDadosPagador(clienteAtual) })` (T004, T007); em sucesso, decodifica e exibe QR Code (`<img src="data:image/jpeg;base64,...">`) e "copia e cola" (`atob` + botão "Copiar" via Clipboard API) — `FR-008`/`FR-009`/`FR-010`, `contracts/pix-domain-api.md` §3 — depende de T003, T004, T007 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
 - [ ] T017 [US1] Wire o polling em `ModalPix.tsx` (T016): habilita `useStatusPix(trnGuid, true)` (T007) assim que a cobrança é gerada; cada resultado passa por `interpretarStatusPix` (T002, já aplicado em T006) — `situacao === 'APROVADO'` chama `onAprovado(trnGuid)` e desabilita o polling na mesma renderização (nunca depende só do `refetchInterval` parar sozinho) — `FR-001`/`FR-002`, `research.md` D9 — depende de T002, T016
-- [ ] T018 [US1] Implementar retry de geração em `ModalPix.tsx` (T016): erro de `useGerarPix().gerar` exibe toast (Goey Toast) com "Tentar novamente", que rechama `gerar` com um **novo** `TrnGUID` (nunca reaproveita o de uma tentativa que falhou) — `FR-011`, `research.md` D12 — depende de T016
+- [ ] T018 [US1] Implementar retry de geração em `ModalPix.tsx` (T016): erro de `useGerarPix().gerar` exibe toast (Goey Toast) com "Tentar novamente", que rechama `gerar` com um **novo** `TrnGUID` (nunca reaproveita o de uma tentativa que falhou) — `FR-011`, `research.md` D12 — depende de T016 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — fluxo dourado completo (geração → exibição → sondagem → aprovação), incluindo bloqueio de valor mínimo, saldo residual, retry e dados do pagador.
 
@@ -104,7 +106,7 @@ tests/unit/domain/pix/ | tests/integration/ | tests/e2e/
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Implementar `onFechar` em `ModalPix.tsx` (T016): se o pagamento ainda está `PENDENTE_INTEGRACAO` ao fechar, exibe aviso ("será necessário desassociar esta cobrança manualmente na Central de Transações PIX, fora do Checkout") e chama `onAbandonado('FECHADO_PELO_OPERADOR')` — nenhuma chamada HTTP de cancelamento é feita — `FR-004`/`FR-005`/`FR-006`/`FR-007`, `research.md` D11 — depende de T016
+- [ ] T021 [US3] Implementar `onFechar` em `ModalPix.tsx` (T016): se o pagamento ainda está `PENDENTE_INTEGRACAO` ao fechar, exibe aviso ("será necessário desassociar esta cobrança manualmente na Central de Transações PIX, fora do Checkout") e chama `onAbandonado('FECHADO_PELO_OPERADOR')` — nenhuma chamada HTTP de cancelamento é feita — `FR-004`/`FR-005`/`FR-006`/`FR-007`, `research.md` D11 — depende de T016 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [ ] T022 [US3] Wire o branch `FALHA_TERMINAL` do polling (T017) para o **mesmo** `onAbandonado(motivo)` de T021 (não um segundo caminho de código) — desabilita o polling na mesma renderização, sem chamada de cancelamento — `data-model.md` §4, `research.md` D11 — depende de T017, T021
 
 **Checkpoint**: User Stories 1 e 3 completas e integradas — o modal cobre tanto a aprovação quanto o abandono (manual ou por falha terminal reportada pelo ERP), convergindo no mesmo tratamento de UX.
@@ -131,7 +133,7 @@ tests/unit/domain/pix/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Substituir o stub de integração deixado pela feature 008 por esta implementação real, e validar ponta a ponta.
 
-- [ ] T024 Substituir o stub no-op de `iniciarIntegracao` (`specs/008-pagamento-geral/tasks.md`, T041) por uma implementação real para `PIX_DINAMICO`: em `src/client/features/pagamento/ListaPagamentosAplicados.tsx` (008), renderizar `<ModalPix>` (T016) quando um `PagamentoAplicado` está `PENDENTE_INTEGRACAO` com `integracao === 'PIX_DINAMICO'`, ligando `onAprovado` → `confirmarPagamentoIntegrado(idPagamento, { pixGuid })`, `onAbandonado` → `recusarPagamentoIntegrado(idPagamento, motivo)` (ambos já existentes no `pagamentoSlice`, feature 008) — `contracts/pix-domain-api.md` §3 — depende de T016, T021
+- [ ] T024 Substituir o stub no-op de `iniciarIntegracao` (`specs/008-pagamento-geral/tasks.md`, T041) por uma implementação real para `PIX_DINAMICO`: em `src/client/features/pagamento/ListaPagamentosAplicados.tsx` (008), renderizar `<ModalPix>` (T016) quando um `PagamentoAplicado` está `PENDENTE_INTEGRACAO` com `integracao === 'PIX_DINAMICO'`, ligando `onAprovado` → `confirmarPagamentoIntegrado(idPagamento, { pixGuid })`, `onAbandonado` → `recusarPagamentoIntegrado(idPagamento, motivo)` (ambos já existentes no `pagamentoSlice`, feature 008) — `contracts/pix-domain-api.md` §3 — depende de T016, T021 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [ ] T025 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
 - [ ] T026 E2E `tests/e2e/pagamento-pix.spec.ts` (fluxo dourado do quickstart, via Playwright, mock de rede não de função): abrir tela de pagamento → selecionar PIX → confirmar QR Code renderizado (`<img>` com `src` iniciando em `data:image/jpeg;base64,`) → confirmar botão "Copiar" funcional (Clipboard API) → simular aprovação via mock → confirmar navegação de volta à tela de pagamento com a forma PIX listada como aplicada e saldo zerado
 - [ ] T027 Rodar os 8 cenários de `quickstart.md` (fluxo dourado, PIX oculto, fechamento manual, falha terminal, valor mínimo, saldo residual, retry de geração, dados do pagador) e confirmar `SC-001`/`SC-002`

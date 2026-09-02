@@ -36,6 +36,8 @@ src/shared/schemas/                         # pagamento.schema.ts
 tests/unit/domain/pagamento/ | tests/integration/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T019, T028, T035, T040.
+
 ---
 
 ## Phase 1: Setup
@@ -87,7 +89,7 @@ tests/unit/domain/pagamento/ | tests/integration/ | tests/e2e/
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Implementar `src/client/features/pagamento/SeletorCondicaoForma.tsx`: lista condições e formas do catálogo (`useCondicoesPagamento`, T009), oculta/desabilita forma via `formaDisponivel` (T003), aciona `selecionarCondicao` (T010) — `FR-001`..`FR-003` — depende de T009, T010
+- [ ] T019 [US1] Implementar `src/client/features/pagamento/SeletorCondicaoForma.tsx`: lista condições e formas do catálogo (`useCondicoesPagamento`, T009), oculta/desabilita forma via `formaDisponivel` (T003), aciona `selecionarCondicao` (T010) — `FR-001`..`FR-003` — depende de T009, T010 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
 - [ ] T020 [US1] Wire o evento `CONDICAO_PAGAMENTO_APLICADA` (feature 001, AD-061) dentro de `selecionarCondicao` (T010) — `FR-017` — depende de T010
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — catálogo visível com as flags de disponibilidade corretas.
@@ -125,7 +127,7 @@ tests/unit/domain/pagamento/ | tests/integration/ | tests/e2e/
 
 ### Implementation for User Story 4
 
-- [ ] T028 [US4] Implementar `src/client/features/pagamento/ListaPagamentosAplicados.tsx`: formas aplicadas com status (`PENDENTE_INTEGRACAO`/`APROVADO`/`RECUSADO`), saldo restante e troco via `saldo()` (T010) — `FR-011`/`FR-012` — depende de T010
+- [ ] T028 [US4] Implementar `src/client/features/pagamento/ListaPagamentosAplicados.tsx`: formas aplicadas com status (`PENDENTE_INTEGRACAO`/`APROVADO`/`RECUSADO`), saldo restante e troco via `saldo()` (T010) — `FR-011`/`FR-012` — depende de T010 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [ ] T029 [US4] Implementar toast (Goey Toast) de bloqueio para `DINHEIRO_DUPLICADO` e `SALDO_JA_COBERTO` (`ResultadoValidacao.motivo` de T004) — `FR-013` — depende de T004
 - [ ] T030 [US4] Implementar `montarPagamentosParaPayload()` completo no slice (T010): `CondicaoPagamentoCodigo`, `FormasDePagamento[]` (só `APROVADO`, com `FormaIntegracaoCartao`/`FormaEntrada`/`TicketDevolucao` ecoados) e `Map<idLinha, Centavos>` do rateio (chama `ratearDescontoCapa`, T005, na montagem — nunca no estado) — `contracts/erp-pagamento-api.md` §3 — depende de T010, T005
 
@@ -150,7 +152,7 @@ tests/unit/domain/pagamento/ | tests/integration/ | tests/e2e/
 ### Implementation for User Story 5
 
 - [ ] T034 [US5] Implementar `aplicarDescontoCapa`/`removerDescontoCapa` em `pagamentoSlice.ts` (T010): guarda I8 (`resolverDescontoCapa(...) <= subtotalCarrinho()`), substitui o `descontoCapa` existente (nunca acumula) — depende de T010, T005
-- [ ] T035 [US5] Implementar `src/client/features/pagamento/ModalDescontoCapa.tsx`: escolha percentual/valor, sem teto, sem autorização — `FR-015` — depende de T034
+- [ ] T035 [US5] Implementar `src/client/features/pagamento/ModalDescontoCapa.tsx`: escolha percentual/valor, sem teto, sem autorização — `FR-015` — depende de T034 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [ ] T036 [US5] Wire a guarda I12 (`FR-023`/AD-113): `aplicarDescontoCapa`/`removerDescontoCapa` recusam quando `pagamentos.length > 0` (venda já tem pagamento aplicado); `podeMutarCarrinho()` (T010, I7) fica pronto para ser injetado pelas features 005/012 como predicado de congelamento de cliente/vendedor — depende de T034
 
 **Checkpoint**: Todas as user stories P1 completas e independentes.
@@ -171,7 +173,7 @@ tests/unit/domain/pagamento/ | tests/integration/ | tests/e2e/
 ### Implementation for User Story 3
 
 - [ ] T039 [US3] Implementar `aplicarValeDevolucao` em `pagamentoSlice.ts` (T010): única action assíncrona do slice — recusa no-op com toast se `!ehElegivelParaVale(forma)` (T006); senão `await validarTicket(codigo)` (T009) e, se `valido`, vincula `ValeDevolucaoAplicado` ao pagamento e soma o valor — `FR-008`/`FR-009`. **Emite auditoria explicitamente**: `VALE_DEVOLUCAO_USADO` quando válido, `PAGAMENTO_RECUSADO` quando inválido (feature 001, AD-061) — `FR-017` — depende de T010, T009, T006
-- [ ] T040 [US3] Implementar `src/client/features/pagamento/ModalValeDevolucao.tsx`: código do vale, elegibilidade e resultado — `FR-008`/`FR-010` — depende de T039
+- [ ] T040 [US3] Implementar `src/client/features/pagamento/ModalValeDevolucao.tsx`: código do vale, elegibilidade e resultado — `FR-008`/`FR-010` — depende de T039 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 
 **Checkpoint**: Todas as 5 user stories funcionam de forma independente e integrada — feature completa (`FR-001` a `FR-023`).
 

@@ -34,6 +34,8 @@ src/shared/    # Schemas Zod compartilhados
 tests/unit/ | tests/integration/ | tests/e2e/
 ```
 
+**⚠️ Consulta ao Pencil MCP obrigatória para tarefas de UI (CLAUDE.md § "Referência visual (design)")**: toda tarefa desta lista que cria ou altera saída visual (tela, componente, modal, layout, ícone, estado de loading/vazio) está marcada abaixo com "consultar o Pencil MCP antes de implementar" — a fonte de verdade do visual é sempre o Pencil MCP (`get_editor_state(include_schema:true)` → `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`), nunca o código existente nem senso genérico de design. Tarefas afetadas: T025, T026, T027, T034, T035.
+
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
@@ -107,9 +109,9 @@ tests/unit/ | tests/integration/ | tests/e2e/
 - [X] T022 [US2] Criar Web Worker de parse/validação em `src/client/services/bootstrapWorker.ts` (valida payload com o schema de T018 fora da thread principal, ~5MB)
 - [X] T023 [US2] Implementar `src/client/services/bootstrapClient.ts` (chama `GET /api/bootstrap`, delega ao worker de T022, calcula `_versionHash`, decide reuso vs. gravação no Dexie de T021, FR-008)
 - [X] T024 [US2] Implementar `src/client/stores/sessionStore.ts` (Zustand, sem `persist` — estados `carregando`/`pronto`/`erro-recuperável`/`reaproveitado` de `data-model.md`)
-- [X] T025 [P] [US2] Implementar `src/client/features/session-bootstrap/LoadingSkeleton.tsx` (Boneyard, AUTH-05)
-- [X] T026 [P] [US2] Implementar `src/client/features/session-bootstrap/ErrorRetry.tsx` (erro não-401, botão "Tentar novamente", AUTH-07 — sem forçar novo login)
-- [X] T027 [US2] Orquestrar em `src/client/App.tsx`: dispara `bootstrapClient` (T023) no mount, alterna `LoadingSkeleton`/`ErrorRetry`/tela de venda conforme `sessionStore` (T024), libera a tela de venda só após confirmação de gravação no Dexie
+- [X] T025 [P] [US2] Implementar `src/client/features/session-bootstrap/LoadingSkeleton.tsx` (Boneyard, AUTH-05) — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
+- [X] T026 [P] [US2] Implementar `src/client/features/session-bootstrap/ErrorRetry.tsx` (erro não-401, botão "Tentar novamente", AUTH-07 — sem forçar novo login) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T027 [US2] Orquestrar em `src/client/App.tsx`: dispara `bootstrapClient` (T023) no mount, alterna `LoadingSkeleton`/`ErrorRetry`/tela de venda conforme `sessionStore` (T024), libera a tela de venda só após confirmação de gravação no Dexie — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [X] T028 [US2] Integration tests — reuso de cache por hash (Cenário 2 passo 4) e isolamento por tenant (Cenário 3, FR-009) em `tests/integration/bootstrap-cache.spec.ts`
 - [X] T029 [US2] E2E — Cenário 2 (skeleton até resposta, tela liberada, registro Dexie por `tenant`, F5 sem nova chamada) e Cenário 4 (falha `500` → tela "Tentar novamente") em `tests/e2e/auth-bootstrap.spec.ts`
 
@@ -134,8 +136,8 @@ tests/unit/ | tests/integration/ | tests/e2e/
 - [X] T031 [US3] Implementar rota de proxy `/api/erp/*` em `src/server/routes/erp-proxy.ts` (injeta `Authorization`/`Empresa` do cookie decifrado via T010; em `401` do ERP chama renovação via T011, regrava cookie, refaz a chamada original; se a renovação falhar, invalida o cookie e responde `401` — ver `contracts/session-bff-api.md`)
 - [X] T032 [US3] Registrar rota `erp-proxy` (catch-all) em `src/server/index.ts`
 - [X] T033 [US3] Criar `src/client/services/erpClient.ts` (wrapper de fetch para `/api/erp/*`; ao receber `401` terminal do BFF, consulta — só leitura — o carrinho em `vendaStore.ts`, feature 001/003, antes de decidir a mensagem)
-- [X] T034 [US3] Implementar `src/client/features/session-bootstrap/SessionExpiredWarning.tsx` (reaproveita o padrão de diálogo `beforeunload` já validado, AD-044/AUTH-06 — avisa que a sessão será encerrada e a venda pode ser perdida)
-- [X] T035 [US3] Conectar em `src/client/services/erpClient.ts`/`src/client/App.tsx`: `401` terminal com carrinho vazio → mensagem "reabra pelo ERP" e encerra; com carrinho com itens → exibe `SessionExpiredWarning` (T034) antes de encerrar (FR-006) — lê `vendaStore.ts` (feature 001/003) somente leitura, nunca modifica
+- [X] T034 [US3] Implementar `src/client/features/session-bootstrap/SessionExpiredWarning.tsx` (reaproveita o padrão de diálogo `beforeunload` já validado, AD-044/AUTH-06 — avisa que a sessão será encerrada e a venda pode ser perdida) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T035 [US3] Conectar em `src/client/services/erpClient.ts`/`src/client/App.tsx`: `401` terminal com carrinho vazio → mensagem "reabra pelo ERP" e encerra; com carrinho com itens → exibe `SessionExpiredWarning` (T034) antes de encerrar (FR-006) — lê `vendaStore.ts` (feature 001/003) somente leitura, nunca modifica — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 - [ ] T036 [US3] E2E — Cenário 5 completo (renovação silenciosa sem carrinho, falha de renovação sem carrinho, falha de renovação com carrinho + aviso) em `tests/e2e/auth-bootstrap.spec.ts` — só roda de ponta a ponta depois que `vendaStore.ts` (001) e o slice de carrinho (003) existirem. **Parcial em 2026-09-01:** os dois primeiros casos estão implementados e passando; o terceiro (falha de renovação **com carrinho populado** → `SessionExpiredWarning`) continua aberto, pois exige a venda em andamento das features 001/003. O caminho já está pronto dos dois lados: `App.tsx` decide pelo `itensNaVenda` e `erpClient.ts` expõe a porta `LeitorCarrinho` — fechar esta tarefa é injetar o leitor real e acrescentar o caso ao spec
 
 **Checkpoint**: As 3 user stories funcionam de forma independente e integrada — feature completa (FR-005, FR-006, SC-003).
