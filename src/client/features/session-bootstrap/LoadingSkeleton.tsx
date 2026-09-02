@@ -54,7 +54,15 @@ export function LoadingSkeleton(): ReactElement {
         </div>
       </header>
 
-      <Skeleton name="pdv-venda" loading fallback={<EstruturaTelaVenda aria-hidden />}>
+      {/* `fixture` é o que o CLI (`npx boneyard-js build`) fotografa: a captura
+          não depende do estado real de sessão/carregamento na hora do build.
+          O `fallback` continua valendo se o registry não estiver carregado. */}
+      <Skeleton
+        name="pdv-venda"
+        loading
+        fixture={<EstruturaTelaVenda />}
+        fallback={<EstruturaTelaVenda aria-hidden />}
+      >
         <EstruturaTelaVenda />
       </Skeleton>
     </div>

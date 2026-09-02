@@ -2,6 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GooeyToaster } from 'goey-toast';
 import { App } from './App';
+// Bones gerados por `npm run bones` (CLI do Boneyard). Sem este import,
+// `<Skeleton name="pdv-venda">` não acha a geometria capturada e cai no
+// `fallback` estático — sem shimmer nenhum (AUTH-05).
+import './bones/registry';
 import './styles/global.css';
 // Obrigatório uma única vez no entry, senão os toasts saem sem estilo.
 import 'goey-toast/styles.css';

@@ -5,6 +5,9 @@ playwright-report/
 test-results/
 package-lock.json
 
+# Gerado por `npm run bones` (CLI do Boneyard) — versionado, mas não editado à mão
+src/client/bones/
+
 # Documentação e artefatos de especificação (formatação manual preservada)
 .specs/
 specs/

@@ -112,6 +112,10 @@ test.describe('Cenário 2 — Bootstrap completo antes da tela de venda (AUTH-03
     await expect(page.getByTestId('skeleton-carregamento')).toBeVisible();
     await expect(page.getByTestId('tela-de-venda')).toHaveCount(0);
 
+    // O shimmer real do Boneyard, e não o `fallback` estático: o overlay só é
+    // montado quando os bones gerados por `npm run bones` resolveram.
+    await expect(page.locator('[data-boneyard-overlay="true"]')).toBeVisible();
+
     await expect(page.getByTestId('tela-de-venda')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('skeleton-carregamento')).toHaveCount(0);
   });
