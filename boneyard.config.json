@@ -1,0 +1,5 @@
+{
+  "out": "./src/client/bones",
+  "breakpoints": [1280],
+  "wait": 1200
+}

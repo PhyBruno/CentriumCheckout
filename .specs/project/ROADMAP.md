@@ -41,6 +41,8 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 
 ## Ainda não gerados (dependem de código existir)
 
+**Atualizado em 2026-09-01:** o scaffolding inicial já existe — criado pela feature `002-autenticacao-sessao-bootstrap` (`package.json`, `tsconfig.json`, Vite, Vitest, Playwright, Docker e a árvore `src/client` | `src/server` | `src/shared` | `tests/`, registrada em `.specs/codebase/ARCHITECTURE.md` § Code Organization). O bloqueio original destes três documentos ("depende de código existir") portanto caiu; eles seguem pendentes de geração, não mais de pré-requisito.
+
 `.specs/codebase/CONVENTIONS.md`, `STRUCTURE.md` e `TESTING.md` requerem amostras de código real (padrões de nomenclatura, árvore de diretórios, testes existentes) — serão gerados via brownfield mapping assim que o scaffolding inicial do projeto existir. Não fabricados agora para evitar documentar convenções inexistentes. **Exceção já decidida:** `CONVENTIONS.md`, quando gerado, deve incorporar a exigência de arquitetura SOLID já fixada em `.specs/project/STATE.md` (AD-085) — não é uma convenção a ser inferida do código, é uma constraint definida antes do scaffolding existir.
 
 ## Referência visual

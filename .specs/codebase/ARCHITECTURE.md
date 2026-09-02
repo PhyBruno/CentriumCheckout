@@ -81,4 +81,22 @@ Cada opção é só um link/navegação para fora do Checkout — nenhuma das du
 
 ## Code Organization
 
-A definir quando o scaffolding inicial for criado — ainda não há árvore de diretórios real. Ver `.specs/project/ROADMAP.md` ("Ainda não gerados") para `CONVENTIONS.md`/`STRUCTURE.md`/`TESTING.md`.
+**Atualizado em 2026-09-01:** o scaffolding inicial passou a existir — foi criado pela feature `002-autenticacao-sessao-bootstrap` (Fase 1 de `specs/002-autenticacao-sessao-bootstrap/tasks.md`), a primeira a precisar dele. A árvore real é:
+
+```text
+src/
+├── client/                  # SPA React (build via Vite → dist/client)
+│   ├── features/<feature>/  # componentes por feature
+│   ├── stores/              # Zustand (sem persist)
+│   ├── db/                  # Dexie: só o bootstrap do tenant
+│   ├── services/            # chamadas à API, Web Workers
+│   └── styles/global.css    # design tokens do Pencil
+├── server/                  # BFF Fastify (sessão/proxy, sem lógica de negócio)
+│   ├── routes/ | session/ | config/
+└── shared/                  # schemas Zod e utilidades usadas pelos dois lados
+tests/unit/ | tests/integration/ | tests/e2e/
+```
+
+Um único processo Node serve a API de sessão/proxy **e** os assets estáticos da SPA — não há Nginx separado (ver "Containerização" acima e AD-022).
+
+`CONVENTIONS.md`/`STRUCTURE.md`/`TESTING.md` continuam pendentes: agora já há código real para basear o brownfield mapping — ver `.specs/project/ROADMAP.md`.

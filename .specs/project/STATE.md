@@ -1269,6 +1269,18 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 
 ---
 
+### AD-118: `Empresa` é enviado como header ao ERP — o `ApiCentriumOAuth.yaml` reflete só o binding padrão do GeneXus, não o override manual do `.Before` (2026-09-02)
+
+**Decision:** `GetSessao` (e todo o restante de `APICentriumOAuth`) espera `Empresa` como **header HTTP** (`empresa`) — não como query param, apesar do `ApiCentriumOAuth.yaml` (versão `20260827192357`) declarar `Empresa` como query. A implementação do BFF (`chamadaAutenticada.ts`, header `Empresa` + query `Login`) já estava correta e não muda.
+
+**Reason:** Inspeção direta do código-fonte real da KB do GeneXus (`CentriumDEVU6`, via MCP). A declaração `WebServices` do objeto `APICentriumOAuth` (`GetSessao(in:&Empresa, in:&Login, ...) => PCheckout_GetSessao(...)`) usa o binding GET padrão do GeneXus — todo parâmetro `in` sem anotação vira query string — e é essa declaração genérica que alimenta o gerador de OpenAPI, então o `.yaml` reflete só esse default. O evento `GetSessao.Before` sobrescreve `&Empresa` manualmente, lendo direto do header cru (`&HttpRequest.GetHeader('empresa').ToNumeric()`), por cima de qualquer valor que o binding padrão tenha atribuído via query. A validação logo abaixo confirma a intenção: `if &Empresa.IsEmpty() ... &Message.Description = 'Cabeçalho de Empresa é obrigatório'` — a mensagem de erro, escrita pelo time do ERP, já nomeia literalmente "Cabeçalho" (header). O mesmo padrão (`&HttpRequest.GetHeader('empresa')` no `.Before`) se repete nos outros oito eventos da mesma API (`GetCliente`, `PostCliente`, `GetListaProdutos`, `GetListaClientes`, `ListaDAVs`, `GetListaNFCes`, `GetListaVendedores`) — não é uma exceção isolada de `GetSessao`, é convenção da API inteira.
+
+**Trade-off:** Nenhum identificado — resolve a divergência de contrato sem exigir mudança de código; só corrige a leitura do `.yaml`. Fecha a nota 4 de `specs/002-autenticacao-sessao-bootstrap/tasks.md`.
+
+**Impact:** `ApiCentriumOAuth.yaml` fica marcado como desatualizado nesse ponto (assim como já estava em outro ponto por AD-057) — quem for consultar o `.yaml` para endpoints novos desta API deve considerar que um `.Before` com `&HttpRequest.GetHeader(...)` pode mover parâmetros para header sem isso aparecer no `.yaml` gerado; vale checar o `.Before` de cada evento na KB antes de confiar só no `.yaml` para parâmetros `Empresa`-like. Nenhuma mudança em `specs/002-autenticacao-sessao-bootstrap/` além da nota 4 do `tasks.md`.
+
+---
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

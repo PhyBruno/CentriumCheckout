@@ -1,0 +1,25 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+.git/
+.gitignore
+Dockerfile*
+.dockerignore
+*.log
+.env
+.env.*
+
+# Artefatos de especificação e design — não entram na imagem
+.specs/
+specs/
+.specify/
+docs/
+design/
+Fluxograma - Diagrama - Alinhamentos/
+.claude/
+.dual-graph/
+.codegraph/
+.omo/

@@ -19,7 +19,7 @@ Guia de validação ponta a ponta desta feature. Pressupõe o BFF (Fastify) e a 
 1. Com o cookie do Cenário 1 já setado, abrir a SPA.
 2. **Esperado**: tela de carregamento skeleton (Boneyard) visível até `GET /api/bootstrap` responder.
 3. Após a resposta: tela de venda liberada; inspecionar o Dexie do navegador e confirmar um registro chaveado por `tenant=acme`.
-4. Recarregar a página (F5) sem alterar o mock. **Esperado**: nenhuma nova chamada de rede a `/api/bootstrap` (hash local igual ao já persistido) — verificar via aba de rede do navegador ou log do BFF.
+4. Recarregar a página (F5) sem alterar o mock. **Esperado**: a SPA ainda chama `GET /api/bootstrap` (é a única via permitida para descobrir o `tenant` e escolher o registro do Dexie — AD-022), mas envia o hash já persistido em `If-None-Match`; o BFF responde `304` sem corpo — verificar na aba de rede do navegador que a resposta é `304` e o `Content-Length` é `0` (nenhum payload de ~5MB retransmitido, FR-008/AD-045).
 
 ## Cenário 3 — Isolamento por tenant (FR-009)
 

@@ -1,0 +1,24 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+package-lock.json
+
+# Gerado por `npm run bones` (CLI do Boneyard) — versionado, mas não editado à mão
+src/client/bones/
+
+# Documentação e artefatos de especificação (formatação manual preservada)
+.specs/
+specs/
+docs/
+design/
+Fluxograma - Diagrama - Alinhamentos/
+AGENTS.md
+CLAUDE.md
+rules.md
+SPECKIT.md
+
+# Configuração/estado de ferramentas de agente (Claude Code, Spec Kit) — não é código do produto
+.claude/
+.specify/
