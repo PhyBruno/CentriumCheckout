@@ -141,6 +141,13 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     // Volta ao estado vazio e libera a linha do store de coordenação.
     expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
     expect(screen.getByTestId('campo-codigo-produto')).toHaveValue('');
+    // Foco volta pro código pro operador poder inserir o próximo item sem
+    // tocar no mouse (achado do usuário, 2026-09-03: antes o campo ainda
+    // estava `disabled` no instante do `.focus()`, dentro do mesmo handler
+    // síncrono que confirma — o navegador ignorava a chamada em silêncio).
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-codigo-produto')).toHaveFocus();
+    });
   });
 
   it("produto pesável ('S') só libera a quantidade — preço e desconto ficam somente leitura", async () => {

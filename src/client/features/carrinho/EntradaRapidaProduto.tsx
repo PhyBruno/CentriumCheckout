@@ -200,6 +200,26 @@ export function EntradaRapidaProduto(): ReactElement {
     }
   }, [linhaEmEdicao]);
 
+  /**
+   * Foco de volta pro código sempre que a barra volta ao estado vazio —
+   * depois de confirmar (Enter em qualquer campo ou clique no "+") ou
+   * cancelar (Escape). Pedido do usuário (2026-09-03): o operador precisa
+   * poder bipar/digitar o próximo item sem tocar no mouse.
+   *
+   * Precisa ser um efeito, não uma chamada direta dentro de `resetar()`: o
+   * campo de código só deixa de estar `disabled` depois que o React aplica
+   * `setResolvido(null)`/`limparEdicao()` ao DOM — chamar `.focus()` na mesma
+   * função síncrona que dispara esses `set` acontece **antes** desse commit,
+   * então o campo ainda está desabilitado no instante da chamada e o
+   * navegador ignora o foco em silêncio (achado do usuário: Enter inseria,
+   * mas o foco não voltava).
+   */
+  useEffect(() => {
+    if (resolvido === null && linhaEmEdicao === null) {
+      campoCodigo.current?.focus();
+    }
+  }, [resolvido, linhaEmEdicao]);
+
   function resetar(): void {
     setResolvido(null);
     setTexto('');
@@ -207,7 +227,6 @@ export function EntradaRapidaProduto(): ReactElement {
     setPrecoTexto('');
     setDescontoTexto('0,00');
     limparEdicao();
-    campoCodigo.current?.focus();
   }
 
   function alterarQuantidade(delta: number): void {
