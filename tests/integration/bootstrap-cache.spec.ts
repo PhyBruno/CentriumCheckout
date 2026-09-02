@@ -54,6 +54,9 @@ function payload(tenant: string, cadMaqCod = 'PDV01'): Record<string, unknown> {
       QtdMinCharParaConsulta: 3,
       UsuarioTipoCodigoProduto: 'I',
       ClienteDefaultCodigo: 1,
+      CadSerieNFCe: '1',
+      CadMaqHost: '127.0.0.1:4545',
+      TipoImpressao: 'E',
     },
   };
 }

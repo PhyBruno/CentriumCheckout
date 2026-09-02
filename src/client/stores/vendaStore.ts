@@ -5,7 +5,10 @@ import { criarAuditoriaSlice } from './slices/auditoriaSlice';
 import type { AuditoriaSlice } from './slices/auditoriaSlice';
 import { criarCarrinhoSlice } from './slices/carrinhoSlice';
 import type { CarrinhoDeps, CarrinhoSlice } from './slices/carrinhoSlice';
+import { criarIdentidadeVendaSlice } from './slices/identidadeVendaSlice';
+import type { IdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import { useSessionStore } from './sessionStore';
+import type { OrigemVenda } from '../domain/auditoria/eventos';
 
 /**
  * Store da venda em andamento — **sem `persist`** (AD-006, Constitution VI):
@@ -15,10 +18,10 @@ import { useSessionStore } from './sessionStore';
  * Montado pelo padrão de slices do Zustand para ficar aberto à extensão sem
  * alteração (Open/Closed): cada feature de venda acrescenta o seu slice à
  * interseção de `VendaState` e o seu slice creator ao spread abaixo —
- * finalização (004), cliente (005), pagamento (008), vendedor (012). Por ora
- * existem os slices de auditoria (001) e carrinho (003).
+ * cliente (005), pagamento (008), vendedor (012). Por ora existem os slices de
+ * auditoria (001), carrinho (003) e identidade da venda (004).
  */
-export type VendaState = AuditoriaSlice & CarrinhoSlice;
+export type VendaState = AuditoriaSlice & CarrinhoSlice & IdentidadeVendaSlice;
 
 /** Configuração do PDV ainda não carregada quando o carrinho precisou dela. */
 export class ErroSessaoSemConfiguracao extends Error {
@@ -69,8 +72,28 @@ export function criarVendaStore(depsCarrinho: CarrinhoDeps = carrinhoDepsPadrao)
     immer((...args) => ({
       ...criarAuditoriaSlice(...args),
       ...criarCarrinhoSlice(depsCarrinho)(...args),
+      ...criarIdentidadeVendaSlice(...args),
     })),
   );
 }
 
 export const useVendaStore = criarVendaStore();
+
+/**
+ * Abre uma sessão de venda: **único** ponto que toca `auditoria` e
+ * `identidadeVenda` juntos (feature 004, `research.md` D1).
+ *
+ * Existir aqui, e não dentro de um dos dois slices, é o que garante a
+ * invariante que D1 pede — o início de uma venda nunca zera um slice sem o
+ * outro. Um slice que chamasse o outro precisaria conhecê-lo, acoplamento que
+ * os slices existentes não têm entre si.
+ *
+ * Chamado ao abrir a tela de venda, depois de cada finalização/suspensão
+ * bem-sucedida e, futuramente, pelas features 006 (DAV) e 011 (retomada de
+ * rascunho) — estas com `origem`/`numeroNota` do documento carregado.
+ */
+export function abrirSessaoDeVenda(origem: OrigemVenda, numeroNota = 0): void {
+  const venda = useVendaStore.getState();
+  venda.resetarAuditoria(origem);
+  venda.definirIdentidadeVenda({ origem, numeroNota });
+}

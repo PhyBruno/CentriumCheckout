@@ -19,6 +19,9 @@ import { PainelMensagem } from './features/session-bootstrap/PainelMensagem';
 import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
 import { GridItens } from './features/carrinho/GridItens';
 import { ListaItensMobile } from './features/carrinho/ListaItensMobile';
+import { AcoesFinaisVenda } from './features/finalizacao-suspensao/AcoesFinaisVenda';
+import { usePollingStatusSistema } from './services/statusSistema/pollingStatusSistema';
+import { abrirSessaoDeVenda, useVendaStore } from './stores/vendaStore';
 
 export interface AppProps {
   /** Injetáveis para teste — em produção usam os padrões reais. */
@@ -139,7 +142,13 @@ export function App({
     return <LoadingSkeleton />;
   }
 
-  return <TelaDeVenda />;
+  return (
+    <TelaDeVenda
+      onRecarregarBootstrap={() => {
+        void carregar();
+      }}
+    />
+  );
 }
 
 /**
@@ -178,16 +187,46 @@ function useLayoutCompacto(): boolean {
   return compacto;
 }
 
+interface TelaDeVendaProps {
+  /**
+   * Recarrega `SessaoUsuario` por completo. Passado de cima porque quem sabe
+   * carregar o bootstrap é `App` (feature 002) — o polling desta feature só
+   * decide **quando** chamar, nunca reimplementa a busca (`research.md`, D6).
+   */
+  readonly onRecarregarBootstrap: () => void;
+}
+
 /**
  * Tela de venda. A configuração do PDV já está inteira carregada aqui (a
  * feature 002 garante isso); o conteúdo é das features de venda — por ora o
- * carrinho (003), depois pagamento (008) e finalização (004).
+ * carrinho (003) e a finalização/suspensão (004), depois pagamento (008).
  *
  * A grid desktop e a lista mobile leem o **mesmo** estado de carrinho; só uma
  * das duas é montada por vez.
  */
-function TelaDeVenda(): ReactElement {
+function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement {
   const compacto = useLayoutCompacto();
+  const cadMaqCod = useSessionStore((estado) => estado.registro?.SessaoUsuario.CadMaqCod ?? null);
+  const linhas = useVendaStore((estado) => estado.linhas);
+
+  // Abre a sessão de venda quando a tela entra em cena, e só se ainda não
+  // houver uma aberta: a tela pode remontar no meio de uma venda (recarga do
+  // bootstrap, por exemplo), e reabrir a sessão ali apagaria o histórico de
+  // auditoria já acumulado (`FR-006`/`FR-008` da feature 001).
+  useEffect(() => {
+    if (useVendaStore.getState().eventos.length === 0) {
+      abrirSessaoDeVenda('NOVA');
+    }
+  }, []);
+
+  usePollingStatusSistema({
+    cadMaqCod: () => cadMaqCod,
+    // `FR-013`: nunca durante uma venda em digitação. O segundo termo da guarda
+    // ("cliente já identificado") entra com a feature 005 — até lá, o carrinho
+    // vazio é a condição completa de "entre vendas" que existe no código.
+    vendaAtiva: () => linhas.some((linha) => !linha.cancelada),
+    recarregarBootstrap: onRecarregarBootstrap,
+  });
 
   return (
     <main
@@ -205,6 +244,17 @@ function TelaDeVenda(): ReactElement {
           para leitores de tela. É também o que a 007 exige de forma mais ampla:
           ausência estrutural, não flag de "oculto" (MOB-05, FR-008). */}
       {compacto ? <ListaItensMobile /> : <GridItens />}
+
+      {/* Uma única instância, nos dois layouts: os dois botões e os dois
+          diálogos precisam compartilhar a mesma máquina de estados (ver TSDoc
+          de `AcoesFinaisVenda`). No Pencil a lixeira mobile aparece na barra
+          superior (AD-089); reposicioná-la para lá pertence ao `MobileWizard`
+          da feature 007, que é quem passa a possuir o shell mobile — dividir a
+          máquina de estados entre dois pontos do DOM agora reabriria o caminho
+          de reenvio que `FR-004` fecha. */}
+      <footer className="mt-auto w-full self-end sm:max-w-[360px]">
+        <AcoesFinaisVenda compacto={compacto} />
+      </footer>
     </main>
   );
 }

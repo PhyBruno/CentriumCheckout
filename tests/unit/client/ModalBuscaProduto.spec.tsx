@@ -5,6 +5,7 @@ import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { CheckoutListaProdutos } from '../../../src/shared/schemas/produto.schema';
+import type * as ProdutoQueries from '../../../src/client/services/produto/produtoQueries';
 import { ModalBuscaProduto } from '../../../src/client/features/carrinho/ModalBuscaProduto';
 import { useSessionStore } from '../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../src/client/stores/vendaStore';
@@ -37,8 +38,7 @@ const mockUseBuscaProdutos =
   >();
 
 vi.mock('../../../src/client/services/produto/produtoQueries', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('../../../src/client/services/produto/produtoQueries')>();
+  const original = await importOriginal<typeof ProdutoQueries>();
   return {
     ...original,
     useBuscaProdutos: (
@@ -113,6 +113,9 @@ function registroDeBootstrap() {
       QtdMinCharParaConsulta: 3,
       UsuarioTipoCodigoProduto: 'I',
       ClienteDefaultCodigo: 1,
+      CadSerieNFCe: '1',
+      CadMaqHost: '127.0.0.1:4545',
+      TipoImpressao: 'E' as const,
     },
   };
 }
