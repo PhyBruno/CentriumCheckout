@@ -152,13 +152,33 @@
   --radius-md: var(--cc-radius-md);
   --radius-lg: var(--cc-radius-lg);
   --radius-xl: var(--cc-radius-xl);
+
+  /* Tamanho de texto: sobrescreve a escala padrão do Tailwind (mesmo padrão já
+     usado acima para cor/radius) e adiciona `--text-md`, que não existe na
+     escala padrão. */
+  --text-xs: var(--cc-text-xs);
+  --text-sm: var(--cc-text-sm);
+  --text-base: var(--cc-text-base);
+  --text-md: var(--cc-text-md);
+  --text-lg: var(--cc-text-lg);
+  --text-xl: var(--cc-text-xl);
+  --text-2xl: var(--cc-text-2xl);
+
+  /* Espaçamento nomeado (gap-sm, p-lg…), para o vocabulário do design ficar
+     explícito nas classes em vez de recair em múltiplos numéricos genéricos. */
+  --spacing-xxs: var(--cc-space-xxs);
+  --spacing-xs: var(--cc-space-xs);
+  --spacing-sm: var(--cc-space-sm);
+  --spacing-base: var(--cc-space-base);
+  --spacing-md: var(--cc-space-md);
+  --spacing-lg: var(--cc-space-lg);
+  --spacing-xl: var(--cc-space-xl);
+  --spacing-xxl: var(--cc-space-xxl);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+/* `@import 'tailwindcss'` já traz o Preflight, que zera `box-sizing` em todos
+   os elementos — um reset próprio aqui seria CSS vanilla duplicando o que o
+   Tailwind já faz. */
 
 body {
   margin: 0;
@@ -174,15 +194,27 @@ body {
   min-height: 100vh;
 }
 
-/** Texto só para leitores de tela (anúncio de carregamento e de erro). */
-.cc-visualmente-oculto {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+/**
+ * Shimmer do skeleton de carregamento (AUTH-05).
+ *
+ * `@utility` é a forma do Tailwind v4 de declarar uma classe utilitária
+ * reaproveitável — mantém `cc-shimmer` componível com outras classes
+ * (ex.: `motion-reduce:`) em vez de virar CSS solto num arquivo por
+ * componente. O ângulo e as paradas do gradiente são os do frame
+ * "PDV Online Web - Skeleton Carregamento" (`data-pencil-id="BIu92"`) do
+ * export do Pencil, não aproximações.
+ */
+@utility cc-shimmer {
+  background-image: var(--cc-skeleton-gradient);
+  background-size: 200% 100%;
+  animation: cc-shimmer-desliza 1.6s ease-in-out infinite;
+}
+
+@keyframes cc-shimmer-desliza {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
 }

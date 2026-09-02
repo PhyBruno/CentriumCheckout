@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { Skeleton, configureBoneyard } from 'boneyard-js/react';
-import './LoadingSkeleton.css';
+import { cn } from '@/lib/utils';
 
 // Cor e ângulo do shimmer são configuração global do Boneyard, não props do
 // `<Skeleton>`. Os valores são os do frame `BIu92` do Pencil, lidos dos tokens.
@@ -10,6 +10,8 @@ configureBoneyard({
   shimmerColor: 'var(--cc-skeleton-highlight)',
   shimmerAngle: -99.778,
 });
+
+const SHIMMER_PILL = 'cc-shimmer motion-reduce:animate-none motion-reduce:bg-none motion-reduce:bg-[var(--cc-skeleton-base)]';
 
 /**
  * Tela de carregamento bloqueante do bootstrap (T025, AUTH-05 / FR-004).
@@ -26,28 +28,28 @@ configureBoneyard({
 export function LoadingSkeleton(): ReactElement {
   return (
     <div
-      className="cc-pdv-shell"
+      className="flex min-h-screen flex-col bg-muted"
       data-testid="skeleton-carregamento"
       role="status"
       aria-busy="true"
       aria-live="polite"
     >
-      <span className="cc-visualmente-oculto">Carregando a configuração do ponto de venda…</span>
+      <span className="sr-only">Carregando a configuração do ponto de venda…</span>
 
-      <header className="cc-pdv-topbar">
-        <div className="cc-pdv-marca">
-          <div className="cc-pdv-simbolo" />
-          <div className="cc-pdv-identidade">
-            <strong>Centrium Checkout</strong>
-            <span>Preparando o ponto de venda…</span>
+      <header className="flex h-18 shrink-0 items-center justify-between border-b border-border bg-background px-7">
+        <div className="flex flex-row items-center gap-3.5">
+          <div className="size-10 rounded-full bg-primary" />
+          <div className="flex flex-col gap-xxs">
+            <strong className="text-md font-semibold text-foreground">Centrium Checkout</strong>
+            <span className="text-sm text-muted-foreground">Preparando o ponto de venda…</span>
           </div>
         </div>
 
-        <div className="cc-pdv-status">
-          <div className="cc-pdv-status-pill cc-shimmer" style={{ width: 92 }} />
-          <div className="cc-pdv-status-pill cc-shimmer" style={{ width: 110 }} />
-          <div className="cc-pdv-status-botao" />
-          <div className="cc-pdv-status-botao" />
+        <div className="flex flex-row items-center gap-sm">
+          <div className={cn('h-8.5 rounded-full', SHIMMER_PILL)} style={{ width: 92 }} />
+          <div className={cn('h-8.5 rounded-full', SHIMMER_PILL)} style={{ width: 110 }} />
+          <div className="size-10 rounded-full bg-secondary" />
+          <div className="size-10 rounded-full bg-secondary" />
         </div>
       </header>
 
@@ -65,57 +67,61 @@ export function LoadingSkeleton(): ReactElement {
  */
 function EstruturaTelaVenda(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
-    <div className="cc-pdv-area" aria-hidden={props['aria-hidden']}>
-      <div className="cc-pdv-venda">
-        <section className="cc-pdv-card cc-pdv-card--cliente">
-          <div className="cc-pdv-linhas">
-            <div className="cc-pdv-linha" style={{ width: '30%' }} />
-            <div className="cc-pdv-linha" style={{ width: '70%' }} />
-            <div className="cc-pdv-linha" style={{ width: '55%' }} />
+    <div className="flex flex-1 flex-row gap-md pt-md px-lg pb-lg" aria-hidden={props['aria-hidden']}>
+      <div className="flex flex-1 flex-col gap-base">
+        <section className="h-38 rounded-xl border border-border bg-background p-base">
+          <div className="flex flex-col gap-sm">
+            <div className="h-4.5 rounded-sm bg-secondary" style={{ width: '30%' }} />
+            <div className="h-4.5 rounded-sm bg-secondary" style={{ width: '70%' }} />
+            <div className="h-4.5 rounded-sm bg-secondary" style={{ width: '55%' }} />
           </div>
         </section>
 
-        <section className="cc-pdv-card cc-pdv-card--entrada">
-          <div className="cc-pdv-linhas">
-            <div className="cc-pdv-linha" style={{ width: '45%' }} />
-            <div className="cc-pdv-linha" style={{ width: '85%' }} />
+        <section className="h-30.5 rounded-xl border border-border bg-background p-base">
+          <div className="flex flex-col gap-sm">
+            <div className="h-4.5 rounded-sm bg-secondary" style={{ width: '45%' }} />
+            <div className="h-4.5 rounded-sm bg-secondary" style={{ width: '85%' }} />
           </div>
         </section>
 
-        <section className="cc-pdv-card cc-pdv-card--produtos">
-          <div className="cc-pdv-linhas">
+        <section className="h-103.5 overflow-hidden rounded-xl border border-border bg-background p-base">
+          <div className="flex flex-col gap-sm">
             {Array.from({ length: 7 }, (_, indice) => (
-              <div key={indice} className="cc-pdv-linha" style={{ width: `${95 - indice * 6}%` }} />
+              <div
+                key={indice}
+                className="h-4.5 rounded-sm bg-secondary"
+                style={{ width: `${95 - indice * 6}%` }}
+              />
             ))}
           </div>
         </section>
 
-        <div className="cc-pdv-atalhos">
+        <div className="flex h-11 flex-row items-center gap-2.5">
           {Array.from({ length: 5 }, (_, indice) => (
-            <div key={indice} className="cc-pdv-atalho" />
+            <div key={indice} className="h-8 w-24 rounded-full bg-secondary" />
           ))}
         </div>
       </div>
 
-      <aside className="cc-pdv-pagamento">
+      <aside className="flex w-98 shrink-0 flex-col gap-md rounded-xl border border-border bg-background p-base">
         {[
           'Condição de pagamento',
           'Desconto e acréscimo',
           'Forma de pagamento',
           'Valor recebido',
         ].map((rotulo) => (
-          <div className="cc-pdv-bloco" key={rotulo}>
-            <span>{rotulo}</span>
-            <div className="cc-pdv-campo" />
+          <div className="flex flex-col gap-xs" key={rotulo}>
+            <span className="text-sm text-muted-foreground">{rotulo}</span>
+            <div className="h-10 rounded-lg bg-secondary" />
           </div>
         ))}
 
-        <div className="cc-pdv-total">
-          <span>Total da venda</span>
-          <strong>R$ 0,00</strong>
+        <div className="flex flex-col gap-xs rounded-[20px] bg-[var(--cc-color-surface-dark)] p-3.5 text-[var(--cc-color-on-dark)]">
+          <span className="text-sm text-[var(--cc-color-on-dark-soft)]">Total da venda</span>
+          <strong className="text-2xl font-normal">R$ 0,00</strong>
         </div>
 
-        <div className="cc-pdv-acoes" />
+        <div className="h-12 rounded-full bg-secondary" />
       </aside>
     </div>
   );

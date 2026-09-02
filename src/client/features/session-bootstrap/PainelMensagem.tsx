@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import './PainelMensagem.css';
+import { cn } from '@/lib/utils';
 
 export interface PainelMensagemProps {
   readonly titulo: string;
@@ -20,16 +20,20 @@ export function PainelMensagem({
   acoes,
 }: PainelMensagemProps): ReactElement {
   return (
-    <div className="cc-painel-fundo">
-      <section className="cc-painel" role="alert">
+    <div className="flex min-h-screen items-center justify-center p-lg bg-muted">
+      <section
+        role="alert"
+        className="flex w-full max-w-[440px] flex-col gap-sm rounded-xl border border-border bg-background p-xl text-center"
+      >
         <div
-          className={
-            variante === 'alerta' ? 'cc-painel__marca cc-painel__marca--alerta' : 'cc-painel__marca'
-          }
+          className={cn(
+            'size-10 self-center rounded-full bg-primary',
+            variante === 'alerta' && 'bg-[var(--cc-color-accent-yellow)]',
+          )}
         />
-        <h1 className="cc-painel__titulo">{titulo}</h1>
-        <p className="cc-painel__texto">{texto}</p>
-        {acoes !== undefined && <div className="cc-painel__acoes">{acoes}</div>}
+        <h1 className="m-0 text-xl font-semibold text-foreground">{titulo}</h1>
+        <p className="m-0 text-md text-muted-foreground">{texto}</p>
+        {acoes !== undefined && <div className="mt-xs flex justify-center gap-sm">{acoes}</div>}
       </section>
     </div>
   );
