@@ -42,7 +42,7 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Criar os diretórios específicos desta feature sobre a árvore já existente (002/001).
 
-- [ ] T001 Criar estrutura de diretórios desta feature: `src/client/domain/precificacao/`, `src/client/services/produto/`, `src/client/features/carrinho/` (`src/client/stores/slices/` já existe, criado pela feature 001)
+- [X] T001 Criar estrutura de diretórios desta feature: `src/client/domain/precificacao/`, `src/client/services/produto/`, `src/client/features/carrinho/` (`src/client/stores/slices/` já existe, criado pela feature 001)
 
 **Checkpoint**: Diretórios prontos — depende de `src/client/` já existir (Fase 1 da 002) e `src/client/stores/vendaStore.ts` já existir (Foundational da 001).
 
@@ -54,17 +54,17 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 **⚠️ CRITICAL**: Nenhuma user story pode começar até esta fase terminar.
 
-- [ ] T002 [P] Implementar `src/client/domain/precificacao/dinheiro.ts`: `Centavos` (branded), `centavos()`, `somar()`, `multiplicarPorQuantidade()` (`arredondar(preço × qtd ÷ 1000)`), `aplicarPercentual()`, `distribuirPorMaiorResto()` (AD-072), `calcularTotalLinha()` (única forma de obter o valor de uma linha — `data-model.md` §1, I9)
-- [ ] T003 [P] Implementar `src/client/domain/precificacao/quantidade.ts`: `Milesimos` (branded), `milesimosDeUnidades()`, `formatarQuantidade()`
-- [ ] T004 [P] Criar `src/shared/schemas/produto.schema.ts` (Zod): `SDTCheckout_GetProduto` e `CheckoutListaProdutos` — converte `PrecoVenda`/`PrecoVenda1..5`/`PrecoMinimo` (double) para `Centavos` (`Math.round(v*100)`), `QtdMinimaPreco2..5` para `Milesimos`, restringe `ProdutoPesavelEditavel` a `z.enum(['S','B','','E'])` (Constitution IV, `contracts/erp-produto-api.md`)
-- [ ] T005 Implementar `src/client/services/produto/produtoMapper.ts`: mapeia `SDTCheckout_GetProduto` validado (T004) para `SnapshotPrecoProduto` (`data-model.md` §2) — depende de T004
-- [ ] T006 Implementar `fetchProduto` (`GET /api/erp/GetProduto`) em `src/client/services/produto/produtoQueries.ts` — parâmetros `Empresa`/`Codigoproduto`/`Tipocodproduto` (`SessaoUsuario.UsuarioTipoCodigoProduto`, AD-033)/`Tipopreco`/`Codcliente`/`Listapreco` (só quando `TipoPreco=9`); `queryKey: ['produto', codigoProduto, tipoCodProduto, tipoPreco, listaPreco ?? null]`, `staleTime: Infinity` (`CART-03`) — depende de T004, T005; consome o proxy `/api/erp/*` da feature 002
-- [ ] T007 Implementar `src/client/domain/precificacao/tabelaPreco.ts`: `resolvePrecoUnitario(tipoPreco, snapshot, quantidadeAgregada)` — `1..7,9,10,11` retorna `snapshot.precoBase`; `8` resolve faixa flat por `QtdMinimaPreco2..5`/`PrecoVenda1..5` (limiar `0` = não configurada); lança erro de domínio fora de `1..11` — depende de T002, T003
-- [ ] T008 Implementar `src/client/domain/precificacao/reprecificacao.ts`: `repricarSku(linhas, codigoProduto, tipoPreco)` — função pura; agrega quantidade das linhas ativas não-congeladas do SKU (I2/I3 de `data-model.md`), chama T007 uma vez, aplica a **todas** as linhas ativas não-congeladas do SKU (`CART-06`), linhas canceladas/congeladas/outros SKUs retornam por identidade — depende de T007
-- [ ] T009 Implementar `src/client/stores/slices/carrinhoSlice.ts`: estado `linhas: LinhaCarrinho[]`; `CarrinhoDeps` injetado (`podeMutarCarrinho()`, `tipoPrecoAtual()`, `clienteAtual()` — ver nota de dependência cruzada acima); `inserirItem`, `editarItem`, `cancelarItem`, `limparCarrinho`; cada mutação chama T008 e emite o evento de auditoria correspondente via dispatcher da feature 001 (`PRODUTO_INSERIDO`/`PRODUTO_ALTERADO`/`PRODUTO_CANCELADO`); seletores `linhasAtivas`/`quantidadeAgregada`/`totalBruto`/`totalLinha`/`totalVenda` (nunca campos armazenados) — depende de T002, T006, T007, T008; combinado em `vendaStore.ts` (feature 001)
-- [ ] T010 [P] Unit test `tests/unit/domain/precificacao/dinheiro.spec.ts`: soma/multiplicação sem drift de ponto flutuante; `distribuirPorMaiorResto` — soma das parcelas sempre exatamente o total; `calcularTotalLinha` com quantidade inteira/fracionária, desconto > total bruto → piso `0`, desconto `0` → `preço × quantidade` (`FR-016`, AD-072, I8)
-- [ ] T011 [P] Unit test `tests/unit/domain/precificacao/quantidade.spec.ts`: conversão e formatação de `Milesimos`
-- [ ] T012 [P] Unit test `tests/unit/shared/produto.schema.spec.ts`: `SDTCheckout_GetProduto`/`CheckoutListaProdutos` válidos e inválidos, conversão double→Centavos/Milesimos, `ProdutoPesavelEditavel` fora do enum é erro de fronteira
+- [X] T002 [P] Implementar `src/client/domain/precificacao/dinheiro.ts`: `Centavos` (branded), `centavos()`, `somar()`, `multiplicarPorQuantidade()` (`arredondar(preço × qtd ÷ 1000)`), `aplicarPercentual()`, `distribuirPorMaiorResto()` (AD-072), `calcularTotalLinha()` (única forma de obter o valor de uma linha — `data-model.md` §1, I9)
+- [X] T003 [P] Implementar `src/client/domain/precificacao/quantidade.ts`: `Milesimos` (branded), `milesimosDeUnidades()`, `formatarQuantidade()`
+- [X] T004 [P] Criar `src/shared/schemas/produto.schema.ts` (Zod): `SDTCheckout_GetProduto` e `CheckoutListaProdutos` — converte `PrecoVenda`/`PrecoVenda1..5`/`PrecoMinimo` (double) para `Centavos` (`Math.round(v*100)`), `QtdMinimaPreco2..5` para `Milesimos`, restringe `ProdutoPesavelEditavel` a `z.enum(['S','B','','E'])` (Constitution IV, `contracts/erp-produto-api.md`)
+- [X] T005 Implementar `src/client/services/produto/produtoMapper.ts`: mapeia `SDTCheckout_GetProduto` validado (T004) para `SnapshotPrecoProduto` (`data-model.md` §2) — depende de T004
+- [X] T006 Implementar `fetchProduto` (`GET /api/erp/GetProduto`) em `src/client/services/produto/produtoQueries.ts` — parâmetros `Empresa`/`Codigoproduto`/`Tipocodproduto` (`SessaoUsuario.UsuarioTipoCodigoProduto`, AD-033)/`Tipopreco`/`Codcliente`/`Listapreco` (só quando `TipoPreco=9`); `queryKey: ['produto', codigoProduto, tipoCodProduto, tipoPreco, listaPreco ?? null]`, `staleTime: Infinity` (`CART-03`) — depende de T004, T005; consome o proxy `/api/erp/*` da feature 002
+- [X] T007 Implementar `src/client/domain/precificacao/tabelaPreco.ts`: `resolvePrecoUnitario(tipoPreco, snapshot, quantidadeAgregada)` — `1..7,9,10,11` retorna `snapshot.precoBase`; `8` resolve faixa flat por `QtdMinimaPreco2..5`/`PrecoVenda1..5` (limiar `0` = não configurada); lança erro de domínio fora de `1..11` — depende de T002, T003
+- [X] T008 Implementar `src/client/domain/precificacao/reprecificacao.ts`: `repricarSku(linhas, codigoProduto, tipoPreco)` — função pura; agrega quantidade das linhas ativas não-congeladas do SKU (I2/I3 de `data-model.md`), chama T007 uma vez, aplica a **todas** as linhas ativas não-congeladas do SKU (`CART-06`), linhas canceladas/congeladas/outros SKUs retornam por identidade — depende de T007
+- [X] T009 Implementar `src/client/stores/slices/carrinhoSlice.ts`: estado `linhas: LinhaCarrinho[]`; `CarrinhoDeps` injetado (`podeMutarCarrinho()`, `tipoPrecoAtual()`, `clienteAtual()` — ver nota de dependência cruzada acima); `inserirItem`, `editarItem`, `cancelarItem`, `limparCarrinho`; cada mutação chama T008 e emite o evento de auditoria correspondente via dispatcher da feature 001 (`PRODUTO_INSERIDO`/`PRODUTO_ALTERADO`/`PRODUTO_CANCELADO`); seletores `linhasAtivas`/`quantidadeAgregada`/`totalBruto`/`totalLinha`/`totalVenda` (nunca campos armazenados) — depende de T002, T006, T007, T008; combinado em `vendaStore.ts` (feature 001)
+- [X] T010 [P] Unit test `tests/unit/domain/precificacao/dinheiro.spec.ts`: soma/multiplicação sem drift de ponto flutuante; `distribuirPorMaiorResto` — soma das parcelas sempre exatamente o total; `calcularTotalLinha` com quantidade inteira/fracionária, desconto > total bruto → piso `0`, desconto `0` → `preço × quantidade` (`FR-016`, AD-072, I8)
+- [X] T011 [P] Unit test `tests/unit/domain/precificacao/quantidade.spec.ts`: conversão e formatação de `Milesimos`
+- [X] T012 [P] Unit test `tests/unit/shared/produto.schema.spec.ts`: `SDTCheckout_GetProduto`/`CheckoutListaProdutos` válidos e inválidos, conversão double→Centavos/Milesimos, `ProdutoPesavelEditavel` fora do enum é erro de fronteira
 
 **Checkpoint**: Domínio puro, validação de fronteira e slice básico prontos — inserção mínima é possível (ainda sem UI).
 
@@ -78,15 +78,15 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 1
 
-- [ ] T013 [US1] Integration test: seleção no modal de busca nunca monta `LinhaCarrinho` a partir de `GetListaProdutos` — sempre dispara `fetchProduto`/`GetProduto` para o `CodigoProduto` selecionado (AD-091) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T013 [US1] Integration test: seleção no modal de busca nunca monta `LinhaCarrinho` a partir de `GetListaProdutos` — sempre dispara `fetchProduto`/`GetProduto` para o `CodigoProduto` selecionado (AD-091) em `tests/integration/carrinhoSlice.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Implementar `useBuscaProdutos` (`GET /api/erp/GetListaProdutos`) em `src/client/services/produto/produtoQueries.ts` — só dispara quando `Txtbusca.length >= SessaoUsuario.QtdMinCharParaConsulta` (AD-024, piso vem do ERP, nunca hardcoded)
-- [ ] T015 [US1] Implementar `src/client/features/carrinho/ModalBuscaProduto.tsx` (`CART-01`): busca com skeleton Boneyard, lista paginada; seleção de candidato chama `fetchProduto` (T006), nunca monta a linha do resultado da busca — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
-- [ ] T016 [P] [US1] Implementar `src/client/features/carrinho/GridItens.tsx`: grid desktop exibindo linhas ativas do carrinho (base para riscar cancelada, estendido em US4) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
-- [ ] T017 [P] [US1] Implementar `src/client/features/carrinho/ListaItensMobile.tsx`: mesma fonte de estado do carrinho, layout mobile — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
-- [ ] T018 [US1] E2E — busca (quickstart, Camada 3, passos 2-4): termo abaixo do mínimo não dispara `GetListaProdutos`; termo completo lista com skeleton; seleção insere via `GetProduto` — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T014 [P] [US1] Implementar `useBuscaProdutos` (`GET /api/erp/GetListaProdutos`) em `src/client/services/produto/produtoQueries.ts` — só dispara quando `Txtbusca.length >= SessaoUsuario.QtdMinCharParaConsulta` (AD-024, piso vem do ERP, nunca hardcoded)
+- [X] T015 [US1] Implementar `src/client/features/carrinho/ModalBuscaProduto.tsx` (`CART-01`): busca com skeleton Boneyard, lista paginada; seleção de candidato chama `fetchProduto` (T006), nunca monta a linha do resultado da busca — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
+- [X] T016 [P] [US1] Implementar `src/client/features/carrinho/GridItens.tsx`: grid desktop exibindo linhas ativas do carrinho (base para riscar cancelada, estendido em US4) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T017 [P] [US1] Implementar `src/client/features/carrinho/ListaItensMobile.tsx`: mesma fonte de estado do carrinho, layout mobile — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T018 [US1] E2E — busca (quickstart, Camada 3, passos 2-4): termo abaixo do mínimo não dispara `GetListaProdutos`; termo completo lista com skeleton; seleção insere via `GetProduto` — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — busca e seleção completas (FR-001).
 
@@ -100,16 +100,16 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Unit test `tests/unit/domain/precificacao/codigoProduto.spec.ts`: `"001234*3"` → `COM_QTD`; `"001234"` → `SIMPLES` (quantidade 1); EAN-13 válido iniciado em `2` → `BALANCA`; DV inválido cai em `SIMPLES`; `quantidadePesavel` com `precoVenda <= 0` lança (`FR-004`, `FR-013`, AD-028/AD-029/AD-076)
+- [X] T019 [P] [US2] Unit test `tests/unit/domain/precificacao/codigoProduto.spec.ts`: `"001234*3"` → `COM_QTD`; `"001234"` → `SIMPLES` (quantidade 1); EAN-13 válido iniciado em `2` → `BALANCA`; DV inválido cai em `SIMPLES`; `quantidadePesavel` com `precoVenda <= 0` lança (`FR-004`, `FR-013`, AD-028/AD-029/AD-076)
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implementar `src/client/domain/precificacao/codigoProduto.ts`: `interpretarEntradaCodigo` (ordem `*` → balança (13 dígitos, prefixo `2`, DV EAN-13 válido) → simples, D6), `quantidadePesavel` (`round(trunc(valorEtiqueta/precoVenda,5),3)`, AD-076) — depende de T002, T003
-- [ ] T021 [US2] Implementar `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`CART-02`): campo de código/bipagem + TAB/Enter, usa T020 para classificar a entrada, chama `fetchProduto` (T006) e `inserirItem` (T009) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
-- [ ] T022 [US2] Implementar `src/client/features/carrinho/EdicaoItemEditavel.tsx`: fluxo `'E'` — foco pula para campos editáveis (preço/unidade/quantidade/desconto), insere só ao acionar `+` (`FR-014`); `'S'`/`'B'` insere direto somente-leitura com quantidade/preço da etiqueta/balança (`FR-013`/`FR-015`); `''` insere direto somente-leitura (`FR-015`) — compartilhado pelo caminho de busca (US1) e código direto (US2) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
-- [ ] T023 [US2] Wire bloqueio de inserção de produto pesável sem `PrecoVenda` disponível: toast de aviso, nenhuma linha inserida, foco permanece no campo (`FR-013`) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
-- [ ] T024 [US2] Integration test: reinserir o mesmo SKU não gera nova chamada a `GetProduto` (`staleTime: Infinity`, `CART-03`) em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T025 [US2] E2E — código direto (quickstart, Camada 3, passos 7-9): `codigo*3` insere quantidade 3, código simples insere quantidade 1, EAN-13 de balança deriva quantidade/preço com campos somente-leitura, produto `'E'` não insere ao TAB — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T020 [US2] Implementar `src/client/domain/precificacao/codigoProduto.ts`: `interpretarEntradaCodigo` (ordem `*` → balança (13 dígitos, prefixo `2`, DV EAN-13 válido) → simples, D6), `quantidadePesavel` (`round(trunc(valorEtiqueta/precoVenda,5),3)`, AD-076) — depende de T002, T003
+- [X] T021 [US2] Implementar `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`CART-02`): campo de código/bipagem + TAB/Enter, usa T020 para classificar a entrada, chama `fetchProduto` (T006) e `inserirItem` (T009) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T022 [US2] Implementar `src/client/features/carrinho/EdicaoItemEditavel.tsx`: fluxo `'E'` — foco pula para campos editáveis (preço/unidade/quantidade/desconto), insere só ao acionar `+` (`FR-014`); `'S'`/`'B'` insere direto somente-leitura com quantidade/preço da etiqueta/balança (`FR-013`/`FR-015`); `''` insere direto somente-leitura (`FR-015`) — compartilhado pelo caminho de busca (US1) e código direto (US2) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T023 [US2] Wire bloqueio de inserção de produto pesável sem `PrecoVenda` disponível: toast de aviso, nenhuma linha inserida, foco permanece no campo (`FR-013`) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T024 [US2] Integration test: reinserir o mesmo SKU não gera nova chamada a `GetProduto` (`staleTime: Infinity`, `CART-03`) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T025 [US2] E2E — código direto (quickstart, Camada 3, passos 7-9): `codigo*3` insere quantidade 3, código simples insere quantidade 1, EAN-13 de balança deriva quantidade/preço com campos somente-leitura, produto `'E'` não insere ao TAB — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: User Stories 1 e 2 funcionam juntas — os dois caminhos de inserção completos (FR-002 a FR-004, FR-013 a FR-015).
 
@@ -123,16 +123,16 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 3
 
-- [ ] T026 [P] [US3] Unit test `tests/unit/domain/precificacao/tabelaPreco.spec.ts`: um caso por `TipoPreco` de `1` a `11`; para `8`, quantidade abaixo/igual/acima de cada limiar; limiar `0` ignorado como faixa não configurada (`FR-005`, `FR-006`, AD-059/AD-060)
-- [ ] T027 [P] [US3] Unit test `tests/unit/domain/precificacao/reprecificacao.spec.ts`: cruzar faixa recalcula todas as linhas ativas do SKU; cancelamento derruba as remanescentes para a faixa inferior; linha congelada não é alterada nem entra no agregado (D3); linhas de outros SKUs retornam inalteradas por identidade
+- [X] T026 [P] [US3] Unit test `tests/unit/domain/precificacao/tabelaPreco.spec.ts`: um caso por `TipoPreco` de `1` a `11`; para `8`, quantidade abaixo/igual/acima de cada limiar; limiar `0` ignorado como faixa não configurada (`FR-005`, `FR-006`, AD-059/AD-060)
+- [X] T027 [P] [US3] Unit test `tests/unit/domain/precificacao/reprecificacao.spec.ts`: cruzar faixa recalcula todas as linhas ativas do SKU; cancelamento derruba as remanescentes para a faixa inferior; linha congelada não é alterada nem entra no agregado (D3); linhas de outros SKUs retornam inalteradas por identidade
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Implementar desconto de convênio: `aplicarPercentual` (T002) sobre o total bruto da linha com o `DescontoConvenio` do cliente atual (AD-023) — cliente default sempre fator `1` (AD-108); recalculado junto com `repricarSku`
-- [ ] T029 [US3] Implementar `reprecificarPorTrocaDeCliente()` no `carrinhoSlice` (T009): chama T008 para cada SKU distinto com linha ativa não-congelada quando `TipoPreco = 9` ou o `DescontoConvenio` do cliente muda (`FR-018`) — sem evento de auditoria próprio (auditado pela feature 005 como `CLIENTE_TROCADO`)
-- [ ] T030 [US3] Wire `editarItem(idLinha, 'quantidade', ...)` no `carrinhoSlice` (T009) para chamar `repricarSku` (`FR-007`)
-- [ ] T031 [US3] Integration test — cenário de aceitação central (quickstart, Camada 1): inserir 3un (preço 1000) → inserir +3un em nova linha (agregado 6, cruza faixa, ambas linhas passam a 900) → cancelar a 2ª linha (agregado volta a 3, remanescente volta a 1000, linha cancelada permanece no array) — em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T032 [US3] E2E — faixa de preço (quickstart, Camada 3, passo 5): bipar/digitar quantidade que cruza o limiar → todas as linhas do SKU exibem o novo preço — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T028 [US3] Implementar desconto de convênio: `aplicarPercentual` (T002) sobre o total bruto da linha com o `DescontoConvenio` do cliente atual (AD-023) — cliente default sempre fator `1` (AD-108); recalculado junto com `repricarSku`
+- [X] T029 [US3] Implementar `reprecificarPorTrocaDeCliente()` no `carrinhoSlice` (T009): chama T008 para cada SKU distinto com linha ativa não-congelada quando `TipoPreco = 9` ou o `DescontoConvenio` do cliente muda (`FR-018`) — sem evento de auditoria próprio (auditado pela feature 005 como `CLIENTE_TROCADO`)
+- [X] T030 [US3] Wire `editarItem(idLinha, 'quantidade', ...)` no `carrinhoSlice` (T009) para chamar `repricarSku` (`FR-007`)
+- [X] T031 [US3] Integration test — cenário de aceitação central (quickstart, Camada 1): inserir 3un (preço 1000) → inserir +3un em nova linha (agregado 6, cruza faixa, ambas linhas passam a 900) → cancelar a 2ª linha (agregado volta a 3, remanescente volta a 1000, linha cancelada permanece no array) — em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T032 [US3] E2E — faixa de preço (quickstart, Camada 3, passo 5): bipar/digitar quantidade que cruza o limiar → todas as linhas do SKU exibem o novo preço — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: User Stories 1, 2 e 3 funcionam juntas — motor de precificação completo (FR-005 a FR-008, FR-018, SC-001, SC-002).
 
@@ -146,14 +146,14 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 4
 
-- [ ] T033 [US4] Integration test: linha cancelada preservada no array (`linhas.length` inalterado), excluída de `quantidadeAgregada`/`totalVenda` (`FR-009`) em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T034 [US4] Integration test: `cancelarItem` (T009) executa sem nenhum prompt de supervisor/reautenticação (`FR-012`, AD-065) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T033 [US4] Integration test: linha cancelada preservada no array (`linhas.length` inalterado), excluída de `quantidadeAgregada`/`totalVenda` (`FR-009`) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T034 [US4] Integration test: `cancelarItem` (T009) executa sem nenhum prompt de supervisor/reautenticação (`FR-012`, AD-065) em `tests/integration/carrinhoSlice.spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T035 [US4] Estender `GridItens.tsx` (T016): linha com `cancelada = true` exibida riscada, permanece visível (`CART-08`) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
-- [ ] T036 [US4] Wire ação de cancelar na UI (`GridItens.tsx`/`ListaItensMobile.tsx`) chamando `cancelarItem` (T009) — sem modal de confirmação/supervisor — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
-- [ ] T037 [US4] E2E — cancelamento (quickstart, Camada 3, passos 6 e 10): cancelar → linha riscada e visível, demais linhas do SKU recalculadas, subtotal exclui a cancelada; repetir no layout mobile — em `tests/e2e/carrinho-precificacao.spec.ts`
+- [X] T035 [US4] Estender `GridItens.tsx` (T016): linha com `cancelada = true` exibida riscada, permanece visível (`CART-08`) — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T036 [US4] Wire ação de cancelar na UI (`GridItens.tsx`/`ListaItensMobile.tsx`) chamando `cancelarItem` (T009) — sem modal de confirmação/supervisor — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T037 [US4] E2E — cancelamento (quickstart, Camada 3, passos 6 e 10): cancelar → linha riscada e visível, demais linhas do SKU recalculadas, subtotal exclui a cancelada; repetir no layout mobile — em `tests/e2e/carrinho-precificacao.spec.ts`
 
 **Checkpoint**: As 4 user stories funcionam de forma independente e integrada — feature completa (FR-009, FR-012, SC-003).
 
@@ -163,11 +163,11 @@ tests/unit/domain/precificacao/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Fechamento das dependências injetadas (D8), integração com fim de venda, e gates finais.
 
-- [ ] T038 [P] Wire `podeMutarCarrinho()` como predicado injetado consumido por `editarItem`/`cancelarItem` (T009) — stub `() => true` até a feature 008 (pagamento) fornecer a implementação real; **dependência por injeção, não por import** (D8) — não bloqueia esta feature
-- [ ] T039 [P] Integration test: bloqueio pós-pagamento via predicado injetado `() => false` — `editarItem`/`cancelarItem` viram no-op, `linhas` inalterado (`FR-010`) em `tests/integration/carrinhoSlice.spec.ts`
-- [ ] T040 Wire invalidação do cache de produto (`queryClient.removeQueries({ queryKey: ['produto'] })`) e `limparCarrinho()` (T009) nos dois únicos momentos permitidos: finalização e suspensão da venda — integração real fica pendente da feature 004 (só chama os hooks já prontos aqui)
-- [ ] T041 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
-- [ ] T042 Rodar as 3 camadas de `quickstart.md` (domínio puro, slice, E2E) e confirmar o critério de aceite da feature
+- [X] T038 [P] Wire `podeMutarCarrinho()` como predicado injetado consumido por `editarItem`/`cancelarItem` (T009) — stub `() => true` até a feature 008 (pagamento) fornecer a implementação real; **dependência por injeção, não por import** (D8) — não bloqueia esta feature
+- [X] T039 [P] Integration test: bloqueio pós-pagamento via predicado injetado `() => false` — `editarItem`/`cancelarItem` viram no-op, `linhas` inalterado (`FR-010`) em `tests/integration/carrinhoSlice.spec.ts`
+- [X] T040 Wire invalidação do cache de produto (`queryClient.removeQueries({ queryKey: ['produto'] })`) e `limparCarrinho()` (T009) nos dois únicos momentos permitidos: finalização e suspensão da venda — integração real fica pendente da feature 004 (só chama os hooks já prontos aqui)
+- [X] T041 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
+- [X] T042 Rodar as 3 camadas de `quickstart.md` (domínio puro, slice, E2E) e confirmar o critério de aceite da feature
 
 ---
 
@@ -251,4 +251,5 @@ Com mais de um desenvolvedor: completar Setup + Foundational juntos; depois um d
 - Verificar que os testes falham antes de implementar (TDD onde aplicável) — prioridade máxima na camada de domínio puro (`plan.md` § Testing)
 - Commit após cada tarefa ou grupo lógico
 - Parar em cada checkpoint para validar a story isoladamente
+- **Achados da implementação (2026-09-02), já promovidos a AD:** T006/T014 exigiram acrescentar `QtdMinCharParaConsulta`, `UsuarioTipoCodigoProduto` e `ClienteDefaultCodigo` a `sessaoUsuarioSchema` (feature 002) — passavam pelo `z.looseObject` sem tipo (**AD-119**); T028 levou `repricarSku` a receber o desconto de convênio como quarto parâmetro opcional, para preço e desconto derivado serem recalculados na mesma passagem (**AD-120**); T006 usa `queryClient.query({ staleTime: 'static' })`, já que `fetchQuery`/`ensureQueryData` estão deprecated na v5 do TanStack Query (**AD-121**)
 - Esta feature fecha a dependência que `specs/002-autenticacao-sessao-bootstrap/tasks.md` (Fase 5, US3, T033/T035) registrou como pendente — depois de **T009** aqui (que cria `linhas`/`cancelarItem` no `carrinhoSlice.ts`), o slice de carrinho que a 002 lê para decidir o aviso de venda perdida existe de fato

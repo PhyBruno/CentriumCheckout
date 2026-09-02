@@ -214,9 +214,15 @@ test.describe('Cenário 5 — Renovação silenciosa de sessão (AUTH-06)', () =
     await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { respostas401Pendentes: 1 } });
 
     const resultado = await page.evaluate(async () => {
-      const resposta = await fetch('/api/erp/ApiCentriumOAuth/GetProduto?Codigo=1', {
-        credentials: 'same-origin',
-      });
+      const resposta = await fetch(
+        // Código do catálogo sintético do mock: o que se testa aqui é a
+        // renovação do token, e um 404 de produto inexistente mascararia o
+        // resultado.
+        '/api/erp/ApiCentriumOAuth/GetProduto?Codigoproduto=001234',
+        {
+          credentials: 'same-origin',
+        },
+      );
       return { status: resposta.status, corpo: await resposta.text() };
     });
 
@@ -241,9 +247,15 @@ test.describe('Cenário 5 — Renovação silenciosa de sessão (AUTH-06)', () =
     });
 
     const status = await page.evaluate(async () => {
-      const resposta = await fetch('/api/erp/ApiCentriumOAuth/GetProduto?Codigo=1', {
-        credentials: 'same-origin',
-      });
+      const resposta = await fetch(
+        // Código do catálogo sintético do mock: o que se testa aqui é a
+        // renovação do token, e um 404 de produto inexistente mascararia o
+        // resultado.
+        '/api/erp/ApiCentriumOAuth/GetProduto?Codigoproduto=001234',
+        {
+          credentials: 'same-origin',
+        },
+      );
       return resposta.status;
     });
 

@@ -16,6 +16,9 @@ import { LoadingSkeleton } from './features/session-bootstrap/LoadingSkeleton';
 import { ErrorRetry } from './features/session-bootstrap/ErrorRetry';
 import { SessionExpiredWarning } from './features/session-bootstrap/SessionExpiredWarning';
 import { PainelMensagem } from './features/session-bootstrap/PainelMensagem';
+import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
+import { GridItens } from './features/carrinho/GridItens';
+import { ListaItensMobile } from './features/carrinho/ListaItensMobile';
 
 export interface AppProps {
   /** Injetáveis para teste — em produção usam os padrões reais. */
@@ -140,15 +143,68 @@ export function App({
 }
 
 /**
- * Espaço da tela de venda. O conteúdo real vem das features de carrinho,
- * pagamento e finalização — esta feature só garante que ela é liberada com a
- * configuração do PDV inteira já carregada.
+ * Breakpoint canônico de MOB-01 (`specs/007-layout-responsivo-mobile/plan.md`):
+ * `768px`, expresso como `max-width: 767.98px` para não deixar buraco em telas
+ * de largura fracionária.
+ *
+ * Provisório: a feature 007 substitui isto por `useIsMobile` em
+ * `src/client/layout/`, lido por um único `AppShell` que decide entre
+ * `DesktopLayout` e `MobileWizard`. O valor é o mesmo de propósito — divergir
+ * aqui criaria uma faixa de larguras em que a 003 e a 007 discordariam sobre
+ * qual árvore está montada.
+ */
+const CONSULTA_LAYOUT_COMPACTO = '(max-width: 767.98px)';
+
+function useLayoutCompacto(): boolean {
+  const [compacto, setCompacto] = useState(
+    () => window.matchMedia(CONSULTA_LAYOUT_COMPACTO).matches,
+  );
+
+  useEffect(() => {
+    const consulta = window.matchMedia(CONSULTA_LAYOUT_COMPACTO);
+    const aoMudar = (evento: MediaQueryListEvent): void => {
+      setCompacto(evento.matches);
+    };
+
+    // Reavalia na montagem: a largura pode ter mudado entre o estado inicial e
+    // o efeito (o próprio E2E redimensiona a janela antes de navegar).
+    setCompacto(consulta.matches);
+    consulta.addEventListener('change', aoMudar);
+    return () => {
+      consulta.removeEventListener('change', aoMudar);
+    };
+  }, []);
+
+  return compacto;
+}
+
+/**
+ * Tela de venda. A configuração do PDV já está inteira carregada aqui (a
+ * feature 002 garante isso); o conteúdo é das features de venda — por ora o
+ * carrinho (003), depois pagamento (008) e finalização (004).
+ *
+ * A grid desktop e a lista mobile leem o **mesmo** estado de carrinho; só uma
+ * das duas é montada por vez.
  */
 function TelaDeVenda(): ReactElement {
+  const compacto = useLayoutCompacto();
+
   return (
-    <main data-testid="tela-de-venda">
-      <h1>Centrium Checkout</h1>
-      <p>Ponto de venda pronto para operação.</p>
+    <main
+      className="flex h-screen flex-col gap-base overflow-hidden p-base"
+      data-testid="tela-de-venda"
+    >
+      <header className="flex items-center justify-between gap-sm">
+        <h1 className="text-lg font-semibold">Centrium Checkout</h1>
+      </header>
+
+      <EntradaRapidaProduto />
+
+      {/* Montagem condicional, não `display: none`. As duas superfícies leem o
+          mesmo carrinho; manter as duas árvores no DOM duplicaria cada item
+          para leitores de tela. É também o que a 007 exige de forma mais ampla:
+          ausência estrutural, não flag de "oculto" (MOB-05, FR-008). */}
+      {compacto ? <ListaItensMobile /> : <GridItens />}
     </main>
   );
 }

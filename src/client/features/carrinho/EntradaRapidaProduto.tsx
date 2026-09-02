@@ -1,0 +1,648 @@
+import { Barcode, Minus, Plus, Search } from 'lucide-react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { rotuloTipoCodigoProduto } from '../../domain/precificacao/codigoProduto';
+import {
+  ZERO_CENTAVOS,
+  calcularTotalLinha,
+  centavos,
+  formatarCentavos,
+  somar,
+  type Centavos,
+} from '../../domain/precificacao/dinheiro';
+import {
+  MILESIMOS_POR_UNIDADE,
+  formatarQuantidade,
+  milesimos,
+  milesimosDeUnidades,
+  somarQuantidades,
+  type Milesimos,
+} from '../../domain/precificacao/quantidade';
+import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
+import { ModalBuscaProduto } from './ModalBuscaProduto';
+import {
+  useContextoPrecificacao,
+  useEdicaoDeItemExistente,
+  useInsercaoDeProduto,
+  type RevisaoProduto,
+} from './useCarrinho';
+
+const CENTAVOS_POR_REAL = 100;
+const UMA_UNIDADE = milesimos(MILESIMOS_POR_UNIDADE);
+const QUANTIDADE_INICIAL = milesimosDeUnidades(1);
+
+/** `"12,34"` e `"12.34"` → `1234` centavos; entrada inválida vira `null`. */
+function lerCentavos(texto: string): Centavos | null {
+  const normalizado = texto.trim().replace(',', '.');
+  if (normalizado === '' || !/^\d+(\.\d{1,2})?$/.test(normalizado)) {
+    return null;
+  }
+  return centavos(Math.round(Number(normalizado) * CENTAVOS_POR_REAL));
+}
+
+function paraTextoDecimal(valorEmCentavos: number): string {
+  return (valorEmCentavos / CENTAVOS_POR_REAL).toFixed(2).replace('.', ',');
+}
+
+/** `"3"`, `"3,5"` ou `"3.5"` → `Milesimos`; inválida ou não positiva vira `null`. */
+function lerQuantidadeTexto(texto: string): Milesimos | null {
+  const normalizado = texto.trim().replace(',', '.');
+  if (normalizado === '' || !/^\d+(\.\d{1,3})?$/.test(normalizado)) {
+    return null;
+  }
+  const unidades = Number(normalizado);
+  return unidades > 0 ? milesimosDeUnidades(unidades) : null;
+}
+
+/**
+ * Barra de entrada rápida de produto (T021, `CART-02`) — réplica fiel do frame
+ * "Entrada rápida de produto" do Pencil (`design/CentriumCheckout.pen`,
+ * confirmado via MCP do Pencil): **um único cartão sempre com todas as
+ * células visíveis** (código, quantidade, unidade, preço, desconto, total,
+ * nome do produto abaixo, botão de inserir) — nunca colapsa a só o campo de
+ * código, mesmo sem nenhum produto resolvido ainda.
+ *
+ * Enter no campo de código é a tecla de **inserção rápida**: confirma a
+ * entrada e insere direto, sem exibir revisão (produto pesável/simples/balança
+ * — `'S'`/`'B'`/`''`). TAB é a tecla de **revisão**: carrega o produto via
+ * `GetProduto` (`revisarPorCodigo`) e preenche todas as células com os dados
+ * reais.
+ *
+ * Quantidade, preço e desconto são sempre `<input>` de verdade — não só
+ * texto — para participarem da navegação por TAB. Unidade também é um
+ * `<input>` (mesma célula do design), mas **`disabled`** (pedido do usuário,
+ * 2026-09-03): vem do cadastro, o operador nunca pode alterá-la, e por isso
+ * nem entra na navegação por TAB — o próprio navegador pula elementos
+ * desabilitados. Preço e desconto só ficam editáveis quando
+ * `ProdutoPesavelEditavel = 'E'` (`FR-014`); nos demais casos ficam somente
+ * leitura (`readOnly`, não `disabled` — continuam alcançáveis por TAB, só não
+ * aceitam digitação), e o foco ao resolver via TAB vai direto para o botão
+ * "+" (nada mais a decidir). Em produto `'E'`, o foco ao resolver vai para a
+ * **quantidade** — nunca para o botão de inserir — e o próximo TAB segue a
+ * ordem natural do DOM (quantidade → preço → desconto → "+", pulando a
+ * unidade desabilitada): o operador revisa e ajusta cada campo digitando,
+ * sem precisar do mouse.
+ *
+ * Não registra atalho global de teclado: um `hotkey` de escopo de documento
+ * competiria com a própria bipagem, que chega como digitação rápida neste input.
+ *
+ * Dono do modal de busca por termo livre (`ModalBuscaProduto`, T015,
+ * `CART-01`): o modal é **só um seletor de código** — escolher um candidato
+ * só devolve o `CodigoProduto` (`onProdutoSelecionado`), nunca resolve nem
+ * insere nada sozinho. É esta barra que carrega o código escolhido no campo,
+ * chama `GetProduto` e mostra a revisão — o mesmo caminho de TAB no código
+ * digitado. Achado do usuário (2026-09-03): a revisão vivia por engano
+ * dentro do modal, duplicando esta UI.
+ *
+ * Também é o destino do lápis de uma linha **já inserida** (`GridItens.tsx`,
+ * `ListaItensMobile.tsx`) — correção do usuário, 2026-09-03: em vez de editar
+ * só a quantidade inline, o lápis carrega a linha inteira aqui (via
+ * `useEdicaoItemStore`), preservando quantidade/unidade/preço/desconto/total,
+ * e só libera preço/desconto para edição quando `ProdutoPesavelEditavel = 'E'`
+ * — em `'S'`/`'B'` (pesável) só a quantidade fica ajustável, mesma regra da
+ * inserção; em `''` (não editável) o lápis fica desabilitado na origem.
+ * Enquanto isso dura, esta barra e a linha de origem (que fica "vazia" na
+ * grid, sem sumir de vez) ganham o mesmo contorno amarelo pulsante
+ * (`cc-pulso-edicao`, `global.css`) — pedido do usuário, 2026-09-03: o
+ * operador precisa reconhecer à distância que o item não foi cancelado, só
+ * voltou pra cá pra revisão.
+ */
+export function EntradaRapidaProduto(): ReactElement {
+  const { inserirPorCodigo, confirmarEdicao, revisarPorCodigo, confirmarPrevia } =
+    useInsercaoDeProduto();
+  const { confirmarEdicaoDeLinha } = useEdicaoDeItemExistente();
+  // Correção do usuário (2026-09-03): lápis da grid/lista mobile carrega uma
+  // linha já inserida de volta para cá via `useEdicaoItemStore` (irmãos em
+  // `TelaDeVenda`, sem relação de pai/filho) — ver `linhaEmEdicao` abaixo.
+  const linhaEmEdicao = useEdicaoItemStore((estado) => estado.linhaEmEdicao);
+  const limparEdicao = useEdicaoItemStore((estado) => estado.limparEdicao);
+  const [buscaAberta, setBuscaAberta] = useState(false);
+  // Rótulo do campo depende de `SessaoUsuario.UsuarioTipoCodigoProduto`
+  // (`GetSessao`) — é configuração da empresa, nunca um texto fixo (mesmo
+  // valor que `Tipocodproduto` leva em toda chamada a `GetProduto`, AD-033).
+  const contextoPrecificacao = useContextoPrecificacao();
+  const rotuloCampoCodigo =
+    contextoPrecificacao === null
+      ? 'Código do produto'
+      : rotuloTipoCodigoProduto(contextoPrecificacao.tipoCodProduto);
+
+  const [texto, setTexto] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const [resolvido, setResolvido] = useState<RevisaoProduto | null>(null);
+  const [quantidadeTexto, setQuantidadeTexto] = useState(() =>
+    formatarQuantidade(QUANTIDADE_INICIAL, 3),
+  );
+  const [precoTexto, setPrecoTexto] = useState('');
+  const [descontoTexto, setDescontoTexto] = useState('0,00');
+
+  const campoCodigo = useRef<HTMLInputElement>(null);
+  const campoQuantidade = useRef<HTMLInputElement>(null);
+  const botaoConfirmar = useRef<HTMLButtonElement>(null);
+
+  // `linhaEmEdicao` (item já inserido, recarregado pelo lápis) e `resolvido`
+  // (produto novo em revisão, TAB/busca) nunca coexistem — cada um "vence" o
+  // outro no ponto em que passa a existir (ver `aplicarRevisao`/efeito abaixo)
+  // — mas os derivados leem os dois porque a UI é a mesma barra.
+  const editavel = linhaEmEdicao
+    ? linhaEmEdicao.snapshot.pesavelEditavel === 'E'
+    : (resolvido?.editavel ?? false);
+  const semResolucao = linhaEmEdicao === null && resolvido === null;
+  const snapshotAtivo = linhaEmEdicao?.snapshot ?? resolvido?.snapshot ?? null;
+  // Desconto de convênio da linha em edição: fixo, nunca digitado pelo
+  // operador aqui — só `repricarSku` escreve (`descontoDeConvenio`,
+  // `reprecificacao.ts`) — soma no total sem entrar no campo de desconto, que
+  // representa exclusivamente o `descontoManual` que este formulário grava.
+  const descontoConvenioFixo = linhaEmEdicao?.descontoConvenio ?? ZERO_CENTAVOS;
+  const quantidadeLida = lerQuantidadeTexto(quantidadeTexto);
+  const precoLido = editavel
+    ? lerCentavos(precoTexto)
+    : (linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? null);
+  const descontoManualLido = editavel
+    ? lerCentavos(descontoTexto)
+    : (linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS);
+  const descontoTotalLido =
+    descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
+
+  // Foco automático ao resolver (TAB) ou ao recarregar uma linha existente
+  // (lápis): produto editável pousa na quantidade — primeiro campo da
+  // sequência de revisão, nunca no botão de inserir; não editável não tem
+  // nada a decidir além do que o stepper já resolve, então pousa direto no
+  // "+" (Enter/clique já confirma, sem exigir mouse).
+  useEffect(() => {
+    if (resolvido === null) {
+      return;
+    }
+    if (resolvido.editavel) {
+      campoQuantidade.current?.focus();
+      campoQuantidade.current?.select();
+    } else {
+      botaoConfirmar.current?.focus();
+    }
+  }, [resolvido]);
+
+  useEffect(() => {
+    if (linhaEmEdicao === null) {
+      return;
+    }
+    // Nova revisão de inserção "vence" uma edição pendente por baixo, se
+    // houver (guarda espelhada em `aplicarRevisao`).
+    setResolvido(null);
+    setTexto(linhaEmEdicao.snapshot.codigoProduto);
+    setQuantidadeTexto(formatarQuantidade(linhaEmEdicao.quantidade, 3));
+    setPrecoTexto(paraTextoDecimal(linhaEmEdicao.precoUnitario));
+    setDescontoTexto(paraTextoDecimal(linhaEmEdicao.descontoManual));
+    if (linhaEmEdicao.snapshot.pesavelEditavel === 'E') {
+      campoQuantidade.current?.focus();
+      campoQuantidade.current?.select();
+    } else {
+      botaoConfirmar.current?.focus();
+    }
+  }, [linhaEmEdicao]);
+
+  /**
+   * Foco de volta pro código sempre que a barra volta ao estado vazio —
+   * depois de confirmar (Enter em qualquer campo ou clique no "+") ou
+   * cancelar (Escape). Pedido do usuário (2026-09-03): o operador precisa
+   * poder bipar/digitar o próximo item sem tocar no mouse.
+   *
+   * Precisa ser um efeito, não uma chamada direta dentro de `resetar()`: o
+   * campo de código só deixa de estar `disabled` depois que o React aplica
+   * `setResolvido(null)`/`limparEdicao()` ao DOM — chamar `.focus()` na mesma
+   * função síncrona que dispara esses `set` acontece **antes** desse commit,
+   * então o campo ainda está desabilitado no instante da chamada e o
+   * navegador ignora o foco em silêncio (achado do usuário: Enter inseria,
+   * mas o foco não voltava).
+   */
+  useEffect(() => {
+    if (resolvido === null && linhaEmEdicao === null) {
+      campoCodigo.current?.focus();
+    }
+  }, [resolvido, linhaEmEdicao]);
+
+  function resetar(): void {
+    setResolvido(null);
+    setTexto('');
+    setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
+    setPrecoTexto('');
+    setDescontoTexto('0,00');
+    limparEdicao();
+  }
+
+  function alterarQuantidade(delta: number): void {
+    const atual = quantidadeLida ?? QUANTIDADE_INICIAL;
+    const proxima = delta > 0 ? somarQuantidades(atual, UMA_UNIDADE) : atual - UMA_UNIDADE;
+    setQuantidadeTexto(formatarQuantidade(milesimos(Math.max(UMA_UNIDADE, proxima)), 3));
+  }
+
+  async function confirmarEntradaRapida(): Promise<void> {
+    const entrada = texto.trim();
+    if (entrada === '' || ocupado || resolvido !== null) {
+      return;
+    }
+
+    setOcupado(true);
+    try {
+      const resultado = await inserirPorCodigo(entrada);
+
+      if (resultado.situacao === 'edicao') {
+        // Produto `'E'`: a linha não entra ainda; vira revisão editável,
+        // mesmo caminho de quando o TAB resolve um produto `'E'` (`FR-014`).
+        // Uma edição de linha existente pendente perde para esta revisão
+        // nova (mesma guarda de `aplicarRevisao`).
+        limparEdicao();
+        setResolvido({
+          situacao: 'revisao',
+          snapshot: resultado.snapshot,
+          quantidade: resultado.quantidade,
+          origem: 'MANUAL',
+          editavel: true,
+        });
+        setQuantidadeTexto(formatarQuantidade(resultado.quantidade, 3));
+        setPrecoTexto(paraTextoDecimal(resultado.snapshot.precoBase));
+        setDescontoTexto('0,00');
+        // O código digitado permanece visível no campo (só desabilitado)
+        // enquanto o operador revisa — é o que o Pencil mostra (`data-icon-name`
+        // "Código digitado" convive com o resto da linha já resolvida).
+        return;
+      }
+
+      if (resultado.situacao === 'inserido') {
+        setTexto('');
+      }
+      // Em recusa o texto permanece: o operador corrige o que digitou.
+      campoCodigo.current?.focus();
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /**
+   * Aplica uma revisão resolvida (`GetProduto`) ao estado local — usada tanto
+   * por `resolverEExibir` (TAB) quanto por `selecionarDaBusca` (produto
+   * editável/pesável escolhido no modal). Uma edição de linha existente
+   * pendente perde para esta revisão nova (mesma guarda de
+   * `confirmarEntradaRapida`): o operador está deliberadamente resolvendo
+   * outro produto.
+   */
+  function aplicarRevisao(revisao: RevisaoProduto): void {
+    limparEdicao();
+    setResolvido(revisao);
+    setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
+    setPrecoTexto(paraTextoDecimal(revisao.snapshot.precoBase));
+    setDescontoTexto('0,00');
+  }
+
+  /**
+   * Núcleo compartilhado por TAB (`revisarEntrada`, usa `texto` digitado) e
+   * pela seleção no modal de busca de produto editável/pesável
+   * (`selecionarDaBusca`, usa o código escolhido direto) — os dois caminhos
+   * terminam no mesmo lugar: `GetProduto` via `revisarPorCodigo` e a revisão
+   * aparece na barra, nunca inserindo sozinho.
+   */
+  async function resolverEExibir(codigo: string, origemForcada?: 'BUSCA'): Promise<void> {
+    setOcupado(true);
+    try {
+      const resultado = await revisarPorCodigo(codigo, origemForcada);
+      if (resultado.situacao === 'recusado') {
+        campoCodigo.current?.focus();
+        return;
+      }
+      // Mesma razão do caminho rápido: o código digitado fica visível durante
+      // a revisão, só `resetar()` (confirmar/cancelar) o limpa.
+      aplicarRevisao(resultado);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function revisarEntrada(): Promise<void> {
+    const entrada = texto.trim();
+    if (entrada === '' || ocupado || resolvido !== null) {
+      return;
+    }
+    await resolverEExibir(entrada);
+  }
+
+  /**
+   * Candidato escolhido no modal de busca (`CART-01`) — o modal só devolve o
+   * `CodigoProduto`; carregar no campo, resolver via `GetProduto` e mostrar a
+   * revisão (quantidade/unidade/preço/desconto, foco na quantidade ou no "+"
+   * conforme `pesavelEditavel`) é responsabilidade desta barra, não do modal.
+   *
+   * Exceção (correção do usuário, 2026-09-03): produto identificado como
+   * **não editável** (`ProdutoPesavelEditavel === ''`) não tem nada a
+   * revisar aqui — sem preço/desconto ajustável (`'E'`) e sem etiqueta de
+   * balança a interpretar (`'S'`/`'B'`) — então insere direto no grid, sem
+   * exigir confirmação extra do operador.
+   */
+  async function selecionarDaBusca(codigoProduto: string): Promise<void> {
+    if (ocupado) {
+      return;
+    }
+    setTexto(codigoProduto);
+    setOcupado(true);
+    try {
+      const resultado = await revisarPorCodigo(codigoProduto, 'BUSCA');
+      if (resultado.situacao === 'recusado') {
+        campoCodigo.current?.focus();
+        return;
+      }
+      if (resultado.snapshot.pesavelEditavel === '') {
+        confirmarPrevia(resultado, resultado.quantidade);
+        resetar();
+        return;
+      }
+      aplicarRevisao(resultado);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  function confirmar(): void {
+    // Correção do usuário (2026-09-03): lápis da grid/lista mobile — edita a
+    // linha já inserida em vez de criar uma nova (`editarItem` por campo, via
+    // `confirmarEdicaoDeLinha`). Produto pesável (`'S'`/`'B'`) só libera a
+    // quantidade: `precoLido`/`descontoManualLido` chegam iguais aos da
+    // própria linha (campos somente leitura), então `editarItem` não muda
+    // nada neles (é idempotente, `carrinhoSlice.ts`).
+    if (linhaEmEdicao !== null) {
+      if (quantidadeLida === null || precoLido === null || descontoManualLido === null) {
+        return;
+      }
+      confirmarEdicaoDeLinha(linhaEmEdicao, {
+        quantidade: quantidadeLida,
+        precoUnitario: precoLido,
+        descontoManual: descontoManualLido,
+      });
+      resetar();
+      return;
+    }
+
+    if (resolvido === null) {
+      void confirmarEntradaRapida();
+      return;
+    }
+    if (quantidadeLida === null) {
+      return;
+    }
+    if (resolvido.editavel) {
+      if (precoLido === null || descontoManualLido === null) {
+        return;
+      }
+      confirmarEdicao(
+        { situacao: 'edicao', snapshot: resolvido.snapshot, quantidade: quantidadeLida },
+        {
+          quantidade: quantidadeLida,
+          precoUnitario: precoLido,
+          descontoManual: descontoManualLido,
+        },
+      );
+    } else {
+      confirmarPrevia(resolvido, quantidadeLida);
+    }
+    resetar();
+  }
+
+  // Enter só é tratado aqui pra TAB — a inserção/confirmação por Enter é
+  // única e vive em `aoTeclarNoCartao` (pedido do usuário, 2026-09-03: Enter
+  // confirma a partir de qualquer campo da barra, não só do código).
+  function aoTeclarNoCodigo(evento: KeyboardEvent<HTMLInputElement>): void {
+    if (evento.key === 'Tab') {
+      // TAB não sai do campo: no PDV ele é a tecla de revisão, não de
+      // navegação (AD-027/AD-063).
+      evento.preventDefault();
+      void revisarEntrada();
+    }
+  }
+
+  /**
+   * Enter em **qualquer** campo de texto da barra confirma — insere um
+   * produto novo ou aplica a edição de um item existente, conforme o estado
+   * (`confirmar()` já decide isso). Pedido direto do usuário (2026-09-03):
+   * antes só o campo de código reagia a Enter; quantidade/preço/desconto
+   * exigiam clicar no "+" com o mouse.
+   *
+   * Escuta no `<div>` do cartão (não em cada `<input>`) porque o evento sobe
+   * por bubbling — um único handler cobre os campos existentes e qualquer um
+   * que vier a ser adicionado, sem precisar fiar `onKeyDown` em cada um. O
+   * filtro por `HTMLInputElement` exclui os botões (buscar, +/-, confirmar):
+   * Enter num botão focado já dispara o `click` nativo dele, e sem o filtro
+   * este handler chamaria `confirmar()` de novo por cima, duplicando o efeito.
+   */
+  function aoTeclarNoCartao(evento: KeyboardEvent<HTMLDivElement>): void {
+    if (evento.key === 'Escape' && (resolvido !== null || linhaEmEdicao !== null)) {
+      resetar();
+      return;
+    }
+    if (evento.key === 'Enter' && evento.target instanceof HTMLInputElement) {
+      evento.preventDefault();
+      confirmar();
+    }
+  }
+
+  const podeConfirmar =
+    resolvido === null && linhaEmEdicao === null
+      ? !ocupado && texto.trim() !== ''
+      : quantidadeLida !== null && precoLido !== null && descontoTotalLido !== null;
+
+  const classeRotulo = 'font-semibold text-muted-foreground';
+  // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
+  // produz alinhamento inconsistente entre navegadores. A altura fixa
+  // (`h-11.5`) já centraliza o texto verticalmente sozinha.
+  const classeCampoValor =
+    'h-11.5 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default disabled:cursor-not-allowed disabled:opacity-70';
+
+  const precoExibido = editavel
+    ? precoTexto
+    : formatarCentavos(
+        linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? ZERO_CENTAVOS,
+      );
+  // Não editável mostra o desconto real da linha (convênio + manual, mesma
+  // soma da coluna "Desconto" da grid) — não `0,00` fixo — quando há uma
+  // linha existente carregada; numa inserção nova ainda não há desconto de
+  // convênio a mostrar (`descontoConvenioFixo` é `0` nesse caso).
+  const descontoExibido = editavel
+    ? descontoTexto
+    : formatarCentavos(somar(descontoConvenioFixo, linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS));
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-xs rounded-3xl border border-border bg-background p-base',
+        // Contorno amarelo pulsante enquanto um item já inserido está
+        // carregado aqui para edição (pedido do usuário, 2026-09-03).
+        linhaEmEdicao !== null && 'cc-pulso-edicao',
+      )}
+      data-testid="entrada-rapida-produto"
+      onKeyDown={aoTeclarNoCartao}
+    >
+      <div className="flex items-end gap-sm" data-testid="previa-insercao-produto">
+        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+          <span className="flex items-center gap-xs font-semibold text-muted-foreground">
+            <Barcode className="size-4" aria-hidden="true" />
+            {rotuloCampoCodigo}
+          </span>
+          <input
+            ref={campoCodigo}
+            className="h-11.5 w-full rounded-xl border border-border bg-muted px-3 font-mono"
+            data-testid="campo-codigo-produto"
+            autoComplete="off"
+            autoFocus
+            placeholder="Bipe ou digite (use * p/ quantidade)"
+            value={texto}
+            disabled={resolvido !== null || linhaEmEdicao !== null}
+            onChange={(evento) => {
+              setTexto(evento.target.value);
+            }}
+            onKeyDown={aoTeclarNoCodigo}
+          />
+        </label>
+
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon-sm"
+          className="size-11.5 shrink-0 rounded-full"
+          aria-label="Buscar produto"
+          data-testid="abrir-busca-produto"
+          onClick={() => {
+            setBuscaAberta(true);
+          }}
+        >
+          <Search className="size-4.5" aria-hidden="true" />
+        </Button>
+
+        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+          <span className={classeRotulo}>Quantidade</span>
+          <div className="flex h-11.5 items-center justify-between gap-xs rounded-xl border border-border bg-muted px-xs">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              className="size-8 shrink-0 rounded-full bg-background"
+              aria-label="Diminuir quantidade"
+              data-testid="previa-quantidade-diminuir"
+              onClick={() => {
+                alterarQuantidade(-1);
+              }}
+            >
+              <Minus className="size-4" aria-hidden="true" />
+            </Button>
+            <input
+              ref={campoQuantidade}
+              className="h-full w-full min-w-0 bg-transparent text-center font-mono text-lg tabular-nums outline-none"
+              inputMode="decimal"
+              data-testid="previa-quantidade"
+              value={quantidadeTexto}
+              onChange={(evento) => {
+                setQuantidadeTexto(evento.target.value);
+              }}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              className="size-8 shrink-0 rounded-full bg-background"
+              aria-label="Aumentar quantidade"
+              data-testid="previa-quantidade-aumentar"
+              onClick={() => {
+                alterarQuantidade(1);
+              }}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </label>
+
+        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+          <span className={classeRotulo}>Unidade</span>
+          <input
+            className={cn(classeCampoValor, semResolucao && 'text-muted-foreground')}
+            data-testid="previa-unidade"
+            // `disabled`, não só `readOnly` (pedido do usuário, 2026-09-03): a
+            // unidade vem do cadastro e o operador nunca pode alterá-la — o
+            // campo some da navegação por TAB em vez de só recusar digitação.
+            disabled
+            value={snapshotAtivo?.unidadeMedida ?? 'UN'}
+          />
+        </label>
+
+        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+          <span className={classeRotulo}>Preço unitário</span>
+          <input
+            className={cn(classeCampoValor, 'text-right', semResolucao && 'text-muted-foreground')}
+            inputMode="decimal"
+            data-testid="previa-preco-unitario"
+            readOnly={!editavel}
+            value={precoExibido}
+            onChange={(evento) => {
+              if (editavel) {
+                setPrecoTexto(evento.target.value);
+              }
+            }}
+          />
+        </label>
+
+        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+          <span className={classeRotulo}>Desconto do item</span>
+          <input
+            className={cn(classeCampoValor, 'text-right', semResolucao && 'text-muted-foreground')}
+            inputMode="decimal"
+            data-testid="previa-desconto-item"
+            readOnly={!editavel}
+            value={descontoExibido}
+            onChange={(evento) => {
+              if (editavel) {
+                setDescontoTexto(evento.target.value);
+              }
+            }}
+          />
+        </label>
+
+        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+          <span className={classeRotulo}>Total item</span>
+          <strong
+            className={cn(
+              'flex h-11.5 items-center rounded-xl bg-secondary px-sm font-mono text-lg tabular-nums',
+              semResolucao ? 'text-muted-foreground' : 'text-primary',
+            )}
+            data-testid="previa-total-item"
+          >
+            {quantidadeLida === null || precoLido === null || descontoTotalLido === null
+              ? formatarCentavos(ZERO_CENTAVOS)
+              : formatarCentavos(calcularTotalLinha(precoLido, quantidadeLida, descontoTotalLido))}
+          </strong>
+        </label>
+
+        <Button
+          ref={botaoConfirmar}
+          type="button"
+          className="h-11.5 w-[70px] shrink-0 rounded-full"
+          aria-label={
+            linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'
+          }
+          data-testid="previa-confirmar"
+          disabled={!podeConfirmar}
+          onClick={confirmar}
+        >
+          <Plus className="size-5" aria-hidden="true" />
+        </Button>
+      </div>
+
+      <p className="text-sm font-medium text-foreground" data-testid="previa-descricao-produto">
+        {snapshotAtivo?.descricao ?? ' '}
+      </p>
+
+      <ModalBuscaProduto
+        aberto={buscaAberta}
+        onFechar={() => {
+          setBuscaAberta(false);
+        }}
+        onProdutoSelecionado={(codigoProduto) => {
+          void selecionarDaBusca(codigoProduto);
+        }}
+      />
+    </div>
+  );
+}

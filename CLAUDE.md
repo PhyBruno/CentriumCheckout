@@ -174,4 +174,26 @@ Domain documentation lives under `.specs/` (not root `CONTEXT.md`/`docs/adr/`) �
 
 **Ao corrigir uma decisão superada em `.specs/`, nunca deixe a correção só anexada ao final do parágrafo** — um leitor (humano ou IA) que pare de ler no meio pega a informação errada, o que gera ambiguidade e pode causar erro de implementação. Regra completa (como reescrever/sinalizar corretamente, precedente já usado em `STATE.md`) em `docs/agents/domain.md`, seção "Ao corrigir uma decisão superada, não anexe a correção no final" — pedido explícito do usuário (2026-08-25).
 
+### Referência visual (design)
+
+Para **qualquer** tela (componente novo, restyle, ícone, espaçamento, cor, fonte, modal, estado de loading/vazio), a fonte de verdade visual **sempre** deve ser buscada via **MCP do Pencil** primeiro (`get_editor_state` com `include_schema: true`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó da tela real em `design/CentriumCheckout.pen`) — nunca inferir/adivinhar o visual a partir do resto do código ou de bom senso genérico de design, e nunca parar só no export estático quando o MCP está disponível.
+
+- `get_editor_state(include_schema: true)` primeiro, pra ter o schema do `.pen` e a lista de nós de topo (frames de tela, componentes reutilizáveis).
+- `batch_get` com `nodeIds`/`patterns` (por nome do frame/nó) e `readDepth`/`searchDepth` altos o bastante pra trazer a árvore inteira da tela — inclusive estados que o export estático pode não deixar óbvios (ex.: variante "skeleton" de loading, como a "Entrada rápida de produto skeleton" encontrada ao lado da versão normal).
+- `get_screenshot` do nó pra conferência visual antes e depois da implementação — é assim que se pega detalhe que só aparece no recorte renderizado (ex.: o botão de inserir da barra rápida é um retângulo 70×46 com `cornerRadius:100` — pílula, não círculo — algo fácil de ler errado só pelos valores brutos).
+- `design/HTML - Pencil/CentriumCheckout.html` (export estático) continua útil como **referência secundária**/grep rápido entre muitas telas de uma vez (`data-pencil-name`, `data-icon-name`, `style` inline) — mas é um snapshot, pode ficar defasado; o MCP reflete o `.pen` real.
+- Ícones: `data-icon-name="..."` (no export) / propriedade `icon` de nós `type: "icon"` (no MCP) com `library: "lucide"` — o nome bate 1:1 com o export de `lucide-react` (ex.: `pencil` → `Pencil`, `trash-2` → `Trash2`).
+- Cor, raio, espaçamento: sempre mapeados para o token equivalente em `src/client/styles/global.css` (nunca hex solto no componente) — no MCP, variáveis do `.pen` (`$cb-blue`, `$surface-strong` etc.) já correspondem 1:1 aos tokens (`--primary`, `--secondary` etc.), consulte `get_variables` se a correspondência não for óbvia.
+
+**Fontes (regra fixa, não inferir nem trocar sem necessidade):** o produto usa exatamente duas famílias, self-hospedadas via `@fontsource/inter` e `@fontsource/geist-mono` (`src/client/styles/global.css`, `@import` no topo do arquivo — sem CDN externo, coerente com "100% Docker" de `STACK.md`) — nunca confiar em `font-family: Inter` sem o peso carregado, porque sem o `@fontsource` importado a fonte nunca resolve e cai no fallback do sistema (Segoe UI no Windows), visualmente distinto do design.
+- `font-sans` (Inter) → texto geral: labels, nomes, texto corrido. É o padrão do `body`, raramente precisa da classe explícita.
+- `font-mono` (Geist Mono) → todo valor tabular/numérico: preço, quantidade, desconto, total, código de produto/barras, contadores de página. Nunca a mesma fonte para os dois grupos.
+- Pesos já carregados: 400/500/600 para as duas famílias (`@import '@fontsource/inter/{400,500,600}.css'` e o equivalente para `geist-mono`) — se precisar de outro peso, adicione o `@import` correspondente, não deixe cair num peso não carregado.
+
+**Por quê:** achado real da feature 003 (2026-09-02) — a grid do carrinho implementada divergia do Pencil em ícone (texto puro em vez de `Pencil`/`Trash2`) e em fonte (nem Inter nem Geist Mono estavam de fato carregadas, caindo no fallback do sistema) porque a implementação nunca consultou o export antes de escrever o componente; corrigido no mesmo dia instalando os dois `@fontsource` e mapeando os tokens. Elevado a "MCP do Pencil primeiro" depois que o modal de busca de produto (`ModalBuscaProduto.tsx`) foi corrigido usando o MCP direto — achou detalhe (proporção real do botão de inserir, variante de skeleton) que o export estático sozinho não deixava claro. Pedido explícito do usuário (2026-09-02) para fixar as duas checagens como obrigatórias e evitar repetição do mesmo problema.
+
+### TypeScript LSP
+
+Plugin `typescript-lsp` (listado em `docs/agents/fluxo-ia.md`) expõe a ferramenta `LSP`, com checagem de sintaxe/tipos TypeScript em tempo real. Use-a para navegação e verificação de código — `documentSymbol`, `goToDefinition`, `findReferences`, `hover`, `goToImplementation`, `prepareCallHierarchy`/`incomingCalls`/`outgoingCalls` — em vez de grep/leitura completa de arquivo, sempre que for localizar símbolos, checar referências ou confirmar tipos em arquivos `.ts`/`.tsx`. Não substitui o gate `typescript-strict` (`tsc`) obrigatório antes de `git push`.
+
 

@@ -29,6 +29,22 @@ export const sessaoUsuarioSchema = z.looseObject({
    * pela feature 013, não aqui.
    */
   CenarioPagamento: z.string(),
+  /**
+   * Piso de caracteres para disparar `GetListaProdutos` (AD-024). O ERP já
+   * aplica o mínimo de 3 em `PCheckout_GetSessao` — o Checkout consome o valor
+   * publicado e **nunca** hardcoda 3 (feature 003).
+   */
+  QtdMinCharParaConsulta: z.number().int().min(1),
+  /**
+   * Enviado **sempre** como `Tipocodproduto` em `GetProduto`, nunca inferido
+   * por chamada (AD-033, feature 003).
+   */
+  UsuarioTipoCodigoProduto: z.string(),
+  /**
+   * Cliente que abre toda venda antes de qualquer identificação (AD-032).
+   * Enviado como `Codcliente` em `GetProduto` desde a primeira inserção.
+   */
+  ClienteDefaultCodigo: z.number().int(),
 });
 
 export const bootstrapPayloadSchema = z.looseObject({

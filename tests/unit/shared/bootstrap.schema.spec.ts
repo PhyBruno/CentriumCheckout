@@ -11,6 +11,9 @@ function payloadValido(): Record<string, unknown> {
       CadMaqCod: 'PDV01',
       ListaPrecoDefault: 3,
       CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
+      QtdMinCharParaConsulta: 3,
+      UsuarioTipoCodigoProduto: 'I',
+      ClienteDefaultCodigo: 1,
     },
   };
 }
@@ -71,15 +74,20 @@ describe('bootstrapPayloadSchema', () => {
     expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
   });
 
-  it.each(['TipoPreco', 'CadMaqCod', 'ListaPrecoDefault', 'CenarioPagamento'])(
-    'recusa SessaoUsuario sem %s',
-    (campo) => {
-      const payload = payloadValido();
-      delete (payload['SessaoUsuario'] as Record<string, unknown>)[campo];
+  it.each([
+    'TipoPreco',
+    'CadMaqCod',
+    'ListaPrecoDefault',
+    'CenarioPagamento',
+    'QtdMinCharParaConsulta',
+    'UsuarioTipoCodigoProduto',
+    'ClienteDefaultCodigo',
+  ])('recusa SessaoUsuario sem %s', (campo) => {
+    const payload = payloadValido();
+    delete (payload['SessaoUsuario'] as Record<string, unknown>)[campo];
 
-      expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
-    },
-  );
+    expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
+  });
 
   it('recusa tenant vazio (quebraria o isolamento por tenant, FR-009)', () => {
     const payload = payloadValido();

@@ -1,6 +1,21 @@
 @import 'tailwindcss';
 
 /**
+ * Self-hospedado (`@fontsource`, sem CDN externo — coerente com "100% Docker",
+ * `STACK.md`): Inter para texto geral e Geist Mono para valores numéricos
+ * (preço, quantidade, total), os dois exatamente como usados no export do
+ * Pencil (`design/HTML - Pencil/CentriumCheckout.html`). Sem isso, o
+ * `font-family` abaixo nunca resolve para a fonte real — cai direto no
+ * fallback do sistema (Segoe UI no Windows), visualmente distinto do design.
+ */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
+@import '@fontsource/geist-mono/600.css';
+
+/**
  * Design tokens do Centrium Checkout.
  *
  * Fonte: `design/DESIGN-coinbase.md` (frontmatter `colors`/`spacing`/`typography`)
@@ -49,6 +64,11 @@
   /* Inter é o substituto documentado de CoinbaseSans/CoinbaseDisplay
      (`DESIGN-coinbase.md` § Type substitution) — as licenciadas não são redistribuíveis. */
   --cc-font-sans: Inter, -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Substituto documentado de CoinbaseMono (`DESIGN-coinbase.md` § Type
+     substitution), mesmo raciocínio do Inter acima. Usado só em valores
+     tabulares (preço, quantidade, total) — nunca em texto corrido — como no
+     export do Pencil. */
+  --cc-font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
   --cc-text-xs: 11px;
   --cc-text-sm: 12px;
@@ -147,6 +167,7 @@
   --color-ring: var(--ring);
 
   --font-sans: var(--cc-font-sans);
+  --font-mono: var(--cc-font-mono);
 
   --radius-sm: var(--cc-radius-sm);
   --radius-md: var(--cc-radius-md);
@@ -216,5 +237,36 @@ body {
   }
   to {
     background-position: -50% 0;
+  }
+}
+
+/**
+ * Contorno amarelo pulsante — sinaliza a linha da grid/lista mobile e a barra
+ * de entrada rápida quando um item já inserido está carregado para edição
+ * (pedido direto do usuário, 2026-09-03): o operador precisa reconhecer, à
+ * distância, que aquele produto "sumiu" da linha porque voltou para a barra,
+ * não porque foi cancelado.
+ *
+ * `outline` (não `box-shadow`): funciona de forma confiável em qualquer tipo
+ * de caixa, inclusive `<tr>` de tabela — `box-shadow` num `<tr>` é pintado por
+ * baixo das células e não aparece no Chrome. `outline-offset: -2px` mantém o
+ * traço para dentro do próprio elemento, sem invadir a linha vizinha.
+ * `color-mix` anima só a opacidade da cor, entre 25% e 90% — é o "degradê"
+ * pedido, não um pisca-apaga abrupto; 2.4s (bem mais lento que o `cc-shimmer`
+ * de carregamento, que é outra linguagem visual) é o "suave, não tão rápido".
+ */
+@utility cc-pulso-edicao {
+  outline: 2px solid var(--cc-color-accent-yellow);
+  outline-offset: -2px;
+  animation: cc-pulso-edicao-pisca 2.4s ease-in-out infinite;
+}
+
+@keyframes cc-pulso-edicao-pisca {
+  0%,
+  100% {
+    outline-color: color-mix(in srgb, var(--cc-color-accent-yellow) 25%, transparent);
+  }
+  50% {
+    outline-color: color-mix(in srgb, var(--cc-color-accent-yellow) 90%, transparent);
   }
 }
