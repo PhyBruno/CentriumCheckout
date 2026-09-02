@@ -239,3 +239,34 @@ body {
     background-position: -50% 0;
   }
 }
+
+/**
+ * Contorno amarelo pulsante — sinaliza a linha da grid/lista mobile e a barra
+ * de entrada rápida quando um item já inserido está carregado para edição
+ * (pedido direto do usuário, 2026-09-03): o operador precisa reconhecer, à
+ * distância, que aquele produto "sumiu" da linha porque voltou para a barra,
+ * não porque foi cancelado.
+ *
+ * `outline` (não `box-shadow`): funciona de forma confiável em qualquer tipo
+ * de caixa, inclusive `<tr>` de tabela — `box-shadow` num `<tr>` é pintado por
+ * baixo das células e não aparece no Chrome. `outline-offset: -2px` mantém o
+ * traço para dentro do próprio elemento, sem invadir a linha vizinha.
+ * `color-mix` anima só a opacidade da cor, entre 25% e 90% — é o "degradê"
+ * pedido, não um pisca-apaga abrupto; 2.4s (bem mais lento que o `cc-shimmer`
+ * de carregamento, que é outra linguagem visual) é o "suave, não tão rápido".
+ */
+@utility cc-pulso-edicao {
+  outline: 2px solid var(--cc-color-accent-yellow);
+  outline-offset: -2px;
+  animation: cc-pulso-edicao-pisca 2.4s ease-in-out infinite;
+}
+
+@keyframes cc-pulso-edicao-pisca {
+  0%,
+  100% {
+    outline-color: color-mix(in srgb, var(--cc-color-accent-yellow) 25%, transparent);
+  }
+  50% {
+    outline-color: color-mix(in srgb, var(--cc-color-accent-yellow) 90%, transparent);
+  }
+}

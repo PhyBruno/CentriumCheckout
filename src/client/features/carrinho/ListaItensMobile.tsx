@@ -91,6 +91,9 @@ function ItemMobile({
       className={cn(
         'flex flex-col gap-xs rounded-xl border border-border bg-background p-base',
         linha.cancelada && 'text-muted-foreground line-through',
+        // Mesmo contorno pulsante de `LinhaDaGrid` (`GridItens.tsx`) —
+        // pedido do usuário, 2026-09-03.
+        emEdicaoNaBarra && 'cc-pulso-edicao',
       )}
     >
       <div className="flex items-start justify-between gap-sm">

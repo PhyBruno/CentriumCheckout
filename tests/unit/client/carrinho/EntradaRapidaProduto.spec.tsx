@@ -119,11 +119,20 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('10,00');
     expect(screen.getByTestId('previa-desconto-item')).toHaveValue('0,50');
     expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    // Unidade vem do cadastro, nunca editável (correção do usuário,
+    // 2026-09-03) — `disabled`, não só `readOnly`.
+    expect(screen.getByTestId('previa-unidade')).toBeDisabled();
+    // Contorno pulsante sinaliza que a barra está com um item carregado para
+    // edição (correção do usuário, 2026-09-03).
+    expect(screen.getByTestId('entrada-rapida-produto')).toHaveClass('cc-pulso-edicao');
 
     await usuario.clear(screen.getByTestId('previa-preco-unitario'));
     await usuario.type(screen.getByTestId('previa-preco-unitario'), '12,00');
     await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
-    await usuario.click(screen.getByTestId('previa-confirmar'));
+    // Enter em QUALQUER campo confirma (correção do usuário, 2026-09-03) —
+    // aqui a partir do campo de desconto, não de um clique no "+".
+    await usuario.click(screen.getByTestId('previa-desconto-item'));
+    await usuario.keyboard('{Enter}');
 
     const editada = useVendaStore.getState().linhas.find((linha) => linha.idLinha === 'linha-1');
     expect(editada?.quantidade).toBe(3000);

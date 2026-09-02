@@ -69,17 +69,20 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
  * `GetProduto` (`revisarPorCodigo`) e preenche todas as células com os dados
  * reais.
  *
- * Quantidade, unidade, preço e desconto são sempre `<input>` de verdade — não
- * só texto — para participarem da navegação por TAB. Unidade é **sempre**
- * somente leitura (vem do cadastro, nunca editável no PDV, nem em produto
- * `'E'`). Preço e desconto só ficam editáveis quando
+ * Quantidade, preço e desconto são sempre `<input>` de verdade — não só
+ * texto — para participarem da navegação por TAB. Unidade também é um
+ * `<input>` (mesma célula do design), mas **`disabled`** (pedido do usuário,
+ * 2026-09-03): vem do cadastro, o operador nunca pode alterá-la, e por isso
+ * nem entra na navegação por TAB — o próprio navegador pula elementos
+ * desabilitados. Preço e desconto só ficam editáveis quando
  * `ProdutoPesavelEditavel = 'E'` (`FR-014`); nos demais casos ficam somente
- * leitura, e o foco ao resolver via TAB vai direto para o botão "+" (nada
- * mais a decidir). Em produto `'E'`, o foco ao resolver vai para a
+ * leitura (`readOnly`, não `disabled` — continuam alcançáveis por TAB, só não
+ * aceitam digitação), e o foco ao resolver via TAB vai direto para o botão
+ * "+" (nada mais a decidir). Em produto `'E'`, o foco ao resolver vai para a
  * **quantidade** — nunca para o botão de inserir — e o próximo TAB segue a
- * ordem natural do DOM (quantidade → unidade → preço → desconto → "+"),
- * pedido direto do usuário (2026-09-03): o operador revisa e ajusta cada
- * campo digitando, sem precisar do mouse.
+ * ordem natural do DOM (quantidade → preço → desconto → "+", pulando a
+ * unidade desabilitada): o operador revisa e ajusta cada campo digitando,
+ * sem precisar do mouse.
  *
  * Não registra atalho global de teclado: um `hotkey` de escopo de documento
  * competiria com a própria bipagem, que chega como digitação rápida neste input.
@@ -99,6 +102,11 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
  * e só libera preço/desconto para edição quando `ProdutoPesavelEditavel = 'E'`
  * — em `'S'`/`'B'` (pesável) só a quantidade fica ajustável, mesma regra da
  * inserção; em `''` (não editável) o lápis fica desabilitado na origem.
+ * Enquanto isso dura, esta barra e a linha de origem (que fica "vazia" na
+ * grid, sem sumir de vez) ganham o mesmo contorno amarelo pulsante
+ * (`cc-pulso-edicao`, `global.css`) — pedido do usuário, 2026-09-03: o
+ * operador precisa reconhecer à distância que o item não foi cancelado, só
+ * voltou pra cá pra revisão.
  */
 export function EntradaRapidaProduto(): ReactElement {
   const { inserirPorCodigo, confirmarEdicao, revisarPorCodigo, confirmarPrevia } =
@@ -377,17 +385,40 @@ export function EntradaRapidaProduto(): ReactElement {
     resetar();
   }
 
+  // Enter só é tratado aqui pra TAB — a inserção/confirmação por Enter é
+  // única e vive em `aoTeclarNoCartao` (pedido do usuário, 2026-09-03: Enter
+  // confirma a partir de qualquer campo da barra, não só do código).
   function aoTeclarNoCodigo(evento: KeyboardEvent<HTMLInputElement>): void {
-    if (evento.key === 'Enter') {
-      evento.preventDefault();
-      void confirmarEntradaRapida();
-      return;
-    }
     if (evento.key === 'Tab') {
       // TAB não sai do campo: no PDV ele é a tecla de revisão, não de
       // navegação (AD-027/AD-063).
       evento.preventDefault();
       void revisarEntrada();
+    }
+  }
+
+  /**
+   * Enter em **qualquer** campo de texto da barra confirma — insere um
+   * produto novo ou aplica a edição de um item existente, conforme o estado
+   * (`confirmar()` já decide isso). Pedido direto do usuário (2026-09-03):
+   * antes só o campo de código reagia a Enter; quantidade/preço/desconto
+   * exigiam clicar no "+" com o mouse.
+   *
+   * Escuta no `<div>` do cartão (não em cada `<input>`) porque o evento sobe
+   * por bubbling — um único handler cobre os campos existentes e qualquer um
+   * que vier a ser adicionado, sem precisar fiar `onKeyDown` em cada um. O
+   * filtro por `HTMLInputElement` exclui os botões (buscar, +/-, confirmar):
+   * Enter num botão focado já dispara o `click` nativo dele, e sem o filtro
+   * este handler chamaria `confirmar()` de novo por cima, duplicando o efeito.
+   */
+  function aoTeclarNoCartao(evento: KeyboardEvent<HTMLDivElement>): void {
+    if (evento.key === 'Escape' && (resolvido !== null || linhaEmEdicao !== null)) {
+      resetar();
+      return;
+    }
+    if (evento.key === 'Enter' && evento.target instanceof HTMLInputElement) {
+      evento.preventDefault();
+      confirmar();
     }
   }
 
@@ -401,7 +432,7 @@ export function EntradaRapidaProduto(): ReactElement {
   // produz alinhamento inconsistente entre navegadores. A altura fixa
   // (`h-11.5`) já centraliza o texto verticalmente sozinha.
   const classeCampoValor =
-    'h-11.5 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default';
+    'h-11.5 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default disabled:cursor-not-allowed disabled:opacity-70';
 
   const precoExibido = editavel
     ? precoTexto
@@ -418,13 +449,14 @@ export function EntradaRapidaProduto(): ReactElement {
 
   return (
     <div
-      className="flex flex-col gap-xs rounded-3xl border border-border bg-background p-base"
+      className={cn(
+        'flex flex-col gap-xs rounded-3xl border border-border bg-background p-base',
+        // Contorno amarelo pulsante enquanto um item já inserido está
+        // carregado aqui para edição (pedido do usuário, 2026-09-03).
+        linhaEmEdicao !== null && 'cc-pulso-edicao',
+      )}
       data-testid="entrada-rapida-produto"
-      onKeyDown={(evento) => {
-        if (evento.key === 'Escape' && (resolvido !== null || linhaEmEdicao !== null)) {
-          resetar();
-        }
-      }}
+      onKeyDown={aoTeclarNoCartao}
     >
       <div className="flex items-end gap-sm" data-testid="previa-insercao-produto">
         <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
@@ -509,7 +541,10 @@ export function EntradaRapidaProduto(): ReactElement {
           <input
             className={cn(classeCampoValor, semResolucao && 'text-muted-foreground')}
             data-testid="previa-unidade"
-            readOnly
+            // `disabled`, não só `readOnly` (pedido do usuário, 2026-09-03): a
+            // unidade vem do cadastro e o operador nunca pode alterá-la — o
+            // campo some da navegação por TAB em vez de só recusar digitação.
+            disabled
             value={snapshotAtivo?.unidadeMedida ?? 'UN'}
           />
         </label>

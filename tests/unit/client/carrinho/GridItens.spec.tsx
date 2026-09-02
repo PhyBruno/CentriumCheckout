@@ -72,7 +72,7 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
     expect(useEdicaoItemStore.getState().linhaEmEdicao?.idLinha).toBe('linha-1');
   });
 
-  it('trava o lápis e a lixeira da linha carregada na barra', () => {
+  it('trava o lápis e a lixeira da linha carregada na barra, e mostra o contorno pulsante', () => {
     useVendaStore.setState({
       linhas: [linhaDe({ idLinha: 'linha-1', snapshot: snapshotDe({ pesavelEditavel: 'E' }) })],
     });
@@ -86,6 +86,9 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
 
     expect(screen.getByRole('button', { name: 'Editar item' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+    // Sinaliza visualmente que a linha "sumiu" pra revisão, não que foi
+    // cancelada (correção do usuário, 2026-09-03).
+    expect(screen.getByTestId('linha-carrinho')).toHaveClass('cc-pulso-edicao');
   });
 
   it('não oferece nenhuma ação para uma linha cancelada', () => {

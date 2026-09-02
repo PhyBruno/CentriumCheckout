@@ -181,6 +181,10 @@ function LinhaDaGrid({
         // Riscada e esmaecida, mas ainda legível: é rastreabilidade, não lixo
         // visual (SC-003).
         linha.cancelada && 'text-muted-foreground line-through',
+        // Contorno amarelo pulsante enquanto esta linha está carregada na
+        // barra (pedido do usuário, 2026-09-03) — sinaliza que ela "sumiu"
+        // temporariamente pra revisão, não que foi cancelada.
+        emEdicaoNaBarra && 'cc-pulso-edicao',
       )}
     >
       <td className="px-base py-sm font-mono font-semibold text-muted-foreground tabular-nums">

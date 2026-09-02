@@ -164,17 +164,21 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     // sequência de revisão — nunca direto no botão de inserir.
     await expect(page.getByTestId('previa-quantidade')).toBeFocused();
     // A unidade vem do cadastro e nunca é editável no PDV, mesmo em produto
-    // 'E' — é um campo real (participa do TAB), só que sempre somente leitura.
+    // 'E' — `disabled` (não só `readOnly`, correção do usuário, 2026-09-03),
+    // então some da navegação por TAB além de recusar digitação.
     await expect(page.getByTestId('previa-unidade')).toHaveValue('UN');
+    await expect(page.getByTestId('previa-unidade')).toBeDisabled();
     await expect(page.getByTestId('previa-unidade')).not.toBeEditable();
 
     // Produto editável: preço e desconto viram campos que aceitam digitação.
     await expect(page.getByTestId('previa-preco-unitario')).toBeEditable();
     await page.getByTestId('previa-preco-unitario').fill('15,00');
-    await page.getByTestId('previa-desconto-item').fill('2,00');
     await page.getByTestId('previa-quantidade-aumentar').click();
 
-    await page.getByTestId('previa-confirmar').click();
+    // Enter em QUALQUER campo confirma (correção do usuário, 2026-09-03) —
+    // aqui a partir do campo de desconto, não do botão "+".
+    await page.getByTestId('previa-desconto-item').fill('2,00');
+    await page.getByTestId('previa-desconto-item').press('Enter');
 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
     // 2 × R$ 15,00 − R$ 2,00 de desconto manual = R$ 28,00.
