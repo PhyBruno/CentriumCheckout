@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import type { Env } from '../config/env';
 import { montarBaseUrlErp } from '../config/env';
+import type { TokenResponse } from '../../shared/schemas/token-response.schema';
 import type { SessaoOperador } from './cookie';
 import { ErroTrocaDeToken, trocarCredenciaisPorToken } from './tokenExchange';
 
@@ -71,6 +73,64 @@ function montarHeaders(sessao: SessaoOperador, requisicao: RequisicaoErp): Recor
 }
 
 /**
+ * Renovações em andamento, uma por operador (single-flight).
+ *
+ * Sem isto, N chamadas concorrentes que batem `401` no mesmo instante disparam
+ * N `password` grants no ERP para um único evento de expiração, e cada resposta
+ * grava seu próprio `Set-Cookie` — descartando silenciosamente os outros N-1
+ * tokens válidos. O BFF roda em processo Node único
+ * (`.specs/codebase/ARCHITECTURE.md`), então um `Map` de módulo basta: não há
+ * coordenação entre instâncias a fazer.
+ */
+const renovacoesEmVoo = new Map<string, Promise<TokenResponse>>();
+
+/**
+ * Identifica o operador sem guardar segredo em memória: a chave deriva de
+ * `tenant`/`username`, nunca de `access_token` ou `password`.
+ */
+function chaveDeRenovacao(sessao: SessaoOperador): string {
+  return createHash('sha256').update(`${sessao.tenant}:${sessao.username}`).digest('hex');
+}
+
+/**
+ * Troca credenciais por token reaproveitando a renovação já em voo do mesmo
+ * operador. Todos os chamadores recebem o mesmo resultado (token ou erro) e
+ * cada um refaz a sua própria chamada original.
+ */
+async function renovarTokenEmVooUnico(
+  sessao: SessaoOperador,
+  deps: ChamadaAutenticadaDeps,
+): Promise<TokenResponse> {
+  const chave = chaveDeRenovacao(sessao);
+  const emVoo = renovacoesEmVoo.get(chave);
+
+  if (emVoo !== undefined) {
+    return emVoo;
+  }
+
+  const renovacao = trocarCredenciaisPorToken(sessao, {
+    env: deps.env,
+    ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+  }).finally(() => {
+    // Sucesso ou falha: a próxima expiração precisa poder tentar de novo.
+    renovacoesEmVoo.delete(chave);
+  });
+
+  renovacoesEmVoo.set(chave, renovacao);
+  return renovacao;
+}
+
+/**
+ * Descarta o corpo de uma resposta que não será repassada.
+ *
+ * O undici só devolve a conexão ao pool depois que o corpo é consumido ou
+ * abortado; sem isto, cada `401` seguraria um socket aberto à toa.
+ */
+async function drenar(resposta: Response): Promise<void> {
+  await resposta.arrayBuffer().catch(() => undefined);
+}
+
+/**
  * Executa uma chamada autenticada ao ERP, renovando o token uma única vez se o
  * ERP responder `401`.
  *
@@ -96,12 +156,12 @@ export async function chamarErpComRenovacao(
     return { resposta: primeira, sessaoRenovada: null };
   }
 
-  let token;
+  // O corpo do `401` não é repassado a ninguém.
+  await drenar(primeira);
+
+  let token: TokenResponse;
   try {
-    token = await trocarCredenciaisPorToken(sessao, {
-      env: deps.env,
-      ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
-    });
+    token = await renovarTokenEmVooUnico(sessao, deps);
   } catch (erro) {
     if (erro instanceof ErroTrocaDeToken) {
       throw new ErroSessaoEncerrada(erro);
@@ -110,6 +170,19 @@ export async function chamarErpComRenovacao(
   }
 
   const sessaoRenovada: SessaoOperador = { ...sessao, access_token: token.access_token };
+  const segunda = await executar(sessaoRenovada);
 
-  return { resposta: await executar(sessaoRenovada), sessaoRenovada };
+  // A renovação funcionou, mas o ERP recusou de novo: não há segunda renovação
+  // a tentar, então isto é sessão encerrada de verdade. Devolver o `401` como
+  // resposta normal faria o cliente cair em "sessão encerrada" **sem** que o
+  // cookie fosse limpo — lançar reaproveita o tratamento já existente nas duas
+  // rotas, que limpa o cookie e responde o `401` terminal (FR-006).
+  if (segunda.status === 401) {
+    await drenar(segunda);
+    throw new ErroSessaoEncerrada(
+      new ErroTrocaDeToken('erp', 401, 'ERP recusou a chamada mesmo após renovação de token'),
+    );
+  }
+
+  return { resposta: segunda, sessaoRenovada };
 }

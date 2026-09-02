@@ -1,5 +1,6 @@
 import type { RegistroBootstrap, RepositorioBootstrap } from '../db/bootstrapDb';
-import type { RespostaWorker } from './bootstrapWorkerProtocol';
+import { normalizarEtag } from '../../shared/etag';
+import type { RequisicaoWorker, RespostaWorker } from './bootstrapWorkerProtocol';
 
 /**
  * Carrega a configuração do ponto de venda (T023, US2).
@@ -19,7 +20,27 @@ export type ResultadoBootstrap =
   /** Renovação de sessão falhou — aciona AUTH-06. */
   | { readonly estado: 'sessao-encerrada' }
   /** Falha não-401: tela "Tentar novamente", sem novo login (AUTH-07/FR-007). */
-  | { readonly estado: 'erro-recuperavel'; readonly mensagem: string };
+  | { readonly estado: 'erro-recuperavel'; readonly mensagem: string }
+  /**
+   * O analisador foi encerrado no meio do carregamento (desmontagem do
+   * componente, remontagem do StrictMode). Não há estado de UI a atualizar.
+   */
+  | { readonly estado: 'cancelado' };
+
+/**
+ * `encerrar()` foi chamado com uma análise ainda em voo.
+ *
+ * Existe para que a promise de `analisar()` **termine** em vez de ficar
+ * pendurada para sempre: `postMessage` num worker já terminado é um no-op
+ * silencioso, então sem isto o carregamento abandonado nunca reportaria nem
+ * sucesso nem erro.
+ */
+export class AnalisadorCanceladoError extends Error {
+  constructor() {
+    super('Análise do bootstrap cancelada: o worker foi encerrado');
+    this.name = 'AnalisadorCanceladoError';
+  }
+}
 
 /** Porta do parse/validação — implementada pelo Web Worker (T022). */
 export interface AnalisadorBootstrap {
@@ -35,30 +56,53 @@ export interface BootstrapClientDeps {
 
 const ROTA_BOOTSTRAP = '/api/bootstrap';
 
-function normalizarEtag(etag: string | null): string | null {
-  if (etag === null) {
-    return null;
-  }
-  return etag.trim().replace(/^W\//, '').replace(/^"|"$/g, '');
+interface AnalisePendente {
+  readonly resolver: (resposta: RespostaWorker) => void;
+  readonly rejeitar: (erro: unknown) => void;
 }
 
 /** Cria o analisador apoiado no Web Worker de `bootstrapWorker.ts`. */
 export function criarAnalisadorViaWorker(): AnalisadorBootstrap {
   const worker = new Worker(new URL('./bootstrapWorker.ts', import.meta.url), { type: 'module' });
 
+  // Um único listener para todas as chamadas: a correlação é pelo `id`, não
+  // pela ordem de chegada.
+  const pendentes = new Map<string, AnalisePendente>();
+
+  const aoResponder = (evento: MessageEvent<RespostaWorker>): void => {
+    const pendente = pendentes.get(evento.data.id);
+
+    // Resposta de uma chamada que já terminou (ou foi cancelada): ignorar.
+    if (pendente === undefined) {
+      return;
+    }
+
+    pendentes.delete(evento.data.id);
+    pendente.resolver(evento.data);
+  };
+
+  worker.addEventListener('message', aoResponder);
+
   return {
     async analisar(texto: string): Promise<RespostaWorker> {
-      return new Promise<RespostaWorker>((resolver) => {
-        const aoResponder = (evento: MessageEvent<RespostaWorker>): void => {
-          worker.removeEventListener('message', aoResponder);
-          resolver(evento.data);
-        };
-        worker.addEventListener('message', aoResponder);
-        worker.postMessage({ texto });
+      const id = crypto.randomUUID();
+
+      return new Promise<RespostaWorker>((resolver, rejeitar) => {
+        pendentes.set(id, { resolver, rejeitar });
+        const requisicao: RequisicaoWorker = { id, texto };
+        worker.postMessage(requisicao);
       });
     },
 
     encerrar(): void {
+      // Terminar o worker sem isto deixaria toda análise em voo pendurada para
+      // sempre — o `postMessage` já foi feito, mas a resposta nunca virá.
+      for (const pendente of pendentes.values()) {
+        pendente.rejeitar(new AnalisadorCanceladoError());
+      }
+      pendentes.clear();
+
+      worker.removeEventListener('message', aoResponder);
       worker.terminate();
     },
   };
@@ -111,7 +155,16 @@ export async function carregarBootstrap(deps: BootstrapClientDeps): Promise<Resu
     };
   }
 
-  const analise = await deps.analisador.analisar(await resposta.text());
+  let analise: RespostaWorker;
+  try {
+    analise = await deps.analisador.analisar(await resposta.text());
+  } catch (erro) {
+    // O componente desmontou durante o carregamento: encerrar em silêncio.
+    if (erro instanceof AnalisadorCanceladoError) {
+      return { estado: 'cancelado' };
+    }
+    throw erro;
+  }
 
   if (!analise.ok) {
     return { estado: 'erro-recuperavel', mensagem: analise.erro };

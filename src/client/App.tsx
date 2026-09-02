@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
   bootstrapDb,
@@ -52,27 +52,44 @@ export function App({
 
   const analisadorRef = useRef<AnalisadorBootstrap | null>(null);
 
+  /**
+   * Há um `carregar()` em andamento.
+   *
+   * Não dá para derivar de `estado`: quando `ErrorRetry` está na tela o estado
+   * já é `'erro-recuperavel'`, então o botão precisa do próprio flag para não
+   * disparar dois carregamentos concorrentes no duplo clique.
+   */
+  const [carregando, setCarregando] = useState(false);
+
   const carregar = useCallback(async (): Promise<void> => {
     const { iniciarCarregamento, concluir, falhar, encerrarSessao } = useSessionStore.getState();
     iniciarCarregamento();
+    setCarregando(true);
 
     analisadorRef.current ??= criarAnalisador();
 
-    const resultado = await carregarBootstrap({
-      repositorio: repositorioEfetivo,
-      analisador: analisadorRef.current,
-    });
+    try {
+      const resultado = await carregarBootstrap({
+        repositorio: repositorioEfetivo,
+        analisador: analisadorRef.current,
+      });
 
-    switch (resultado.estado) {
-      case 'pronto':
-        concluir(resultado.registro, resultado.reaproveitado);
-        return;
-      case 'sessao-encerrada':
-        encerrarSessao(leitorCarrinho.quantidadeDeItens());
-        return;
-      case 'erro-recuperavel':
-        falhar(resultado.mensagem);
-        return;
+      switch (resultado.estado) {
+        case 'pronto':
+          concluir(resultado.registro, resultado.reaproveitado);
+          return;
+        case 'sessao-encerrada':
+          encerrarSessao(leitorCarrinho.quantidadeDeItens());
+          return;
+        case 'erro-recuperavel':
+          falhar(resultado.mensagem);
+          return;
+        case 'cancelado':
+          // O componente está desmontando: não há estado de UI a atualizar.
+          return;
+      }
+    } finally {
+      setCarregando(false);
     }
   }, [criarAnalisador, leitorCarrinho, repositorioEfetivo]);
 
@@ -107,6 +124,7 @@ export function App({
     return (
       <ErrorRetry
         mensagem={mensagemErro ?? 'Falha ao carregar a configuração do ponto de venda.'}
+        tentando={carregando}
         onTentarNovamente={() => {
           void carregar();
         }}

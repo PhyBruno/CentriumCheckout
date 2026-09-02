@@ -5,7 +5,8 @@ import {
   SESSION_COOKIE_OPTIONS,
   type CifradorDeSessao,
 } from '../session/cookie';
-import { ErroSessaoEncerrada, chamarErpComRenovacao } from '../session/chamadaAutenticada';
+import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
+import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
 
 export interface ErpProxyDeps {
   readonly env: Env;
@@ -44,27 +45,31 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
     const [caminhoSemQuery = '', queryString = ''] = request.url.split('?');
     const caminhoNoErp = caminhoSemQuery.slice(PREFIXO.length);
 
-    let resultado;
-    try {
-      resultado = await chamarErpComRenovacao(
+    // O default `application/json` de `montarHeaders` serve ao bootstrap (GET
+    // sem corpo); aqui o corpo é o da requisição original, então o
+    // `Content-Type` real precisa ser repassado como está.
+    const contentTypeOriginal = request.headers['content-type'];
+
+    // `null` = a sessão acabou e o 401 terminal já foi respondido (FR-006).
+    const resultado = await executarOuEncerrarSessao(reply, () =>
+      chamarErpComRenovacao(
         sessao,
         {
           caminho: caminhoNoErp,
           method: request.method,
           // Query crua: preserva chaves repetidas e a codificação original.
           queryString,
+          ...(contentTypeOriginal === undefined
+            ? {}
+            : { headersExtras: { 'Content-Type': contentTypeOriginal } }),
           body: corpoDaRequisicao(request.body),
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
-      );
-    } catch (erro) {
-      if (erro instanceof ErroSessaoEncerrada) {
-        return reply
-          .clearCookie(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS)
-          .code(401)
-          .send({ erro: 'Sessão encerrada' });
-      }
-      throw erro;
+      ),
+    );
+
+    if (resultado === null) {
+      return reply;
     }
 
     if (resultado.sessaoRenovada !== null) {

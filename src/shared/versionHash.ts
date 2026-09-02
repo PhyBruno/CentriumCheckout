@@ -45,17 +45,37 @@ function fnv1a32(texto: string): number {
 }
 
 /**
+ * FNV-1a de 32 bits varrendo do fim para o começo, semeado com o tamanho.
+ *
+ * É a segunda passada independente do hash combinado: a ordem inversa faz cada
+ * caractere entrar na mistura num estágio diferente do da passada direta, então
+ * uma colisão precisaria acontecer nas duas ao mesmo tempo.
+ */
+function fnv1a32DeTrasParaFrente(texto: string): number {
+  let hash = (FNV_OFFSET_BASIS_32 ^ texto.length) >>> 0;
+  for (let i = texto.length - 1; i >= 0; i -= 1) {
+    hash ^= texto.charCodeAt(i);
+    hash = Math.imul(hash, FNV_PRIME_32);
+  }
+  return hash >>> 0;
+}
+
+/**
  * Devolve o hash de versão do payload.
  *
- * Combina dois FNV-1a (direto e sobre a string invertida em blocos) para
- * reduzir colisão em payloads grandes e parecidos, mantendo custo linear.
+ * Combina dois FNV-1a de 32 bits — um direto, outro de trás para frente — num
+ * valor de 64 bits. **As duas passadas cobrem a string canônica inteira**: uma
+ * versão anterior amostrava só os 8KB das bordas na segunda passada, o que
+ * deixava payloads de vários MB que diferiam apenas no meio (uma lista de preço
+ * ou um `CenarioPagamento` alterado no miolo) colidirem e o BFF responder `304`
+ * para uma configuração que de fato mudou.
+ *
+ * O custo continua linear e roda no worker (ou uma vez por request no BFF).
  */
 export function calcularVersionHash(payload: unknown): string {
   const canonico = serializarCanonico(payload);
   const direto = fnv1a32(canonico);
-  const alternado = fnv1a32(
-    `${canonico.length}:${canonico.slice(-4096)}:${canonico.slice(0, 4096)}`,
-  );
+  const inverso = fnv1a32DeTrasParaFrente(canonico);
 
-  return `${direto.toString(16).padStart(8, '0')}${alternado.toString(16).padStart(8, '0')}`;
+  return `${direto.toString(16).padStart(8, '0')}${inverso.toString(16).padStart(8, '0')}`;
 }

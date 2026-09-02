@@ -17,14 +17,25 @@ import { calcularVersionHash } from '../../src/shared/versionHash';
  * (Cenário 3, FR-009) — T028.
  */
 
-/** Analisador síncrono equivalente ao Web Worker, sem depender de Worker no Node. */
+/**
+ * Analisador síncrono equivalente ao Web Worker, sem depender de Worker no Node.
+ *
+ * O `id` do protocolo só serve para correlacionar mensagens do worker real;
+ * aqui, sem canal compartilhado, um valor fixo basta.
+ */
 const analisador: AnalisadorBootstrap = {
   async analisar(texto: string) {
+    const id = 'analisador-sincrono';
     const validado = bootstrapPayloadSchema.safeParse(JSON.parse(texto));
     if (!validado.success) {
-      return { ok: false, erro: 'fora do contrato' };
+      return { id, ok: false, erro: 'fora do contrato' };
     }
-    return { ok: true, payload: validado.data, versionHash: calcularVersionHash(validado.data) };
+    return {
+      id,
+      ok: true,
+      payload: validado.data,
+      versionHash: calcularVersionHash(validado.data),
+    };
   },
   encerrar() {
     /* nada a liberar */

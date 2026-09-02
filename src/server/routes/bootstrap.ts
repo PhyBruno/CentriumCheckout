@@ -6,8 +6,10 @@ import {
   SESSION_COOKIE_OPTIONS,
   type CifradorDeSessao,
 } from '../session/cookie';
-import { ErroSessaoEncerrada, chamarErpComRenovacao } from '../session/chamadaAutenticada';
+import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
+import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
 import { calcularVersionHash } from '../../shared/versionHash';
+import { normalizarEtag } from '../../shared/etag';
 
 /**
  * A SPA envia em `If-None-Match` todos os hashes que já tem em cache (um por
@@ -20,7 +22,7 @@ function hashConhecido(cabecalho: string | string[] | undefined, hash: string): 
   const valores = Array.isArray(cabecalho) ? cabecalho : [cabecalho];
   return valores
     .flatMap((valor) => valor.split(','))
-    .map((valor) => valor.trim().replace(/^W\//, '').replace(/^"|"$/g, ''))
+    .map((valor) => normalizarEtag(valor))
     .includes(hash);
 }
 
@@ -47,26 +49,20 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
       return reply.code(401).send({ erro: 'Sessão ausente ou inválida' });
     }
 
-    let resultado;
-    try {
-      resultado = await chamarErpComRenovacao(
+    // `null` = a sessão acabou e o 401 terminal já foi respondido (FR-006).
+    const resultado = await executarOuEncerrarSessao(reply, () =>
+      chamarErpComRenovacao(
         sessao,
         {
           caminho: CAMINHO_GET_SESSAO,
           query: { Login: sessao.username },
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
-      );
-    } catch (erro) {
-      if (erro instanceof ErroSessaoEncerrada) {
-        // Renovação falhou: encerra a sessão — único gatilho de logout
-        // automático (FR-006), aciona AUTH-06 no cliente.
-        return reply
-          .clearCookie(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS)
-          .code(401)
-          .send({ erro: 'Sessão encerrada' });
-      }
-      throw erro;
+      ),
+    );
+
+    if (resultado === null) {
+      return reply;
     }
 
     if (resultado.sessaoRenovada !== null) {
@@ -80,6 +76,10 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
     // Erro não-401 é repassado como está: o cliente mostra "Tentar novamente",
     // sem forçar novo login (AUTH-07 / FR-007).
     if (!resultado.resposta.ok) {
+      // O corpo do ERP não é repassado (FR-007), mas precisa ser consumido: o
+      // undici só devolve a conexão ao pool depois disso.
+      await resultado.resposta.arrayBuffer().catch(() => undefined);
+
       return reply
         .code(resultado.resposta.status)
         .send({ erro: 'Falha ao carregar a configuração do ponto de venda' });

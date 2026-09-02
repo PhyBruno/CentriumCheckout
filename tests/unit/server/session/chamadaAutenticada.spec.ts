@@ -88,17 +88,59 @@ describe('chamarErpComRenovacao', () => {
     expect(resultado.sessaoRenovada).toEqual({ ...sessao, access_token: 'token-novo' });
   });
 
-  it('renova uma única vez, mesmo se o ERP responder 401 de novo', async () => {
+  it('encerra a sessão quando o ERP responde 401 mesmo após a renovação (FR-006)', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(json({ erro: 'expirado' }, 401))
       .mockResolvedValueOnce(json({ access_token: 'token-novo' }))
       .mockResolvedValueOnce(json({ erro: 'expirado' }, 401));
 
-    const resultado = await chamarErpComRenovacao(sessao, requisicao, { env, fetchImpl });
+    const erro = await chamarErpComRenovacao(sessao, requisicao, { env, fetchImpl }).catch(
+      (e: unknown) => e,
+    );
 
+    // Renova uma única vez: não há segunda tentativa de troca de token.
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(resultado.resposta.status).toBe(401);
+
+    // Devolver esse 401 como resposta normal faria o cliente cair em "sessão
+    // encerrada" com o cookie ainda válido; lançar garante o `clearCookie`.
+    expect(erro).toBeInstanceOf(ErroSessaoEncerrada);
+    expect((erro as ErroSessaoEncerrada).causa.motivo).toBe('erp');
+    expect((erro as ErroSessaoEncerrada).causa.status).toBe(401);
+  });
+
+  it('renova uma única vez para chamadas concorrentes da mesma sessão', async () => {
+    let chamadasDeToken = 0;
+    let respostas401Pendentes = 2;
+
+    const fetchImpl = vi.fn<typeof fetch>(async (entrada) => {
+      if (String(entrada).endsWith('/oauth/access_token')) {
+        chamadasDeToken += 1;
+        // Segura a troca para as duas chamadas coincidirem na mesma janela.
+        await new Promise((resolver) => setTimeout(resolver, 10));
+        return json({ access_token: 'token-novo' });
+      }
+
+      if (respostas401Pendentes > 0) {
+        respostas401Pendentes -= 1;
+        return json({ erro: 'expirado' }, 401);
+      }
+
+      return json({ ok: true });
+    });
+
+    const [primeira, segunda] = await Promise.all([
+      chamarErpComRenovacao(sessao, requisicao, { env, fetchImpl }),
+      chamarErpComRenovacao(sessao, requisicao, { env, fetchImpl }),
+    ]);
+
+    // Sem single-flight seriam dois `password` grants para um único evento de
+    // expiração, e um dos dois tokens renovados seria descartado.
+    expect(chamadasDeToken).toBe(1);
+    expect(primeira.resposta.status).toBe(200);
+    expect(segunda.resposta.status).toBe(200);
+    expect(primeira.sessaoRenovada).toEqual({ ...sessao, access_token: 'token-novo' });
+    expect(segunda.sessaoRenovada).toEqual({ ...sessao, access_token: 'token-novo' });
   });
 
   it('encerra a sessão quando a renovação falha (FR-006)', async () => {
