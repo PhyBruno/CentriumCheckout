@@ -43,7 +43,7 @@ Conforme `plan.md`, "Project Structure":
 
 **⚠️ Depende de**: Fase 1 (Setup) de `specs/002-autenticacao-sessao-bootstrap/tasks.md` já concluída — é lá que `src/client/` é criado pela primeira vez.
 
-- [ ] T001 Criar estrutura de diretórios: `src/client/stores/`, `src/client/stores/slices/`, `src/client/domain/auditoria/`, `tests/unit/domain/auditoria/`
+- [X] T001 Criar estrutura de diretórios: `src/client/stores/`, `src/client/stores/slices/`, `src/client/domain/auditoria/`, `tests/unit/domain/auditoria/`
 
 ---
 
@@ -53,10 +53,10 @@ Conforme `plan.md`, "Project Structure":
 
 **⚠️ CRITICAL**: Nenhuma user story pode começar antes desta fase estar completa
 
-- [ ] T002 [P] Definir tipos base `EventoAuditoriaBase<TTipo, TDetalhes>`, `EventoAuditoriaSemTimestamp`, `HistoricoAuditoriaVenda` e o evento `VENDA_INICIADA` (`{ origem: 'NOVA' | 'RASCUNHO' | 'DAV' }`) + sua factory function em `src/client/domain/auditoria/eventos.ts`
-- [ ] T003 [P] Criar `vendaStore.ts` combinando slice creators via Zustand+Immer `create()`, sem `persist` (AD-006), pronto para ser estendido pelas features 003/004/005/008/012 com seus próprios slices, em `src/client/stores/vendaStore.ts`
-- [ ] T004 Implementar `auditoriaSlice.ts`: estado `eventos: EventoAuditoria[]`, `registrarEventoAuditoria(evento)` (atribui `new Date().toISOString()` e faz `push`), `resetarAuditoria(origem)` (zera o array e já registra `VENDA_INICIADA`) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T002, T003)
-- [ ] T005 Teste unitário de `VENDA_INICIADA` + `resetarAuditoria`: array zerado, evento inicial correto por `origem`, `timestamp` ISO 8601, nunca herda histórico de sessão anterior (FR-008) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T004)
+- [X] T002 [P] Definir tipos base `EventoAuditoriaBase<TTipo, TDetalhes>`, `EventoAuditoriaSemTimestamp`, `HistoricoAuditoriaVenda` e o evento `VENDA_INICIADA` (`{ origem: 'NOVA' | 'RASCUNHO' | 'DAV' }`) + sua factory function em `src/client/domain/auditoria/eventos.ts`
+- [X] T003 [P] Criar `vendaStore.ts` combinando slice creators via Zustand+Immer `create()`, sem `persist` (AD-006), pronto para ser estendido pelas features 003/004/005/008/012 com seus próprios slices, em `src/client/stores/vendaStore.ts`
+- [X] T004 Implementar `auditoriaSlice.ts`: estado `eventos: EventoAuditoria[]`, `registrarEventoAuditoria(evento)` (atribui `new Date().toISOString()` e faz `push`), `resetarAuditoria(origem)` (zera o array e já registra `VENDA_INICIADA`) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T002, T003)
+- [X] T005 Teste unitário de `VENDA_INICIADA` + `resetarAuditoria`: array zerado, evento inicial correto por `origem`, `timestamp` ISO 8601, nunca herda histórico de sessão anterior (FR-008) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T004)
 
 **Checkpoint**: Slice base pronto — eventos podem ser registrados e uma sessão de venda pode ser iniciada/reiniciada.
 
@@ -70,16 +70,16 @@ Conforme `plan.md`, "Project Structure":
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implementar factories de cliente/vendedor em `eventos.ts`: `CLIENTE_SELECIONADO`, `CLIENTE_CRIADO`, `CLIENTE_TROCADO`, `VENDEDOR_SELECIONADO`, `VENDEDOR_TROCADO` em `src/client/domain/auditoria/eventos.ts` (depende de T002)
-- [ ] T007 [US1] Implementar factories de produto em `eventos.ts`: `PRODUTO_INSERIDO`, `PRODUTO_ALTERADO`, `PRODUTO_CANCELADO` — `precoUnitario`/`desconto`/`valorAnterior`/`valorNovo` em centavos inteiros, sem recálculo (Constitution V) em `src/client/domain/auditoria/eventos.ts` (depende de T006, mesmo arquivo)
-- [ ] T008 [US1] Implementar factories de pagamento em `eventos.ts`: `CONDICAO_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_REMOVIDA`, `VALE_DEVOLUCAO_USADO`, `PAGAMENTO_RECUSADO` em `src/client/domain/auditoria/eventos.ts` (depende de T007, mesmo arquivo)
-- [ ] T009 [US1] Teste unitário dos 13 tipos de evento de ação (shape de `detalhes` por tipo, `timestamp` ISO 8601, push via `registrarEventoAuditoria`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T008 e T005, mesmo arquivo)
-- [ ] T018 [US1] Implementar factory de `VALIDACAO_VENDA_RECUSADA` em `eventos.ts`: `{ origem: 'MANUAL' | 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` (FR-010, evento distinto de `PAGAMENTO_RECUSADO`) em `src/client/domain/auditoria/eventos.ts` (depende de T008, mesmo arquivo)
-- [ ] T019 [US1] Teste unitário de `VALIDACAO_VENDA_RECUSADA` (shape de `detalhes`, `timestamp` ISO 8601, distinção de `PAGAMENTO_RECUSADO`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T018 e T009, mesmo arquivo)
-- [ ] T020 [US1] Implementar factory de `DAV_IMPORTADO` em `eventos.ts`: `{ numeroDav: string, numeroNota: number, quantidadeLinhas: number, quantidadeFormasDePagamento: number }` (AD-114, achado de `/speckit-tasks` da feature 006) em `src/client/domain/auditoria/eventos.ts` (depende de T008, mesmo arquivo)
-- [ ] T021 [US1] Teste unitário de `DAV_IMPORTADO` (shape de `detalhes`, `timestamp` ISO 8601) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T020 e T019, mesmo arquivo)
-- [ ] T022 [US1] Implementar factory de `VENDA_RAPIDA_ACIONADA` em `eventos.ts`: `{ tecla: 'F6' | 'F7' | 'F8' | 'F9', cenarioNome: string, condicaoCodigo: number, formaCodigo: number, valorLancado: number, finalizacaoAutomatica: boolean }` (`valorLancado` em centavos inteiros; um evento por acionamento que alterou a venda — acionamento recusado em G1–G4 não gera evento, I12 da feature 013) em `src/client/domain/auditoria/eventos.ts` (depende de T020, mesmo arquivo)
-- [ ] T023 [US1] Teste unitário de `VENDA_RAPIDA_ACIONADA` (shape de `detalhes`, `timestamp` ISO 8601) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T022 e T021, mesmo arquivo)
+- [X] T006 [US1] Implementar factories de cliente/vendedor em `eventos.ts`: `CLIENTE_SELECIONADO`, `CLIENTE_CRIADO`, `CLIENTE_TROCADO`, `VENDEDOR_SELECIONADO`, `VENDEDOR_TROCADO` em `src/client/domain/auditoria/eventos.ts` (depende de T002)
+- [X] T007 [US1] Implementar factories de produto em `eventos.ts`: `PRODUTO_INSERIDO`, `PRODUTO_ALTERADO`, `PRODUTO_CANCELADO` — `precoUnitario`/`desconto`/`valorAnterior`/`valorNovo` em centavos inteiros, sem recálculo (Constitution V) em `src/client/domain/auditoria/eventos.ts` (depende de T006, mesmo arquivo)
+- [X] T008 [US1] Implementar factories de pagamento em `eventos.ts`: `CONDICAO_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_REMOVIDA`, `VALE_DEVOLUCAO_USADO`, `PAGAMENTO_RECUSADO` em `src/client/domain/auditoria/eventos.ts` (depende de T007, mesmo arquivo)
+- [X] T009 [US1] Teste unitário dos 13 tipos de evento de ação (shape de `detalhes` por tipo, `timestamp` ISO 8601, push via `registrarEventoAuditoria`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T008 e T005, mesmo arquivo)
+- [X] T018 [US1] Implementar factory de `VALIDACAO_VENDA_RECUSADA` em `eventos.ts`: `{ origem: 'MANUAL' | 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` (FR-010, evento distinto de `PAGAMENTO_RECUSADO`) em `src/client/domain/auditoria/eventos.ts` (depende de T008, mesmo arquivo)
+- [X] T019 [US1] Teste unitário de `VALIDACAO_VENDA_RECUSADA` (shape de `detalhes`, `timestamp` ISO 8601, distinção de `PAGAMENTO_RECUSADO`) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T018 e T009, mesmo arquivo)
+- [X] T020 [US1] Implementar factory de `DAV_IMPORTADO` em `eventos.ts`: `{ numeroDav: string, numeroNota: number, quantidadeLinhas: number, quantidadeFormasDePagamento: number }` (AD-114, achado de `/speckit-tasks` da feature 006) em `src/client/domain/auditoria/eventos.ts` (depende de T008, mesmo arquivo)
+- [X] T021 [US1] Teste unitário de `DAV_IMPORTADO` (shape de `detalhes`, `timestamp` ISO 8601) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T020 e T019, mesmo arquivo)
+- [X] T022 [US1] Implementar factory de `VENDA_RAPIDA_ACIONADA` em `eventos.ts`: `{ tecla: 'F6' | 'F7' | 'F8' | 'F9', cenarioNome: string, condicaoCodigo: number, formaCodigo: number, valorLancado: number, finalizacaoAutomatica: boolean }` (`valorLancado` em centavos inteiros; um evento por acionamento que alterou a venda — acionamento recusado em G1–G4 não gera evento, I12 da feature 013) em `src/client/domain/auditoria/eventos.ts` (depende de T020, mesmo arquivo)
+- [X] T023 [US1] Teste unitário de `VENDA_RAPIDA_ACIONADA` (shape de `detalhes`, `timestamp` ISO 8601) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T022 e T021, mesmo arquivo)
 
 **Checkpoint**: User Story 1 completa e testável de forma independente — todos os 16 tipos de evento de ação disponíveis para as features consumidoras.
 
@@ -93,11 +93,11 @@ Conforme `plan.md`, "Project Structure":
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Implementar factories de finalização em `eventos.ts`: `FATURAMENTO_FALHOU` (`{ operacao: 'FATURAR' | 'SUSPENDER' }`), `VENDA_FINALIZADA`, `VENDA_SUSPENSA` em `src/client/domain/auditoria/eventos.ts` (depende de T022, mesmo arquivo)
-- [ ] T011 [US2] Implementar `descartarAuditoria()` (esvazia o array sem registrar evento; só deve ser chamado após entrega bem-sucedida ao ERP) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T004)
-- [ ] T012 [P] [US2] Implementar `serializarLogAuditoria(eventos)` (`JSON.stringify` puro, sem dependência do slice) em `src/client/domain/auditoria/serializarLog.ts`
-- [ ] T013 [US2] Teste unitário dos 3 tipos de evento de finalização em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T010 e T009, mesmo arquivo)
-- [ ] T014 [US2] Teste de integração em `tests/unit/domain/auditoria/serializarLog.spec.ts`: ordem cronológica estritamente crescente, round-trip `JSON.stringify`/`JSON.parse`, e cenário de reenvio após `FATURAMENTO_FALHOU` sem reset do array (FR-006/FR-007, AUDIT-09 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 87) (depende de T011, T012)
+- [X] T010 [US2] Implementar factories de finalização em `eventos.ts`: `FATURAMENTO_FALHOU` (`{ operacao: 'FATURAR' | 'SUSPENDER' }`), `VENDA_FINALIZADA`, `VENDA_SUSPENSA` em `src/client/domain/auditoria/eventos.ts` (depende de T022, mesmo arquivo)
+- [X] T011 [US2] Implementar `descartarAuditoria()` (esvazia o array sem registrar evento; só deve ser chamado após entrega bem-sucedida ao ERP) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T004)
+- [X] T012 [P] [US2] Implementar `serializarLogAuditoria(eventos)` (`JSON.stringify` puro, sem dependência do slice) em `src/client/domain/auditoria/serializarLog.ts`
+- [X] T013 [US2] Teste unitário dos 3 tipos de evento de finalização em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T010 e T009, mesmo arquivo)
+- [X] T014 [US2] Teste de integração em `tests/unit/domain/auditoria/serializarLog.spec.ts`: ordem cronológica estritamente crescente, round-trip `JSON.stringify`/`JSON.parse`, e cenário de reenvio após `FATURAMENTO_FALHOU` sem reset do array (FR-006/FR-007, AUDIT-09 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 87) (depende de T011, T012)
 
 **Checkpoint**: User Story 2 completa — histórico pronto para ser consumido pela feature 004 no payload de `FaturarNFCe`.
 
@@ -107,9 +107,9 @@ Conforme `plan.md`, "Project Structure":
 
 **Purpose**: Verificações finais que atravessam as duas user stories
 
-- [ ] T015 [P] Rodar a suíte completa (`eventos.spec.ts` + `serializarLog.spec.ts`) e confirmar compilação limpa em TypeScript `strict` (sem `any`)
-- [ ] T016 Revisão de responsabilidade única (Constitution II/SOLID): confirmar que `auditoriaSlice.ts`/`eventos.ts` não contêm regra de negócio de cliente/vendedor/produto/pagamento — só recebem `detalhes` já normalizados
-- [ ] T017 Registrar como pendência de integração a execução dos Cenários 1–4 de `quickstart.md`, que só podem ser validados ponta a ponta depois que as features consumidoras (003/004/005/006/008/009/010/012/013/014) implementarem seus próprios call sites de `registrarEventoAuditoria` — não bloqueia o fechamento desta feature (FR-009, mecanismo sem tela própria)
+- [X] T015 [P] Rodar a suíte completa (`eventos.spec.ts` + `serializarLog.spec.ts`) e confirmar compilação limpa em TypeScript `strict` (sem `any`)
+- [X] T016 Revisão de responsabilidade única (Constitution II/SOLID): confirmar que `auditoriaSlice.ts`/`eventos.ts` não contêm regra de negócio de cliente/vendedor/produto/pagamento — só recebem `detalhes` já normalizados
+- [X] T017 Registrar como pendência de integração a execução dos Cenários 1–4 de `quickstart.md`, que só podem ser validados ponta a ponta depois que as features consumidoras (003/004/005/006/008/009/010/012/013/014) implementarem seus próprios call sites de `registrarEventoAuditoria` — não bloqueia o fechamento desta feature (FR-009, mecanismo sem tela própria) — registrada como **item 38** em `.specs/project/PENDENCIES.md`, seção 2
 
 ---
 
