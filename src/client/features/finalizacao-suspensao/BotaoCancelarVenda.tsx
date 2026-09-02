@@ -25,7 +25,11 @@ export interface BotaoCancelarVendaProps {
   /** Layout compacto (mobile): só o ícone de lixeira. */
   readonly compacto?: boolean;
   readonly enviando?: boolean;
-  /** Há pagamento aprovado não removível (`FR-005`, AD-042). */
+  /**
+   * A suspensão não está disponível. Dois motivos hoje, decididos pelo call
+   * site: não há item na venda (nada a suspender) ou já existe pagamento
+   * aprovado não removível (`FR-005`, AD-042).
+   */
   readonly bloqueado?: boolean;
 }
 

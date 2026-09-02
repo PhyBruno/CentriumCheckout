@@ -1,6 +1,8 @@
 import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useVendaStore } from '../../stores/vendaStore';
+import { linhasAtivas } from '../../domain/precificacao/linha';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
@@ -79,6 +81,16 @@ export function ProvedorFinalizacaoVenda({
   );
 }
 
+/**
+ * Não há o que suspender numa venda sem item: `SUSPENDER` criaria um rascunho
+ * vazio no ERP, que o operador teria de limpar depois (pedido do usuário,
+ * 2026-09-02). Linha cancelada não conta — ela permanece no array por
+ * rastreabilidade (`CART-08`), mas não é venda a suspender.
+ */
+function useVendaTemItem(): boolean {
+  return useVendaStore((estado) => linhasAtivas(estado.linhas).length > 0);
+}
+
 function useFinalizacaoVenda(): ApiFinalizacaoVenda {
   const api = useContext(ContextoFinalizacao);
   if (api === null) {
@@ -101,6 +113,7 @@ function useFinalizacaoVenda(): ApiFinalizacaoVenda {
  */
 export function BarraAtalhosVenda(): ReactElement {
   const { estado, suspender } = useFinalizacaoVenda();
+  const temItem = useVendaTemItem();
   const travado = estado.tipo === 'enviando' || estado.tipo === 'falha-rede';
 
   return (
@@ -112,6 +125,7 @@ export function BarraAtalhosVenda(): ReactElement {
             void suspender();
           }}
           enviando={travado}
+          bloqueado={!temItem}
         />
       </div>
     </div>
@@ -140,15 +154,6 @@ export function AcoesFinaisVenda(): ReactElement {
         </p>
       )}
 
-      {/* Suspender não emite documento fiscal — o operador só precisa saber que
-          o rascunho ficou do lado do servidor, que é o que distingue suspender
-          de descartar. */}
-      {estado.tipo === 'sucesso' && estado.notaFiscal === null && (
-        <p role="status" className="text-sm text-[var(--cc-color-body)]">
-          Venda suspensa. O rascunho continua disponível para retomada.
-        </p>
-      )}
-
       <BotaoFinalizarVenda
         onFinalizar={() => {
           void finalizar();
@@ -168,6 +173,7 @@ export function AcoesFinaisVenda(): ReactElement {
  */
 export function AcoesVendaCompactas(): ReactElement {
   const { estado, suspender } = useFinalizacaoVenda();
+  const temItem = useVendaTemItem();
   const travado = estado.tipo === 'enviando' || estado.tipo === 'falha-rede';
 
   return (
@@ -181,6 +187,7 @@ export function AcoesVendaCompactas(): ReactElement {
         }}
         compacto
         enviando={travado}
+        bloqueado={!temItem}
       />
     </div>
   );

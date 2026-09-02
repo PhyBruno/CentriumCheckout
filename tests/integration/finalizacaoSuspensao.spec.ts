@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { CheckoutFaturarNFCe } from '../../src/client/domain/venda/montarRetratoVenda';
 import { DialogoDocumentoFiscal } from '../../src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal';
+import {
+  BarraAtalhosVenda,
+  ProvedorFinalizacaoVenda,
+} from '../../src/client/features/finalizacao-suspensao/AcoesFinaisVenda';
 import {
   useFinalizarOuSuspenderVenda,
   type FinalizacaoDeps,
@@ -420,5 +425,97 @@ describe('classificação da falha vem da origem, não da mensagem (research.md 
 
     expect(enviar).toHaveBeenCalledTimes(1);
     expect(result.current.estado.tipo).toBe('falha-rede');
+  });
+});
+
+/**
+ * `children` entra no objeto de props, não como terceiro argumento de
+ * `createElement`: o tipo de `ProvedorFinalizacaoVendaProps` o declara
+ * obrigatório, e o overload variádico não o satisfaz sob `tsc`.
+ */
+function renderizarAtalhos(cenario: Cenario) {
+  return createElement(
+    cenario.wrapper,
+    null,
+    createElement(ProvedorFinalizacaoVenda, {
+      deps: cenario.deps,
+      children: createElement(BarraAtalhosVenda),
+    }),
+  );
+}
+
+describe('correções do usuário (2026-09-02)', () => {
+  it('desabilita "Cancelar venda" enquanto a venda não tem item', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
+    useVendaStore.getState().limparCarrinho();
+
+    render(renderizarAtalhos(cenario));
+
+    expect(screen.getByTestId('botao-cancelar-venda')).toBeDisabled();
+  });
+
+  it('habilita "Cancelar venda" assim que existe linha ativa', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
+
+    render(renderizarAtalhos(cenario));
+
+    expect(screen.getByTestId('botao-cancelar-venda')).toBeEnabled();
+  });
+
+  it('não conta linha cancelada como venda a suspender (CART-08)', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
+    useVendaStore.setState({ linhas: [linhaDe({ cancelada: true })] });
+
+    render(renderizarAtalhos(cenario));
+
+    expect(screen.getByTestId('botao-cancelar-venda')).toBeDisabled();
+  });
+
+  it('comunica a suspensão por notificação, não por texto fixo na tela', async () => {
+    const notificacoes: string[] = [];
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }], {
+      notificar: (mensagem) => {
+        notificacoes.push(mensagem);
+      },
+    });
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.suspender();
+    });
+
+    expect(notificacoes).toEqual(['Venda suspensa. O rascunho continua disponível para retomada.']);
+  });
+
+  it('não notifica nada ao finalizar — quem comunica é o modal do documento fiscal', async () => {
+    const notificacoes: string[] = [];
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }], {
+      notificar: (mensagem) => {
+        notificacoes.push(mensagem);
+      },
+    });
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(notificacoes).toEqual([]);
+  });
+
+  it('fecha o modal do documento fiscal com ESC', async () => {
+    const fechado = vi.fn();
+    render(
+      createElement(DialogoDocumentoFiscal, {
+        notaFiscal: NOTA_FISCAL_VALIDA,
+        tipoImpressao: 'P',
+        cadMaqHost: '127.0.0.1:4545',
+        onFechar: fechado,
+      }),
+    );
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(fechado).toHaveBeenCalledTimes(1);
   });
 });

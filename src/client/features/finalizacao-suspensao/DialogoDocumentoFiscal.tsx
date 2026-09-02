@@ -98,6 +98,22 @@ export function DialogoDocumentoFiscal({
     };
   }, [cadMaqHost, impressaoDeps, mecanismo, notaFiscal.XMLImpressao]);
 
+  // ESC fecha o modal (pedido do usuário, 2026-09-02). Só aqui: fechar é uma
+  // saída segura — a venda já foi emitida e o PDF continua disponível pelo
+  // ERP. O diálogo de reenvio não ganha o mesmo atalho de propósito; lá a
+  // tecla precisa ser uma decisão consciente do operador (`FR-004`).
+  useEffect(() => {
+    const aoTeclar = (evento: KeyboardEvent): void => {
+      if (evento.key === 'Escape') {
+        onFechar();
+      }
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => {
+      window.removeEventListener('keydown', aoTeclar);
+    };
+  }, [onFechar]);
+
   const pdfHref = `data:application/pdf;base64,${notaFiscal.PDFImpressao}`;
   const houveFalha = estado.tipo === 'pdf' && estado.falhaDaImpressao !== null;
 

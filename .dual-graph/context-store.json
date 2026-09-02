@@ -4715,5 +4715,17 @@
       "src/client/App.tsx"
     ],
     "date": "2026-09-02"
+  },
+  {
+    "type": "decision",
+    "content": "AD-126: suspensao vira toast; cancelar exige item; ESC no modal; toasts top-right",
+    "tags": [
+      "004",
+      "ui"
+    ],
+    "files": [
+      "src/client/main.tsx"
+    ],
+    "date": "2026-09-02"
   }
 ]

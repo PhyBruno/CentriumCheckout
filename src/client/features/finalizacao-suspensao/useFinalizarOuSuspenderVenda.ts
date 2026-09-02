@@ -70,6 +70,8 @@ export interface FinalizacaoDeps {
   /** Feature 012 — vendedor selecionado, nunca o operador logado (`FR-010`). */
   readonly vendedorCodigo?: () => number;
   readonly avisar?: (mensagem: string) => void;
+  /** Confirmação de desfecho bem-sucedido — toast, não texto na tela. */
+  readonly notificar?: (mensagem: string) => void;
   /** Injetável para o teste da máquina de estados não tocar a rede. */
   readonly enviar?: (
     retrato: ReturnType<typeof montarRetratoVenda>,
@@ -95,6 +97,8 @@ const AVISO_SUSPENSAO_BLOQUEADA =
 
 const ERRO_SEM_CONFIGURACAO =
   'Configuração do ponto de venda indisponível: a venda não pode ser finalizada nem suspensa.';
+
+const MENSAGEM_VENDA_SUSPENSA = 'Venda suspensa. O rascunho continua disponível para retomada.';
 
 const ESTADO_INICIAL: EstadoEnvio = { tipo: 'ocioso' };
 
@@ -185,6 +189,17 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           // (`FR-002` da feature 001) — foi exatamente o que o E2E desta
           // feature flagrou ao fechar o item 38 de `PENDENCIES.md`.
           abrirSessaoDeVenda('NOVA');
+          // Suspender não abre modal nenhum — o desfecho é comunicado por
+          // toast (pedido do usuário, 2026-09-02). Texto fixo na tela ficaria
+          // preso ao lado do botão até o operador mexer em outra coisa.
+          if (operacao === 'SUSPENDER') {
+            const notificar = injetadas.notificar;
+            if (notificar === undefined) {
+              gooeyToast.success(MENSAGEM_VENDA_SUSPENSA);
+            } else {
+              notificar(MENSAGEM_VENDA_SUSPENSA);
+            }
+          }
           aplicarEstado({ tipo: 'sucesso', operacao, notaFiscal: resultado.notaFiscal });
           return;
 

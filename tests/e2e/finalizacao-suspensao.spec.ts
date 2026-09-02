@@ -194,7 +194,10 @@ test.describe('User Story 2 — suspender a venda em digitação (T026)', () => 
 
     await page.getByTestId('botao-cancelar-venda').click();
 
-    await expect(page.getByText(/venda suspensa/i)).toBeVisible();
+    // A confirmação é um toast do Goey (pedido do usuário, 2026-09-02), não
+    // texto fixo na tela. O texto aparece duas vezes — na região `live` e no
+    // corpo do toast —, daí o `.first()`.
+    await expect(page.getByText(/venda suspensa/i).first()).toBeVisible();
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
 
     const { retrato } = await ultimoRetrato(request);

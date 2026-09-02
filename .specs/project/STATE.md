@@ -1376,6 +1376,20 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 **Impact:** `src/client/App.tsx`, `src/client/features/finalizacao-suspensao/{AcoesFinaisVenda,DialogoDocumentoFiscal,DialogoConfirmarReenvio}.tsx`, `src/client/features/pagamento/PainelPagamentoETotais.tsx` (novo), `src/client/features/carrinho/GridItens.tsx`, `src/client/styles/global.css`, `tests/unit/client/carrinho/GridItens.spec.tsx`.
 
 
+### AD-126: Suspensão vira toast, `Cancelar venda` exige item no carrinho, ESC fecha o modal de documento fiscal e as notificações passam ao canto superior direito (2026-09-02)
+
+**Decision:** Quatro correções diretas do usuário sobre a UI da feature 004:
+
+1. **`Cancelar venda` fica desabilitado enquanto a venda não tem linha ativa.** Suspender uma venda vazia criaria um rascunho sem item no ERP, que o operador teria de limpar depois. Linha **cancelada não conta**: ela permanece no array por rastreabilidade (`CART-08`), mas não é venda a suspender. A prop `bloqueado` de `BotaoCancelarVenda` passa a cobrir dois motivos decididos pelo call site — sem item, ou pagamento aprovado não removível (`FR-005`).
+2. **ESC fecha o modal de documento fiscal.** Só ele: a venda já foi emitida e o PDF continua disponível pelo ERP, então sair é seguro. O `DialogoConfirmarReenvio` **não** ganha o mesmo atalho de propósito — ali a tecla precisa ser uma decisão consciente do operador (`FR-004`/AD-038).
+3. **A confirmação de suspensão vira toast**, em vez de texto fixo ao lado do botão. Emitida pelo hook orquestrador na transição de sucesso de `SUSPENDER`, por uma dependência `notificar` injetável (default `gooeyToast.success`) — simétrica ao `avisar` que já existia para os bloqueios.
+4. **`GooeyToaster` passa a `position="top-right"`.** No rodapé da tela ficam o atalho de cancelar e o botão de finalizar; um toast embaixo à direita cobria justamente a ação que o operador acabou de tentar.
+
+**Impact:** `src/client/main.tsx`, `src/client/features/finalizacao-suspensao/{AcoesFinaisVenda,BotaoCancelarVenda,DialogoDocumentoFiscal,useFinalizarOuSuspenderVenda}.tsx?`, `tests/integration/finalizacaoSuspensao.spec.ts`, `tests/e2e/finalizacao-suspensao.spec.ts`.
+
+**Nota de teste:** o texto do toast aparece **duas vezes** no DOM (região `live` do Goey e corpo do toast), então asserções de E2E sobre ele precisam de âncora (`.first()`), senão caem em violação de modo estrito do Playwright.
+
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._
