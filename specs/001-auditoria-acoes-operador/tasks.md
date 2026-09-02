@@ -66,7 +66,7 @@ Conforme `plan.md`, "Project Structure":
 
 **Goal**: Dispatcher tipado + as 16 factory functions de eventos de ação (cliente, vendedor, produto, pagamento, validação prévia, importação de DAV, venda rápida) que as features de negócio (003, 005, 006, 008, 009, 010, 012, 013, 014) vão consumir via `registrarEventoAuditoria`.
 
-**Independent Test**: Para cada tipo de evento de ação, chamar a factory correspondente e `registrarEventoAuditoria`, e verificar no array do slice o `tipo`, o shape de `detalhes` e o `timestamp` ISO 8601 estritamente crescente — testável sem depender das features consumidoras (003/005/006/008/009/010/012/013/014) ainda não implementadas.
+**Independent Test**: Para cada tipo de evento de ação, chamar a factory correspondente e `registrarEventoAuditoria`, e verificar no array do slice o `tipo`, o shape de `detalhes` e o `timestamp` em ISO 8601, na ordem de inserção do array (ordem autoritativa; o `timestamp` é não-decrescente, não estritamente crescente — resolução de milissegundo) — testável sem depender das features consumidoras (003/005/006/008/009/010/012/013/014) ainda não implementadas.
 
 ### Implementation for User Story 1
 
@@ -97,7 +97,7 @@ Conforme `plan.md`, "Project Structure":
 - [X] T011 [US2] Implementar `descartarAuditoria()` (esvazia o array sem registrar evento; só deve ser chamado após entrega bem-sucedida ao ERP) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T004)
 - [X] T012 [P] [US2] Implementar `serializarLogAuditoria(eventos)` (`JSON.stringify` puro, sem dependência do slice) em `src/client/domain/auditoria/serializarLog.ts`
 - [X] T013 [US2] Teste unitário dos 3 tipos de evento de finalização em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T010 e T009, mesmo arquivo)
-- [X] T014 [US2] Teste de integração em `tests/unit/domain/auditoria/serializarLog.spec.ts`: ordem cronológica estritamente crescente, round-trip `JSON.stringify`/`JSON.parse`, e cenário de reenvio após `FATURAMENTO_FALHOU` sem reset do array (FR-006/FR-007, AUDIT-09 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 87) (depende de T011, T012)
+- [X] T014 [US2] Teste de integração em `tests/unit/domain/auditoria/serializarLog.spec.ts`: ordem de inserção do array preservada na serialização (com `timestamp` não-decrescente), round-trip `JSON.stringify`/`JSON.parse`, e cenário de reenvio após `FATURAMENTO_FALHOU` sem reset do array (FR-006/FR-007, AUDIT-09 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 87) (depende de T011, T012)
 
 **Checkpoint**: User Story 2 completa — histórico pronto para ser consumido pela feature 004 no payload de `FaturarNFCe`.
 

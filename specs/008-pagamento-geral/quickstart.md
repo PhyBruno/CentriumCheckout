@@ -128,7 +128,7 @@ Aplicar uma forma com `FormaMeioPagtoNFe = 'DuplicataMercantil'` e afirmar que o
 
 ## Cenário 8 — Auditoria (`FR-017`)
 
-Executar os cenários 3, 5 e 6 numa mesma venda e inspecionar o array de auditoria ao final. Deve conter, em ordem cronológica estritamente crescente: `CONDICAO_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_APLICADA` (×N), `FORMA_PAGAMENTO_REMOVIDA`, `VALE_DEVOLUCAO_USADO` e `PAGAMENTO_RECUSADO`. Serializado por `serializarLogAuditoria`, o resultado é round-trip parseável (contrato da feature 001).
+Executar os cenários 3, 5 e 6 numa mesma venda e inspecionar o array de auditoria ao final. Deve conter, nesta ordem de posição no array — que é a ordem autoritativa: `CONDICAO_PAGAMENTO_APLICADA`, `FORMA_PAGAMENTO_APLICADA` (×N), `FORMA_PAGAMENTO_REMOVIDA`, `VALE_DEVOLUCAO_USADO` e `PAGAMENTO_RECUSADO`. Não afirmar `timestamp` estritamente crescente entre eventos consecutivos: o carimbo tem resolução de milissegundo, então duas ações no mesmo milissegundo real empatam sem que isso seja erro (ver `specs/001-auditoria-acoes-operador/contracts/auditoria-events.md`, "Dispatcher"). Serializado por `serializarLogAuditoria`, o resultado é round-trip parseável (contrato da feature 001).
 
 ---
 
