@@ -17,7 +17,7 @@ Guia de validação ponta a ponta para confirmar que o mecanismo de auditoria fu
 5. Aplicar uma forma de pagamento.
 6. Confirmar "Finalizar Venda".
 
-**Resultado esperado**: inspecionando o payload de rede de `POST /ApiCentriumOAuth/FaturarNFCe` (dev tools → Network), o campo `Log` é uma string JSON não vazia. Parseando `Log` (`JSON.parse`), o array contém, nesta ordem: `VENDA_INICIADA` (`detalhes.origem: "NOVA"`), evento de cliente, evento de vendedor, 2× `PRODUTO_INSERIDO`, `FORMA_PAGAMENTO_APLICADA`, `VENDA_FINALIZADA` — com `timestamp` estritamente crescente entre eventos consecutivos.
+**Resultado esperado**: inspecionando o payload de rede de `POST /ApiCentriumOAuth/FaturarNFCe` (dev tools → Network), o campo `Log` é uma string JSON não vazia. Parseando `Log` (`JSON.parse`), o array contém, nesta ordem: `VENDA_INICIADA` (`detalhes.origem: "NOVA"`), evento de cliente, evento de vendedor, 2× `PRODUTO_INSERIDO`, `FORMA_PAGAMENTO_APLICADA`, `VENDA_FINALIZADA` — nesta ordem de posição no array, que é a ordem autoritativa. O `timestamp` entre eventos consecutivos é **não-decrescente**, não estritamente crescente: `new Date().toISOString()` tem resolução de milissegundo, então duas ações no mesmo milissegundo real (ex.: bipagem rápida) recebem `timestamp` iguais sem que isso indique erro.
 
 ## Cenário 2 — Suspensão em vez de finalização
 

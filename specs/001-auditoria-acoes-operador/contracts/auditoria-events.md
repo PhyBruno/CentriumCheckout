@@ -6,10 +6,12 @@ Este é o contrato que as demais features (003, 004, 005, 006, 008, 009, 010, 01
 
 ```ts
 // src/client/stores/slices/auditoriaSlice.ts
-function registrarEventoAuditoria(evento: EventoAuditoriaSemTimestamp): void;
+function registrarEventoAuditoria(evento: EventoAuditoriaRegistravel): void;
 ```
 
-- `EventoAuditoriaSemTimestamp` = `Omit<EventoAuditoria, 'timestamp'>` — quem chama não fornece o `timestamp`; o slice atribui `new Date().toISOString()` no momento do `push`, garantindo ordem cronológica estritamente crescente mesmo se o call site atrasar.
+- `EventoAuditoriaSemTimestamp` e `EventoAuditoriaRegistravel` são tipos **exportados por `src/client/domain/auditoria/eventos.ts`** — importe-os de lá, não reescreva a fórmula. Ambos são construídos com `Omit` **distributivo** sobre a união discriminada `EventoAuditoria` (aplicado membro a membro, ex. `T extends unknown ? Omit<T, 'timestamp'> : never`), não um `Omit<EventoAuditoria, 'timestamp'>` direto: `Omit` direto sobre uma união de 20 membros colapsa a união nas chaves comuns e **perde a discriminação por `tipo`**, permitindo combinar em compilação o `tipo` de um evento com o `detalhes` de outro — por isso ninguém deve "simplificar" essa fórmula de volta a um `Omit` direto.
+- `EventoAuditoriaRegistravel` é, além disso, `EventoAuditoriaSemTimestamp` **menos** o membro `VENDA_INICIADA` — é o tipo que `registrarEventoAuditoria` aceita. `VENDA_INICIADA` é privativo de `resetarAuditoria` (ver "Ciclo de vida", abaixo): nenhuma feature de negócio deve registrá-lo por conta própria via `registrarEventoAuditoria`, sob pena de produzir esse evento no meio do histórico sem zerar o array — violação silenciosa de FR-002, invisível porque a feature não tem tela de revisão (FR-009).
+- Quem chama não fornece o `timestamp`; o slice atribui `new Date().toISOString()` no momento do `push`. Essa atribuição tem resolução de milissegundo: dois eventos originados no mesmo milissegundo real recebem `timestamp` iguais. **A ordem autoritativa é a posição no array** (ordem de inserção via `push`), não o valor de `timestamp`, que é não-decrescente — nunca estritamente crescente.
 - Chamada síncrona, sem retorno — o call site de negócio (ex.: "cliente selecionado") não precisa aguardar nem tratar erro; é um `push` em memória.
 - Cada feature de negócio usa as factory functions tipadas de `src/client/domain/auditoria/eventos.ts` (uma por `tipo`, ver `data-model.md`) para montar o `evento` antes de passar ao dispatcher — evita montar o objeto literal solto em cada call site.
 
@@ -20,7 +22,7 @@ function resetarAuditoria(origem: 'NOVA' | 'RASCUNHO' | 'DAV'): void; // zera o 
 function descartarAuditoria(): void; // esvazia o array sem registrar evento — só chamado após entrega bem-sucedida ao ERP
 ```
 
-- `resetarAuditoria` é chamado uma única vez, no início/retomada de uma sessão de venda (mesmo call site que zera o carrinho) — nunca no meio de uma venda em andamento.
+- `resetarAuditoria` é chamado uma única vez, no início/retomada de uma sessão de venda (mesmo call site que zera o carrinho) — nunca no meio de uma venda em andamento. É o **único** produtor de `VENDA_INICIADA`: esse evento não pertence a `EventoAuditoriaRegistravel` (ver "Dispatcher", acima), então nenhum call site de feature de negócio consegue registrá-lo diretamente via `registrarEventoAuditoria`.
 - `descartarAuditoria` é chamado só pela feature 004 (finalização/suspensão), depois de `FaturarNFCe` retornar sucesso — mesmo call site que já limpa carrinho e cache de produtos (`FIN-04`/`FIN-06`). Uma falha de rede **não** chama `descartarAuditoria`.
 
 ## Serialização para o campo `Log`

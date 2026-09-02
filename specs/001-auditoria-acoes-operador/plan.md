@@ -18,7 +18,7 @@ Um slice dedicado `auditoria`, combinado no mesmo store Zustand+Immer da venda e
 
 **Storage**: N/A — sem persistência. O array de eventos vive só em memória, com o mesmo ciclo de vida do carrinho (AD-006): não sobrevive a F5, é descartado ao final da venda (sucesso) e nunca é gravado em Dexie/localStorage/IndexedDB.
 
-**Testing**: Vitest + Testing Library — teste unitário por tipo de evento (20 variantes, ver `data-model.md`) cobrindo a action creator e o formato de `detalhes`; teste de integração do slice cobrindo ordem cronológica estritamente crescente e a serialização para o campo `Log` (parse de volta ao array original). Sem E2E dedicado (mecanismo sem tela, FR-009) — a cobertura E2E do campo `Log` é responsabilidade do teste ponta a ponta de finalização/suspensão (feature 004, `specs/004-finalizacao-suspensao-venda/`), que só precisa afirmar que `Log` chega preenchido e parseável.
+**Testing**: Vitest + Testing Library — teste unitário por tipo de evento (20 variantes, ver `data-model.md`) cobrindo a action creator e o formato de `detalhes`; teste de integração do slice cobrindo a ordem de inserção do array (autoritativa — `timestamp` é não-decrescente, não estritamente crescente, por causa da resolução de milissegundo, ver `data-model.md`, "Regras de estado") e a serialização para o campo `Log` (parse de volta ao array original). Sem E2E dedicado (mecanismo sem tela, FR-009) — a cobertura E2E do campo `Log` é responsabilidade do teste ponta a ponta de finalização/suspensão (feature 004, `specs/004-finalizacao-suspensao-venda/`), que só precisa afirmar que `Log` chega preenchido e parseável.
 
 **Target Platform**: Navegador (mesma SPA das demais features) — sem mudança de plataforma ou processo.
 
