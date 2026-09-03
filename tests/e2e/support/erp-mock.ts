@@ -415,6 +415,65 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       // (`specs/004-.../contracts/impressao-local-api.md`).
       CadMaqHost: '127.0.0.1:4545',
       TipoImpressao: config.tipoImpressao,
+      /**
+       * Catálogo de pagamento da feature 008. **Não existe endpoint dedicado**
+       * (AD-097): condições e formas chegam embutidas na sessão, e é daqui que
+       * `useCondicoesPagamento` as lê (`erp-pagamento-api.md` §1).
+       *
+       * `FormaEntrada` está em toda forma de propósito: sem ele o ERP calcula
+       * crediário zero e a validação prévia aprova exatamente o que existe para
+       * barrar (`FR-022`/AD-111). `FormaFpgUtiCar` vazio significa **elegível**
+       * para vale devolução (AD-048) — daí o cartão de crédito ser o único com
+       * valor preenchido, para o E2E ter os dois lados da elegibilidade.
+       */
+      CondicoesDePagamento: [
+        {
+          CondicaoCodigo: 1,
+          CondicaoDescricao: 'A VISTA',
+          CondicaoPrazo: 0,
+          CondicaoMinimoEntrada: 0,
+          CondicaoDesconto: 0,
+          CondicaoDescontoMaximo: 0,
+          CondicaoFormasDePagamento: [
+            {
+              FormaCodigo: 1,
+              FormaDescricao: 'DINHEIRO',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'Dinheiro',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 2,
+              FormaDescricao: 'CARTAO CREDITO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'CartaoCredito',
+              FormaIntegracaoCartao: '1',
+              FormaTipoTransacaoTEF: 'CREDITO',
+              FormaFpgUtiCar: 'VDV',
+            },
+            {
+              FormaCodigo: 3,
+              FormaDescricao: 'PIX',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'Pix',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+          ],
+        },
+      ],
+      /**
+       * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
+       * as formas roteando para `NENHUMA` (`resolverIntegracao`), de modo que um
+       * pagamento aplicado já entra `APROVADO` sem depender das features 009/010,
+       * que não existem. É também o cenário do fluxo dourado do quickstart
+       * ("desktop com `tefAtivo: false`").
+       */
+      ConfiguracoesTEF: { TEFAtivo: false },
+      ConfiguracoesPIX: { UtilizaCentriumPAG: false, MinimoPix: 0, TempoEspera: 10 },
     },
     messages: [],
   };

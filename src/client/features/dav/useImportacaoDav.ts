@@ -113,21 +113,22 @@ function mensagemDeErro(erro: unknown): string {
 /**
  * Portas fixas desta feature — as que não dependem de nenhum estado de React.
  *
- * `trocarVendedor` e `importarFormasDePagamento` são **stubs** até as features
- * 012 e 008 existirem (mesmo padrão da 004 para as suas dependências futuras).
- * As assinaturas já são as definitivas, desenhadas por aquelas features: ligar
- * as reais é substituir o corpo, sem tocar em `davQueries.ts` nem na UI.
+ * `trocarVendedor` ainda é **stub** até a feature 012 existir (mesmo padrão que
+ * a 004 usa para as suas dependências futuras). A assinatura já é a definitiva,
+ * desenhada por aquela feature: ligar a real é substituir o corpo, sem tocar em
+ * `davQueries.ts` nem na UI.
+ *
+ * `importarFormasDePagamento` **deixou de ser stub** com a feature 008: as
+ * formas do documento entram no slice de pagamento já como `APROVADO`/`NENHUMA`
+ * e sem passar pelo gate, porque o veredito do ERP está implícito no próprio
+ * DAV existir (`pagamento-domain-api.md` §2). Sem essa ligação, um DAV com
+ * pagamento chegava ao carrinho sem forma nenhuma e a venda seria refaturada
+ * como se ninguém tivesse pago.
  */
-function stubsDeFeaturesFuturas(): Pick<
-  ImportacaoVendaDeps,
-  'trocarVendedor' | 'importarFormasDePagamento'
-> {
+function stubsDeFeaturesFuturas(): Pick<ImportacaoVendaDeps, 'trocarVendedor'> {
   return {
     trocarVendedor: () => {
       /* feature 012 — `vendedorSlice.trocarVendedor({ codigo, nome })`. */
-    },
-    importarFormasDePagamento: () => {
-      /* feature 008 — `pagamentoSlice.importarFormasDePagamento(formas)`. */
     },
   };
 }
@@ -181,6 +182,7 @@ export function useImportacaoDav(
       // distingue esta seleção de cliente das outras três da feature 005.
       selecionarCliente: (cliente) => venda.selecionarCliente(cliente, 'DAV'),
       registrarEventoAuditoria: venda.registrarEventoAuditoria,
+      importarFormasDePagamento: venda.importarFormasDePagamento,
       buscarDescricaoProduto: async (codigoProduto) => {
         const contexto = contextoPrecificacaoAtual();
         if (contexto === null) {

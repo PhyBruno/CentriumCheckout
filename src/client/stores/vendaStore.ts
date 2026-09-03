@@ -9,9 +9,17 @@ import { criarClienteSlice } from './slices/clienteSlice';
 import type { ClienteDeps, ClienteSlice } from './slices/clienteSlice';
 import { criarIdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import type { IdentidadeVendaDeps, IdentidadeVendaSlice } from './slices/identidadeVendaSlice';
+import { criarPagamentoSlice } from './slices/pagamentoSlice';
+import type { PagamentoDeps, PagamentoSlice } from './slices/pagamentoSlice';
 import { useSessionStore } from './sessionStore';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
+import type { CapacidadesPagamento } from '../domain/pagamento/roteamentoIntegracao';
+import type { LinhaRateavel } from '../domain/pagamento/descontoCapa';
+import { linhasAtivas, totalLinha, totalVenda } from '../domain/precificacao/linha';
 import { fetchProduto } from '../services/produto/produtoQueries';
+import { validarTicket } from '../services/pagamento/pagamentoQueries';
+import { paraCapacidadesPagamento } from '../services/pagamento/pagamentoMapper';
+import { sessaoPagamentoSchema } from '../../shared/schemas/pagamento.schema';
 
 /**
  * Store da venda em andamento — **sem `persist`** (AD-006, Constitution VI):
@@ -20,11 +28,15 @@ import { fetchProduto } from '../services/produto/produtoQueries';
  *
  * Montado pelo padrão de slices do Zustand para ficar aberto à extensão sem
  * alteração (Open/Closed): cada feature de venda acrescenta o seu slice à
- * interseção de `VendaState` e o seu slice creator ao spread abaixo —
- * pagamento (008), vendedor (012). Por ora existem os slices de auditoria
- * (001), carrinho (003), identidade da venda (004) e cliente (005).
+ * interseção de `VendaState` e o seu slice creator ao spread abaixo — falta o
+ * vendedor (012). Por ora existem os slices de auditoria (001), carrinho (003),
+ * identidade da venda (004), cliente (005) e pagamento (008).
  */
-export type VendaState = AuditoriaSlice & CarrinhoSlice & IdentidadeVendaSlice & ClienteSlice;
+export type VendaState = AuditoriaSlice &
+  CarrinhoSlice &
+  IdentidadeVendaSlice &
+  ClienteSlice &
+  PagamentoSlice;
 
 /** Configuração do PDV ainda não carregada quando o carrinho precisou dela. */
 export class ErroSessaoSemConfiguracao extends Error {
@@ -67,14 +79,20 @@ function tipoCodProdutoDoBootstrap(): string {
 /**
  * Dependências do carrinho na composição real (Dependency Inversion — D8).
  *
- * `podeMutarCarrinho` é o ponto que a 008 fecha sem tocar no carrinho,
- * substituindo o predicado pela regra de bloqueio pós-pagamento (T038); até lá
- * vale o default abaixo, que descreve uma venda sem pagamento. `clienteAtual`
- * já está fechado pela 005: lê o slice de cliente do próprio store combinado,
- * sem o carrinho importar `clienteSlice.ts`.
+ * `podeMutarCarrinho` está fechado pela 008: lê o seletor do slice de pagamento
+ * no próprio store combinado — `false` a partir de qualquer pagamento
+ * **aprovado** (invariante I7, AD-030/`CART-09`). Antes da 008 aqui havia o
+ * stub `() => true`, que descrevia uma venda sem pagamento. `clienteAtual` já
+ * estava fechado pela 005 pelo mesmo mecanismo: nenhum slice importa o outro,
+ * a leitura é sempre pelo store montado.
+ *
+ * O mesmo predicado serve carrinho, cliente e identidade da venda — uma segunda
+ * regra de "quando a venda pode mudar" divergiria em silêncio (AD-043). Com a
+ * 008 ele passa a congelar também cliente, vendedor e desconto de capa, que é o
+ * alcance ampliado de I12/`FR-023` (AD-113).
  */
 export const carrinhoDepsPadrao: CarrinhoDeps = {
-  podeMutarCarrinho: () => true,
+  podeMutarCarrinho: () => useVendaStore.getState().podeMutarCarrinho(),
   tipoPrecoAtual: tipoPrecoDoBootstrap,
   clienteAtual: () => {
     const cliente = useVendaStore.getState().clienteAtual;
@@ -130,10 +148,83 @@ export function identidadeVendaDepsPadrao(depsCarrinho: CarrinhoDeps): Identidad
   };
 }
 
+/**
+ * `ConfiguracoesTEF.TEFAtivo` e `ConfiguracoesPIX.UtilizaCentriumPAG` do
+ * bootstrap (feature 002), lidos **no momento da chamada**.
+ *
+ * Leitura síncrona do `sessionStore` — e não da query de catálogo — porque o
+ * roteamento de integração acontece dentro de `aplicarPagamento`, que não pode
+ * esperar rede para decidir se aciona TEF/PIX. A query com `staleTime` de 30
+ * min (`PAY-01`) continua sendo a origem do **catálogo** exibido; aqui só
+ * interessam as duas flags, que a 002 já persistiu.
+ *
+ * Bootstrap ausente ou fora do contrato ⇒ **integração desligada**, não
+ * habilitada por otimismo: assumir `true` faria o Checkout disparar uma cobrança
+ * externa num ambiente que talvez nem tenha terminal, e o operador só
+ * descobriria com o cliente na frente do caixa.
+ */
+function capacidadesDoBootstrap(): CapacidadesPagamento {
+  const registro = useSessionStore.getState().registro;
+  if (registro === null) {
+    return { tefAtivo: false, pixAtivo: false };
+  }
+
+  const validado = sessaoPagamentoSchema.safeParse(registro.SessaoUsuario);
+  if (!validado.success) {
+    console.warn(
+      'Bootstrap sem bloco de pagamento válido: TEF e PIX seguem desligados.',
+      validado.error.message,
+    );
+    return { tefAtivo: false, pixAtivo: false };
+  }
+
+  return paraCapacidadesPagamento(validado.data);
+}
+
+/** Linhas ativas no formato que o rateio do desconto de capa consome (AD-098). */
+function linhasRateaveisDoCarrinho(): readonly LinhaRateavel[] {
+  return linhasAtivas(useVendaStore.getState().linhas).map((linha) => ({
+    idLinha: linha.idLinha,
+    totalLiquido: totalLinha(linha),
+  }));
+}
+
+/**
+ * Dependências do pagamento na composição real (T041,
+ * `contracts/pagamento-domain-api.md` §2).
+ *
+ * Três portas ainda são **stubs**, e cada uma tem dono declarado. As assinaturas
+ * já são as definitivas, desenhadas pelas features que as implementarão: ligar
+ * as reais é substituir o corpo aqui, sem tocar no slice nem na UI — mesmo
+ * padrão que a 004 e a 006 já usaram para as suas dependências futuras.
+ *
+ * `validarInsercao` devolver sempre `ACEITA` é o comportamento **correto**
+ * enquanto a 014 não existe: o gate é um filtro adicional sobre regras do ERP
+ * (limite de crédito, crediário), não a validação local — essa já roda antes
+ * dele, em `podeAplicarForma`, e continua valendo (`FR-020`).
+ */
+export const pagamentoDepsPadrao: PagamentoDeps = {
+  subtotalCarrinho: () => totalVenda(useVendaStore.getState().linhas),
+  linhasRateaveis: linhasRateaveisDoCarrinho,
+  capacidades: capacidadesDoBootstrap,
+  validarTicket: (codigo) => validarTicket(codigo),
+  iniciarIntegracao: () => {
+    /* features 009 (PIX) e 010 (TEF) — o veredito já foi emitido pelo domínio. */
+  },
+  validarInsercao: () => Promise.resolve({ aceita: true as const }),
+  invalidarVeredito: () => {
+    /* feature 014 — sem veredito vigente para invalidar enquanto ela não existe. */
+  },
+  avisar: (mensagem) => {
+    gooeyToast.warning(mensagem);
+  },
+};
+
 export function criarVendaStore(
   depsCarrinho: CarrinhoDeps = carrinhoDepsPadrao,
   depsCliente: ClienteDeps = clienteDepsPadrao(depsCarrinho),
   depsIdentidade: IdentidadeVendaDeps = identidadeVendaDepsPadrao(depsCarrinho),
+  depsPagamento: PagamentoDeps = pagamentoDepsPadrao,
 ) {
   return create<VendaState>()(
     immer((...args) => ({
@@ -141,6 +232,7 @@ export function criarVendaStore(
       ...criarCarrinhoSlice(depsCarrinho)(...args),
       ...criarIdentidadeVendaSlice(depsIdentidade)(...args),
       ...criarClienteSlice(depsCliente)(...args),
+      ...criarPagamentoSlice(depsPagamento)(...args),
     })),
   );
 }

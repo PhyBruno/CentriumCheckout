@@ -106,6 +106,24 @@ const MENSAGEM_VENDA_SUSPENSA = 'Venda suspensa. O rascunho continua disponível
 
 const ESTADO_INICIAL: EstadoEnvio = { tipo: 'ocioso' };
 
+/**
+ * Há pagamento aprovado por integração externa (TEF/PIX) na venda — feature
+ * 008, invariante I6 (AD-030/AD-042).
+ *
+ * É a mesma condição que torna `removerPagamento` um no-op no slice, lida aqui
+ * do estado em vez de por porta injetada porque o pagamento agora faz parte do
+ * `vendaStore`. Suspender uma venda nessa situação deixaria dinheiro já
+ * movimentado fora do Checkout preso a um rascunho: o estorno é operação do
+ * ERP/adquirente, não do caixa.
+ */
+function temPagamentoIrreversivel(): boolean {
+  return useVendaStore
+    .getState()
+    .pagamentos.some(
+      (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+    );
+}
+
 export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFinalizacaoVenda {
   const [estado, setEstado] = useState<EstadoEnvio>(ESTADO_INICIAL);
   const encerrarVenda = useEncerrarVenda();
@@ -151,6 +169,15 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       const sessao = registro.SessaoUsuario;
       const injetadas = depsRef.current;
 
+      // A parte de pagamento do retrato vem pronta da feature 008: condição,
+      // formas aprovadas e o rateio do desconto de capa (`erp-pagamento-api.md`
+      // §3). Montada **uma vez** por despacho porque o rateio é calculado na
+      // montagem — chamá-la por campo repetiria o cálculo e, pior, poderia
+      // produzir dois rateios diferentes se o carrinho mudasse no meio.
+      // As portas injetadas continuam tendo precedência: é o que mantém o teste
+      // da máquina de estados independente do slice de pagamento.
+      const pagamentosDaVenda = venda.montarPagamentosParaPayload();
+
       // Stub de T029 até a feature 012 selecionar o vendedor: usa o vendedor do
       // PDV publicado no bootstrap quando ele existe. `VendedorCodigo` ainda não
       // está no schema Zod (é campo da 012), então é lido com narrow explícito —
@@ -175,11 +202,13 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           // faturamento (`FR-007` da 006), mas o defeito era da 005.
           clienteCodigo: venda.clienteAtual?.codigoCliente ?? sessao.ClienteDefaultCodigo,
           vendedorCodigo,
-          condicaoPagamentoCodigo: injetadas.condicaoPagamentoCodigo?.() ?? 0,
+          condicaoPagamentoCodigo:
+            injetadas.condicaoPagamentoCodigo?.() ?? pagamentosDaVenda.CondicaoPagamentoCodigo,
           eventos: venda.eventos,
         },
         operacao,
-        injetadas.formasDePagamento?.() ?? [],
+        injetadas.formasDePagamento?.() ?? pagamentosDaVenda.FormasDePagamento,
+        pagamentosDaVenda.rateioDescontoCapa,
       );
 
       aplicarEstado({ tipo: 'enviando', operacao });
@@ -274,7 +303,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       // Bloqueio de suspensão por pagamento não removível — mesma regra de
       // `CART-09` (`FR-005`/`FR-006`, AD-030/AD-042). Nunca se aplica a
       // `FATURAR`: finalizar com pagamento aprovado é o caminho normal.
-      if (operacao === 'SUSPENDER' && (injetadas.temPagamentoNaoRemovivel?.() ?? false)) {
+      if (operacao === 'SUSPENDER' && (injetadas.temPagamentoNaoRemovivel?.() ?? temPagamentoIrreversivel())) {
         avisar(AVISO_SUSPENSAO_BLOQUEADA);
         return;
       }
