@@ -205,6 +205,22 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     await expect(page.getByTestId('botao-finalizar-venda')).toBeEnabled();
     await expect(page.getByTestId('botao-cancelar-venda')).toBeEnabled();
   });
+
+  test('"Cancelar venda" bloqueado explica o motivo ao ser clicado', async ({ page, request }) => {
+    await abrirTelaDeVenda(page);
+
+    // Padrão de bloqueio explicativo (pedido do usuário, 2026-09-03): o botão é
+    // `aria-disabled`, não `disabled`, para o clique poder informar a razão.
+    // (`force`: a checagem de actionability do Playwright recusa
+    // `aria-disabled`; o navegador clica sem problema.)
+    const botao = page.getByTestId('botao-cancelar-venda');
+    await expect(botao).toBeDisabled();
+    await botao.click({ force: true });
+
+    await expect(page.getByText(/nenhum item foi lançado/i).first()).toBeVisible();
+    // E nada foi suspenso: o ERP não recebeu retrato nenhum.
+    expect((await contadores(request)).faturarNFCe).toBe(0);
+  });
 });
 
 test.describe('User Story 2 — suspender a venda em digitação (T026)', () => {

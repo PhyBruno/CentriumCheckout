@@ -103,6 +103,24 @@ function useVendaTemItem(): boolean {
 }
 
 /**
+ * Por que "Cancelar venda" está bloqueado — a frase que o operador lê ao clicar
+ * no botão bloqueado (padrão de `lib/bloqueio.ts`, pedido do usuário
+ * 2026-09-03), ou `null` quando a ação está disponível.
+ *
+ * O envio vem primeiro porque é o estado mais transitório: dizer "não há itens"
+ * a quem está esperando o ERP responder seria falso.
+ */
+function motivoDeBloqueioDoCancelar(travado: boolean, temItem: boolean): string | null {
+  if (travado) {
+    return 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
+  }
+  if (!temItem) {
+    return 'Não há nada a cancelar: nenhum item foi lançado nesta venda.';
+  }
+  return null;
+}
+
+/**
  * Só se fatura o que tem valor: sem linha ativa, ou com subtotal zerado, não há
  * NFCe a emitir e o botão fica desabilitado (pedido do usuário, 2026-09-02).
  *
@@ -150,8 +168,7 @@ export function BarraAtalhosVenda(): ReactElement {
           onCancelar={() => {
             void suspender();
           }}
-          enviando={travado}
-          bloqueado={!temItem}
+          bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
         />
       </div>
       {/* Terceiro terço, encostado à direita: o vão do meio é o lugar que o
@@ -209,8 +226,7 @@ export function AcoesVendaCompactas(): ReactElement {
           void suspender();
         }}
         compacto
-        enviando={travado}
-        bloqueado={!temItem}
+        bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
       />
     </div>
   );

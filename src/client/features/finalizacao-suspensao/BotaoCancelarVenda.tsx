@@ -1,5 +1,6 @@
 import { PanelRightOpen, Trash2 } from 'lucide-react';
 import type { ReactElement } from 'react';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 
 /**
@@ -24,13 +25,18 @@ export interface BotaoCancelarVendaProps {
   readonly onCancelar: () => void;
   /** Layout compacto (mobile): só o ícone de lixeira. */
   readonly compacto?: boolean;
-  readonly enviando?: boolean;
   /**
-   * A suspensão não está disponível. Dois motivos hoje, decididos pelo call
-   * site: não há item na venda (nada a suspender) ou já existe pagamento
-   * aprovado não removível (`FR-005`, AD-042).
+   * Por que a suspensão não está disponível — a **frase que o operador lê** —,
+   * ou `null` quando está. Os motivos são decididos pelo call site: envio em
+   * andamento, nenhuma linha na venda (nada a suspender) ou pagamento aprovado
+   * não removível (`FR-005`, AD-042).
+   *
+   * É texto, e não um booleano, por causa do padrão de bloqueio explicativo
+   * desta base (`lib/bloqueio.ts`): o botão fica `aria-disabled` e clicar nele
+   * informa o motivo, em vez de não fazer nada (pedido do usuário,
+   * 2026-09-03).
    */
-  readonly bloqueado?: boolean;
+  readonly bloqueado?: MotivoBloqueio;
 }
 
 const ROTULO = 'Cancelar venda';
@@ -38,10 +44,10 @@ const ROTULO = 'Cancelar venda';
 export function BotaoCancelarVenda({
   onCancelar,
   compacto = false,
-  enviando = false,
-  bloqueado = false,
+  bloqueado = null,
 }: BotaoCancelarVendaProps): ReactElement {
-  const desabilitado = enviando || bloqueado;
+  const desabilitado = bloqueado !== null;
+  const aoClicar = acaoBloqueavel(bloqueado, onCancelar);
 
   if (compacto) {
     return (
@@ -49,12 +55,14 @@ export function BotaoCancelarVenda({
         type="button"
         data-testid="botao-cancelar-venda"
         aria-label={ROTULO}
-        disabled={desabilitado}
-        onClick={onCancelar}
+        {...atributosDeBloqueio(bloqueado)}
+        onClick={aoClicar}
         className={cn(
           'flex size-[38px] shrink-0 items-center justify-center rounded-full bg-secondary',
           'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-          desabilitado ? 'text-[var(--cc-color-muted-soft)]' : 'text-destructive',
+          desabilitado
+            ? 'cursor-not-allowed text-[var(--cc-color-muted-soft)]'
+            : 'text-destructive',
         )}
       >
         <Trash2 className="size-[19px]" aria-hidden="true" />
@@ -66,13 +74,13 @@ export function BotaoCancelarVenda({
     <button
       type="button"
       data-testid="botao-cancelar-venda"
-      disabled={desabilitado}
-      onClick={onCancelar}
+      {...atributosDeBloqueio(bloqueado)}
+      onClick={aoClicar}
       className={cn(
         'flex h-9 flex-1 items-center justify-center gap-xs rounded-full border border-border bg-card',
         'text-sm font-semibold whitespace-nowrap outline-none',
         'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-        desabilitado ? 'text-[var(--cc-color-muted-soft)]' : 'text-foreground',
+        desabilitado ? 'cursor-not-allowed text-[var(--cc-color-muted-soft)]' : 'text-foreground',
       )}
     >
       <PanelRightOpen

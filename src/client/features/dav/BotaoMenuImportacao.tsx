@@ -2,6 +2,7 @@ import { FileText } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { cn } from '@/lib/utils';
+import { atributosDeBloqueio } from '@/lib/bloqueio';
 import { mensagemDeRecusa, type ImportacaoVendaDeps } from '../../services/dav/davQueries';
 import { ModalImportacaoDav } from './ModalImportacaoDav';
 import { useImportacaoDav } from './useImportacaoDav';
@@ -34,17 +35,11 @@ export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): Re
 
   /**
    * Venda já iniciada — com cliente identificado ou item lançado, cancelado
-   * inclusive — bloqueia o atalho (pedido do usuário, 2026-09-03).
-   *
-   * O bloqueio é `aria-disabled`, **não** o `disabled` nativo (pedido do
-   * usuário, 2026-09-03): um botão com `disabled` não dispara evento nenhum, e
-   * o operador que clicava nele não recebia resposta alguma — a notificação
-   * com o motivo só aparecia justamente quando a importação era possível, ou
-   * seja, quando ela não era necessária. Com `aria-disabled` o botão continua
-   * clicável e focável para **explicar** por que não dá, enquanto leitores de
-   * tela e os próprios testes seguem lendo o controle como desabilitado.
+   * inclusive — bloqueia o atalho (pedido do usuário, 2026-09-03), pelo padrão
+   * de bloqueio explicativo desta base (`lib/bloqueio.ts`): `aria-disabled`, e
+   * não `disabled`, para que clicar informe o motivo em vez de não fazer nada.
    */
-  const bloqueado = recusa !== null;
+  const bloqueado = recusa === null ? null : mensagemDeRecusa(recusa);
 
   /**
    * A recusa é reaplicada no clique — não é só a resposta ao operador. Ela
@@ -66,14 +61,15 @@ export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): Re
       <button
         type="button"
         data-testid="botao-menu-importacao"
-        aria-disabled={bloqueado}
-        {...(recusa === null ? {} : { title: mensagemDeRecusa(recusa) })}
+        {...atributosDeBloqueio(bloqueado)}
         onClick={abrir}
         className={cn(
           'flex h-9 flex-1 items-center justify-center gap-xs rounded-full border border-border bg-card',
           'text-sm font-semibold whitespace-nowrap outline-none',
           'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-          bloqueado ? 'cursor-not-allowed text-[var(--cc-color-muted-soft)]' : 'text-foreground',
+          bloqueado === null
+            ? 'text-foreground'
+            : 'cursor-not-allowed text-[var(--cc-color-muted-soft)]',
         )}
       >
         {/* Mesmo par de estados de `BotaoCancelarVenda`, o atalho vizinho da

@@ -1,6 +1,7 @@
 import { Barcode, Minus, Plus, Search } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { rotuloTipoCodigoProduto } from '../../domain/precificacao/codigoProduto';
 import {
@@ -511,6 +512,23 @@ export function EntradaRapidaProduto(): ReactElement {
       ? !ocupado && texto.trim() !== ''
       : quantidadeLida !== null && precoLido !== null && descontoTotalLido !== null;
 
+  /**
+   * Por que o botão de inserir está bloqueado — a frase que o operador lê ao
+   * clicar nele bloqueado (padrão de `lib/bloqueio.ts`, pedido do usuário
+   * 2026-09-03), ou `null` quando dá para inserir.
+   *
+   * Os três motivos são exatamente os três termos de `podeConfirmar`, na mesma
+   * ordem: sem esse espelho, o texto poderia dizer uma coisa e o bloqueio
+   * responder a outra.
+   */
+  const bloqueioDeInsercao: MotivoBloqueio = podeConfirmar
+    ? null
+    : ocupado
+      ? 'Aguarde: o produto ainda está sendo consultado no ERP.'
+      : resolvido === null && linhaEmEdicao === null
+        ? 'Digite ou bipe o código do produto para inserir.'
+        : 'Revise quantidade, preço e desconto: há um valor inválido.';
+
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
   // produz alinhamento inconsistente entre navegadores. A altura fixa
@@ -714,8 +732,8 @@ export function EntradaRapidaProduto(): ReactElement {
             linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'
           }
           data-testid="previa-confirmar"
-          disabled={!podeConfirmar}
-          onClick={confirmar}
+          {...atributosDeBloqueio(bloqueioDeInsercao)}
+          onClick={acaoBloqueavel(bloqueioDeInsercao, confirmar)}
         >
           <Plus className="size-5" aria-hidden="true" />
         </Button>

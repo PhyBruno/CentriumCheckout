@@ -485,13 +485,24 @@ function renderizarAtalhos(cenario: Cenario) {
 }
 
 describe('correções do usuário (2026-09-02)', () => {
-  it('desabilita "Cancelar venda" enquanto a venda não tem item', () => {
+  it('desabilita "Cancelar venda" enquanto a venda não tem item, com o motivo legível no botão', async () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
     useVendaStore.getState().limparCarrinho();
 
     render(renderizarAtalhos(cenario));
 
-    expect(screen.getByTestId('botao-cancelar-venda')).toBeDisabled();
+    // `aria-disabled`, não `disabled`: o botão bloqueado precisa continuar
+    // clicável para dizer por que está bloqueado (`lib/bloqueio.ts`). O texto
+    // do motivo é afirmado aqui pelo `title`; que ele **também** vira
+    // notificação ao clicar é o que o E2E verifica, com o toast real na tela.
+    const botao = screen.getByTestId('botao-cancelar-venda');
+    expect(botao).toHaveAttribute('aria-disabled', 'true');
+    expect(botao).toHaveAttribute('title', expect.stringMatching(/nenhum item foi lançado/i));
+
+    await userEvent.click(botao);
+
+    // Clicar bloqueado não suspende nada: nenhum retrato foi ao ERP.
+    expect(cenario.enviados).toHaveLength(0);
   });
 
   it('habilita "Cancelar venda" assim que existe linha ativa', () => {
@@ -499,7 +510,7 @@ describe('correções do usuário (2026-09-02)', () => {
 
     render(renderizarAtalhos(cenario));
 
-    expect(screen.getByTestId('botao-cancelar-venda')).toBeEnabled();
+    expect(screen.getByTestId('botao-cancelar-venda')).not.toHaveAttribute('aria-disabled');
   });
 
   it('habilita "Cancelar venda" quando só restam linhas canceladas (correção de 2026-09-03)', () => {
@@ -512,7 +523,7 @@ describe('correções do usuário (2026-09-02)', () => {
     // numa venda cujos itens foram todos cancelados: nada a finalizar e nada a
     // cancelar. A linha cancelada continua no array por rastreabilidade
     // (`CART-08`) e é prova de que a venda foi digitada.
-    expect(screen.getByTestId('botao-cancelar-venda')).toBeEnabled();
+    expect(screen.getByTestId('botao-cancelar-venda')).not.toHaveAttribute('aria-disabled');
   });
 
   it('comunica a suspensão por notificação, não por texto fixo na tela', async () => {

@@ -453,4 +453,18 @@ test.describe('Barra de entrada rápida — acertos visuais de 2026-09-03 (AD-13
     // E não entra no `value` — é elemento próprio, não máscara.
     await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('0,00');
   });
+
+  test('o botão de inserir bloqueado explica o motivo ao ser clicado', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+
+    // Padrão de bloqueio explicativo (pedido do usuário, 2026-09-03): sem
+    // código digitado não há o que inserir, e o clique diz isso em vez de não
+    // fazer nada. (`force`: o Playwright recusa clique em `aria-disabled`.)
+    const inserir = page.getByTestId('previa-confirmar');
+    await expect(inserir).toBeDisabled();
+    await inserir.click({ force: true });
+
+    await expect(page.getByText(/digite ou bipe o código do produto/i).first()).toBeVisible();
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+  });
 });
