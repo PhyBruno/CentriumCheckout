@@ -536,7 +536,22 @@ test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
     // `ClienteCheckout` não tem campo de vendedor no contrato do ERP; o valor
     // é o `VendedorNome` do PDV, do bootstrap.
     await expect(page.getByTestId('pilula-vendedor')).toHaveText('Mariana Alves');
-    await expect(page.getByTestId('pilula-operador')).toHaveText('Operador de Teste');
+  });
+
+  test('o card de cliente não repete o operador, que fica só na barra superior', async ({
+    page,
+  }) => {
+    // Correção do usuário (2026-09-03, AD-136): o cabeçalho do card tinha uma
+    // pílula de Operador ao lado das de Cliente e Vendedor. As duas
+    // superfícies aparecem juntas na tela de venda, e o operador não muda
+    // durante a venda — a pílula gastava largura de um cabeçalho estreito
+    // repetindo o que a barra já diz.
+    await abrirTelaDeVenda(page);
+
+    await expect(page.getByTestId('pilula-operador')).toHaveCount(0);
+    // O dado não sumiu do produto: `SessaoUsuario.UsuarioNome` continua
+    // exibido, só que num lugar só.
+    await expect(page.getByTestId('operador-da-sessao')).toContainText('Operador de Teste');
   });
 
   test('tirar o foco do campo já busca o cliente, sem clicar em Identificar', async ({

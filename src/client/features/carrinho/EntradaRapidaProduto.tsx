@@ -30,6 +30,11 @@ import {
 } from './useCarrinho';
 
 const CENTAVOS_POR_REAL = 100;
+/**
+ * O rótulo "Quantidade" aponta para o input por `htmlFor`, não por
+ * aninhamento — ver o comentário da célula de quantidade no JSX.
+ */
+const ID_CAMPO_QUANTIDADE = 'previa-campo-quantidade';
 const UMA_UNIDADE = milesimos(MILESIMOS_POR_UNIDADE);
 const QUANTIDADE_INICIAL = milesimosDeUnidades(1);
 
@@ -54,6 +59,25 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
   }
   const unidades = Number(normalizado);
   return unidades > 0 ? milesimosDeUnidades(unidades) : null;
+}
+
+/**
+ * "R$" à esquerda do valor, como o Pencil desenha no campo de desconto do item
+ * (`design/CentriumCheckout.pen`, nó `qhuOQ` "Símbolo dinheiro desconto",
+ * Inter 12/700 em `$body`): elemento próprio, **fora** do `<input>`.
+ *
+ * É o que faz o símbolo persistir na inserção e na edição (correção do
+ * usuário, 2026-09-03) sem virar máscara: o `value` do campo continua sendo só
+ * o número, então apagar, corrigir e digitar por cima seguem funcionando como
+ * em qualquer input, o cursor nunca esbarra num prefixo protegido, e
+ * `lerCentavos` recebe exatamente o mesmo texto de antes.
+ */
+function SimboloReal({ testId }: { testId: string }): ReactElement {
+  return (
+    <span className="shrink-0 text-sm font-bold text-muted-foreground" data-testid={testId}>
+      R$
+    </span>
+  );
 }
 
 /**
@@ -108,6 +132,29 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
  * (`cc-pulso-edicao`, `global.css`) — pedido do usuário, 2026-09-03: o
  * operador precisa reconhecer à distância que o item não foi cancelado, só
  * voltou pra cá pra revisão.
+ *
+ * **Três acertos visuais pedidos pelo usuário em 2026-09-03 (AD-136)** — os
+ * três reaproximam a barra do desenho em vez de se afastarem dele:
+ *
+ * 1. Preço unitário e desconto do item passam a ficar **alinhados à
+ *    esquerda**, como o total sempre esteve: no Pencil, os três frames de
+ *    valor (`kwsQ0`, `BADmf`, `m9FeF`) centralizam só no eixo vertical e
+ *    deixam o texto começar na borda esquerda — o `text-right` era invenção da
+ *    implementação.
+ * 2. O **"R$" persiste** enquanto o operador digita, via `SimboloReal`. O
+ *    desenho já traz `R$ 11.824,12` no preço (`pFkT1`) e um "R$" próprio no
+ *    desconto (`qhuOQ`); era só o modo editável que perdia o símbolo.
+ * 3. O hover do "−" deixa de acender pelo campo inteiro (ver a célula de
+ *    quantidade no JSX) e, como toda superfície `secondary`, agora **escurece**
+ *    em vez de clarear (`--secondary-hover`, `global.css`).
+ *
+ * **Um desvio do Pencil** nesse último ponto: o desenho separa o "R$" do
+ * desconto em duas tipografias (Inter 12/700 no símbolo, Geist Mono 13/600 no
+ * valor) e embute o do preço num texto único em Geist Mono. Aqui os dois
+ * campos seguem a forma do desconto — símbolo em `font-sans` fora do
+ * `<input>`, valor em `font-mono` dentro — porque um `<input>` comporta uma
+ * tipografia só, e o símbolo precisa ficar fora dele para não virar máscara
+ * sobre o texto que o operador edita.
  */
 export function EntradaRapidaProduto(): ReactElement {
   const { inserirPorCodigo, confirmarEdicao, revisarPorCodigo, confirmarPrevia } =
@@ -470,10 +517,20 @@ export function EntradaRapidaProduto(): ReactElement {
   // (`h-11.5`) já centraliza o texto verticalmente sozinha.
   const classeCampoValor =
     'h-11.5 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default disabled:cursor-not-allowed disabled:opacity-70';
+  // Preço e desconto não usam `classeCampoValor`: a moldura vai para um
+  // wrapper e o `<input>` fica transparente dentro dele, para o "R$" caber ao
+  // lado do valor sem entrar no `value` (ver `SimboloReal`).
+  const classeMolduraValor =
+    'flex h-11.5 w-full min-w-0 items-center gap-xs rounded-xl border border-border bg-muted px-sm';
+  const classeValorDigitavel =
+    'w-full min-w-0 bg-transparent font-mono text-md tabular-nums outline-none read-only:cursor-default';
 
+  // `paraTextoDecimal`, não `formatarCentavos`: quem desenha o "R$" agora é o
+  // `SimboloReal` ao lado, e o campo carrega só o número — o mesmo formato nos
+  // dois estados, editável ou não.
   const precoExibido = editavel
     ? precoTexto
-    : formatarCentavos(
+    : paraTextoDecimal(
         linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? ZERO_CENTAVOS,
       );
   // Não editável mostra o desconto real da linha (convênio + manual, mesma
@@ -482,7 +539,7 @@ export function EntradaRapidaProduto(): ReactElement {
   // convênio a mostrar (`descontoConvenioFixo` é `0` nesse caso).
   const descontoExibido = editavel
     ? descontoTexto
-    : formatarCentavos(somar(descontoConvenioFixo, linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS));
+    : paraTextoDecimal(somar(descontoConvenioFixo, linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS));
 
   return (
     <div
@@ -531,8 +588,17 @@ export function EntradaRapidaProduto(): ReactElement {
           <Search className="size-4.5" aria-hidden="true" />
         </Button>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
-          <span className={classeRotulo}>Quantidade</span>
+        {/* Única célula que **não** é um `<label>` envolvendo o campo: esta
+            contém os botões +/- além do input, e o navegador aplica o
+            `:hover` do label ao *labeled control* — o primeiro form control
+            descendente, que aqui é o botão "−". Passar o mouse em qualquer
+            ponto do campo acendia o "−" (achado do usuário, 2026-09-03).
+            Com o rótulo apontando para o input por `htmlFor`, a associação
+            acessível continua de pé e o hover do "−" volta a ser só o dele. */}
+        <div className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+          <label className={classeRotulo} htmlFor={ID_CAMPO_QUANTIDADE}>
+            Quantidade
+          </label>
           <div className="flex h-11.5 items-center justify-between gap-xs rounded-xl border border-border bg-muted px-xs">
             <Button
               type="button"
@@ -549,6 +615,7 @@ export function EntradaRapidaProduto(): ReactElement {
             </Button>
             <input
               ref={campoQuantidade}
+              id={ID_CAMPO_QUANTIDADE}
               className="h-full w-full min-w-0 bg-transparent text-center font-mono text-lg tabular-nums outline-none"
               inputMode="decimal"
               data-testid="previa-quantidade"
@@ -571,7 +638,7 @@ export function EntradaRapidaProduto(): ReactElement {
               <Plus className="size-4" aria-hidden="true" />
             </Button>
           </div>
-        </label>
+        </div>
 
         <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
           <span className={classeRotulo}>Unidade</span>
@@ -588,34 +655,40 @@ export function EntradaRapidaProduto(): ReactElement {
 
         <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
           <span className={classeRotulo}>Preço unitário</span>
-          <input
-            className={cn(classeCampoValor, 'text-right', semResolucao && 'text-muted-foreground')}
-            inputMode="decimal"
-            data-testid="previa-preco-unitario"
-            readOnly={!editavel}
-            value={precoExibido}
-            onChange={(evento) => {
-              if (editavel) {
-                setPrecoTexto(evento.target.value);
-              }
-            }}
-          />
+          <span className={classeMolduraValor}>
+            <SimboloReal testId="previa-preco-unitario-simbolo" />
+            <input
+              className={cn(classeValorDigitavel, semResolucao && 'text-muted-foreground')}
+              inputMode="decimal"
+              data-testid="previa-preco-unitario"
+              readOnly={!editavel}
+              value={precoExibido}
+              onChange={(evento) => {
+                if (editavel) {
+                  setPrecoTexto(evento.target.value);
+                }
+              }}
+            />
+          </span>
         </label>
 
         <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
           <span className={classeRotulo}>Desconto do item</span>
-          <input
-            className={cn(classeCampoValor, 'text-right', semResolucao && 'text-muted-foreground')}
-            inputMode="decimal"
-            data-testid="previa-desconto-item"
-            readOnly={!editavel}
-            value={descontoExibido}
-            onChange={(evento) => {
-              if (editavel) {
-                setDescontoTexto(evento.target.value);
-              }
-            }}
-          />
+          <span className={classeMolduraValor}>
+            <SimboloReal testId="previa-desconto-item-simbolo" />
+            <input
+              className={cn(classeValorDigitavel, semResolucao && 'text-muted-foreground')}
+              inputMode="decimal"
+              data-testid="previa-desconto-item"
+              readOnly={!editavel}
+              value={descontoExibido}
+              onChange={(evento) => {
+                if (editavel) {
+                  setDescontoTexto(evento.target.value);
+                }
+              }}
+            />
+          </span>
         </label>
 
         <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">

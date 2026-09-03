@@ -129,8 +129,16 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     // edição (correção do usuário, 2026-09-03).
     expect(screen.getByTestId('entrada-rapida-produto')).toHaveClass('cc-pulso-edicao');
 
+    // O "R$" é elemento próprio, ao lado do campo (correção do usuário,
+    // 2026-09-03): sobrevive a esvaziar o campo e a digitar por cima, porque
+    // nunca esteve dentro do `value`.
+    expect(screen.getByTestId('previa-preco-unitario-simbolo')).toHaveTextContent('R$');
     await usuario.clear(screen.getByTestId('previa-preco-unitario'));
+    expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('');
+    expect(screen.getByTestId('previa-preco-unitario-simbolo')).toBeVisible();
     await usuario.type(screen.getByTestId('previa-preco-unitario'), '12,00');
+    expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('12,00');
+    expect(screen.getByTestId('previa-preco-unitario-simbolo')).toBeVisible();
     await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
     // Enter em QUALQUER campo confirma (correção do usuário, 2026-09-03) —
     // aqui a partir do campo de desconto, não de um clique no "+".
@@ -139,6 +147,8 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
 
     const editada = useVendaStore.getState().linhas.find((linha) => linha.idLinha === 'linha-1');
     expect(editada?.quantidade).toBe(3000);
+    // A prova de que o símbolo visível não contaminou `lerCentavos`: 12,00
+    // digitado vira 1200 centavos, não `null` nem outro valor.
     expect(editada?.precoUnitario).toBe(1200);
     expect(editada?.descontoManual).toBe(50);
     // Volta ao estado vazio e libera a linha do store de coordenação.
@@ -173,8 +183,11 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
       expect(screen.getByTestId('previa-preco-unitario')).toHaveAttribute('readonly');
     });
     // Desconto exibido é o real da linha (convênio, já que não há manual) —
-    // não `R$ 0,00` fixo, que era o comportamento de uma inserção nova.
-    expect(screen.getByTestId('previa-desconto-item')).toHaveValue('R$ 0,30');
+    // não `0,00` fixo, que era o comportamento de uma inserção nova. O "R$"
+    // vive fora do campo, então o `value` carrega só o número (correção do
+    // usuário, 2026-09-03).
+    expect(screen.getByTestId('previa-desconto-item')).toHaveValue('0,30');
+    expect(screen.getByTestId('previa-desconto-item-simbolo')).toHaveTextContent('R$');
 
     await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
     await usuario.click(screen.getByTestId('previa-confirmar'));

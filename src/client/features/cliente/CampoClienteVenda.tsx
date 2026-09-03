@@ -5,7 +5,6 @@ import {
   ScanLine,
   Search,
   UserCheck,
-  UserPen,
   UserRound,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
@@ -28,8 +27,8 @@ import { useIdentificacaoCliente } from './useCliente';
 /**
  * Cliente da venda (T019) — réplica do card "Cliente da venda expansível" do
  * Pencil (`design/CentriumCheckout.pen`, nó `AasDP`, lido via MCP): card de
- * raio 24 e borda `$hairline`, cabeçalho de 26px com as pílulas de Cliente,
- * Vendedor e Operador mais o controle de expandir, e a linha de campos de 42px
+ * raio 24 e borda `$hairline`, cabeçalho de 26px com as pílulas de Cliente e
+ * Vendedor mais o controle de expandir, e a linha de campos de 42px
  * — CPF/CNPJ (243px), nome (preenche), lupa circular (42px) e "Identificar"
  * (126px).
  *
@@ -54,12 +53,22 @@ import { useIdentificacaoCliente } from './useCliente';
  * separa (`research.md` D2): o campo de identificação resolve por
  * `GetCliente` (`CLI-01`) e a lupa abre a busca por termo livre (`CLI-02`).
  *
- * **Um desvio deliberado do Pencil**: o rótulo do primeiro campo é "Código do
- * cliente ou CPF", não o "CPF/CNPJ" desenhado (pedido do usuário,
- * 2026-09-03). O desenho é anterior a duas decisões que mudaram o que o campo
- * aceita — ele passou a receber também o código do cliente e deixou de
- * receber CNPJ (AD-133) —, e um rótulo que anuncia CNPJ ofereceria justamente
- * o que a norma proíbe.
+ * **Dois desvios deliberados do Pencil.**
+ *
+ * O primeiro é o rótulo do primeiro campo: "Código do cliente ou CPF", não o
+ * "CPF/CNPJ" desenhado (pedido do usuário, 2026-09-03). O desenho é anterior a
+ * duas decisões que mudaram o que o campo aceita — ele passou a receber também
+ * o código do cliente e deixou de receber CNPJ (AD-133) —, e um rótulo que
+ * anuncia CNPJ ofereceria justamente o que a norma proíbe.
+ *
+ * O segundo é a ausência da pílula de **Operador**, que o cabeçalho do frame
+ * `p1hDEL` desenha ao lado das de Cliente e Vendedor (pedido do usuário,
+ * 2026-09-03, AD-136). A barra superior já exibe o operador da sessão em
+ * `data-testid="operador-da-sessao"` (`BarraSuperior.tsx`), e as duas
+ * superfícies são visíveis ao mesmo tempo na tela de venda: repetir o nome
+ * aqui gastava largura do cabeçalho com um dado que nunca muda durante a
+ * venda, ao lado de duas pílulas que mudam. O `UsuarioNome` continua vindo de
+ * `SessaoUsuario`; só deixou de ter um segundo ponto de exibição.
  */
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
@@ -349,8 +358,8 @@ export function CampoClienteVenda(): ReactElement {
             )}
           </Pilula>
 
-          {/* Vendedor e operador do PDV (`SessaoUsuario`): rótulo, não decisão
-              de venda — sem o dado, a pílula simplesmente não aparece. */}
+          {/* Vendedor do PDV (`SessaoUsuario`): rótulo, não decisão de venda —
+              sem o dado, a pílula simplesmente não aparece. */}
           {recusaPessoaJuridica ||
           sessao?.VendedorNome === undefined ||
           sessao.VendedorNome === '' ? null : (
@@ -360,16 +369,6 @@ export function CampoClienteVenda(): ReactElement {
               testId="pilula-vendedor"
             >
               {sessao.VendedorNome}
-            </Pilula>
-          )}
-
-          {sessao?.UsuarioNome === undefined || sessao.UsuarioNome === '' ? null : (
-            <Pilula
-              icone={<UserPen className="size-4.5 text-foreground" />}
-              rotulo="Operador"
-              testId="pilula-operador"
-            >
-              {sessao.UsuarioNome}
             </Pilula>
           )}
         </div>

@@ -1,5 +1,23 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
+
+/**
+ * Luminância aproximada (Rec. 709) de um `rgb(...)` computado.
+ *
+ * As correções de hover são sobre **direção**, não sobre um hex específico:
+ * afirmar "escureceu" é mais durável que congelar `#dee1e6` no teste, que
+ * quebraria à toa se o token mudasse de degrau.
+ */
+function luminancia(cor: string): number {
+  const [vermelho = 0, verde = 0, azul = 0] = (cor.match(/\d+(?:\.\d+)?/g) ?? [])
+    .slice(0, 3)
+    .map(Number);
+  return 0.2126 * vermelho + 0.7152 * verde + 0.0722 * azul;
+}
+
+async function luminanciaDoFundo(alvo: Locator): Promise<number> {
+  return luminancia(await alvo.evaluate((elemento) => getComputedStyle(elemento).backgroundColor));
+}
 
 /**
  * Fluxo dourado do carrinho e do motor de precificação (`quickstart.md`,
@@ -175,11 +193,19 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     // Produto editável: preço e desconto viram campos que aceitam digitação.
     await expect(page.getByTestId('previa-preco-unitario')).toBeEditable();
     await page.getByTestId('previa-preco-unitario').fill('15,00');
+    // O "R$" acompanha a digitação (correção do usuário, 2026-09-03) sem
+    // entrar no campo: o operador digita só o número, e é esse número que
+    // `lerCentavos` interpreta — o total abaixo é a prova de que o símbolo não
+    // contaminou a leitura.
+    await expect(page.getByTestId('previa-preco-unitario-simbolo')).toHaveText('R$');
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('15,00');
     await page.getByTestId('previa-quantidade-aumentar').click();
 
     // Enter em QUALQUER campo confirma (correção do usuário, 2026-09-03) —
     // aqui a partir do campo de desconto, não do botão "+".
     await page.getByTestId('previa-desconto-item').fill('2,00');
+    await expect(page.getByTestId('previa-desconto-item-simbolo')).toHaveText('R$');
+    await expect(page.getByTestId('previa-desconto-item')).toHaveValue('2,00');
     await page.getByTestId('previa-desconto-item').press('Enter');
 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
@@ -206,7 +232,7 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     // distingue "inseriu direto" de "abriu a revisão". (`previa-insercao-produto`
     // é o container da barra e está sempre no DOM: afirmar sobre ele não
     // provaria nada.)
-    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 0,00');
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('0,00');
     await expect(campo).toHaveValue('');
     await expect(campo).toBeFocused();
   });
@@ -223,7 +249,10 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     await campo.press('Tab');
 
     // A revisão carregou os dados do `GetProduto` — nenhuma linha foi criada.
-    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 10,00');
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('10,00');
+    // Fora do `value`, mas na tela: o campo somente-leitura mostra o mesmo
+    // "R$" do editável (`SimboloReal`).
+    await expect(page.getByTestId('previa-preco-unitario-simbolo')).toBeVisible();
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
   });
 
@@ -342,5 +371,86 @@ test.describe('Constitution VI — nada de estado de venda persistido', () => {
 
     // Zustand sem `persist` (AD-006): nada foi gravado em lugar nenhum.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+  });
+});
+
+test.describe('Barra de entrada rápida — acertos visuais de 2026-09-03 (AD-136)', () => {
+  test('a lupa de produto escurece no hover, em vez de clarear', async ({ page }) => {
+    // O `hover:bg-secondary/80` que vinha do shadcn misturava a superfície
+    // clara com o canvas branco por baixo e **clareava** o botão ao passar o
+    // mouse — o oposto do que o gesto sugere (correção do usuário).
+    await abrirTelaDeVenda(page);
+
+    const lupa = page.getByTestId('abrir-busca-produto');
+    const repouso = await luminanciaDoFundo(lupa);
+    await lupa.hover();
+
+    // `expect.poll`: a variante tem `transition-all`, então a cor final só
+    // chega alguns quadros depois do ponteiro.
+    await expect.poll(async () => luminanciaDoFundo(lupa)).toBeLessThan(repouso);
+  });
+
+  test('o hover do "−" só acende sobre o próprio botão, não pelo campo de quantidade inteiro', async ({
+    page,
+  }) => {
+    // O stepper vivia dentro de um `<label>`, e o navegador aplica o `:hover`
+    // do label ao *labeled control* — que era justamente o "−", primeiro form
+    // control ali dentro. O botão acendia com o ponteiro em qualquer ponto do
+    // campo (achado do usuário).
+    await abrirTelaDeVenda(page);
+
+    const diminuir = page.getByTestId('previa-quantidade-diminuir');
+    const aumentar = page.getByTestId('previa-quantidade-aumentar');
+
+    // Ponteiro no meio do campo — entre os dois botões, sobre o `<input>`.
+    // `mouse.move` em coordenadas, e não `.hover()` no input: o campo tem
+    // largura elástica e o Playwright recusa a ação quando ela encolhe a
+    // zero; o que este teste precisa é da posição do ponteiro, não do alvo.
+    const caixaDiminuir = await diminuir.boundingBox();
+    const caixaAumentar = await aumentar.boundingBox();
+    expect(caixaDiminuir).not.toBeNull();
+    expect(caixaAumentar).not.toBeNull();
+    if (caixaDiminuir === null || caixaAumentar === null) {
+      return;
+    }
+    await page.mouse.move(
+      (caixaDiminuir.x + caixaDiminuir.width + caixaAumentar.x) / 2,
+      caixaDiminuir.y + caixaDiminuir.height / 2,
+    );
+
+    expect(await diminuir.evaluate((elemento) => elemento.matches(':hover'))).toBe(false);
+
+    const repouso = await luminanciaDoFundo(diminuir);
+    await diminuir.hover();
+    expect(await diminuir.evaluate((elemento) => elemento.matches(':hover'))).toBe(true);
+    // E, sobre ele, escurece — mesma direção da lupa.
+    await expect.poll(async () => luminanciaDoFundo(diminuir)).toBeLessThan(repouso);
+  });
+
+  test('preço unitário, desconto do item e total do item ficam alinhados à esquerda', async ({
+    page,
+  }) => {
+    // O total sempre esteve à esquerda; preço e desconto carregavam um
+    // `text-right` que não vem do Pencil (os três frames de valor do desenho
+    // centralizam só no eixo vertical).
+    await abrirTelaDeVenda(page);
+
+    for (const testId of ['previa-preco-unitario', 'previa-desconto-item', 'previa-total-item']) {
+      const alinhamento = await page
+        .getByTestId(testId)
+        .evaluate((elemento) => getComputedStyle(elemento).textAlign);
+      expect(['start', 'left']).toContain(alinhamento);
+    }
+  });
+
+  test('o "R$" fica visível antes de qualquer produto resolvido, nos dois campos', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    await expect(page.getByTestId('previa-preco-unitario-simbolo')).toHaveText('R$');
+    await expect(page.getByTestId('previa-desconto-item-simbolo')).toHaveText('R$');
+    // E não entra no `value` — é elemento próprio, não máscara.
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('0,00');
   });
 });

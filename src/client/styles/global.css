@@ -159,6 +159,14 @@
   --primary-foreground: var(--cc-color-on-primary);
   --secondary: var(--cc-color-surface-strong);
   --secondary-foreground: var(--cc-color-ink);
+  /* Hover da superfície secundária. O `bg-secondary/80` que o shadcn traz de
+     fábrica *clareia*: `--secondary` já é um cinza claro e a opacidade o
+     mistura com o canvas branco por baixo, então passar o mouse deixava o
+     botão mais claro que em repouso — o oposto do que o gesto sugere
+     (correção do usuário, 2026-09-03). O degrau mais escuro da mesma família
+     de cinza neutro do Pencil já existe como `$hairline`; é ele que a
+     variante `secondary` do `Button` usa agora, em todos os 22 call sites. */
+  --secondary-hover: var(--cc-color-hairline);
   --muted: var(--cc-color-surface-soft);
   --muted-foreground: var(--cc-color-body);
   --accent: var(--cc-color-surface-strong);
@@ -182,6 +190,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
