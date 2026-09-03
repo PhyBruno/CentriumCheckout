@@ -405,6 +405,38 @@ button,
 }
 
 /**
+ * Linha que acabou de entrar na venda.
+ *
+ * Anima **só opacidade e cor de fundo** — sem `transform`. Um `<tr>` é caixa de
+ * tabela, e o Chrome trata `transform` nela de forma inconsistente (o mesmo
+ * motivo que fez `cc-pulso-edicao` usar `outline` em vez de `box-shadow`);
+ * deslocar a linha arriscaria arrastar as células fora do lugar durante o
+ * trajeto, bem no momento em que o operador confere o que inseriu.
+ *
+ * O realce de fundo decai até o transparente: confirma "entrou" no canto do
+ * olho e sai de cena sozinho, sem competir com a leitura do preço. Duração
+ * maior que a dos modais (`--cc-motion-base` ×2) porque aqui o alvo é
+ * percepção periférica — o operador está olhando para o código que digitou,
+ * não para a grid.
+ */
+@utility cc-linha-entra {
+  animation: cc-linha-entra-quadro calc(var(--cc-motion-base) * 2) var(--cc-ease-saida);
+}
+
+@keyframes cc-linha-entra-quadro {
+  from {
+    opacity: 0;
+    background-color: color-mix(in srgb, var(--cc-color-primary) 12%, transparent);
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/**
  * Sem movimento para quem pediu sem movimento.
  *
  * As animações são zeradas, não removidas: o `forwards` da saída precisa
@@ -418,6 +450,7 @@ button,
   .cc-backdrop-sai,
   .cc-modal-entra,
   .cc-modal-sai,
+  .cc-linha-entra,
   .cc-shimmer,
   .cc-pulso-edicao {
     animation-duration: 1ms;

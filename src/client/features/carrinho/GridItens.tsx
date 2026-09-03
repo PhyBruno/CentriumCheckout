@@ -185,7 +185,7 @@ function LinhaDaGrid({
       data-cancelada={linha.cancelada}
       data-codigo-produto={linha.snapshot.codigoProduto}
       className={cn(
-        'border-b border-border last:border-b-0',
+        'cc-linha-entra border-b border-border last:border-b-0',
         zebrada && 'bg-muted',
         // Riscada e esmaecida, mas ainda legível: é rastreabilidade, não lixo
         // visual (SC-003).
