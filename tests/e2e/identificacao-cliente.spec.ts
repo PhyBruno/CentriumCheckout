@@ -40,12 +40,26 @@ async function abrirTelaDeVenda(page: Page): Promise<void> {
   await expect(page.getByTestId('tela-de-venda')).toBeVisible();
 }
 
+/**
+ * O card nasce colapsado (pedido do usuário, 2026-09-03) — os campos de
+ * identificação só existem no DOM depois de expandir.
+ */
+async function expandirCardCliente(page: Page): Promise<void> {
+  const alternar = page.getByTestId('alternar-cliente-expandido');
+  if ((await alternar.getAttribute('aria-expanded')) === 'false') {
+    await alternar.click();
+  }
+  await expect(page.getByTestId('campo-documento-cliente')).toBeVisible();
+}
+
 async function identificarPorDocumento(page: Page, documento: string): Promise<void> {
+  await expandirCardCliente(page);
   await page.getByTestId('campo-documento-cliente').fill(documento);
   await page.getByTestId('identificar-cliente').click();
 }
 
 async function buscarPorTermo(page: Page, termo: string): Promise<void> {
+  await expandirCardCliente(page);
   await page.getByTestId('abrir-busca-cliente').click();
   await page.getByTestId('campo-busca-cliente').fill(termo);
 }
@@ -61,8 +75,10 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
   }) => {
     await abrirTelaDeVenda(page);
 
-    // `ClienteDefaultNome` do bootstrap sintético (AD-032/AD-108).
+    // `ClienteDefaultNome` do bootstrap sintético (AD-032/AD-108). A pílula é
+    // visível já no card colapsado; o campo "Nome / telefone" exige expandir.
     await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
+    await expandirCardCliente(page);
     await expect(page.getByTestId('nome-cliente')).toHaveText('CONSUMIDOR FINAL');
     expect((await contadores(request)).getCliente).toBe(0);
   });
@@ -223,6 +239,71 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
   });
 });
 
+test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
+  test('o card nasce colapsado, com as pílulas visíveis, e expande sob demanda', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    // Colapsado: o cabeçalho já responde "quem é o cliente", sem custar altura
+    // permanente ao carrinho.
+    await expect(page.getByTestId('alternar-cliente-expandido')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveCount(0);
+    await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
+
+    await page.getByTestId('alternar-cliente-expandido').click();
+    await expect(page.getByTestId('campo-documento-cliente')).toBeVisible();
+    await expect(page.getByTestId('alternar-cliente-expandido')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  test('a pílula do vendedor vem de SessaoUsuario, não de GetCliente', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+
+    // `ClienteCheckout` não tem campo de vendedor no contrato do ERP; o valor
+    // é o `VendedorNome` do PDV, do bootstrap.
+    await expect(page.getByTestId('pilula-vendedor')).toHaveText('Mariana Alves');
+    await expect(page.getByTestId('pilula-operador')).toHaveText('Operador de Teste');
+  });
+
+  test('tirar o foco do campo já busca o cliente, sem clicar em Identificar', async ({
+    page,
+    request,
+  }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    await page.getByTestId('campo-documento-cliente').fill(CPF_VAREJO);
+    // TAB tira o foco do campo — é o gesto do caixa, que segue direto para o
+    // produto sem passar pelo botão.
+    await page.getByTestId('campo-documento-cliente').press('Tab');
+
+    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE VAREJO');
+    expect((await contadores(request)).getCliente).toBe(1);
+  });
+
+  test('o documento do cliente identificado fica legível no campo, com máscara', async ({
+    page,
+    request,
+  }) => {
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_VAREJO);
+    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE VAREJO');
+
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('122.980.239-80');
+
+    // Sair do campo com o mesmo documento já associado não rebusca o cliente.
+    const antes = (await contadores(request)).getCliente;
+    await page.getByTestId('campo-documento-cliente').press('Tab');
+    expect((await contadores(request)).getCliente).toBe(antes);
+  });
+});
+
 test.describe('Verificação manual apoiada pelo E2E', () => {
   test('F5 no meio da venda descarta o cliente selecionado (Constitution VI)', async ({ page }) => {
     await abrirTelaDeVenda(page);
@@ -231,6 +312,8 @@ test.describe('Verificação manual apoiada pelo E2E', () => {
 
     await page.reload();
     await expect(page.getByTestId('tela-de-venda')).toBeVisible();
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CONSUMIDOR FINAL');
+    // O card volta colapsado (estado de UI também não sobrevive ao F5), então a
+    // prova é a pílula do cabeçalho.
+    await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
   });
 });

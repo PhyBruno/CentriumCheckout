@@ -231,6 +231,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       ClienteDefaultCodigo: 1,
       ClienteDefaultNome: 'CONSUMIDOR FINAL',
       VendedorCodigo: 42,
+      VendedorNome: 'Mariana Alves',
       CadSerieNFCe: '1',
       // Aponta para o próprio mock do ERP em E2E: o serviço de impressão local
       // real depende da rede do PDV, fora do alcance do CI

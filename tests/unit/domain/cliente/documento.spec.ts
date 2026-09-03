@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   apenasDigitos,
   classificarDocumento,
+  formatarDocumento,
   validarFormatoCEP,
   validarFormatoCPF,
 } from '../../../../src/client/domain/cliente/documento';
@@ -67,5 +68,24 @@ describe('validarFormatoCEP', () => {
 describe('apenasDigitos', () => {
   it('descarta pontuação, barra e espaço', () => {
     expect(apenasDigitos('52.059.715/0001-13')).toBe('52059715000113');
+  });
+});
+
+describe('formatarDocumento', () => {
+  it('aplica a máscara de CPF e de CNPJ', () => {
+    expect(formatarDocumento('11122233344')).toBe('111.222.333-44');
+    expect(formatarDocumento('52059715000113')).toBe('52.059.715/0001-13');
+  });
+
+  it('é idempotente sobre um documento já mascarado', () => {
+    expect(formatarDocumento('111.222.333-44')).toBe('111.222.333-44');
+    expect(formatarDocumento('52.059.715/0001-13')).toBe('52.059.715/0001-13');
+  });
+
+  it('devolve o texto inalterado quando não é CPF nem CNPJ', () => {
+    // O campo nunca "corrige" em silêncio o que não sabe interpretar.
+    expect(formatarDocumento('1234')).toBe('1234');
+    expect(formatarDocumento('bruno')).toBe('bruno');
+    expect(formatarDocumento('')).toBe('');
   });
 });

@@ -64,11 +64,7 @@ export class ErroProdutoNaoEncontrado extends Error {
  * — e porque duas classes homônimas em módulos diferentes quebrariam os
  * `instanceof` que decidem a mensagem ao operador.
  */
-export {
-  ErroRedeErp,
-  ErroRespostaInvalida,
-  ErroSessaoEncerrada,
-} from '../errosErp';
+export { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
 
 /**
  * `listaPreco` faz parte da chave porque, em `TipoPreco = 9`, trocar o cliente

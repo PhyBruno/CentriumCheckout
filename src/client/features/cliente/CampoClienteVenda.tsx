@@ -1,8 +1,18 @@
-import { Phone, ScanLine, Search, UserCheck, UserRound } from 'lucide-react';
-import { useState, type ReactElement } from 'react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Phone,
+  ScanLine,
+  Search,
+  UserCheck,
+  UserPen,
+  UserRound,
+} from 'lucide-react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
-import { classificarDocumento } from '../../domain/cliente/documento';
+import { classificarDocumento, formatarDocumento } from '../../domain/cliente/documento';
+import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
 import { ModalBuscaCliente } from './ModalBuscaCliente';
@@ -11,18 +21,26 @@ import { useIdentificacaoCliente } from './useCliente';
 /**
  * Cliente da venda (T019) — réplica do card "Cliente da venda expansível" do
  * Pencil (`design/CentriumCheckout.pen`, nó `AasDP`, lido via MCP): card de
- * raio 24 e borda `$hairline`, cabeçalho de 26px com o rótulo "Cliente" e o
- * badge de status, e a linha de campos de 42px — CPF/CNPJ (243px), nome
- * (preenche), lupa circular (42px) e o botão "Identificar" (126px).
+ * raio 24 e borda `$hairline`, cabeçalho de 26px com as pílulas de Cliente,
+ * Vendedor e Operador mais o controle de expandir, e a linha de campos de 42px
+ * — CPF/CNPJ (243px), nome (preenche), lupa circular (42px) e "Identificar"
+ * (126px).
  *
- * O card do desenho também abriga "Vendedor"/"Vendedor NFCe" e "Operador":
- * **não** implementados aqui porque são de outras features (012 e 002) — este
- * componente cobre só o cliente, e acrescentar campos vazios de vendedor seria
- * exibir dado que esta feature não tem.
+ * **Nasce colapsado** (pedido do usuário, 2026-09-03): o cabeçalho já responde
+ * "quem é o cliente desta venda", que é a pergunta do dia a dia; os campos de
+ * identificação são exceção, e mantê-los sempre abertos custaria uma faixa de
+ * altura permanente ao carrinho.
  *
- * **Sem indicador de origem** (`FR-006`, AD-053): o badge mostra o nome do
+ * **A pílula do Vendedor vem de `SessaoUsuario`, não de `GetCliente`**: o
+ * schema `ClienteCheckout` do contrato não tem nenhum campo de vendedor
+ * (verificado em `ApiCentriumOAuth.yaml`) — o cadastro do cliente não carrega
+ * vendedor associado. `VendedorCodigo`/`VendedorNome` são do PDV; trocar o
+ * vendedor durante a venda é a feature 012 (`GetListaVendedores`), e o campo
+ * "Vendedor NFCe" do mesmo card do desenho pertence a ela.
+ *
+ * **Sem indicador de origem** (`FR-006`, AD-053): a pílula mostra o nome do
  * cliente atual sem distinguir se veio do padrão da empresa (AD-032) ou de uma
- * escolha do operador. O único estado que ele diferencia é a ausência de
+ * escolha do operador. O único estado que ela diferencia é a ausência de
  * cliente — que é `FR-005`, não origem.
  *
  * Os dois caminhos de identificação são superfícies distintas, como o desenho
@@ -31,13 +49,33 @@ import { useIdentificacaoCliente } from './useCliente';
  */
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
+  const sessao = useSessionStore((estado) => estado.registro?.SessaoUsuario ?? null);
   const { identificarPorDocumento, cadastrar } = useIdentificacaoCliente();
 
+  const [expandido, setExpandido] = useState(false);
   const [documento, setDocumento] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [cadastroAberto, setCadastroAberto] = useState(false);
   const [cpfSugerido, setCpfSugerido] = useState('');
+
+  /**
+   * O campo mostra o documento do cliente identificado, com máscara de leitura
+   * (pedido do usuário, 2026-09-03) — antes ele era esvaziado depois da busca,
+   * e o operador perdia de vista qual documento tinha identificado a venda.
+   *
+   * Ajustado durante a renderização, não num efeito: é "estado derivado de uma
+   * prop que mudou" (o cliente do store), e um efeito daria um quadro com o
+   * documento antigo em tela. `documentoEspelhado` guarda o valor que a
+   * sincronização já aplicou, para o operador poder digitar por cima sem o
+   * campo voltar sozinho ao cliente atual a cada tecla.
+   */
+  const documentoDoCliente = clienteAtual?.documento ?? null;
+  const [documentoEspelhado, setDocumentoEspelhado] = useState(documentoDoCliente);
+  if (documentoDoCliente !== documentoEspelhado) {
+    setDocumentoEspelhado(documentoDoCliente);
+    setDocumento(documentoDoCliente === null ? '' : formatarDocumento(documentoDoCliente));
+  }
 
   /**
    * `FR-010`/D4: um CNPJ **pode** ser buscado (o cliente PJ pode existir,
@@ -61,15 +99,18 @@ export function CampoClienteVenda(): ReactElement {
       return;
     }
 
+    // O documento já associado à venda não precisa de nova consulta: sem esta
+    // guarda, sair do campo (TAB, clique fora) rebuscaria o mesmo cliente a
+    // cada passagem de foco.
+    if (documentoDoCliente !== null && termo === formatarDocumento(documentoDoCliente)) {
+      return;
+    }
+
     setBuscando(true);
     try {
       const resultado = await identificarPorDocumento(termo, 'BUSCA_DOCUMENTO');
       if (resultado.situacao === 'nao-encontrado') {
         tratarNaoEncontrado(termo);
-        return;
-      }
-      if (resultado.situacao === 'identificado') {
-        setDocumento('');
       }
     } finally {
       setBuscando(false);
@@ -85,115 +126,163 @@ export function CampoClienteVenda(): ReactElement {
     }
   }
 
+  const Chevron = expandido ? ChevronUp : ChevronDown;
+
   return (
     <section
       className="flex flex-col gap-sm rounded-xl border border-border bg-background p-[14px]"
       data-testid="cliente-da-venda"
       aria-label="Cliente da venda"
     >
-      <header className="flex h-[26px] items-center gap-[9px]">
-        <UserRound className="size-4.5 shrink-0 text-foreground" aria-hidden="true" />
-        <span className="text-lg font-semibold text-foreground">Cliente</span>
-        <span
-          className="flex items-center gap-[6px] rounded-full bg-secondary px-[10px] py-[5px]"
-          data-testid="status-cliente"
-        >
-          {clienteAtual === null ? (
-            <>
-              <span
-                className="size-2 rounded-full bg-[var(--cc-color-accent-yellow)]"
-                aria-hidden="true"
-              />
-              <span className="text-sm font-semibold text-foreground">Não identificado</span>
-            </>
-          ) : (
-            <span className="text-sm font-semibold text-foreground">{clienteAtual.nome}</span>
-          )}
-        </span>
-      </header>
+      <header className="flex h-[26px] items-center justify-between gap-[9px]">
+        <div className="flex min-w-0 items-center gap-md">
+          <Pilula icone={<UserRound className="size-4.5 text-foreground" />} rotulo="Cliente">
+            {clienteAtual === null ? (
+              <>
+                <span
+                  className="size-2 shrink-0 rounded-full bg-[var(--cc-color-accent-yellow)]"
+                  aria-hidden="true"
+                />
+                Não identificado
+              </>
+            ) : (
+              clienteAtual.nome
+            )}
+          </Pilula>
 
-      <div className="flex h-[42px] items-center gap-[10px]">
-        <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-          <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-            <span className="text-[10px] font-semibold text-muted-foreground">CPF/CNPJ</span>
-            <input
-              className="w-full bg-transparent text-base font-medium outline-none placeholder:text-muted-foreground"
-              data-testid="campo-documento-cliente"
-              autoComplete="off"
-              inputMode="numeric"
-              placeholder="Digite"
-              value={documento}
-              onChange={(evento) => {
-                setDocumento(evento.target.value);
-              }}
-              onKeyDown={(evento) => {
-                if (evento.key === 'Enter') {
-                  evento.preventDefault();
-                  void identificar();
-                }
-              }}
-            />
-          </span>
-        </label>
-
-        <div className="flex h-full min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-          <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-            <span className="text-[10px] font-semibold text-muted-foreground">Nome / telefone</span>
-            <span
-              className="truncate text-base font-medium text-foreground"
-              data-testid="nome-cliente"
+          {/* Vendedor e operador do PDV (`SessaoUsuario`): rótulo, não decisão
+              de venda — sem o dado, a pílula simplesmente não aparece. */}
+          {sessao?.VendedorNome === undefined || sessao.VendedorNome === '' ? null : (
+            <Pilula
+              icone={<UserRound className="size-4.5 text-foreground" />}
+              rotulo="Vendedor"
+              testId="pilula-vendedor"
             >
-              {clienteAtual?.nome === undefined || clienteAtual.nome === ''
-                ? 'Buscar cliente cadastrado'
-                : clienteAtual.nome}
-            </span>
-          </span>
+              {sessao.VendedorNome}
+            </Pilula>
+          )}
+
+          {sessao?.UsuarioNome === undefined || sessao.UsuarioNome === '' ? null : (
+            <Pilula
+              icone={<UserPen className="size-4.5 text-foreground" />}
+              rotulo="Operador"
+              testId="pilula-operador"
+            >
+              {sessao.UsuarioNome}
+            </Pilula>
+          )}
         </div>
 
-        <Button
+        <button
           type="button"
-          variant="secondary"
-          size="icon-lg"
-          className="size-[42px] shrink-0 rounded-full"
-          data-testid="abrir-busca-cliente"
-          aria-label="Buscar cliente"
+          className="flex shrink-0 items-center gap-[7px] text-sm font-semibold text-muted-foreground"
+          data-testid="alternar-cliente-expandido"
+          aria-expanded={expandido}
+          aria-controls="campos-cliente-venda"
           onClick={() => {
-            setModalAberto(true);
+            setExpandido((atual) => !atual);
           }}
         >
-          <Search className="size-4" aria-hidden="true" />
-        </Button>
+          {expandido ? 'Expandido' : 'Recolhido'}
+          <Chevron className="size-4" aria-hidden="true" />
+        </button>
+      </header>
 
-        <Button
-          type="button"
-          className="h-[42px] w-[126px] shrink-0 gap-[7px] rounded-full text-base font-bold"
-          data-testid="identificar-cliente"
-          disabled={documento.trim() === '' || buscando}
-          onClick={() => {
-            void identificar();
-          }}
-        >
-          <UserCheck className="size-4" aria-hidden="true" />
-          Identificar
-        </Button>
-      </div>
+      {expandido ? (
+        <div id="campos-cliente-venda" className="flex flex-col gap-sm">
+          <div className="flex h-[42px] items-center gap-[10px]">
+            <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+              <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
+                <span className="text-[10px] font-semibold text-muted-foreground">CPF/CNPJ</span>
+                <input
+                  className="w-full bg-transparent font-mono text-base font-medium tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
+                  data-testid="campo-documento-cliente"
+                  autoComplete="off"
+                  inputMode="numeric"
+                  placeholder="Digite"
+                  value={documento}
+                  onChange={(evento) => {
+                    setDocumento(evento.target.value);
+                  }}
+                  // Sair do campo (TAB, clique fora) já dispara a consulta ao
+                  // ERP — pedido do usuário, 2026-09-03: no ritmo do caixa, o
+                  // documento é digitado e o foco segue para o produto, sem
+                  // passar pelo botão.
+                  onBlur={() => {
+                    void identificar();
+                  }}
+                  onKeyDown={(evento) => {
+                    if (evento.key === 'Enter') {
+                      evento.preventDefault();
+                      void identificar();
+                    }
+                  }}
+                />
+              </span>
+            </label>
 
-      <div className="flex h-[42px] w-[243px] items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-        <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-          <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
-          <span
-            className="truncate text-base font-medium text-foreground"
-            data-testid="contato-cliente"
-          >
-            {clienteAtual?.celular === undefined || clienteAtual.celular === null
-              ? '—'
-              : clienteAtual.celular}
-          </span>
-        </span>
-      </div>
+            <div className="flex h-full min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+              <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  Nome / telefone
+                </span>
+                <span
+                  className="truncate text-base font-medium text-foreground"
+                  data-testid="nome-cliente"
+                >
+                  {clienteAtual?.nome === undefined || clienteAtual.nome === ''
+                    ? 'Buscar cliente cadastrado'
+                    : clienteAtual.nome}
+                </span>
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-lg"
+              className="size-[42px] shrink-0 rounded-full"
+              data-testid="abrir-busca-cliente"
+              aria-label="Buscar cliente"
+              onClick={() => {
+                setModalAberto(true);
+              }}
+            >
+              <Search className="size-4" aria-hidden="true" />
+            </Button>
+
+            <Button
+              type="button"
+              className="h-[42px] w-[126px] shrink-0 gap-[7px] rounded-full text-base font-bold"
+              data-testid="identificar-cliente"
+              disabled={documento.trim() === '' || buscando}
+              onClick={() => {
+                void identificar();
+              }}
+            >
+              <UserCheck className="size-4" aria-hidden="true" />
+              Identificar
+            </Button>
+          </div>
+
+          <div className="flex h-[42px] w-[243px] items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+            <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
+              <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
+              <span
+                className="truncate text-base font-medium text-foreground"
+                data-testid="contato-cliente"
+              >
+                {clienteAtual?.celular === undefined || clienteAtual.celular === null
+                  ? '—'
+                  : clienteAtual.celular}
+              </span>
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       <ModalBuscaCliente
         aberto={modalAberto}
@@ -220,10 +309,37 @@ export function CampoClienteVenda(): ReactElement {
           const resultado = await cadastrar(dados);
           if (resultado.situacao === 'identificado') {
             setCadastroAberto(false);
-            setDocumento('');
           }
         }}
       />
     </section>
+  );
+}
+
+interface PilulaProps {
+  readonly icone: ReactNode;
+  readonly rotulo: string;
+  readonly children: ReactNode;
+  readonly testId?: string;
+}
+
+/** Par "ícone + rótulo + pílula" do cabeçalho do card (nós `L0vfd`/`dIKvg`). */
+function Pilula({ icone, rotulo, children, testId }: PilulaProps): ReactElement {
+  return (
+    <div className="flex min-w-0 items-center gap-[9px]">
+      <span className="shrink-0" aria-hidden="true">
+        {icone}
+      </span>
+      <span className="shrink-0 text-lg font-semibold text-foreground">{rotulo}</span>
+      {/* `truncate` fica no wrapper de texto de cada caller, não aqui: o estado
+          "não identificado" traz um ponto colorido ao lado do texto, e cortar o
+          conteúdo inteiro esconderia o ponto junto. */}
+      <span
+        className="flex min-w-0 items-center gap-[6px] truncate rounded-full bg-secondary px-[10px] py-[5px] text-sm font-semibold whitespace-nowrap text-foreground"
+        data-testid={testId ?? 'status-cliente'}
+      >
+        {children}
+      </span>
+    </div>
   );
 }

@@ -54,3 +54,24 @@ export function validarFormatoCPF(texto: string): boolean {
 export function validarFormatoCEP(texto: string): boolean {
   return apenasDigitos(texto).length === DIGITOS_CEP;
 }
+
+/**
+ * Aplica a máscara de leitura ao documento — `000.000.000-00` para CPF e
+ * `00.000.000/0000-00` para CNPJ.
+ *
+ * **Só apresentação**: o valor enviado ao ERP continua sendo o que o operador
+ * digitou. Texto que não é CPF nem CNPJ volta inalterado, para o campo nunca
+ * "corrigir" em silêncio algo que não sabe interpretar.
+ */
+export function formatarDocumento(texto: string): string {
+  const digitos = apenasDigitos(texto);
+
+  switch (classificarDocumento(digitos)) {
+    case 'CPF':
+      return digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    case 'CNPJ':
+      return digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    case 'INVALIDO':
+      return texto;
+  }
+}

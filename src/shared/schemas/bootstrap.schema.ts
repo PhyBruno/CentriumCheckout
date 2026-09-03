@@ -97,6 +97,18 @@ export const sessaoUsuarioSchema = z.looseObject({
    * negócio (AD-108), então `GetCliente` nunca é chamado para completá-lo.
    */
   ClienteDefaultNome: z.string().optional(),
+  /**
+   * Vendedor **do PDV**, exibido na pílula do card de cliente (nó `EqzJM` do
+   * Pencil). Vem de `SessaoUsuario`, não de `GetCliente`: o schema
+   * `ClienteCheckout` do contrato não tem nenhum campo de vendedor — o cadastro
+   * do cliente não carrega vendedor associado. A troca de vendedor durante a
+   * venda é a feature 012 (`GetListaVendedores`).
+   *
+   * `optional()` pelo mesmo motivo dos demais rótulos: um cadastro sem vendedor
+   * definido omite a pílula em vez de derrubar o bootstrap.
+   */
+  VendedorCodigo: z.number().int().optional(),
+  VendedorNome: z.string().optional(),
 });
 
 export const bootstrapPayloadSchema = z.looseObject({
