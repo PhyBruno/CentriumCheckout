@@ -16,6 +16,7 @@ import { LoadingSkeleton } from './features/session-bootstrap/LoadingSkeleton';
 import { ErrorRetry } from './features/session-bootstrap/ErrorRetry';
 import { SessionExpiredWarning } from './features/session-bootstrap/SessionExpiredWarning';
 import { PainelMensagem } from './features/session-bootstrap/PainelMensagem';
+import { CampoClienteVenda } from './features/cliente/CampoClienteVenda';
 import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
 import { GridItens } from './features/carrinho/GridItens';
 import { ListaItensMobile } from './features/carrinho/ListaItensMobile';
@@ -214,6 +215,7 @@ function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement 
   const compacto = useLayoutCompacto();
   const cadMaqCod = useSessionStore((estado) => estado.registro?.SessaoUsuario.CadMaqCod ?? null);
   const linhas = useVendaStore((estado) => estado.linhas);
+  const houveEscolhaExplicita = useVendaStore((estado) => estado.houveEscolhaExplicita);
 
   // Abre a sessão de venda quando a tela entra em cena, e só se ainda não
   // houver uma aberta: a tela pode remontar no meio de uma venda (recarga do
@@ -227,10 +229,11 @@ function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement 
 
   usePollingStatusSistema({
     cadMaqCod: () => cadMaqCod,
-    // `FR-013`: nunca durante uma venda em digitação. O segundo termo da guarda
-    // ("cliente já identificado") entra com a feature 005 — até lá, o carrinho
-    // vazio é a condição completa de "entre vendas" que existe no código.
-    vendaAtiva: () => linhas.some((linha) => !linha.cancelada),
+    // `FR-013`: nunca durante uma venda em digitação. Desde a feature 005, a
+    // identificação explícita do cliente também conta como venda em andamento —
+    // recarregar `SessaoUsuario` ali descartaria a escolha do operador. A
+    // pré-seleção automática do default não conta: ela não é ação do operador.
+    vendaAtiva: () => houveEscolhaExplicita || linhas.some((linha) => !linha.cancelada),
     recarregarBootstrap: onRecarregarBootstrap,
   });
 
@@ -251,6 +254,10 @@ function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement 
         <div className="flex min-h-0 flex-1 gap-[20px] px-lg pt-md pb-lg">
           {/* "Venda e produtos" (nó `imX5b`): coluna vertical, gap 16. */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-base">
+            {/* "Cliente da venda expansível" (nó `AasDP`): abre a coluna, acima
+                da entrada de produto, como no desenho. */}
+            <CampoClienteVenda />
+
             <EntradaRapidaProduto />
 
             {/* Montagem condicional, não `display: none`. As duas superfícies

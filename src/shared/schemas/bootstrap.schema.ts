@@ -79,8 +79,24 @@ export const sessaoUsuarioSchema = z.looseObject({
   /**
    * Cliente que abre toda venda antes de qualquer identificação (AD-032).
    * Enviado como `Codcliente` em `GetProduto` desde a primeira inserção.
+   *
+   * `0` é o "vazio" deste campo — `int64` não anulável no contrato do ERP —, e
+   * significa que a empresa não configurou cliente default: a venda nasce com o
+   * campo cliente vazio, exigindo seleção manual (`FR-005`/`CLI-06` da feature
+   * 005).
    */
   ClienteDefaultCodigo: z.number().int(),
+  /**
+   * Nome do cliente default, exibido no campo cliente da venda desde a
+   * pré-seleção automática (feature 005, `research.md` D3).
+   *
+   * `optional()` pelo mesmo motivo dos rótulos da barra superior: é rótulo, não
+   * decisão de venda — um cadastro sem nome não pode derrubar o bootstrap e
+   * travar o caixa. A lista de preço do cliente default vem de
+   * `ListaPrecoDefault` acima, e o desconto de convênio dele é `0` por regra de
+   * negócio (AD-108), então `GetCliente` nunca é chamado para completá-lo.
+   */
+  ClienteDefaultNome: z.string().optional(),
 });
 
 export const bootstrapPayloadSchema = z.looseObject({

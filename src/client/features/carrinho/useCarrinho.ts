@@ -42,22 +42,32 @@ const QUANTIDADE_PADRAO = 1;
 /**
  * Contexto de precificação da sessão + cliente atual.
  *
- * `Codcliente` sai de `SessaoUsuario.ClienteDefaultCodigo` enquanto a feature
- * 005 não trocar o cliente: o cliente default existe desde o início da venda
- * (AD-032) e nunca tem convênio nem exige `GetCliente` (AD-108).
+ * `Codcliente`/`Listapreco` saem do cliente da venda quando há um (feature
+ * 005) — inclusive o default, que já nasce pré-selecionado na abertura da venda
+ * com `ListaPrecoDefault` e sem `GetCliente` (AD-032, AD-108).
+ *
+ * Sem cliente algum — empresa que não configurou default (`FR-005`) e nada
+ * escolhido ainda — vale o que o bootstrap publica, que é o mesmo valor que a
+ * feature 003 já enviava. Não é fallback inventado: `ClienteDefaultCodigo` é o
+ * campo do contrato, e `0` ali significa "não configurado" para o próprio ERP.
+ * Bloquear a inserção nesse caso violaria `FR-003` — identificar cliente e
+ * inserir produto são ações independentes, sem sequência obrigatória.
  */
 export function useContextoPrecificacao(): ContextoPrecificacao | null {
   const registro = useSessionStore((estado) => estado.registro);
+  const cliente = useVendaStore((estado) => estado.clienteAtual);
   if (registro === null) {
     return null;
   }
 
   const sessao = registro.SessaoUsuario;
+  const listaPreco = cliente === null ? sessao.ListaPrecoDefault : cliente.listaPreco;
+
   return {
     tipoCodProduto: sessao.UsuarioTipoCodigoProduto,
     tipoPreco: sessao.TipoPreco,
-    codigoCliente: sessao.ClienteDefaultCodigo,
-    listaPreco: sessao.TipoPreco === TIPO_PRECO_POR_LISTA ? sessao.ListaPrecoDefault : null,
+    codigoCliente: cliente?.codigoCliente ?? sessao.ClienteDefaultCodigo,
+    listaPreco: sessao.TipoPreco === TIPO_PRECO_POR_LISTA ? listaPreco : null,
   };
 }
 
