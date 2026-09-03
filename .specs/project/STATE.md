@@ -1449,3 +1449,14 @@ Capture in-progress thoughts and action items that don't fit in active tasks.
 - [x] ~~Confirmar com a equipe do ERP o contrato técnico completo do serviço de impressão local~~ — **resolvido (2026-08-26, AD-083):** usuário forneceu o `Impressao.js` real do PDV atual — host/porta vem de `CadMaqHost` (default `127.0.0.1:4545`), `POST` para a raiz do host, `Content-Type: text/plain`, corpo = `XMLImpressao` cru, sem validação de resposta. O indicativo de mecanismo de impressão no `GetSessao` já tinha sido resolvido em AD-082 — campo `TipoImpressao` (`'E'`/`'P'`). Ver `.specs/features/finalizacao-suspensao-venda/spec.md`.
 - [ ] Confirmar com a equipe do ERP o timing de chamada de `GetStatusSistema` no fluxo (2026-08-25, AD-051) — distinto da pendência já existente sobre a semântica dos códigos de retorno. Ver `.specs/features/finalizacao-suspensao-venda/spec.md`.
 - [ ] Confirmar `UtilizaEncurtador`/`UtilizaLinkExterno` (2026-08-25, AD-047) — assunção de baixa confiança do usuário ("eu acho") de que o endpoint sempre retorna QR base64, sem UI de link. Ver `.specs/features/pagamento-pix/spec.md`.
+
+### AD-128: A barra superior não tem indicador de status — `GetStatusSistema` serve só para decidir o rebootstrap, e essa decisão migra para o backend (2026-09-02)
+
+**Decision:** A pílula "Online" que aparece no nó `swUNN` do Pencil **não é implementada**. O valor devolvido por `GET /ApiCentriumOAuth/GetStatusSistema` tem um único uso no produto: decidir se o Checkout precisa pedir um `GetSessao` novo porque alguma informação da sessão mudou (AD-088) — não é informação de operador e não vai à tela. Essa decisão passará a ser controlada no backend; o polling no cliente (`usePollingStatusSistema`, `FR-013`) fica como está, sem publicar valor nenhum para a UI.
+
+A barra superior mostra, portanto, só o que vem de `SessaoUsuario`: marca, empresa, caixa/PDV, operador, e os dois botões redondos do desenho.
+
+**Rationale:** Decisão direta do usuário (2026-09-02). Duas leituras anteriores do indicador foram descartadas no mesmo dia — conectividade do navegador (`navigator.onLine`) e modo de emissão da NFCe (online × contingência, derivado do limiar de `GetStatusSistema`). Nenhuma das duas correspondia ao uso real do endpoint: o inteiro é um gatilho de sincronização de configuração, não um estado operacional que o caixa precise ler. Manter um indicador alimentado por ele exibiria ao operador uma informação que não descreve o que ele veria acontecer.
+
+**Trade-off:** A tela fica um elemento mais pobre que o desenho aprovado no Pencil, que traz a pílula à esquerda do operador. Aceito: preencher aquele espaço exigiria uma fonte de verdade que hoje não existe no contrato do ERP. Se um estado operacional de fato precisar aparecer ali (contingência, TEF fora do ar), ele virá de um campo próprio, com requisito formal — não do valor de `GetStatusSistema`.
+

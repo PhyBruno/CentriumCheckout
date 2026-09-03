@@ -25,6 +25,7 @@ import {
   ProvedorFinalizacaoVenda,
 } from './features/finalizacao-suspensao/AcoesFinaisVenda';
 import { PainelPagamentoETotais } from './features/pagamento/PainelPagamentoETotais';
+import { BarraSuperior } from './layout/BarraSuperior';
 import { usePollingStatusSistema } from './services/statusSistema/pollingStatusSistema';
 import { abrirSessaoDeVenda, useVendaStore } from './stores/vendaStore';
 
@@ -240,16 +241,14 @@ function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement 
       className="flex h-screen flex-col overflow-hidden bg-[var(--cc-color-surface-soft)]"
       data-testid="tela-de-venda"
     >
-      <header className="flex shrink-0 items-center justify-between gap-sm px-lg py-base">
-        <h1 className="text-lg font-semibold">Centrium Checkout</h1>
-      </header>
+      <BarraSuperior />
 
       {/* Um provider só para as duas superfícies da finalização, que no desenho
           ficam em colunas diferentes: o atalho "Cancelar venda" à esquerda,
           embaixo dos produtos, e "Finalizar venda" dentro do cartão de
           pagamento à direita. Ver o TSDoc de `ProvedorFinalizacaoVenda`. */}
       <ProvedorFinalizacaoVenda>
-        <div className="flex min-h-0 flex-1 gap-[20px] px-lg pb-lg">
+        <div className="flex min-h-0 flex-1 gap-[20px] px-lg pt-md pb-lg">
           {/* "Venda e produtos" (nó `imX5b`): coluna vertical, gap 16. */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-base">
             <EntradaRapidaProduto />

@@ -16,6 +16,22 @@ const TIPO_PRECO_MAX = 11;
 
 export const sessaoUsuarioSchema = z.looseObject({
   TipoPreco: z.number().int().min(TIPO_PRECO_MIN).max(TIPO_PRECO_MAX),
+  /**
+   * Identidade exibida na barra superior do PDV — nome da empresa, operador
+   * logado e caixa (`ApiCentriumOAuth.yaml`, schema `SessaoUsuario`).
+   *
+   * `optional()` de propósito, ao contrário dos demais campos deste schema:
+   * nenhum deles decide comportamento de venda, só rótulo. Um cadastro de
+   * empresa sem nome fantasia não pode derrubar o bootstrap inteiro e travar o
+   * caixa — a barra simplesmente omite o pedaço que falta
+   * (`identidadePdv.ts`). Declarados aqui, e não deixados ao `looseObject`,
+   * porque `SessaoUsuario` é o tipo por onde a UI os lê.
+   */
+  EmpresaNomeFantasia: z.string().optional(),
+  EmpresaRazaoSocial: z.string().optional(),
+  UsuarioNome: z.string().optional(),
+  /** Número do caixa. Minúsculo no contrato do ERP — não é typo. */
+  caixa: z.number().int().optional(),
   CadMaqCod: z.string(),
   /**
    * Série da NFCe do PDV. Enviada como `CadSerieNFCe` em toda finalização/

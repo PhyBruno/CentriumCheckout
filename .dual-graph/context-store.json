@@ -4739,5 +4739,17 @@
       "src/client/services/impressao/abrirPdfNFCe.ts"
     ],
     "date": "2026-09-02"
+  },
+  {
+    "type": "decision",
+    "content": "Barra superior le SessaoUsuario; Online via navigator.onLine",
+    "tags": [
+      "barra-superior",
+      "ui"
+    ],
+    "files": [
+      "src/client/layout/BarraSuperior.tsx"
+    ],
+    "date": "2026-09-02"
   }
 ]
