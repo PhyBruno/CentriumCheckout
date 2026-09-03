@@ -248,7 +248,7 @@ function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement 
           embaixo dos produtos, e "Finalizar venda" dentro do cartão de
           pagamento à direita. Ver o TSDoc de `ProvedorFinalizacaoVenda`. */}
       <ProvedorFinalizacaoVenda>
-        <div className="flex min-h-0 flex-1 gap-[20px] px-lg pb-lg">
+        <div className="flex min-h-0 flex-1 gap-[20px] px-lg pt-md pb-lg">
           {/* "Venda e produtos" (nó `imX5b`): coluna vertical, gap 16. */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-base">
             <EntradaRapidaProduto />
