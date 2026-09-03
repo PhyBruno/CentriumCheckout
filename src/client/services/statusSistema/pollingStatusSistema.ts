@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { z } from 'zod';
-import { registrarStatusSistema } from '../../stores/statusSistemaStore';
 import { criarErpClient, type ErpClient } from '../erpClient';
 
 /**
@@ -38,12 +37,6 @@ export interface StatusSistemaDeps {
   readonly vendaAtiva: () => boolean;
   /** `refetchBootstrap()` da feature 002 — recarrega `SessaoUsuario` inteiro. */
   readonly recarregarBootstrap: () => void;
-  /**
-   * Publica cada leitura bem-sucedida. O default alimenta o store que a barra
-   * superior lê para mostrar "Online"/"Contingência" — injetável para os
-   * testes não dependerem de estado global.
-   */
-  readonly aoLerStatus?: (valor: number) => void;
   readonly intervaloMs?: number;
 }
 
@@ -89,7 +82,6 @@ export async function consultarStatusSistema(
 export function usePollingStatusSistema(deps: StatusSistemaDeps): void {
   const { cadMaqCod, vendaAtiva, recarregarBootstrap, erpClient } = deps;
   const intervaloMs = deps.intervaloMs ?? INTERVALO_STATUS_SISTEMA_MS;
-  const aoLerStatus = deps.aoLerStatus ?? registrarStatusSistema;
 
   const codigo = cadMaqCod();
   const ativo = codigo !== null && !vendaAtiva();
@@ -106,28 +98,16 @@ export function usePollingStatusSistema(deps: StatusSistemaDeps): void {
         codigo,
         erpClient === undefined ? {} : { erpClient },
       );
-      if (cancelado || status === null) {
+      if (cancelado) {
         return;
       }
-
-      // O mesmo valor responde às duas perguntas: se a máquina segue emitindo
-      // NFCe normalmente (o que a barra superior mostra) e se a configuração
-      // publicada em `GetSessao` mudou.
-      aoLerStatus(status);
-
       // `0` = nada mudou. Qualquer valor `>= 1` significa "algo mudou"; o
       // significado específico acima de 1 não importa para esta decisão binária
       // (AD-075/AD-080/AD-088).
-      if (status >= 1) {
+      if (status !== null && status >= 1) {
         recarregarBootstrap();
       }
     };
-
-    // Uma leitura imediata ao entrar em "entre vendas", antes do primeiro
-    // intervalo: sem ela o operador ficaria até 60s sem saber se o PDV está
-    // emitindo online ou em contingência, que é justamente o que o indicador
-    // da barra superior existe para responder.
-    void ciclo();
 
     const temporizador = setInterval(() => {
       void ciclo();
@@ -137,5 +117,5 @@ export function usePollingStatusSistema(deps: StatusSistemaDeps): void {
       cancelado = true;
       clearInterval(temporizador);
     };
-  }, [ativo, aoLerStatus, codigo, erpClient, intervaloMs, recarregarBootstrap]);
+  }, [ativo, codigo, erpClient, intervaloMs, recarregarBootstrap]);
 }

@@ -46,14 +46,6 @@ function respostaComStatus(status: number): ResultadoChamadaErp {
   return { estado: 'ok', resposta: new Response(String(status), { status: 200 }) };
 }
 
-/** Resolve os microtasks da leitura imediata que o hook dispara ao montar. */
-async function assentarLeituraInicial(): Promise<void> {
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-}
-
 /** Deixa o microtask do `fetch` simulado resolver depois do tick do intervalo. */
 async function avancarUmCiclo(): Promise<void> {
   await act(async () => {
@@ -68,8 +60,6 @@ function renderizar(deps: Partial<StatusSistemaDeps>, erpClient: ErpClient) {
     cadMaqCod: () => 'PDV01',
     vendaAtiva: () => false,
     recarregarBootstrap: () => undefined,
-    // Sem isto o hook escreveria no store global que a barra superior lê.
-    aoLerStatus: () => undefined,
     erpClient,
     ...deps,
   };
@@ -87,19 +77,13 @@ afterEach(() => {
 });
 
 describe('guarda de disparo (FR-013)', () => {
-  it('consulta na montagem e depois a cada 60s enquanto não há venda em andamento', async () => {
+  it('consulta a cada 60s enquanto não há venda em andamento', async () => {
     const cliente = clienteQueResponde([respostaComStatus(0)]);
 
     renderizar({}, cliente.erpClient);
-    await assentarLeituraInicial();
-
-    // A leitura imediata existe para a barra superior não passar até 60s sem
-    // saber se o PDV emite online ou em contingência.
-    expect(cliente.caminhos).toHaveLength(1);
-
     await avancarUmCiclo();
 
-    expect(cliente.caminhos).toHaveLength(2);
+    expect(cliente.caminhos).toHaveLength(1);
     expect(cliente.caminhos[0]).toContain('Cadmaqcod=PDV01');
     // `Empresa` é injetado pelo BFF como header (AD-019/AD-118) — não vai na query.
     expect(cliente.caminhos[0]).not.toContain('Empresa');
@@ -109,7 +93,6 @@ describe('guarda de disparo (FR-013)', () => {
     const cliente = clienteQueResponde([respostaComStatus(0)]);
 
     renderizar({ vendaAtiva: () => true }, cliente.erpClient);
-    await assentarLeituraInicial();
     await avancarUmCiclo();
     await avancarUmCiclo();
 
@@ -120,7 +103,6 @@ describe('guarda de disparo (FR-013)', () => {
     const cliente = clienteQueResponde([respostaComStatus(0)]);
 
     renderizar({ cadMaqCod: () => null }, cliente.erpClient);
-    await assentarLeituraInicial();
     await avancarUmCiclo();
 
     expect(cliente.caminhos).toHaveLength(0);
@@ -133,7 +115,7 @@ describe('decisão sobre a resposta (AD-088)', () => {
     const cliente = clienteQueResponde([respostaComStatus(0)]);
 
     renderizar({ recarregarBootstrap }, cliente.erpClient);
-    await assentarLeituraInicial();
+    await avancarUmCiclo();
 
     expect(recarregarBootstrap).not.toHaveBeenCalled();
   });
@@ -143,29 +125,9 @@ describe('decisão sobre a resposta (AD-088)', () => {
     const cliente = clienteQueResponde([respostaComStatus(status)]);
 
     renderizar({ recarregarBootstrap }, cliente.erpClient);
-    await assentarLeituraInicial();
+    await avancarUmCiclo();
 
     expect(recarregarBootstrap).toHaveBeenCalledTimes(1);
-  });
-
-  it.each([0, 1])('publica o status %i lido, que a barra superior traduz em rótulo', async (status) => {
-    const aoLerStatus = vi.fn();
-    const cliente = clienteQueResponde([respostaComStatus(status)]);
-
-    renderizar({ aoLerStatus }, cliente.erpClient);
-    await assentarLeituraInicial();
-
-    expect(aoLerStatus).toHaveBeenCalledWith(status);
-  });
-
-  it('não publica nada quando a leitura falha — o último valor conhecido fica de pé', async () => {
-    const aoLerStatus = vi.fn();
-    const cliente = clienteQueResponde([{ estado: 'erro-de-rede' }]);
-
-    renderizar({ aoLerStatus }, cliente.erpClient);
-    await assentarLeituraInicial();
-
-    expect(aoLerStatus).not.toHaveBeenCalled();
   });
 
   it('ignora corpo fora do contrato em vez de recarregar por engano', async () => {
@@ -175,7 +137,7 @@ describe('decisão sobre a resposta (AD-088)', () => {
     ]);
 
     renderizar({ recarregarBootstrap }, cliente.erpClient);
-    await assentarLeituraInicial();
+    await avancarUmCiclo();
 
     expect(recarregarBootstrap).not.toHaveBeenCalled();
   });
@@ -192,7 +154,7 @@ describe('falha de rede é silenciosa e não interrompe o ciclo', () => {
 
     renderizar({ recarregarBootstrap }, cliente.erpClient);
 
-    await assentarLeituraInicial();
+    await avancarUmCiclo();
     expect(recarregarBootstrap).not.toHaveBeenCalled();
 
     await avancarUmCiclo();
@@ -205,7 +167,7 @@ describe('falha de rede é silenciosa e não interrompe o ciclo', () => {
     const cliente = clienteQueResponde([{ estado: 'sessao-encerrada', itensNaVenda: 0 }]);
 
     renderizar({ recarregarBootstrap }, cliente.erpClient);
-    await assentarLeituraInicial();
+    await avancarUmCiclo();
 
     expect(recarregarBootstrap).not.toHaveBeenCalled();
   });

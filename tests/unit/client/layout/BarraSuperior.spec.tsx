@@ -2,12 +2,12 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BarraSuperior } from '../../../../src/client/layout/BarraSuperior';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
-import { useStatusSistemaStore } from '../../../../src/client/stores/statusSistemaStore';
 import { registroBootstrapDe } from '../../../support/sessao';
 
 /**
- * Barra superior (nó `cm8HS` do Pencil): a identidade vem de `SessaoUsuario` e
- * o indicador de operação vem do último `GetStatusSistema` lido pelo polling.
+ * Barra superior (nó `cm8HS` do Pencil): tudo o que ela mostra vem de
+ * `SessaoUsuario`. A pílula "Online" do desenho não é implementada — ver o
+ * TSDoc do componente.
  */
 
 function montarSessao(sobrescritas: Record<string, unknown> = {}): void {
@@ -21,15 +21,8 @@ function montarSessao(sobrescritas: Record<string, unknown> = {}): void {
   });
 }
 
-function registrarStatus(valor: number | null): void {
-  act(() => {
-    useStatusSistemaStore.setState({ ultimoStatus: valor });
-  });
-}
-
 describe('BarraSuperior', () => {
   beforeEach(() => {
-    registrarStatus(0);
     montarSessao();
   });
 
@@ -37,7 +30,6 @@ describe('BarraSuperior', () => {
     vi.restoreAllMocks();
     act(() => {
       useSessionStore.setState({ estado: 'carregando', registro: null });
-      useStatusSistemaStore.setState({ ultimoStatus: null });
     });
   });
 
@@ -60,20 +52,10 @@ describe('BarraSuperior', () => {
     expect(screen.getByTestId('barra-superior')).toBeInTheDocument();
   });
 
-  it('mostra "Online" com status 0 e "Contingência" quando o ERP passa a responder 1', () => {
-    render(<BarraSuperior />);
-    expect(screen.getByTestId('status-operacao-nfce')).toHaveTextContent('Online');
-
-    registrarStatus(1);
-
-    expect(screen.getByTestId('status-operacao-nfce')).toHaveTextContent('Contingência');
-  });
-
-  it('não afirma "Online" antes da primeira leitura do polling', () => {
-    registrarStatus(null);
+  it('não exibe indicador de status — o valor de GetStatusSistema não é do operador', () => {
     render(<BarraSuperior />);
 
-    expect(screen.getByTestId('status-operacao-nfce')).toHaveTextContent('Verificando');
+    expect(screen.queryByText(/online|contingência/i)).not.toBeInTheDocument();
   });
 
   it('renderiza os dois botões do desenho, ainda sem ação', () => {
