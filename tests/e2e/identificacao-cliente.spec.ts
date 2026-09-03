@@ -242,6 +242,8 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
     await expect(page.getByTestId('aviso-cnpj')).toHaveCount(0);
     await expect(page.getByTestId('resultados-busca-cliente')).toHaveCount(0);
+    // Área de resultados no estado vazio, nunca em carregamento eterno.
+    await expect(page.getByTestId('busca-cliente-sem-resultados')).toBeVisible();
 
     const depois = await contadores(request);
     expect(depois.getListaClientes).toBe(antes.getListaClientes);
@@ -289,22 +291,114 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     await expect(page.getByTestId('status-cliente')).toHaveText('Não identificado');
     await expect(page.getByTestId('pilula-vendedor')).toHaveCount(0);
 
-    await expandirCardCliente(page);
+    // O card **não** recolhe: recolher é o desfecho de quem identificou um
+    // cliente, e aqui a venda ficou sem nenhum (pedido do usuário,
+    // 2026-09-03).
+    await expect(page.getByTestId('alternar-cliente-expandido')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('');
     await expect(page.getByTestId('nome-cliente')).toHaveText('Buscar cliente cadastrado');
     await expect(page.getByTestId('contato-cliente')).toHaveText('—');
   });
 
-  test('CPF sem resultado na busca livre oferece o cadastro simplificado', async ({ page }) => {
+  test('CPF sem resultado na busca livre abre o cadastro pelo botão do topo', async ({ page }) => {
     await abrirTelaDeVenda(page);
     await buscarPorTermo(page, CPF_INEXISTENTE);
 
     await expect(page.getByTestId('busca-cliente-sem-resultados')).toBeVisible();
     await expect(page.getByTestId('aviso-cnpj')).toHaveCount(0);
-    await page.getByTestId('cadastro-simplificado').click();
+    // "Novo cliente" da barra de filtros é o único caminho de cadastro do
+    // modal: o CTA que se repetia no corpo saiu (pedido do usuário,
+    // 2026-09-03).
+    await expect(page.getByTestId('cadastro-simplificado')).toHaveCount(0);
+    await page.getByTestId('novo-cliente').click();
 
     await expect(page.getByTestId('modal-cadastro-cliente')).toBeVisible();
+    // O termo buscado continua chegando ao cadastro como CPF sugerido.
     await expect(page.getByTestId('campo-cadastro-cpf')).toHaveValue(CPF_INEXISTENTE);
+  });
+});
+
+test.describe('Correções de 2026-09-03 (segunda rodada)', () => {
+  test('CNPJ no modal mostra "nenhum cliente encontrado", sem carregar para sempre', async ({
+    page,
+  }) => {
+    // A consulta fica desligada pelo `enabled` do TanStack Query, que nunca sai
+    // de `isPending` — sem desvio explícito o skeleton girava eternamente
+    // (achado do usuário, 2026-09-03).
+    await abrirTelaDeVenda(page);
+    await buscarPorTermo(page, CNPJ_EXISTENTE);
+
+    await expect(page.getByTestId('busca-cliente-sem-resultados')).toBeVisible();
+    await expect(page.getByTestId('resultados-busca-cliente')).toHaveCount(0);
+    // O toast de recusa continua explicando o motivo.
+    await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
+  });
+
+  test('o modal oferece um único caminho de cadastro, no topo', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await buscarPorTermo(page, CPF_INEXISTENTE);
+
+    await expect(page.getByTestId('busca-cliente-sem-resultados')).toBeVisible();
+    await expect(page.getByTestId('novo-cliente')).toHaveCount(1);
+    await expect(page.getByTestId('cadastro-simplificado')).toHaveCount(0);
+  });
+
+  test('a folga do corte existe só com o bloco aberto', async ({ page }) => {
+    // `overflow-clip-margin` devolve o espaço do anel de `focus-visible`, que
+    // `overflow: hidden` comia — mas a mesma folga aplicada ao bloco recolhido
+    // deixava escapar uma faixa de 4px do conteúdo (os dois achados do usuário
+    // em 2026-09-03). É o mecanismo em si que o teste trava: a altura zero do
+    // container, já coberta por `esperarCamposRecolhidos`, não revela o
+    // vazamento porque ele acontece **fora** da caixa medida.
+    await abrirTelaDeVenda(page);
+
+    const margemDoCorte = async (): Promise<string | null> =>
+      page.getByTestId('campos-cliente-venda').evaluate((elemento) => {
+        const filho = elemento.firstElementChild;
+        return filho === null
+          ? null
+          : getComputedStyle(filho).getPropertyValue('overflow-clip-margin');
+      });
+
+    expect(await margemDoCorte()).toBe('0px');
+
+    await expandirCardCliente(page);
+    expect(await margemDoCorte()).toBe('4px');
+  });
+
+  test('a recusa de pessoa jurídica devolve o foco ao campo de documento', async ({ page }) => {
+    // O card fica aberto e o cursor volta para onde o operador precisa
+    // redigitar — não para o código do produto, que é o desfecho de sucesso.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill('2209');
+    // TAB tira o foco do campo: mesmo assim ele volta, em vez de seguir para o
+    // produto.
+    await page.getByTestId('campo-documento-cliente').press('Tab');
+
+    await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
+    await expect(page.getByTestId('campo-documento-cliente')).toBeFocused();
+    await expect(page.getByTestId('campo-codigo-produto')).not.toBeFocused();
+    await expect(page.getByTestId('campos-cliente-venda')).not.toHaveAttribute('inert', '');
+  });
+
+  test('código inexistente também não recolhe o card nem pula para o produto', async ({ page }) => {
+    // Mesmo raciocínio da recusa: só quem terminou com um cliente na venda
+    // recolhe. Aqui o valor fica no campo para o operador corrigir o dígito.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill('999999');
+    await page.getByTestId('identificar-cliente').click();
+
+    await expect(page.getByTestId('alternar-cliente-expandido')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await expect(page.getByTestId('campo-codigo-produto')).not.toBeFocused();
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('999999');
   });
 });
 

@@ -356,13 +356,20 @@ body {
 
 .cc-colapsavel > * {
   min-height: 0;
-  /* `clip` em vez de `hidden`, com margem: o corte é o que faz a altura animar,
-     mas `hidden` cortava rente à borda e comia o anel de `focus-visible` do
-     primeiro campo — o operador via um contorno pela metade, como se a linha
-     estivesse desalinhada (achado do usuário, 2026-09-03). A margem devolve o
-     espaço do anel (3px de ring + 1px de borda) sem deixar o conteúdo vazar
-     durante a transição. */
+  /* `clip` em vez de `hidden`: o corte é o que faz a altura animar, e `clip`
+     é o único dos dois que aceita `overflow-clip-margin` — ver a regra
+     seguinte. */
   overflow: clip;
+}
+
+/* A folga do corte vale **só com o bloco aberto**: `hidden` cortava rente à
+   borda e comia o anel de `focus-visible` do primeiro campo (o operador via
+   um contorno pela metade), mas a mesma margem aplicada ao bloco recolhido
+   deixava escapar uma faixa de 4px do conteúdo abaixo do cabeçalho — os dois
+   achados do usuário em 2026-09-03. Presa a `cc-colapsavel-aberto`, ela
+   devolve o espaço do anel (3px de ring + 1px de borda) enquanto o bloco está
+   aberto e some no instante em que ele recolhe. */
+.cc-colapsavel-aberto > * {
   overflow-clip-margin: 4px;
 }
 

@@ -133,7 +133,10 @@ export function ModalBuscaCliente({
   // busca desligada — melhor não buscar do que buscar com um mínimo inventado.
   const minimo = qtdMinChar ?? Number.POSITIVE_INFINITY;
   // Termo vazio para o hook = consulta desligada pelo `enabled` dele: é assim
-  // que o CNPJ não chega a `GetListaClientes`.
+  // que o CNPJ não chega a `GetListaClientes`. Consulta desligada nunca sai de
+  // `isPending`, então o CNPJ precisa do desvio explícito na área de
+  // resultados abaixo — sem ele o skeleton ficaria girando para sempre
+  // (achado do usuário, 2026-09-03).
   const busca = useBuscaClientes(termoEhCnpj ? '' : termoDebounced, {
     qtdMinCharParaConsulta: minimo,
     pagina,
@@ -251,6 +254,8 @@ export function ModalBuscaCliente({
                 ? 'Aguardando a configuração do ponto de venda.'
                 : `Digite ao menos ${String(qtdMinChar)} caracteres para buscar.`}
             </p>
+          ) : termoEhCnpj ? (
+            <SemResultados />
           ) : busca.isPending || busca.isFetching ? (
             <Skeleton
               name="busca-clientes"
@@ -265,11 +270,7 @@ export function ModalBuscaCliente({
               Não foi possível buscar clientes. Tente novamente.
             </p>
           ) : semResultado ? (
-            <SemResultados
-              onCadastrarNovo={() => {
-                onCadastrarNovo(termoLimpo);
-              }}
-            />
+            <SemResultados />
           ) : (
             <ResultadosDaBusca
               clientes={busca.data?.Clientes ?? []}
@@ -340,16 +341,17 @@ export function ModalBuscaCliente({
   );
 }
 
-interface SemResultadosProps {
-  readonly onCadastrarNovo: () => void;
-}
-
 /**
- * O CTA de cadastro aparece sempre que a busca não achou nada — não há mais o
- * desvio para CNPJ: um termo de pessoa jurídica nem chega a ser buscado, então
- * "sem resultado" aqui só pode ser pessoa física ainda não cadastrada.
+ * Estado "a busca não achou nada" — mensagem apenas, **sem CTA de cadastro**
+ * (pedido do usuário, 2026-09-03): "Novo cliente" já mora na barra de filtros,
+ * e dois botões para a mesma ação dentro do mesmo modal só faziam o operador
+ * escolher entre caminhos idênticos.
+ *
+ * Serve também ao termo de pessoa jurídica, que nem chega a ser buscado
+ * (Ajuste SINIEF 11/2025): para o operador o desfecho é o mesmo — nenhum
+ * cadastro selecionável —, e o motivo já veio pelo toast.
  */
-function SemResultados({ onCadastrarNovo }: SemResultadosProps): ReactElement {
+function SemResultados(): ReactElement {
   return (
     <div
       className="flex flex-col items-start gap-sm p-base"
@@ -358,15 +360,6 @@ function SemResultados({ onCadastrarNovo }: SemResultadosProps): ReactElement {
       <p className="text-md text-muted-foreground">
         Nenhum cliente encontrado para o termo informado.
       </p>
-      <Button
-        type="button"
-        className="gap-xs rounded-full px-sm text-sm font-semibold"
-        data-testid="cadastro-simplificado"
-        onClick={onCadastrarNovo}
-      >
-        <UserPlus className="size-3.5" aria-hidden="true" />
-        Cadastrar cliente
-      </Button>
     </div>
   );
 }

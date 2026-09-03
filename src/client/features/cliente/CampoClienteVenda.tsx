@@ -8,7 +8,7 @@ import {
   UserPen,
   UserRound,
 } from 'lucide-react';
-import { useState, type ReactElement, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -61,6 +61,7 @@ export function CampoClienteVenda(): ReactElement {
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
 
   const [expandido, setExpandido] = useState(false);
+  const campoDocumento = useRef<HTMLInputElement>(null);
   const [documento, setDocumento] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
@@ -77,6 +78,25 @@ export function CampoClienteVenda(): ReactElement {
    * PDV (`SessaoUsuario`) e não sumiria sozinha.
    */
   const [recusaPessoaJuridica, setRecusaPessoaJuridica] = useState(false);
+
+  /**
+   * Contador de pedidos de foco no campo de documento — mesmo motivo do
+   * `focoVendaStore`: duas recusas seguidas precisam disparar o efeito duas
+   * vezes, e um booleano ficaria `true` na primeira sem mudar na segunda.
+   *
+   * O foco vai por efeito, e não por `focus()` dentro do handler, porque a
+   * recusa também reabre o bloco: enquanto ele está recolhido o campo é
+   * `inert`, e `focus()` antes de o React aplicar o novo render não teria
+   * efeito nenhum.
+   */
+  const [pedidosDeFocoNoDocumento, setPedidosDeFocoNoDocumento] = useState(0);
+
+  useEffect(() => {
+    if (pedidosDeFocoNoDocumento === 0) {
+      return;
+    }
+    campoDocumento.current?.focus();
+  }, [pedidosDeFocoNoDocumento]);
 
   /**
    * O campo mostra o documento do cliente identificado, com máscara de leitura
@@ -135,13 +155,21 @@ export function CampoClienteVenda(): ReactElement {
    * Devolve o bloco de identificação ao estado "nada identificado".
    *
    * O toast já explicou o motivo; o que não pode ficar é a tela sugerindo que
-   * a venda seguiu com algum cliente. O card também recolhe, como em qualquer
-   * desfecho de identificação.
+   * a venda seguiu com algum cliente.
+   *
+   * **Ao contrário de `concluirIdentificacao`, o card fica aberto e o foco
+   * volta ao campo de documento** (pedido do usuário, 2026-09-03): recolher e
+   * mandar o caixa para o código do produto é o desfecho de quem *tem*
+   * cliente — aqui a venda ficou sem nenhum, e o próximo gesto é redigitar a
+   * identificação, não bipar um item. Devolver o foco só é seguro porque o
+   * campo foi esvaziado: com o valor recusado ainda nele, o próximo `blur`
+   * repetiria a mesma consulta em laço.
    */
   function zerarIdentificacao(): void {
     setRecusaPessoaJuridica(true);
     setDocumento('');
-    setExpandido(false);
+    setExpandido(true);
+    setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }
 
   async function identificar(): Promise<void> {
@@ -198,6 +226,11 @@ export function CampoClienteVenda(): ReactElement {
         // Código sem cadastro não abre o cadastro simplificado: o operador
         // errou o número, não descobriu um cliente novo — criar um cliente
         // aqui inventaria um cadastro que ele não pediu.
+        // Sem recolher nem mexer no foco, como em todo desfecho de erro: o
+        // card só recolhe quando a venda ficou com um cliente. O valor
+        // continua no campo justamente para o operador corrigir o dígito
+        // errado — por isso aqui não se força o foco de volta, que somado ao
+        // `onBlur` faria a mesma consulta sair de novo a cada TAB.
         if (entrada.tipo === 'CODIGO') {
           gooeyToast.warning(`Nenhum cliente com o código ${String(entrada.codigo)}.`);
           return;
@@ -317,6 +350,7 @@ export function CampoClienteVenda(): ReactElement {
                 <input
                   className="w-full bg-transparent font-mono text-base font-medium tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
                   data-testid="campo-documento-cliente"
+                  ref={campoDocumento}
                   autoComplete="off"
                   inputMode="numeric"
                   placeholder="Digite"
