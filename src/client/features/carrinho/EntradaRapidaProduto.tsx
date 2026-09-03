@@ -317,10 +317,17 @@ export function EntradaRapidaProduto(): ReactElement {
 
   /**
    * Núcleo compartilhado por TAB (`revisarEntrada`, usa `texto` digitado) e
-   * pela seleção no modal de busca de produto editável/pesável
-   * (`selecionarDaBusca`, usa o código escolhido direto) — os dois caminhos
-   * terminam no mesmo lugar: `GetProduto` via `revisarPorCodigo` e a revisão
-   * aparece na barra, nunca inserindo sozinho.
+   * pela seleção no modal de busca (`selecionarDaBusca`, usa o código
+   * escolhido direto) — os dois resolvem por `GetProduto` via
+   * `revisarPorCodigo` e decidem entre inserir direto e mostrar a revisão pelo
+   * mesmo critério.
+   *
+   * **Produto não editável e não pesável (`ProdutoPesavelEditavel === ''`)
+   * entra direto no grid** (pedido do usuário, 2026-09-03; antes valia só para
+   * a seleção no modal, AD-124, e agora vale também para o TAB): não há preço
+   * nem desconto a ajustar (`'E'`) nem etiqueta de balança a interpretar
+   * (`'S'`/`'B'`), então a prévia só custaria uma confirmação a mais no ritmo
+   * do caixa. Os outros três valores continuam abrindo a revisão na barra.
    */
   async function resolverEExibir(codigo: string, origemForcada?: 'BUSCA'): Promise<void> {
     setOcupado(true);
@@ -328,6 +335,11 @@ export function EntradaRapidaProduto(): ReactElement {
       const resultado = await revisarPorCodigo(codigo, origemForcada);
       if (resultado.situacao === 'recusado') {
         campoCodigo.current?.focus();
+        return;
+      }
+      if (resultado.snapshot.pesavelEditavel === '') {
+        confirmarPrevia(resultado, resultado.quantidade);
+        resetar();
         return;
       }
       // Mesma razão do caminho rápido: o código digitado fica visível durante
@@ -348,37 +360,21 @@ export function EntradaRapidaProduto(): ReactElement {
 
   /**
    * Candidato escolhido no modal de busca (`CART-01`) — o modal só devolve o
-   * `CodigoProduto`; carregar no campo, resolver via `GetProduto` e mostrar a
-   * revisão (quantidade/unidade/preço/desconto, foco na quantidade ou no "+"
-   * conforme `pesavelEditavel`) é responsabilidade desta barra, não do modal.
+   * `CodigoProduto`; carregar no campo, resolver via `GetProduto` e decidir
+   * entre inserir direto e mostrar a revisão é responsabilidade desta barra,
+   * não do modal.
    *
-   * Exceção (correção do usuário, 2026-09-03): produto identificado como
-   * **não editável** (`ProdutoPesavelEditavel === ''`) não tem nada a
-   * revisar aqui — sem preço/desconto ajustável (`'E'`) e sem etiqueta de
-   * balança a interpretar (`'S'`/`'B'`) — então insere direto no grid, sem
-   * exigir confirmação extra do operador.
+   * A decisão em si mora em `resolverEExibir`, o mesmo núcleo do TAB: desde a
+   * correção do usuário de 2026-09-03 os dois caminhos seguem o critério
+   * idêntico, e duplicá-lo aqui deixaria a barra com duas regras que podem
+   * divergir.
    */
   async function selecionarDaBusca(codigoProduto: string): Promise<void> {
     if (ocupado) {
       return;
     }
     setTexto(codigoProduto);
-    setOcupado(true);
-    try {
-      const resultado = await revisarPorCodigo(codigoProduto, 'BUSCA');
-      if (resultado.situacao === 'recusado') {
-        campoCodigo.current?.focus();
-        return;
-      }
-      if (resultado.snapshot.pesavelEditavel === '') {
-        confirmarPrevia(resultado, resultado.quantidade);
-        resetar();
-        return;
-      }
-      aplicarRevisao(resultado);
-    } finally {
-      setOcupado(false);
-    }
+    await resolverEExibir(codigoProduto, 'BUSCA');
   }
 
   function confirmar(): void {

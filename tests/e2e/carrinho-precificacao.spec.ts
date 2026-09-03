@@ -16,6 +16,8 @@ interface ContadoresMock {
 
 const SKU_COM_FAIXA = '001234';
 const SKU_EDITAVEL = '003000';
+/** `ProdutoPesavelEditavel = 'S'` no catálogo do mock. */
+const SKU_PESAVEL = '002000';
 /** EAN-13 sintético: prefixo `2`, reduzido `002000`, etiqueta R$ 15,00, DV `6`. */
 const EAN_PESAVEL = '2002000015006';
 
@@ -185,31 +187,55 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 28,00');
   });
 
-  test('TAB num produto não editável mostra a prévia completa e foca o botão de inserir', async ({
-    page,
-  }) => {
+  test('TAB num produto não editável insere direto, sem prévia', async ({ page }) => {
+    // Correção do usuário (2026-09-03): antes o TAB abria a prévia e o foco
+    // pousava no "+" à espera de um Enter. Sem preço/desconto a ajustar
+    // (`'E'`) e sem etiqueta de balança a interpretar (`'S'`/`'B'`), essa
+    // confirmação não decidia nada — só custava uma tecla por item. Mesmo
+    // critério que a seleção no modal já usava (AD-124).
     await abrirTelaDeVenda(page);
 
     const campo = page.getByTestId('campo-codigo-produto');
     await campo.fill(SKU_COM_FAIXA);
     await campo.press('Tab');
 
-    // Prévia carrega todos os dados do `GetProduto`, não só o nome.
-    await expect(page.getByTestId('previa-insercao-produto')).toBeVisible();
-    await expect(page.getByTestId('previa-quantidade')).toHaveValue('1,000');
-    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 10,00');
-    await expect(page.getByTestId('previa-preco-unitario')).not.toBeEditable();
-    await expect(page.getByTestId('previa-desconto-item')).toHaveValue('R$ 0,00');
-    await expect(page.getByTestId('previa-total-item')).toHaveText('R$ 10,00');
-    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
-
-    // Produto não editável: nada mais a decidir além da quantidade, então o
-    // foco já pousa no "+" — Enter insere sem precisar de mouse.
-    await expect(page.getByTestId('previa-confirmar')).toBeFocused();
-    await page.keyboard.press('Enter');
-
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 10,00');
+
+    // A barra volta ao estado vazio, pronta para o próximo item — é o que
+    // distingue "inseriu direto" de "abriu a revisão". (`previa-insercao-produto`
+    // é o container da barra e está sempre no DOM: afirmar sobre ele não
+    // provaria nada.)
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 0,00');
+    await expect(campo).toHaveValue('');
+    await expect(campo).toBeFocused();
+  });
+
+  test("TAB num produto pesável continua abrindo a revisão (só `''` insere direto)", async ({
+    page,
+  }) => {
+    // O recorte importa: em produto pesável a quantidade vem do peso, e
+    // inserir `1,000` sozinho lançaria a venda errada.
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU_PESAVEL);
+    await campo.press('Tab');
+
+    // A revisão carregou os dados do `GetProduto` — nenhuma linha foi criada.
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('R$ 10,00');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+  });
+
+  test('TAB num produto editável continua exigindo revisão (FR-014)', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU_EDITAVEL);
+    await campo.press('Tab');
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByTestId('previa-preco-unitario')).toBeEditable();
   });
 
   test('o rótulo do campo de código reflete SessaoUsuario.UsuarioTipoCodigoProduto', async ({
