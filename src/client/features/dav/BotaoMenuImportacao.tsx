@@ -33,19 +33,24 @@ export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): Re
   const { recusa, recusaAtual } = useImportacaoDav(deps);
 
   /**
-   * Venda já iniciada — com cliente identificado ou item lançado — desabilita
-   * o atalho (pedido do usuário, 2026-09-03), em vez de deixá-lo clicável para
-   * recusar depois. O motivo não se perde: ele vai no `title`, e o caminho de
-   * saída continua sendo o mesmo de sempre, cancelar a venda.
+   * Venda já iniciada — com cliente identificado ou item lançado, cancelado
+   * inclusive — bloqueia o atalho (pedido do usuário, 2026-09-03).
+   *
+   * O bloqueio é `aria-disabled`, **não** o `disabled` nativo (pedido do
+   * usuário, 2026-09-03): um botão com `disabled` não dispara evento nenhum, e
+   * o operador que clicava nele não recebia resposta alguma — a notificação
+   * com o motivo só aparecia justamente quando a importação era possível, ou
+   * seja, quando ela não era necessária. Com `aria-disabled` o botão continua
+   * clicável e focável para **explicar** por que não dá, enquanto leitores de
+   * tela e os próprios testes seguem lendo o controle como desabilitado.
    */
   const bloqueado = recusa !== null;
 
   /**
-   * A recusa é reaplicada no clique porque o estado pode mudar entre a
-   * renderização e o gesto — e porque, sem ela, um call site que renderizasse
-   * o botão habilitado por engano abriria a janela sobre uma venda em
-   * digitação. A mesma regra ainda é reaplicada dentro de
-   * `importarVendaExistente`.
+   * A recusa é reaplicada no clique — não é só a resposta ao operador. Ela
+   * também cobre o estado que muda entre a renderização e o gesto, e um call
+   * site que renderizasse o botão habilitado por engano. A mesma regra ainda é
+   * reaplicada dentro de `importarVendaExistente`.
    */
   function abrir(): void {
     const motivo = recusaAtual();
@@ -61,14 +66,14 @@ export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): Re
       <button
         type="button"
         data-testid="botao-menu-importacao"
-        disabled={bloqueado}
+        aria-disabled={bloqueado}
         {...(recusa === null ? {} : { title: mensagemDeRecusa(recusa) })}
         onClick={abrir}
         className={cn(
           'flex h-9 flex-1 items-center justify-center gap-xs rounded-full border border-border bg-card',
           'text-sm font-semibold whitespace-nowrap outline-none',
           'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-          bloqueado ? 'text-[var(--cc-color-muted-soft)]' : 'text-foreground',
+          bloqueado ? 'cursor-not-allowed text-[var(--cc-color-muted-soft)]' : 'text-foreground',
         )}
       >
         {/* Mesmo par de estados de `BotaoCancelarVenda`, o atalho vizinho da

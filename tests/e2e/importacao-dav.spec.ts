@@ -334,6 +334,17 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     const atalho = page.getByTestId('botao-menu-importacao');
     await expect(atalho).toBeDisabled();
     await expect(atalho).toHaveAttribute('title', /já tem itens lançados/i);
+
+    // E clicar assim mesmo **explica** o motivo, em vez de não fazer nada: o
+    // bloqueio é `aria-disabled`, não o `disabled` nativo, justamente para o
+    // clique continuar chegando (correção do usuário, 2026-09-03).
+    //
+    // `force` porque a checagem de "actionability" do Playwright recusa
+    // qualquer elemento com `aria-disabled`, mesmo o que o navegador clica sem
+    // problema — é limitação do teste, não do botão.
+    await atalho.click({ force: true });
+    await expect(page.getByText(/já tem itens lançados/i).first()).toBeVisible();
+
     await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
   });
@@ -357,6 +368,13 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     const atalho = page.getByTestId('botao-menu-importacao');
     await expect(atalho).toBeDisabled();
     await expect(atalho).toHaveAttribute('title', /mesmo que cancelados/i);
+
+    // Clicar mesmo bloqueado explica o motivo — e a mensagem cita o item
+    // cancelado, senão não bateria com o carrinho que o operador está vendo.
+    // (`force`: o Playwright recusa clique em `aria-disabled`; o navegador não.)
+    await atalho.click({ force: true });
+    await expect(page.getByText(/mesmo que cancelados/i).first()).toBeVisible();
+    await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
 
     // A saída continua sendo cancelar a venda — e esse botão está liberado,
     // justamente porque há linha cancelada (AD-140).
