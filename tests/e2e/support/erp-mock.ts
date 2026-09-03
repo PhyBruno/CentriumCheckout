@@ -274,6 +274,24 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
  * do `CATALOGO`: é o que deixa o E2E provar que a linha importada entra
  * congelada, com o preço do documento e não com o de catálogo (`FR-006`).
  */
+/**
+ * `YYYY-MM-DD` de hoje deslocado em dias.
+ *
+ * As emissões dos DAVs sintéticos são **relativas**, e não datas fixas de 2026:
+ * a janela de importação abre com o período padrão dos últimos 7 dias (pedido
+ * do usuário, 2026-09-03), e um documento com data fixa sairia da lista assim
+ * que o calendário passasse dela — a suíte quebraria sozinha com o tempo.
+ */
+export function emissaoRelativa(dias: number): string {
+  const hoje = new Date();
+  const data = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias);
+  const doisDigitos = (valor: number): string => String(valor).padStart(2, '0');
+  return `${String(data.getFullYear())}-${doisDigitos(data.getMonth() + 1)}-${doisDigitos(data.getDate())}`;
+}
+
+/** Emissão de cada DAV sintético, em dias antes de hoje. */
+export const DIAS_DE_EMISSAO = { conveniado: -1, varejo: -4 } as const;
+
 const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<string, unknown> }> =
   {
     '004821': {
@@ -281,7 +299,7 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         NumeroDAV: '004821',
         Titulo: 'PV-11842',
         Senha: '',
-        DataEmissao: '2026-06-11',
+        DataEmissao: emissaoRelativa(DIAS_DE_EMISSAO.conveniado),
         ClienteCodigo: 2538,
         ClienteNome: 'CLIENTE CONVENIADO',
         VendedorCodigo: 12,
@@ -334,7 +352,7 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         NumeroDAV: '004790',
         Titulo: 'ORC-00915',
         Senha: '',
-        DataEmissao: '2026-05-02',
+        DataEmissao: emissaoRelativa(DIAS_DE_EMISSAO.varejo),
         ClienteCodigo: 1255,
         ClienteNome: 'CLIENTE VAREJO',
         VendedorCodigo: 8,

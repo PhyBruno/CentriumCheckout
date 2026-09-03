@@ -17,7 +17,7 @@ import { fetchProduto, type ContextoPrecificacao } from '../../services/produto/
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
 import { linhasAtivas } from '../../domain/precificacao/linha';
 import { useSessionStore } from '../../stores/sessionStore';
-import { carrinhoDepsPadrao, useVendaStore } from '../../stores/vendaStore';
+import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores/vendaStore';
 
 /**
  * Liga a orquestração de importação (`services/dav/davQueries.ts`) ao estado
@@ -69,8 +69,7 @@ function contextoPrecificacaoAtual(): ContextoPrecificacao | null {
  * quer saber é se **há** um cliente escolhido na venda agora, e é isso que a
  * conjunção abaixo responde.
  */
-function estadoDaVendaAtual(): EstadoVendaParaImportacao {
-  const venda = useVendaStore.getState();
+function estadoParaImportacao(venda: VendaState): EstadoVendaParaImportacao {
   return {
     numeroNota: venda.identidadeVenda.numeroNota,
     // O **mesmo** predicado que carrinho e cliente usam, lido da composição real
@@ -80,6 +79,11 @@ function estadoDaVendaAtual(): EstadoVendaParaImportacao {
     itensAtivos: linhasAtivas(venda.linhas).length,
     clienteIdentificado: venda.houveEscolhaExplicita && venda.clienteAtual !== null,
   };
+}
+
+/** O mesmo retrato, lido do store global no momento da checagem. */
+function estadoDaVendaAtual(): EstadoVendaParaImportacao {
+  return estadoParaImportacao(useVendaStore.getState());
 }
 
 function mensagemDeErro(erro: unknown): string {
@@ -129,12 +133,18 @@ function stubsDeFeaturesFuturas(): Pick<
 export interface ApiImportacaoDav {
   /**
    * Por que a venda em curso não aceita importar um documento, ou `null`
-   * quando aceita.
+   * quando aceita — **reativo**: recalculado a cada mudança do `vendaStore`.
    *
-   * Existe para a UI recusar **no clique do atalho**, com a notificação de
-   * erro, em vez de deixar o operador escolher um documento e só então falhar
-   * (pedido do usuário, 2026-09-03). A mesma regra é reaplicada dentro de
-   * `importarVendaExistente`, que é o que fecha qualquer outro call site.
+   * É o que desabilita o atalho "Menu Importação" assim que a venda começa
+   * (pedido do usuário, 2026-09-03). A leitura precisa ser por subscrição, e
+   * não por `getState()` dentro do clique: nada re-renderizaria o botão quando
+   * o primeiro item entra no carrinho, e ele continuaria clicável.
+   */
+  readonly recusa: MotivoRecusaImportacao | null;
+  /**
+   * A mesma regra lida sob demanda, fora de render — usada pelos call sites
+   * que precisam do estado no instante da ação. A regra é reaplicada dentro de
+   * `importarVendaExistente`, que é o que fecha qualquer outro caminho.
    */
   recusaAtual(): MotivoRecusaImportacao | null;
   /**
@@ -148,6 +158,10 @@ export interface ApiImportacaoDav {
 export function useImportacaoDav(
   sobrescritas: Partial<ImportacaoVendaDeps> = {},
 ): ApiImportacaoDav {
+  // O seletor devolve `string | null`, não um objeto: com a comparação padrão
+  // do Zustand, um retrato novo a cada render provocaria re-render infinito.
+  const recusa = useVendaStore((venda) => recusaDeImportacao(estadoParaImportacao(venda)));
+
   // Sem `useCallback`: `sobrescritas` é um objeto novo a cada render (é o
   // default de parâmetro, e o call site também passa um literal), então a
   // memoização nunca valeria — devolveria uma função nova de qualquer forma.
@@ -191,6 +205,7 @@ export function useImportacaoDav(
   };
 
   return {
+    recusa,
     recusaAtual: () => recusaDeImportacao(estadoDaVendaAtual()),
     importar,
   };

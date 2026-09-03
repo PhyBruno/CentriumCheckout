@@ -56,7 +56,7 @@ Como operador de caixa, ao selecionar um documento pronto para faturamento, quer
 
 - **FR-001**: O sistema MUST permitir que o operador visualize uma lista de documentos prontos para faturamento disponíveis para importação.
 - **FR-002**: O sistema MUST permitir que o operador busque nessa lista por um termo livre.
-- **FR-003**: O sistema MUST permitir que o operador filtre essa lista por um período de data de emissão.
+- **FR-003**: O sistema MUST permitir que o operador filtre essa lista por um período de data de emissão, em **dois campos** — início e fim —, cada um abrindo um calendário a qualquer clique no campo. A janela MUST abrir com o período já aplicado: início em hoje − 7 dias, fim em hoje, sem exibir horário (o filtro é por dia, então "hoje" cobre até as 23:59). (Detalhado em 2026-09-03 por decisão direta do usuário, durante a implementação — AD-140.)
 - **FR-004**: O sistema MUST permitir que o operador selecione um documento da lista para importá-lo.
 - **FR-005**: Ao importar, o sistema MUST preencher o carrinho com todos os itens e formas de pagamento já registrados no documento importado, sem exigir que o operador os digite novamente.
 - **FR-006**: Ao importar, o sistema MUST preservar o preço de cada item exatamente como registrado no documento original, sem disparar recálculo automático.
@@ -64,7 +64,7 @@ Como operador de caixa, ao selecionar um documento pronto para faturamento, quer
 - **FR-008**: Após a importação, o sistema MUST permitir que a venda siga exatamente o mesmo fluxo de carrinho, pagamento e finalização de uma venda criada manualmente, sem tratamento especial.
 - **FR-009**: O sistema MUST NOT oferecer, dentro deste fluxo, uma ação de reimpressão de um documento já emitido anteriormente.
 - **FR-010**: O sistema MUST NOT implementar nenhum mecanismo de bloqueio para impedir que dois operadores importem o mesmo documento concorrentemente.
-- **FR-011**: O sistema MUST recusar a importação de um documento quando a venda em andamento já tiver itens lançados, um cliente identificado pelo operador, um documento já importado, ou pagamento aprovado — e MUST informar o motivo ao operador por notificação de erro, sem alterar nada da venda. (Acrescentado em 2026-09-03 por decisão direta do usuário, durante a implementação. O cliente **default**, pré-selecionado automaticamente no início da venda, não conta como "cliente identificado": ele não é escolha do operador, e considerá-lo impediria toda importação.)
+- **FR-011**: O sistema MUST recusar a importação de um documento quando a venda em andamento já tiver itens lançados, um cliente identificado pelo operador, um documento já importado, ou pagamento aprovado — e MUST informar o motivo ao operador **sem que ele precise tentar**: desde 2026-09-03 (AD-140) o atalho de importação fica desabilitado enquanto a recusa vale, com o motivo no `title` do botão; a notificação de erro permanece como rede de segurança para qualquer outro caminho que chegue à importação. Nada da venda MUST ser alterado. (Acrescentado em 2026-09-03 por decisão direta do usuário, durante a implementação. O cliente **default**, pré-selecionado automaticamente no início da venda, não conta como "cliente identificado": ele não é escolha do operador, e considerá-lo impediria toda importação.)
 
 ### Key Entities *(include if feature involves data)*
 

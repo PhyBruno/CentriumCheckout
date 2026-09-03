@@ -12,6 +12,7 @@ import {
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
+import { CampoData, isoRelativoAHoje } from '@/components/ui/campo-data';
 import { cn } from '@/lib/utils';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
@@ -61,6 +62,20 @@ export interface ModalImportacaoDavProps {
 /** Mesmo debounce dos demais modais de busca desta base. */
 const DEBOUNCE_BUSCA_MS = 300;
 
+/**
+ * Período de emissão pré-aplicado ao abrir a janela (pedido do usuário,
+ * 2026-09-03): dos últimos 7 dias até hoje.
+ *
+ * O teto é o **dia** de hoje, não um instante: `Datainicial`/`Datafinal` são
+ * `format: date` no contrato (`YYYY-MM-DD`), então "hoje" já inclui tudo o que
+ * foi emitido até as 23:59 — não há horário a enviar nem a exibir.
+ */
+const DIAS_DO_PERIODO_PADRAO = 7;
+
+function periodoPadrao(): { readonly inicial: string; readonly final: string } {
+  return { inicial: isoRelativoAHoje(-DIAS_DO_PERIODO_PADRAO), final: isoRelativoAHoje(0) };
+}
+
 /** `YYYY-MM-DD` (contrato) → `DD/MM/AAAA` (leitura do operador). */
 function formatarDataEmissao(iso: string): string {
   const partes = iso.split('-');
@@ -80,8 +95,8 @@ export function ModalImportacaoDav({
 }: ModalImportacaoDavProps): ReactElement | null {
   const [termo, setTermo] = useState('');
   const [termoDebounced, setTermoDebounced] = useState('');
-  const [dataInicial, setDataInicial] = useState('');
-  const [dataFinal, setDataFinal] = useState('');
+  const [dataInicial, setDataInicial] = useState(() => periodoPadrao().inicial);
+  const [dataFinal, setDataFinal] = useState(() => periodoPadrao().final);
   const [pagina, setPagina] = useState(1);
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
@@ -90,10 +105,14 @@ export function ModalImportacaoDav({
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
+      const periodo = periodoPadrao();
       setTermo('');
       setTermoDebounced('');
-      setDataInicial('');
-      setDataFinal('');
+      // Recalculado a cada abertura, não só na montagem: o Checkout fica aberto
+      // o turno inteiro, e uma janela montada ontem ofereceria o período de
+      // ontem ao operador que a reabre hoje.
+      setDataInicial(periodo.inicial);
+      setDataFinal(periodo.final);
       setPagina(1);
       setSelecionado(null);
     }
@@ -107,6 +126,26 @@ export function ModalImportacaoDav({
       clearTimeout(temporizador);
     };
   }, [termo]);
+
+  // ESC fecha a janela (pedido do usuário, 2026-09-03). O ouvinte é de
+  // `window`, e não um `onKeyDown` no backdrop como antes: aquele só disparava
+  // com o foco dentro do modal, e bastava um clique no fundo — ou o calendário
+  // de um filtro devolvendo o foco ao `body` — para a tecla não fazer nada.
+  // Nada foi importado neste ponto, então sair é sempre seguro.
+  useEffect(() => {
+    if (!aberto) {
+      return;
+    }
+    const aoTeclar = (evento: KeyboardEvent): void => {
+      if (evento.key === 'Escape') {
+        onFechar();
+      }
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => {
+      window.removeEventListener('keydown', aoTeclar);
+    };
+  }, [aberto, onFechar]);
 
   // Ao contrário da busca de cliente/produto, não há piso de caracteres: termo
   // vazio é uma consulta legítima — "todos os DAVs prontos para faturamento" é
@@ -148,8 +187,13 @@ export function ModalImportacaoDav({
       )}
       data-testid="modal-importacao-dav"
       onKeyDown={(evento) => {
-        if (evento.key === 'Escape') {
-          onFechar();
+        // Enter importa o documento já selecionado (pedido do usuário,
+        // 2026-09-03) — o mesmo que clicar em "Importar DAV", de qualquer
+        // ponto da janela. A linha da tabela trata a tecla por conta própria e
+        // interrompe a propagação: lá o Enter ainda pode significar "selecionar
+        // esta linha", e importar a linha **anterior** seria o documento errado.
+        if (evento.key === 'Enter') {
+          void confirmarImportacao();
         }
       }}
     >
@@ -207,44 +251,38 @@ export function ModalImportacaoDav({
             </label>
 
             {/* O Pencil desenha o período como uma pílula estática ("Emissão:
-                01/06 - 11/06"). Aqui ela vira dois campos de data reais, que é
-                o que o contrato permite filtrar (`Datainicial`/`Datafinal`) —
-                a pílula sozinha não teria como receber o intervalo. */}
+                01/06 - 11/06"). Aqui ela vira dois campos de data reais —
+                início e fim, que é o que o contrato permite filtrar
+                (`Datainicial`/`Datafinal`) —, cada um com o seu calendário, que
+                abre a qualquer clique no campo (pedido do usuário,
+                2026-09-03). */}
             <div className="flex h-9 shrink-0 items-center gap-xs rounded-full bg-secondary px-sm text-xs font-semibold text-foreground">
               <CalendarDays
                 className="size-[15px] shrink-0 text-muted-foreground"
                 aria-hidden="true"
               />
               <span className="shrink-0">Emissão</span>
-              <label className="flex items-center">
-                <span className="sr-only">Data inicial de emissão</span>
-                <input
-                  type="date"
-                  className="bg-transparent font-mono outline-none"
-                  data-testid="dav-data-inicial"
-                  value={dataInicial}
-                  onChange={(evento) => {
-                    setDataInicial(evento.target.value);
-                    setPagina(1);
-                    setSelecionado(null);
-                  }}
-                />
-              </label>
+              <CampoData
+                rotulo="Data inicial de emissão"
+                testId="dav-data-inicial"
+                valor={dataInicial}
+                onChange={(iso) => {
+                  setDataInicial(iso);
+                  setPagina(1);
+                  setSelecionado(null);
+                }}
+              />
               <span aria-hidden="true">–</span>
-              <label className="flex items-center">
-                <span className="sr-only">Data final de emissão</span>
-                <input
-                  type="date"
-                  className="bg-transparent font-mono outline-none"
-                  data-testid="dav-data-final"
-                  value={dataFinal}
-                  onChange={(evento) => {
-                    setDataFinal(evento.target.value);
-                    setPagina(1);
-                    setSelecionado(null);
-                  }}
-                />
-              </label>
+              <CampoData
+                rotulo="Data final de emissão"
+                testId="dav-data-final"
+                valor={dataFinal}
+                onChange={(iso) => {
+                  setDataFinal(iso);
+                  setPagina(1);
+                  setSelecionado(null);
+                }}
+              />
             </div>
           </div>
 
@@ -274,7 +312,14 @@ export function ModalImportacaoDav({
               Nenhum documento encontrado para os filtros informados.
             </p>
           ) : (
-            <TabelaDeDavs davs={davs} selecionado={selecionado} onSelecionar={setSelecionado} />
+            <TabelaDeDavs
+              davs={davs}
+              selecionado={selecionado}
+              onSelecionar={setSelecionado}
+              onConfirmar={() => {
+                void confirmarImportacao();
+              }}
+            />
           )}
         </div>
 
@@ -351,12 +396,19 @@ interface TabelaDeDavsProps {
   readonly davs: readonly DavListado[];
   readonly selecionado: string | null;
   readonly onSelecionar: (numeroDav: string) => void;
+  /** Enter sobre a linha já selecionada — importa sem passar pelo rodapé. */
+  readonly onConfirmar: () => void;
 }
 
 const classeCelulaCabecalho =
   'flex h-full items-center px-[10px] text-xs font-bold text-muted-foreground';
 
-function TabelaDeDavs({ davs, selecionado, onSelecionar }: TabelaDeDavsProps): ReactElement {
+function TabelaDeDavs({
+  davs,
+  selecionado,
+  onSelecionar,
+  onConfirmar,
+}: TabelaDeDavsProps): ReactElement {
   return (
     <div data-testid="resultados-dav">
       <div className="flex h-[38px] border-y border-border bg-muted" aria-hidden="true">
@@ -382,6 +434,22 @@ function TabelaDeDavs({ davs, selecionado, onSelecionar }: TabelaDeDavsProps): R
                   ativo ? 'bg-secondary' : 'bg-card',
                 )}
                 onClick={() => {
+                  onSelecionar(dav.numeroDav);
+                }}
+                onKeyDown={(evento) => {
+                  if (evento.key !== 'Enter') {
+                    return;
+                  }
+                  // A tecla é resolvida aqui, e não pelo ouvinte da janela: no
+                  // teclado o Enter chega à linha que **tem o foco**, que pode
+                  // não ser a selecionada. Primeiro Enter escolhe a linha,
+                  // segundo importa — dois passos, nunca o documento errado.
+                  evento.preventDefault();
+                  evento.stopPropagation();
+                  if (ativo) {
+                    onConfirmar();
+                    return;
+                  }
                   onSelecionar(dav.numeroDav);
                 }}
               >

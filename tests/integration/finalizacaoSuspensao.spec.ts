@@ -502,13 +502,17 @@ describe('correções do usuário (2026-09-02)', () => {
     expect(screen.getByTestId('botao-cancelar-venda')).toBeEnabled();
   });
 
-  it('não conta linha cancelada como venda a suspender (CART-08)', () => {
+  it('habilita "Cancelar venda" quando só restam linhas canceladas (correção de 2026-09-03)', () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
     useVendaStore.setState({ linhas: [linhaDe({ cancelada: true })] });
 
     render(renderizarAtalhos(cenario));
 
-    expect(screen.getByTestId('botao-cancelar-venda')).toBeDisabled();
+    // A regra anterior exigia linha **ativa** e deixava o operador sem saída
+    // numa venda cujos itens foram todos cancelados: nada a finalizar e nada a
+    // cancelar. A linha cancelada continua no array por rastreabilidade
+    // (`CART-08`) e é prova de que a venda foi digitada.
+    expect(screen.getByTestId('botao-cancelar-venda')).toBeEnabled();
   });
 
   it('comunica a suspensão por notificação, não por texto fixo na tela', async () => {

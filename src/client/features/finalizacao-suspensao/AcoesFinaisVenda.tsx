@@ -88,13 +88,18 @@ export function ProvedorFinalizacaoVenda({
 }
 
 /**
- * Não há o que suspender numa venda sem item: `SUSPENDER` criaria um rascunho
- * vazio no ERP, que o operador teria de limpar depois (pedido do usuário,
- * 2026-09-02). Linha cancelada não conta — ela permanece no array por
- * rastreabilidade (`CART-08`), mas não é venda a suspender.
+ * Não há o que suspender numa venda em que nada foi lançado: `SUSPENDER`
+ * criaria um rascunho vazio no ERP, que o operador teria de limpar depois
+ * (pedido do usuário, 2026-09-02).
+ *
+ * **Linha cancelada conta** (pedido do usuário, 2026-09-03, corrigindo a regra
+ * anterior): ela permanece no array por rastreabilidade (`CART-08`) e é prova
+ * de que a venda foi digitada. Uma venda cujos itens foram todos cancelados é
+ * exatamente o caso em que o operador precisa desistir — travar o botão ali o
+ * deixava sem saída na tela.
  */
 function useVendaTemItem(): boolean {
-  return useVendaStore((estado) => linhasAtivas(estado.linhas).length > 0);
+  return useVendaStore((estado) => estado.linhas.length > 0);
 }
 
 /**

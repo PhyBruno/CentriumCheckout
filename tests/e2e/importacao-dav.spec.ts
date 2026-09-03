@@ -7,10 +7,14 @@ import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
  *
  * Os dois DAVs sintéticos do mock:
  *
- * - `004821` — emitido em 2026-06-11, `CLIENTE CONVENIADO` (2538), vendedor 12,
- *   uma linha do SKU `001234` a **R$ 7,77**. O catálogo cobra R$ 10,00 pelo
- *   mesmo SKU: é essa divergência que prova o congelamento de preço (`FR-006`).
- * - `004790` — emitido em 2026-05-02, `CLIENTE VAREJO` (1255), vendedor 8.
+ * - `004821` — emitido **ontem**, `CLIENTE CONVENIADO` (2538), vendedor 12, uma
+ *   linha do SKU `001234` a **R$ 7,77**. O catálogo cobra R$ 10,00 pelo mesmo
+ *   SKU: é essa divergência que prova o congelamento de preço (`FR-006`).
+ * - `004790` — emitido há 4 dias, `CLIENTE VAREJO` (1255), vendedor 8.
+ *
+ * As emissões são relativas porque a janela abre com o período padrão dos
+ * últimos 7 dias (correção do usuário, 2026-09-03): datas fixas sairiam do
+ * filtro sozinhas com a passagem do tempo.
  */
 
 interface ContadoresMock {
@@ -31,6 +35,14 @@ const SKU_DO_DAV = '001234';
 const SKU_EDITAVEL = '003000';
 const NUMERO_NOTA_DO_DAV = 90210;
 const URL_SERVICO_IMPRESSAO = 'http://127.0.0.1:4545/**';
+
+/** `DD/MM/AAAA` de hoje deslocado em dias — o formato que os campos exibem. */
+function dataBr(dias: number): string {
+  const hoje = new Date();
+  const data = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias);
+  const doisDigitos = (valor: number): string => String(valor).padStart(2, '0');
+  return `${doisDigitos(data.getDate())}/${doisDigitos(data.getMonth() + 1)}/${String(data.getFullYear())}`;
+}
 
 async function contadores(request: APIRequestContext): Promise<ContadoresMock> {
   const resposta = await request.get(`${URL_ERP_MOCK}/__mock/calls`);
@@ -93,20 +105,55 @@ test.describe('User Story 1 — listar, buscar e filtrar (T010, Cenário 1)', ()
     await expect(page.locator(`[data-numero-dav="${DAV_CONVENIADO}"]`)).toBeVisible();
   });
 
+  test('a janela abre com o período padrão de 7 dias já aplicado', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeImportacao(page);
+
+    // Correção do usuário (2026-09-03): início em -7 dias, fim hoje, e nenhum
+    // horário exibido — o contrato filtra por dia (`format: date`).
+    await expect(page.getByTestId('dav-data-inicial')).toHaveValue(dataBr(-7));
+    await expect(page.getByTestId('dav-data-final')).toHaveValue(dataBr(0));
+    await expect(page.getByTestId('linha-dav')).toHaveCount(2);
+  });
+
   test('o período de emissão exclui e volta a incluir o documento', async ({ page }) => {
     await abrirTelaDeVenda(page);
     await abrirJanelaDeImportacao(page);
 
-    // Janela que não contém nenhuma das duas emissões.
-    await page.getByTestId('dav-data-inicial').fill('2026-01-01');
-    await page.getByTestId('dav-data-final').fill('2026-01-31');
+    // Janela antiga, que não contém nenhuma das duas emissões.
+    await page.getByTestId('dav-data-inicial').fill(dataBr(-60));
+    await page.getByTestId('dav-data-final').fill(dataBr(-50));
     await expect(page.getByTestId('dav-sem-resultados')).toBeVisible();
 
-    // Janela que contém só o DAV de junho.
-    await page.getByTestId('dav-data-inicial').fill('2026-06-01');
-    await page.getByTestId('dav-data-final').fill('2026-06-30');
+    // Últimos dois dias: só o DAV de ontem entra (o outro é de 4 dias atrás).
+    await page.getByTestId('dav-data-inicial').fill(dataBr(-2));
+    await page.getByTestId('dav-data-final').fill(dataBr(0));
     await expect(page.getByTestId('linha-dav')).toHaveCount(1);
     await expect(page.locator(`[data-numero-dav="${DAV_CONVENIADO}"]`)).toBeVisible();
+  });
+
+  test('o calendário abre a qualquer clique no campo e escolhe a data', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeImportacao(page);
+
+    // Clique no meio do campo — no `<input type="date">` nativo isso não abria
+    // calendário nenhum, só o ícone do navegador abria (correção do usuário).
+    await page.getByTestId('dav-data-inicial').click();
+    await expect(page.getByTestId('calendario')).toBeVisible();
+
+    // Escolher um dia fecha o calendário e aplica o filtro.
+    await page.locator('[data-dia]').first().click();
+    await expect(page.getByTestId('calendario')).toHaveCount(0);
+    await expect(page.getByTestId('dav-data-inicial')).not.toHaveValue('');
+  });
+
+  test('ESC fecha a janela de importação', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeImportacao(page);
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
   });
 
   test('não oferece reimpressão de documento já emitido (FR-009, AD-035)', async ({ page }) => {
@@ -188,6 +235,19 @@ test.describe('Cenário 3 — a venda importada segue o fluxo normal (FR-008)', 
     await expect(precos.nth(1)).toHaveText('R$ 10,00');
   });
 
+  test('Enter sobre o documento selecionado importa, sem passar pelo rodapé', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeImportacao(page);
+
+    // Correção do usuário (2026-09-03): selecionar e teclar Enter é o caminho
+    // de teclado equivalente ao botão "Importar DAV".
+    await page.locator(`[data-numero-dav="${DAV_CONVENIADO}"]`).click();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('modal-importacao-dav')).toBeHidden();
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+  });
+
   test('FaturarNFCe leva o NumeroNota do documento e nenhum campo de DAV (D8, AD-107)', async ({
     page,
     request,
@@ -258,7 +318,7 @@ test.describe('Cenário 5 — documento já faturado por outro operador (D7, AD-
 });
 
 test.describe('Um documento nunca entra numa venda em digitação (regra do usuário, 2026-09-03)', () => {
-  test('venda com item lançado: o atalho recusa com notificação e não abre a janela', async ({
+  test('venda com item lançado: o atalho fica desabilitado e não abre a janela', async ({
     page,
   }) => {
     await abrirTelaDeVenda(page);
@@ -268,16 +328,17 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await campo.press('Enter');
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
 
-    await page.getByTestId('botao-menu-importacao').click();
-
-    // A recusa é no clique do atalho: o operador sabe antes de escolher um
-    // documento, não depois de confirmar.
-    await expect(page.getByText(/já tem itens lançados/i).first()).toBeVisible();
+    // O atalho fica **desabilitado** assim que a venda começa (correção do
+    // usuário, 2026-09-03): o operador vê que não pode importar antes de
+    // tentar, e o motivo fica no `title` do botão.
+    const atalho = page.getByTestId('botao-menu-importacao');
+    await expect(atalho).toBeDisabled();
+    await expect(atalho).toHaveAttribute('title', /já tem itens lançados/i);
     await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
   });
 
-  test('venda com cliente identificado: o atalho recusa com notificação', async ({ page }) => {
+  test('venda com cliente identificado: o atalho fica desabilitado', async ({ page }) => {
     await abrirTelaDeVenda(page);
 
     // Identificação explícita pelo campo da venda — diferente do cliente
@@ -287,9 +348,9 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await page.getByTestId('identificar-cliente').click();
     await expect(page.getByTestId('cliente-da-venda')).toContainText('CLIENTE VAREJO');
 
-    await page.getByTestId('botao-menu-importacao').click();
-
-    await expect(page.getByText(/já tem um cliente identificado/i).first()).toBeVisible();
+    const atalho = page.getByTestId('botao-menu-importacao');
+    await expect(atalho).toBeDisabled();
+    await expect(atalho).toHaveAttribute('title', /já tem um cliente identificado/i);
     await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
   });
 
@@ -330,9 +391,10 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await importar(page, DAV_CONVENIADO);
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
 
-    // Tentar importar o segundo DAV: recusado no atalho.
-    await page.getByTestId('botao-menu-importacao').click();
-    await expect(page.getByText(/já foi iniciada a partir de um documento/i).first()).toBeVisible();
+    // Tentar importar o segundo DAV: o atalho já está desabilitado.
+    const atalho = page.getByTestId('botao-menu-importacao');
+    await expect(atalho).toBeDisabled();
+    await expect(atalho).toHaveAttribute('title', /já foi iniciada a partir de um documento/i);
     await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
 
