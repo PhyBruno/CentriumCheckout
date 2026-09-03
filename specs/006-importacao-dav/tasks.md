@@ -211,3 +211,15 @@ As 25 tarefas concluídas. Gates finais: `npx tsc --noEmit` sem erro (T024), `es
 3. **Cinco desvios deliberados do Pencil** na janela de importação, todos por ausência de campo no contrato ou por conflito com `FR-008`/`FR-009` — registrados no TSDoc de `ModalImportacaoDav.tsx`.
 
 **Ressalva a `contracts/importacao-domain-api.md`:** o reuso "sem alteração" pela feature 011 vale para `mapearVendaExistente`, **não** para `paraLinhaCarrinho`, que fixa `origem: 'DAV'` e precisará de um parâmetro quando a 011 usar `'RASCUNHO'`.
+
+## Revisão de código e `FR-011` (2026-09-03, AD-138)
+
+Revisão com `ecc:code-reviewer` (Sonnet) sobre o commit da implementação. Três achados, os três procedentes e corrigidos:
+
+- **CRÍTICO** — importar um segundo DAV sobre o primeiro sobrescrevia `identidadeVenda.numeroNota` enquanto `importarLinhasCongeladas` apenas **somava** as linhas: `FaturarNFCe` saía com o número do segundo documento, o ERP fechava só ele, e o primeiro DAV ficava aberto para sempre com os itens dele já faturados sob outro número — sem erro nem aviso.
+- **ALTO (latente)** — `definirIdentidadeVenda` não é barrada por `podeMutarCarrinho()`, diferente de `importarLinhasCongeladas`/`selecionarCliente`. Hoje inofensivo porque o predicado é stub (`() => true`); quando a feature 008 ligar o lock real, uma importação com pagamento aprovado gravaria o `NumeroNota` do documento enquanto carrinho e cliente recusariam a mudança.
+- **BAIXO** — o `useCallback` de `useImportacaoDav` nunca memoizava (`sobrescritas` é objeto novo a cada render). Removido.
+
+O usuário fixou, a partir do achado crítico, a regra geral que virou **`FR-011`**: um DAV/NFCe não entra numa venda que já tem cliente identificado, item lançado, documento já importado ou pagamento aprovado — a tentativa é recusada com notificação de erro. Implementada como regra pura (`recusaDeImportacao`, quatro motivos) aplicada em dois pontos: no clique do atalho (a janela nem abre) e dentro de `importarVendaExistente`, antes da rede. Detalhe completo em **AD-138**.
+
+Gates depois da correção: 445 unitários/integração e 101 E2E verdes, `tsc --noEmit` e `eslint` limpos.

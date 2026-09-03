@@ -5,12 +5,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ClienteCheckout } from '../../src/shared/schemas/cliente.schema';
 import {
   importarVendaExistente,
+  mensagemDeRecusa,
+  recusaDeImportacao,
   useListaDavs,
   type ImportacaoVendaDeps,
+  type MotivoRecusaImportacao,
 } from '../../src/client/services/dav/davQueries';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
 import type { ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
+import { linhasAtivas } from '../../src/client/domain/precificacao/linha';
 import { criarVendaStore } from '../../src/client/stores/vendaStore';
 import { clienteCheckoutDe } from '../support/cliente';
 import {
@@ -110,6 +114,12 @@ function depsDe(
 
   const venda = store.getState();
   const deps: ImportacaoVendaDeps = {
+    estadoDaVenda: () => ({
+      numeroNota: store.getState().identidadeVenda.numeroNota,
+      podeMutar: true,
+      itensAtivos: linhasAtivas(store.getState().linhas).length,
+      clienteIdentificado: store.getState().houveEscolhaExplicita,
+    }),
     definirIdentidadeVenda: venda.definirIdentidadeVenda,
     importarLinhasCongeladas: venda.importarLinhasCongeladas,
     editarSnapshotDescricao: venda.editarSnapshotDescricao,
@@ -141,7 +151,8 @@ function envolverEmQueryClient(): { wrapper: (props: { children: ReactNode }) =>
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
   return {
-    wrapper: ({ children }) => createElement(QueryClientProvider, { client: queryClient }, children),
+    wrapper: ({ children }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children),
   };
 }
 
@@ -309,15 +320,11 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
 
   it('mantém o preço do documento mesmo cruzando a faixa do mesmo SKU', async () => {
     const store = montarStore();
-    // Linha manual do mesmo SKU, 3 unidades: sozinha fica na faixa 1 (1000).
-    store.getState().inserirItem({
-      snapshot: snapshotDe({ codigoProduto: SKU_DAV }),
-      quantidade: unidades(3),
-      origem: 'MANUAL',
-    });
-    expect(store.getState().linhas[0]?.precoUnitario).toBe(1000);
 
-    // Documento com 3 unidades do mesmo SKU a um preço próprio (777).
+    // Importa **primeiro** — a ordem inversa (inserir e depois importar) é
+    // recusada desde a regra de pré-condição, e o cenário de faixa que interessa
+    // aqui é o do item manual inserido *depois* da importação, que é o fluxo que
+    // o operador de fato tem (`FR-008`).
     const { deps } = depsDe(
       store,
       {},
@@ -325,14 +332,22 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
     );
     await importarVendaExistente(NUMERO_DAV, { clienteNome: 'CLIENTE DO DAV' }, deps);
 
+    // Linha manual do mesmo SKU, 3 unidades. Se a congelada entrasse no agregado
+    // por SKU, as duas somariam 6 e cruzariam para a faixa 2 (900).
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: SKU_DAV }),
+      quantidade: unidades(3),
+      origem: 'MANUAL',
+    });
+
     const linhas = store.getState().linhas;
-    // A linha manual **não** é empurrada para a faixa 2: a congelada fica fora
-    // do agregado por SKU (invariante I3, AD-067).
-    expect(linhas[0]?.precoUnitario).toBe(1000);
-    // E a congelada mantém exatamente o preço do documento.
-    expect(linhas[1]?.precoUnitario).toBe(777);
-    expect(linhas[1]?.precoCongelado).toBe(true);
-    expect(linhas[1]?.origem).toBe('DAV');
+    // A congelada mantém exatamente o preço do documento.
+    expect(linhas[0]?.precoUnitario).toBe(777);
+    expect(linhas[0]?.precoCongelado).toBe(true);
+    expect(linhas[0]?.origem).toBe('DAV');
+    // E a manual fica na faixa 1: a congelada está fora do agregado por SKU
+    // (invariante I3, AD-067).
+    expect(linhas[1]?.precoUnitario).toBe(1000);
   });
 
   it('recusa a importação com pagamento aprovado, sem tocar no carrinho', async () => {
@@ -392,6 +407,118 @@ describe('DAV_IMPORTADO (T021, AD-114)', () => {
       quantidadeLinhas: 2,
       quantidadeFormasDePagamento: 2,
     });
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Pré-condições: um documento nunca entra numa venda já em digitação
+ * (pedido do usuário, 2026-09-03)
+ * ------------------------------------------------------------------ */
+
+describe('recusaDeImportacao — regra pura', () => {
+  const vendaLimpa = {
+    numeroNota: 0,
+    podeMutar: true,
+    itensAtivos: 0,
+    clienteIdentificado: false,
+  } as const;
+
+  it('aceita a venda recém-aberta, com o cliente default pré-selecionado', () => {
+    // O default não é escolha do operador (AD-032): se contasse, nenhuma
+    // importação seria possível, porque a tela de venda nasce com ele aplicado.
+    expect(recusaDeImportacao(vendaLimpa)).toBeNull();
+  });
+
+  it.each([
+    [{ ...vendaLimpa, podeMutar: false }, 'venda-bloqueada'],
+    [{ ...vendaLimpa, numeroNota: 90210 }, 'ja-importou-documento'],
+    [{ ...vendaLimpa, itensAtivos: 1 }, 'carrinho-populado'],
+    [{ ...vendaLimpa, clienteIdentificado: true }, 'cliente-identificado'],
+  ])('recusa com motivo %#', (estado, motivo) => {
+    expect(recusaDeImportacao(estado)).toBe(motivo);
+    expect(mensagemDeRecusa(motivo as MotivoRecusaImportacao)).toMatch(/venda/i);
+  });
+});
+
+describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
+  async function esperarRecusa(
+    store: ReturnType<typeof montarStore>,
+    motivo: MotivoRecusaImportacao,
+  ): Promise<void> {
+    const { deps, espioes } = depsDe(store);
+    const antes = store.getState().linhas;
+
+    await expect(
+      importarVendaExistente(NUMERO_DAV, { clienteNome: 'CLIENTE DO DAV' }, deps),
+    ).rejects.toMatchObject({ name: 'ErroImportacaoRecusada', motivo });
+
+    // Recusa acontece antes até da rede: nada foi buscado, nada foi mutado.
+    expect(espioes.resolverCliente).not.toHaveBeenCalled();
+    expect(store.getState().linhas).toEqual(antes);
+    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroNota: 0 });
+    expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
+  }
+
+  it('recusa quando a venda já tem item lançado', async () => {
+    const store = montarStore();
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: '005678' }),
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+    });
+
+    await esperarRecusa(store, 'carrinho-populado');
+  });
+
+  it('recusa quando o operador já identificou um cliente', async () => {
+    const store = montarStore();
+    await store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 1255 }), 'BUSCA_DOCUMENTO');
+
+    await esperarRecusa(store, 'cliente-identificado');
+  });
+
+  it('recusa a segunda importação — o NumeroNota do primeiro documento não pode ser sobrescrito', async () => {
+    const store = montarStore();
+    const { deps } = depsDe(store);
+    await importarVendaExistente(NUMERO_DAV, { clienteNome: 'CLIENTE DO DAV' }, deps);
+    expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
+
+    // Segundo documento, número de nota diferente. Sem a pré-condição, este
+    // `NumeroNota` sobrescreveria o primeiro enquanto as linhas apenas se
+    // somariam: o ERP fecharia só o segundo DAV e o primeiro ficaria aberto
+    // para sempre, com os itens dele já faturados sob outro número.
+    const segundo = depsDe(store, {}, respostaGetDav({ NumeroNota: 90211 }));
+    await expect(
+      importarVendaExistente('004790', { clienteNome: 'OUTRO CLIENTE' }, segundo.deps),
+    ).rejects.toMatchObject({ motivo: 'ja-importou-documento' });
+
+    expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
+    expect(store.getState().linhas).toHaveLength(1);
+  });
+
+  it('recusa com pagamento aprovado, antes de qualquer mutação', async () => {
+    const store = montarStore();
+    const { deps, espioes } = depsDe(store, {
+      estadoDaVenda: () => ({
+        numeroNota: 0,
+        podeMutar: false,
+        itensAtivos: 0,
+        clienteIdentificado: false,
+      }),
+    });
+
+    await expect(
+      importarVendaExistente(NUMERO_DAV, { clienteNome: 'CLIENTE DO DAV' }, deps),
+    ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
+
+    // A lacuna que a revisão apontou: `definirIdentidadeVenda` não é barrada
+    // por `podeMutarCarrinho()`, então sem esta pré-condição a venda bloqueada
+    // passaria a apontar para o rascunho de outro documento mantendo o próprio
+    // conteúdo.
+    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(espioes.resolverCliente).not.toHaveBeenCalled();
   });
 });
 

@@ -64,6 +64,7 @@ Como operador de caixa, ao selecionar um documento pronto para faturamento, quer
 - **FR-008**: Após a importação, o sistema MUST permitir que a venda siga exatamente o mesmo fluxo de carrinho, pagamento e finalização de uma venda criada manualmente, sem tratamento especial.
 - **FR-009**: O sistema MUST NOT oferecer, dentro deste fluxo, uma ação de reimpressão de um documento já emitido anteriormente.
 - **FR-010**: O sistema MUST NOT implementar nenhum mecanismo de bloqueio para impedir que dois operadores importem o mesmo documento concorrentemente.
+- **FR-011**: O sistema MUST recusar a importação de um documento quando a venda em andamento já tiver itens lançados, um cliente identificado pelo operador, um documento já importado, ou pagamento aprovado — e MUST informar o motivo ao operador por notificação de erro, sem alterar nada da venda. (Acrescentado em 2026-09-03 por decisão direta do usuário, durante a implementação. O cliente **default**, pré-selecionado automaticamente no início da venda, não conta como "cliente identificado": ele não é escolha do operador, e considerá-lo impediria toda importação.)
 
 ### Key Entities *(include if feature involves data)*
 

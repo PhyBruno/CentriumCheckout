@@ -1,8 +1,10 @@
 import { FileText } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
+import { gooeyToast } from 'goey-toast';
 import { cn } from '@/lib/utils';
-import type { ImportacaoVendaDeps } from '../../services/dav/davQueries';
+import { mensagemDeRecusa, type ImportacaoVendaDeps } from '../../services/dav/davQueries';
 import { ModalImportacaoDav } from './ModalImportacaoDav';
+import { useImportacaoDav } from './useImportacaoDav';
 
 /**
  * Atalho "Menu Importação" da faixa "Atalhos da venda" (Pencil, nó `i7nka`):
@@ -28,15 +30,33 @@ export interface BotaoMenuImportacaoProps {
 
 export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): ReactElement {
   const [aberto, setAberto] = useState(false);
+  const { recusaAtual } = useImportacaoDav(deps);
+
+  /**
+   * A recusa acontece **no clique**, não no confirmar (pedido do usuário,
+   * 2026-09-03): o operador precisa saber que não pode importar antes de
+   * escolher um documento, não depois.
+   *
+   * O botão continua habilitado de propósito. Desabilitado ele não explicaria
+   * nada — e o motivo (venda com item, cliente identificado, pagamento
+   * aprovado, documento já importado) é exatamente o que o operador precisa
+   * ler para saber que a saída é cancelar a venda.
+   */
+  function abrir(): void {
+    const recusa = recusaAtual();
+    if (recusa !== null) {
+      gooeyToast.error(mensagemDeRecusa(recusa));
+      return;
+    }
+    setAberto(true);
+  }
 
   return (
     <>
       <button
         type="button"
         data-testid="botao-menu-importacao"
-        onClick={() => {
-          setAberto(true);
-        }}
+        onClick={abrir}
         className={cn(
           'flex h-9 flex-1 items-center justify-center gap-xs rounded-full border border-border bg-card',
           'text-sm font-semibold whitespace-nowrap text-foreground outline-none',

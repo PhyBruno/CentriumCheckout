@@ -189,9 +189,9 @@ describe('paraLinhaCarrinho', () => {
     }
 
     expect(paraLinhaCarrinho(importada, 'linha-1').snapshot.descricao).toBe(SKU_DAV);
-    expect(paraLinhaCarrinho({ ...importada, descricao: 'ARROZ 5KG' }, 'linha-1').snapshot.descricao).toBe(
-      'ARROZ 5KG',
-    );
+    expect(
+      paraLinhaCarrinho({ ...importada, descricao: 'ARROZ 5KG' }, 'linha-1').snapshot.descricao,
+    ).toBe('ARROZ 5KG');
   });
 
   it('zera as faixas do snapshot — linha congelada nunca as lê', () => {

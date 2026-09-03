@@ -55,6 +55,89 @@ export interface DavQueriesDeps {
 }
 
 /**
+ * Por que a venda em curso não aceita a importação de um documento.
+ *
+ * Um documento importado **substitui** a venda: traz os itens, o cliente, o
+ * vendedor e as formas de pagamento já registrados no ERP, e passa a ser a
+ * NFCe rascunho daquela venda. Não existe "mesclar" — `FaturarNFCe` carrega um
+ * único `NumeroNota` (`montarRetratoVenda.ts`) e um único cliente. Importar
+ * sobre uma venda já em digitação misturaria dois documentos num só, e o
+ * operador só descobriria na nota emitida.
+ *
+ * Regra pedida diretamente pelo usuário (2026-09-03): um DAV/NFCe **não** pode
+ * ser importado para dentro de uma venda que já tem cliente ou item — a
+ * tentativa é recusada com notificação de erro.
+ */
+export type MotivoRecusaImportacao =
+  'venda-bloqueada' | 'ja-importou-documento' | 'carrinho-populado' | 'cliente-identificado';
+
+/** Retrato mínimo da venda para decidir a recusa — sem Zustand, sem React. */
+export interface EstadoVendaParaImportacao {
+  /** `identidadeVenda.numeroNota`; `0` para venda criada do zero. */
+  readonly numeroNota: number;
+  /** Mesmo predicado de bloqueio pós-pagamento do carrinho/cliente (AD-043). */
+  readonly podeMutar: boolean;
+  /** Linhas **não canceladas** — mesma noção de "a venda tem item" do resto da base. */
+  readonly itensAtivos: number;
+  /**
+   * Houve escolha **explícita** de cliente pelo operador.
+   *
+   * O default pré-selecionado no início da venda (AD-032) não conta: ele não é
+   * decisão do operador, e recusar por causa dele impediria toda importação —
+   * a tela de venda nasce com esse cliente aplicado.
+   */
+  readonly clienteIdentificado: boolean;
+}
+
+/**
+ * Decide se a venda aceita a importação. Função **pura**: é ela que a UI
+ * consulta para recusar já no clique do atalho, e a orquestração reusa antes de
+ * qualquer efeito — uma regra só, dois pontos de aplicação.
+ *
+ * A ordem importa: o bloqueio por pagamento vem primeiro porque é o estado mais
+ * restritivo, e "já importou" antes dos demais porque explica melhor o que o
+ * operador está vendo do que "já tem itens" (os itens são do documento).
+ */
+export function recusaDeImportacao(
+  estado: EstadoVendaParaImportacao,
+): MotivoRecusaImportacao | null {
+  if (!estado.podeMutar) {
+    return 'venda-bloqueada';
+  }
+  if (estado.numeroNota !== 0) {
+    return 'ja-importou-documento';
+  }
+  if (estado.itensAtivos > 0) {
+    return 'carrinho-populado';
+  }
+  if (estado.clienteIdentificado) {
+    return 'cliente-identificado';
+  }
+  return null;
+}
+
+/** Texto que o operador lê na notificação — sempre com a saída possível. */
+export function mensagemDeRecusa(motivo: MotivoRecusaImportacao): string {
+  switch (motivo) {
+    case 'venda-bloqueada':
+      return 'Já há pagamento aprovado nesta venda: não é possível importar um documento.';
+    case 'ja-importou-documento':
+      return 'Esta venda já foi iniciada a partir de um documento. Cancele a venda para importar outro.';
+    case 'carrinho-populado':
+      return 'Esta venda já tem itens lançados. Cancele a venda para importar um documento.';
+    case 'cliente-identificado':
+      return 'Esta venda já tem um cliente identificado. Cancele a venda para importar um documento.';
+  }
+}
+
+export class ErroImportacaoRecusada extends Error {
+  constructor(readonly motivo: MotivoRecusaImportacao) {
+    super(mensagemDeRecusa(motivo));
+    this.name = 'ErroImportacaoRecusada';
+  }
+}
+
+/**
  * Item da listagem (`data-model.md` §1).
  *
  * `Senha` existe no contrato e não é modelado — nenhum requisito o consome.
@@ -232,6 +315,15 @@ export async function fetchDav(
  */
 export interface ImportacaoVendaDeps {
   /**
+   * Retrato da venda em curso, lido **antes** de qualquer efeito.
+   *
+   * É a pré-condição que impede um documento de ser importado sobre uma venda
+   * já em digitação (ver `recusaDeImportacao`). A UI aplica a mesma regra no
+   * clique do atalho; esta checagem é a que garante que nenhum outro call site
+   * futuro escape dela.
+   */
+  estadoDaVenda(): EstadoVendaParaImportacao;
+  /**
    * Feature 004 — grava `{ origem: 'DAV', numeroNota }` na identidade da venda.
    *
    * **É o elo que faz o DAV fechar no ERP.** `montarRetratoVenda` monta o
@@ -275,10 +367,7 @@ export interface ImportacaoVendaDeps {
  * só `Descricao` é lida da resposta, e a linha permanece com o preço do
  * documento (`FR-006`).
  */
-async function resolverDescricoes(
-  venda: VendaImportada,
-  deps: ImportacaoVendaDeps,
-): Promise<void> {
+async function resolverDescricoes(venda: VendaImportada, deps: ImportacaoVendaDeps): Promise<void> {
   const skus = [...new Set(venda.linhas.map((linha) => linha.codigoProduto))];
 
   await Promise.allSettled(
@@ -315,6 +404,13 @@ export async function importarVendaExistente(
   origemLista: { readonly clienteNome: string },
   deps: ImportacaoVendaDeps,
 ): Promise<void> {
+  // Pré-condição antes até da rede: não depende do documento, e recusar cedo
+  // evita gastar uma chamada ao ERP para depois não ter nada a desfazer.
+  const recusa = recusaDeImportacao(deps.estadoDaVenda());
+  if (recusa !== null) {
+    throw new ErroImportacaoRecusada(recusa);
+  }
+
   const documento = await fetchDav(
     numeroDav,
     deps.erpClient === undefined ? {} : { erpClient: deps.erpClient },

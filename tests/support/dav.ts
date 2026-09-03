@@ -17,9 +17,7 @@ export const CODIGO_CLIENTE_DAV = 4711;
 export const CODIGO_VENDEDOR_DAV = 12;
 export const SKU_DAV = '001234';
 
-export function davDaLista(
-  sobrescritas: Record<string, unknown> = {},
-): Record<string, unknown> {
+export function davDaLista(sobrescritas: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     NumeroDAV: NUMERO_DAV,
     Titulo: 'PV-11842',
@@ -50,9 +48,7 @@ export function respostaListaDavs(
   };
 }
 
-export function produtoDoDav(
-  sobrescritas: Record<string, unknown> = {},
-): Record<string, unknown> {
+export function produtoDoDav(sobrescritas: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     sequencial: 1,
     codigoProduto: SKU_DAV,

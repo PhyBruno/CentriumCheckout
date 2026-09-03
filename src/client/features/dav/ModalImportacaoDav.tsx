@@ -111,10 +111,7 @@ export function ModalImportacaoDav({
   // Ao contrário da busca de cliente/produto, não há piso de caracteres: termo
   // vazio é uma consulta legítima — "todos os DAVs prontos para faturamento" é
   // exatamente o que o operador vê ao abrir a janela (`FR-001`).
-  const lista = useListaDavs(
-    { txtBusca: termoDebounced, dataInicial, dataFinal, pagina },
-    aberto,
-  );
+  const lista = useListaDavs({ txtBusca: termoDebounced, dataInicial, dataFinal, pagina }, aberto);
 
   const { importar } = useImportacaoDav(deps);
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
@@ -214,7 +211,10 @@ export function ModalImportacaoDav({
                 o que o contrato permite filtrar (`Datainicial`/`Datafinal`) —
                 a pílula sozinha não teria como receber o intervalo. */}
             <div className="flex h-9 shrink-0 items-center gap-xs rounded-full bg-secondary px-sm text-xs font-semibold text-foreground">
-              <CalendarDays className="size-[15px] shrink-0 text-muted-foreground" aria-hidden="true" />
+              <CalendarDays
+                className="size-[15px] shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
               <span className="shrink-0">Emissão</span>
               <label className="flex items-center">
                 <span className="sr-only">Data inicial de emissão</span>

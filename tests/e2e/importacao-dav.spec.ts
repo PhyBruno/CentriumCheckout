@@ -201,9 +201,7 @@ test.describe('Cenário 3 — a venda importada segue o fluxo normal (FR-008)', 
 
     await page.getByTestId('botao-finalizar-venda').click();
 
-    await expect
-      .poll(async () => (await contadores(request)).faturarNFCe)
-      .toBeGreaterThan(0);
+    await expect.poll(async () => (await contadores(request)).faturarNFCe).toBeGreaterThan(0);
 
     const { retrato } = await ultimoRetrato(request);
     expect(retrato?.['NumeroNota']).toBe(NUMERO_NOTA_DO_DAV);
@@ -256,6 +254,68 @@ test.describe('Cenário 5 — documento já faturado por outro operador (D7, AD-
 
     await expect(page.getByTestId('modal-importacao-dav')).toBeHidden();
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+  });
+});
+
+test.describe('Um documento nunca entra numa venda em digitação (regra do usuário, 2026-09-03)', () => {
+  test('venda com item lançado: o atalho recusa com notificação e não abre a janela', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU_DO_DAV);
+    await campo.press('Enter');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    await page.getByTestId('botao-menu-importacao').click();
+
+    // A recusa é no clique do atalho: o operador sabe antes de escolher um
+    // documento, não depois de confirmar.
+    await expect(page.getByText(/já tem itens lançados/i).first()).toBeVisible();
+    await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+  });
+
+  test('venda com cliente identificado: o atalho recusa com notificação', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+
+    // Identificação explícita pelo campo da venda — diferente do cliente
+    // default, que é pré-selecionado sozinho e não impede importar.
+    await page.getByTestId('alternar-cliente-expandido').click();
+    await page.getByTestId('campo-documento-cliente').fill('12298023980');
+    await page.getByTestId('identificar-cliente').click();
+    await expect(page.getByTestId('cliente-da-venda')).toContainText('CLIENTE VAREJO');
+
+    await page.getByTestId('botao-menu-importacao').click();
+
+    await expect(page.getByText(/já tem um cliente identificado/i).first()).toBeVisible();
+    await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
+  });
+
+  test('segundo documento é recusado — o NumeroNota do primeiro não é sobrescrito', async ({
+    page,
+    request,
+  }) => {
+    await page.route(URL_SERVICO_IMPRESSAO, (rota) => rota.fulfill({ status: 200, body: '' }));
+
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeImportacao(page);
+    await importar(page, DAV_CONVENIADO);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    // Tentar importar o segundo DAV: recusado no atalho.
+    await page.getByTestId('botao-menu-importacao').click();
+    await expect(page.getByText(/já foi iniciada a partir de um documento/i).first()).toBeVisible();
+    await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    // E o faturamento continua levando o número do primeiro documento.
+    await page.getByTestId('botao-finalizar-venda').click();
+    await expect.poll(async () => (await contadores(request)).faturarNFCe).toBeGreaterThan(0);
+
+    const { retrato } = await ultimoRetrato(request);
+    expect(retrato?.['NumeroNota']).toBe(NUMERO_NOTA_DO_DAV);
   });
 });
 
