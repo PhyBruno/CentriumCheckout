@@ -2,11 +2,12 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BarraSuperior } from '../../../../src/client/layout/BarraSuperior';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
+import { useStatusSistemaStore } from '../../../../src/client/stores/statusSistemaStore';
 import { registroBootstrapDe } from '../../../support/sessao';
 
 /**
- * Barra superior (nó `cm8HS` do Pencil): tudo o que ela mostra vem de
- * `SessaoUsuario`, e o indicador de conexão segue os eventos do navegador.
+ * Barra superior (nó `cm8HS` do Pencil): a identidade vem de `SessaoUsuario` e
+ * o indicador de operação vem do último `GetStatusSistema` lido pelo polling.
  */
 
 function montarSessao(sobrescritas: Record<string, unknown> = {}): void {
@@ -20,14 +21,15 @@ function montarSessao(sobrescritas: Record<string, unknown> = {}): void {
   });
 }
 
-/** Força `navigator.onLine`, que o jsdom expõe como getter do protótipo. */
-function definirConexao(online: boolean): void {
-  vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(online);
+function registrarStatus(valor: number | null): void {
+  act(() => {
+    useStatusSistemaStore.setState({ ultimoStatus: valor });
+  });
 }
 
 describe('BarraSuperior', () => {
   beforeEach(() => {
-    definirConexao(true);
+    registrarStatus(0);
     montarSessao();
   });
 
@@ -35,6 +37,7 @@ describe('BarraSuperior', () => {
     vi.restoreAllMocks();
     act(() => {
       useSessionStore.setState({ estado: 'carregando', registro: null });
+      useStatusSistemaStore.setState({ ultimoStatus: null });
     });
   });
 
@@ -57,16 +60,20 @@ describe('BarraSuperior', () => {
     expect(screen.getByTestId('barra-superior')).toBeInTheDocument();
   });
 
-  it('mostra "Online" e troca para "Offline" quando o navegador perde a rede', () => {
+  it('mostra "Online" com status 0 e "Contingência" quando o ERP passa a responder 1', () => {
     render(<BarraSuperior />);
-    expect(screen.getByTestId('status-conexao')).toHaveTextContent('Online');
+    expect(screen.getByTestId('status-operacao-nfce')).toHaveTextContent('Online');
 
-    definirConexao(false);
-    act(() => {
-      window.dispatchEvent(new Event('offline'));
-    });
+    registrarStatus(1);
 
-    expect(screen.getByTestId('status-conexao')).toHaveTextContent('Offline');
+    expect(screen.getByTestId('status-operacao-nfce')).toHaveTextContent('Contingência');
+  });
+
+  it('não afirma "Online" antes da primeira leitura do polling', () => {
+    registrarStatus(null);
+    render(<BarraSuperior />);
+
+    expect(screen.getByTestId('status-operacao-nfce')).toHaveTextContent('Verificando');
   });
 
   it('renderiza os dois botões do desenho, ainda sem ação', () => {

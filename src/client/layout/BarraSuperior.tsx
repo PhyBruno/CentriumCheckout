@@ -7,16 +7,22 @@ import {
   nomeDoOperador,
   tituloDoProduto,
 } from '../domain/sessao/identidadePdv';
+import {
+  interpretarStatusSistema,
+  rotularStatusOperacao,
+  type StatusOperacaoNFCe,
+} from '../domain/sessao/statusOperacaoNFCe';
 import { useSessionStore } from '../stores/sessionStore';
-import { useStatusConexao } from './useStatusConexao';
+import { useStatusSistemaStore } from '../stores/statusSistemaStore';
 
 /**
  * Barra superior do PDV — nó `cm8HS` ("Barra superior") do Pencil, dentro do
  * componente `Fundo PDV Online Web` (`pbg1b`).
  *
- * Todo o conteúdo textual vem de `SessaoUsuario` (`GetSessao`), já persistido
- * no Dexie pela feature 002: a barra não chama o ERP nem deriva nada por conta
- * própria. Cada rótulo ausente some em vez de virar placeholder — um PDV cujo
+ * A identidade vem de `SessaoUsuario` (`GetSessao`), já persistida no Dexie
+ * pela feature 002, e o modo de operação da NFCe vem do polling de
+ * `GetStatusSistema` (`FR-013`): a barra não chama o ERP nem deriva nada por
+ * conta própria. Cada rótulo ausente some em vez de virar placeholder — um PDV cujo
  * cadastro não preencheu o nome fantasia mostra "Centrium Checkout" sozinho, e
  * não "Centrium Checkout - —".
  *
@@ -27,7 +33,9 @@ import { useStatusConexao } from './useStatusConexao';
  */
 export function BarraSuperior(): ReactElement {
   const sessao = useSessionStore((estado) => estado.registro?.SessaoUsuario);
-  const online = useStatusConexao();
+  const status = interpretarStatusSistema(
+    useStatusSistemaStore((estado) => estado.ultimoStatus),
+  );
 
   const identidade = sessao ?? {};
   const sessaoAtiva = descreverSessaoAtiva(identidade);
@@ -56,18 +64,12 @@ export function BarraSuperior(): ReactElement {
 
       {/* "Status da operação" (nó `ARMjO`): pílulas + botões, gap 12. */}
       <div className="flex items-center gap-sm">
-        <div className={PILULA} data-testid="status-conexao">
-          <span
-            className={cn(
-              'size-2 rounded-full',
-              online ? 'bg-[var(--cc-color-up)]' : 'bg-[var(--cc-color-down)]',
-            )}
-            aria-hidden
-          />
-          {/* A queda de rede é a informação que o operador precisa perceber sem
-              estar olhando para o canto da tela — daí o anúncio educado. */}
+        <div className={PILULA} data-testid="status-operacao-nfce">
+          <span className={cn('size-2 rounded-full', COR_DO_PONTO[status])} aria-hidden />
+          {/* Entrar em contingência muda como a venda é emitida — o operador
+              precisa perceber sem estar olhando para o canto da tela. */}
           <span className="text-base font-semibold text-foreground" aria-live="polite">
-            {online ? 'Online' : 'Offline'}
+            {rotularStatusOperacao(status)}
           </span>
         </div>
 
@@ -96,6 +98,16 @@ export function BarraSuperior(): ReactElement {
     </header>
   );
 }
+
+/**
+ * Contingência é amarelo, não vermelho: o PDV continua vendendo, só que em
+ * outro modo de emissão — não é falha. Sem leitura ainda, cinza.
+ */
+const COR_DO_PONTO: Record<StatusOperacaoNFCe, string> = {
+  ONLINE: 'bg-[var(--cc-color-up)]',
+  CONTINGENCIA: 'bg-[var(--cc-color-accent-yellow)]',
+  DESCONHECIDO: 'bg-[var(--cc-color-muted-soft)]',
+};
 
 /** Pílula `$surface-strong` do desenho: raio total, folga 7×12, gap 8. */
 const PILULA = 'flex items-center gap-xs rounded-full bg-secondary px-sm py-[7px]';
