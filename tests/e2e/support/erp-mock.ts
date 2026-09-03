@@ -473,7 +473,31 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
       const cliente = porDocumento ?? porCodigo;
       if (cliente === undefined) {
-        return reply.code(404).send({ error: 'cliente não encontrado' });
+        // `PCheckout_GetCliente` **não** responde 404 quando não acha: devolve
+        // `200` com o SDT recém-criado, campos no default (código-fonte da KB,
+        // 2026-09-03). O mock reproduz isso — o 404 anterior era otimista e
+        // escondia o caminho real do Checkout.
+        return reply.send({
+          Cliente: {
+            Empresa: 0,
+            CodCliente: 0,
+            nome: '',
+            cpf: '',
+            email: '',
+            celular: '',
+            cep: '',
+            endereco: '',
+            bairro: '',
+            numero: '',
+            cidade: '',
+            uf: '',
+            CodigoConvenio: 0,
+            NomeConvenio: '',
+            DescontoConvenio: 0,
+            ListaPreco: 0,
+          },
+          messages: [],
+        });
       }
 
       return reply.send({ Cliente: cliente, messages: [] });

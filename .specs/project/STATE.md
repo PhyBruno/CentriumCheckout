@@ -1509,3 +1509,21 @@ Duas escolhas de mecanismo, ambas com consequência visível:
 **Acessibilidade:** tudo é desligado em `prefers-reduced-motion: reduce`, inclusive os dois laços infinitos que já existiam (`cc-shimmer`, `cc-pulso-edicao`) — laço infinito é o que mais incomoda quem tem sensibilidade a movimento, e o operador de caixa não escolhe o equipamento nem a configuração dele.
 
 **Consequência para os testes:** com o conteúdo do colapso montado, `toHaveCount(0)` deixou de valer como prova de "recolhido"; `not.toBeVisible()` também não serve, porque o Playwright mede a caixa do próprio elemento e ignora o corte por `overflow: hidden` do pai. A prova passou a ser o par altura zero + atributo `inert` (`esperarCamposRecolhidos`, `tests/e2e/identificacao-cliente.spec.ts`).
+
+### AD-132: Achados do código-fonte real de `PCheckout_PostCliente`/`PCheckout_GetCliente` — obrigatoriedade de campos, ausência de 404 e documento cru × formatado (2026-09-03)
+
+**Decision:** Inspeção direta das duas procedures na KB do GeneXus (`CentriumDEVU6`, via MCP) confirma o que era suposição e corrige duas leituras erradas do Checkout.
+
+1. **`PostCliente` valida exatamente dois campos**: `Empresa` (erro `9999`) e `cpf` (erro `9998`), mais a checagem de duplicidade por `CliCgc2` (erro `9997`, "CPF Duplicado"). **E-mail e celular não são obrigatórios** — são apenas gravados em `CliEmail`/`CliFonCel` (fecha a confirmação pedida pelo usuário em 2026-09-03). Nome e CEP também **não** são exigidos pela procedure; o Checkout continua exigindo os dois, por decisão de produto — cliente sem nome é inútil no cupom, e o formulário do Pencil trata endereço como parte do cadastro mínimo.
+
+2. **`GetCliente` não responde `404` quando não encontra.** O `For Each` simplesmente não entra, e a procedure devolve `200` com o SDT recém-criado — todos os campos no valor default. O Checkout tratava só o `404` do contrato, então associaria à venda um "cliente 0", sem nome e sem lista de preço, como se a busca tivesse dado certo. `buscarCliente` passa a tratar `CodCliente <= 0` como não encontrado, e o mock do E2E foi alinhado ao comportamento real (antes devolvia `404`, o que escondia o caminho).
+
+3. **`CliCgc2` guarda o documento cru; `CliCgc` guarda o formatado** (`pFormataCPF`). A busca por documento compara com `CliCgc2`, mas **o que volta em `ClienteCheckout.cpf` é o `CliCgc`, formatado**. Consequência: toda chamada ao ERP envia só dígitos — `fetchClientePorDocumento` e o `cpf` do `PostCliente` normalizam por `apenasDigitos`. Enviar a máscara no POST gravaria a máscara no campo cru e quebraria toda busca posterior por documento.
+
+4. **`CodCliente` existe e funciona em `GetCliente`** — o `else` do `if &CodCliente.IsEmpty()` faz `For Each ... Where CliCod = &CodCliente`. Confirma AD-115 no código-fonte, não só no *Specify*. O item 37 de `.specs/project/PENDENCIES.md` segue aberto só quanto ao build completo da KB e à regeneração do yaml.
+
+5. **`ListaPreco` cai para `1` dentro da própria procedure** quando `CliListCod` está vazio — confirma, no código, o fallback que AD-108 já descrevia.
+
+**Rationale:** Os pontos 2 e 3 são defeitos que nenhum teste pegaria contra o mock anterior, porque o mock era otimista em ambos: devolvia `404` para cliente inexistente e aceitava documento com máscara. Corrigir o mock junto com o código é o que impede a dupla de voltar.
+
+**Trade-off:** `contracts/erp-cliente-api.md` da feature 005 documenta `404: Not found` para `GetCliente`, copiado do yaml. O yaml declara essa resposta, mas a procedure não a emite — o contrato publicado e a implementação divergem. O Checkout trata os dois casos; a divergência em si é assunto para a equipe do ERP, junto com o item 37.

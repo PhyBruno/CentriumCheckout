@@ -94,6 +94,29 @@ describe('fetchClientePorDocumento', () => {
     );
   });
 
+  it('trata o SDT vazio (200, CodCliente 0) como não encontrado', async () => {
+    // `PCheckout_GetCliente` não responde 404 quando o `For Each` não acha —
+    // devolve o SDT recém-criado (código-fonte da KB, 2026-09-03). Sem esta
+    // checagem, o Checkout associaria à venda um "cliente 0".
+    const { erpClient } = clienteDe([
+      respostaJson({ Cliente: { ...clienteCheckoutDe(), CodCliente: 0, nome: '' } }),
+    ]);
+
+    await expect(fetchClientePorDocumento('99999999999', { erpClient })).rejects.toBeInstanceOf(
+      ErroClienteNaoEncontrado,
+    );
+  });
+
+  it('envia só dígitos, mesmo com a máscara digitada pelo operador', async () => {
+    // A procedure compara com `CliCgc2`, que guarda o documento cru; a máscara
+    // faria o `For Each` não casar com nada.
+    const { erpClient, chamadas } = clienteDe([respostaJson({ Cliente: clienteCheckoutDe() })]);
+
+    await fetchClientePorDocumento('111.222.333-44', { erpClient });
+
+    expect(chamadas[0]?.caminho).toBe('/ApiCentriumOAuth/GetCliente?CPFCNPJ=11122233344');
+  });
+
   it('recusa resposta fora do contrato em vez de associar cliente parcial', async () => {
     // `DescontoConvenio` ausente: aceitar isso deixaria o preço da venda a
     // cargo de um dado que o ERP não mandou (Constitution IV/V).
@@ -201,6 +224,28 @@ describe('postCliente', () => {
     // `GetCliente` seguinte.
     expect(chamadas[1]?.caminho).toBe('/ApiCentriumOAuth/GetCliente?CPFCNPJ=11122233344');
     expect(criado.CodCliente).toBe(9001);
+  });
+
+  it('normaliza CPF e CEP para dígitos antes de gravar', async () => {
+    // `PCheckout_PostCliente` grava o valor recebido em `CliCgc2` (o campo
+    // cru) e só então formata em `CliCgc`. Enviar a máscara gravaria máscara
+    // no campo cru e quebraria toda busca posterior por documento.
+    const { erpClient, chamadas } = clienteDe([
+      respostaJson([]),
+      respostaJson({ Cliente: clienteCheckoutDe() }),
+    ]);
+
+    await postCliente({ ...DADOS_CADASTRO, cpf: '111.222.333-44', cep: '89000-000' }, 1, {
+      erpClient,
+    });
+
+    const corpo = JSON.parse(String(chamadas[0]?.init.body)) as {
+      Cliente: Record<string, unknown>;
+    };
+    expect(corpo.Cliente['cpf']).toBe('11122233344');
+    expect(corpo.Cliente['cep']).toBe('89000000');
+    // O `GetCliente` encadeado também vai limpo.
+    expect(chamadas[1]?.caminho).toBe('/ApiCentriumOAuth/GetCliente?CPFCNPJ=11122233344');
   });
 
   it('recusa o cadastro quando o ERP devolve 200 com Type 1, sem chamar GetCliente', async () => {

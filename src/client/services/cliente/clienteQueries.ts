@@ -19,6 +19,7 @@ import {
   type ClienteCheckout,
 } from '../../../shared/schemas/cliente.schema';
 import type { CadastroSimplificadoInput } from '../../domain/cliente/clienteVenda';
+import { apenasDigitos } from '../../domain/cliente/documento';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
 
@@ -103,6 +104,15 @@ async function buscarCliente(
     throw new ErroRespostaInvalida('GetCliente', validado.error.message);
   }
 
+  // `PCheckout_GetCliente` **não** responde 404 quando o `For Each` não acha
+  // nada: devolve `200` com o SDT recém-criado, todos os campos no default
+  // (verificado no código-fonte da KB, 2026-09-03). Sem esta checagem, o
+  // Checkout associaria à venda um "cliente 0" — sem nome, sem lista de preço
+  // — como se a busca tivesse dado certo.
+  if (validado.data.Cliente.CodCliente <= 0) {
+    throw new ErroClienteNaoEncontrado(identificador);
+  }
+
   return validado.data.Cliente;
 }
 
@@ -116,7 +126,12 @@ export async function fetchClientePorDocumento(
   cpfCnpj: string,
   deps: ClienteQueriesDeps = {},
 ): Promise<ClienteCheckout> {
-  return buscarCliente(new URLSearchParams({ CPFCNPJ: cpfCnpj }), cpfCnpj, deps);
+  // Só dígitos: a procedure compara com `CliCgc2`, que guarda o documento
+  // **cru** — `CliCgc` é a versão formatada, e é essa que volta em
+  // `ClienteCheckout.cpf` (código-fonte da KB, 2026-09-03). Mandar a máscara
+  // faria o `For Each` não casar com nada.
+  const digitos = apenasDigitos(cpfCnpj);
+  return buscarCliente(new URLSearchParams({ CPFCNPJ: digitos }), digitos, deps);
 }
 
 /**
@@ -223,10 +238,13 @@ export async function postCliente(
       Cliente: {
         Empresa: empresa,
         nome: dados.nome,
-        cpf: dados.cpf,
+        // `PCheckout_PostCliente` grava o que recebe em `CliCgc2` e só então
+        // formata em `CliCgc` (`pFormataCPF`). Enviar com máscara gravaria a
+        // máscara no campo cru e quebraria toda busca posterior por documento.
+        cpf: apenasDigitos(dados.cpf),
         email: dados.email,
         celular: dados.celular,
-        cep: dados.cep,
+        cep: apenasDigitos(dados.cep),
         endereco: dados.endereco,
         bairro: dados.bairro,
         numero: dados.numero,
