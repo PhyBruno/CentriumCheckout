@@ -71,6 +71,16 @@ export interface ClienteDeps {
   avisar?: (mensagem: string) => void;
 }
 
+/**
+ * O que aconteceu com a tentativa de associar um cliente à venda.
+ *
+ * `'bloqueado'` e `'inalterado'` são no-ops legítimos, não erros: o primeiro é
+ * a invariante I4 (pagamento aprovado), o segundo é reescolher quem já está na
+ * venda. A UI precisa dos três para decidir se fecha o modal, avisa, ou não faz
+ * nada.
+ */
+export type ResultadoAplicacaoCliente = 'aplicado' | 'bloqueado' | 'inalterado';
+
 export interface ClienteSlice extends ClienteState {
   /**
    * Pré-seleção automática do cliente default (`FR-004`, AD-032).
@@ -85,13 +95,17 @@ export interface ClienteSlice extends ClienteState {
    * Associa um cliente já cadastrado à venda (`CLI-01`/`CLI-02`, e `'DAV'` pela
    * importação da feature 006 — AD-115, extensão aditiva sem caso especial).
    *
-   * Devolve `Promise<void>`, e não o `void` do rascunho de
-   * `contracts/cliente-domain-api.md`: a troca com carrinho populado dispara um
-   * re-fetch por SKU (D7), inerentemente assíncrono. Com `void`, uma falha de
-   * rede nessa etapa ficaria sem dono — o carrinho seguiria com o preço do
-   * cliente anterior sem ninguém para avisar o operador.
+   * Devolve `Promise<ResultadoAplicacaoCliente>`, e não o `void` do rascunho de
+   * `contracts/cliente-domain-api.md`, por dois motivos: a troca com carrinho
+   * populado dispara um re-fetch por SKU (D7), inerentemente assíncrono; e o
+   * no-op por bloqueio pós-pagamento (I4) precisa ser distinguível pela UI —
+   * sem isso, o modal de cadastro fecharia como se a associação tivesse
+   * acontecido (achado da revisão, 2026-09-03).
    */
-  selecionarCliente(cliente: ClienteCheckout, origem: OrigemSelecaoCliente): Promise<void>;
+  selecionarCliente(
+    cliente: ClienteCheckout,
+    origem: OrigemSelecaoCliente,
+  ): Promise<ResultadoAplicacaoCliente>;
 
   /**
    * Cadastro simplificado confirmado (`CLI-03`). Dispara **sempre**
@@ -105,7 +119,7 @@ export interface ClienteSlice extends ClienteState {
   cadastrarESelecionarCliente(
     dados: CadastroSimplificadoInput,
     criar: (dados: CadastroSimplificadoInput) => Promise<ClienteCheckout>,
-  ): Promise<void>;
+  ): Promise<ResultadoAplicacaoCliente>;
 }
 
 const AVISO_CLIENTE_BLOQUEADO =
@@ -135,7 +149,18 @@ export function criarClienteSlice(
      * preço do documento de origem, que a troca de cliente não pode alterar
      * (invariantes I2/I3 da feature 003).
      */
-    async function reprecificarSob(cliente: ClienteVenda): Promise<void> {
+    /**
+     * Identifica a aplicação de cliente em curso.
+     *
+     * Duas trocas podem se sobrepor — identificar pelo campo e, com os
+     * `GetProduto` ainda em voo, escolher outro cliente na lupa. Sem esta
+     * geração, a chamada mais **lenta** gravaria por último: snapshots do
+     * cliente que já não é o atual, reprecificados com o convênio do atual —
+     * preço errado sem erro nem log (achado da revisão, 2026-09-03).
+     */
+    let geracaoAplicacao = 0;
+
+    async function reprecificarSob(cliente: ClienteVenda, geracao: number): Promise<void> {
       const vivas = get().linhas.filter(participaDaPrecificacao);
       const skus = [...new Set(vivas.map((linha) => linha.snapshot.codigoProduto))];
       if (skus.length === 0) {
@@ -148,12 +173,23 @@ export function criarClienteSlice(
       } catch {
         // O cliente já trocou e a troca é o que o operador pediu — desfazê-la
         // seria pior. O que não pode acontecer em silêncio é o carrinho seguir
-        // com o preço do cliente anterior.
-        deps.avisar?.(AVISO_REPRECIFICACAO_FALHOU);
+        // com o preço do cliente anterior. Uma troca posterior já em curso é a
+        // dona do carrinho agora: nem avisa, nem grava.
+        if (geracao === geracaoAplicacao) {
+          deps.avisar?.(AVISO_REPRECIFICACAO_FALHOU);
+        }
         return;
       }
 
-      const porSku = new Map(snapshots.map((snapshot) => [snapshot.codigoProduto, snapshot]));
+      if (geracao !== geracaoAplicacao) {
+        return;
+      }
+
+      // Indexado pelo SKU **pedido**, não pelo `codigoProduto` devolvido: se o
+      // ERP resolver o código para outra forma (referência → código reduzido,
+      // por exemplo), casar pelo retorno deixaria a linha com o snapshot antigo
+      // em silêncio.
+      const porSku = new Map(skus.map((sku, indice) => [sku, snapshots[indice]] as const));
 
       // Substituição parcial, não recipe de rascunho — mesmo motivo do
       // `aplicarLinhas` do carrinho: `SnapshotPrecoProduto` é `readonly` de
@@ -178,6 +214,8 @@ export function criarClienteSlice(
       registrar: (anterior: ClienteVenda | null) => void,
     ): Promise<void> {
       const anterior = get().clienteAtual;
+      geracaoAplicacao += 1;
+      const geracao = geracaoAplicacao;
 
       set((state) => {
         state.clienteAtual = novo;
@@ -185,7 +223,7 @@ export function criarClienteSlice(
       });
 
       registrar(anterior);
-      await reprecificarSob(novo);
+      await reprecificarSob(novo, geracao);
     }
 
     return {
@@ -201,10 +239,19 @@ export function criarClienteSlice(
 
       selecionarCliente: async (cliente, origem) => {
         if (clienteBloqueado()) {
-          return;
+          return 'bloqueado';
         }
 
         const novo = mapClienteCheckoutParaVenda(cliente, origem);
+
+        // Reescolher o cliente que já está na venda não é troca: registrar
+        // `CLIENTE_TROCADO` com anterior === novo mandaria ao ERP, no log de
+        // `FaturarNFCe`, uma troca que não aconteceu (`FR-015`), e o re-fetch
+        // rebuscaria todos os SKUs para chegar ao mesmo preço.
+        if (get().clienteAtual?.codigoCliente === novo.codigoCliente) {
+          return 'inalterado';
+        }
+
         const primeiraEscolha = !get().houveEscolhaExplicita;
 
         await aplicar(novo, (anterior) => {
@@ -224,11 +271,13 @@ export function criarClienteSlice(
             }),
           );
         });
+
+        return 'aplicado';
       },
 
       cadastrarESelecionarCliente: async (dados, criar) => {
         if (clienteBloqueado()) {
-          return;
+          return 'bloqueado';
         }
 
         // Fora de qualquer `set`: enquanto o ERP não confirmar a criação, o
@@ -241,6 +290,8 @@ export function criarClienteSlice(
             eventoClienteCriado({ codigoCliente: novo.codigoCliente, nome: novo.nome }),
           );
         });
+
+        return 'aplicado';
       },
     };
   };

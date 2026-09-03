@@ -5,11 +5,15 @@ import type {
   OrigemSelecaoCliente,
 } from '../../domain/cliente/clienteVenda';
 import {
+  ErroCadastroRecusado,
   ErroClienteNaoEncontrado,
+  fetchClientePorCodigo,
   fetchClientePorDocumento,
   postCliente,
 } from '../../services/cliente/clienteQueries';
 import { ErroRespostaInvalida } from '../../services/errosErp';
+import type { ClienteCheckout } from '../../../shared/schemas/cliente.schema';
+import type { ResultadoAplicacaoCliente } from '../../stores/slices/clienteSlice';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 
@@ -45,25 +49,54 @@ export type ResultadoIdentificacao =
   | { readonly situacao: 'identificado' }
   /** Documento válido, sem cadastro correspondente — abre o cadastro simplificado. */
   | { readonly situacao: 'nao-encontrado' }
-  /** Falha de rede/fronteira, ou troca bloqueada: nada mudou. */
+  /** Falha de rede/fronteira, ou o slice recusou a mudança: nada mudou. */
   | { readonly situacao: 'recusado' };
 
 function mensagemDeErro(erro: unknown): string {
+  if (erro instanceof ErroCadastroRecusado) {
+    // A recusa de negócio vem descrita pelo próprio ERP — é o texto que diz ao
+    // operador o que corrigir, e o Checkout não o reinterpreta.
+    return erro.message;
+  }
   if (erro instanceof ErroRespostaInvalida) {
     return 'O ERP devolveu um cliente em formato inesperado. Nada foi alterado.';
   }
   return 'Não foi possível consultar o cliente. Tente novamente.';
 }
 
+/**
+ * Traduz o desfecho do slice para a UI.
+ *
+ * `'bloqueado'` vira `'recusado'`: o slice já avisou o operador pelo toast de
+ * bloqueio, e quem chamou precisa saber que **nada mudou** — sem isso o modal
+ * de cadastro fecharia como se a associação tivesse acontecido (achado da
+ * revisão, 2026-09-03). `'inalterado'` conta como sucesso: o cliente pedido é
+ * exatamente o que já está na venda.
+ */
+function traduzir(resultado: ResultadoAplicacaoCliente): ResultadoIdentificacao {
+  return resultado === 'bloqueado' ? { situacao: 'recusado' } : { situacao: 'identificado' };
+}
+
 export interface ApiIdentificacaoCliente {
   /**
-   * Resolve o cliente pelo documento e associa à venda.
-   *
-   * Usado pelos dois caminhos: o campo CPF/CNPJ da tela (`BUSCA_DOCUMENTO`) e a
-   * escolha de um candidato no modal, pelo `CPF` dele (`BUSCA_LIVRE`, D1).
+   * Resolve o cliente pelo documento e associa à venda — o campo CPF/CNPJ da
+   * tela (`BUSCA_DOCUMENTO`).
    */
   identificarPorDocumento(
     documento: string,
+    origem: OrigemSelecaoCliente,
+  ): Promise<ResultadoIdentificacao>;
+  /**
+   * Resolve o cliente pelo `CodCliente` e associa à venda (`FR-016`, AD-115).
+   *
+   * É o caminho da escolha no modal: o candidato **sempre** traz
+   * `ClienteCodigo`, enquanto o `CPF` dele pode vir vazio (cliente cadastrado
+   * sem documento, comum no varejo) — resolver pelo documento nesse caso
+   * chamaria `GetCliente` sem parâmetro e abriria o cadastro simplificado
+   * sozinho (achado da revisão, 2026-09-03).
+   */
+  identificarPorCodigo(
+    codigo: number,
     origem: OrigemSelecaoCliente,
   ): Promise<ResultadoIdentificacao>;
   /** Cria o cliente no ERP e o associa à venda (`CLI-03`). */
@@ -75,22 +108,34 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
   const cadastrarESelecionarCliente = useVendaStore((estado) => estado.cadastrarESelecionarCliente);
   const codigoEmpresa = useCodigoEmpresa();
 
+  const identificar = useCallback(
+    async (
+      resolver: () => Promise<ClienteCheckout>,
+      origem: OrigemSelecaoCliente,
+    ): Promise<ResultadoIdentificacao> => {
+      try {
+        const cliente = await resolver();
+        return traduzir(await selecionarCliente(cliente, origem));
+      } catch (erro) {
+        if (erro instanceof ErroClienteNaoEncontrado) {
+          return { situacao: 'nao-encontrado' };
+        }
+        gooeyToast.error(mensagemDeErro(erro));
+        return { situacao: 'recusado' };
+      }
+    },
+    [selecionarCliente],
+  );
+
   return {
     identificarPorDocumento: useCallback(
-      async (documento, origem) => {
-        try {
-          const cliente = await fetchClientePorDocumento(documento);
-          await selecionarCliente(cliente, origem);
-          return { situacao: 'identificado' };
-        } catch (erro) {
-          if (erro instanceof ErroClienteNaoEncontrado) {
-            return { situacao: 'nao-encontrado' };
-          }
-          gooeyToast.error(mensagemDeErro(erro));
-          return { situacao: 'recusado' };
-        }
-      },
-      [selecionarCliente],
+      (documento, origem) => identificar(() => fetchClientePorDocumento(documento), origem),
+      [identificar],
+    ),
+
+    identificarPorCodigo: useCallback(
+      (codigo, origem) => identificar(() => fetchClientePorCodigo(codigo), origem),
+      [identificar],
     ),
 
     cadastrar: useCallback(
@@ -101,10 +146,11 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
         }
 
         try {
-          await cadastrarESelecionarCliente(dados, (entrada) =>
-            postCliente(entrada, codigoEmpresa),
+          return traduzir(
+            await cadastrarESelecionarCliente(dados, (entrada) =>
+              postCliente(entrada, codigoEmpresa),
+            ),
           );
-          return { situacao: 'identificado' };
         } catch (erro) {
           // O slice não muda `clienteAtual` nem registra evento quando
           // `postCliente` falha (`SC-003`): a venda segue com o cliente que

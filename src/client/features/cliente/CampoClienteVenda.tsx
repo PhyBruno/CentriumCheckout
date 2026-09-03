@@ -11,11 +11,15 @@ import {
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
-import { classificarDocumento, formatarDocumento } from '../../domain/cliente/documento';
+import {
+  apenasDigitos,
+  classificarDocumento,
+  formatarDocumento,
+} from '../../domain/cliente/documento';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
-import { ModalBuscaCliente } from './ModalBuscaCliente';
+import { ModalBuscaCliente, type CandidatoEscolhido } from './ModalBuscaCliente';
 import { useIdentificacaoCliente } from './useCliente';
 
 /**
@@ -50,7 +54,7 @@ import { useIdentificacaoCliente } from './useCliente';
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
   const sessao = useSessionStore((estado) => estado.registro?.SessaoUsuario ?? null);
-  const { identificarPorDocumento, cadastrar } = useIdentificacaoCliente();
+  const { identificarPorDocumento, identificarPorCodigo, cadastrar } = useIdentificacaoCliente();
 
   const [expandido, setExpandido] = useState(false);
   const [documento, setDocumento] = useState('');
@@ -102,7 +106,11 @@ export function CampoClienteVenda(): ReactElement {
     // O documento já associado à venda não precisa de nova consulta: sem esta
     // guarda, sair do campo (TAB, clique fora) rebuscaria o mesmo cliente a
     // cada passagem de foco.
-    if (documentoDoCliente !== null && termo === formatarDocumento(documentoDoCliente)) {
+    //
+    // Compara **dígitos**, não o texto mascarado: redigitar `12298023980` sobre
+    // o `122.980.239-80` exibido é o gesto natural com leitor ou teclado
+    // numérico, e uma comparação literal chamaria o ERP à toa.
+    if (documentoDoCliente !== null && apenasDigitos(termo) === apenasDigitos(documentoDoCliente)) {
       return;
     }
 
@@ -117,12 +125,15 @@ export function CampoClienteVenda(): ReactElement {
     }
   }
 
-  async function selecionarCandidato(cpf: string): Promise<void> {
-    // A lista só capta o documento; quem resolve o cadastro completo é sempre
-    // `GetCliente` (`research.md` D1).
-    const resultado = await identificarPorDocumento(cpf, 'BUSCA_LIVRE');
+  async function selecionarCandidato(candidato: CandidatoEscolhido): Promise<void> {
+    // A lista só capta a identidade; quem resolve o cadastro completo é sempre
+    // `GetCliente` (`research.md` D1). Pelo **código**, não pelo documento: o
+    // `CodCliente` sempre existe, enquanto o `CPF` do candidato pode vir vazio
+    // (cliente cadastrado sem documento) — e aí a busca por documento abriria o
+    // cadastro simplificado sozinho.
+    const resultado = await identificarPorCodigo(candidato.codigo, 'BUSCA_LIVRE');
     if (resultado.situacao === 'nao-encontrado') {
-      tratarNaoEncontrado(cpf);
+      tratarNaoEncontrado(candidato.cpf);
     }
   }
 
@@ -289,8 +300,8 @@ export function CampoClienteVenda(): ReactElement {
         onFechar={() => {
           setModalAberto(false);
         }}
-        onCandidatoSelecionado={(cpf) => {
-          void selecionarCandidato(cpf);
+        onCandidatoSelecionado={(candidato) => {
+          void selecionarCandidato(candidato);
         }}
         onCadastrarNovo={(termo) => {
           setModalAberto(false);

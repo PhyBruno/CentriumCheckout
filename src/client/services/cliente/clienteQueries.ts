@@ -13,6 +13,8 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import {
   getClienteOutputSchema,
   getListaClientesOutputSchema,
+  postClienteOutputSchema,
+  primeiroErroDeNegocio,
   type CheckoutListaClientes,
   type ClienteCheckout,
 } from '../../../shared/schemas/cliente.schema';
@@ -37,6 +39,21 @@ export class ErroClienteNaoEncontrado extends Error {
   constructor(readonly documento: string) {
     super(`Cliente ${documento} não encontrado.`);
     this.name = 'ErroClienteNaoEncontrado';
+  }
+}
+
+/**
+ * Recusa de negócio do ERP no cadastro simplificado — "CPF já cadastrado",
+ * "UF inválida" e afins.
+ *
+ * A `message` é a `Description` que o próprio ERP devolveu: é ela que o
+ * operador precisa ler para saber o que corrigir, e o Checkout não a
+ * reinterpreta (Constitution III).
+ */
+export class ErroCadastroRecusado extends Error {
+  constructor(descricao: string) {
+    super(descricao);
+    this.name = 'ErroCadastroRecusado';
   }
 }
 
@@ -221,6 +238,21 @@ export async function postCliente(
 
   if (!resposta.ok) {
     throw new ErroRedeErp();
+  }
+
+  // O ERP recusa por regra de negócio com `200` + `Type: 1` (padrão GeneXus,
+  // mesmo de `FaturarNFCe` na feature 004). Sem esta checagem, "CPF já
+  // cadastrado" seguiria para o `GetCliente` abaixo, tomaria `404` e chegaria
+  // ao operador como "não foi possível consultar o cliente" — ele tentaria de
+  // novo indefinidamente sem saber o motivo real (`SC-003`).
+  const validado = postClienteOutputSchema.safeParse(await resposta.json());
+  if (!validado.success) {
+    throw new ErroRespostaInvalida('PostCliente', validado.error.message);
+  }
+
+  const erro = primeiroErroDeNegocio(validado.data);
+  if (erro !== null) {
+    throw new ErroCadastroRecusado(erro.Description);
   }
 
   return fetchClientePorDocumento(dados.cpf, deps);

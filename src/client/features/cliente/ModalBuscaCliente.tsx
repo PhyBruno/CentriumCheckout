@@ -31,22 +31,35 @@ import { useQtdMinCharParaConsulta } from './useCliente';
  * cadastro. A ausência é o comportamento correto, não uma regressão
  * (`quickstart.md`, verificações manuais).
  *
- * O modal é **só um seletor**: escolher um candidato devolve o `CPF` dele por
- * `onCandidatoSelecionado` e quem chama resolve o cliente completo por
- * `GetCliente` antes de associar à venda (`research.md` D1) — a lista não traz
- * `DescontoConvenio`/`CodigoConvenio`, e montar o snapshot a partir dela
- * deixaria o desconto de convênio sempre nulo, um bug silencioso de preço.
+ * O modal é **só um seletor**: escolher um candidato devolve a identidade dele
+ * por `onCandidatoSelecionado` (código e documento) e quem chama resolve o
+ * cliente completo por `GetCliente` antes de associar à venda (`research.md`
+ * D1) — a lista não traz `DescontoConvenio`/`CodigoConvenio`, e montar o
+ * snapshot a partir dela deixaria o desconto de convênio sempre nulo, um bug
+ * silencioso de preço.
  *
  * A busca **por documento** (`CLI-01`) não vive aqui: é o campo "CPF/CNPJ" do
  * card da venda (`CampoClienteVenda`), como o Pencil desenha. São dois fluxos
  * de UI e dois endpoints distintos, sem heurística que escolha um pelo formato
  * digitado (`research.md` D2).
  */
+export interface CandidatoEscolhido {
+  readonly codigo: number;
+  readonly cpf: string;
+}
+
 export interface ModalBuscaClienteProps {
   readonly aberto: boolean;
   readonly onFechar: () => void;
-  /** Recebe o `CPF` do candidato escolhido — nunca o registro montado da lista. */
-  readonly onCandidatoSelecionado: (cpf: string) => void;
+  /**
+   * Recebe a **identidade** do candidato escolhido — nunca o registro montado
+   * da lista, que não traz `DescontoConvenio`/`CodigoConvenio`.
+   *
+   * Leva código e documento: o `CodCliente` sempre existe, o `CPF` pode vir
+   * vazio (cliente cadastrado sem documento), e quem chama decide por qual
+   * resolver o cadastro completo.
+   */
+  readonly onCandidatoSelecionado: (candidato: CandidatoEscolhido) => void;
   /** Abre o cadastro simplificado, já com o termo digitado como CPF sugerido. */
   readonly onCadastrarNovo: (termo: string) => void;
 }
@@ -226,8 +239,8 @@ export function ModalBuscaCliente({
           ) : (
             <ResultadosDaBusca
               clientes={busca.data?.Clientes ?? []}
-              onSelecionar={(cpf) => {
-                onCandidatoSelecionado(cpf);
+              onSelecionar={(candidato) => {
+                onCandidatoSelecionado(candidato);
                 onFechar();
               }}
             />
@@ -330,7 +343,7 @@ function SemResultados({ termoEhCnpj, onCadastrarNovo }: SemResultadosProps): Re
 
 interface ResultadosDaBuscaProps {
   readonly clientes: readonly ClienteDaLista[];
-  readonly onSelecionar: (cpf: string) => void;
+  readonly onSelecionar: (candidato: CandidatoEscolhido) => void;
 }
 
 const classeCelulaCabecalho =
@@ -356,7 +369,7 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
               data-codigo-cliente={cliente.ClienteCodigo}
               className="flex h-[50px] w-full items-center text-left hover:bg-accent"
               onClick={() => {
-                onSelecionar(cliente.CPF);
+                onSelecionar({ codigo: cliente.ClienteCodigo, cpf: cliente.CPF });
               }}
             >
               <span className="flex w-[42px] shrink-0 items-center justify-center">

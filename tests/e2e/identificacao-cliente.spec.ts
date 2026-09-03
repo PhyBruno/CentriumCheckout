@@ -304,6 +304,55 @@ test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
   });
 });
 
+test.describe('Achados da revisão de 2026-09-03', () => {
+  test('termo abaixo do mínimo não dispara GetListaClientes (AD-024)', async ({
+    page,
+    request,
+  }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('abrir-busca-cliente').click();
+
+    // `QtdMinCharParaConsulta` é 3 no bootstrap sintético — o piso vem do ERP,
+    // nunca hardcodado.
+    await page.getByTestId('campo-busca-cliente').fill('CL');
+    await expect(page.getByTestId('busca-cliente-abaixo-do-minimo')).toBeVisible();
+    expect((await contadores(request)).getListaClientes).toBe(0);
+
+    await page.getByTestId('campo-busca-cliente').fill('CLI');
+    await expect(page.getByTestId('candidato-cliente').first()).toBeVisible();
+    expect((await contadores(request)).getListaClientes).toBeGreaterThan(0);
+  });
+
+  test('candidato sem CPF é resolvido pelo código, sem abrir o cadastro sozinho', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+    await buscarPorTermo(page, 'SEM DOCUMENTO');
+
+    await page.getByTestId('candidato-cliente').first().click();
+
+    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE SEM DOCUMENTO');
+    // Resolver pelo documento vazio daria 404 e abriria o cadastro simplificado
+    // sem o operador ter pedido.
+    await expect(page.getByTestId('modal-cadastro-cliente')).toHaveCount(0);
+  });
+
+  test('reescolher o mesmo cliente não dispara nova consulta ao ERP', async ({ page, request }) => {
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_CONVENIADO);
+    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+
+    const antes = (await contadores(request)).getProduto;
+    await page.getByTestId('abrir-busca-cliente').click();
+    await page.getByTestId('campo-busca-cliente').fill('CONVENIADO');
+    await page.getByTestId('candidato-cliente').first().click();
+
+    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+    expect((await contadores(request)).getProduto).toBe(antes);
+  });
+});
+
 test.describe('Verificação manual apoiada pelo E2E', () => {
   test('F5 no meio da venda descarta o cliente selecionado (Constitution VI)', async ({ page }) => {
     await abrirTelaDeVenda(page);

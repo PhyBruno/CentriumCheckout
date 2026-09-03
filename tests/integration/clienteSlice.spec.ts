@@ -284,6 +284,148 @@ describe('re-fetch de preço por SKU na troca de cliente (T013)', () => {
     expect(montagem.store.getState().clienteAtual?.codigoCliente).toBe(77);
     expect(avisar).toHaveBeenCalledOnce();
   });
+
+  it('casa o snapshot pelo SKU pedido, não pelo código devolvido pelo ERP', async () => {
+    // Se o ERP resolver o código para outra forma (referência → reduzido),
+    // casar pelo retorno deixaria a linha com o snapshot velho em silêncio.
+    const montagem = montarStore({
+      buscarSnapshotProduto: vi.fn(async () =>
+        snapshotDe({ codigoProduto: 'OUTRO-CODIGO', precoBase: 750 }),
+      ),
+    });
+    montagem.store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: SKU_A }),
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+    });
+
+    await montagem.store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+
+    expect(montagem.store.getState().linhas[0]?.snapshot.precoBase).toBe(750);
+  });
+});
+
+describe('trocas de cliente sobrepostas (achado da revisão)', () => {
+  it('descarta o resultado da troca antiga quando outra já assumiu a venda', async () => {
+    // Duas identificações sobrepostas: a primeira (cliente 10, sem convênio)
+    // termina **depois** da segunda (cliente 20, 10% de convênio). Sem a guarda
+    // de geração, os snapshots do cliente 10 seriam gravados e reprecificados
+    // com o convênio do 20 — preço errado, sem erro nem log.
+    const liberar: Array<() => void> = [];
+    const buscarSnapshotProduto = vi.fn(
+      (codigoProduto: string, cliente: { codigoCliente: number }) =>
+        new Promise<ReturnType<typeof snapshotDe>>((resolve) => {
+          const precoBase = cliente.codigoCliente === 10 ? 500 : 900;
+          liberar.push(() => {
+            resolve(snapshotDe({ codigoProduto, precoBase, precosFaixa: [precoBase, 0, 0, 0, 0] }));
+          });
+        }),
+    );
+
+    const { store } = montarStore({ buscarSnapshotProduto });
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: SKU_A }),
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+    });
+
+    const primeira = store
+      .getState()
+      .selecionarCliente(
+        clienteCheckoutDe({ CodCliente: 10, DescontoConvenio: 0 }),
+        'BUSCA_DOCUMENTO',
+      );
+    const segunda = store
+      .getState()
+      .selecionarCliente(
+        clienteCheckoutDe({ CodCliente: 20, DescontoConvenio: 10 }),
+        'BUSCA_LIVRE',
+      );
+
+    // A segunda responde primeiro; a primeira, depois — a ordem invertida é
+    // exatamente o caso que a guarda existe para cobrir.
+    liberar[1]?.();
+    await segunda;
+    liberar[0]?.();
+    await primeira;
+
+    expect(store.getState().clienteAtual?.codigoCliente).toBe(20);
+    expect(store.getState().linhas[0]?.precoUnitario).toBe(900);
+    expect(store.getState().linhas[0]?.descontoConvenio).toBe(90);
+  });
+
+  it('não avisa falha de re-fetch de uma troca que já foi superada', async () => {
+    const avisar = vi.fn();
+    const liberar: Array<(erro: Error) => void> = [];
+    const { store } = montarStore({
+      avisar,
+      buscarSnapshotProduto: vi.fn(
+        () =>
+          new Promise<ReturnType<typeof snapshotDe>>((_resolve, reject) => {
+            liberar.push(reject);
+          }),
+      ),
+    });
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: SKU_A }),
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+    });
+
+    const primeira = store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 10 }), 'BUSCA_DOCUMENTO');
+    const segunda = store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 20 }), 'BUSCA_LIVRE');
+
+    liberar[0]?.(new Error('rede'));
+    await primeira;
+    liberar[1]?.(new Error('rede'));
+    await segunda;
+
+    // Um aviso só: o da troca que de fato é dona do carrinho.
+    expect(avisar).toHaveBeenCalledOnce();
+  });
+});
+
+describe('reescolher o cliente que já está na venda (achado da revisão)', () => {
+  it('não registra CLIENTE_TROCADO com anterior === novo nem rebusca preço', async () => {
+    const { store, buscarSnapshotProduto } = montarStore();
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: SKU_A }),
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+    });
+
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 55 }), 'BUSCA_LIVRE');
+    buscarSnapshotProduto.mockClear();
+
+    const resultado = await store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 55 }), 'BUSCA_LIVRE');
+
+    expect(resultado).toBe('inalterado');
+    expect(eventosDeCliente(store).map((evento) => evento.tipo)).toEqual(['CLIENTE_SELECIONADO']);
+    expect(buscarSnapshotProduto).not.toHaveBeenCalled();
+  });
+
+  it('não impede trocar de volta para um cliente escolhido antes', async () => {
+    const { store } = montarStore();
+
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 10 }), 'BUSCA_LIVRE');
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 20 }), 'BUSCA_LIVRE');
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 10 }), 'BUSCA_LIVRE');
+
+    expect(eventosDeCliente(store).map((evento) => evento.tipo)).toEqual([
+      'CLIENTE_SELECIONADO',
+      'CLIENTE_TROCADO',
+      'CLIENTE_TROCADO',
+    ]);
+    expect(store.getState().clienteAtual?.codigoCliente).toBe(10);
+  });
 });
 
 describe('cadastrarESelecionarCliente (T021)', () => {
@@ -315,6 +457,24 @@ describe('cadastrarESelecionarCliente (T021)', () => {
     ]);
     expect(store.getState().clienteAtual?.origem).toBe('CADASTRO_SIMPLIFICADO');
     expect(store.getState().clienteAtual?.codigoCliente).toBe(9001);
+  });
+
+  it('é no-op sinalizado quando há pagamento aprovado, sem criar cliente no ERP', async () => {
+    // A guarda vem **antes** de `criar`: nunca se grava cliente no ERP para
+    // depois descartar. E o desfecho precisa chegar à UI, senão o modal de
+    // cadastro fecharia como se tivesse dado certo (achado da revisão).
+    const { store } = montarStore(
+      { podeMutarCarrinho: () => false },
+      { podeMutarCarrinho: () => false },
+    );
+    const criar = vi.fn(async () => clienteCheckoutDe({ CodCliente: 9001 }));
+
+    const resultado = await store.getState().cadastrarESelecionarCliente(dados, criar);
+
+    expect(resultado).toBe('bloqueado');
+    expect(criar).not.toHaveBeenCalled();
+    expect(store.getState().clienteAtual).toBeNull();
+    expect(eventosDeCliente(store)).toEqual([]);
   });
 
   it('propaga o erro do ERP sem tocar no estado da venda (SC-003)', async () => {

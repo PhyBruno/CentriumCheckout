@@ -24,6 +24,40 @@ function corpoDaRequisicao(body: unknown): BodyInit | undefined {
 }
 
 /**
+ * Campo de tenant que aparece **dentro** do corpo de alguns endpoints do ERP,
+ * além do cabeçalho `Empresa`.
+ *
+ * O contrato exige `Cliente.Empresa` no corpo de `PostCliente` (AD-024), e o
+ * cliente hoje o preenche a partir do bootstrap. Como o corpo é do navegador,
+ * um operador autenticado poderia trocar o valor e gravar registro em outra
+ * empresa do tenant — o cabeçalho, que vem do cookie cifrado, não protegeria
+ * disso. Aqui o servidor reescreve o campo com a empresa da sessão, que é a
+ * única fonte confiável (achado da revisão, 2026-09-03).
+ */
+const RAIZES_COM_EMPRESA = ['Cliente'] as const;
+
+export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return body;
+  }
+
+  const empresa = Number(codigoEmpresa);
+  if (!Number.isFinite(empresa)) {
+    return body;
+  }
+
+  let corpo = body as Record<string, unknown>;
+  for (const raiz of RAIZES_COM_EMPRESA) {
+    const conteudo = corpo[raiz];
+    if (typeof conteudo === 'object' && conteudo !== null && !Array.isArray(conteudo)) {
+      corpo = { ...corpo, [raiz]: { ...(conteudo as Record<string, unknown>), Empresa: empresa } };
+    }
+  }
+
+  return corpo;
+}
+
+/**
  * `/api/erp/*` — proxy autenticado das chamadas de negócio (T031, US3).
  *
  * Injeta `Authorization`/`Empresa` do cookie decifrado e, em `401` do ERP,
@@ -62,7 +96,7 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
           ...(contentTypeOriginal === undefined
             ? {}
             : { headersExtras: { 'Content-Type': contentTypeOriginal } }),
-          body: corpoDaRequisicao(request.body),
+          body: corpoDaRequisicao(corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa)),
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
       ),

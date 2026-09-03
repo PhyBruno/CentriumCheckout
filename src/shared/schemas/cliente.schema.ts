@@ -94,6 +94,32 @@ export const getListaClientesOutputSchema = z.looseObject({
   ListaClientes: checkoutListaClientesSchema,
 });
 
+/**
+ * `GeneXus.Common.Messages_Message` — o corpo inteiro de `PostCliente`.
+ *
+ * `Type` distingue aviso de erro: no padrão GeneXus a **recusa de negócio vem
+ * como `200` com `Type: 1`**, não como status HTTP de erro — a feature 004 já
+ * trata `FaturarNFCe` assim (`faturarNFCe.schema.ts`). Sem validar este corpo,
+ * um "CPF já cadastrado" passaria por sucesso e só falharia no `GetCliente`
+ * seguinte, com a mensagem genérica errada para o operador (`SC-003`).
+ */
+const TIPO_MENSAGEM_ERRO = 1;
+
+export const mensagemErpSchema = z.looseObject({
+  Id: z.string(),
+  Type: z.number().int(),
+  Description: z.string(),
+});
+
+export const postClienteOutputSchema = z.array(mensagemErpSchema);
+
+export type MensagemErp = z.infer<typeof mensagemErpSchema>;
+
+/** A primeira mensagem de erro do lote, ou `null` quando são todas avisos. */
+export function primeiroErroDeNegocio(mensagens: readonly MensagemErp[]): MensagemErp | null {
+  return mensagens.find((mensagem) => mensagem.Type === TIPO_MENSAGEM_ERRO) ?? null;
+}
+
 export type ClienteCheckout = z.infer<typeof clienteCheckoutSchema>;
 export type ClienteDaLista = z.infer<typeof clienteDaListaSchema>;
 export type CheckoutListaClientes = z.infer<typeof checkoutListaClientesSchema>;
