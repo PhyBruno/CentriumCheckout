@@ -55,6 +55,58 @@ export function validarFormatoCEP(texto: string): boolean {
   return apenasDigitos(texto).length === DIGITOS_CEP;
 }
 
+const MAX_DIGITOS_CODIGO = 6;
+const MIN_DIGITOS_CPF = 7;
+
+/**
+ * O que o operador digitou no campo "CPF/CNPJ" da venda.
+ *
+ * O mesmo campo aceita **código do cliente** e documento (pedido do usuário,
+ * 2026-09-03) — são dois parâmetros diferentes de `GetCliente` (`CodCliente` e
+ * `CPFCNPJ`), e a contagem de dígitos é o que decide qual enviar.
+ *
+ * `valor` já vem sem pontuação: o operador pode digitar `122.980.239-80`, mas
+ * o ERP recebe `12298023980`.
+ */
+export type EntradaCliente =
+  | { readonly tipo: 'CODIGO'; readonly codigo: number }
+  | { readonly tipo: 'CPF'; readonly documento: string }
+  | { readonly tipo: 'CNPJ'; readonly documento: string }
+  | { readonly tipo: 'INVALIDO' };
+
+/**
+ * Faixas definidas pelo usuário (2026-09-03): até 6 dígitos é código do
+ * cliente; de 7 a 11 é CPF; 14 é CNPJ.
+ *
+ * `12` e `13` dígitos ficam **inválidos** de propósito — não são nem um nem
+ * outro, e adivinhar aqui mandaria o ERP procurar um documento que o operador
+ * não terminou de digitar. Vazio também é inválido: quem chama trata como
+ * "nada a fazer", não como erro.
+ */
+export function classificarEntradaCliente(texto: string): EntradaCliente {
+  const digitos = apenasDigitos(texto);
+
+  if (digitos.length === 0) {
+    return { tipo: 'INVALIDO' };
+  }
+  if (digitos.length <= MAX_DIGITOS_CODIGO) {
+    return { tipo: 'CODIGO', codigo: Number(digitos) };
+  }
+  if (digitos.length >= MIN_DIGITOS_CPF && digitos.length <= DIGITOS_CPF) {
+    return { tipo: 'CPF', documento: digitos };
+  }
+  if (digitos.length === DIGITOS_CNPJ) {
+    return { tipo: 'CNPJ', documento: digitos };
+  }
+  return { tipo: 'INVALIDO' };
+}
+
+/** `00000-000`. Texto que não tem 8 dígitos volta inalterado. */
+export function formatarCEP(texto: string): string {
+  const digitos = apenasDigitos(texto);
+  return digitos.length === DIGITOS_CEP ? digitos.replace(/^(\d{5})(\d{3})$/, '$1-$2') : texto;
+}
+
 /**
  * Aplica a máscara de leitura ao documento — `000.000.000-00` para CPF e
  * `00.000.000/0000-00` para CNPJ.

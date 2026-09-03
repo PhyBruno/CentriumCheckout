@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   apenasDigitos,
-  classificarDocumento,
+  classificarEntradaCliente,
   formatarDocumento,
 } from '../../domain/cliente/documento';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
@@ -77,11 +77,18 @@ export function CampoClienteVenda(): ReactElement {
    * sincronização já aplicou, para o operador poder digitar por cima sem o
    * campo voltar sozinho ao cliente atual a cada tecla.
    */
-  const documentoDoCliente = clienteAtual?.documento ?? null;
-  const [documentoEspelhado, setDocumentoEspelhado] = useState(documentoDoCliente);
-  if (documentoDoCliente !== documentoEspelhado) {
-    setDocumentoEspelhado(documentoDoCliente);
-    setDocumento(documentoDoCliente === null ? '' : formatarDocumento(documentoDoCliente));
+  /**
+   * Sem documento, o campo mostra o **código** do cliente (pedido do usuário,
+   * 2026-09-03): é o caso do cliente default, que `GetSessao` entrega sem
+   * CPF/CNPJ (AD-108) — e deixar o campo vazio esconderia do operador quem
+   * está na venda.
+   */
+  const identificacaoDoCliente =
+    clienteAtual === null ? null : (clienteAtual.documento ?? String(clienteAtual.codigoCliente));
+  const [documentoEspelhado, setDocumentoEspelhado] = useState(identificacaoDoCliente);
+  if (identificacaoDoCliente !== documentoEspelhado) {
+    setDocumentoEspelhado(identificacaoDoCliente);
+    setDocumento(identificacaoDoCliente === null ? '' : formatarDocumento(identificacaoDoCliente));
   }
 
   /**
@@ -104,7 +111,7 @@ export function CampoClienteVenda(): ReactElement {
    * o aviso, em vez do cadastro, quando a busca por CNPJ não acha nada.
    */
   function tratarNaoEncontrado(termo: string): void {
-    if (classificarDocumento(termo) === 'CNPJ') {
+    if (classificarEntradaCliente(termo).tipo === 'CNPJ') {
       gooeyToast.warning(
         'Nenhum cliente com esse CNPJ. O cadastro simplificado do Checkout cria apenas pessoa física — use o cadastro completo do ERP.',
       );
@@ -127,15 +134,39 @@ export function CampoClienteVenda(): ReactElement {
     // Compara **dígitos**, não o texto mascarado: redigitar `12298023980` sobre
     // o `122.980.239-80` exibido é o gesto natural com leitor ou teclado
     // numérico, e uma comparação literal chamaria o ERP à toa.
-    if (documentoDoCliente !== null && apenasDigitos(termo) === apenasDigitos(documentoDoCliente)) {
+    if (
+      identificacaoDoCliente !== null &&
+      apenasDigitos(termo) === apenasDigitos(identificacaoDoCliente)
+    ) {
+      return;
+    }
+
+    // Código ou documento? A contagem de dígitos decide, e o ERP recebe só
+    // dígitos — `GetCliente` tem um parâmetro para cada caso.
+    const entrada = classificarEntradaCliente(termo);
+    if (entrada.tipo === 'INVALIDO') {
+      gooeyToast.warning(
+        'Informe o código do cliente (até 6 dígitos), um CPF (11 dígitos) ou um CNPJ (14 dígitos).',
+      );
       return;
     }
 
     setBuscando(true);
     try {
-      const resultado = await identificarPorDocumento(termo, 'BUSCA_DOCUMENTO');
+      const resultado =
+        entrada.tipo === 'CODIGO'
+          ? await identificarPorCodigo(entrada.codigo, 'BUSCA_DOCUMENTO')
+          : await identificarPorDocumento(entrada.documento, 'BUSCA_DOCUMENTO');
+
       if (resultado.situacao === 'nao-encontrado') {
-        tratarNaoEncontrado(termo);
+        // Código sem cadastro não abre o cadastro simplificado: o operador
+        // errou o número, não descobriu um cliente novo — criar um cliente
+        // aqui inventaria um cadastro que ele não pediu.
+        if (entrada.tipo === 'CODIGO') {
+          gooeyToast.warning(`Nenhum cliente com o código ${String(entrada.codigo)}.`);
+          return;
+        }
+        tratarNaoEncontrado(entrada.documento);
         return;
       }
       if (resultado.situacao === 'identificado') {
@@ -340,7 +371,8 @@ export function CampoClienteVenda(): ReactElement {
         }}
         onCadastrarNovo={(termo) => {
           setModalAberto(false);
-          setCpfSugerido(classificarDocumento(termo) === 'CPF' ? termo : '');
+          const entrada = classificarEntradaCliente(termo);
+          setCpfSugerido(entrada.tipo === 'CPF' ? entrada.documento : '');
           setCadastroAberto(true);
         }}
       />

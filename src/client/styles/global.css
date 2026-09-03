@@ -407,32 +407,45 @@ button,
 /**
  * Linha que acabou de entrar na venda.
  *
- * Anima **só opacidade e cor de fundo** — sem `transform`. Um `<tr>` é caixa de
- * tabela, e o Chrome trata `transform` nela de forma inconsistente (o mesmo
- * motivo que fez `cc-pulso-edicao` usar `outline` em vez de `box-shadow`);
- * deslocar a linha arriscaria arrastar as células fora do lugar durante o
- * trajeto, bem no momento em que o operador confere o que inseriu.
+ * O realce **não** toca em `background-color`: quem pinta é um véu de
+ * `box-shadow: inset` que decai até transparente. Animar o fundo da própria
+ * linha era o bug apontado pelo usuário (2026-09-03) — o keyframe terminava em
+ * `transparent`, então a linha zebrada piscava branca no último quadro antes de
+ * o `bg-muted` da classe reassumir. Com o véu por cima, o fundo real da linha
+ * (branco ou cinza da zebra) nunca é substituído: só recebe uma camada que sai.
  *
- * O realce de fundo decai até o transparente: confirma "entrou" no canto do
- * olho e sai de cena sozinho, sem competir com a leitura do preço. Duração
- * maior que a dos modais (`--cc-motion-base` ×2) porque aqui o alvo é
- * percepção periférica — o operador está olhando para o código que digitou,
- * não para a grid.
+ * O véu vai nas **células**, não no `<tr>`: `box-shadow` numa linha de tabela é
+ * pintado por baixo das células e não aparece no Chrome — mesmo motivo que fez
+ * `cc-pulso-edicao` usar `outline`. No cartão da lista mobile, que não é
+ * tabela, o próprio elemento recebe o véu; o seletor cobre os dois casos.
+ *
+ * Duração maior que a dos modais porque o alvo aqui é percepção periférica: o
+ * operador está olhando para o código que digitou, não para a grid.
  */
 @utility cc-linha-entra {
   animation: cc-linha-entra-quadro calc(var(--cc-motion-base) * 2) var(--cc-ease-saida);
 }
 
+.cc-linha-entra,
+.cc-linha-entra > td {
+  animation: cc-linha-veu calc(var(--cc-motion-base) * 2) var(--cc-ease-saida);
+}
+
 @keyframes cc-linha-entra-quadro {
   from {
     opacity: 0;
-    background-color: color-mix(in srgb, var(--cc-color-primary) 12%, transparent);
   }
   40% {
     opacity: 1;
   }
+}
+
+@keyframes cc-linha-veu {
+  from {
+    box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--cc-color-primary) 14%, transparent);
+  }
   to {
-    background-color: transparent;
+    box-shadow: inset 0 0 0 100vmax transparent;
   }
 }
 
@@ -451,6 +464,7 @@ button,
   .cc-modal-entra,
   .cc-modal-sai,
   .cc-linha-entra,
+  .cc-linha-entra > td,
   .cc-shimmer,
   .cc-pulso-edicao {
     animation-duration: 1ms;

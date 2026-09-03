@@ -3,7 +3,7 @@ import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
-import { validarFormatoCEP, validarFormatoCPF } from '../../domain/cliente/documento';
+import { formatarCEP, validarFormatoCEP, validarFormatoCPF } from '../../domain/cliente/documento';
 import type { CadastroSimplificadoInput } from '../../domain/cliente/clienteVenda';
 
 /**
@@ -174,14 +174,14 @@ export function FormCadastroSimplificado({
               />
               <Campo
                 campo="email"
-                rotulo="E-mail"
+                rotulo="E-mail (opcional)"
                 placeholder="nome@exemplo.com"
                 valor={valores.email}
                 onChange={alterar}
               />
               <Campo
                 campo="celular"
-                rotulo="Celular"
+                rotulo="Celular (opcional)"
                 placeholder="(11) 90000-0000"
                 valor={valores.celular}
                 onChange={alterar}
@@ -199,6 +199,13 @@ export function FormCadastroSimplificado({
                 placeholder="00000-000"
                 valor={valores.cep}
                 onChange={alterar}
+                // Máscara ao sair do campo, não a cada tecla (pedido do
+                // usuário, 2026-09-03): formatar durante a digitação move o
+                // cursor sozinho quando o operador volta para corrigir um
+                // dígito. O que vai ao ERP são só os dígitos, de qualquer forma.
+                aoSair={() => {
+                  alterar('cep', formatarCEP(valores.cep));
+                }}
                 invalido={valores.cep !== '' && !cepValido}
                 dica="Informe os 8 dígitos do CEP."
                 largura="w-[140px]"
@@ -281,6 +288,8 @@ interface CampoProps {
   readonly onChange: (campo: CampoCadastro, valor: string) => void;
   readonly invalido?: boolean;
   readonly dica?: string;
+  /** Chamado ao perder o foco — hoje só o CEP usa, para aplicar a máscara. */
+  readonly aoSair?: () => void;
   readonly largura?: string;
   readonly autoFocus?: boolean;
   readonly inputMode?: 'numeric' | 'tel';
@@ -295,6 +304,7 @@ function Campo({
   onChange,
   invalido = false,
   dica,
+  aoSair,
   largura = 'flex-1',
   autoFocus = false,
   inputMode,
@@ -317,6 +327,7 @@ function Campo({
         onChange={(evento) => {
           onChange(campo, evento.target.value);
         }}
+        {...(aoSair ? { onBlur: aoSair } : {})}
       />
       {invalido && dica !== undefined ? (
         <span className="text-sm text-destructive">{dica}</span>

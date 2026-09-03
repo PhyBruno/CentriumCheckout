@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   apenasDigitos,
   classificarDocumento,
+  classificarEntradaCliente,
+  formatarCEP,
   formatarDocumento,
   validarFormatoCEP,
   validarFormatoCPF,
@@ -87,5 +89,68 @@ describe('formatarDocumento', () => {
     expect(formatarDocumento('1234')).toBe('1234');
     expect(formatarDocumento('bruno')).toBe('bruno');
     expect(formatarDocumento('')).toBe('');
+  });
+});
+
+describe('classificarEntradaCliente', () => {
+  it('trata até 6 dígitos como código do cliente', () => {
+    expect(classificarEntradaCliente('1')).toEqual({ tipo: 'CODIGO', codigo: 1 });
+    expect(classificarEntradaCliente('2538')).toEqual({ tipo: 'CODIGO', codigo: 2538 });
+    expect(classificarEntradaCliente('999999')).toEqual({ tipo: 'CODIGO', codigo: 999999 });
+  });
+
+  it('trata de 7 a 11 dígitos como CPF, devolvendo só os dígitos', () => {
+    expect(classificarEntradaCliente('1234567')).toEqual({ tipo: 'CPF', documento: '1234567' });
+    expect(classificarEntradaCliente('12298023980')).toEqual({
+      tipo: 'CPF',
+      documento: '12298023980',
+    });
+  });
+
+  it('descarta pontos e traços antes de contar e de enviar ao ERP', () => {
+    // O operador digita a máscara; o ERP recebe o número limpo.
+    expect(classificarEntradaCliente('122.980.239-80')).toEqual({
+      tipo: 'CPF',
+      documento: '12298023980',
+    });
+    expect(classificarEntradaCliente('52.059.715/0001-13')).toEqual({
+      tipo: 'CNPJ',
+      documento: '52059715000113',
+    });
+    // Com pontuação, `2.538` continua sendo código — a máscara não muda a faixa.
+    expect(classificarEntradaCliente('2.538')).toEqual({ tipo: 'CODIGO', codigo: 2538 });
+  });
+
+  it('trata 14 dígitos como CNPJ', () => {
+    expect(classificarEntradaCliente('52059715000113')).toEqual({
+      tipo: 'CNPJ',
+      documento: '52059715000113',
+    });
+  });
+
+  it('recusa 12 e 13 dígitos — não são nem CPF nem CNPJ', () => {
+    // Adivinhar aqui mandaria o ERP procurar um documento que o operador não
+    // terminou de digitar.
+    expect(classificarEntradaCliente('123456789012')).toEqual({ tipo: 'INVALIDO' });
+    expect(classificarEntradaCliente('1234567890123')).toEqual({ tipo: 'INVALIDO' });
+  });
+
+  it('recusa vazio e comprimento acima de 14', () => {
+    expect(classificarEntradaCliente('')).toEqual({ tipo: 'INVALIDO' });
+    expect(classificarEntradaCliente('   ')).toEqual({ tipo: 'INVALIDO' });
+    expect(classificarEntradaCliente('520597150001139')).toEqual({ tipo: 'INVALIDO' });
+  });
+});
+
+describe('formatarCEP', () => {
+  it('aplica a máscara sobre 8 dígitos, com ou sem traço digitado', () => {
+    expect(formatarCEP('89000000')).toBe('89000-000');
+    expect(formatarCEP('89000-000')).toBe('89000-000');
+  });
+
+  it('devolve o texto inalterado quando não há 8 dígitos', () => {
+    expect(formatarCEP('890')).toBe('890');
+    expect(formatarCEP('890000000')).toBe('890000000');
+    expect(formatarCEP('')).toBe('');
   });
 });

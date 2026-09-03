@@ -461,6 +461,91 @@ test.describe('Recolher e devolver o foco ao identificar (pedido do usuário, 20
   });
 });
 
+test.describe('Código ou documento no mesmo campo (correções de 2026-09-03)', () => {
+  test('o campo mostra o código quando o cliente não tem documento (default)', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    // `GetSessao` entrega o cliente default sem CPF/CNPJ (AD-108); deixar o
+    // campo vazio esconderia do operador quem está na venda.
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('1');
+  });
+
+  test('até 6 dígitos consulta por CodCliente, não por documento', async ({ page, request }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill('1255');
+    await page.getByTestId('identificar-cliente').click();
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
+    expect((await contadores(request)).getCliente).toBe(1);
+  });
+
+  test('pontos e traços são descartados antes de consultar o ERP', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    // O operador digita a máscara inteira; o ERP recebe `12298023980`.
+    await page.getByTestId('campo-documento-cliente').fill('122.980.239-80');
+    await page.getByTestId('identificar-cliente').click();
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
+  });
+
+  test('CNPJ com pontuação também é aceito', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill('52.059.715/0001-13');
+    await page.getByTestId('identificar-cliente').click();
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('NILMAQ COMERCIO DE PECAS');
+  });
+
+  test('12 dígitos não consultam o ERP — não é código, CPF nem CNPJ', async ({ page, request }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill('123456789012');
+    await page.getByTestId('identificar-cliente').click();
+
+    await expect(page.getByTestId('campos-cliente-venda')).not.toHaveAttribute('inert', '');
+    expect((await contadores(request)).getCliente).toBe(0);
+  });
+
+  test('código inexistente avisa, sem abrir o cadastro simplificado', async ({ page }) => {
+    // Errar o número do código não é descobrir um cliente novo.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill('999999');
+    await page.getByTestId('identificar-cliente').click();
+
+    await expect(page.getByTestId('modal-cadastro-cliente')).toHaveCount(0);
+  });
+
+  test('o CEP ganha máscara ao sair do campo, no cadastro', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_INEXISTENTE);
+    await expect(page.getByTestId('modal-cadastro-cliente')).toBeVisible();
+
+    const cep = page.getByTestId('campo-cadastro-cep');
+    await cep.fill('89000000');
+    await cep.press('Tab');
+    await expect(cep).toHaveValue('89000-000');
+  });
+
+  test('e-mail e celular vazios não impedem o cadastro', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_INEXISTENTE);
+
+    await page.getByTestId('campo-cadastro-nome').fill('CLIENTE SEM CONTATO');
+    await page.getByTestId('campo-cadastro-cep').fill('89000000');
+    await expect(page.getByTestId('campo-cadastro-email')).toHaveValue('');
+    await expect(page.getByTestId('campo-cadastro-celular')).toHaveValue('');
+    await expect(page.getByTestId('salvar-cliente')).toBeEnabled();
+
+    await page.getByTestId('salvar-cliente').click();
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE SEM CONTATO');
+  });
+});
+
 test.describe('Verificação manual apoiada pelo E2E', () => {
   test('F5 no meio da venda descarta o cliente selecionado (Constitution VI)', async ({ page }) => {
     await abrirTelaDeVenda(page);
