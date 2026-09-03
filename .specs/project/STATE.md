@@ -525,12 +525,12 @@ Os quatro valores **estão no escopo do Checkout** e são tratados exatamente co
 
 ---
 
-### AD-050: `CliTip='F'` fixo — bloquear/alertar entrada de CNPJ na busca de cliente (2026-08-25)
+### AD-050: `CliTip='F'` fixo — bloquear/alertar entrada de CNPJ na busca de cliente (2026-08-25; **superado em 2026-09-03 por AD-133**)
 
-**Decision:** Como o cadastro simplificado do Checkout só cria cliente pessoa física (`CliTip` hardcoded `'F'` em `PCheckout_PostCliente`, confirmado em AD-024), a busca de cliente (`GetCliente`/`GetListaClientes`) SHALL bloquear ou alertar quando o operador digitar um CNPJ (14 dígitos) no campo de documento, já que o cadastro simplificado nunca poderia criar esse cliente como pessoa jurídica.
-**Reason:** Decisão direta do usuário — evita que o operador tente cadastrar um CNPJ pelo cadastro simplificado, que sempre falharia silenciosamente ao gravar como pessoa física.
-**Trade-off:** Nenhum identificado.
-**Impact:** Atualiza `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases — bloqueio/alerta de CNPJ na busca, reforça `CliTip='F'` fixo já documentado em AD-024).
+**Decision:** ⚠️ **Superado em 2026-09-03 por AD-133 — leia lá antes de implementar.** A regra vigente é mais forte e tem outro fundamento: o Ajuste SINIEF 11/2025 proíbe emitir NFCe para CNPJ, então o Checkout **recusa CNPJ em qualquer ponto da venda** (busca por documento, resolução por código do cliente e cadastro simplificado), sem a alternativa "bloquear **ou** alertar" que esta AD deixava em aberto — não existe caminho em que um cliente pessoa jurídica seja associado a uma venda do Checkout. Redação original (2026-08-25): como o cadastro simplificado do Checkout só cria cliente pessoa física (`CliTip` hardcoded `'F'` em `PCheckout_PostCliente`, confirmado em AD-024), a busca de cliente (`GetCliente`/`GetListaClientes`) SHALL bloquear ou alertar quando o operador digitar um CNPJ (14 dígitos) no campo de documento, já que o cadastro simplificado nunca poderia criar esse cliente como pessoa jurídica.
+**Reason:** **Não é mais o fundamento vigente.** O motivo que sustenta a regra hoje é fiscal (AD-133), não a limitação do cadastro simplificado — a limitação de `CliTip='F'` continua verdadeira, mas deixou de ser a razão pela qual o CNPJ é recusado. Redação original: decisão direta do usuário — evitava que o operador tentasse cadastrar um CNPJ pelo cadastro simplificado, que sempre falharia silenciosamente ao gravar como pessoa física.
+**Trade-off:** Nenhum identificado à época. Ver AD-133 para o trade-off real da regra vigente (venda a pessoa jurídica sai do Checkout e vai para a NFe emitida pelo ERP).
+**Impact:** **Substituído por AD-133 (2026-09-03)** — `.specs/features/identificacao-cadastro-cliente/spec.md` (AC 9 da user story P1 e `CLI-08`) e os artefatos de `specs/005-identificacao-cadastro-cliente/` foram reescritos no ponto para a regra nova. Redação original: atualiza `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases — bloqueio/alerta de CNPJ na busca, reforça `CliTip='F'` fixo já documentado em AD-024).
 
 ---
 
@@ -1460,3 +1460,168 @@ A barra superior mostra, portanto, só o que vem de `SessaoUsuario`: marca, empr
 
 **Trade-off:** A tela fica um elemento mais pobre que o desenho aprovado no Pencil, que traz a pílula à esquerda do operador. Aceito: preencher aquele espaço exigiria uma fonte de verdade que hoje não existe no contrato do ERP. Se um estado operacional de fato precisar aparecer ali (contingência, TEF fora do ar), ele virá de um campo próprio, com requisito formal — não do valor de `GetStatusSistema`.
 
+### AD-129: Ajustes de contrato da feature 005 durante a implementação — `celular` no snapshot do cliente, `selecionarCliente` assíncrona, erros de transporte compartilhados e precificação sem cliente (2026-09-03)
+
+**Decision:** Cinco desvios pontuais em relação aos artefatos de design da feature 005, todos decididos na implementação e registrados aqui para não ficarem só no código:
+
+1. **`ClienteVenda.celular`** foi acrescentado ao snapshot (`data-model.md` §1). O card "Cliente da venda expansível" do Pencil (nó `AasDP`) tem um campo "Contato" ao lado do CPF/CNPJ; sem esse campo no snapshot, ele ficaria permanentemente vazio. `null` para `origem = 'DEFAULT'`, pelo mesmo motivo de `documento` — `GetSessao` só devolve código e nome do cliente default.
+2. **`selecionarCliente` devolve `Promise<void>`**, não o `void` de `contracts/cliente-domain-api.md`. A troca com carrinho populado dispara um re-fetch de `GetProduto` por SKU (`research.md` D7), que é assíncrono por natureza; com `void`, uma falha de rede nessa etapa ficaria sem dono e o carrinho seguiria com o preço do cliente anterior sem ninguém para avisar o operador.
+3. **`ErroRedeErp`/`ErroSessaoEncerrada`/`ErroRespostaInvalida` migraram** de `services/produto/produtoQueries.ts` para `services/errosErp.ts`, reexportadas de onde estavam. `useCarrinho.ts` decide a mensagem ao operador por `instanceof`: duas classes homônimas declaradas em módulos diferentes (uma por serviço) falhariam nesse teste em silêncio.
+4. **A busca por documento (`CLI-01`) vive no card da venda, não no modal** — como o Pencil desenha: o card tem o campo "CPF/CNPJ" e a lupa que abre a busca por termo livre (`CLI-02`). São duas superfícies e dois endpoints distintos, sem heurística que escolha um pelo formato digitado, que é o que `research.md` D2 pede. `tasks.md` T017 descrevia os dois campos dentro do modal.
+5. **Sem cliente algum, a precificação usa `ClienteDefaultCodigo`/`ListaPrecoDefault` do bootstrap.** Fazer `useContextoPrecificacao` devolver `null` quando `clienteAtual` é `null` bloquearia a inserção de produto em empresa sem cliente default configurado (`FR-005`), violando `FR-003` — identificar cliente e inserir produto são ações independentes. Não é fallback inventado: é o mesmo campo do contrato que a feature 003 já enviava, e `0` ali significa "não configurado" para o próprio ERP.
+
+**Rationale:** Nenhum dos cinco altera requisito ou invariante da spec; os três primeiros são consequência de detalhes que só aparecem ao escrever o código (o campo do desenho, a assincronia real do re-fetch, o `instanceof` já existente), e os dois últimos são leituras da spec à luz do design aprovado e de `FR-003`.
+
+**Trade-off:** `data-model.md` §1 e `contracts/cliente-domain-api.md` da feature 005 descrevem o estado anterior nos pontos 1 e 2. Ficam desatualizados até a próxima revisão dos artefatos; esta AD é a fonte de verdade sobre a divergência.
+
+**Achado de contrato (não é decisão):** `GetCliente` aceita `CodCliente` desde 2026-08-31 (AD-115), mas `Fluxograma - Diagrama - Alinhamentos/ApiCentriumOAuth.yaml` é um snapshot anterior a essa data e ainda lista só `Empresa`/`CPFCNPJ`. `fetchClientePorCodigo` (`FR-016`) foi implementado contra a KB, não contra o yaml — quem for regerar o yaml deve esperar o parâmetro novo.
+
+### AD-130: Correções da revisão da feature 005 — guarda de geração na troca de cliente, `messages` do `PostCliente`, resolução do candidato por código e `Cliente.Empresa` reescrito no BFF (2026-09-03)
+
+**Decision:** Oito correções aplicadas após revisão completa da 005. As quatro primeiras mudam comportamento observável:
+
+1. **Guarda de geração em `reprecificarSob`.** Duas trocas de cliente sobrepostas — identificar pelo campo e, com os `GetProduto` em voo, escolher outro na lupa — gravavam pela ordem de chegada, não pela ordem de intenção. A chamada mais lenta sobrescrevia os snapshots da mais recente e reprecificava com o convênio do cliente atual: preço errado sem erro nem log. Cada aplicação de cliente agora carrega um número de geração, e um resultado de geração superada é descartado (inclusive o aviso de falha).
+2. **Reescolher o cliente que já está na venda é no-op.** Antes, clicar no mesmo cliente na lupa gravava `CLIENTE_TROCADO { anterior: X, novo: X }` no log que vai ao ERP em `FaturarNFCe`, e rebuscava todos os SKUs para chegar ao mesmo preço. `FR-015` pede registrar a troca, não a não-troca.
+3. **`PostCliente` valida o array `messages`.** No padrão GeneXus a recusa de negócio vem como `200` com `Type: 1` — a feature 004 já trata `FaturarNFCe` assim. Sem isso, "CPF já cadastrado" passava por sucesso, o `GetCliente` seguinte dava `404`, e o operador via "não foi possível consultar o cliente": tentaria indefinidamente sem saber o motivo (`SC-003`). Era também a única resposta do ERP na feature sem Zod (Constitution IV). Erro novo: `ErroCadastroRecusado`, que leva a `Description` do próprio ERP à tela.
+4. **O candidato do modal é resolvido por `CodCliente`, não pelo CPF.** `ClienteDaLista.CPF` pode vir vazio (cliente cadastrado sem documento): a busca por documento vazio dava `404` e **abria o cadastro simplificado sozinho**. `fetchClientePorCodigo` (`FR-016`, AD-115) passa a ter o consumidor que justificava a sua existência.
+
+As demais fecham brechas latentes ou de robustez: `selecionarCliente`/`cadastrarESelecionarCliente` devolvem `ResultadoAplicacaoCliente` (`'aplicado'`/`'bloqueado'`/`'inalterado'`), para a UI não fechar o modal de cadastro como se um no-op por bloqueio tivesse dado certo quando a feature 008 fechar o predicado; a guarda de re-busca no `onBlur` compara dígitos, não o texto mascarado; o snapshot do re-fetch é casado pelo SKU **pedido**, não pelo `codigoProduto` devolvido; e o BFF reescreve `Cliente.Empresa` no corpo de `PostCliente` com o `codigoEmpresa` do cookie de sessão.
+
+**Rationale:** O ponto 8 é o único de segurança. O contrato exige `Cliente.Empresa` **dentro** do corpo (AD-024) e o cliente o preenchia a partir do bootstrap; o cabeçalho `Empresa` que o BFF injeta vem do cookie cifrado, mas não protege o campo do corpo, que o proxy repassava cru. Um operador autenticado que alterasse o payload gravaria cliente em outra empresa do tenant. A correção não é remover o campo — é o servidor reescrevê-lo com a única fonte confiável que ele já tem.
+
+**Trade-off:** `contracts/cliente-domain-api.md` da feature 005 descreve `selecionarCliente`/`cadastrarESelecionarCliente` como `void`; AD-129 já registrava a mudança para `Promise<void>`, e esta AD a estreita mais uma vez para `Promise<ResultadoAplicacaoCliente>`. Os artefatos da 005 ficam desatualizados nesse ponto até a próxima revisão; AD-129 e esta são a fonte de verdade.
+
+**Não corrigidos, registrados como pendência:** o `Tipocodproduto` usado no re-fetch por troca de cliente (item 38 de `.specs/project/PENDENCIES.md` — depende de confirmação da equipe do ERP, e mudar às cegas quebraria tenants onde hoje funciona) e a ausência de E2E para o passo 7 do `quickstart.md` (bloqueio com pagamento aprovado, que depende da feature 008 — o predicado está coberto por teste de integração).
+
+### AD-131: Movimento na interface — amortecimento curto em overlay, colapso e foco, com escala de tempo própria do PDV (2026-09-03)
+
+**Decision:** O produto ganha uma camada de movimento, definida em `src/client/styles/global.css` e aplicada a três superfícies: overlay que entra/sai (modais de cliente, produto e os diálogos da 004), caixa que expande/recolhe (card de cliente) e foco/hover (todo `input`, `button` e `[role=button]`). Três durações — `90ms`, `140ms`, `200ms` — e duas curvas: `cubic-bezier(0.16, 1, 0.3, 1)` para o que entra (desacelera no fim, o elemento "assenta") e `cubic-bezier(0.4, 0, 1, 1)` para o que sai.
+
+Nada disso vem do Pencil: **o `.pen` não modela animação** — não há duração, easing ou transição em nó nenhum do arquivo. Timing e curva são decisão de implementação; cor, raio, espaçamento e tipografia seguem sendo lidos do design e não foram tocados.
+
+Duas escolhas de mecanismo, ambas com consequência visível:
+
+1. **Saída de modal precisa de montagem adiada.** O padrão da base é `if (!aberto) return null`, que apaga o nó no mesmo quadro — não há o que animar. O hook `usePresenca` (`src/client/lib/usePresenca.ts`) segura o overlay no DOM pela duração da saída. Não se trocou o mecanismo para `<dialog>`/`popover`: isso mudaria comportamento de foco e de ESC que os testes E2E já travam.
+2. **Colapso anima por `grid-template-rows: 0fr → 1fr`**, sem `height` fixa nem medição em JS — o conteúdo continua definindo o próprio tamanho. O custo é que o conteúdo **fica montado** quando recolhido, e por isso recebe `inert`: fora do TAB e dos leitores de tela, altura zero.
+
+**Rationale:** A escala é curta de propósito. Num PDV o operador repete o mesmo gesto centenas de vezes por turno, e animação que se faz notar na segunda vez vira atraso percebido — o alvo é amortecer a transição, não encená-la. A escala de entrada do modal parte de `0.98`, não de `0.9`: o modal deve parecer que já estava ali e ganhou foco, não que foi cuspido do centro da tela.
+
+**Acessibilidade:** tudo é desligado em `prefers-reduced-motion: reduce`, inclusive os dois laços infinitos que já existiam (`cc-shimmer`, `cc-pulso-edicao`) — laço infinito é o que mais incomoda quem tem sensibilidade a movimento, e o operador de caixa não escolhe o equipamento nem a configuração dele.
+
+**Consequência para os testes:** com o conteúdo do colapso montado, `toHaveCount(0)` deixou de valer como prova de "recolhido"; `not.toBeVisible()` também não serve, porque o Playwright mede a caixa do próprio elemento e ignora o corte por `overflow: hidden` do pai. A prova passou a ser o par altura zero + atributo `inert` (`esperarCamposRecolhidos`, `tests/e2e/identificacao-cliente.spec.ts`).
+
+### AD-132: Achados do código-fonte real de `PCheckout_PostCliente`/`PCheckout_GetCliente` — obrigatoriedade de campos, ausência de 404 e documento cru × formatado (2026-09-03)
+
+**Decision:** Inspeção direta das duas procedures na KB do GeneXus (`CentriumDEVU6`, via MCP) confirma o que era suposição e corrige duas leituras erradas do Checkout.
+
+1. **`PostCliente` valida exatamente dois campos**: `Empresa` (erro `9999`) e `cpf` (erro `9998`), mais a checagem de duplicidade por `CliCgc2` (erro `9997`, "CPF Duplicado"). **E-mail e celular não são obrigatórios** — são apenas gravados em `CliEmail`/`CliFonCel` (fecha a confirmação pedida pelo usuário em 2026-09-03). Nome e CEP também **não** são exigidos pela procedure; o Checkout continua exigindo os dois, por decisão de produto — cliente sem nome é inútil no cupom, e o formulário do Pencil trata endereço como parte do cadastro mínimo.
+
+2. **`GetCliente` não responde `404` quando não encontra.** O `For Each` simplesmente não entra, e a procedure devolve `200` com o SDT recém-criado — todos os campos no valor default. O Checkout tratava só o `404` do contrato, então associaria à venda um "cliente 0", sem nome e sem lista de preço, como se a busca tivesse dado certo. `buscarCliente` passa a tratar `CodCliente <= 0` como não encontrado, e o mock do E2E foi alinhado ao comportamento real (antes devolvia `404`, o que escondia o caminho).
+
+3. **`CliCgc2` guarda o documento cru; `CliCgc` guarda o formatado** (`pFormataCPF`). A busca por documento compara com `CliCgc2`, mas **o que volta em `ClienteCheckout.cpf` é o `CliCgc`, formatado**. Consequência: toda chamada ao ERP envia só dígitos — `fetchClientePorDocumento` e o `cpf` do `PostCliente` normalizam por `apenasDigitos`. Enviar a máscara no POST gravaria a máscara no campo cru e quebraria toda busca posterior por documento.
+
+4. **`CodCliente` existe e funciona em `GetCliente`** — o `else` do `if &CodCliente.IsEmpty()` faz `For Each ... Where CliCod = &CodCliente`. Confirma AD-115 no código-fonte, não só no *Specify*. O item 37 de `.specs/project/PENDENCIES.md` segue aberto só quanto ao build completo da KB e à regeneração do yaml.
+
+5. **`ListaPreco` cai para `1` dentro da própria procedure** quando `CliListCod` está vazio — confirma, no código, o fallback que AD-108 já descrevia.
+
+**Rationale:** Os pontos 2 e 3 são defeitos que nenhum teste pegaria contra o mock anterior, porque o mock era otimista em ambos: devolvia `404` para cliente inexistente e aceitava documento com máscara. Corrigir o mock junto com o código é o que impede a dupla de voltar.
+
+**Trade-off:** `contracts/erp-cliente-api.md` da feature 005 documenta `404: Not found` para `GetCliente`, copiado do yaml. O yaml declara essa resposta, mas a procedure não a emite — o contrato publicado e a implementação divergem. O Checkout trata os dois casos; a divergência em si é assunto para a equipe do ERP, junto com o item 37.
+
+### AD-133: Ajuste SINIEF 11/2025 — NFCe não pode ser emitida para CNPJ; o Checkout recusa pessoa jurídica em toda a venda, não só no cadastro (2026-09-03)
+
+**Decision:** O Ajuste SINIEF 11/2025 **proíbe a emissão de NFCe (modelo 65) quando o destinatário é pessoa jurídica identificada por CNPJ**. Venda para PJ passa a exigir NFe (modelo 55), emitida pelo ERP, **fora do Checkout** — o Checkout não emite, não prepara e não encaminha NFe.
+
+Consequência direta no produto: **o Checkout recusa CNPJ em qualquer ponto da venda, não apenas no cadastro simplificado.** Concretamente, e sem exceção:
+
+1. **Busca por documento.** Um texto de 14 dígitos (`classificarDocumento(...) === 'CNPJ'`) **não** dispara `GetCliente` — a chamada é bloqueada antes de sair, e o operador recebe a orientação de que a venda para pessoa jurídica é feita por NFe no ERP.
+2. **Resolução de um cliente já cadastrado, por qualquer caminho.** Um cliente cujo documento tem 14 dígitos **não pode ser associado à venda**, e a recusa acontece depois que `GetCliente` devolve o cadastro — ponto por onde passam os três caminhos (campo de documento, candidato do modal e código do cliente). O campo de documento sozinho não basta: a identificação também aceita **código do cliente** (até 6 dígitos), e um código de PJ chegaria ao ERP sem nunca parecer um CNPJ para o Checkout. É esse caminho — e o `CodCliente` que a importação de DAV usará (feature 006) — que a validação na resolução cobre.
+
+   **Correção de fundamento (2026-09-03, mesma data):** a redação inicial desta AD justificava o item pela lista de busca, afirmando que `GetListaClientes` "devolve PJ e PF na mesma lista". Isso é falso, verificado no código-fonte da KB: `PCheckout_ClientesLista` — o objeto que atende o endpoint, cujo nome **não** é `PCheckout_GetListaClientes` — filtra `where CliTip = 'F'` nos **dois** `For Each` (o dos itens e o da contagem de `TotalRegistros`, o que mantém a paginação coerente). A lista nunca traz pessoa jurídica; o caminho real que exigia a validação é o do código do cliente, não o do candidato.
+3. **Cadastro simplificado.** Continua criando exclusivamente pessoa física (`CliTip` hardcoded `'F'` em `PCheckout_PostCliente`, AD-024), agora reforçado por um motivo fiscal e não só por limitação de contrato: mesmo que a procedure aceitasse `CliTip='J'`, o cliente criado não poderia ser destinatário da NFCe que o Checkout emite.
+
+O que **não** muda: a existência de clientes PJ no ERP (cadastrados pela tela completa, fora do Checkout) segue legítima, e nenhuma venda já faturada é afetada retroativamente. O que muda é que o Checkout deixa de ser um caminho pelo qual esses clientes chegam a uma venda.
+
+**Rationale:** Decisão normativa externa, comunicada pelo usuário em 2026-09-03 — não é escolha de produto e não admite alternativa de implementação. Um CNPJ associado à venda só teria dois destinos possíveis: uma NFCe recusada pela SEFAZ na autorização (o operador descobre o problema com o cliente no caixa e a venda inteira precisa ser refeita) ou uma NFCe autorizada em desacordo com o Ajuste. Bloquear na entrada — antes da busca, antes da seleção, antes de qualquer item — é o único ponto em que o custo do erro é zero: o operador é informado enquanto ainda pode encaminhar a venda ao ERP pelo caminho certo.
+
+O bloqueio é **duro**, não um alerta: a redação anterior (AD-050) deixava "bloquear ou alertar" em aberto porque o risco era apenas um cadastro que falharia; agora o risco é fiscal, e um aviso que o operador pode ignorar não é proteção.
+
+**Trade-off:** O operador perde a capacidade de associar um cliente PJ já cadastrado a uma venda do Checkout — algo que a leitura anterior (D4 de `specs/005-identificacao-cadastro-cliente/research.md`) preservava deliberadamente. Aceito: essa capacidade não tem destino fiscal válido, porque a única nota que o Checkout emite é a NFCe. O custo real é operacional — a venda para PJ sai do PDV e vai para o ERP, com a troca de contexto que isso implica — e não há como evitá-lo sem o Checkout passar a emitir NFe, o que está fora do escopo do produto (`.specs/project/PROJECT.md`).
+
+Segundo trade-off, menor: a classificação por contagem de dígitos (14 → CNPJ) não faz checksum, então um CPF digitado com três dígitos a mais é recusado como se fosse CNPJ. Aceito — é o mesmo critério que a feature 005 já usa (`data-model.md` §5), a mensagem orienta a conferir o documento, e o erro é recuperável no próprio campo.
+
+**Supera:**
+- **AD-050** (`CliTip='F'` fixo — bloquear/alertar entrada de CNPJ na busca de cliente, 2026-08-25) — a regra continua "recusar CNPJ", mas o fundamento passa a ser fiscal, a alternativa "alertar" deixa de existir, e o alcance cresce da busca para toda a venda.
+- **D4 de `specs/005-identificacao-cadastro-cliente/research.md`** ("Bloqueio de CNPJ na busca é alerta, não impedimento de chamada", 2026-08-26) — a decisão de **não** bloquear a chamada, e de permitir a seleção de um cliente PJ pré-existente, está revogada. O `Rationale` que a sustentava ("um cliente PJ pode existir legitimamente no ERP e precisar ser associado a uma venda") caiu junto: existir no ERP ele continua podendo, ser associado a uma venda do Checkout não.
+
+**No lado do ERP (KB GeneXus, verificado no código-fonte em 2026-09-03):**
+
+- **`GetListaClientes` já estava conforme.** O endpoint é atendido por **`PCheckout_ClientesLista`** — não existe objeto `PCheckout_GetListaClientes`, ao contrário do que o padrão `PCheckout_GetCliente`/`PCheckout_PostCliente` sugeria; a convenção das listagens é `*_ClientesLista`, como em `DpCheckout_RascunhosLista` e `DpCheckout_VendedoresLista`. Ele filtra `where CliTip = 'F'` nos **dois** `For Each`, o dos itens e o da contagem de `TotalRegistros`, o que mantém a paginação coerente com a lista. Nenhuma alteração foi necessária.
+- **`PCheckout_GetCliente` não filtrava `CliTip`** em nenhum dos dois caminhos (`Where CliCgc2 = &CliCgc2` e `Where CliCod = &CodCliente`), então um `CodCliente` de pessoa jurídica era resolvido normalmente. Alterado na KB para recusar PJ — é o buraco que a validação do Checkout também cobre, agora fechado nas duas pontas.
+- **`PCheckout_PostCliente`** segue gravando `CliTip = 'F'` fixo (AD-024), conforme.
+
+**Impact:** `.specs/features/identificacao-cadastro-cliente/spec.md` (Problem Statement, AC 1/2/9 da user story P1, Independent Test, `CLI-01`/`CLI-08` da rastreabilidade); `.specs/codebase/INTEGRATIONS.md` (linha de `GetCliente`); `.specs/project/DECISIONS.md` (Q34, marcado como superado); `specs/005-identificacao-cadastro-cliente/` (`spec.md` — `FR-010`, Edge Cases, Key Entities, Assumptions; `research.md` D4; `plan.md` — Constraints e Testing; `data-model.md` §5; `quickstart.md` — passo 5 do E2E; `contracts/erp-cliente-api.md`; `tasks.md` — T018/T025 e o objetivo da Phase 4). Implementação (`src/`, `tests/`) tratada em paralelo, fora desta rodada de documentação. Nenhum item novo em `.specs/project/PENDENCIES.md` — não depende de resposta do ERP.
+
+### AD-134: Desfecho de erro na identificação de cliente — o card só recolhe quando a venda ganhou um cliente; o modal tem um único caminho de cadastro (2026-09-03)
+
+**Decision:** Recolher o bloco de identificação e devolver o foco ao código do produto (AD-131) é o desfecho de **sucesso**, não o desfecho de toda tentativa. Concretamente:
+
+1. **Recusa de pessoa jurídica** (AD-133, o caso do código `2209`): o card **fica aberto** e o foco volta ao **campo de documento do cliente**, não ao campo de produto. A venda ficou sem cliente, então o próximo gesto do operador é redigitar a identificação — mandá-lo para o produto o obriga a reabrir o card e voltar. Devolver o foco só é seguro nesse caminho porque `zerarIdentificacao` esvazia o campo: com o valor recusado ainda nele, o `onBlur` que já dispara a consulta (AD-131) repetiria a mesma recusa a cada TAB, prendendo o operador no campo.
+2. **Demais desfechos de erro** (código inexistente, CNPJ digitado, entrada inválida, falha de rede): já não recolhiam e continuam não recolhendo. Neles o valor **permanece** no campo, para o operador corrigir o dígito errado — e por isso o foco **não** é forçado de volta, justamente pelo laço descrito acima.
+3. **Modal de busca com um único caminho de cadastro:** "Novo cliente", na barra de filtros. O CTA "Cadastrar cliente" que se repetia no corpo do estado vazio saiu — dois botões para a mesma ação, no mesmo modal, só fazem o operador escolher entre caminhos idênticos. O pré-preenchimento do CPF sugerido não se perde: quem passa o termo ao cadastro é o handler do topo, o mesmo de antes.
+4. **Termo de pessoa jurídica no modal mostra o estado vazio**, não carregamento. A recusa desliga a consulta passando termo vazio ao `useBuscaClientes`, e uma query desligada pelo `enabled` do TanStack Query **nunca sai de `isPending`** — o skeleton do Boneyard girava para sempre. O desfecho visível passa a ser "Nenhum cliente encontrado para o termo informado"; o motivo fiscal continua só no toast.
+
+**Rationale:** Correções pedidas pelo usuário em 2026-09-03, sobre a feature 005 já implementada. As duas primeiras são a mesma regra vista de dois ângulos: o colapso comunica "resolvido, siga para os itens", e usá-lo depois de um erro afirma o contrário do que aconteceu. O item 4 é bug puro — o estado de carregamento eterno é o pior desfecho possível para uma recusa, porque não diz nada e não termina.
+
+**Trade-off:** O comportamento de foco deixa de ser uniforme entre os desfechos de erro (a recusa de PJ devolve o foco, os demais não). Aceito, e é assimetria de causa, não de gosto: só a recusa de PJ limpa o campo, e só um campo limpo pode receber o foco sem realimentar a mesma consulta pelo `onBlur`.
+
+**Complementa:** **AD-131** (movimento na interface — colapso e foco, 2026-09-03), que fixou o par "recolher + devolver o foco ao produto" sem distinguir o desfecho da tentativa. A regra não muda; ganha a condição que faltava.
+
+**Também nesta rodada (dois ajustes de CSS, sem decisão de produto):**
+
+O segundo, achado pelo usuário depois dos demais (2026-09-03): com o card **recolhido**, sobrava uma faixa em branco entre o cabeçalho e a borda inferior. Era o `gap-sm` (12px) do `<section>`, que continua separando o cabeçalho de um filho de altura zero. O espaço passou a morar **dentro** do bloco colapsável, como `padding-top` do conteúdo, para ser comprimido pela mesma animação de altura — e num nível **abaixo** da caixa de corte, porque `grid-template-rows: 0fr` respeita o min-content da linha: `min-height: 0` zera o conteúdo, mas não o padding, e um `pt` no filho direto deixava os mesmos 12px de altura residual (medido: o container recolhido passou de 0px para 12px antes da correção final). Daí o `<div>` sem estilo entre o `cc-colapsavel` e o conteúdo — é ela que `.cc-colapsavel > *` zera e recorta.
+
+O terceiro, de microcópia (2026-09-03): o campo "Contato" mostrava `—` quando o cadastro não tem telefone. Passou a mostrar **"Não informado"** em cor secundária (`text-muted-foreground`, o mesmo token do `placeholder` da barra de produto), tratando string vazia junto com `null` — o cadastro sem telefone chega das duas formas. O traço era ambíguo: lido rápido, parecia um contato curto ou um campo quebrado, e não dizia que o dado simplesmente não existe.
+
+O primeiro: `overflow-clip-margin: 4px` em `.cc-colapsavel > *` — introduzido para devolver o anel de `focus-visible` que `overflow: hidden` cortava — valia também com o bloco recolhido, e deixava escapar uma faixa de 4px do conteúdo abaixo do cabeçalho. A folga passou a ser presa a `.cc-colapsavel-aberto > *`: existe enquanto o bloco está aberto e some no instante em que ele recolhe.
+
+**Impact:** `src/client/features/cliente/CampoClienteVenda.tsx` (`zerarIdentificacao`, foco no campo de documento), `src/client/features/cliente/ModalBuscaCliente.tsx` (desvio de CNPJ na área de resultados, `SemResultados` sem CTA), `src/client/styles/global.css` (`cc-colapsavel`), `tests/e2e/identificacao-cliente.spec.ts` (5 casos novos, 2 atualizados). Nenhuma spec de `specs/005-identificacao-cadastro-cliente/` muda de requisito — `FR-010` e o passo 5 do `quickstart.md` seguem descrevendo a recusa; o que se corrige é o desfecho de UI, que elas não fixavam. Nenhum item novo em `.specs/project/PENDENCIES.md`.
+
+### AD-135: O campo de identificação devolve a identidade que o operador digitou, e o rótulo deixa de anunciar CNPJ (2026-09-03)
+
+**Decision:** Duas mudanças no primeiro campo do card de cliente, pedidas pelo usuário em 2026-09-03:
+
+1. **Rótulo "Código do cliente ou CPF"**, no lugar de "CPF/CNPJ". É um desvio deliberado do Pencil (nó `Rótulo CPF/CNPJ`), e o desenho é que ficou defasado: o campo passou a aceitar também o **código do cliente** (até 6 dígitos) e deixou de aceitar **CNPJ** (AD-133). Um rótulo que anuncia CNPJ oferece justamente o que a norma proíbe, e esconde a entrada que o operador mais usa no caixa.
+2. **O campo devolve a identidade que foi usada para identificar, não a que o ERP considera principal.** Quem digitou `1255` continua lendo `1255`; quem digitou o CPF continua lendo o CPF com máscara. `GetCliente` devolve as duas identidades do mesmo cadastro, e escolher por conta própria faria o campo reescrever a entrada do operador por uma que ele não digitou.
+
+   A face é **código** — não documento — em todos os caminhos que não passam pelo campo: cliente default (`GetSessao` não devolve documento, AD-108), candidato escolhido no modal e cliente recém-cadastrado. Nos dois últimos o operador buscou por nome ou preencheu um formulário; o `CodCliente` é o que identifica o cadastro que passou a valer, e no cadastro novo é o único dado que ele ainda não tinha. Documento vazio também cai no código: existe cadastro sem CPF no varejo, e um campo em branco esconderia quem está na venda.
+
+**Rationale:** O campo é a única memória visível de "por onde esta venda foi identificada". Trocar a identidade exibida apaga essa informação exatamente no caso em que ela importa — o operador que confere o código de um cliente de convênio não quer ler o CPF de volta.
+
+**Trade-off:** A mesma venda pode exibir identificações diferentes conforme o caminho usado, o que é assimétrico à primeira vista. Aceito: a assimetria é a informação — ela conta o que aconteceu, e o cadastro é o mesmo nos dois casos.
+
+**Corrida conhecida, não corrigida nesta rodada:** digitar por cima do campo enquanto uma identificação anterior ainda está em voo faz o espelhamento reescrever o que está sendo digitado quando aquela consulta conclui (`buscando` já barra a segunda consulta). É pré-existente ao pedido, exige uma janela de ~100ms entre a digitação e a resposta do ERP, e não foi observada em uso real — está registrada aqui porque foi diagnosticada durante esta rodada, ao ser reproduzida por um teste E2E que digitava sem esperar a primeira identificação terminar.
+
+**Complementa:** **AD-108** (cliente default sem `GetCliente`, que já fazia o campo mostrar o código quando não há documento) e **AD-133** (recusa de pessoa jurídica, que tornou o rótulo antigo enganoso).
+
+**Impact:** `src/client/features/cliente/CampoClienteVenda.tsx` (estado `faceDaIdentificacao`, rótulo do campo), `tests/e2e/identificacao-cliente.spec.ts` (4 casos novos, 1 atualizado). O Pencil (`design/CentriumCheckout.pen`) segue com o rótulo antigo — divergência conhecida, registrada aqui e no TSDoc do componente. Nenhum item novo em `.specs/project/PENDENCIES.md`.
+
+### AD-136: Cinco acertos visuais na tela de venda — o card de cliente deixa de repetir o operador, o hover de superfície secundária escurece, e os valores da barra rápida voltam ao desenho (2026-09-03)
+
+**Decision:** Cinco correções pontuais pedidas pelo usuário em 2026-09-03, sem reabrir ciclo de especificação (mesmo critério de [feedback-correcoes-pos-implementacao]):
+
+1. **A pílula "Operador" sai do card de cliente.** O cabeçalho do frame `p1hDEL` do Pencil a desenha ao lado das de Cliente e Vendedor, mas a barra superior já exibe `SessaoUsuario.UsuarioNome` (`operador-da-sessao`, AD-118) e as duas superfícies são visíveis ao mesmo tempo na tela de venda. Desvio deliberado do desenho, registrado no TSDoc do componente.
+2. **O hover de toda superfície `secondary` escurece, em vez de clarear.** O `hover:bg-secondary/80` que o shadcn traz de fábrica assume `--secondary` escuro; aqui ele é `$surface-strong` (`#eef0f3`), e a opacidade o mistura com o canvas branco por baixo — passar o mouse deixava o botão **mais claro** que em repouso. A correção é na variante, não nos dois call sites que motivaram o pedido: o defeito é da variante e alcança os 22 usos, todos superfícies claras sobre fundo claro. O novo token `--secondary-hover` aponta para `$hairline` (`#dee1e6`), o degrau seguinte da mesma família de cinza neutro do Pencil — nenhum hex novo entrou na paleta.
+3. **O stepper de quantidade deixa de morar dentro de um `<label>`.** O navegador aplica o `:hover` de um label ao *labeled control* — o primeiro form control descendente, que ali era o botão "−" —, então o botão acendia com o ponteiro em qualquer ponto do campo. O container passa a ser um `<div>` e o rótulo aponta para o `<input>` por `htmlFor`, preservando a associação acessível. É a única célula da barra que não é um `<label>` envolvendo o campo, porque é a única que contém botões além do input.
+4. **Preço unitário e desconto do item ficam alinhados à esquerda**, como o total sempre esteve. O `text-right` não vem do desenho: os três frames de valor do Pencil (`kwsQ0`, `BADmf`, `m9FeF`) centralizam só no eixo vertical e deixam o texto começar na borda esquerda.
+5. **O "R$" persiste na inserção e na edição**, via um `SimboloReal` **fora** do `<input>` — não como máscara dentro do `value`. O Pencil já traz `R$ 11.824,12` no preço (`pFkT1`) e um "R$" próprio no desconto (`qhuOQ`); era só o modo editável que perdia o símbolo, porque trocava `formatarCentavos` pelo texto cru. Os dois campos passam a carregar sempre só o número no `value`, nos dois estados.
+
+**Rationale:** Os itens 4 e 5 são retorno ao desenho, não desvio dele — a implementação é que havia inventado o alinhamento à direita e deixado o símbolo cair no modo editável. O item 5 resolve o risco que o próprio pedido apontou: um prefixo dentro do `value` viraria máscara, disputando o cursor com quem apaga, corrige ou digita por cima, e obrigaria `lerCentavos` a tolerar um símbolo que ela nunca precisou ver. Com o símbolo fora do campo, nada disso muda — `lerCentavos` recebe exatamente o mesmo texto de antes.
+
+**Trade-off:** O item 2 alcança 22 call sites a partir de um pedido sobre dois botões. Aceito: todos são superfícies claras sobre canvas branco e sofriam a mesma inversão; corrigir só as lupas deixaria o produto com duas direções de hover para a mesma variante. O item 5 muda o `value` dos dois campos de `R$ 10,00` para `10,00` — três asserções de teste foram atualizadas —, e afasta a implementação do desenho num detalhe tipográfico: o Pencil separa o "R$" do desconto em duas famílias (Inter no símbolo, Geist Mono no valor) e embute o do preço num texto único; aqui os dois campos seguem a forma do desconto, porque um `<input>` comporta uma tipografia só.
+
+**Achado adjacente, não corrigido:** num viewport de 1280px a barra rápida fica apertada o bastante para o `<input>` de quantidade encolher a largura zero (o número some, restam os botões +/-) e o "Total item" quebrar em duas linhas. É **pré-existente** — confirmado capturando a barra antes e depois das mudanças desta AD — e não aparece em 1920px. Fora do escopo do pedido; anotado aqui porque foi diagnosticado ao investigar por que o Playwright recusava o hover sobre aquele campo (o teste passou a mover o ponteiro por coordenada em vez de mirar o elemento).
+
+**Complementa:** **AD-123** (barra rápida reconstruída fiel ao Pencil), **AD-124** (lápis carrega o item na barra) e **AD-135** (desvios deliberados do desenho no card de cliente, mesmo padrão de registro no TSDoc).
+
+**Impact:** `src/client/styles/global.css` (token `--secondary-hover`), `src/client/components/ui/button.tsx` (variante `secondary`), `src/client/features/cliente/CampoClienteVenda.tsx` (pílula removida, import de `UserPen`), `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`SimboloReal`, célula de quantidade, alinhamento). Testes: `tests/e2e/carrinho-precificacao.spec.ts` (4 casos novos, 3 asserções atualizadas), `tests/e2e/identificacao-cliente.spec.ts` (1 caso novo, 1 reescrito), `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (asserções de símbolo). 403 unitários e 85 E2E verdes. Nenhum item novo em `.specs/project/PENDENCIES.md`.

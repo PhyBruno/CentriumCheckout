@@ -89,7 +89,7 @@ function ItemMobile({
       data-cancelada={linha.cancelada}
       data-codigo-produto={linha.snapshot.codigoProduto}
       className={cn(
-        'flex flex-col gap-xs rounded-xl border border-border bg-background p-base',
+        'cc-linha-entra flex flex-col gap-xs rounded-xl border border-border bg-background p-base',
         linha.cancelada && 'text-muted-foreground line-through',
         // Mesmo contorno pulsante de `LinhaDaGrid` (`GridItens.tsx`) —
         // pedido do usuário, 2026-09-03.

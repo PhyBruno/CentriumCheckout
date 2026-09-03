@@ -14,6 +14,7 @@ import {
 } from '../../../shared/schemas/produto.schema';
 import type { SnapshotPrecoProduto } from '../../domain/precificacao/linha';
 import { criarErpClient, type ErpClient } from '../erpClient';
+import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
 import { paraSnapshotPrecoProduto } from './produtoMapper';
 
 const CAMINHO_GET_PRODUTO = '/ApiCentriumOAuth/GetProduto';
@@ -56,30 +57,14 @@ export class ErroProdutoNaoEncontrado extends Error {
   }
 }
 
-export class ErroRedeErp extends Error {
-  constructor() {
-    super('Não foi possível falar com o ERP.');
-    this.name = 'ErroRedeErp';
-  }
-}
-
-export class ErroSessaoEncerrada extends Error {
-  constructor() {
-    super('A sessão do operador foi encerrada.');
-    this.name = 'ErroSessaoEncerrada';
-  }
-}
-
-/** Resposta que não passou na validação de fronteira — nunca inserir com dado parcial. */
-export class ErroRespostaInvalida extends Error {
-  constructor(
-    endpoint: string,
-    readonly detalhe: string,
-  ) {
-    super(`Resposta inválida de ${endpoint}: ${detalhe}`);
-    this.name = 'ErroRespostaInvalida';
-  }
-}
+/**
+ * Erros de transporte: declarados em `services/errosErp.ts` desde a feature
+ * 005, que passou a precisar dos mesmos no serviço de cliente. Reexportados
+ * daqui porque `useCarrinho.ts` e os testes da 003 já os importam deste módulo
+ * — e porque duas classes homônimas em módulos diferentes quebrariam os
+ * `instanceof` que decidem a mensagem ao operador.
+ */
+export { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
 
 /**
  * `listaPreco` faz parte da chave porque, em `TipoPreco = 9`, trocar o cliente

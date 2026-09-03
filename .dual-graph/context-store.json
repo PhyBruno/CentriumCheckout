@@ -4751,5 +4751,89 @@
       "src/client/layout/BarraSuperior.tsx"
     ],
     "date": "2026-09-02"
+  },
+  {
+    "type": "decision",
+    "content": "Feature 005 implementada: 29 tarefas, 348 unit + 44 E2E verdes",
+    "tags": [
+      "005",
+      "cliente"
+    ],
+    "files": [
+      "src/client/stores/slices/clienteSlice.ts"
+    ],
+    "date": "2026-09-03"
+  },
+  {
+    "type": "decision",
+    "content": "AD-129: celular no snapshot, selecionarCliente async, errosErp compartilhado",
+    "tags": [
+      "005",
+      "AD-129"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
+    ]
+  },
+  {
+    "type": "fact",
+    "content": "Busca por documento fica no card; modal cobre so busca livre",
+    "tags": [
+      "005",
+      "pencil"
+    ],
+    "files": [
+      "src/client/features/cliente/CampoClienteVenda.tsx"
+    ],
+    "date": "2026-09-03"
+  },
+  {
+    "type": "decision",
+    "content": "AD-136: hover secondary escurece via --secondary-hover, nos 22 call sites",
+    "tags": [
+      "ui",
+      "tokens"
+    ],
+    "files": [
+      "src/client/styles/global.css",
+      "src/client/components/ui/button.tsx"
+    ],
+    "date": "2026-09-03"
+  },
+  {
+    "type": "fact",
+    "content": "label envolvendo botao propaga :hover ao primeiro form control descendente",
+    "tags": [
+      "ui",
+      "a11y"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
+    ],
+    "date": "2026-09-03"
+  },
+  {
+    "type": "decision",
+    "content": "R$ vira elemento fora do input (SimboloReal), nunca mascara no value",
+    "tags": [
+      "ui",
+      "dinheiro"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
+    ],
+    "date": "2026-09-03"
+  },
+  {
+    "type": "fact",
+    "content": "Barra rapida aperta em 1280: quantidade some, total quebra; pre-existente",
+    "tags": [
+      "ui",
+      "layout"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
+    ],
+    "date": "2026-09-03"
   }
 ]

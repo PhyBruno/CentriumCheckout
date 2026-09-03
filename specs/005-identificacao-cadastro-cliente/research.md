@@ -66,16 +66,23 @@ Nenhum evento de auditoria é disparado por esta inicialização (D9).
 
 ---
 
-## D4 — Bloqueio de CNPJ na busca é alerta, não impedimento de chamada
+## D4 — CNPJ é recusado em toda a venda: a busca não é chamada e o cadastro resolvido não é associado
 
-**Natureza**: Nova (a spec deixa `FR-010`/`CLI-08` explicitamente como "bloquear OU alertar" — decisão de implementação em aberto).
+**Natureza**: Reescrita (2026-09-03, **AD-133**) — a redação anterior desta decisão ("bloqueio de CNPJ na busca é alerta, não impedimento de chamada") está **revogada**; ver "Redação anterior" ao final desta seção.
 
-**Decision**: Quando o texto digitado no campo de busca (por documento ou termo livre) é classificado como CNPJ (14 dígitos), o Checkout **não bloqueia a chamada** — a busca prossegue normalmente (`GetCliente`/`GetListaClientes` continuam sendo chamados). O que muda é a experiência quando **não há resultado**: o botão/CTA de "cadastro simplificado" (`CLI-03`) **não é oferecido** para uma busca por CNPJ sem resultado — em vez disso, um aviso (Goey Toast) informa que o cadastro simplificado do Checkout só cria cliente pessoa física, orientando o cadastro completo pelo ERP.
+**Decision**: Quando o texto digitado no campo de busca por documento é classificado como CNPJ (14 dígitos), o Checkout **bloqueia a chamada** — `GetCliente` não é disparado — e exibe um aviso (Goey Toast) explicando que a venda para pessoa jurídica exige NFe, emitida pelo ERP, fora do Checkout. O mesmo bloqueio se aplica **depois que `GetCliente` resolve o cadastro**, ponto único por onde passam os três caminhos de identificação: um cadastro cujo documento tenha 14 dígitos não é associado à venda, e a tentativa produz o mesmo aviso. Isso cobre o caminho que o campo de documento não vê — a identificação também aceita **código do cliente** (até 6 dígitos), e o código de uma PJ nunca se parece com um CNPJ antes da resposta do ERP. A busca por termo livre em si continua sendo chamada quando o termo não é um documento — ela recebe nome, e-mail ou telefone, que não têm como ser classificados antes da resposta. O CTA de "cadastro simplificado" (`CLI-03`) segue não sendo oferecido para CNPJ, pelo mesmo motivo, agora fiscal e não mais só contratual.
 
-**Rationale**: `CliTip = 'F'` é hardcoded só na procedure de **criação** (`PCheckout_PostCliente`, AD-024) — não existe nenhuma restrição de **busca**/seleção por CNPJ no contrato. Um cliente pessoa jurídica pode legitimamente já existir no ERP (cadastrado pela tela completa, fora do Checkout) e precisar ser associado a uma venda. Bloquear a chamada de busca inteiramente impediria selecionar esse cliente PJ legítimo — um efeito colateral pior do que o que a decisão original (AD-050) pretendia evitar. A leitura mais estreita e segura de `FR-010`/`CLI-08` ("bloquear **o cadastro simplificado** de CNPJ", não "bloquear a busca de CNPJ") é a que preserva a funcionalidade real sem violar a regra confirmada no código-fonte do ERP.
+**Rationale**: O Ajuste SINIEF 11/2025 proíbe emitir NFCe para destinatário pessoa jurídica identificada por CNPJ (AD-133). Como a NFCe é a única nota que o Checkout emite, um cliente PJ associado à venda não tem desfecho válido: ou a SEFAZ recusa a autorização com o cliente já no caixa e a venda inteira é refeita, ou a nota é autorizada em desacordo com a norma. Bloquear antes da chamada, e também na resolução do cadastro, é o que garante que nenhum caminho da UI chegue a esse estado — o campo de documento sozinho não bastaria, porque a identificação também aceita **código do cliente**, e um código de PJ não se parece com um CNPJ até o ERP responder.
+
+A **lista de busca não precisa** dessa defesa: `PCheckout_ClientesLista` já filtra `where CliTip = 'F'` no ERP, nos dois `For Each` (itens e contagem), verificado no código-fonte da KB em 2026-09-03. A validação na resolução ainda a cobre, mas por consequência — não é ela o motivo.
+
+O bloqueio é duro por decisão explícita de AD-133: com risco fiscal, um aviso que o operador pode ignorar não é proteção. `CliTip = 'F'` hardcoded em `PCheckout_PostCliente` (AD-024) continua verdadeiro e continua impedindo o cadastro de PJ, mas deixou de ser a razão pela qual o CNPJ é recusado.
 
 **Alternatives considered**:
-- *Bloquear a chamada de busca inteira para CNPJ*: rejeitado pelo motivo acima — quebra a busca de clientes PJ legítimos, que não é o que AD-050 pretendia restringir (a restrição é sobre o **cadastro**, não a **busca**).
+- *Permitir a busca e a seleção de PJ, bloqueando só a finalização*: rejeitado — empurra a descoberta do problema para o fim do fluxo, depois do carrinho montado e possivelmente com pagamento em andamento, que é exatamente o custo que o bloqueio na entrada elimina.
+- *Alertar sem bloquear (redação anterior desta decisão)*: rejeitado por AD-133 — ver abaixo.
+
+**Redação anterior (2026-08-26, revogada por AD-133 em 2026-09-03)**: a decisão original era **não** bloquear a chamada — `GetCliente`/`GetListaClientes` prosseguiam normalmente para CNPJ, e o que mudava era apenas a ausência do CTA de cadastro simplificado numa busca sem resultado, acompanhada de um aviso de que o Checkout só cria pessoa física. O `Rationale` daquela versão era que `CliTip = 'F'` é hardcoded só na procedure de **criação**, que o contrato não restringe **busca**/seleção por CNPJ, e que "um cliente pessoa jurídica pode legitimamente já existir no ERP e precisar ser associado a uma venda" — de modo que bloquear a busca quebraria a seleção de um PJ legítimo. **Esse raciocínio caiu**: o cliente PJ continua podendo existir no ERP, mas não pode ser associado a uma venda do Checkout, porque a NFCe que ela gera não pode tê-lo como destinatário.
 
 ---
 

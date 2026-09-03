@@ -14,7 +14,7 @@ Cópia dos dados relevantes de `ClienteCheckout` (ou dos campos disponíveis de 
 export interface ClienteVenda {
   readonly codigoCliente: number;          // ClienteCheckout.CodCliente / SessaoUsuario.ClienteDefaultCodigo
   readonly nome: string;
-  readonly documento: string | null;       // CPF/CNPJ — null só para origem 'DEFAULT' (GetSessao não devolve documento, ver D3)
+  readonly documento: string | null;       // CPF — sempre pessoa física (AD-133); null só para origem 'DEFAULT' (GetSessao não devolve documento, ver D3)
   readonly listaPreco: number | null;       // lista de preço do cliente — ClienteCheckout.ListaPreco, ou SessaoUsuario.ListaPrecoDefault quando origem = 'DEFAULT' (AD-108)
   readonly descontoConvenio: number | null; // ClienteCheckout.DescontoConvenio — percentual 0-100; sempre 0 para origem = 'DEFAULT' (cliente default não tem convênio, AD-108)
   readonly codigoConvenio: number | null;   // ClienteCheckout.CodigoConvenio
@@ -117,7 +117,7 @@ function validarFormatoCPF(texto: string): boolean;   // 11 dígitos, sem checks
 function validarFormatoCEP(texto: string): boolean;   // 8 dígitos, sem validação de IBGE — AD-023
 ```
 
-**Uso em `ModalBuscaCliente.tsx`**: `classificarDocumento(termoBusca) === 'CNPJ'` decide se o CTA de cadastro simplificado é oferecido numa busca sem resultado (`research.md` D4) — não decide se a busca em si é bloqueada.
+**Uso em `ModalBuscaCliente.tsx`**: `classificarDocumento(...) === 'CNPJ'` é o predicado de recusa de pessoa jurídica, aplicado em três pontos (`research.md` D4, AD-133): (1) no termo digitado no campo de documento, **antes** de chamar `GetCliente` — a busca não é disparada; (2) no documento do candidato escolhido na lista de `GetListaClientes`, impedindo a seleção; (3) numa busca sem resultado, para não oferecer o CTA de cadastro simplificado. ~~`classificarDocumento(termoBusca) === 'CNPJ'` decide se o CTA de cadastro simplificado é oferecido numa busca sem resultado — não decide se a busca em si é bloqueada.~~ **Corrigido (2026-09-03, AD-133):** o predicado passou a bloquear também a chamada e a seleção, porque a NFCe não pode ser emitida para CNPJ.
 
 ---
 

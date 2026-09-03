@@ -41,14 +41,14 @@ export function DialogoConfirmarReenvio({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg"
+      className="cc-backdrop-entra fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg"
       data-testid="dialogo-confirmar-reenvio"
     >
       <div
         role="alertdialog"
         aria-modal="true"
         aria-label="Confirmar reenvio"
-        className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
+        className="cc-modal-entra flex w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
       >
         <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
           <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-warning-soft)]">

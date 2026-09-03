@@ -47,6 +47,9 @@ export interface ContadoresMockErp {
   getListaProdutos: number;
   faturarNFCe: number;
   getStatusSistema: number;
+  getCliente: number;
+  getListaClientes: number;
+  postCliente: number;
 }
 
 const CONFIG_PADRAO: ConfigMockErp = {
@@ -68,6 +71,9 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getListaProdutos: 0,
   faturarNFCe: 0,
   getStatusSistema: 0,
+  getCliente: 0,
+  getListaClientes: 0,
+  postCliente: 0,
 };
 
 /** Base64 sintético — não é um PDF real, só precisa ser string não-vazia. */
@@ -136,6 +142,115 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
   },
 };
 
+/**
+ * Cadastro sintético de clientes da feature 005. `CLIENTE CONVENIADO` tem
+ * convênio e lista de preço próprios — é o que deixa o E2E provar que trocar o
+ * cliente reprecifica o carrinho. `NILMAQ` é pessoa jurídica: existe para
+ * provar que o CNPJ é recusado **mesmo tendo cadastro** no ERP — pelo campo,
+ * pela busca e ao ser escolhido pelo nome (Ajuste SINIEF 11/2025).
+ *
+ * `PostCliente` grava aqui, para a busca seguinte por documento encontrar o
+ * cliente recém-criado — o ERP real não devolve o registro criado
+ * (`contracts/erp-cliente-api.md`).
+ */
+const CLIENTES: Record<string, Record<string, unknown>> = {
+  '12298023980': {
+    Empresa: 1,
+    CodCliente: 1255,
+    nome: 'CLIENTE VAREJO',
+    cpf: '12298023980',
+    email: 'varejo@example.test',
+    celular: '55 47 99988-2100',
+    cep: '89000000',
+    endereco: 'Rua Exemplo',
+    bairro: 'Centro',
+    numero: '100',
+    cidade: 'AGUA DOCE',
+    uf: 'SC',
+    CodigoConvenio: 0,
+    NomeConvenio: '',
+    DescontoConvenio: 0,
+    ListaPreco: 3,
+    CliTip: 'F',
+  },
+  '89554068000': {
+    Empresa: 1,
+    CodCliente: 2538,
+    nome: 'CLIENTE CONVENIADO',
+    cpf: '89554068000',
+    email: 'conveniado@example.test',
+    celular: '55 47 92238-670',
+    cep: '78550000',
+    endereco: 'Avenida Exemplo',
+    bairro: 'Jardim',
+    numero: '200',
+    cidade: 'SINOP',
+    uf: 'MT',
+    CodigoConvenio: 7,
+    NomeConvenio: 'CONVENIO EXEMPLO',
+    DescontoConvenio: 10,
+    ListaPreco: 7,
+    CliTip: 'F',
+  },
+  'CONSUMIDOR-FINAL': {
+    Empresa: 1,
+    CodCliente: 1,
+    nome: 'CONSUMIDOR FINAL',
+    cpf: '',
+    email: '',
+    celular: '',
+    cep: '',
+    endereco: '',
+    bairro: '',
+    numero: '',
+    cidade: '',
+    uf: '',
+    CodigoConvenio: 0,
+    NomeConvenio: '',
+    DescontoConvenio: 0,
+    ListaPreco: 3,
+    CliTip: 'F',
+  },
+  'SEM-DOCUMENTO': {
+    Empresa: 1,
+    CodCliente: 3100,
+    nome: 'CLIENTE SEM DOCUMENTO',
+    cpf: '',
+    email: '',
+    celular: '55 47 90000-3100',
+    cep: '89000000',
+    endereco: 'Rua Sem Documento',
+    bairro: 'Centro',
+    numero: '10',
+    cidade: 'JOINVILLE',
+    uf: 'SC',
+    CodigoConvenio: 0,
+    NomeConvenio: '',
+    DescontoConvenio: 0,
+    ListaPreco: 3,
+    CliTip: 'F',
+  },
+  '52059715000113': {
+    Empresa: 1,
+    CodCliente: 2209,
+    nome: 'NILMAQ COMERCIO DE PECAS',
+    CliTip: 'J',
+    cpf: '52059715000113',
+    email: 'nilmaq@example.test',
+    celular: '14 9119-8027',
+    cep: '83300000',
+    endereco: 'Rodovia Exemplo',
+    bairro: 'Distrito',
+    numero: '300',
+    cidade: 'PIRAQUARA',
+    uf: 'PR',
+    CodigoConvenio: 0,
+    NomeConvenio: '',
+    DescontoConvenio: 0,
+    ListaPreco: 3,
+  },
+};
+
 function payloadGetSessao(config: ConfigMockErp): unknown {
   return {
     SessaoUsuario: {
@@ -156,7 +271,9 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       // testes — não é o único valor válido.
       UsuarioTipoCodigoProduto: 'D',
       ClienteDefaultCodigo: 1,
+      ClienteDefaultNome: 'CONSUMIDOR FINAL',
       VendedorCodigo: 42,
+      VendedorNome: 'Mariana Alves',
       CadSerieNFCe: '1',
       // Aponta para o próprio mock do ERP em E2E: o serviço de impressão local
       // real depende da rede do PDV, fora do alcance do CI
@@ -178,6 +295,8 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   let config: ConfigMockErp = { ...CONFIG_PADRAO };
   let contadores: ContadoresMockErp = { ...CONTADORES_ZERADOS };
+  /** Cadastro criado por `PostCliente` durante o teste — descartado no reset. */
+  const documentosCriados: string[] = [];
   let ultimoRetratoFaturado: Record<string, unknown> | null = null;
 
   await app.register(import('@fastify/formbody'));
@@ -187,6 +306,12 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     config = { ...CONFIG_PADRAO };
     contadores = { ...CONTADORES_ZERADOS };
     ultimoRetratoFaturado = null;
+    // Cadastro criado por `PostCliente` num teste não pode vazar para o
+    // próximo: o cenário "documento inexistente" depende de o CPF continuar
+    // ausente.
+    for (const documento of documentosCriados.splice(0)) {
+      delete CLIENTES[documento];
+    }
     return { ok: true };
   });
 
@@ -335,6 +460,152 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
           ? [{ Id: 'ERR', Type: 1, Description: 'NFCe não autorizada pela SEFAZ (sintético).' }]
           : [],
       });
+    },
+  );
+
+  app.get<{ Querystring: { CPFCNPJ?: string; CodCliente?: string } }>(
+    '/ApiCentriumOAuth/GetCliente',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.getCliente += 1;
+
+      const porDocumento = CLIENTES[request.query.CPFCNPJ ?? ''];
+      const porCodigo =
+        request.query.CodCliente === undefined
+          ? undefined
+          : Object.values(CLIENTES).find(
+              (cliente) => String(cliente['CodCliente']) === request.query.CodCliente,
+            );
+
+      const cliente = porDocumento ?? porCodigo;
+      if (cliente === undefined) {
+        // `PCheckout_GetCliente` **não** responde 404 quando não acha: devolve
+        // `200` com o SDT recém-criado, campos no default (código-fonte da KB,
+        // 2026-09-03). O mock reproduz isso — o 404 anterior era otimista e
+        // escondia o caminho real do Checkout.
+        return reply.send({
+          Cliente: {
+            Empresa: 0,
+            CodCliente: 0,
+            nome: '',
+            cpf: '',
+            email: '',
+            celular: '',
+            cep: '',
+            endereco: '',
+            bairro: '',
+            numero: '',
+            cidade: '',
+            uf: '',
+            CodigoConvenio: 0,
+            NomeConvenio: '',
+            DescontoConvenio: 0,
+            ListaPreco: 0,
+          },
+          messages: [],
+        });
+      }
+
+      return reply.send({ Cliente: cliente, messages: [] });
+    },
+  );
+
+  app.get<{ Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string } }>(
+    '/ApiCentriumOAuth/GetListaClientes',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.getListaClientes += 1;
+
+      const termo = (request.query.Txtbusca ?? '').toUpperCase();
+      // Sem `DescontoConvenio`/`CodigoConvenio`/`email`, como o contrato real —
+      // é o que obriga o Checkout a resolver por `GetCliente` antes de associar
+      // (`research.md` D1). E sem nenhum campo de status (AD-093).
+      const todos = Object.values(CLIENTES)
+        // `where CliTip = 'F'` — `PCheckout_ClientesLista` filtra pessoa física
+        // no próprio ERP, nos dois `For Each` (itens e contagem), verificado no
+        // código-fonte da KB em 2026-09-03. O mock não tinha esse filtro e
+        // devolvia PJ na busca, um cenário que produção nunca produz.
+        .filter((cliente) => cliente['CliTip'] !== 'J')
+        .filter(
+          (cliente) =>
+            String(cliente['nome']).toUpperCase().includes(termo) ||
+            String(cliente['cpf']).includes(termo),
+        )
+        .map((cliente) => ({
+          ClienteCodigo: cliente['CodCliente'],
+          ClienteNome: cliente['nome'],
+          CPF: cliente['cpf'],
+          ListaPreco: cliente['ListaPreco'],
+          Celular: cliente['celular'],
+          Telefone: '',
+          Endereco: {
+            cep: cliente['cep'],
+            endereco: cliente['endereco'],
+            bairro: cliente['bairro'],
+            numero: cliente['numero'],
+            cidade: cliente['cidade'],
+            uf: cliente['uf'],
+          },
+        }));
+
+      const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
+      const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
+      const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
+      const paginaAtual = Math.min(paginaPedida, totalPaginas);
+      const inicio = (paginaAtual - 1) * registrosPorPagina;
+
+      return reply.send({
+        ListaClientes: {
+          PaginaAtual: paginaAtual,
+          RegistrosPorPagina: registrosPorPagina,
+          TotalRegistros: todos.length,
+          TotalPaginas: totalPaginas,
+          Clientes: todos.slice(inicio, inicio + registrosPorPagina),
+        },
+        messages: [],
+      });
+    },
+  );
+
+  app.post<{ Body: { Cliente?: Record<string, unknown> } }>(
+    '/ApiCentriumOAuth/PostCliente',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.postCliente += 1;
+
+      const enviado = request.body.Cliente ?? {};
+      const cpf = String(enviado['cpf'] ?? '');
+      if (cpf === '') {
+        return reply
+          .code(400)
+          .send([{ Id: 'ERR', Type: 1, Description: 'CPF obrigatório (sintético).' }]);
+      }
+
+      // O ERP grava só os campos de AD-024 e força `CliTip = 'F'`. Aqui o mock
+      // completa o registro do jeito que `GetCliente` o devolveria depois —
+      // sem lista de preço nem convênio, que a procedure não grava.
+      documentosCriados.push(cpf);
+      CLIENTES[cpf] = {
+        Empresa: enviado['Empresa'],
+        CodCliente: 9000 + contadores.postCliente,
+        nome: enviado['nome'],
+        cpf,
+        email: enviado['email'],
+        celular: enviado['celular'],
+        cep: enviado['cep'],
+        endereco: enviado['endereco'],
+        bairro: enviado['bairro'],
+        numero: enviado['numero'],
+        cidade: enviado['cidade'],
+        uf: enviado['uf'],
+        CodigoConvenio: 0,
+        NomeConvenio: '',
+        DescontoConvenio: 0,
+        ListaPreco: 0,
+        CliTip: 'F',
+      };
+
+      return reply.send([]);
     },
   );
 

@@ -5,10 +5,13 @@ import { criarAuditoriaSlice } from './slices/auditoriaSlice';
 import type { AuditoriaSlice } from './slices/auditoriaSlice';
 import { criarCarrinhoSlice } from './slices/carrinhoSlice';
 import type { CarrinhoDeps, CarrinhoSlice } from './slices/carrinhoSlice';
+import { criarClienteSlice } from './slices/clienteSlice';
+import type { ClienteDeps, ClienteSlice } from './slices/clienteSlice';
 import { criarIdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import type { IdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import { useSessionStore } from './sessionStore';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
+import { fetchProduto } from '../services/produto/produtoQueries';
 
 /**
  * Store da venda em andamento — **sem `persist`** (AD-006, Constitution VI):
@@ -18,10 +21,10 @@ import type { OrigemVenda } from '../domain/auditoria/eventos';
  * Montado pelo padrão de slices do Zustand para ficar aberto à extensão sem
  * alteração (Open/Closed): cada feature de venda acrescenta o seu slice à
  * interseção de `VendaState` e o seu slice creator ao spread abaixo —
- * cliente (005), pagamento (008), vendedor (012). Por ora existem os slices de
- * auditoria (001), carrinho (003) e identidade da venda (004).
+ * pagamento (008), vendedor (012). Por ora existem os slices de auditoria
+ * (001), carrinho (003), identidade da venda (004) e cliente (005).
  */
-export type VendaState = AuditoriaSlice & CarrinhoSlice & IdentidadeVendaSlice;
+export type VendaState = AuditoriaSlice & CarrinhoSlice & IdentidadeVendaSlice & ClienteSlice;
 
 /** Configuração do PDV ainda não carregada quando o carrinho precisou dela. */
 export class ErroSessaoSemConfiguracao extends Error {
@@ -50,29 +53,79 @@ function tipoPrecoDoBootstrap(): number {
 }
 
 /**
+ * `SessaoUsuario.UsuarioTipoCodigoProduto` — enviado sempre, nunca inferido por
+ * chamada (AD-033). Falha alto pelo mesmo motivo de `tipoPrecoDoBootstrap`.
+ */
+function tipoCodProdutoDoBootstrap(): string {
+  const registro = useSessionStore.getState().registro;
+  if (registro === null) {
+    throw new ErroSessaoSemConfiguracao();
+  }
+  return registro.SessaoUsuario.UsuarioTipoCodigoProduto;
+}
+
+/**
  * Dependências do carrinho na composição real (Dependency Inversion — D8).
  *
- * `podeMutarCarrinho` e `clienteAtual` são os dois pontos que outras features
- * fecham sem tocar no carrinho: a 008 substitui o predicado pela regra de
- * bloqueio pós-pagamento (T038) e a 005 passa a devolver o cliente selecionado.
- * Até lá valem os defaults abaixo, que descrevem o estado real de uma venda sem
- * pagamento e com o cliente default — que nunca tem convênio (AD-108).
+ * `podeMutarCarrinho` é o ponto que a 008 fecha sem tocar no carrinho,
+ * substituindo o predicado pela regra de bloqueio pós-pagamento (T038); até lá
+ * vale o default abaixo, que descreve uma venda sem pagamento. `clienteAtual`
+ * já está fechado pela 005: lê o slice de cliente do próprio store combinado,
+ * sem o carrinho importar `clienteSlice.ts`.
  */
 export const carrinhoDepsPadrao: CarrinhoDeps = {
   podeMutarCarrinho: () => true,
   tipoPrecoAtual: tipoPrecoDoBootstrap,
-  clienteAtual: () => null,
+  clienteAtual: () => {
+    const cliente = useVendaStore.getState().clienteAtual;
+    if (cliente === null) {
+      return null;
+    }
+    return {
+      codigo: cliente.codigoCliente,
+      listaPreco: cliente.listaPreco,
+      // `null` significa "o cadastro deste cliente não define convênio"
+      // (cadastro simplificado, `research.md` D10) — para o cálculo, ausência
+      // de convênio e convênio zero produzem o mesmo fator `1`.
+      descontoConvenio: cliente.descontoConvenio ?? 0,
+    };
+  },
   avisar: (mensagem) => {
     gooeyToast.warning(mensagem);
   },
 };
 
-export function criarVendaStore(depsCarrinho: CarrinhoDeps = carrinhoDepsPadrao) {
+/**
+ * Dependências do cliente na composição real (`research.md` D7/D8).
+ *
+ * `podeMutarCarrinho` é **o mesmo** predicado do carrinho, não um segundo:
+ * cliente e carrinho compartilham a regra de "a venda ainda pode ser mutada"
+ * (AD-043).
+ */
+export function clienteDepsPadrao(depsCarrinho: CarrinhoDeps): ClienteDeps {
+  return {
+    podeMutarCarrinho: depsCarrinho.podeMutarCarrinho,
+    buscarSnapshotProduto: (codigoProduto, cliente) =>
+      fetchProduto(codigoProduto, {
+        tipoCodProduto: tipoCodProdutoDoBootstrap(),
+        tipoPreco: depsCarrinho.tipoPrecoAtual(),
+        codigoCliente: cliente.codigoCliente,
+        listaPreco: cliente.listaPreco,
+      }),
+    ...(depsCarrinho.avisar ? { avisar: depsCarrinho.avisar } : {}),
+  };
+}
+
+export function criarVendaStore(
+  depsCarrinho: CarrinhoDeps = carrinhoDepsPadrao,
+  depsCliente: ClienteDeps = clienteDepsPadrao(depsCarrinho),
+) {
   return create<VendaState>()(
     immer((...args) => ({
       ...criarAuditoriaSlice(...args),
       ...criarCarrinhoSlice(depsCarrinho)(...args),
       ...criarIdentidadeVendaSlice(...args),
+      ...criarClienteSlice(depsCliente)(...args),
     })),
   );
 }
@@ -96,4 +149,15 @@ export function abrirSessaoDeVenda(origem: OrigemVenda, numeroNota = 0): void {
   const venda = useVendaStore.getState();
   venda.resetarAuditoria(origem);
   venda.definirIdentidadeVenda({ origem, numeroNota });
+
+  // Pré-seleção do cliente default (feature 005, `FR-004`/AD-032): acontece
+  // aqui, e não dentro de um slice, pelo mesmo motivo dos dois acima — é o
+  // início da venda que precisa deixar auditoria, identidade e cliente
+  // coerentes entre si, e nenhum slice conhece os outros. Sem registro de
+  // bootstrap não há default a aplicar e o campo cliente nasce vazio
+  // (`FR-005`), que é exatamente o estado inicial do slice.
+  const registro = useSessionStore.getState().registro;
+  if (registro !== null) {
+    venda.inicializarClientePadrao(registro.SessaoUsuario);
+  }
 }
