@@ -525,12 +525,12 @@ Os quatro valores **estão no escopo do Checkout** e são tratados exatamente co
 
 ---
 
-### AD-050: `CliTip='F'` fixo — bloquear/alertar entrada de CNPJ na busca de cliente (2026-08-25)
+### AD-050: `CliTip='F'` fixo — bloquear/alertar entrada de CNPJ na busca de cliente (2026-08-25; **superado em 2026-09-03 por AD-133**)
 
-**Decision:** Como o cadastro simplificado do Checkout só cria cliente pessoa física (`CliTip` hardcoded `'F'` em `PCheckout_PostCliente`, confirmado em AD-024), a busca de cliente (`GetCliente`/`GetListaClientes`) SHALL bloquear ou alertar quando o operador digitar um CNPJ (14 dígitos) no campo de documento, já que o cadastro simplificado nunca poderia criar esse cliente como pessoa jurídica.
-**Reason:** Decisão direta do usuário — evita que o operador tente cadastrar um CNPJ pelo cadastro simplificado, que sempre falharia silenciosamente ao gravar como pessoa física.
-**Trade-off:** Nenhum identificado.
-**Impact:** Atualiza `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases — bloqueio/alerta de CNPJ na busca, reforça `CliTip='F'` fixo já documentado em AD-024).
+**Decision:** ⚠️ **Superado em 2026-09-03 por AD-133 — leia lá antes de implementar.** A regra vigente é mais forte e tem outro fundamento: o Ajuste SINIEF 11/2025 proíbe emitir NFCe para CNPJ, então o Checkout **recusa CNPJ em qualquer ponto da venda** (busca por documento, resolução por código do cliente e cadastro simplificado), sem a alternativa "bloquear **ou** alertar" que esta AD deixava em aberto — não existe caminho em que um cliente pessoa jurídica seja associado a uma venda do Checkout. Redação original (2026-08-25): como o cadastro simplificado do Checkout só cria cliente pessoa física (`CliTip` hardcoded `'F'` em `PCheckout_PostCliente`, confirmado em AD-024), a busca de cliente (`GetCliente`/`GetListaClientes`) SHALL bloquear ou alertar quando o operador digitar um CNPJ (14 dígitos) no campo de documento, já que o cadastro simplificado nunca poderia criar esse cliente como pessoa jurídica.
+**Reason:** **Não é mais o fundamento vigente.** O motivo que sustenta a regra hoje é fiscal (AD-133), não a limitação do cadastro simplificado — a limitação de `CliTip='F'` continua verdadeira, mas deixou de ser a razão pela qual o CNPJ é recusado. Redação original: decisão direta do usuário — evitava que o operador tentasse cadastrar um CNPJ pelo cadastro simplificado, que sempre falharia silenciosamente ao gravar como pessoa física.
+**Trade-off:** Nenhum identificado à época. Ver AD-133 para o trade-off real da regra vigente (venda a pessoa jurídica sai do Checkout e vai para a NFe emitida pelo ERP).
+**Impact:** **Substituído por AD-133 (2026-09-03)** — `.specs/features/identificacao-cadastro-cliente/spec.md` (AC 9 da user story P1 e `CLI-08`) e os artefatos de `specs/005-identificacao-cadastro-cliente/` foram reescritos no ponto para a regra nova. Redação original: atualiza `.specs/features/identificacao-cadastro-cliente/spec.md` (Edge Cases — bloqueio/alerta de CNPJ na busca, reforça `CliTip='F'` fixo já documentado em AD-024).
 
 ---
 
@@ -1527,3 +1527,37 @@ Duas escolhas de mecanismo, ambas com consequência visível:
 **Rationale:** Os pontos 2 e 3 são defeitos que nenhum teste pegaria contra o mock anterior, porque o mock era otimista em ambos: devolvia `404` para cliente inexistente e aceitava documento com máscara. Corrigir o mock junto com o código é o que impede a dupla de voltar.
 
 **Trade-off:** `contracts/erp-cliente-api.md` da feature 005 documenta `404: Not found` para `GetCliente`, copiado do yaml. O yaml declara essa resposta, mas a procedure não a emite — o contrato publicado e a implementação divergem. O Checkout trata os dois casos; a divergência em si é assunto para a equipe do ERP, junto com o item 37.
+
+### AD-133: Ajuste SINIEF 11/2025 — NFCe não pode ser emitida para CNPJ; o Checkout recusa pessoa jurídica em toda a venda, não só no cadastro (2026-09-03)
+
+**Decision:** O Ajuste SINIEF 11/2025 **proíbe a emissão de NFCe (modelo 65) quando o destinatário é pessoa jurídica identificada por CNPJ**. Venda para PJ passa a exigir NFe (modelo 55), emitida pelo ERP, **fora do Checkout** — o Checkout não emite, não prepara e não encaminha NFe.
+
+Consequência direta no produto: **o Checkout recusa CNPJ em qualquer ponto da venda, não apenas no cadastro simplificado.** Concretamente, e sem exceção:
+
+1. **Busca por documento.** Um texto de 14 dígitos (`classificarDocumento(...) === 'CNPJ'`) **não** dispara `GetCliente` — a chamada é bloqueada antes de sair, e o operador recebe a orientação de que a venda para pessoa jurídica é feita por NFe no ERP.
+2. **Resolução de um cliente já cadastrado, por qualquer caminho.** Um cliente cujo documento tem 14 dígitos **não pode ser associado à venda**, e a recusa acontece depois que `GetCliente` devolve o cadastro — ponto por onde passam os três caminhos (campo de documento, candidato do modal e código do cliente). O campo de documento sozinho não basta: a identificação também aceita **código do cliente** (até 6 dígitos), e um código de PJ chegaria ao ERP sem nunca parecer um CNPJ para o Checkout. É esse caminho — e o `CodCliente` que a importação de DAV usará (feature 006) — que a validação na resolução cobre.
+
+   **Correção de fundamento (2026-09-03, mesma data):** a redação inicial desta AD justificava o item pela lista de busca, afirmando que `GetListaClientes` "devolve PJ e PF na mesma lista". Isso é falso, verificado no código-fonte da KB: `PCheckout_ClientesLista` — o objeto que atende o endpoint, cujo nome **não** é `PCheckout_GetListaClientes` — filtra `where CliTip = 'F'` nos **dois** `For Each` (o dos itens e o da contagem de `TotalRegistros`, o que mantém a paginação coerente). A lista nunca traz pessoa jurídica; o caminho real que exigia a validação é o do código do cliente, não o do candidato.
+3. **Cadastro simplificado.** Continua criando exclusivamente pessoa física (`CliTip` hardcoded `'F'` em `PCheckout_PostCliente`, AD-024), agora reforçado por um motivo fiscal e não só por limitação de contrato: mesmo que a procedure aceitasse `CliTip='J'`, o cliente criado não poderia ser destinatário da NFCe que o Checkout emite.
+
+O que **não** muda: a existência de clientes PJ no ERP (cadastrados pela tela completa, fora do Checkout) segue legítima, e nenhuma venda já faturada é afetada retroativamente. O que muda é que o Checkout deixa de ser um caminho pelo qual esses clientes chegam a uma venda.
+
+**Rationale:** Decisão normativa externa, comunicada pelo usuário em 2026-09-03 — não é escolha de produto e não admite alternativa de implementação. Um CNPJ associado à venda só teria dois destinos possíveis: uma NFCe recusada pela SEFAZ na autorização (o operador descobre o problema com o cliente no caixa e a venda inteira precisa ser refeita) ou uma NFCe autorizada em desacordo com o Ajuste. Bloquear na entrada — antes da busca, antes da seleção, antes de qualquer item — é o único ponto em que o custo do erro é zero: o operador é informado enquanto ainda pode encaminhar a venda ao ERP pelo caminho certo.
+
+O bloqueio é **duro**, não um alerta: a redação anterior (AD-050) deixava "bloquear ou alertar" em aberto porque o risco era apenas um cadastro que falharia; agora o risco é fiscal, e um aviso que o operador pode ignorar não é proteção.
+
+**Trade-off:** O operador perde a capacidade de associar um cliente PJ já cadastrado a uma venda do Checkout — algo que a leitura anterior (D4 de `specs/005-identificacao-cadastro-cliente/research.md`) preservava deliberadamente. Aceito: essa capacidade não tem destino fiscal válido, porque a única nota que o Checkout emite é a NFCe. O custo real é operacional — a venda para PJ sai do PDV e vai para o ERP, com a troca de contexto que isso implica — e não há como evitá-lo sem o Checkout passar a emitir NFe, o que está fora do escopo do produto (`.specs/project/PROJECT.md`).
+
+Segundo trade-off, menor: a classificação por contagem de dígitos (14 → CNPJ) não faz checksum, então um CPF digitado com três dígitos a mais é recusado como se fosse CNPJ. Aceito — é o mesmo critério que a feature 005 já usa (`data-model.md` §5), a mensagem orienta a conferir o documento, e o erro é recuperável no próprio campo.
+
+**Supera:**
+- **AD-050** (`CliTip='F'` fixo — bloquear/alertar entrada de CNPJ na busca de cliente, 2026-08-25) — a regra continua "recusar CNPJ", mas o fundamento passa a ser fiscal, a alternativa "alertar" deixa de existir, e o alcance cresce da busca para toda a venda.
+- **D4 de `specs/005-identificacao-cadastro-cliente/research.md`** ("Bloqueio de CNPJ na busca é alerta, não impedimento de chamada", 2026-08-26) — a decisão de **não** bloquear a chamada, e de permitir a seleção de um cliente PJ pré-existente, está revogada. O `Rationale` que a sustentava ("um cliente PJ pode existir legitimamente no ERP e precisar ser associado a uma venda") caiu junto: existir no ERP ele continua podendo, ser associado a uma venda do Checkout não.
+
+**No lado do ERP (KB GeneXus, verificado no código-fonte em 2026-09-03):**
+
+- **`GetListaClientes` já estava conforme.** O endpoint é atendido por **`PCheckout_ClientesLista`** — não existe objeto `PCheckout_GetListaClientes`, ao contrário do que o padrão `PCheckout_GetCliente`/`PCheckout_PostCliente` sugeria; a convenção das listagens é `*_ClientesLista`, como em `DpCheckout_RascunhosLista` e `DpCheckout_VendedoresLista`. Ele filtra `where CliTip = 'F'` nos **dois** `For Each`, o dos itens e o da contagem de `TotalRegistros`, o que mantém a paginação coerente com a lista. Nenhuma alteração foi necessária.
+- **`PCheckout_GetCliente` não filtrava `CliTip`** em nenhum dos dois caminhos (`Where CliCgc2 = &CliCgc2` e `Where CliCod = &CodCliente`), então um `CodCliente` de pessoa jurídica era resolvido normalmente. Alterado na KB para recusar PJ — é o buraco que a validação do Checkout também cobre, agora fechado nas duas pontas.
+- **`PCheckout_PostCliente`** segue gravando `CliTip = 'F'` fixo (AD-024), conforme.
+
+**Impact:** `.specs/features/identificacao-cadastro-cliente/spec.md` (Problem Statement, AC 1/2/9 da user story P1, Independent Test, `CLI-01`/`CLI-08` da rastreabilidade); `.specs/codebase/INTEGRATIONS.md` (linha de `GetCliente`); `.specs/project/DECISIONS.md` (Q34, marcado como superado); `specs/005-identificacao-cadastro-cliente/` (`spec.md` — `FR-010`, Edge Cases, Key Entities, Assumptions; `research.md` D4; `plan.md` — Constraints e Testing; `data-model.md` §5; `quickstart.md` — passo 5 do E2E; `contracts/erp-cliente-api.md`; `tasks.md` — T018/T025 e o objetivo da Phase 4). Implementação (`src/`, `tests/`) tratada em paralelo, fora desta rodada de documentação. Nenhum item novo em `.specs/project/PENDENCIES.md` — não depende de resposta do ERP.

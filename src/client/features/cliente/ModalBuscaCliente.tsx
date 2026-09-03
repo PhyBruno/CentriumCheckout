@@ -13,7 +13,10 @@ import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
-import { classificarDocumento } from '../../domain/cliente/documento';
+import {
+  documentoEhPessoaJuridica,
+  MOTIVO_VENDA_PESSOA_JURIDICA,
+} from '../../domain/cliente/documento';
 import type { ClienteDaLista } from '../../../shared/schemas/cliente.schema';
 import { useBuscaClientes } from '../../services/cliente/clienteQueries';
 import { useQtdMinCharParaConsulta } from './useCliente';
@@ -69,8 +72,12 @@ export interface ModalBuscaClienteProps {
  *  crua, só a chamada de rede espera o operador parar. */
 const DEBOUNCE_BUSCA_MS = 300;
 
-const AVISO_CNPJ =
-  'O cadastro simplificado do Checkout cria apenas cliente pessoa física. Para CNPJ, use o cadastro completo do ERP.';
+/**
+ * Recusa de pessoa jurídica na busca (Ajuste SINIEF 11/2025) — o motivo é o
+ * mesmo do campo CPF/CNPJ da venda, só a instrução muda: aqui o operador não
+ * digita código de cliente, ele busca por nome, e-mail, telefone ou documento.
+ */
+const AVISO_CNPJ = `${MOTIVO_VENDA_PESSOA_JURIDICA} Busque o cliente por CPF ou por nome.`;
 
 export function ModalBuscaCliente({
   aberto,
@@ -102,10 +109,35 @@ export function ModalBuscaCliente({
     };
   }, [termo]);
 
+  /**
+   * Termo que é um CNPJ inteiro: a busca **não** acontece (Ajuste SINIEF
+   * 11/2025 — venda para pessoa jurídica exige NFe, emitida pelo ERP).
+   *
+   * Antes era o contrário (`research.md` D4): buscava-se o CNPJ e só o CTA de
+   * cadastro sumia, porque um cliente PJ podia legitimamente ser associado à
+   * venda. Com a norma, associar é que deixou de ser possível — e listar
+   * candidatos que o operador não pode escolher só produziria um clique morto.
+   *
+   * Reage ao termo cru, não ao `debounced`: a recusa é local, não custa rede, e
+   * esperar 300ms para dizer "não" atrasaria a correção do operador.
+   */
+  const termoEhCnpj = documentoEhPessoaJuridica(termo.trim());
+
+  useEffect(() => {
+    if (termoEhCnpj) {
+      gooeyToast.warning(AVISO_CNPJ);
+    }
+  }, [termoEhCnpj]);
+
   // Piso vem do ERP (AD-024). Sem bootstrap, um piso inalcançável mantém a
   // busca desligada — melhor não buscar do que buscar com um mínimo inventado.
   const minimo = qtdMinChar ?? Number.POSITIVE_INFINITY;
-  const busca = useBuscaClientes(termoDebounced, { qtdMinCharParaConsulta: minimo, pagina });
+  // Termo vazio para o hook = consulta desligada pelo `enabled` dele: é assim
+  // que o CNPJ não chega a `GetListaClientes`.
+  const busca = useBuscaClientes(termoEhCnpj ? '' : termoDebounced, {
+    qtdMinCharParaConsulta: minimo,
+    pagina,
+  });
 
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
 
@@ -118,14 +150,6 @@ export function ModalBuscaCliente({
   const termoLimpo = termo.trim();
   const abaixoDoMinimo = termoLimpo.length < minimo;
   const semResultado = busca.data !== undefined && busca.data.Clientes.length === 0;
-
-  /**
-   * `FR-010`/`research.md` D4: a busca por CNPJ **não** é bloqueada — um cliente
-   * PJ pode existir legitimamente no ERP, cadastrado pela tela completa. O que
-   * não é oferecido é o *cadastro* simplificado, que só cria pessoa física
-   * (`CliTip = 'F'` hardcoded na procedure, AD-024).
-   */
-  const termoEhCnpj = classificarDocumento(termoLimpo) === 'CNPJ';
 
   function cadastrarNovo(): void {
     if (termoEhCnpj) {
@@ -218,7 +242,17 @@ export function ModalBuscaCliente({
         </div>
 
         <div className="min-h-40 flex-1 overflow-y-auto" aria-live="polite">
-          {abaixoDoMinimo ? (
+          {termoEhCnpj ? (
+            // O toast avisa; este texto **permanece** enquanto o CNPJ estiver no
+            // campo, para o operador não ficar diante de uma lista vazia sem
+            // motivo depois que a notificação some.
+            <p
+              className="p-base text-md text-[var(--cc-color-warning-ink)]"
+              data-testid="aviso-cnpj"
+            >
+              {AVISO_CNPJ}
+            </p>
+          ) : abaixoDoMinimo ? (
             <p
               className="p-base text-md text-muted-foreground"
               data-testid="busca-cliente-abaixo-do-minimo"
@@ -242,7 +276,6 @@ export function ModalBuscaCliente({
             </p>
           ) : semResultado ? (
             <SemResultados
-              termoEhCnpj={termoEhCnpj}
               onCadastrarNovo={() => {
                 onCadastrarNovo(termoLimpo);
               }}
@@ -318,11 +351,15 @@ export function ModalBuscaCliente({
 }
 
 interface SemResultadosProps {
-  readonly termoEhCnpj: boolean;
   readonly onCadastrarNovo: () => void;
 }
 
-function SemResultados({ termoEhCnpj, onCadastrarNovo }: SemResultadosProps): ReactElement {
+/**
+ * O CTA de cadastro aparece sempre que a busca não achou nada — não há mais o
+ * desvio para CNPJ: um termo de pessoa jurídica nem chega a ser buscado, então
+ * "sem resultado" aqui só pode ser pessoa física ainda não cadastrada.
+ */
+function SemResultados({ onCadastrarNovo }: SemResultadosProps): ReactElement {
   return (
     <div
       className="flex flex-col items-start gap-sm p-base"
@@ -331,23 +368,15 @@ function SemResultados({ termoEhCnpj, onCadastrarNovo }: SemResultadosProps): Re
       <p className="text-md text-muted-foreground">
         Nenhum cliente encontrado para o termo informado.
       </p>
-      {termoEhCnpj ? (
-        // Busca por CNPJ sem resultado: o CTA de cadastro **não** aparece, e o
-        // aviso explica por quê (`FR-010`, `research.md` D4).
-        <p className="text-md text-[var(--cc-color-warning-ink)]" data-testid="aviso-cnpj">
-          {AVISO_CNPJ}
-        </p>
-      ) : (
-        <Button
-          type="button"
-          className="gap-xs rounded-full px-sm text-sm font-semibold"
-          data-testid="cadastro-simplificado"
-          onClick={onCadastrarNovo}
-        >
-          <UserPlus className="size-3.5" aria-hidden="true" />
-          Cadastrar cliente
-        </Button>
-      )}
+      <Button
+        type="button"
+        className="gap-xs rounded-full px-sm text-sm font-semibold"
+        data-testid="cadastro-simplificado"
+        onClick={onCadastrarNovo}
+      >
+        <UserPlus className="size-3.5" aria-hidden="true" />
+        Cadastrar cliente
+      </Button>
     </div>
   );
 }

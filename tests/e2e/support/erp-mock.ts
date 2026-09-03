@@ -145,8 +145,9 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
 /**
  * Cadastro sintético de clientes da feature 005. `CLIENTE CONVENIADO` tem
  * convênio e lista de preço próprios — é o que deixa o E2E provar que trocar o
- * cliente reprecifica o carrinho. `NILMAQ` é pessoa jurídica: existe para o
- * cenário em que o CNPJ **é** encontrado e a seleção segue normal (`FR-010`).
+ * cliente reprecifica o carrinho. `NILMAQ` é pessoa jurídica: existe para
+ * provar que o CNPJ é recusado **mesmo tendo cadastro** no ERP — pelo campo,
+ * pela busca e ao ser escolhido pelo nome (Ajuste SINIEF 11/2025).
  *
  * `PostCliente` grava aqui, para a busca seguinte por documento encontrar o
  * cliente recém-criado — o ERP real não devolve o registro criado

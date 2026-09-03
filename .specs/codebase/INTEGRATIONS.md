@@ -14,7 +14,7 @@
 |---|---|
 | `POST /oauth/access_token` | Obtenção/renovação de `access_token` — chamado pelo BFF em `GET /session/start` e internamente em `/api/erp/*` na renovação silenciosa (AD-022) |
 | `GET /ApiCentriumOAuth/GetSessao` | Bootstrap de configuração (~5MB) |
-| `GET /ApiCentriumOAuth/GetCliente` | Identificação de cliente por CPF/CNPJ |
+| `GET /ApiCentriumOAuth/GetCliente` | Identificação de cliente por CPF (ou por `CodCliente`, AD-115). O parâmetro do contrato se chama `CPFCNPJ`, mas o Checkout nunca envia CNPJ — NFCe não pode ser emitida para pessoa jurídica (AD-133) |
 | `GET /ApiCentriumOAuth/GetListaClientes` | Busca de cliente por termo livre |
 | `POST /ApiCentriumOAuth/PostCliente` | Cadastro simplificado de cliente |
 | `GET /ApiCentriumOAuth/GetListaProdutos`, `GetProduto` | Busca/inserção de produto |

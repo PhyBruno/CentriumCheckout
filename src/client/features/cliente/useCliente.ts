@@ -5,6 +5,10 @@ import type {
   OrigemSelecaoCliente,
 } from '../../domain/cliente/clienteVenda';
 import {
+  documentoEhPessoaJuridica,
+  MOTIVO_VENDA_PESSOA_JURIDICA,
+} from '../../domain/cliente/documento';
+import {
   ErroCadastroRecusado,
   ErroClienteNaoEncontrado,
   fetchClientePorCodigo,
@@ -115,6 +119,24 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
     ): Promise<ResultadoIdentificacao> => {
       try {
         const cliente = await resolver();
+
+        // Guarda final da norma (Ajuste SINIEF 11/2025): o cadastro que o ERP
+        // devolveu é de pessoa jurídica, então nenhum caminho pode associá-lo à
+        // venda. O caso que ela de fato cobre é o **código do cliente** (até 6
+        // dígitos): um código de PJ não se parece com um CNPJ, então não passa
+        // pela contagem de dígitos das superfícies. Vale também para o
+        // `CodCliente` que a importação de DAV usará (feature 006).
+        //
+        // Pelo modal, este ponto nunca dispara: `PCheckout_ClientesLista` filtra
+        // `where CliTip = 'F'` no próprio ERP (verificado no código-fonte da KB,
+        // 2026-09-03), então a lista não traz pessoa jurídica. A guarda continua
+        // aqui, e não em cada componente, por ser o único ponto por onde os três
+        // caminhos passam — se o filtro do ERP mudar, o Checkout não regride.
+        if (documentoEhPessoaJuridica(cliente.cpf)) {
+          gooeyToast.warning(`${MOTIVO_VENDA_PESSOA_JURIDICA} Escolha um cliente pessoa física.`);
+          return { situacao: 'recusado' };
+        }
+
         return traduzir(await selecionarCliente(cliente, origem));
       } catch (erro) {
         if (erro instanceof ErroClienteNaoEncontrado) {

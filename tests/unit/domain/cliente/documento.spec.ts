@@ -3,6 +3,7 @@ import {
   apenasDigitos,
   classificarDocumento,
   classificarEntradaCliente,
+  documentoEhPessoaJuridica,
   formatarCEP,
   formatarDocumento,
   validarFormatoCEP,
@@ -113,32 +114,44 @@ describe('classificarEntradaCliente', () => {
       tipo: 'CPF',
       documento: '12298023980',
     });
-    expect(classificarEntradaCliente('52.059.715/0001-13')).toEqual({
-      tipo: 'CNPJ',
-      documento: '52059715000113',
-    });
     // Com pontuação, `2.538` continua sendo código — a máscara não muda a faixa.
     expect(classificarEntradaCliente('2.538')).toEqual({ tipo: 'CODIGO', codigo: 2538 });
   });
 
-  it('trata 14 dígitos como CNPJ', () => {
-    expect(classificarEntradaCliente('52059715000113')).toEqual({
-      tipo: 'CNPJ',
-      documento: '52059715000113',
-    });
+  it('recusa 14 dígitos — CNPJ não entra na venda (Ajuste SINIEF 11/2025)', () => {
+    // Sem `documento`: nada é enviado ao ERP, porque a venda não pode acontecer
+    // no Checkout nem que o cadastro exista.
+    expect(classificarEntradaCliente('52059715000113')).toEqual({ tipo: 'PESSOA_JURIDICA' });
+    expect(classificarEntradaCliente('52.059.715/0001-13')).toEqual({ tipo: 'PESSOA_JURIDICA' });
   });
 
-  it('recusa 12 e 13 dígitos — não são nem CPF nem CNPJ', () => {
-    // Adivinhar aqui mandaria o ERP procurar um documento que o operador não
-    // terminou de digitar.
-    expect(classificarEntradaCliente('123456789012')).toEqual({ tipo: 'INVALIDO' });
-    expect(classificarEntradaCliente('1234567890123')).toEqual({ tipo: 'INVALIDO' });
+  it('recusa 12, 13 e mais de 14 dígitos do mesmo jeito que o CNPJ inteiro', () => {
+    // Corte único acima de 11 dígitos: um CNPJ pela metade só levaria o
+    // operador a completar o número e receber a mesma recusa.
+    expect(classificarEntradaCliente('123456789012')).toEqual({ tipo: 'PESSOA_JURIDICA' });
+    expect(classificarEntradaCliente('1234567890123')).toEqual({ tipo: 'PESSOA_JURIDICA' });
+    expect(classificarEntradaCliente('520597150001139')).toEqual({ tipo: 'PESSOA_JURIDICA' });
   });
 
-  it('recusa vazio e comprimento acima de 14', () => {
+  it('trata entrada sem dígito nenhum como inválida', () => {
     expect(classificarEntradaCliente('')).toEqual({ tipo: 'INVALIDO' });
     expect(classificarEntradaCliente('   ')).toEqual({ tipo: 'INVALIDO' });
-    expect(classificarEntradaCliente('520597150001139')).toEqual({ tipo: 'INVALIDO' });
+    expect(classificarEntradaCliente('bruno')).toEqual({ tipo: 'INVALIDO' });
+  });
+});
+
+describe('documentoEhPessoaJuridica', () => {
+  it('reconhece o CNPJ completo, com ou sem máscara', () => {
+    expect(documentoEhPessoaJuridica('52059715000113')).toBe(true);
+    expect(documentoEhPessoaJuridica('52.059.715/0001-13')).toBe(true);
+  });
+
+  it('não reconhece CPF, documento vazio nem telefone com DDI', () => {
+    // O modal busca por telefone: `5547999998888` tem 13 dígitos e é termo
+    // legítimo — por isso o predicado exige os 14 exatos.
+    expect(documentoEhPessoaJuridica('11122233344')).toBe(false);
+    expect(documentoEhPessoaJuridica('')).toBe(false);
+    expect(documentoEhPessoaJuridica('5547999998888')).toBe(false);
   });
 });
 

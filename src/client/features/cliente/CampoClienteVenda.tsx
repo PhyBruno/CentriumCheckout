@@ -16,6 +16,7 @@ import {
   apenasDigitos,
   classificarEntradaCliente,
   formatarDocumento,
+  MOTIVO_VENDA_PESSOA_JURIDICA,
 } from '../../domain/cliente/documento';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useSessionStore } from '../../stores/sessionStore';
@@ -106,18 +107,15 @@ export function CampoClienteVenda(): ReactElement {
   }
 
   /**
-   * `FR-010`/D4: um CNPJ **pode** ser buscado (o cliente PJ pode existir,
-   * cadastrado fora do Checkout). O que não existe é o caminho de criação — daí
-   * o aviso, em vez do cadastro, quando a busca por CNPJ não acha nada.
+   * Documento sem cadastro correspondente abre o cadastro simplificado, já com
+   * o que o operador digitou.
+   *
+   * **Sem desvio para CNPJ**: nenhum documento de pessoa jurídica chega até
+   * aqui — a recusa acontece antes de qualquer consulta ao ERP, em
+   * `identificar()` (Ajuste SINIEF 11/2025).
    */
-  function tratarNaoEncontrado(termo: string): void {
-    if (classificarEntradaCliente(termo).tipo === 'CNPJ') {
-      gooeyToast.warning(
-        'Nenhum cliente com esse CNPJ. O cadastro simplificado do Checkout cria apenas pessoa física — use o cadastro completo do ERP.',
-      );
-      return;
-    }
-    setCpfSugerido(termo);
+  function abrirCadastroPara(documento: string): void {
+    setCpfSugerido(documento);
     setCadastroAberto(true);
   }
 
@@ -144,10 +142,19 @@ export function CampoClienteVenda(): ReactElement {
     // Código ou documento? A contagem de dígitos decide, e o ERP recebe só
     // dígitos — `GetCliente` tem um parâmetro para cada caso.
     const entrada = classificarEntradaCliente(termo);
-    if (entrada.tipo === 'INVALIDO') {
+
+    // Mais de 11 dígitos é pessoa jurídica: a venda não pode acontecer no
+    // Checkout (Ajuste SINIEF 11/2025), então o ERP nem é consultado — buscar
+    // um cadastro que não poderia ser usado só gastaria uma ida à rede e
+    // sugeriria ao operador que o caminho existe.
+    if (entrada.tipo === 'PESSOA_JURIDICA') {
       gooeyToast.warning(
-        'Informe o código do cliente (até 6 dígitos), um CPF (11 dígitos) ou um CNPJ (14 dígitos).',
+        `${MOTIVO_VENDA_PESSOA_JURIDICA} Informe um CPF (11 dígitos) ou o código do cliente.`,
       );
+      return;
+    }
+    if (entrada.tipo === 'INVALIDO') {
+      gooeyToast.warning('Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).');
       return;
     }
 
@@ -166,7 +173,7 @@ export function CampoClienteVenda(): ReactElement {
           gooeyToast.warning(`Nenhum cliente com o código ${String(entrada.codigo)}.`);
           return;
         }
-        tratarNaoEncontrado(entrada.documento);
+        abrirCadastroPara(entrada.documento);
         return;
       }
       if (resultado.situacao === 'identificado') {
@@ -185,7 +192,7 @@ export function CampoClienteVenda(): ReactElement {
     // cadastro simplificado sozinho.
     const resultado = await identificarPorCodigo(candidato.codigo, 'BUSCA_LIVRE');
     if (resultado.situacao === 'nao-encontrado') {
-      tratarNaoEncontrado(candidato.cpf);
+      abrirCadastroPara(candidato.cpf);
       return;
     }
     if (resultado.situacao === 'identificado') {

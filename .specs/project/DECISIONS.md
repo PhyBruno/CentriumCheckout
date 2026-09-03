@@ -162,8 +162,9 @@ Metodologia: 4 subagentes (forks) vasculharam em paralelo os 10 `spec.md` de `.s
 **Resposta:** Hash calculado **localmente** (não é campo do `GetSessao`).
 
 **Q34 — Cadastro simplificado (`CliTip='F'` fixo): bloquear entrada de CNPJ na busca?**
+⚠️ **Superado em 2026-09-03 por AD-133** (`.specs/project/STATE.md`): a regra vigente é bloqueio **duro** de pessoa jurídica em **toda** a venda — busca, seleção de candidato e cadastro —, por proibição fiscal (Ajuste SINIEF 11/2025: NFCe não pode ser emitida para CNPJ), e não pela limitação de `CliTip='F'`. Registro original desta sessão abaixo.
 ➡️ Recomendação: sim, bloquear/alertar.
-**Resposta:** Bloquear/Alertar.
+**Resposta:** ~~Bloquear/Alertar.~~ (virou AD-050, hoje superada por AD-133.)
 
 **Q35 — `GetStatusSistema`: quando é chamado no fluxo?**
 ➡️ Sem recomendação.

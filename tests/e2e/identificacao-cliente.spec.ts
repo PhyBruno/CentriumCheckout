@@ -23,6 +23,14 @@ const CNPJ_INEXISTENTE = '11222333000181';
 
 const SKU_COM_FAIXA = '001234';
 
+/**
+ * Trecho do motivo único de recusa de pessoa jurídica
+ * (`MOTIVO_VENDA_PESSOA_JURIDICA`, `domain/cliente/documento.ts`) — o toast e o
+ * aviso do modal repetem a norma, e cada superfície acrescenta a própria
+ * instrução, que aqui não interessa.
+ */
+const TEXTO_RECUSA_PJ = /Ajuste SINIEF 11\/2025/i;
+
 async function contadores(request: APIRequestContext): Promise<ContadoresMock> {
   const resposta = await request.get(`${URL_ERP_MOCK}/__mock/calls`);
   return (await resposta.json()) as ContadoresMock;
@@ -220,25 +228,51 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     expect(depois.getCliente).toBeGreaterThanOrEqual(2);
   });
 
-  test('passo 5: CNPJ sem resultado não oferece cadastro simplificado (FR-010)', async ({
+  test('passo 5: CNPJ sem cadastro é recusado na busca, sem consultar o ERP', async ({
     page,
     request,
   }) => {
     await abrirTelaDeVenda(page);
+    const antes = await contadores(request);
     await buscarPorTermo(page, CNPJ_INEXISTENTE);
 
-    await expect(page.getByTestId('busca-cliente-sem-resultados')).toBeVisible();
+    // Ajuste SINIEF 11/2025: nem a busca acontece — o CNPJ é recusado antes de
+    // `GetListaClientes`, e o cadastro simplificado continua fora de cogitação.
     await expect(page.getByTestId('aviso-cnpj')).toBeVisible();
+    await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
     await expect(page.getByTestId('cadastro-simplificado')).toHaveCount(0);
-    expect((await contadores(request)).postCliente).toBe(0);
+    await expect(page.getByTestId('resultados-busca-cliente')).toHaveCount(0);
+
+    const depois = await contadores(request);
+    expect(depois.getListaClientes).toBe(antes.getListaClientes);
+    expect(depois.postCliente).toBe(0);
   });
 
-  test('passo 5: CNPJ com resultado é selecionável normalmente', async ({ page }) => {
+  test('passo 5: CNPJ que existe no ERP também é recusado na busca', async ({ page, request }) => {
+    // O cadastro existir não muda nada: a NFCe é que não pode ser emitida para
+    // pessoa jurídica, então listar o candidato só produziria um clique morto.
     await abrirTelaDeVenda(page);
+    const antes = await contadores(request);
     await buscarPorTermo(page, CNPJ_EXISTENTE);
 
+    await expect(page.getByTestId('aviso-cnpj')).toBeVisible();
+    await expect(page.getByTestId('candidato-cliente')).toHaveCount(0);
+    expect((await contadores(request)).getListaClientes).toBe(antes.getListaClientes);
+  });
+
+  test('candidato pessoa jurídica achado pelo nome é recusado ao ser escolhido', async ({
+    page,
+  }) => {
+    // Buscar por nome não passa pela contagem de dígitos de nenhuma superfície:
+    // quem recusa aqui é a guarda de `useCliente`, sobre o documento que
+    // `GetCliente` devolveu.
+    await abrirTelaDeVenda(page);
+    await buscarPorTermo(page, 'NILMAQ');
+
     await page.getByTestId('candidato-cliente').first().click();
-    await expect(page.getByTestId('status-cliente')).toHaveText('NILMAQ COMERCIO DE PECAS');
+
+    await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
+    await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
   });
 
   test('CPF sem resultado na busca livre oferece o cadastro simplificado', async ({ page }) => {
@@ -491,21 +525,31 @@ test.describe('Código ou documento no mesmo campo (correções de 2026-09-03)',
     await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
   });
 
-  test('CNPJ com pontuação também é aceito', async ({ page }) => {
+  test('CNPJ no campo é recusado sem consultar o ERP', async ({ page, request }) => {
+    // O cadastro `NILMAQ` existe no mock; mesmo assim nenhuma consulta sai —
+    // venda para pessoa jurídica exige NFe emitida pelo ERP.
     await abrirTelaDeVenda(page);
     await expandirCardCliente(page);
     await page.getByTestId('campo-documento-cliente').fill('52.059.715/0001-13');
     await page.getByTestId('identificar-cliente').click();
 
-    await expect(page.getByTestId('status-cliente')).toHaveText('NILMAQ COMERCIO DE PECAS');
+    await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
+    await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
+    expect((await contadores(request)).getCliente).toBe(0);
   });
 
-  test('12 dígitos não consultam o ERP — não é código, CPF nem CNPJ', async ({ page, request }) => {
+  test('12 dígitos recebem a mesma recusa do CNPJ inteiro, sem consultar o ERP', async ({
+    page,
+    request,
+  }) => {
+    // Corte único acima de 11 dígitos: completar o número até 14 só levaria à
+    // mesma recusa, então a mensagem já é a que diz o que fazer.
     await abrirTelaDeVenda(page);
     await expandirCardCliente(page);
     await page.getByTestId('campo-documento-cliente').fill('123456789012');
     await page.getByTestId('identificar-cliente').click();
 
+    await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
     await expect(page.getByTestId('campos-cliente-venda')).not.toHaveAttribute('inert', '');
     expect((await contadores(request)).getCliente).toBe(0);
   });

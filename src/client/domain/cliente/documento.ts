@@ -26,13 +26,30 @@ export function apenasDigitos(texto: string): string {
 }
 
 /**
+ * Motivo único da recusa de pessoa jurídica, compartilhado por todas as
+ * superfícies que identificam cliente.
+ *
+ * **O Ajuste SINIEF 11/2025 proíbe a emissão de NFCe para CNPJ** (decisão do
+ * usuário, 2026-09-03): venda para pessoa jurídica exige NFe, emitida pelo ERP,
+ * fora do Checkout. Não é mais uma limitação do cadastro simplificado — é a
+ * venda inteira que não pode acontecer aqui, e por isso o CNPJ é recusado em
+ * qualquer ponto, não só na criação de cliente.
+ *
+ * Fica no domínio, e não em cada componente, para as três superfícies (campo
+ * CPF/CNPJ, modal de busca e a resolução por `GetCliente`) dizerem o **mesmo**
+ * motivo — cada uma acrescenta só a instrução que faz sentido nela.
+ */
+export const MOTIVO_VENDA_PESSOA_JURIDICA =
+  'Venda para CNPJ exige NFe emitida pelo ERP: o Ajuste SINIEF 11/2025 proíbe NFCe para pessoa jurídica.';
+
+/**
  * `11` dígitos → `CPF`; `14` → `CNPJ`; qualquer outro comprimento →
  * `INVALIDO`.
  *
- * Usado em `ModalBuscaCliente.tsx` para decidir se o CTA de cadastro
- * simplificado é oferecido numa busca **sem resultado** — nunca para bloquear a
- * busca em si (`research.md` D4): um cliente pessoa jurídica pode existir
- * legitimamente no ERP, cadastrado fora do Checkout.
+ * Continua classificando `CNPJ` mesmo agora que ele é recusado na venda: quem
+ * precisa reconhecê-lo é justamente quem o recusa (`documentoEhPessoaJuridica`)
+ * e a máscara de leitura (`formatarDocumento`), que ainda pode receber o
+ * documento de um cadastro pessoa jurídica vindo do ERP.
  */
 export function classificarDocumento(texto: string): TipoDocumento {
   switch (apenasDigitos(texto).length) {
@@ -43,6 +60,20 @@ export function classificarDocumento(texto: string): TipoDocumento {
     default:
       return 'INVALIDO';
   }
+}
+
+/**
+ * Documento **completo** de pessoa jurídica — exatamente 14 dígitos.
+ *
+ * Estrito de propósito, ao contrário da faixa aberta de
+ * `classificarEntradaCliente`: quem chama aqui já tem um documento inteiro nas
+ * mãos — o `cpf` que o ERP devolveu em `GetCliente` ou o termo que o operador
+ * terminou de digitar no modal. Nesse contexto, "mais de 11 dígitos" pegaria
+ * telefone com DDI (`5547999998888`, 13 dígitos), que é um termo de busca
+ * legítimo do modal.
+ */
+export function documentoEhPessoaJuridica(texto: string): boolean {
+  return classificarDocumento(texto) === 'CNPJ';
 }
 
 /** `11` dígitos, sem dígito verificador (`CLI-04`, `research.md` D6). */
@@ -56,7 +87,6 @@ export function validarFormatoCEP(texto: string): boolean {
 }
 
 const MAX_DIGITOS_CODIGO = 6;
-const MIN_DIGITOS_CPF = 7;
 
 /**
  * O que o operador digitou no campo "CPF/CNPJ" da venda.
@@ -71,17 +101,27 @@ const MIN_DIGITOS_CPF = 7;
 export type EntradaCliente =
   | { readonly tipo: 'CODIGO'; readonly codigo: number }
   | { readonly tipo: 'CPF'; readonly documento: string }
-  | { readonly tipo: 'CNPJ'; readonly documento: string }
+  /**
+   * Mais de 11 dígitos: pessoa jurídica, recusada pelo Ajuste SINIEF 11/2025
+   * (`MOTIVO_VENDA_PESSOA_JURIDICA`). Sem `documento`, porque não há nada a
+   * consultar — o valor não chega ao ERP.
+   */
+  | { readonly tipo: 'PESSOA_JURIDICA' }
   | { readonly tipo: 'INVALIDO' };
 
 /**
- * Faixas definidas pelo usuário (2026-09-03): até 6 dígitos é código do
- * cliente; de 7 a 11 é CPF; 14 é CNPJ.
+ * Faixas do campo "CPF/CNPJ" da venda: até 6 dígitos é código do cliente; de 7
+ * a 11 é CPF; **acima de 11 é pessoa jurídica e não entra na venda** (pedido do
+ * usuário, 2026-09-03, sobre o Ajuste SINIEF 11/2025).
  *
- * `12` e `13` dígitos ficam **inválidos** de propósito — não são nem um nem
- * outro, e adivinhar aqui mandaria o ERP procurar um documento que o operador
- * não terminou de digitar. Vazio também é inválido: quem chama trata como
- * "nada a fazer", não como erro.
+ * O corte em 11, e não em 14, junta num caso só o CNPJ inteiro e o CNPJ pela
+ * metade (12, 13 dígitos): depois da norma, nenhuma entrada acima de 11 dígitos
+ * pode resultar em venda aqui — completar o número só levaria o operador a uma
+ * segunda recusa. A mensagem única também é a única acionável nos dois casos,
+ * porque ela diz o que fazer (NFe pelo ERP) *e* o que digitar (CPF ou código).
+ *
+ * `INVALIDO` sobra para a entrada sem nenhum dígito — só pontuação ou letras.
+ * Vazio cai aí também: quem chama trata como "nada a fazer", não como erro.
  */
 export function classificarEntradaCliente(texto: string): EntradaCliente {
   const digitos = apenasDigitos(texto);
@@ -92,13 +132,10 @@ export function classificarEntradaCliente(texto: string): EntradaCliente {
   if (digitos.length <= MAX_DIGITOS_CODIGO) {
     return { tipo: 'CODIGO', codigo: Number(digitos) };
   }
-  if (digitos.length >= MIN_DIGITOS_CPF && digitos.length <= DIGITOS_CPF) {
+  if (digitos.length <= DIGITOS_CPF) {
     return { tipo: 'CPF', documento: digitos };
   }
-  if (digitos.length === DIGITOS_CNPJ) {
-    return { tipo: 'CNPJ', documento: digitos };
-  }
-  return { tipo: 'INVALIDO' };
+  return { tipo: 'PESSOA_JURIDICA' };
 }
 
 /** `00000-000`. Texto que não tem 8 dígitos volta inalterado. */

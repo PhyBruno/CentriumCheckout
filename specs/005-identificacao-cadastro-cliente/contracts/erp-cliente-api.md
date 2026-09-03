@@ -37,7 +37,7 @@ interface ClienteCheckout {
 
 **Limitação de contrato (AD-094, histórico)**: até 2026-08-31, não existia parâmetro `CodCliente`/`CodigoCliente` — a única forma de buscar era por documento. Isso nunca chegou a bloquear o cliente default (resolvido por AD-108, que evita chamar `GetCliente` nesse caso — lista de preço vem de `SessaoUsuario.ListaPrecoDefault`, desconto de convênio é inexistente por regra de negócio). **`CodCliente` passou a existir em 2026-08-31 (AD-115)**, por necessidade de um consumidor diferente: a importação de DAV (feature 006), que só recebe o código do cliente, nunca o documento.
 
-**Uso no Checkout**: `fetchClientePorDocumento(cpfCnpj)` — chamada imperativa (não `useQuery` cacheado), disparada em dois pontos: (1) busca direta por documento (`CLI-01`), (2) depois de selecionar um candidato no modal de lista, usando o `CPF` do item selecionado (`research.md`, D1). `fetchClientePorCodigo(codigo)` — mesma natureza imperativa, usa `CodCliente` em vez de `CPFCNPJ`; consumida pela orquestração de importação da feature 006 (`contracts/importacao-domain-api.md`), não por nenhum fluxo desta feature (005).
+**Uso no Checkout**: `fetchClientePorDocumento(cpf)` — chamada imperativa (não `useQuery` cacheado), disparada em dois pontos: (1) busca direta por documento (`CLI-01`), (2) depois de selecionar um candidato no modal de lista, usando o `CPF` do item selecionado (`research.md`, D1). **Em ambos os pontos o documento é recusado antes da chamada quando tem 14 dígitos** — o parâmetro do contrato se chama `CPFCNPJ` e aceita os dois, mas o Checkout só envia CPF, porque a NFCe não pode ser emitida para pessoa jurídica (AD-133, `research.md` D4). `fetchClientePorCodigo(codigo)` — mesma natureza imperativa, usa `CodCliente` em vez de `CPFCNPJ`; consumida pela orquestração de importação da feature 006 (`contracts/importacao-domain-api.md`), não por nenhum fluxo desta feature (005).
 
 ---
 
@@ -110,7 +110,7 @@ interface ClientesItem {
 **Response**: `array<GeneXus.Common.Messages_Message>` — sem corpo de cliente criado. O Checkout precisa, na sequência, chamar `GetCliente(CPFCNPJ=<cpf enviado>)` para obter o `CodCliente`/registro completo recém-criado, já que `PostCliente` não devolve o cliente criado diretamente.
 
 **Achados confirmados na KB do ERP (AD-024, não repetidos aqui em detalhe — ver `.specs/project/STATE.md`)**:
-- `CliTip` é hardcoded `'F'` dentro da procedure — o Checkout nunca cria cliente pessoa jurídica por este caminho, independente do que o formulário envie.
+- `CliTip` é hardcoded `'F'` dentro da procedure — o Checkout nunca cria cliente pessoa jurídica por este caminho, independente do que o formulário envie. Desde AD-133 (2026-09-03) isso deixou de ser a única barreira: mesmo que a procedure aceitasse `'J'`, o cadastro seria recusado pelo Checkout, porque a NFCe não pode ser emitida para CNPJ (Ajuste SINIEF 11/2025).
 - Quando o tenant tem `UtilizaSegundoNivelDeEnderecos = 'S'`, o mesmo payload de endereço é roteado para um registro de `Endereco` separado — transparente para o Checkout, mesmo payload de qualquer forma.
 
 **Uso no Checkout**: `postCliente(dados: CadastroSimplificadoInput)` monta o payload acima, chama `PostCliente`, depois `fetchClientePorDocumento(dados.cpf)` para obter o `ClienteCheckout` completo (incluindo `CodCliente`) antes de `clienteSlice.cadastrarESelecionarCliente` associar o cliente à venda e disparar `CLIENTE_CRIADO`.
