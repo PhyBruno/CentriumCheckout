@@ -159,9 +159,9 @@ test.describe('User Story 1 — listar, buscar e filtrar (T010, Cenário 1)', ()
 
     // Portal: o calendário pendura direto no `<body>`, fora da árvore do modal.
     await expect(page.getByTestId('modal-importacao-dav').getByTestId('calendario')).toHaveCount(0);
-    expect(
-      await calendario.evaluate((elemento) => elemento.parentElement === document.body),
-    ).toBe(true);
+    expect(await calendario.evaluate((elemento) => elemento.parentElement === document.body)).toBe(
+      true,
+    );
 
     // E cabe inteiro na viewport — nenhuma linha de dias fica fora da tela.
     const caixa = await calendario.boundingBox();
