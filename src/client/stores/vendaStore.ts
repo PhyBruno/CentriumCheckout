@@ -141,9 +141,17 @@ export const useVendaStore = criarVendaStore();
  * outro. Um slice que chamasse o outro precisaria conhecê-lo, acoplamento que
  * os slices existentes não têm entre si.
  *
- * Chamado ao abrir a tela de venda, depois de cada finalização/suspensão
- * bem-sucedida e, futuramente, pelas features 006 (DAV) e 011 (retomada de
- * rascunho) — estas com `origem`/`numeroNota` do documento carregado.
+ * Chamado ao abrir a tela de venda e depois de cada finalização/suspensão
+ * bem-sucedida.
+ *
+ * **A importação de DAV (feature 006) não passa por aqui** (AD-137), embora
+ * este TSDoc antecipasse que passaria: importar um documento acontece **no
+ * meio** de uma venda, e `resetarAuditoria` apagaria o histórico do que o
+ * operador já fez (contra `FR-009` da feature 001). A 006 grava só a identidade
+ * — `definirIdentidadeVenda({ origem: 'DAV', numeroNota })` — e acrescenta
+ * `DAV_IMPORTADO` à trilha existente. A feature 011 decidirá a sua por conta;
+ * `abrirSessaoDeVenda` continua sendo o caminho de quem de fato **inicia** uma
+ * sessão de venda do zero.
  */
 export function abrirSessaoDeVenda(origem: OrigemVenda, numeroNota = 0): void {
   const venda = useVendaStore.getState();

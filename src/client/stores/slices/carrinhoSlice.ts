@@ -5,6 +5,10 @@ import {
   eventoProdutoCancelado,
   eventoProdutoInserido,
 } from '../../domain/auditoria/eventos';
+import {
+  paraLinhaCarrinho,
+  type LinhaImportada,
+} from '../../domain/importacaoVenda/mapearVendaExistente';
 import { somar, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import {
   origemCongelaPreco,
@@ -98,6 +102,37 @@ export interface CarrinhoSlice {
   /** `FR-018` — troca de cliente com carrinho já populado. */
   reprecificarPorTrocaDeCliente(): void;
   limparCarrinho(): void;
+
+  /**
+   * Importa em lote as linhas de um documento já existente no ERP (feature
+   * 006, `FR-005`/`FR-006`).
+   *
+   * Action **distinta** de `inserirItem`, não um caso especial dele, por três
+   * razões que o `inserirItem` não conseguiria atender juntas: as linhas entram
+   * já congeladas e **nunca** passam por `repricarSku`; não geram
+   * `PRODUTO_INSERIDO` (importar em lote não é o operador inserindo produto —
+   * `data-model.md` §6); e o lote inteiro entra numa única gravação, sem
+   * reprecificar N vezes no meio do caminho.
+   *
+   * Não sabe de onde o documento veio — recebe `LinhaImportada[]` já mapeadas.
+   */
+  importarLinhasCongeladas(linhas: readonly LinhaImportada[]): void;
+
+  /**
+   * Preenche a descrição do snapshot de **todas** as linhas de um SKU (feature
+   * 006, AD-096).
+   *
+   * O documento importado não traz descrição de produto; ela chega depois, por
+   * um `GetProduto` best-effort. É metadado de exibição: não altera preço,
+   * quantidade nem desconto, então **não** passa por `editarItem` — que
+   * descongelaria a linha (invariante I6) e dispararia reprecificação.
+   *
+   * Pelo mesmo motivo não é barrada por `podeMutarCarrinho()`: com pagamento
+   * aprovado a venda não pode mais mudar, mas trocar um código por um nome na
+   * tela não é mudar a venda — bloquear aqui deixaria o operador conferindo
+   * códigos crus na hora exata em que ele mais precisa ler a grid.
+   */
+  editarSnapshotDescricao(codigoProduto: string, descricao: string): void;
 }
 
 const AVISO_CARRINHO_BLOQUEADO =
@@ -287,6 +322,51 @@ export function criarCarrinhoSlice(
 
       limparCarrinho: () => {
         set({ linhas: [] });
+      },
+
+      importarLinhasCongeladas: (linhas) => {
+        if (carrinhoBloqueado()) {
+          return;
+        }
+        if (linhas.length === 0) {
+          return;
+        }
+
+        // Uma única gravação para o lote inteiro. `repricarSku` não é chamado
+        // em nenhum momento: as linhas nascem com `precoCongelado: true`, fora
+        // do agregado por SKU desde o primeiro instante (invariante I3), então
+        // não há faixa a recalcular nem risco de empurrar as linhas manuais do
+        // mesmo SKU para outra faixa (AD-067).
+        aplicarLinhas([
+          ...get().linhas,
+          ...linhas.map((linha) => paraLinhaCarrinho(linha, gerarIdLinha())),
+        ]);
+      },
+
+      editarSnapshotDescricao: (codigoProduto, descricao) => {
+        const atuais = get().linhas;
+
+        let houveMudanca = false;
+        const atualizadas = atuais.map((linha) => {
+          if (
+            linha.snapshot.codigoProduto !== codigoProduto ||
+            linha.snapshot.descricao === descricao
+          ) {
+            return linha;
+          }
+          houveMudanca = true;
+          return { ...linha, snapshot: { ...linha.snapshot, descricao } };
+        });
+
+        // Sem mudança real, não grava: o lote de `GetProduto` roda por SKU
+        // distinto e pode devolver a descrição que a linha já tinha (linha
+        // manual do mesmo SKU). Gravar mesmo assim trocaria a identidade do
+        // array e faria a grid inteira re-renderizar à toa.
+        if (!houveMudanca) {
+          return;
+        }
+
+        aplicarLinhas(atualizadas);
       },
     };
   };

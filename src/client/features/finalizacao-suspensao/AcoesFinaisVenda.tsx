@@ -3,6 +3,7 @@ import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
+import { BotaoMenuImportacao } from '../dav/BotaoMenuImportacao';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
@@ -125,10 +126,11 @@ function useFinalizacaoVenda(): ApiFinalizacaoVenda {
  * Faixa "Atalhos da venda" do Pencil (`nyfSI`): linha horizontal de 44px, gap
  * de 10px, logo abaixo do cartão de produtos.
  *
- * "Cancelar venda" é o **primeiro** atalho, à esquerda. Os outros dois do
- * desenho — "Menu Gerencial" e "Menu Importação" — pertencem a outras features
- * e ainda não existem; por isso o atalho ocupa um terço da faixa em vez de
- * esticar, para que os dois vizinhos entrem no lugar certo quando chegarem.
+ * "Cancelar venda" é o **primeiro** atalho, à esquerda, e "Menu Importação" é o
+ * **terceiro** (feature 006). O segundo do desenho — "Menu Gerencial" —
+ * pertence a outra feature e ainda não existe; por isso cada atalho ocupa um
+ * terço da faixa em vez de esticar, para que ele entre no lugar certo quando
+ * chegar.
  */
 export function BarraAtalhosVenda(): ReactElement {
   const { estado, suspender } = useFinalizacaoVenda();
@@ -146,6 +148,12 @@ export function BarraAtalhosVenda(): ReactElement {
           enviando={travado}
           bloqueado={!temItem}
         />
+      </div>
+      {/* Terceiro terço, encostado à direita: o vão do meio é o lugar que o
+          "Menu Gerencial" vai ocupar, e deixá-lo vazio agora evita mexer no
+          posicionamento dos outros dois quando ele chegar. */}
+      <div className="ml-auto flex w-[calc((100%-20px)/3)]">
+        <BotaoMenuImportacao />
       </div>
     </div>
   );

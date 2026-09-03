@@ -19,6 +19,7 @@ import type { abrirPdfNFCe } from '../../src/client/services/impressao/abrirPdfN
 import { CHAVE_RAIZ_PRODUTO } from '../../src/client/services/produto/produtoQueries';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
+import { clienteCheckoutDe } from '../support/cliente';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -628,5 +629,44 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
     });
 
     expect(cenario.enviados).toHaveLength(1);
+  });
+});
+
+describe('cliente do retrato (regressão achada pela feature 006)', () => {
+  it('envia o cliente identificado na venda, não o default do PDV', async () => {
+    // Carrinho vazio na hora de selecionar: sem SKU vivo, a troca de cliente
+    // não dispara re-fetch de preço, e o teste fica sobre o retrato.
+    useVendaStore.getState().limparCarrinho();
+    await act(async () => {
+      await useVendaStore
+        .getState()
+        .selecionarCliente(clienteCheckoutDe({ CodCliente: 2538 }), 'BUSCA_DOCUMENTO');
+    });
+    useVendaStore.setState({ linhas: [linhaDe({ quantidadeEmUnidades: 1, precoUnitario: 1000 })] });
+
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    // `ClienteDefaultCodigo` do bootstrap sintético é `1`. Antes desta correção
+    // o retrato mandava sempre esse `1`, e a NFCe saía para o consumidor padrão
+    // mesmo com outro cliente identificado.
+    expect(cenario.enviados[0]?.clienteCodigo).toBe(2538);
+  });
+
+  it('cai no cliente default do PDV quando não houve identificação (AD-032)', async () => {
+    useVendaStore.getState().limparCliente();
+
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(cenario.enviados[0]?.clienteCodigo).toBe(1);
   });
 });
