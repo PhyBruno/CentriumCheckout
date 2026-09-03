@@ -28,6 +28,9 @@ function registroDeBootstrap() {
       QtdMinCharParaConsulta: 3,
       UsuarioTipoCodigoProduto: 'I',
       ClienteDefaultCodigo: 1,
+      CadSerieNFCe: '1',
+      CadMaqHost: '127.0.0.1:4545',
+      TipoImpressao: 'E' as const,
     },
   };
 }
@@ -105,5 +108,36 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
 
     expect(screen.queryByRole('button', { name: 'Editar item' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancelar' })).not.toBeInTheDocument();
+  });
+});
+
+describe('GridItens — faixa "Resumo parcial carrinho" (correção do usuário, 2026-09-02)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useVendaStore.setState({ linhas: [] });
+  });
+
+  it('mostra a faixa, os contadores e o subtotal mesmo sem item na venda', () => {
+    render(<GridItens />);
+
+    expect(screen.getByTestId('resumo-parcial-carrinho')).toBeInTheDocument();
+    expect(screen.getByTestId('ultimo-item-adicionado')).toHaveTextContent(
+      'Nenhum item adicionado ainda',
+    );
+    expect(screen.getByTestId('quantidade-itens-carrinho')).toHaveTextContent('0 itens');
+    expect(screen.getByTestId('total-venda')).toHaveTextContent('R$ 0,00');
+  });
+
+  it('passa a nomear o último item inserido assim que a venda tem linha', () => {
+    useVendaStore.setState({
+      linhas: [linhaDe({ snapshot: snapshotDe({ codigoProduto: '001234' }) })],
+    });
+    render(<GridItens />);
+
+    expect(screen.getByTestId('ultimo-item-adicionado')).toHaveTextContent(
+      'Último item adicionado: PRODUTO EXEMPLO 500G',
+    );
+    expect(screen.getByTestId('quantidade-itens-carrinho')).toHaveTextContent('1 item');
   });
 });

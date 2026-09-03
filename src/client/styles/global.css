@@ -59,6 +59,12 @@
   --cc-color-up: #05b169;
   --cc-color-down: #cf202f;
   --cc-color-accent-yellow: #f4b000;
+  /* Fundos claros das mesmas famílias — `$success-soft`, `$danger-soft` e
+     `$warning-soft` do Pencil. Usados nos ícones circulares dos modais de
+     desfecho (ver "Modal pagamento aprovado TEF", nó `A9MNZI`). */
+  --cc-color-up-soft: #e6f7ef;
+  --cc-color-down-soft: #fdeaec;
+  --cc-color-warning-soft: #fef3dd;
 
   /* --- Tipografia ------------------------------------------------------- */
   /* Inter é o substituto documentado de CoinbaseSans/CoinbaseDisplay

@@ -1360,6 +1360,51 @@ Com isso, `ClienteVenda` de origem `DEFAULT` deixa de ter campos "indisponíveis
 
 ---
 
+### AD-125: Correções de fidelidade ao Pencil na tela de venda — cartão "Pagamento e totais", atalho "Cancelar venda" à esquerda, resumo do carrinho sempre visível e modal de documento fiscal na anatomia de modal do produto (2026-09-02)
+
+**Decision:** Quatro correções diretas do usuário sobre a UI já implementada da feature 004, todas conferidas nó a nó no `.pen` pelo MCP do Pencil:
+
+1. **"Finalizar venda" passa a viver dentro de um cartão branco** — o nó "Ações finais" (`UaFF2`) do desenho é o rodapé do cartão "Pagamento e totais" (`OzP7o`: `$canvas`, 392px, raio 24, hairline `$hairline`), não um bloco solto na tela. Criado `src/client/features/pagamento/PainelPagamentoETotais.tsx` como **casca**: o corpo (métodos rápidos, condição, desconto/acréscimo, formas aplicadas, bloco escuro de total) pertence à feature 008 e entra acima do rodapé sem mover nada de lugar.
+2. **"Cancelar venda" é o primeiro atalho da faixa "Atalhos da venda"** (`nyfSI`), na coluna da esquerda, embaixo do cartão de produtos — não fica ao lado do botão de finalizar. Ocupa um terço da faixa, porque os outros dois atalhos do desenho ("Menu Gerencial", "Menu Importação") são de outras features e entram ao lado.
+3. **A faixa "Resumo parcial carrinho" (`B4Hf3`) é parte fixa do cartão de produtos** e passa a renderizar também com a venda vazia (`Nenhum item adicionado ainda`, `0 itens`, `Subtotal R$ 0,00`). Escondê-la enquanto não há item fazia a tabela mudar de altura na primeira inserção e tirava da tela os contadores de conferência.
+4. **O modal de documento fiscal ganhou a anatomia de modal do produto.** O Pencil não desenhou um frame próprio para ele; o análogo é o "Modal pagamento aprovado TEF" (`A9MNZI`), que é o modal de "operação concluída": cartão de 480px (raio 24, hairline), cabeçalho de 78px com borda inferior e ícone circular de 42px, corpo 32/24 com ícone circular de 96px, rodapé de 60px com borda superior e ação centralizada. `DialogoConfirmarReenvio` seguiu a mesma anatomia, na família de alerta.
+
+**Consequências no código:** `AcoesFinaisVenda.tsx` deixou de ser um componente único e virou `ProvedorFinalizacaoVenda` + `BarraAtalhosVenda` + `AcoesFinaisVenda` + `AcoesVendaCompactas` — as duas superfícies ficam em colunas diferentes da árvore mas **compartilham uma só máquina de estados** por contexto, senão a trava de `falha-rede` de uma não valeria para a outra e `FR-004` seria reaberto por outro caminho. `TelaDeVenda` passou a reproduzir "Área operacional" (`J9t3a`): duas colunas, gap 20, folga 20/24/24, fundo `$surface-soft`. Acrescentados a `global.css` os tokens `--cc-color-{up,down,warning}-soft`, equivalentes 1:1 a `$success-soft`/`$danger-soft`/`$warning-soft` do Pencil.
+
+**Gotcha registrado:** `max-w-md`/`max-w-lg` do Tailwind resolvem contra os tokens `--spacing-*` deste tema (20px/24px), não contra os containers padrão — um diálogo com `max-w-md` fica com 48px de largura. Usar largura explícita (`max-w-[480px]`) ou um nome fora da escala local (`max-w-3xl`).
+
+**Impact:** `src/client/App.tsx`, `src/client/features/finalizacao-suspensao/{AcoesFinaisVenda,DialogoDocumentoFiscal,DialogoConfirmarReenvio}.tsx`, `src/client/features/pagamento/PainelPagamentoETotais.tsx` (novo), `src/client/features/carrinho/GridItens.tsx`, `src/client/styles/global.css`, `tests/unit/client/carrinho/GridItens.spec.tsx`.
+
+
+### AD-126: Suspensão vira toast, `Cancelar venda` exige item no carrinho, ESC fecha o modal de documento fiscal e as notificações passam ao canto superior direito (2026-09-02)
+
+**Decision:** Quatro correções diretas do usuário sobre a UI da feature 004:
+
+1. **`Cancelar venda` fica desabilitado enquanto a venda não tem linha ativa.** Suspender uma venda vazia criaria um rascunho sem item no ERP, que o operador teria de limpar depois. Linha **cancelada não conta**: ela permanece no array por rastreabilidade (`CART-08`), mas não é venda a suspender. A prop `bloqueado` de `BotaoCancelarVenda` passa a cobrir dois motivos decididos pelo call site — sem item, ou pagamento aprovado não removível (`FR-005`).
+2. **ESC fecha o modal de documento fiscal.** Só ele: a venda já foi emitida e o PDF continua disponível pelo ERP, então sair é seguro. O `DialogoConfirmarReenvio` **não** ganha o mesmo atalho de propósito — ali a tecla precisa ser uma decisão consciente do operador (`FR-004`/AD-038).
+3. **A confirmação de suspensão vira toast**, em vez de texto fixo ao lado do botão. Emitida pelo hook orquestrador na transição de sucesso de `SUSPENDER`, por uma dependência `notificar` injetável (default `gooeyToast.success`) — simétrica ao `avisar` que já existia para os bloqueios.
+4. **`GooeyToaster` passa a `position="top-right"`.** No rodapé da tela ficam o atalho de cancelar e o botão de finalizar; um toast embaixo à direita cobria justamente a ação que o operador acabou de tentar.
+
+**Impact:** `src/client/main.tsx`, `src/client/features/finalizacao-suspensao/{AcoesFinaisVenda,BotaoCancelarVenda,DialogoDocumentoFiscal,useFinalizarOuSuspenderVenda}.tsx?`, `tests/integration/finalizacaoSuspensao.spec.ts`, `tests/e2e/finalizacao-suspensao.spec.ts`.
+
+**Nota de teste:** o texto do toast aparece **duas vezes** no DOM (região `live` do Goey e corpo do toast), então asserções de E2E sobre ele precisam de âncora (`.first()`), senão caem em violação de modo estrito do Playwright.
+
+
+### AD-127: O caminho feliz da entrega do documento fiscal deixa de ter modal; PDF sempre abre em aba nova (nunca baixa); `Finalizar venda` exige valor a faturar (2026-09-02)
+
+**Decision:** Três correções diretas do usuário sobre a feature 004:
+
+1. **`Finalizar venda` fica desabilitado sem valor a faturar** — carrinho sem linha ativa **ou** subtotal zerado. A regra mora num seletor único (`useVendaTemValorAFaturar`), e não espalhada no componente, porque a feature 008 vai **estendê-la**: lá o botão também fica desabilitado enquanto os pagamentos aplicados não cobrirem o subtotal. Há guarda equivalente dentro de `iniciar` no hook orquestrador — o `disabled` do DOM não cobre acionamento por teclado nem por código.
+2. **O caminho feliz não tem mais modal.** `TipoImpressao = 'P'` abre o PDF numa aba nova e sai de cena; impressão direta bem-sucedida também não mostra nada. Fechar um diálogo que só diz "deu certo" é trabalho que o operador de caixa repete dezenas de vezes por turno sem receber nada em troca. O modal passa a aparecer **só** em três situações, todas em que ele precisa decidir ou saber de algo: enquanto o serviço de impressão local não respondeu; quando a impressão direta falhou (aí ele escolhe abrir o PDF — `FR-009`, nunca falhar em silêncio); e quando o navegador recusou a aba do PDF. O aviso de `CadMaqHost` default virou toast.
+3. **O PDF nunca é baixado — sempre abre em aba nova.** O operador precisa conferir o cupom na hora, não acumular arquivos na pasta de downloads de um PDV compartilhado entre turnos.
+
+**Erro de transmissão da NFCe ganhou modal próprio** (`DialogoErroFaturamento`), substituindo o texto que ficava ao pé do botão: uma venda **não emitida** é o desfecho mais grave do fluxo e uma linha de texto ali era fácil demais de não ver — o operador podia achar que finalizou. Continua sendo `falha-negocio`, com reenvio livre (`research.md`, D2); distinto de `DialogoConfirmarReenvio`, que trata a falha **sem resposta** e cobra confirmação explícita (`FR-004`/AD-038).
+
+**Achado técnico:** o PDF vai como `Blob` + `blob:` URL, não como `data:` URI — o Chrome **bloqueia navegação de topo para `data:`**, e `window.open('data:application/pdf;base64,…')` abre uma aba em branco e falha em silêncio. Como o `'P'` abre a aba **depois** de a resposta do ERP chegar (fora da janela de gesto do usuário), o bloqueador de pop-up pode recusá-la: `abrirPdfNFCe` devolve `bloqueado-pelo-navegador` e o modal entra com um botão que abre com clique de verdade, em vez de perder o documento.
+
+**Impact:** `src/client/services/impressao/abrirPdfNFCe.ts` (novo), `src/client/features/finalizacao-suspensao/{DialogoDocumentoFiscal,DialogoErroFaturamento,AcoesFinaisVenda,useFinalizarOuSuspenderVenda}.tsx?`, `tests/integration/finalizacaoSuspensao.spec.ts`, `tests/e2e/finalizacao-suspensao.spec.ts`.
+
+
 ## Active Blockers
 
 _Nenhum blocker ativo no momento._

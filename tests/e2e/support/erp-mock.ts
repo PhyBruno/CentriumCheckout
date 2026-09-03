@@ -27,6 +27,16 @@ export interface ConfigMockErp {
    * feature 003 precisa de `8`; os demais rodam com `1`.
    */
   tipoPreco: number;
+  /** `SessaoUsuario.TipoImpressao` — `'E'` impressão direta, `'P'` PDF. */
+  tipoImpressao: 'E' | 'P';
+  /** Status devolvido por `POST /ApiCentriumOAuth/FaturarNFCe` (feature 004). */
+  statusFaturarNFCe: number;
+  /**
+   * Devolve `2xx` **sem** `PDFImpressao`/`XMLImpressao` — é como o ERP recusa
+   * uma NFCe não autorizada; o Checkout trata como falha de negócio, nunca como
+   * sucesso parcial (`contracts/faturamento-api.md`).
+   */
+  faturarSemNotaFiscal: boolean;
 }
 
 export interface ContadoresMockErp {
@@ -35,6 +45,8 @@ export interface ContadoresMockErp {
   negocio: number;
   getProduto: number;
   getListaProdutos: number;
+  faturarNFCe: number;
+  getStatusSistema: number;
 }
 
 const CONFIG_PADRAO: ConfigMockErp = {
@@ -43,6 +55,9 @@ const CONFIG_PADRAO: ConfigMockErp = {
   respostas401Pendentes: 0,
   cadMaqCod: 'PDV01',
   tipoPreco: 1,
+  tipoImpressao: 'E',
+  statusFaturarNFCe: 200,
+  faturarSemNotaFiscal: false,
 };
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
@@ -51,7 +66,13 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   negocio: 0,
   getProduto: 0,
   getListaProdutos: 0,
+  faturarNFCe: 0,
+  getStatusSistema: 0,
 };
+
+/** Base64 sintético — não é um PDF real, só precisa ser string não-vazia. */
+const PDF_SINTETICO = 'JVBERi0xLjQtc2ludGV0aWNv';
+const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
 
 /**
  * Catálogo sintético da feature 003 — um produto por fluxo de
@@ -131,9 +152,21 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       // testes — não é o único valor válido.
       UsuarioTipoCodigoProduto: 'D',
       ClienteDefaultCodigo: 1,
+      VendedorCodigo: 42,
+      CadSerieNFCe: '1',
+      // Aponta para o próprio mock do ERP em E2E: o serviço de impressão local
+      // real depende da rede do PDV, fora do alcance do CI
+      // (`specs/004-.../contracts/impressao-local-api.md`).
+      CadMaqHost: '127.0.0.1:4545',
+      TipoImpressao: config.tipoImpressao,
     },
     messages: [],
   };
+}
+
+/** Corpo de `FaturarNFCeInput` recebido na última chamada, para inspeção. */
+interface EnvelopeFaturarNFCe {
+  readonly CheckoutFaturarNFCe?: Record<string, unknown>;
 }
 
 export async function criarMockErp(porta: number): Promise<FastifyInstance> {
@@ -141,6 +174,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   let config: ConfigMockErp = { ...CONFIG_PADRAO };
   let contadores: ContadoresMockErp = { ...CONTADORES_ZERADOS };
+  let ultimoRetratoFaturado: Record<string, unknown> | null = null;
 
   await app.register(import('@fastify/formbody'));
 
@@ -148,6 +182,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   app.post('/__mock/reset', async () => {
     config = { ...CONFIG_PADRAO };
     contadores = { ...CONTADORES_ZERADOS };
+    ultimoRetratoFaturado = null;
     return { ok: true };
   });
 
@@ -157,6 +192,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   });
 
   app.get('/__mock/calls', async () => contadores);
+
+  /** Último retrato recebido — deixa o E2E afirmar `NumeroNota`, `Log` etc. */
+  app.get('/__mock/ultimo-faturamento', async () => ({ retrato: ultimoRetratoFaturado }));
 
   // --- Contrato do ERP ----------------------------------------------------
   app.post('/oauth/access_token', async (_request, reply) => {
@@ -248,6 +286,60 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       });
     },
   );
+
+  app.post<{ Body: EnvelopeFaturarNFCe }>(
+    '/ApiCentriumOAuth/FaturarNFCe',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.faturarNFCe += 1;
+
+      const retrato = request.body.CheckoutFaturarNFCe ?? null;
+      ultimoRetratoFaturado = retrato;
+
+      if (config.respostas401Pendentes > 0) {
+        config.respostas401Pendentes -= 1;
+        return reply.code(401).send({ error: 'token expirado' });
+      }
+
+      if (config.statusFaturarNFCe !== 200) {
+        return reply
+          .code(config.statusFaturarNFCe)
+          .send({ messages: [{ Id: 'ERR', Type: 1, Description: 'Recusa sintética do ERP.' }] });
+      }
+
+      // `SUSPENDER` não emite documento fiscal: a resposta volta sem
+      // `NotaFiscal`, como o ERP real (`contracts/faturamento-api.md`).
+      const suspendendo = retrato?.['SuspenderOuFaturar'] === 'SUSPENDER';
+      const notaFiscal =
+        suspendendo || config.faturarSemNotaFiscal
+          ? {}
+          : {
+              NotaFiscal: {
+                NumeroNota: 9001,
+                SerieNota: '1',
+                Autorizada: 'S',
+                ErroCodigo: 0,
+                ErroMensagem: '',
+                XMLImpressao: XML_SINTETICO,
+                PDFImpressao: PDF_SINTETICO,
+              },
+            };
+
+      return reply.send({
+        OutCheckoutFaturarNFCe: { ...(retrato ?? {}), ...notaFiscal },
+        messages: config.faturarSemNotaFiscal
+          ? [{ Id: 'ERR', Type: 1, Description: 'NFCe não autorizada pela SEFAZ (sintético).' }]
+          : [],
+      });
+    },
+  );
+
+  app.get('/ApiCentriumOAuth/GetStatusSistema', async (_request, reply) => {
+    contadores.negocio += 1;
+    contadores.getStatusSistema += 1;
+    // `0` = nada mudou desde a última captura (AD-088).
+    return reply.send(0);
+  });
 
   // Qualquer outro endpoint de negócio, consumido via proxy `/api/erp/*`.
   app.all('/ApiCentriumOAuth/*', async (_request, reply) => {

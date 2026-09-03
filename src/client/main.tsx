@@ -35,7 +35,11 @@ createRoot(container).render(
       <App />
     </QueryClientProvider>
     {/* Montado uma única vez perto da raiz — as features de venda, pagamento e
-        finalização disparam toasts por `gooeyToast` sem remontar nada. */}
-    <GooeyToaster position="bottom-right" />
+        finalização disparam toasts por `gooeyToast` sem remontar nada.
+
+        Canto superior direito: no rodapé da tela ficam o atalho de cancelar e o
+        botão de finalizar, então um toast embaixo à direita cobria justamente a
+        ação que o operador acabou de tentar (pedido do usuário, 2026-09-02). */}
+    <GooeyToaster position="top-right" />
   </StrictMode>,
 );

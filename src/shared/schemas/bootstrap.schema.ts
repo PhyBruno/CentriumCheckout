@@ -18,6 +18,26 @@ export const sessaoUsuarioSchema = z.looseObject({
   TipoPreco: z.number().int().min(TIPO_PRECO_MIN).max(TIPO_PRECO_MAX),
   CadMaqCod: z.string(),
   /**
+   * Série da NFCe do PDV. Enviada como `CadSerieNFCe` em toda finalização/
+   * suspensão — **nunca** escolhida pelo operador (AD-034, feature 004).
+   */
+  CadSerieNFCe: z.string(),
+  /**
+   * `host:porta` do serviço de impressão local do PDV (AD-083, feature 004).
+   * Pode vir **vazio**: o Checkout então usa `127.0.0.1:4545`, o mesmo default
+   * do PDV atual, avisando o operador (`contracts/impressao-local-api.md`).
+   */
+  CadMaqHost: z.string(),
+  /**
+   * Caminho de entrega do documento fiscal: `'E'` (impressão direta pelo
+   * serviço local) ou `'P'` (PDF para visualização/download) — `FR-008`/AD-082.
+   *
+   * União fechada, e não `z.string()`: é aqui que um terceiro valor é barrado,
+   * na fronteira, antes de `decidirMecanismoImpressao` precisar decidir o que
+   * fazer com ele (Constitution IV, `data-model.md` §5 da feature 004).
+   */
+  TipoImpressao: z.enum(['E', 'P']),
+  /**
    * Lista de preço do cliente default (`CliListCod` dele, com fallback `1`
    * aplicado pelo ERP) — AD-108. Não é "lista padrão da empresa": esse conceito
    * não existe no domínio (AD-092).

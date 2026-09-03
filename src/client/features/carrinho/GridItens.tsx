@@ -39,9 +39,15 @@ export function GridItens(): ReactElement {
     })),
   );
 
+  // Derivados usados pela faixa de resumo — calculados uma vez, não por célula.
+  const ativas = linhasAtivas(linhas);
+  const ultimoItem = linhas.at(-1);
+
   return (
+    // "Produtos da venda" do Pencil (nó `q8HBkk`): cartão branco de raio 24 com
+    // hairline, recortando a tabela e a faixa de resumo.
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border bg-background"
       data-testid="grid-itens"
     >
       {/* Só esta área rola — cabeçalho fixo (`sticky`) e o rodapé de resumo
@@ -102,33 +108,36 @@ export function GridItens(): ReactElement {
         </table>
       </div>
 
-      {linhas.length === 0 ? null : (
-        // "Resumo parcial carrinho" do Pencil: último item inserido (posição
-        // no array, não status — cancelar não reordena, `CART-08`), contagem
-        // de linhas ativas e o subtotal. `data-testid="total-venda"`
-        // preservado no valor: é o mesmo número de sempre, só a barra ao
-        // redor mudou.
-        <footer
-          className="flex shrink-0 items-center justify-between gap-sm border-t border-border bg-secondary px-lg py-sm"
-          data-testid="resumo-parcial-carrinho"
+      {/* "Resumo parcial carrinho" do Pencil (nó `B4Hf3`): último item inserido
+          (posição no array, não status — cancelar não reordena, `CART-08`),
+          contagem de linhas ativas e o subtotal.
+
+          Renderizado **sempre**, inclusive com a venda vazia: no desenho a
+          faixa é parte fixa do cartão de produtos, e some-la enquanto não há
+          item faria a tabela mudar de altura na primeira inserção e tiraria da
+          tela os contadores que o operador usa para conferir a venda. */}
+      <footer
+        className="flex h-11 shrink-0 items-center justify-between gap-sm border-t border-border bg-secondary px-[20px]"
+        data-testid="resumo-parcial-carrinho"
+      >
+        <span className="text-sm text-muted-foreground" data-testid="ultimo-item-adicionado">
+          {ultimoItem === undefined
+            ? 'Nenhum item adicionado ainda'
+            : `Último item adicionado: ${ultimoItem.snapshot.descricao}`}
+        </span>
+        <span
+          className="rounded-full bg-background px-sm py-xxs text-sm font-semibold text-foreground"
+          data-testid="quantidade-itens-carrinho"
         >
-          <span className="text-sm text-muted-foreground" data-testid="ultimo-item-adicionado">
-            Último item adicionado: {linhas.at(-1)?.snapshot.descricao}
-          </span>
-          <span
-            className="rounded-full bg-background px-sm py-xxs text-sm font-semibold text-foreground"
-            data-testid="quantidade-itens-carrinho"
-          >
-            {linhasAtivas(linhas).length} {linhasAtivas(linhas).length === 1 ? 'item' : 'itens'}
-          </span>
-          <span className="flex items-center gap-sm">
-            <span className="text-sm text-muted-foreground">Subtotal</span>
-            <strong className="text-lg" data-testid="total-venda">
-              {formatarCentavos(totalVenda(linhas))}
-            </strong>
-          </span>
-        </footer>
-      )}
+          {ativas.length} {ativas.length === 1 ? 'item' : 'itens'}
+        </span>
+        <span className="flex items-center gap-sm">
+          <span className="text-sm text-muted-foreground">Subtotal</span>
+          <strong className="font-mono text-lg" data-testid="total-venda">
+            {formatarCentavos(totalVenda(linhas))}
+          </strong>
+        </span>
+      </footer>
     </section>
   );
 }
