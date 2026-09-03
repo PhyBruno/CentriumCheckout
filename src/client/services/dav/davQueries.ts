@@ -315,12 +315,18 @@ export async function fetchDav(
  */
 export interface ImportacaoVendaDeps {
   /**
-   * Retrato da venda em curso, lido **antes** de qualquer efeito.
+   * Retrato da venda em curso. Chamada **duas vezes** por importação: antes da
+   * rede, para não gastar chamada ao ERP à toa, e de novo colada nas mutações,
+   * para que a janela dos dois `await` não deixe passar um estado que virou no
+   * meio (ver `importarVendaExistente`).
    *
    * É a pré-condição que impede um documento de ser importado sobre uma venda
    * já em digitação (ver `recusaDeImportacao`). A UI aplica a mesma regra no
    * clique do atalho; esta checagem é a que garante que nenhum outro call site
    * futuro escape dela.
+   *
+   * Precisa ser **lida do estado a cada chamada**, nunca capturada num valor
+   * fixo: um retrato congelado tornaria a segunda checagem inútil.
    */
   estadoDaVenda(): EstadoVendaParaImportacao;
   /**
@@ -417,6 +423,22 @@ export async function importarVendaExistente(
   );
   const venda = mapearVendaExistente(documento, origemLista);
   const cliente = await deps.resolverCliente(venda.clienteCodigo);
+
+  // Reverificação **depois** da rede, colada nas mutações.
+  //
+  // Entre a pré-condição acima e este ponto há dois `await` (`GetDav` e
+  // `GetCliente`), e a venda continua viva atrás da janela de importação. Sem
+  // esta segunda leitura, um estado que virasse nesse intervalo — o caso real é
+  // a feature 008 aprovando um TEF de forma assíncrona — deixaria cada mutação
+  // abaixo virar um no-op na guarda do seu próprio slice, enquanto
+  // `DAV_IMPORTADO` seria registrado e a janela fecharia como sucesso: trilha de
+  // auditoria afirmando uma importação que não aconteceu, com o carrinho vazio
+  // (AD-139). Recusar aqui devolve o erro à UI e mantém a promessa de
+  // atomicidade do parágrafo acima.
+  const recusaPosRede = recusaDeImportacao(deps.estadoDaVenda());
+  if (recusaPosRede !== null) {
+    throw new ErroImportacaoRecusada(recusaPosRede);
+  }
 
   // Primeiro a identidade: a venda passa a ser a NFCe rascunho do documento, e
   // só então é populada. Trocar a ordem não muda o resultado, mas esta lê como

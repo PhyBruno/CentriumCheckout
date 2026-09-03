@@ -293,6 +293,32 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
   });
 
+  test('recusa de pessoa jurídica libera a importação de novo — a venda ficou sem cliente', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    // 1) Identificação explícita: a partir daqui a importação é recusada.
+    await page.getByTestId('alternar-cliente-expandido').click();
+    await page.getByTestId('campo-documento-cliente').fill('12298023980');
+    await page.getByTestId('identificar-cliente').click();
+    await expect(page.getByTestId('cliente-da-venda')).toContainText('CLIENTE VAREJO');
+
+    // 2) Código de pessoa jurídica (AD-133): o Checkout recusa e **zera** o
+    // cliente da venda, de propósito, sem mexer em `houveEscolhaExplicita`.
+    // O card recolhe sozinho ao identificar (005), então precisa reabrir.
+    await page.getByTestId('alternar-cliente-expandido').click();
+    await page.getByTestId('campo-documento-cliente').fill('2209');
+    await page.getByTestId('identificar-cliente').click();
+    await expect(page.getByTestId('status-cliente')).toHaveText('Não identificado');
+
+    // 3) A venda não tem cliente nenhum, então importar é legítimo. Antes da
+    // correção o atalho recusava com "já tem um cliente identificado" apontando
+    // para um campo de cliente vazio (AD-139).
+    await page.getByTestId('botao-menu-importacao').click();
+    await expect(page.getByTestId('modal-importacao-dav')).toBeVisible();
+  });
+
   test('segundo documento é recusado — o NumeroNota do primeiro não é sobrescrito', async ({
     page,
     request,

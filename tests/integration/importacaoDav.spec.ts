@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,8 +15,10 @@ import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/e
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
 import type { ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
 import { linhasAtivas } from '../../src/client/domain/precificacao/linha';
-import { criarVendaStore } from '../../src/client/stores/vendaStore';
+import { criarVendaStore, useVendaStore } from '../../src/client/stores/vendaStore';
+import { useImportacaoDav } from '../../src/client/features/dav/useImportacaoDav';
 import { clienteCheckoutDe } from '../support/cliente';
+import { registroBootstrapDe } from '../support/sessao';
 import {
   CODIGO_CLIENTE_DAV,
   CODIGO_VENDEDOR_DAV,
@@ -498,6 +500,39 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     expect(store.getState().linhas).toHaveLength(1);
   });
 
+  it('reverifica depois da rede: estado que vira no meio não deixa trilha de importação falsa', async () => {
+    const store = montarStore();
+    // Permissivo na pré-condição, bloqueado quando as mutações vão acontecer —
+    // a janela real são os dois `await` (`GetDav` e `GetCliente`), com a venda
+    // viva atrás do modal. O caso concreto é a feature 008 aprovando um TEF de
+    // forma assíncrona nesse intervalo.
+    let leituras = 0;
+    const { deps, espioes } = depsDe(store, {
+      estadoDaVenda: () => {
+        leituras += 1;
+        return {
+          numeroNota: 0,
+          podeMutar: leituras === 1,
+          itensAtivos: 0,
+          clienteIdentificado: false,
+        };
+      },
+    });
+
+    await expect(
+      importarVendaExistente(NUMERO_DAV, { clienteNome: 'CLIENTE DO DAV' }, deps),
+    ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
+
+    // Sem a segunda leitura, cada mutação viraria no-op na guarda do seu próprio
+    // slice enquanto `DAV_IMPORTADO` seria registrado e a janela fecharia como
+    // sucesso: auditoria afirmando uma importação que não aconteceu (AD-139).
+    expect(leituras).toBe(2);
+    expect(store.getState().linhas).toEqual([]);
+    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
+    expect(espioes.trocarVendedor).not.toHaveBeenCalled();
+  });
+
   it('recusa com pagamento aprovado, antes de qualquer mutação', async () => {
     const store = montarStore();
     const { deps, espioes } = depsDe(store, {
@@ -608,5 +643,61 @@ describe('erro de importação (D7, FR-010)', () => {
     expect(store.getState().identidadeVenda.numeroNota).toBe(0);
     expect(espioes.trocarVendedor).not.toHaveBeenCalled();
     expect(espioes.importarFormasDePagamento).not.toHaveBeenCalled();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * `recusaAtual` — o retrato que a UI lê do store real (AD-139)
+ * ------------------------------------------------------------------ */
+
+describe('recusaAtual — cliente da venda, não a flag de escolha (AD-139)', () => {
+  beforeEach(() => {
+    // Este bloco é o único que usa a store **global**: `recusaAtual` lê o
+    // retrato da venda pelo `useVendaStore` real, que é o que a UI consulta no
+    // clique do atalho. Daí o reset explícito — os demais blocos montam a
+    // própria store e não precisam dele.
+    const venda = useVendaStore.getState();
+    venda.limparCarrinho();
+    venda.resetarIdentidadeVenda();
+    venda.limparCliente();
+    venda.resetarAuditoria('NOVA');
+    useVendaStore.setState({ houveEscolhaExplicita: false });
+  });
+
+  function recusaAtual(): MotivoRecusaImportacao | null {
+    const { result } = renderHook(() => useImportacaoDav());
+    return result.current.recusaAtual();
+  }
+
+  it('recusa enquanto há um cliente escolhido pelo operador', async () => {
+    await useVendaStore
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 1255 }), 'BUSCA_DOCUMENTO');
+
+    expect(recusaAtual()).toBe('cliente-identificado');
+  });
+
+  it('volta a aceitar depois de `limparCliente` — a venda ficou sem cliente nenhum', async () => {
+    await useVendaStore
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 1255 }), 'BUSCA_DOCUMENTO');
+
+    // Recusa de pessoa jurídica (AD-133): `limparCliente` zera `clienteAtual`
+    // **sem** mexer em `houveEscolhaExplicita`, de propósito, para que a próxima
+    // identificação válida ainda conte como primeira escolha (D9 da 005).
+    useVendaStore.getState().limparCliente();
+
+    expect(useVendaStore.getState().clienteAtual).toBeNull();
+    expect(useVendaStore.getState().houveEscolhaExplicita).toBe(true);
+    // Antes da correção, a importação era recusada com "Esta venda já tem um
+    // cliente identificado" olhando para um campo de cliente vazio.
+    expect(recusaAtual()).toBeNull();
+  });
+
+  it('o cliente default pré-selecionado continua não recusando (AD-032)', () => {
+    useVendaStore.getState().inicializarClientePadrao(registroBootstrapDe().SessaoUsuario);
+
+    expect(useVendaStore.getState().clienteAtual).not.toBeNull();
+    expect(recusaAtual()).toBeNull();
   });
 });

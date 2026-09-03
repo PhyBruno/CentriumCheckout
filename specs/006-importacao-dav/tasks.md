@@ -223,3 +223,15 @@ Revisão com `ecc:code-reviewer` (Sonnet) sobre o commit da implementação. Tr�
 O usuário fixou, a partir do achado crítico, a regra geral que virou **`FR-011`**: um DAV/NFCe não entra numa venda que já tem cliente identificado, item lançado, documento já importado ou pagamento aprovado — a tentativa é recusada com notificação de erro. Implementada como regra pura (`recusaDeImportacao`, quatro motivos) aplicada em dois pontos: no clique do atalho (a janela nem abre) e dentro de `importarVendaExistente`, antes da rede. Detalhe completo em **AD-138**.
 
 Gates depois da correção: 445 unitários/integração e 101 E2E verdes, `tsc --noEmit` e `eslint` limpos.
+
+## Revisão da etapa de correção (2026-09-03, AD-139)
+
+Revisão da própria correção da AD-138. Três defeitos confirmados e corrigidos:
+
+- **O achado ALTO da AD-138 ficou fechado só na borda da 006.** `importarVendaExistente` checava o estado antes de chamar `definirIdentidadeVenda`, mas `identidadeVendaSlice` continuava sem `deps` — qualquer outro call site (a 011, um hook futuro) gravaria a identidade com pagamento aprovado. Fechado no slice, com a ação dividida em duas: `iniciarIdentidadeVenda` (não guardada, exclusiva de `abrirSessaoDeVenda`) e `definirIdentidadeVenda` (guardada, no-op com aviso). A separação existe porque `abrirSessaoDeVenda` roda **depois** de `FaturarNFCe` retornar sucesso, com o pagamento ainda aprovado: uma guarda única transformaria a abertura da venda seguinte num no-op silencioso quando a feature 008 ligar o predicado real.
+- **`clienteIdentificado` usava só `houveEscolhaExplicita`.** `limparCliente()` (recusa de pessoa jurídica, AD-133) zera `clienteAtual` sem zerar a flag: depois de recusar um cliente PJ, a venda ficava **sem cliente** e a importação era recusada por "cliente identificado", sem saída além de cancelar a venda. Passou a ser `houveEscolhaExplicita && clienteAtual !== null`.
+- **A pré-condição era lida uma vez, antes de dois `await`** (`GetDav` e `GetCliente`). Um estado que virasse nesse intervalo faria cada mutação virar no-op na guarda do seu slice enquanto `DAV_IMPORTADO` era registrado e a janela fechava como sucesso. `importarVendaExistente` reverifica agora colado nas mutações.
+
+Não se confirmaram (e não devem ser reabertos): a ordem dos quatro motivos de `recusaDeImportacao`; o custo de `BotaoMenuImportacao` e `ModalImportacaoDav` instanciarem o hook cada um; e a "guarda dupla" do `disabled` do botão "Importar DAV", que cobre caso distinto (nada selecionado, duplo clique).
+
+Gates depois desta rodada: **456** unitários/integração e **102** E2E verdes, `tsc --noEmit` e `eslint` limpos. Detalhe completo em **AD-139**, `.specs/project/STATE.md`.

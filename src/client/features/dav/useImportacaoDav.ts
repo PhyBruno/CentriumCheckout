@@ -59,6 +59,15 @@ function contextoPrecificacaoAtual(): ContextoPrecificacao | null {
  * `houveEscolhaExplicita` é o que distingue "o operador identificou um cliente"
  * do default pré-selecionado no início da venda (AD-032) — sem essa distinção a
  * importação seria recusada sempre, porque a tela nasce com o default aplicado.
+ *
+ * Mas ele **sozinho** não descreve a venda: `limparCliente()` (recusa de pessoa
+ * jurídica, AD-133) zera `clienteAtual` de propósito **sem** mexer na flag, para
+ * que a próxima identificação válida ainda conte como primeira escolha (D9 da
+ * 005). Depois desse caminho a venda fica sem cliente nenhum e a flag continua
+ * `true` — a importação era recusada com "Esta venda já tem um cliente
+ * identificado" olhando para um campo de cliente vazio (AD-139). O que a regra
+ * quer saber é se **há** um cliente escolhido na venda agora, e é isso que a
+ * conjunção abaixo responde.
  */
 function estadoDaVendaAtual(): EstadoVendaParaImportacao {
   const venda = useVendaStore.getState();
@@ -69,7 +78,7 @@ function estadoDaVendaAtual(): EstadoVendaParaImportacao {
     // que poderia divergir em silêncio (AD-043).
     podeMutar: carrinhoDepsPadrao.podeMutarCarrinho(),
     itensAtivos: linhasAtivas(venda.linhas).length,
-    clienteIdentificado: venda.houveEscolhaExplicita,
+    clienteIdentificado: venda.houveEscolhaExplicita && venda.clienteAtual !== null,
   };
 }
 
