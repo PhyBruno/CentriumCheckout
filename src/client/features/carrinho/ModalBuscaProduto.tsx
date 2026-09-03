@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { useBuscaProdutos } from '../../services/produto/produtoQueries';
 import { useQtdMinCharParaConsulta } from './useCarrinho';
 
@@ -87,7 +88,11 @@ export function ModalBuscaProduto({
   const minimo = qtdMinChar ?? Number.POSITIVE_INFINITY;
   const busca = useBuscaProdutos(termoDebounced, { qtdMinCharParaConsulta: minimo, pagina });
 
-  if (!aberto) {
+  const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+
+  // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
+  // animação de saída (`usePresenca`).
+  if (!montado) {
     return null;
   }
 
@@ -101,7 +106,10 @@ export function ModalBuscaProduto({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-lg"
+      className={cn(
+        'fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-lg',
+        saindo ? 'cc-backdrop-sai' : 'cc-backdrop-entra',
+      )}
       data-testid="modal-busca-produto"
       onKeyDown={(evento) => {
         if (evento.key === 'Escape') {
@@ -113,7 +121,10 @@ export function ModalBuscaProduto({
         role="dialog"
         aria-modal="true"
         aria-label="Buscar produto"
-        className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-background shadow-lg"
+        className={cn(
+          'flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-background shadow-lg',
+          saindo ? 'cc-modal-sai' : 'cc-modal-entra',
+        )}
       >
         <header className="flex items-center justify-between gap-sm border-b border-border px-lg py-base">
           <div className="flex items-center gap-sm">

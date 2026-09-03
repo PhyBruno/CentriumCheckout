@@ -1492,3 +1492,20 @@ As demais fecham brechas latentes ou de robustez: `selecionarCliente`/`cadastrar
 **Trade-off:** `contracts/cliente-domain-api.md` da feature 005 descreve `selecionarCliente`/`cadastrarESelecionarCliente` como `void`; AD-129 já registrava a mudança para `Promise<void>`, e esta AD a estreita mais uma vez para `Promise<ResultadoAplicacaoCliente>`. Os artefatos da 005 ficam desatualizados nesse ponto até a próxima revisão; AD-129 e esta são a fonte de verdade.
 
 **Não corrigidos, registrados como pendência:** o `Tipocodproduto` usado no re-fetch por troca de cliente (item 38 de `.specs/project/PENDENCIES.md` — depende de confirmação da equipe do ERP, e mudar às cegas quebraria tenants onde hoje funciona) e a ausência de E2E para o passo 7 do `quickstart.md` (bloqueio com pagamento aprovado, que depende da feature 008 — o predicado está coberto por teste de integração).
+
+### AD-131: Movimento na interface — amortecimento curto em overlay, colapso e foco, com escala de tempo própria do PDV (2026-09-03)
+
+**Decision:** O produto ganha uma camada de movimento, definida em `src/client/styles/global.css` e aplicada a três superfícies: overlay que entra/sai (modais de cliente, produto e os diálogos da 004), caixa que expande/recolhe (card de cliente) e foco/hover (todo `input`, `button` e `[role=button]`). Três durações — `90ms`, `140ms`, `200ms` — e duas curvas: `cubic-bezier(0.16, 1, 0.3, 1)` para o que entra (desacelera no fim, o elemento "assenta") e `cubic-bezier(0.4, 0, 1, 1)` para o que sai.
+
+Nada disso vem do Pencil: **o `.pen` não modela animação** — não há duração, easing ou transição em nó nenhum do arquivo. Timing e curva são decisão de implementação; cor, raio, espaçamento e tipografia seguem sendo lidos do design e não foram tocados.
+
+Duas escolhas de mecanismo, ambas com consequência visível:
+
+1. **Saída de modal precisa de montagem adiada.** O padrão da base é `if (!aberto) return null`, que apaga o nó no mesmo quadro — não há o que animar. O hook `usePresenca` (`src/client/lib/usePresenca.ts`) segura o overlay no DOM pela duração da saída. Não se trocou o mecanismo para `<dialog>`/`popover`: isso mudaria comportamento de foco e de ESC que os testes E2E já travam.
+2. **Colapso anima por `grid-template-rows: 0fr → 1fr`**, sem `height` fixa nem medição em JS — o conteúdo continua definindo o próprio tamanho. O custo é que o conteúdo **fica montado** quando recolhido, e por isso recebe `inert`: fora do TAB e dos leitores de tela, altura zero.
+
+**Rationale:** A escala é curta de propósito. Num PDV o operador repete o mesmo gesto centenas de vezes por turno, e animação que se faz notar na segunda vez vira atraso percebido — o alvo é amortecer a transição, não encená-la. A escala de entrada do modal parte de `0.98`, não de `0.9`: o modal deve parecer que já estava ali e ganhou foco, não que foi cuspido do centro da tela.
+
+**Acessibilidade:** tudo é desligado em `prefers-reduced-motion: reduce`, inclusive os dois laços infinitos que já existiam (`cc-shimmer`, `cc-pulso-edicao`) — laço infinito é o que mais incomoda quem tem sensibilidade a movimento, e o operador de caixa não escolhe o equipamento nem a configuração dele.
+
+**Consequência para os testes:** com o conteúdo do colapso montado, `toHaveCount(0)` deixou de valer como prova de "recolhido"; `not.toBeVisible()` também não serve, porque o Playwright mede a caixa do próprio elemento e ignora o corte por `overflow: hidden` do pai. A prova passou a ser o par altura zero + atributo `inert` (`esperarCamposRecolhidos`, `tests/e2e/identificacao-cliente.spec.ts`).

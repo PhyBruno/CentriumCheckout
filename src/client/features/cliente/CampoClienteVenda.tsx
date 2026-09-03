@@ -11,6 +11,7 @@ import {
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   apenasDigitos,
   classificarDocumento,
@@ -223,8 +224,18 @@ export function CampoClienteVenda(): ReactElement {
         </button>
       </header>
 
-      {expandido ? (
-        <div id="campos-cliente-venda" className="flex flex-col gap-sm">
+      {/* Recolhe animando a altura sem `height` fixa nem medição em JS: o
+          conteúdo segue definindo o próprio tamanho e o navegador interpola
+          `0fr → 1fr` (`cc-colapsavel`, `global.css`). Continua montado quando
+          recolhido, então os campos existem no DOM — por isso `inert`, que os
+          tira da navegação por TAB e de leitores de tela enquanto invisíveis. */}
+      <div
+        id="campos-cliente-venda"
+        data-testid="campos-cliente-venda"
+        className={cn('cc-colapsavel', expandido && 'cc-colapsavel-aberto')}
+        {...(expandido ? {} : { inert: true })}
+      >
+        <div className="flex flex-col gap-sm">
           <div className="flex h-[42px] items-center gap-[10px]">
             <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
               <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -317,7 +328,7 @@ export function CampoClienteVenda(): ReactElement {
             </span>
           </div>
         </div>
-      ) : null}
+      </div>
 
       <ModalBuscaCliente
         aberto={modalAberto}

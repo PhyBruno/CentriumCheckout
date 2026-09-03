@@ -12,6 +12,7 @@ import { Skeleton } from 'boneyard-js/react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { classificarDocumento } from '../../domain/cliente/documento';
 import type { ClienteDaLista } from '../../../shared/schemas/cliente.schema';
 import { useBuscaClientes } from '../../services/cliente/clienteQueries';
@@ -106,7 +107,11 @@ export function ModalBuscaCliente({
   const minimo = qtdMinChar ?? Number.POSITIVE_INFINITY;
   const busca = useBuscaClientes(termoDebounced, { qtdMinCharParaConsulta: minimo, pagina });
 
-  if (!aberto) {
+  const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+
+  // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
+  // animação de saída (`usePresenca`).
+  if (!montado) {
     return null;
   }
 
@@ -132,7 +137,10 @@ export function ModalBuscaCliente({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-lg"
+      className={cn(
+        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-lg',
+        saindo ? 'cc-backdrop-sai' : 'cc-backdrop-entra',
+      )}
       data-testid="modal-busca-cliente"
       onKeyDown={(evento) => {
         if (evento.key === 'Escape') {
@@ -144,7 +152,10 @@ export function ModalBuscaCliente({
         role="dialog"
         aria-modal="true"
         aria-label="Consultar cliente"
-        className="flex max-h-full w-full max-w-[960px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg"
+        className={cn(
+          'flex max-h-full w-full max-w-[960px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
+          saindo ? 'cc-modal-sai' : 'cc-modal-entra',
+        )}
       >
         <header className="flex h-[78px] shrink-0 items-center justify-between gap-sm border-b border-border px-lg">
           <div className="flex items-center gap-sm">

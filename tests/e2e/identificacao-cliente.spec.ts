@@ -52,6 +52,21 @@ async function expandirCardCliente(page: Page): Promise<void> {
   await expect(page.getByTestId('campo-documento-cliente')).toBeVisible();
 }
 
+/**
+ * Prova que os campos estão recolhidos.
+ *
+ * O colapso é animado por `grid-template-rows: 0fr → 1fr` (`cc-colapsavel`),
+ * técnica que exige manter o conteúdo montado — `not.toBeVisible()` não serve,
+ * porque o Playwright mede a caixa do próprio elemento e ignora o corte por
+ * `overflow: hidden` do pai. O que de fato define o estado é a altura zero do
+ * container e o `inert`, que tira os campos do TAB e dos leitores de tela.
+ */
+async function esperarCamposRecolhidos(page: Page): Promise<void> {
+  const campos = page.getByTestId('campos-cliente-venda');
+  await expect(campos).toHaveAttribute('inert', '');
+  await expect.poll(async () => (await campos.boundingBox())?.height ?? -1).toBe(0);
+}
+
 async function identificarPorDocumento(page: Page, documento: string): Promise<void> {
   await expandirCardCliente(page);
   await page.getByTestId('campo-documento-cliente').fill(documento);
@@ -251,7 +266,7 @@ test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
       'aria-expanded',
       'false',
     );
-    await expect(page.getByTestId('campo-documento-cliente')).toHaveCount(0);
+    await esperarCamposRecolhidos(page);
     await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
 
     await page.getByTestId('alternar-cliente-expandido').click();
@@ -367,7 +382,7 @@ test.describe('Recolher e devolver o foco ao identificar (pedido do usuário, 20
       'aria-expanded',
       'false',
     );
-    await expect(page.getByTestId('campo-documento-cliente')).toHaveCount(0);
+    await esperarCamposRecolhidos(page);
   }
 
   test('documento existente recolhe o card e devolve o foco ao código do produto', async ({

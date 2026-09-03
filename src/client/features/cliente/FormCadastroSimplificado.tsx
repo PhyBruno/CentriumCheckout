@@ -2,6 +2,7 @@ import { Check, UserRoundPlus, X } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { validarFormatoCEP, validarFormatoCPF } from '../../domain/cliente/documento';
 import type { CadastroSimplificadoInput } from '../../domain/cliente/clienteVenda';
 
@@ -69,7 +70,11 @@ export function FormCadastroSimplificado({
     }
   }
 
-  if (!aberto) {
+  const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+
+  // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
+  // animação de saída (`usePresenca`).
+  if (!montado) {
     return null;
   }
 
@@ -97,7 +102,10 @@ export function FormCadastroSimplificado({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-lg"
+      className={cn(
+        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-lg',
+        saindo ? 'cc-backdrop-sai' : 'cc-backdrop-entra',
+      )}
       data-testid="modal-cadastro-cliente"
       onKeyDown={(evento) => {
         if (evento.key === 'Escape') {
@@ -109,7 +117,10 @@ export function FormCadastroSimplificado({
         role="dialog"
         aria-modal="true"
         aria-label="Cadastrar cliente"
-        className="flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg"
+        className={cn(
+          'flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
+          saindo ? 'cc-modal-sai' : 'cc-modal-entra',
+        )}
         onSubmit={(evento) => {
           evento.preventDefault();
           void confirmar();

@@ -105,6 +105,26 @@
   --cc-radius-xl: 24px;
   --cc-radius-pill: 100px;
 
+  /* --- Movimento --------------------------------------------------------
+     O Pencil não modela animação — o `.pen` é estático, sem duração, easing
+     ou transição em nó nenhum. Estes valores são decisão de implementação
+     (pedido do usuário, 2026-09-03: "essa rapidez deixa meio seco"), não
+     leitura do design; nada aqui muda cor, raio, espaçamento ou tipografia.
+
+     A escala é curta de propósito. Num PDV o operador repete o mesmo gesto
+     centenas de vezes por turno, e animação que se faz notar na segunda vez
+     vira atraso: o alvo é amortecer a transição, não encená-la. */
+  --cc-motion-instantaneo: 90ms;
+  --cc-motion-rapido: 140ms;
+  --cc-motion-base: 200ms;
+
+  /* Desacelera no fim: o elemento "assenta" em vez de parar de repente. É o
+     que tira a secura sem custar tempo percebido — o grosso do movimento
+     acontece nos primeiros milissegundos. */
+  --cc-ease-saida: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Simétrica, para o que sai de cena: sair depressa é melhor que sair bonito. */
+  --cc-ease-entrada: cubic-bezier(0.4, 0, 1, 1);
+
   /* --- Skeleton de carregamento (AUTH-05) -------------------------------
      Valores extraídos do frame "PDV Online Web - Skeleton Carregamento"
      (`data-pencil-id="BIu92"`) do export do Pencil — inclusive o ângulo e as
@@ -274,5 +294,140 @@ body {
   }
   50% {
     outline-color: color-mix(in srgb, var(--cc-color-accent-yellow) 90%, transparent);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Movimento: suavidade sem encenação (pedido do usuário, 2026-09-03).
+ *
+ * Três superfícies ganham amortecimento — o overlay que entra/sai, a caixa que
+ * expande/recolhe, e o foco/hover que percorre a tela. Nenhuma delas muda de
+ * layout, cor ou posição final: o que muda é só o caminho até lá.
+ *
+ * Tudo abaixo é desligado em `prefers-reduced-motion: reduce` (bloco no fim
+ * desta seção). Não é adorno: movimento pode causar mal-estar real, e num PDV
+ * o operador não escolhe o equipamento nem a configuração dele.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Fundo escurecido do modal. Só opacidade — mover ou escalar o backdrop
+ * arrastaria a tela inteira junto, que é o oposto de sutil.
+ */
+@utility cc-backdrop-entra {
+  animation: cc-fade-entra var(--cc-motion-rapido) var(--cc-ease-saida);
+}
+
+@utility cc-backdrop-sai {
+  animation: cc-fade-sai var(--cc-motion-instantaneo) var(--cc-ease-entrada) forwards;
+}
+
+/**
+ * Cartão do modal: sobe 8px e cresce de 98%.
+ *
+ * A escala parte de `0.98`, não de `0.9`: o modal precisa parecer que **já
+ * estava ali** e só ganhou foco, não que foi cuspido do centro da tela. 8px é
+ * deslocamento suficiente para o olho registrar direção sem virar salto.
+ */
+@utility cc-modal-entra {
+  animation: cc-modal-entra-quadro var(--cc-motion-base) var(--cc-ease-saida);
+}
+
+@utility cc-modal-sai {
+  animation: cc-modal-sai-quadro var(--cc-motion-rapido) var(--cc-ease-entrada) forwards;
+}
+
+/**
+ * Caixa que expande/recolhe — o card de cliente hoje, qualquer outra depois.
+ *
+ * `grid-template-rows: 0fr → 1fr` anima altura **sem** `height` fixa nem
+ * medição em JS: o conteúdo continua definindo o próprio tamanho, e o
+ * navegador interpola. O filho precisa de `min-height: 0` e `overflow: hidden`
+ * para não vazar durante o trajeto — daí o seletor direto abaixo.
+ */
+@utility cc-colapsavel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--cc-motion-base) var(--cc-ease-saida);
+}
+
+@utility cc-colapsavel-aberto {
+  grid-template-rows: 1fr;
+}
+
+.cc-colapsavel > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/**
+ * Foco e hover: o anel e o fundo chegam em vez de piscar.
+ *
+ * Aplicado por seletor de elemento, não por classe, porque a alternativa seria
+ * repetir a mesma transição em cada `input`/`button` do produto — e um campo
+ * novo nasceria seco por esquecimento. `outline-color`/`border-color` entram
+ * na lista porque são o que o `focus-visible` do shadcn troca.
+ */
+input,
+button,
+[role='button'] {
+  transition:
+    background-color var(--cc-motion-rapido) var(--cc-ease-saida),
+    border-color var(--cc-motion-rapido) var(--cc-ease-saida),
+    outline-color var(--cc-motion-rapido) var(--cc-ease-saida),
+    box-shadow var(--cc-motion-rapido) var(--cc-ease-saida),
+    color var(--cc-motion-rapido) var(--cc-ease-saida);
+}
+
+@keyframes cc-fade-entra {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cc-fade-sai {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes cc-modal-entra-quadro {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes cc-modal-sai-quadro {
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+  }
+}
+
+/**
+ * Sem movimento para quem pediu sem movimento.
+ *
+ * As animações são zeradas, não removidas: o `forwards` da saída precisa
+ * continuar valendo, senão o modal reapareceria por um quadro antes de
+ * desmontar. `cc-shimmer` e `cc-pulso-edicao` entram aqui pelo mesmo motivo —
+ * são os dois laços infinitos do produto, e laço infinito é justamente o que
+ * mais incomoda.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .cc-backdrop-entra,
+  .cc-backdrop-sai,
+  .cc-modal-entra,
+  .cc-modal-sai,
+  .cc-shimmer,
+  .cc-pulso-edicao {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+
+  .cc-colapsavel,
+  input,
+  button,
+  [role='button'] {
+    transition-duration: 1ms;
   }
 }
