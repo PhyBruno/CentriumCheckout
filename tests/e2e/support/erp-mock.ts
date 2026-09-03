@@ -171,6 +171,7 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     NomeConvenio: '',
     DescontoConvenio: 0,
     ListaPreco: 3,
+    CliTip: 'F',
   },
   '89554068000': {
     Empresa: 1,
@@ -189,6 +190,7 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     NomeConvenio: 'CONVENIO EXEMPLO',
     DescontoConvenio: 10,
     ListaPreco: 7,
+    CliTip: 'F',
   },
   'CONSUMIDOR-FINAL': {
     Empresa: 1,
@@ -207,6 +209,7 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     NomeConvenio: '',
     DescontoConvenio: 0,
     ListaPreco: 3,
+    CliTip: 'F',
   },
   'SEM-DOCUMENTO': {
     Empresa: 1,
@@ -225,11 +228,13 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     NomeConvenio: '',
     DescontoConvenio: 0,
     ListaPreco: 3,
+    CliTip: 'F',
   },
   '52059715000113': {
     Empresa: 1,
     CodCliente: 2209,
     nome: 'NILMAQ COMERCIO DE PECAS',
+    CliTip: 'J',
     cpf: '52059715000113',
     email: 'nilmaq@example.test',
     celular: '14 9119-8027',
@@ -516,6 +521,11 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // é o que obriga o Checkout a resolver por `GetCliente` antes de associar
       // (`research.md` D1). E sem nenhum campo de status (AD-093).
       const todos = Object.values(CLIENTES)
+        // `where CliTip = 'F'` — `PCheckout_ClientesLista` filtra pessoa física
+        // no próprio ERP, nos dois `For Each` (itens e contagem), verificado no
+        // código-fonte da KB em 2026-09-03. O mock não tinha esse filtro e
+        // devolvia PJ na busca, um cenário que produção nunca produz.
+        .filter((cliente) => cliente['CliTip'] !== 'J')
         .filter(
           (cliente) =>
             String(cliente['nome']).toUpperCase().includes(termo) ||
@@ -592,6 +602,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         NomeConvenio: '',
         DescontoConvenio: 0,
         ListaPreco: 0,
+        CliTip: 'F',
       };
 
       return reply.send([]);

@@ -66,6 +66,17 @@ export function CampoClienteVenda(): ReactElement {
   const [modalAberto, setModalAberto] = useState(false);
   const [cadastroAberto, setCadastroAberto] = useState(false);
   const [cpfSugerido, setCpfSugerido] = useState('');
+  /**
+   * A última tentativa de identificação foi recusada por ser pessoa jurídica
+   * (AD-133).
+   *
+   * Zera o bloco inteiro — campo de documento, nome, contato e as pílulas —
+   * até a próxima ação do operador (pedido do usuário, 2026-09-03). O cliente
+   * em si já foi limpo do estado da venda por `limparCliente`; este sinal
+   * existe para o que **não** vem do cliente: a pílula de vendedor, que é do
+   * PDV (`SessaoUsuario`) e não sumiria sozinha.
+   */
+  const [recusaPessoaJuridica, setRecusaPessoaJuridica] = useState(false);
 
   /**
    * O campo mostra o documento do cliente identificado, com máscara de leitura
@@ -102,6 +113,7 @@ export function CampoClienteVenda(): ReactElement {
    * aberto custaria altura ao carrinho e um clique a mais.
    */
   function concluirIdentificacao(): void {
+    setRecusaPessoaJuridica(false);
     setExpandido(false);
     focarCodigoProduto();
   }
@@ -117,6 +129,19 @@ export function CampoClienteVenda(): ReactElement {
   function abrirCadastroPara(documento: string): void {
     setCpfSugerido(documento);
     setCadastroAberto(true);
+  }
+
+  /**
+   * Devolve o bloco de identificação ao estado "nada identificado".
+   *
+   * O toast já explicou o motivo; o que não pode ficar é a tela sugerindo que
+   * a venda seguiu com algum cliente. O card também recolhe, como em qualquer
+   * desfecho de identificação.
+   */
+  function zerarIdentificacao(): void {
+    setRecusaPessoaJuridica(true);
+    setDocumento('');
+    setExpandido(false);
   }
 
   async function identificar(): Promise<void> {
@@ -165,6 +190,10 @@ export function CampoClienteVenda(): ReactElement {
           ? await identificarPorCodigo(entrada.codigo, 'BUSCA_DOCUMENTO')
           : await identificarPorDocumento(entrada.documento, 'BUSCA_DOCUMENTO');
 
+      if (resultado.situacao === 'recusado-pessoa-juridica') {
+        zerarIdentificacao();
+        return;
+      }
       if (resultado.situacao === 'nao-encontrado') {
         // Código sem cadastro não abre o cadastro simplificado: o operador
         // errou o número, não descobriu um cliente novo — criar um cliente
@@ -191,6 +220,10 @@ export function CampoClienteVenda(): ReactElement {
     // (cliente cadastrado sem documento) — e aí a busca por documento abriria o
     // cadastro simplificado sozinho.
     const resultado = await identificarPorCodigo(candidato.codigo, 'BUSCA_LIVRE');
+    if (resultado.situacao === 'recusado-pessoa-juridica') {
+      zerarIdentificacao();
+      return;
+    }
     if (resultado.situacao === 'nao-encontrado') {
       abrirCadastroPara(candidato.cpf);
       return;
@@ -226,7 +259,9 @@ export function CampoClienteVenda(): ReactElement {
 
           {/* Vendedor e operador do PDV (`SessaoUsuario`): rótulo, não decisão
               de venda — sem o dado, a pílula simplesmente não aparece. */}
-          {sessao?.VendedorNome === undefined || sessao.VendedorNome === '' ? null : (
+          {recusaPessoaJuridica ||
+          sessao?.VendedorNome === undefined ||
+          sessao.VendedorNome === '' ? null : (
             <Pilula
               icone={<UserRound className="size-4.5 text-foreground" />}
               rotulo="Vendedor"
@@ -288,6 +323,7 @@ export function CampoClienteVenda(): ReactElement {
                   value={documento}
                   onChange={(evento) => {
                     setDocumento(evento.target.value);
+                    setRecusaPessoaJuridica(false);
                   }}
                   // Sair do campo (TAB, clique fora) já dispara a consulta ao
                   // ERP — pedido do usuário, 2026-09-03: no ritmo do caixa, o

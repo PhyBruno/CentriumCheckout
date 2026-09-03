@@ -54,7 +54,13 @@ export type ResultadoIdentificacao =
   /** Documento válido, sem cadastro correspondente — abre o cadastro simplificado. */
   | { readonly situacao: 'nao-encontrado' }
   /** Falha de rede/fronteira, ou o slice recusou a mudança: nada mudou. */
-  | { readonly situacao: 'recusado' };
+  | { readonly situacao: 'recusado' }
+  /**
+   * O cadastro resolvido é pessoa jurídica (AD-133). Distinto de `'recusado'`
+   * porque aqui a venda **fica sem cliente**: quem chama precisa limpar o que
+   * estiver na tela, não só ignorar o resultado.
+   */
+  | { readonly situacao: 'recusado-pessoa-juridica' };
 
 function mensagemDeErro(erro: unknown): string {
   if (erro instanceof ErroCadastroRecusado) {
@@ -109,6 +115,7 @@ export interface ApiIdentificacaoCliente {
 
 export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
   const selecionarCliente = useVendaStore((estado) => estado.selecionarCliente);
+  const limparCliente = useVendaStore((estado) => estado.limparCliente);
   const cadastrarESelecionarCliente = useVendaStore((estado) => estado.cadastrarESelecionarCliente);
   const codigoEmpresa = useCodigoEmpresa();
 
@@ -134,7 +141,10 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
         // caminhos passam — se o filtro do ERP mudar, o Checkout não regride.
         if (documentoEhPessoaJuridica(cliente.cpf)) {
           gooeyToast.warning(`${MOTIVO_VENDA_PESSOA_JURIDICA} Escolha um cliente pessoa física.`);
-          return { situacao: 'recusado' };
+          // A venda fica **sem cliente**: manter o anterior no campo daria a
+          // impressão de que ela seguiu com ele.
+          limparCliente();
+          return { situacao: 'recusado-pessoa-juridica' };
         }
 
         return traduzir(await selecionarCliente(cliente, origem));
@@ -146,7 +156,7 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
         return { situacao: 'recusado' };
       }
     },
-    [selecionarCliente],
+    [limparCliente, selecionarCliente],
   );
 
   return {

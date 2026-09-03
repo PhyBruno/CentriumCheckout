@@ -242,17 +242,7 @@ export function ModalBuscaCliente({
         </div>
 
         <div className="min-h-40 flex-1 overflow-y-auto" aria-live="polite">
-          {termoEhCnpj ? (
-            // O toast avisa; este texto **permanece** enquanto o CNPJ estiver no
-            // campo, para o operador não ficar diante de uma lista vazia sem
-            // motivo depois que a notificação some.
-            <p
-              className="p-base text-md text-[var(--cc-color-warning-ink)]"
-              data-testid="aviso-cnpj"
-            >
-              {AVISO_CNPJ}
-            </p>
-          ) : abaixoDoMinimo ? (
+          {abaixoDoMinimo ? (
             <p
               className="p-base text-md text-muted-foreground"
               data-testid="busca-cliente-abaixo-do-minimo"

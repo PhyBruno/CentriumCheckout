@@ -237,10 +237,10 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     await buscarPorTermo(page, CNPJ_INEXISTENTE);
 
     // Ajuste SINIEF 11/2025: nem a busca acontece — o CNPJ é recusado antes de
-    // `GetListaClientes`, e o cadastro simplificado continua fora de cogitação.
-    await expect(page.getByTestId('aviso-cnpj')).toBeVisible();
+    // `GetListaClientes`. O aviso vive **só no toast** (correção do usuário,
+    // 2026-09-03): o corpo do modal não repete a mensagem.
     await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
-    await expect(page.getByTestId('cadastro-simplificado')).toHaveCount(0);
+    await expect(page.getByTestId('aviso-cnpj')).toHaveCount(0);
     await expect(page.getByTestId('resultados-busca-cliente')).toHaveCount(0);
 
     const depois = await contadores(request);
@@ -255,24 +255,44 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     const antes = await contadores(request);
     await buscarPorTermo(page, CNPJ_EXISTENTE);
 
-    await expect(page.getByTestId('aviso-cnpj')).toBeVisible();
+    await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
+    await expect(page.getByTestId('aviso-cnpj')).toHaveCount(0);
     await expect(page.getByTestId('candidato-cliente')).toHaveCount(0);
     expect((await contadores(request)).getListaClientes).toBe(antes.getListaClientes);
   });
 
-  test('candidato pessoa jurídica achado pelo nome é recusado ao ser escolhido', async ({
-    page,
-  }) => {
-    // Buscar por nome não passa pela contagem de dígitos de nenhuma superfície:
-    // quem recusa aqui é a guarda de `useCliente`, sobre o documento que
-    // `GetCliente` devolveu.
+  test('pessoa jurídica não aparece na busca por nome — o ERP já filtra', async ({ page }) => {
+    // `PCheckout_ClientesLista` filtra `where CliTip = 'F'` nos dois `For Each`
+    // (verificado no código-fonte da KB, 2026-09-03). O mock reproduzia a lista
+    // sem esse filtro e exibia a NILMAQ, um cenário que produção nunca produz
+    // (achado do usuário, 2026-09-03).
     await abrirTelaDeVenda(page);
     await buscarPorTermo(page, 'NILMAQ');
 
-    await page.getByTestId('candidato-cliente').first().click();
+    await expect(page.getByTestId('busca-cliente-sem-resultados')).toBeVisible();
+    await expect(page.getByTestId('candidato-cliente')).toHaveCount(0);
+  });
+
+  test('código de pessoa jurídica é recusado e zera a identificação', async ({ page }) => {
+    // Caminho que sobra depois do filtro do ERP: o código não se parece com um
+    // CNPJ, então só a guarda de `useCliente` — sobre o documento que
+    // `GetCliente` devolveu — consegue recusá-lo.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill('2209');
+    await page.getByTestId('identificar-cliente').click();
 
     await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
-    await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
+
+    // A venda fica **sem cliente**: nome, contato e as pílulas zeram, em vez de
+    // seguirem mostrando o cliente anterior (pedido do usuário, 2026-09-03).
+    await expect(page.getByTestId('status-cliente')).toHaveText('Não identificado');
+    await expect(page.getByTestId('pilula-vendedor')).toHaveCount(0);
+
+    await expandirCardCliente(page);
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('');
+    await expect(page.getByTestId('nome-cliente')).toHaveText('Buscar cliente cadastrado');
+    await expect(page.getByTestId('contato-cliente')).toHaveText('—');
   });
 
   test('CPF sem resultado na busca livre oferece o cadastro simplificado', async ({ page }) => {

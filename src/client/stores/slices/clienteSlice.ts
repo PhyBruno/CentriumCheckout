@@ -92,6 +92,21 @@ export interface ClienteSlice extends ClienteState {
   inicializarClientePadrao(sessaoUsuario: SessaoUsuario): void;
 
   /**
+   * Deixa a venda **sem cliente**, sem evento de auditoria.
+   *
+   * Existe para a recusa de pessoa jurídica (Ajuste SINIEF 11/2025, AD-133):
+   * quando a identificação é negada, manter o cliente anterior no campo daria a
+   * impressão de que a venda seguiu com ele — o operador precisa ver que não há
+   * cliente associado (pedido do usuário, 2026-09-03).
+   *
+   * Não registra evento porque a recusa não é uma escolha do operador sobre
+   * quem é o cliente: é o Checkout dizendo que aquele caminho não existe. Pela
+   * mesma razão não mexe em `houveEscolhaExplicita` — a próxima identificação
+   * válida continua sendo tratada como a primeira escolha (D9).
+   */
+  limparCliente(): void;
+
+  /**
    * Associa um cliente já cadastrado à venda (`CLI-01`/`CLI-02`, e `'DAV'` pela
    * importação da feature 006 — AD-115, extensão aditiva sem caso especial).
    *
@@ -229,6 +244,12 @@ export function criarClienteSlice(
     return {
       clienteAtual: null,
       houveEscolhaExplicita: false,
+
+      limparCliente: () => {
+        set((state) => {
+          state.clienteAtual = null;
+        });
+      },
 
       inicializarClientePadrao: (sessaoUsuario) => {
         set((state) => {
