@@ -406,6 +406,31 @@ test.describe('Correções de 2026-09-03 (segunda rodada)', () => {
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('1255');
   });
 
+  test('o card recolhido não deixa faixa em branco abaixo do cabeçalho', async ({ page }) => {
+    // O espaço que separa o cabeçalho dos campos mora dentro do bloco
+    // colapsável, não num `gap` do card: um `gap` sobreviveria ao colapso,
+    // porque ele separa o cabeçalho de um filho de altura zero (achado do
+    // usuário, 2026-09-03). Recolhido, o que existe abaixo do cabeçalho é só o
+    // padding e a borda do próprio card.
+    await abrirTelaDeVenda(page);
+    await esperarCamposRecolhidos(page);
+
+    const sobraAbaixoDoCabecalho = await page.getByTestId('cliente-da-venda').evaluate((card) => {
+      const cabecalho = card.querySelector('header');
+      if (cabecalho === null) {
+        return null;
+      }
+      const estilo = getComputedStyle(card);
+      const moldura =
+        Number.parseFloat(estilo.paddingBottom) + Number.parseFloat(estilo.borderBottomWidth);
+      return Math.round(
+        card.getBoundingClientRect().bottom - cabecalho.getBoundingClientRect().bottom - moldura,
+      );
+    });
+
+    expect(sobraAbaixoDoCabecalho).toBe(0);
+  });
+
   test('a folga do corte existe só com o bloco aberto', async ({ page }) => {
     // `overflow-clip-margin` devolve o espaço do anel de `focus-visible`, que
     // `overflow: hidden` comia — mas a mesma folga aplicada ao bloco recolhido

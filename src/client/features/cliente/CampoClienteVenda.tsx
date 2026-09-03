@@ -308,8 +308,15 @@ export function CampoClienteVenda(): ReactElement {
   const Chevron = expandido ? ChevronUp : ChevronDown;
 
   return (
+    /* Sem `gap` entre o cabeçalho e o bloco colapsável: o espaço que os
+       separa mora **dentro** do bloco (`pt-sm` no conteúdo). Um `gap` aqui
+       continuaria valendo com o bloco recolhido — ele separa o cabeçalho de um
+       filho de altura zero —, e sobrava uma faixa em branco antes da borda
+       inferior do card (achado do usuário, 2026-09-03). Dentro do bloco, o
+       mesmo espaço é comprimido pela animação de altura e some junto com o
+       conteúdo. */
     <section
-      className="flex flex-col gap-sm rounded-xl border border-border bg-background p-[14px]"
+      className="flex flex-col rounded-xl border border-border bg-background p-[14px]"
       data-testid="cliente-da-venda"
       aria-label="Cliente da venda"
     >
@@ -380,101 +387,108 @@ export function CampoClienteVenda(): ReactElement {
         className={cn('cc-colapsavel', expandido && 'cc-colapsavel-aberto')}
         {...(expandido ? {} : { inert: true })}
       >
-        <div className="flex flex-col gap-sm">
-          <div className="flex h-[42px] items-center gap-[10px]">
-            <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-              <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-                <span className="text-[10px] font-semibold text-muted-foreground">
-                  Código do cliente ou CPF
-                </span>
-                <input
-                  className="w-full bg-transparent font-mono text-base font-medium tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
-                  data-testid="campo-documento-cliente"
-                  ref={campoDocumento}
-                  autoComplete="off"
-                  inputMode="numeric"
-                  placeholder="Digite"
-                  value={documento}
-                  onChange={(evento) => {
-                    setDocumento(evento.target.value);
-                    setRecusaPessoaJuridica(false);
-                  }}
-                  // Sair do campo (TAB, clique fora) já dispara a consulta ao
-                  // ERP — pedido do usuário, 2026-09-03: no ritmo do caixa, o
-                  // documento é digitado e o foco segue para o produto, sem
-                  // passar pelo botão.
-                  onBlur={() => {
-                    void identificar();
-                  }}
-                  onKeyDown={(evento) => {
-                    if (evento.key === 'Enter') {
-                      evento.preventDefault();
+        {/* Caixa de corte, sem estilo próprio: é ela que `cc-colapsavel > *`
+            zera (`min-height: 0`) e recorta. O espaçamento vai no filho de
+            dentro porque `grid-template-rows: 0fr` respeita o min-content da
+            linha — `min-height: 0` zera o conteúdo, mas não o padding, e um
+            `pt` aqui viraria 12px de altura residual com o bloco recolhido. */}
+        <div>
+          <div className="flex flex-col gap-sm pt-sm">
+            <div className="flex h-[42px] items-center gap-[10px]">
+              <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+                <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
+                  <span className="text-[10px] font-semibold text-muted-foreground">
+                    Código do cliente ou CPF
+                  </span>
+                  <input
+                    className="w-full bg-transparent font-mono text-base font-medium tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
+                    data-testid="campo-documento-cliente"
+                    ref={campoDocumento}
+                    autoComplete="off"
+                    inputMode="numeric"
+                    placeholder="Digite"
+                    value={documento}
+                    onChange={(evento) => {
+                      setDocumento(evento.target.value);
+                      setRecusaPessoaJuridica(false);
+                    }}
+                    // Sair do campo (TAB, clique fora) já dispara a consulta ao
+                    // ERP — pedido do usuário, 2026-09-03: no ritmo do caixa, o
+                    // documento é digitado e o foco segue para o produto, sem
+                    // passar pelo botão.
+                    onBlur={() => {
                       void identificar();
-                    }
-                  }}
-                />
-              </span>
-            </label>
-
-            <div className="flex h-full min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-              <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-                <span className="text-[10px] font-semibold text-muted-foreground">
-                  Nome / telefone
+                    }}
+                    onKeyDown={(evento) => {
+                      if (evento.key === 'Enter') {
+                        evento.preventDefault();
+                        void identificar();
+                      }
+                    }}
+                  />
                 </span>
+              </label>
+
+              <div className="flex h-full min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+                <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
+                  <span className="text-[10px] font-semibold text-muted-foreground">
+                    Nome / telefone
+                  </span>
+                  <span
+                    className="truncate text-base font-medium text-foreground"
+                    data-testid="nome-cliente"
+                  >
+                    {clienteAtual?.nome === undefined || clienteAtual.nome === ''
+                      ? 'Buscar cliente cadastrado'
+                      : clienteAtual.nome}
+                  </span>
+                </span>
+              </div>
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon-lg"
+                className="size-[42px] shrink-0 rounded-full"
+                data-testid="abrir-busca-cliente"
+                aria-label="Buscar cliente"
+                onClick={() => {
+                  setModalAberto(true);
+                }}
+              >
+                <Search className="size-4" aria-hidden="true" />
+              </Button>
+
+              <Button
+                type="button"
+                className="h-[42px] w-[126px] shrink-0 gap-[7px] rounded-full text-base font-bold"
+                data-testid="identificar-cliente"
+                disabled={documento.trim() === '' || buscando}
+                onClick={() => {
+                  void identificar();
+                }}
+              >
+                <UserCheck className="size-4" aria-hidden="true" />
+                Identificar
+              </Button>
+            </div>
+
+            <div className="flex h-[42px] w-[243px] items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+              <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
+                <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
                 <span
                   className="truncate text-base font-medium text-foreground"
-                  data-testid="nome-cliente"
+                  data-testid="contato-cliente"
                 >
-                  {clienteAtual?.nome === undefined || clienteAtual.nome === ''
-                    ? 'Buscar cliente cadastrado'
-                    : clienteAtual.nome}
+                  {clienteAtual?.celular === undefined || clienteAtual.celular === null
+                    ? '—'
+                    : clienteAtual.celular}
                 </span>
               </span>
             </div>
-
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon-lg"
-              className="size-[42px] shrink-0 rounded-full"
-              data-testid="abrir-busca-cliente"
-              aria-label="Buscar cliente"
-              onClick={() => {
-                setModalAberto(true);
-              }}
-            >
-              <Search className="size-4" aria-hidden="true" />
-            </Button>
-
-            <Button
-              type="button"
-              className="h-[42px] w-[126px] shrink-0 gap-[7px] rounded-full text-base font-bold"
-              data-testid="identificar-cliente"
-              disabled={documento.trim() === '' || buscando}
-              onClick={() => {
-                void identificar();
-              }}
-            >
-              <UserCheck className="size-4" aria-hidden="true" />
-              Identificar
-            </Button>
-          </div>
-
-          <div className="flex h-[42px] w-[243px] items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-            <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-              <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
-              <span
-                className="truncate text-base font-medium text-foreground"
-                data-testid="contato-cliente"
-              >
-                {clienteAtual?.celular === undefined || clienteAtual.celular === null
-                  ? '—'
-                  : clienteAtual.celular}
-              </span>
-            </span>
           </div>
         </div>
       </div>
