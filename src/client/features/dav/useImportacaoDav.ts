@@ -15,7 +15,6 @@ import {
 import { ErroRespostaInvalida, ErroSessaoEncerrada } from '../../services/errosErp';
 import { fetchProduto, type ContextoPrecificacao } from '../../services/produto/produtoQueries';
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
-import { linhasAtivas } from '../../domain/precificacao/linha';
 import { useSessionStore } from '../../stores/sessionStore';
 import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores/vendaStore';
 
@@ -76,7 +75,10 @@ function estadoParaImportacao(venda: VendaState): EstadoVendaParaImportacao {
     // do `vendaStore` — não uma segunda regra de "quando a venda pode mudar",
     // que poderia divergir em silêncio (AD-043).
     podeMutar: carrinhoDepsPadrao.podeMutarCarrinho(),
-    itensAtivos: linhasAtivas(venda.linhas).length,
+    // **Todas** as linhas, canceladas inclusive (pedido do usuário,
+    // 2026-09-03): uma linha cancelada é venda digitada, e o documento
+    // importado não pode entrar por cima dela.
+    linhasNaVenda: venda.linhas.length,
     clienteIdentificado: venda.houveEscolhaExplicita && venda.clienteAtual !== null,
   };
 }

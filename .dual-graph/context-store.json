@@ -5520,5 +5520,19 @@
       "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
     ],
     "date": "2026-09-03"
+  },
+  {
+    "type": "decision",
+    "content": "AD-141: recusa de importacao conta linha cancelada (linhasNaVenda)",
+    "tags": [
+      "dav",
+      "006",
+      "regra"
+    ],
+    "files": [
+      "src/client/services/dav/davQueries.ts",
+      "src/client/features/dav/useImportacaoDav.ts"
+    ],
+    "date": "2026-09-03"
   }
 ]

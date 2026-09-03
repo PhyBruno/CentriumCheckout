@@ -14,10 +14,10 @@ import {
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
 import type { ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
-import { linhasAtivas } from '../../src/client/domain/precificacao/linha';
 import { criarVendaStore, useVendaStore } from '../../src/client/stores/vendaStore';
 import { useImportacaoDav } from '../../src/client/features/dav/useImportacaoDav';
 import { clienteCheckoutDe } from '../support/cliente';
+import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 import {
   CODIGO_CLIENTE_DAV,
@@ -119,7 +119,7 @@ function depsDe(
     estadoDaVenda: () => ({
       numeroNota: store.getState().identidadeVenda.numeroNota,
       podeMutar: true,
-      itensAtivos: linhasAtivas(store.getState().linhas).length,
+      linhasNaVenda: store.getState().linhas.length,
       clienteIdentificado: store.getState().houveEscolhaExplicita,
     }),
     definirIdentidadeVenda: venda.definirIdentidadeVenda,
@@ -421,7 +421,7 @@ describe('recusaDeImportacao — regra pura', () => {
   const vendaLimpa = {
     numeroNota: 0,
     podeMutar: true,
-    itensAtivos: 0,
+    linhasNaVenda: 0,
     clienteIdentificado: false,
   } as const;
 
@@ -434,7 +434,7 @@ describe('recusaDeImportacao — regra pura', () => {
   it.each([
     [{ ...vendaLimpa, podeMutar: false }, 'venda-bloqueada'],
     [{ ...vendaLimpa, numeroNota: 90210 }, 'ja-importou-documento'],
-    [{ ...vendaLimpa, itensAtivos: 1 }, 'carrinho-populado'],
+    [{ ...vendaLimpa, linhasNaVenda: 1 }, 'carrinho-populado'],
     [{ ...vendaLimpa, clienteIdentificado: true }, 'cliente-identificado'],
   ])('recusa com motivo %#', (estado, motivo) => {
     expect(recusaDeImportacao(estado)).toBe(motivo);
@@ -513,7 +513,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
         return {
           numeroNota: 0,
           podeMutar: leituras === 1,
-          itensAtivos: 0,
+          linhasNaVenda: 0,
           clienteIdentificado: false,
         };
       },
@@ -539,7 +539,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
       estadoDaVenda: () => ({
         numeroNota: 0,
         podeMutar: false,
-        itensAtivos: 0,
+        linhasNaVenda: 0,
         clienteIdentificado: false,
       }),
     });
@@ -699,5 +699,16 @@ describe('recusaAtual — cliente da venda, não a flag de escolha (AD-139)', ()
 
     expect(useVendaStore.getState().clienteAtual).not.toBeNull();
     expect(recusaAtual()).toBeNull();
+  });
+
+  it('recusa com item cancelado no carrinho (pedido do usuário, 2026-09-03)', () => {
+    useVendaStore.setState({ linhas: [linhaDe({ cancelada: true })] });
+
+    // A pergunta não é "há o que faturar?", e sim "esta venda já foi
+    // digitada?": a linha cancelada continua no array (`CART-08`) e vai no
+    // `Log` e no retrato de `FaturarNFCe`, então o documento não pode entrar
+    // por cima dela.
+    expect(useVendaStore.getState().linhas).toHaveLength(1);
+    expect(recusaAtual()).toBe('carrinho-populado');
   });
 });

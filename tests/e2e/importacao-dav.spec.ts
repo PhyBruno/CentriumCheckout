@@ -338,6 +338,31 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
   });
 
+  test('item cancelado ainda bloqueia o atalho (pedido do usuário, 2026-09-03)', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU_DO_DAV);
+    await campo.press('Enter');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    // Cancelar a única linha esvazia o que há a faturar, mas a venda continua
+    // digitada: a linha permanece no array (`CART-08`) e vai no `Log` e no
+    // retrato de `FaturarNFCe`.
+    await page.getByTestId('cancelar-item').last().click();
+    await expect(page.getByTestId('linha-carrinho')).toHaveAttribute('data-cancelada', 'true');
+
+    const atalho = page.getByTestId('botao-menu-importacao');
+    await expect(atalho).toBeDisabled();
+    await expect(atalho).toHaveAttribute('title', /mesmo que cancelados/i);
+
+    // A saída continua sendo cancelar a venda — e esse botão está liberado,
+    // justamente porque há linha cancelada (AD-140).
+    await expect(page.getByTestId('botao-cancelar-venda')).toBeEnabled();
+  });
+
   test('venda com cliente identificado: o atalho fica desabilitado', async ({ page }) => {
     await abrirTelaDeVenda(page);
 

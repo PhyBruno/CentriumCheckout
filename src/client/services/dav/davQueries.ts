@@ -77,8 +77,17 @@ export interface EstadoVendaParaImportacao {
   readonly numeroNota: number;
   /** Mesmo predicado de bloqueio pós-pagamento do carrinho/cliente (AD-043). */
   readonly podeMutar: boolean;
-  /** Linhas **não canceladas** — mesma noção de "a venda tem item" do resto da base. */
-  readonly itensAtivos: number;
+  /**
+   * Linhas no carrinho, **canceladas inclusive** (pedido do usuário,
+   * 2026-09-03).
+   *
+   * A pergunta aqui não é "há o que faturar?", e sim "esta venda já foi
+   * digitada?". A linha cancelada permanece no array por rastreabilidade
+   * (`CART-08`) e vai junto no `Log` de auditoria e no retrato de
+   * `FaturarNFCe`: importar um documento por cima misturaria o que o operador
+   * lançou e cancelou com o conteúdo do documento, dentro de uma nota só.
+   */
+  readonly linhasNaVenda: number;
   /**
    * Houve escolha **explícita** de cliente pelo operador.
    *
@@ -107,7 +116,7 @@ export function recusaDeImportacao(
   if (estado.numeroNota !== 0) {
     return 'ja-importou-documento';
   }
-  if (estado.itensAtivos > 0) {
+  if (estado.linhasNaVenda > 0) {
     return 'carrinho-populado';
   }
   if (estado.clienteIdentificado) {
@@ -124,7 +133,10 @@ export function mensagemDeRecusa(motivo: MotivoRecusaImportacao): string {
     case 'ja-importou-documento':
       return 'Esta venda já foi iniciada a partir de um documento. Cancele a venda para importar outro.';
     case 'carrinho-populado':
-      return 'Esta venda já tem itens lançados. Cancele a venda para importar um documento.';
+      // "lançados", e não "no carrinho": o item cancelado também conta, e o
+      // operador que acabou de cancelar a última linha precisa entender por que
+      // o atalho continua fechado.
+      return 'Esta venda já tem itens lançados, mesmo que cancelados. Cancele a venda para importar um documento.';
     case 'cliente-identificado':
       return 'Esta venda já tem um cliente identificado. Cancele a venda para importar um documento.';
   }
