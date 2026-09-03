@@ -147,6 +147,54 @@ test.describe('User Story 1 — listar, buscar e filtrar (T010, Cenário 1)', ()
     await expect(page.getByTestId('dav-data-inicial')).not.toHaveValue('');
   });
 
+  test('o calendário sai para fora da janela de importação, sem ser cortado', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeImportacao(page);
+
+    // Correção do usuário (2026-09-03): o popover era filho da janela, que é
+    // `overflow-hidden`, e o pedaço que passava da borda simplesmente sumia.
+    await page.getByTestId('dav-data-final').click();
+    const calendario = page.getByTestId('calendario');
+    await expect(calendario).toBeVisible();
+
+    // Portal: o calendário pendura direto no `<body>`, fora da árvore do modal.
+    await expect(page.getByTestId('modal-importacao-dav').getByTestId('calendario')).toHaveCount(0);
+    expect(
+      await calendario.evaluate((elemento) => elemento.parentElement === document.body),
+    ).toBe(true);
+
+    // E cabe inteiro na viewport — nenhuma linha de dias fica fora da tela.
+    const caixa = await calendario.boundingBox();
+    const janela = page.viewportSize();
+    if (caixa === null || janela === null) {
+      throw new Error('calendário sem caixa medível ou viewport sem tamanho');
+    }
+    expect(caixa.x).toBeGreaterThanOrEqual(0);
+    expect(caixa.y).toBeGreaterThanOrEqual(0);
+    expect(caixa.x + caixa.width).toBeLessThanOrEqual(janela.width);
+    expect(caixa.y + caixa.height).toBeLessThanOrEqual(janela.height);
+  });
+
+  test('cada data de emissão é uma pílula própria, com o seu calendário', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeImportacao(page);
+
+    // Pedido do usuário (2026-09-03): dois filtros separados, não um só.
+    await expect(page.getByLabel('Data inicial de emissão')).toBeVisible();
+    await expect(page.getByLabel('Data final de emissão')).toBeVisible();
+
+    // Abrir o calendário de um não abre o do outro: há exatamente um popover.
+    const inicialAntes = await page.getByTestId('dav-data-inicial').inputValue();
+    await page.getByTestId('dav-data-final').click();
+    await expect(page.getByTestId('calendario')).toHaveCount(1);
+
+    // E cada campo aplica só a sua ponta do período: escolher o dia 1º no
+    // calendário do fim não encosta na data inicial.
+    await page.locator('[data-dia]').first().click();
+    await expect(page.getByTestId('dav-data-final')).toHaveValue(/^01\//);
+    await expect(page.getByTestId('dav-data-inicial')).toHaveValue(inicialAntes);
+  });
+
   test('ESC fecha a janela de importação', async ({ page }) => {
     await abrirTelaDeVenda(page);
     await abrirJanelaDeImportacao(page);

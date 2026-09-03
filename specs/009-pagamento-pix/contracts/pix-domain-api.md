@@ -95,5 +95,5 @@ interface ModalPixProps {
 | Feature | Consome |
 |---|---|
 | 005 — cliente | fornece `clienteAtual` para `montarDadosPagador` |
-| 007 — layout mobile | nenhuma exclusão — PIX permanece disponível no mobile (AD-074); `ModalPix` recebe o mesmo tratamento responsivo que as demais superfícies de pagamento |
+| 007 — layout mobile | nenhuma exclusão — PIX disponível no mobile (AD-074), assim como o TEF desde AD-144 (2026-09-03); `ModalPix` recebe o mesmo tratamento responsivo que as demais superfícies de pagamento |
 | 008 — pagamento geral | fornece o veredito `PIX_DINAMICO`, `saldoRestante`, `formaCodigo`, `minimoPix`; recebe `onAprovado`/`onAbandonado` que disparam `confirmarPagamentoIntegrado`/`recusarPagamentoIntegrado` |

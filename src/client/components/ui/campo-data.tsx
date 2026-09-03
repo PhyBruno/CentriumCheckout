@@ -1,5 +1,14 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactElement,
+  type RefObject,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 /**
@@ -14,6 +23,12 @@ import { cn } from '@/lib/utils';
  * nem biblioteca de data, e um calendário de mês é aritmética de `Date` —
  * instalar um pacote para isso ampliaria a superfície de supply-chain do
  * projeto (mesma cautela já registrada para as libs de UI).
+ *
+ * O calendário é renderizado em **portal para o `<body>`** (correção do usuário,
+ * 2026-09-03): ancorado ao campo por posição fixa calculada, ele escapa do
+ * recorte de quem o hospeda. Dentro da janela de importação — que é
+ * `overflow-hidden` para manter os cantos arredondados — o popover era cortado
+ * assim que passava da borda; fora dela, a folha inteira aparece.
  *
  * O valor de fronteira é sempre `YYYY-MM-DD`, que é o que `ListaDAVs` espera em
  * `Datainicial`/`Datafinal`; a exibição em `DD/MM/AAAA` fica confinada aqui.
@@ -108,7 +123,12 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
   const [valorAnterior, setValorAnterior] = useState(valor);
   const [aberto, setAberto] = useState(false);
   const [mesVisivel, setMesVisivel] = useState(() => mesDoValor(valor));
+  // O campo âncora fica em estado, não em `ref`: o calendário mora em outro
+  // ponto da árvore do DOM (portal) e precisa medir o elemento já montado para
+  // se posicionar — um `ref` não avisaria a renderização de que ele existe.
+  const [campo, setCampo] = useState<HTMLInputElement | null>(null);
   const raiz = useRef<HTMLDivElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
 
   // Valor trocado por fora (reset do modal, seleção no calendário): o texto
   // digitado acompanha. Padrão de estado derivado do React 19 — um `useEffect`
@@ -123,7 +143,14 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
       return;
     }
     const aoClicarFora = (evento: MouseEvent): void => {
-      if (raiz.current !== null && !raiz.current.contains(evento.target as Node)) {
+      const alvo = evento.target as Node;
+      // O calendário está **fora** da raiz do campo (portal): sem checá-lo
+      // também, o `mousedown` sobre um dia fecharia o popover antes do `click`
+      // e a seleção se perderia.
+      const dentro =
+        (raiz.current !== null && raiz.current.contains(alvo)) ||
+        (popover.current !== null && popover.current.contains(alvo));
+      if (!dentro) {
         setAberto(false);
       }
     };
@@ -140,7 +167,7 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
 
   return (
     <div
-      className="relative"
+      className="flex items-center"
       ref={raiz}
       onKeyDown={(evento) => {
         // Escape com o calendário aberto fecha **só** o calendário: o modal que
@@ -153,6 +180,7 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
       }}
     >
       <input
+        ref={setCampo}
         type="text"
         inputMode="numeric"
         autoComplete="off"
@@ -179,8 +207,10 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
         }}
       />
 
-      {aberto ? (
-        <CalendarioDoMes
+      {aberto && campo !== null ? (
+        <CalendarioFlutuante
+          ancora={campo}
+          refCaixa={popover}
           mesVisivel={mesVisivel}
           selecionado={valor}
           onTrocarMes={setMesVisivel}
@@ -194,11 +224,95 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
   );
 }
 
+/** Folga entre o campo e o calendário; margem mínima até a borda da janela. */
+const FOLGA_DO_CAMPO = 10;
+const MARGEM_DA_JANELA = 8;
+
 interface CalendarioDoMesProps {
   readonly mesVisivel: Date;
   readonly selecionado: string;
   readonly onTrocarMes: (mes: Date) => void;
   readonly onSelecionar: (iso: string) => void;
+}
+
+interface CalendarioFlutuanteProps extends CalendarioDoMesProps {
+  /** Campo ao qual o calendário se ancora — medido a cada reposicionamento. */
+  readonly ancora: HTMLElement;
+  /** Exposto ao campo para o clique-fora reconhecer o popover portalizado. */
+  readonly refCaixa: RefObject<HTMLDivElement | null>;
+}
+
+/**
+ * Moldura do calendário: portal para o `<body>` e posição fixa calculada a
+ * partir do campo. Fora da árvore do modal, nenhum `overflow-hidden` de
+ * ancestral o recorta; em troca o posicionamento deixa de ser automático e
+ * passa a ser refeito aqui a cada scroll, redimensionamento e troca de mês —
+ * um mês de seis semanas é mais alto que um de cinco e pode inverter o lado
+ * em que o calendário cabe.
+ */
+function CalendarioFlutuante({
+  ancora,
+  refCaixa,
+  ...conteudo
+}: CalendarioFlutuanteProps): ReactElement {
+  // Invisível até a primeira medição: sem isto o calendário pisca no canto
+  // superior esquerdo da janela antes de achar o lugar certo.
+  const [estilo, setEstilo] = useState<CSSProperties>({ top: 0, left: 0, visibility: 'hidden' });
+
+  useLayoutEffect(() => {
+    function reposicionar(): void {
+      const caixa = refCaixa.current;
+      if (caixa === null) {
+        return;
+      }
+      const campo = ancora.getBoundingClientRect();
+      const { width: largura, height: altura } = caixa.getBoundingClientRect();
+      const centralizado = campo.left + campo.width / 2 - largura / 2;
+      const limiteDireito = window.innerWidth - largura - MARGEM_DA_JANELA;
+      const abaixo = campo.bottom + FOLGA_DO_CAMPO;
+      // Abre para cima quando não sobra altura sob o campo — o caso da janela
+      // de importação esticada até perto do rodapé da tela.
+      const cabeAbaixo = abaixo + altura <= window.innerHeight - MARGEM_DA_JANELA;
+      setEstilo({
+        left: Math.max(MARGEM_DA_JANELA, Math.min(centralizado, limiteDireito)),
+        top: cabeAbaixo ? abaixo : Math.max(MARGEM_DA_JANELA, campo.top - FOLGA_DO_CAMPO - altura),
+        visibility: 'visible',
+      });
+    }
+
+    reposicionar();
+    // Captura (`true`): o scroll que desloca o campo é o de algum contêiner
+    // interno, e evento de scroll de elemento não borbulha até `window`.
+    window.addEventListener('scroll', reposicionar, true);
+    window.addEventListener('resize', reposicionar);
+    return () => {
+      window.removeEventListener('scroll', reposicionar, true);
+      window.removeEventListener('resize', reposicionar);
+    };
+  }, [ancora, refCaixa, conteudo.mesVisivel]);
+
+  return createPortal(
+    <div
+      ref={refCaixa}
+      style={estilo}
+      // `mousedown` no calendário não pode tirar o foco do campo antes do
+      // `click` do dia: sem isto o `onBlur` do input fecharia o popover no meio
+      // do gesto e o clique se perderia.
+      onMouseDown={(evento) => {
+        evento.preventDefault();
+      }}
+      className={cn(
+        // `z-[60]` fica acima do backdrop do modal (`z-50`) — o portal é irmão
+        // da aplicação no `<body>`, não descendente da janela.
+        'fixed z-[60] w-[252px]',
+        'rounded-xl border border-border bg-card p-sm shadow-lg',
+      )}
+      data-testid="calendario"
+    >
+      <CalendarioDoMes {...conteudo} />
+    </div>,
+    document.body,
+  );
 }
 
 function CalendarioDoMes({
@@ -214,19 +328,7 @@ function CalendarioDoMes({
   const hoje = isoLocal(new Date());
 
   return (
-    <div
-      // `mousedown` no calendário não pode tirar o foco do campo antes do
-      // `click` do dia: sem isto o `onBlur` do input fecharia o popover no meio
-      // do gesto e o clique se perderia.
-      onMouseDown={(evento) => {
-        evento.preventDefault();
-      }}
-      className={cn(
-        'absolute top-[calc(100%+10px)] left-1/2 z-50 w-[252px] -translate-x-1/2',
-        'rounded-xl border border-border bg-card p-sm shadow-lg',
-      )}
-      data-testid="calendario"
-    >
+    <>
       <div className="flex items-center justify-between gap-xs pb-xs">
         <button
           type="button"
@@ -298,6 +400,6 @@ function CalendarioDoMes({
           );
         })}
       </div>
-    </div>
+    </>
   );
 }

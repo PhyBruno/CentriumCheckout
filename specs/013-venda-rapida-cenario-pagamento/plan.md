@@ -22,7 +22,7 @@ O peso real do trabalho está na **fronteira**. `SessaoUsuario.CenarioPagamento`
 
 **Testing**: Vitest + Testing Library. Unitários puros (sem React) para parser e projeção — cobrindo I1–I5 e I10–I11 de `data-model.md` por tabela de entradas. Integração do comando sobre o slice real de pagamento para I6–I9 e I12, incluindo o teste negativo de acionamento concorrente. Playwright para o fluxo dourado de `quickstart.md` (C1) e para a não colisão com bipagem (C8).
 
-**Target Platform**: Navegador desktop (Chrome prioritário). O layout mobile é explicitamente excluído (`FR-020`) — não por limitação técnica, mas por decisão de produto do usuário; a exclusão é expressa como capacidade `plataforma` injetada, no mesmo padrão de AD-074.
+**Target Platform**: Navegador desktop (Chrome prioritário). O layout mobile é explicitamente excluído (`FR-020`) — não por limitação técnica, mas por decisão de produto do usuário; a exclusão é expressa como capacidade `plataforma` injetada, no mesmo padrão estreado por AD-074 (cuja regra de TEF foi revogada em AD-144, sem afetar este padrão).
 
 **Performance Goals**: O parse do catálogo ocorre **uma vez por sessão**, sobre dezenas de itens — custo estimado abaixo de 5ms, fora do caminho crítico da venda. O acionamento é síncrono e local até o ponto em que uma integração externa entra em cena, atendendo `SC-002` (< 1s) para cenários sem TEF/PIX. Nenhuma chamada nova ao ERP é introduzida.
 

@@ -27,8 +27,8 @@ Uma única árvore de componentes React decide, a cada render, entre apresentaç
 **Constraints**:
 - Critério de troca de layout é exclusivamente largura de viewport — nunca capacidade de toque do dispositivo (`Assumptions` do spec, Out of Scope de `.specs/features/layout-responsivo-mobile/spec.md`).
 - Nenhuma duplicação de regra de negócio entre as duas árvores (`SC-001`) — todo componente de domínio (grid de itens, modal de cliente/vendedor, fluxo de pagamento/finalização) é **o mesmo componente/hook**, reposicionado por layout, nunca reimplementado.
-- Import/recuperação de NFCe (features 006/011), TEF e o menu gerencial ficam **fora** da árvore mobile — não é uma flag de "oculto", é ausência estrutural: o `MobileWizard` nunca importa esses componentes (`FR-008`, AD-046).
-- PIX é a única forma de pagamento sem hardware que permanece disponível no mobile; TEF nunca é chamado no mobile independentemente de `ConfiguracoesTEF.TEFAtivo` (`FR-009`, AD-074) — este plano só garante que a etapa 2 do wizard não renderiza/aciona o caminho de TEF; a regra de roteamento em si pertence à feature 008 (pagamento-geral), que este plano consome, não reimplementa.
+- Import/recuperação de NFCe (features 006/011) e o menu gerencial ficam **fora** da árvore mobile — não é uma flag de "oculto", é ausência estrutural: o `MobileWizard` nunca importa esses componentes (`FR-008`, AD-046). **O TEF saiu desta lista em 2026-09-03 (AD-144):** ele passa a integrar a árvore mobile como qualquer outra forma de pagamento.
+- PIX e TEF estão igualmente disponíveis no mobile, decididos só por `ConfiguracoesPIX`/`ConfiguracoesTEF` (`FR-009`, **AD-144, 2026-09-03**, que revogou a exclusão de TEF no mobile de AD-074) — este plano não impõe nenhuma restrição de pagamento por layout; a regra de roteamento pertence à feature 008 (pagamento-geral), que este plano consome, não reimplementa.
 - Botão "Scanner" ausente (não desabilitado) fora de Chrome/Android — sem mensagem de indisponibilidade (`FR-011`, AD-090).
 - Atalhos de teclado nunca ativos na árvore mobile (`FR-005`, MOB-05) — nenhum `useHotkeys`/`HotkeysProvider` scope de venda é montado ali.
 - **Dependência de features ainda não desenhadas**: as features 004 (finalização/suspensão) e 012 (seleção de vendedor) e 008 (pagamento) têm `spec.md` mas ainda não passaram por `/speckit-plan` — este plano referencia os componentes/actions que elas **vão** expor pelos requisitos já aprovados (`FIN-*`, `VEND-*`), sem redesenhar essas features; a integração final (nomes exatos de componente) fica sujeita a ajuste não-estrutural quando a fase Design dessas três rodar.
@@ -85,7 +85,7 @@ src/
 │   │   └── mobile/
 │   │       ├── MobileWizard.tsx            # estado local: etapaAtual + etapasVisitadas; navegação livre (MOB-04)
 │   │       ├── EtapaClienteProdutos.tsx    # etapa 1 — compõe cliente (005) + carrinho (003) + ScannerCamera
-│   │       ├── EtapaPagamento.tsx          # etapa 2 — compõe conferência de itens + pagamento (008, sem TEF — AD-074)
+│   │       ├── EtapaPagamento.tsx          # etapa 2 — compõe conferência de itens + pagamento (008, TEF incluído — AD-144)
 │   │       ├── EtapaRevisao.tsx            # etapa 3 — compõe revisão + finalização (004)
 │   │       └── ScannerCamera.tsx           # BarcodeDetector; sucesso alimenta o mesmo EntradaCodigo do carrinho (003)
 │   └── stores/

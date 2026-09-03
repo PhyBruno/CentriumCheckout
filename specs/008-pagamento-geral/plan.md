@@ -10,7 +10,7 @@
 
 O pagamento é um slice `pagamento` combinado no mesmo store Zustand+Immer da venda em andamento (sem `persist`, AD-006), guardando **uma** condição de pagamento e **N** formas aplicadas — o split de `FR-011` acontece entre formas dentro de uma condição, porque `CheckoutFaturarNFCe.CondicaoPagamentoCodigo` é escalar no contrato enquanto `FormasDePagamento` é array. Toda a matemática (saldo, troco, rateio de desconto de capa, elegibilidade de vale) vive numa **camada de domínio pura** (`src/client/domain/pagamento/`), operando em `Centavos` inteiros reusados da feature 003 (Constitution V, AD-071/AD-072) — o slice apenas orquestra: valida pela função de domínio, aplica a mutação, dispara a integração externa quando houver e registra o evento de auditoria (contrato da feature 001).
 
-O roteamento de integração é uma **função pura de tabela** — `resolverIntegracao(forma, capacidades)` devolve `'TEF' | 'PIX_DINAMICO' | 'NENHUMA'` a partir de `FormaMeioPagtoNFe` (`PAY-08`) e de capacidades **injetadas** (`tefAtivo`, `pixAtivo`, `plataforma`). É o que mantém esta feature independente das features 009 e 010 (ela emite o veredito, elas executam) e o que torna `FR-007` testável: `CartaoCredito` + `TEFAtivo=true` + `MOBILE` → `NENHUMA`, sem exceção (AD-074), enquanto o PIX permanece disponível no mobile. Três achados de contrato desta fase viraram AD novos: as formas de pagamento **não têm endpoint próprio** (vêm de `SessaoUsuario.CondicoesDePagamento[]` em `GetSessao`, AD-097); o rateio do desconto de capa é divisão **igual com clamp e redistribuição**, decidido pelo usuário nesta sessão (AD-098); e `ValidaTicketDevolucaoOutput` **tem** um campo `Valido` que AD-023 dizia não existir, resolvido com fallback e pendência aberta (AD-099, item 32).
+O roteamento de integração é uma **função pura de tabela** — `resolverIntegracao(forma, capacidades)` devolve `'TEF' | 'PIX_DINAMICO' | 'NENHUMA'` a partir de `FormaMeioPagtoNFe` (`PAY-08`) e de capacidades **injetadas** (`tefAtivo`, `pixAtivo`). É o que mantém esta feature independente das features 009 e 010 (ela emite o veredito, elas executam) e o que torna `FR-007` testável: `CartaoCredito` + `TEFAtivo=true` → `TEF` em **qualquer** layout, e PIX idem. **Revisado em 2026-09-03 (AD-144):** a capacidade `plataforma` saiu daqui junto com a exclusão de TEF no mobile que AD-074 havia fixado. Três achados de contrato desta fase viraram AD novos: as formas de pagamento **não têm endpoint próprio** (vêm de `SessaoUsuario.CondicoesDePagamento[]` em `GetSessao`, AD-097); o rateio do desconto de capa é divisão **igual com clamp e redistribuição**, decidido pelo usuário nesta sessão (AD-098); e `ValidaTicketDevolucaoOutput` **tem** um campo `Valido` que AD-023 dizia não existir, resolvido com fallback e pendência aberta (AD-099, item 32).
 
 ## Technical Context
 
@@ -20,9 +20,9 @@ O roteamento de integração é uma **função pura de tabela** — `resolverInt
 
 **Storage**: N/A para estado de pagamento — condição, formas aplicadas, desconto de capa e vale vivem só em memória (Constitution VI, AD-006), descartados ao finalizar/suspender e não sobrevivem a F5. O catálogo é cache em memória do TanStack Query sobre o bootstrap que a feature 002 já persiste em Dexie; esta feature **lê**, nunca grava em Dexie.
 
-**Testing**: Vitest + Testing Library. Unitários puros (sem React) para: tabela de roteamento nas 4 combinações de flags × plataforma (`FR-004`..`FR-007`), saldo/troco (`FR-012`), exclusividade da forma dinheiro (`FR-013`), rateio igual com clamp e redistribuição (`FR-016`, AD-098), elegibilidade e interpretação de ticket (`FR-008`..`FR-010`, AD-099). Integração do slice para as invariantes I1-I10 de `data-model.md`, incluindo o **teste negativo** de duplicata (`FR-018`, AD-064) e a reversibilidade do bloqueio do carrinho (AD-030). Playwright para o fluxo dourado descrito em `quickstart.md`.
+**Testing**: Vitest + Testing Library. Unitários puros (sem React) para: tabela de roteamento nas 4 combinações de flags (`FR-004`..`FR-007`; sem eixo de plataforma desde AD-144), saldo/troco (`FR-012`), exclusividade da forma dinheiro (`FR-013`), rateio igual com clamp e redistribuição (`FR-016`, AD-098), elegibilidade e interpretação de ticket (`FR-008`..`FR-010`, AD-099). Integração do slice para as invariantes I1-I10 de `data-model.md`, incluindo o **teste negativo** de duplicata (`FR-018`, AD-064) e a reversibilidade do bloqueio do carrinho (AD-030). Playwright para o fluxo dourado descrito em `quickstart.md`.
 
-**Target Platform**: Navegador (Chrome prioritário), desktop e mobile pelo mesmo estado de venda — com a única divergência de comportamento sendo a exclusão do TEF no mobile (AD-074), expressa como dado (`plataforma`), não como ramo de código duplicado.
+**Target Platform**: Navegador (Chrome prioritário), desktop e mobile pelo mesmo estado de venda e **sem nenhuma divergência de comportamento** — a única que existia, a exclusão do TEF no mobile (AD-074), foi revogada em 2026-09-03 (AD-144).
 
 **Performance Goals**: Todo o cálculo é síncrono e local sobre unidades e dezenas de elementos (formas aplicadas, linhas do carrinho) — custo desprezível. A meta real é de rede: o catálogo de formas **não** pode gerar chamada por abertura da tela de pagamento (`staleTime` de 30 min), e `ValidaTicketDevolucao` é chamado **exatamente uma vez por vale**, nunca de novo na finalização (`FR-009`).
 
@@ -41,7 +41,7 @@ O roteamento de integração é uma **função pura de tabela** — `resolverInt
 - `removerPagamento` invalida o veredito vigente (`FR-021`, AD-113); e o congelamento da venda com pagamento aplicado passa a abranger cliente, vendedor e desconto de capa, não só o carrinho (`FR-023`, I12).
 - O catálogo de formas precisa carregar `FormaEntrada` (`FpgEnt`) além de `FormaFpgUtiCar` (`FR-022`, AD-111) — sem esse campo o ERP calcula crediário zero e o gate aprova o que deveria barrar.
 
-**Scale/Scope**: 1 slice Zustand (`pagamentoSlice`) + 5 módulos de domínio puro (`formaPagamento`, `roteamentoIntegracao`, `saldoPagamento`, `descontoCapa`, `valeDevolucao`) + 1 camada de query (catálogo + validação de ticket) + 2 schemas Zod de fronteira + 4 superfícies de UI (seletor de condição/forma, lista de formas aplicadas com saldo/troco, modal de desconto de capa, modal de vale devolução). Fora do escopo: o fluxo de PIX (feature 009), o de TEF (feature 010), a montagem e o envio de `FaturarNFCe` (feature 004 — esta feature entrega os dados prontos) e a adaptação de layout mobile em si (feature 007 — esta feature só consome `plataforma`).
+**Scale/Scope**: 1 slice Zustand (`pagamentoSlice`) + 5 módulos de domínio puro (`formaPagamento`, `roteamentoIntegracao`, `saldoPagamento`, `descontoCapa`, `valeDevolucao`) + 1 camada de query (catálogo + validação de ticket) + 2 schemas Zod de fronteira + 4 superfícies de UI (seletor de condição/forma, lista de formas aplicadas com saldo/troco, modal de desconto de capa, modal de vale devolução). Fora do escopo: o fluxo de PIX (feature 009), o de TEF (feature 010), a montagem e o envio de `FaturarNFCe` (feature 004 — esta feature entrega os dados prontos) e a adaptação de layout mobile em si (feature 007 — da qual esta feature não consome mais nada desde AD-144).
 
 ## Constitution Check
 
@@ -84,7 +84,7 @@ src/
 │   ├── domain/
 │   │   └── pagamento/                        # camada pura — sem React, Zustand, Query ou fetch
 │   │       ├── formaPagamento.ts             # MeioPagtoNFe, predicados (ehDinheiro, geraTroco, ...)
-│   │       ├── roteamentoIntegracao.ts       # resolverIntegracao/formaDisponivel (PAY-08, AD-074)
+│   │       ├── roteamentoIntegracao.ts       # resolverIntegracao/formaDisponivel (PAY-08, AD-144)
 │   │       ├── saldoPagamento.ts             # calcularSaldo, podeAplicarForma, derivarValores
 │   │       ├── descontoCapa.ts               # resolverDescontoCapa, ratearDescontoCapa (AD-098)
 │   │       └── valeDevolucao.ts              # ehElegivelParaVale (AD-048), interpretarRespostaTicket (AD-101, corrige AD-099)
@@ -110,7 +110,7 @@ tests/
 ├── unit/
 │   └── domain/
 │       └── pagamento/
-│           ├── roteamentoIntegracao.spec.ts  # matriz flags × plataforma; mobile nunca TEF (FR-007)
+│           ├── roteamentoIntegracao.spec.ts  # matriz de flags; sem eixo de plataforma (FR-007, AD-144)
 │           ├── saldoPagamento.spec.ts        # troco só p/ dinheiro, segunda forma dinheiro bloqueada
 │           ├── descontoCapa.spec.ts          # divisão igual, clamp, redistribuição, soma exata (AD-098)
 │           └── valeDevolucao.spec.ts         # FpgUtiCar vazio elegível; validade só por Valido (AD-101)

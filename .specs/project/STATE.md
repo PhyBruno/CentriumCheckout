@@ -762,15 +762,17 @@ Esse único campo resolve duas pendências que antes pareciam não relacionadas:
 
 ---
 
-### AD-074: Escopo mobile — funcionalidades normais confirmadas e TEF excluído (PIX permanece) — complementa AD-046 (2026-08-26)
+### AD-074: Escopo mobile — funcionalidades normais confirmadas e PIX disponível — complementa AD-046 (2026-08-26; a parte do TEF foi **revogada em 2026-09-03 por AD-144**)
+
+> **Leia primeiro:** a exclusão do TEF no mobile que esta AD estabeleceu **não vale mais**. **AD-144 (2026-09-03)** a revogou: o TEF pode ser chamado no mobile, e quem decide a disponibilidade é `ConfiguracoesTEF.TEFAtivo`, exatamente como no desktop. O resto desta AD (funcionalidades normais no mobile, PIX disponível) continua em vigor.
 
 **Decision:** Confirmação adicional de escopo mobile, complementando AD-046 (que já cobria DAV, recuperação de NFCe, cadastro de cliente e menu gerencial):
-- O checkout mobile permite normalmente busca e cadastro de cliente, inserção/edição/exclusão de item normal, identificação de vendedor e seleção de condição/forma de pagamento — mesmo fluxo do desktop, sujeito só à adaptação de layout já prevista em `layout-responsivo-mobile`.
-- O checkout mobile **não** chama TEF — nenhuma forma de pagamento tipo cartão roteia para a integração TEF local quando o layout é mobile, independentemente de `ConfiguracoesTEF.TEFAtivo`.
-- **Exceção:** PIX continua disponível e chamável normalmente no mobile.
-**Reason:** Decisão direta do usuário — TEF depende de terminal físico conectado ao PDV, cenário que não se aplica a uso em tablet/celular; PIX não tem essa dependência de hardware, por isso permanece disponível.
+- O checkout mobile permite normalmente busca e cadastro de cliente, inserção/edição/exclusão de item normal, identificação de vendedor e seleção de condição/forma de pagamento — mesmo fluxo do desktop, sujeito só à adaptação de layout já prevista em `layout-responsivo-mobile`. **(Continua valendo.)**
+- **REVOGADO por AD-144 (2026-09-03) — não implementar.** O texto original dizia: "o checkout mobile **não** chama TEF — nenhuma forma de pagamento tipo cartão roteia para a integração TEF local quando o layout é mobile, independentemente de `ConfiguracoesTEF.TEFAtivo`". A regra vigente é a de AD-144: cartão com `TEFAtivo = true` roteia para TEF em qualquer layout.
+- PIX continua disponível e chamável normalmente no mobile. **(Continua valendo — e deixou de ser "exceção", já que o TEF também está disponível.)**
+**Reason:** Decisão direta do usuário na época — TEF dependeria de terminal físico conectado ao PDV, cenário que não se aplicaria a uso em tablet/celular; PIX não tem essa dependência de hardware. **A premissa do terminal foi corrigida pelo próprio usuário em 2026-09-03 (AD-144).**
 **Trade-off:** Nenhum identificado.
-**Impact:** Atualiza `.specs/features/layout-responsivo-mobile/spec.md` (Escopo mobile confirmado / Out of Scope) e `.specs/features/pagamento-tef/spec.md` e `.specs/features/pagamento-geral/spec.md` (roteamento TEF/PIX exclui TEF no mobile).
+**Impact:** Atualiza `.specs/features/layout-responsivo-mobile/spec.md` (Escopo mobile confirmado / Out of Scope) e `.specs/features/pagamento-tef/spec.md` e `.specs/features/pagamento-geral/spec.md` — todos revisados em 2026-09-03 para refletir AD-144.
 
 ---
 
@@ -1764,3 +1766,27 @@ O período nasce aplicado: início em **hoje − 7 dias**, fim em **hoje**, reca
 **Complementa:** **AD-142** (que estabeleceu o padrão no atalho de importação), **AD-134** (o recorte do card de cliente durante a transição).
 
 **Impact:** `src/client/lib/bloqueio.ts` (novo), `src/client/components/ui/button.tsx`, `src/client/features/dav/BotaoMenuImportacao.tsx`, `src/client/features/finalizacao-suspensao/BotaoCancelarVenda.tsx` (prop `bloqueado` agora textual, `enviando` removida), `src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx`, `src/client/features/carrinho/EntradaRapidaProduto.tsx`, `src/client/features/cliente/CampoClienteVenda.tsx`. Testes: `tests/integration/finalizacaoSuspensao.spec.ts` e `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (asserções migradas para `aria-disabled`), `tests/e2e/finalizacao-suspensao.spec.ts`, `tests/e2e/carrinho-precificacao.spec.ts` e `tests/e2e/identificacao-cliente.spec.ts` (+1 caso cada). 457 unitários/integração e 110 E2E verdes; `tsc --noEmit` e `eslint` limpos.
+
+### AD-144: O TEF pode ser chamado no mobile — a disponibilidade da integração é decidida só por `TEFAtivo` (2026-09-03)
+
+**Pedido direto do usuário:** "poderá sim ser possível chamar o TEF no mobile".
+
+**Revoga a exclusão de TEF no mobile fixada em AD-074.** O layout deixa de ser insumo do roteamento de integração: uma forma com `FormaMeioPagtoNFe` igual a `CartaoCredito`/`CartaoDebito` roteia para TEF sempre que `ConfiguracoesTEF.TEFAtivo` for verdadeiro — no desktop e no mobile, pela mesma regra de `PAY-08`, sem ramo por plataforma. As demais partes de AD-074 (busca/cadastro de cliente, itens, vendedor e condição/forma normais no mobile; PIX disponível) continuam valendo sem alteração.
+
+**A premissa que caiu.** AD-074 assumia que o terminal TEF é físico, ligado ao PDV, e sem equivalente para tablet/celular — daí a exclusão por layout. O usuário informa que essa restrição não se sustenta: o dispositivo móvel também pode alcançar o terminal, então quem sabe se a integração existe naquele ambiente é o cadastro do ERP, não a largura da tela. Manter a exclusão criaria a situação absurda de um tenant com `TEFAtivo = true` ver a forma sumir só por abrir o Checkout no tablet.
+
+**Consequência de projeto (features 008/010, ainda não implementadas):** `resolverIntegracao(forma, capacidades)` passa a depender apenas de `tefAtivo`/`pixAtivo`; `plataforma` deixa de ser consultada nesse cálculo. O campo continua existindo no contrato de capacidades para quem tem regra própria de plataforma — a feature 013 restringe a venda rápida ao desktop pelo seu `FR-020`, que nada tem a ver com TEF —, mas a 008 não o usa mais para vetar integração, e o caso de teste "`CartaoCredito` + `TEFAtivo=true` + `MOBILE` → `NENHUMA`" vira "→ `TEF`". Cai junto a exclusão **estrutural** que a feature 007 impunha: a etapa de pagamento do wizard mobile passa a montar o mesmo caminho de TEF do desktop, e o teste que proibia `EtapaPagamento.tsx` de importar qualquer módulo de TEF deixa de fazer sentido. As demais ausências do mobile continuam de pé — importação de DAV, recuperação de NFCe e menu gerencial seguem fora, por AD-046, que esta AD não toca.
+
+**Supera:** **AD-074** (só no ponto do TEF). **Impact:** `.specs/features/pagamento-geral/spec.md` (nota mobile, `PAY-08`, cenário 6 de roteamento), `.specs/features/pagamento-tef/spec.md` (Edge Case de layout, nota da 013), `.specs/features/pagamento-pix/spec.md` (nota de disponibilidade no mobile), `.specs/features/layout-responsivo-mobile/spec.md` (escopo mobile e Out of Scope), `specs/010-pagamento-tef/spec.md` (`FR-006` e Edge Case), `specs/008-pagamento-geral/` (`research.md` D5, `contracts/pagamento-domain-api.md`, `data-model.md`, `plan.md`, `tasks.md` T003), `specs/009-pagamento-pix/` (`plan.md`, `contracts/pix-domain-api.md`), `specs/007-layout-responsivo-mobile/` (`plan.md`, `contracts/layout-domain-api.md`, `tasks.md` T016/T019) e `specs/013-venda-rapida-cenario-pagamento/` (referências ao "padrão AD-074"). Nenhum código muda — as três features estão em fase de plano.
+
+### AD-145: O filtro de emissão da janela de DAV vira duas pílulas, e o calendário sai do modal por portal (2026-09-03)
+
+**Dois pedidos diretos do usuário**, ambos sobre o filtro de período da janela de importação:
+
+**(1) Uma pílula por data.** As duas datas dividiam um único invólucro, separadas só por um travessão — liam como um campo só, e nada dizia qual metade estava sendo editada. Agora são dois filtros independentes lado a lado ("Emissão de" e "até"), cada um com ícone `calendar-days`, altura 36, raio total e superfície secundária — a mesma forma que o Pencil dá a todo filtro de pílula do frame `jfZtk` —, separados pelo vão de 10 que o desenho usa entre filtros. O componente `FiltroDeData` (local do modal) existe para que as duas pílulas não sejam markup duplicado.
+
+**(2) O calendário em portal para o `<body>`.** Ele era `absolute` dentro da janela, que é `overflow-hidden` para manter os cantos arredondados: qualquer parte que passasse da borda simplesmente desaparecia. Agora `CampoData` renderiza o popover via `createPortal` no `<body>`, com posição `fixed` calculada a partir do retângulo do campo — centralizado, preso às bordas da viewport por uma margem de 8, e **abrindo para cima** quando não sobra altura embaixo. A posição é refeita a cada scroll (ouvinte em fase de captura, porque scroll de elemento não borbulha até `window`), a cada resize e a cada troca de mês (um mês de seis semanas é mais alto que um de cinco).
+
+**Dois detalhes que o portal obriga:** o clique-fora passa a checar também o nó do popover — ele não é mais descendente do campo, e sem isso o `mousedown` sobre um dia fecharia o calendário antes do `click`; e o `z-[60]` fica acima do backdrop do modal (`z-50`), já que o portal é irmão da aplicação no `<body>`, não descendente da janela.
+
+**Impact:** `src/client/components/ui/campo-data.tsx` (novo `CalendarioFlutuante`; `CalendarioDoMes` vira só o conteúdo), `src/client/features/dav/ModalImportacaoDav.tsx` (`FiltroDeData` e `aoTrocarData`). Testes: `tests/e2e/importacao-dav.spec.ts` (+2 casos — o calendário pendura no `<body>` e cabe inteiro na viewport; cada pílula aplica só a sua ponta do período). 457 unitários/integração e 24 E2E de importação verdes; `tsc --noEmit` e `eslint` limpos.

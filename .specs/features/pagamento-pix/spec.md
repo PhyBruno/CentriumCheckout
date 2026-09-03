@@ -4,6 +4,8 @@
 
 O operador precisa gerar um pagamento PIX e saber quando ele foi aprovado, sem depender de eventos push do ERP. Comportamento comum a todas as formas de pagamento (carregamento de formas/condições, ticket devolução) está em `.specs/features/pagamento-geral/spec.md`; TEF está em `.specs/features/pagamento-tef/spec.md`.
 
+**Nota de plataforma (2026-09-03, AD-144):** o PIX sempre esteve disponível no mobile e continua — nada muda nesta feature. O que muda em volta dela é que o PIX **deixou de ser a única integração disponível no mobile**: AD-074 excluía o TEF ali, e AD-144 revogou essa exclusão. Nenhum texto desta spec pode ser lido como "PIX é a integração do mobile, TEF é a do desktop" — as duas valem nos dois layouts, decididas só por `ConfiguracoesPIX`/`ConfiguracoesTEF`.
+
 ## UI Design
 
 Modal PIX: frame `PDV Online Web - Modal PIX` (QR Code, copia e cola, badge de status). Tela principal e área "Pagamento e totais": ver `.specs/features/pagamento-geral/spec.md`. **Fonte do QR Code resolvida por completo (2026-08-26, AD-079 e AD-087):** ver Edge Cases — `GerarPIXOutput` já expõe `Trnbase64image` no contrato atualizado (`ApiCentriumOAuth.yaml`, `info.version: 20260826163735`), ao lado do `Trnbase64text` ("copia e cola") que já existia.

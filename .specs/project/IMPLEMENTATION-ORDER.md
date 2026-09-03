@@ -19,7 +19,7 @@ Dependência **rígida** = a feature dependente importa/consome diretamente algo
 | 11 | `010-pagamento-tef` | 002, 003, 005, 008 (mesmo padrão da 009) | ⚠️ Ainda só tem `spec.md` — precisa passar por `/speckit-plan` + `/speckit-tasks` antes de entrar de fato nesta ordem |
 | 12 | `011-recuperacao-nfce` | 001, 002, 003, 004, 005, 006, 008, 012 | Reusa `dav.schema.ts` da 006 (AD-117) e a action `trocarVendedor(origem:'RASCUNHO')` da 012 |
 | 13 | `007-layout-responsivo-mobile` | 003, 004, 005, 006 | Compõe componentes desktop já implementados — por isso exige a 006 (Milestone 2) além do Milestone 1 relevante |
-| 14 | `013-venda-rapida-cenario-pagamento` | 002, 008, 004, 001, 007 | Consome a capacidade `plataforma` injetada pela 007 (mesmo padrão de AD-074) — por isso vem depois dela |
+| 14 | `013-venda-rapida-cenario-pagamento` | 002, 008, 004, 001, 007 | Consome a capacidade `plataforma` injetada pela 007 (padrão estreado por AD-074; a regra de TEF que o originou caiu em AD-144, o padrão não) — por isso vem depois dela |
 
 ## Desvios em relação à leitura ingênua do `ROADMAP.md` (Milestone 1 → 2 → 3)
 

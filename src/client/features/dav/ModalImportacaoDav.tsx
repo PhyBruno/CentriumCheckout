@@ -163,6 +163,19 @@ export function ModalImportacaoDav({
   const davSelecionado = davs.find((dav) => dav.numeroDav === selecionado) ?? null;
   const semResultado = lista.data !== undefined && davs.length === 0;
 
+  /**
+   * Trocar qualquer uma das datas reinicia a paginação e solta a seleção: a
+   * linha escolhida pode não existir no novo período, e importar o índice
+   * antigo seria o documento errado.
+   */
+  function aoTrocarData(definir: (iso: string) => void): (iso: string) => void {
+    return (iso) => {
+      definir(iso);
+      setPagina(1);
+      setSelecionado(null);
+    };
+  }
+
   async function confirmarImportacao(): Promise<void> {
     if (davSelecionado === null || importando) {
       return;
@@ -250,38 +263,30 @@ export function ModalImportacaoDav({
               />
             </label>
 
-            {/* O Pencil desenha o período como uma pílula estática ("Emissão:
-                01/06 - 11/06"). Aqui ela vira dois campos de data reais —
-                início e fim, que é o que o contrato permite filtrar
-                (`Datainicial`/`Datafinal`) —, cada um com o seu calendário, que
-                abre a qualquer clique no campo (pedido do usuário,
-                2026-09-03). */}
-            <div className="flex h-9 shrink-0 items-center gap-xs rounded-full bg-secondary px-sm text-xs font-semibold text-foreground">
-              <CalendarDays
-                className="size-[15px] shrink-0 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <span className="shrink-0">Emissão</span>
-              <CampoData
+            {/* O Pencil desenha o período como **uma** pílula estática
+                ("Emissão: 01/06 - 11/06"). Aqui ela vira duas pílulas
+                independentes — início e fim, que é o que o contrato permite
+                filtrar (`Datainicial`/`Datafinal`) —, cada uma com o seu
+                calendário, que abre a qualquer clique no campo. A separação é
+                pedido do usuário (2026-09-03): dentro de um invólucro só, as
+                duas datas liam como um campo único e nada dizia qual metade
+                estava sendo editada. Cada pílula conserva a forma do desenho
+                (altura 36, raio total, superfície secundária, ícone
+                `calendar-days`) e o mesmo vão de 10 que separa os filtros. */}
+            <div className="flex shrink-0 items-center gap-[10px]">
+              <FiltroDeData
+                etiqueta="Emissão de"
                 rotulo="Data inicial de emissão"
                 testId="dav-data-inicial"
                 valor={dataInicial}
-                onChange={(iso) => {
-                  setDataInicial(iso);
-                  setPagina(1);
-                  setSelecionado(null);
-                }}
+                onChange={aoTrocarData(setDataInicial)}
               />
-              <span aria-hidden="true">–</span>
-              <CampoData
+              <FiltroDeData
+                etiqueta="até"
                 rotulo="Data final de emissão"
                 testId="dav-data-final"
                 valor={dataFinal}
-                onChange={(iso) => {
-                  setDataFinal(iso);
-                  setPagina(1);
-                  setSelecionado(null);
-                }}
+                onChange={aoTrocarData(setDataFinal)}
               />
             </div>
           </div>
@@ -388,6 +393,34 @@ export function ModalImportacaoDav({
           </div>
         </footer>
       </div>
+    </div>
+  );
+}
+
+interface FiltroDeDataProps {
+  /** Texto visível dentro da pílula ("Emissão de", "até"). */
+  readonly etiqueta: string;
+  /** Nome acessível do campo, que a etiqueta curta sozinha não daria. */
+  readonly rotulo: string;
+  readonly testId: string;
+  /** `YYYY-MM-DD`. */
+  readonly valor: string;
+  readonly onChange: (iso: string) => void;
+}
+
+/** Uma das duas pílulas de data da faixa de filtros. */
+function FiltroDeData({
+  etiqueta,
+  rotulo,
+  testId,
+  valor,
+  onChange,
+}: FiltroDeDataProps): ReactElement {
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-xs rounded-full bg-secondary px-sm text-xs font-semibold text-foreground">
+      <CalendarDays className="size-[15px] shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="shrink-0">{etiqueta}</span>
+      <CampoData rotulo={rotulo} testId={testId} valor={valor} onChange={onChange} />
     </div>
   );
 }

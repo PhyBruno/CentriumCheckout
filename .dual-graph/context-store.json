@@ -5534,5 +5534,34 @@
       "src/client/features/dav/useImportacaoDav.ts"
     ],
     "date": "2026-09-03"
+  },
+  {
+    "type": "decision",
+    "content": "AD-144: TEF liberado no mobile; plataforma sai do roteamento de integracao",
+    "tags": [
+      "tef",
+      "mobile",
+      "008",
+      "010"
+    ],
+    "files": [
+      ".specs/features/pagamento-tef/spec.md",
+      "specs/008-pagamento-geral/research.md"
+    ],
+    "date": "2026-09-03"
+  },
+  {
+    "type": "decision",
+    "content": "AD-145: filtro de emissao em duas pilulas; calendario em portal no body",
+    "tags": [
+      "dav",
+      "006",
+      "ui"
+    ],
+    "files": [
+      "src/client/components/ui/campo-data.tsx",
+      "src/client/features/dav/ModalImportacaoDav.tsx"
+    ],
+    "date": "2026-09-03"
   }
 ]
