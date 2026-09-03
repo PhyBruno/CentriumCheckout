@@ -90,7 +90,7 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
     await abrirTelaDeVenda(page);
     await identificarPorDocumento(page, CPF_VAREJO);
 
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE VAREJO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
     expect((await contadores(request)).getCliente).toBe(1);
   });
 
@@ -105,7 +105,7 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
     const antes = await contadores(request);
     await page.getByTestId('candidato-cliente').filter({ hasText: 'CLIENTE CONVENIADO' }).click();
 
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
     // A lista não traz `DescontoConvenio`: o snapshot só pode vir de
     // `GetCliente` (`research.md` D1, AD-091).
     expect((await contadores(request)).getCliente).toBe(antes.getCliente + 1);
@@ -149,7 +149,7 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
 
     const antes = await contadores(request);
     await identificarPorDocumento(page, CPF_CONVENIADO);
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
 
     await expect
       .poll(async () => (await contadores(request)).getProduto)
@@ -161,11 +161,11 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
     await abrirTelaDeVenda(page);
 
     await identificarPorDocumento(page, CPF_VAREJO);
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE VAREJO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
 
     await buscarPorTermo(page, 'CONVENIADO');
     await page.getByTestId('candidato-cliente').first().click();
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
   });
 });
 
@@ -196,7 +196,7 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     await page.getByTestId('salvar-cliente').click();
 
     await expect(modal).toBeHidden();
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE NOVO E2E');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE NOVO E2E');
 
     const depois = await contadores(request);
     expect(depois.postCliente).toBe(1);
@@ -223,7 +223,7 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     await buscarPorTermo(page, CNPJ_EXISTENTE);
 
     await page.getByTestId('candidato-cliente').first().click();
-    await expect(page.getByTestId('nome-cliente')).toHaveText('NILMAQ COMERCIO DE PECAS');
+    await expect(page.getByTestId('status-cliente')).toHaveText('NILMAQ COMERCIO DE PECAS');
   });
 
   test('CPF sem resultado na busca livre oferece o cadastro simplificado', async ({ page }) => {
@@ -283,7 +283,7 @@ test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
     // produto sem passar pelo botão.
     await page.getByTestId('campo-documento-cliente').press('Tab');
 
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE VAREJO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
     expect((await contadores(request)).getCliente).toBe(1);
   });
 
@@ -293,8 +293,10 @@ test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
   }) => {
     await abrirTelaDeVenda(page);
     await identificarPorDocumento(page, CPF_VAREJO);
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE VAREJO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
 
+    // O card recolheu ao identificar; reabri-lo mostra o documento mascarado.
+    await expandirCardCliente(page);
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('122.980.239-80');
 
     // Sair do campo com o mesmo documento já associado não rebusca o cliente.
@@ -332,7 +334,7 @@ test.describe('Achados da revisão de 2026-09-03', () => {
 
     await page.getByTestId('candidato-cliente').first().click();
 
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE SEM DOCUMENTO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE SEM DOCUMENTO');
     // Resolver pelo documento vazio daria 404 e abriria o cadastro simplificado
     // sem o operador ter pedido.
     await expect(page.getByTestId('modal-cadastro-cliente')).toHaveCount(0);
@@ -341,15 +343,106 @@ test.describe('Achados da revisão de 2026-09-03', () => {
   test('reescolher o mesmo cliente não dispara nova consulta ao ERP', async ({ page, request }) => {
     await abrirTelaDeVenda(page);
     await identificarPorDocumento(page, CPF_CONVENIADO);
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
 
     const antes = (await contadores(request)).getProduto;
+    await expandirCardCliente(page);
     await page.getByTestId('abrir-busca-cliente').click();
     await page.getByTestId('campo-busca-cliente').fill('CONVENIADO');
     await page.getByTestId('candidato-cliente').first().click();
 
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
     expect((await contadores(request)).getProduto).toBe(antes);
+  });
+});
+
+test.describe('Recolher e devolver o foco ao identificar (pedido do usuário, 2026-09-03)', () => {
+  /** O campo de código só recebe foco de fato quando está habilitado. */
+  async function esperarFocoNoCodigo(page: Page): Promise<void> {
+    await expect(page.getByTestId('campo-codigo-produto')).toBeFocused();
+  }
+
+  async function esperarCardRecolhido(page: Page): Promise<void> {
+    await expect(page.getByTestId('alternar-cliente-expandido')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveCount(0);
+  }
+
+  test('documento existente recolhe o card e devolve o foco ao código do produto', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_VAREJO);
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
+    await esperarCardRecolhido(page);
+    await esperarFocoNoCodigo(page);
+  });
+
+  test('o mesmo vale ao sair do campo por TAB, sem clicar em Identificar', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+    await page.getByTestId('campo-documento-cliente').fill(CPF_VAREJO);
+    await page.getByTestId('campo-documento-cliente').press('Tab');
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
+    await esperarCardRecolhido(page);
+    await esperarFocoNoCodigo(page);
+  });
+
+  test('escolher um candidato no modal recolhe o card e devolve o foco', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await buscarPorTermo(page, 'CONVENIADO');
+    await page.getByTestId('candidato-cliente').first().click();
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await esperarCardRecolhido(page);
+    await esperarFocoNoCodigo(page);
+  });
+
+  test('o cliente cadastrado entra na venda, o card recolhe e o foco volta', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_INEXISTENTE);
+
+    await expect(page.getByTestId('modal-cadastro-cliente')).toBeVisible();
+    await page.getByTestId('campo-cadastro-nome').fill('CLIENTE NOVO FOCO');
+    await page.getByTestId('campo-cadastro-cep').fill('89000-000');
+    await page.getByTestId('salvar-cliente').click();
+
+    // Autoinserido na venda pelo próprio slice, sem passo extra do operador.
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE NOVO FOCO');
+    await expect(page.getByTestId('modal-cadastro-cliente')).toHaveCount(0);
+    await esperarCardRecolhido(page);
+    await esperarFocoNoCodigo(page);
+  });
+
+  test('identificar e bipar em seguida, sem tocar no mouse', async ({ page }) => {
+    // O ganho real do pedido: o caixa identifica o cliente e digita o próximo
+    // item direto, porque o foco já está no campo certo.
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_VAREJO);
+    await esperarFocoNoCodigo(page);
+
+    await page.keyboard.type(SKU_COM_FAIXA);
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+  });
+
+  test('uma segunda identificação seguida também devolve o foco', async ({ page }) => {
+    // Guarda contra o sinal de foco virar um booleano: o segundo pedido
+    // precisa disparar o efeito de novo.
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_VAREJO);
+    await esperarFocoNoCodigo(page);
+
+    await page.getByTestId('campo-codigo-produto').blur();
+    await identificarPorDocumento(page, CPF_CONVENIADO);
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await esperarFocoNoCodigo(page);
   });
 });
 
@@ -357,7 +450,7 @@ test.describe('Verificação manual apoiada pelo E2E', () => {
   test('F5 no meio da venda descarta o cliente selecionado (Constitution VI)', async ({ page }) => {
     await abrirTelaDeVenda(page);
     await identificarPorDocumento(page, CPF_CONVENIADO);
-    await expect(page.getByTestId('nome-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
 
     await page.reload();
     await expect(page.getByTestId('tela-de-venda')).toBeVisible();

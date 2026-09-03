@@ -20,6 +20,7 @@ import {
   type Milesimos,
 } from '../../domain/precificacao/quantidade';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { ModalBuscaProduto } from './ModalBuscaProduto';
 import {
   useContextoPrecificacao,
@@ -219,6 +220,27 @@ export function EntradaRapidaProduto(): ReactElement {
       campoCodigo.current?.focus();
     }
   }, [resolvido, linhaEmEdicao]);
+
+  /**
+   * Foco pedido de fora — hoje só pelo card de cliente, ao concluir uma
+   * identificação (pedido do usuário, 2026-09-03).
+   *
+   * Efeito separado do de cima, e não uma dependência a mais nele: aquele
+   * reage ao **estado da própria barra** voltar ao vazio, e reexecutá-lo por
+   * um pedido externo roubaria o foco no meio de uma revisão de produto em
+   * andamento. Aqui o pedido é explícito, e o guard de `resolvido` preserva a
+   * mesma regra — quem está revisando um item não perde o campo.
+   */
+  const pedidosDeFocoNoCodigo = useFocoVendaStore((estado) => estado.pedidosDeFocoNoCodigo);
+  useEffect(() => {
+    if (pedidosDeFocoNoCodigo > 0 && resolvido === null) {
+      campoCodigo.current?.focus();
+    }
+    // `resolvido` fora das dependências de propósito: o efeito reage ao
+    // pedido, não à barra — incluí-lo faria toda revisão concluída disparar um
+    // foco extra em nome de um pedido antigo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidosDeFocoNoCodigo]);
 
   function resetar(): void {
     setResolvido(null);

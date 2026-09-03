@@ -16,6 +16,7 @@ import {
   classificarDocumento,
   formatarDocumento,
 } from '../../domain/cliente/documento';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
@@ -55,6 +56,7 @@ export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
   const sessao = useSessionStore((estado) => estado.registro?.SessaoUsuario ?? null);
   const { identificarPorDocumento, identificarPorCodigo, cadastrar } = useIdentificacaoCliente();
+  const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
 
   const [expandido, setExpandido] = useState(false);
   const [documento, setDocumento] = useState('');
@@ -79,6 +81,20 @@ export function CampoClienteVenda(): ReactElement {
   if (documentoDoCliente !== documentoEspelhado) {
     setDocumentoEspelhado(documentoDoCliente);
     setDocumento(documentoDoCliente === null ? '' : formatarDocumento(documentoDoCliente));
+  }
+
+  /**
+   * Cliente identificado: o card recolhe e o foco volta ao código do produto
+   * (pedido do usuário, 2026-09-03).
+   *
+   * Vale para os três caminhos — documento, escolha no modal e cadastro
+   * simplificado —, porque os três terminam no mesmo ponto do fluxo do caixa:
+   * o cliente está resolvido e o próximo gesto é bipar um item. Deixar o card
+   * aberto custaria altura ao carrinho e um clique a mais.
+   */
+  function concluirIdentificacao(): void {
+    setExpandido(false);
+    focarCodigoProduto();
   }
 
   /**
@@ -119,6 +135,10 @@ export function CampoClienteVenda(): ReactElement {
       const resultado = await identificarPorDocumento(termo, 'BUSCA_DOCUMENTO');
       if (resultado.situacao === 'nao-encontrado') {
         tratarNaoEncontrado(termo);
+        return;
+      }
+      if (resultado.situacao === 'identificado') {
+        concluirIdentificacao();
       }
     } finally {
       setBuscando(false);
@@ -134,6 +154,10 @@ export function CampoClienteVenda(): ReactElement {
     const resultado = await identificarPorCodigo(candidato.codigo, 'BUSCA_LIVRE');
     if (resultado.situacao === 'nao-encontrado') {
       tratarNaoEncontrado(candidato.cpf);
+      return;
+    }
+    if (resultado.situacao === 'identificado') {
+      concluirIdentificacao();
     }
   }
 
@@ -317,9 +341,13 @@ export function CampoClienteVenda(): ReactElement {
           setCadastroAberto(false);
         }}
         onConfirmar={async (dados) => {
+          // O cliente recém-criado já entra na venda pelo próprio slice
+          // (`CLIENTE_CRIADO`); aqui só se fecha o modal e se devolve o caixa
+          // ao ritmo dele.
           const resultado = await cadastrar(dados);
           if (resultado.situacao === 'identificado') {
             setCadastroAberto(false);
+            concluirIdentificacao();
           }
         }}
       />
