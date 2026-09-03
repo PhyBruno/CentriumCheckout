@@ -300,7 +300,7 @@ test.describe('User Story 2 — cadastro simplificado (T025)', () => {
     );
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('');
     await expect(page.getByTestId('nome-cliente')).toHaveText('Buscar cliente cadastrado');
-    await expect(page.getByTestId('contato-cliente')).toHaveText('—');
+    await expect(page.getByTestId('contato-cliente')).toHaveText('Não informado');
   });
 
   test('CPF sem resultado na busca livre abre o cadastro pelo botão do topo', async ({ page }) => {
@@ -404,6 +404,26 @@ test.describe('Correções de 2026-09-03 (segunda rodada)', () => {
     await esperarCamposRecolhidos(page);
     await expandirCardCliente(page);
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('1255');
+  });
+
+  test('cliente sem contato mostra "Não informado" em cor secundária', async ({ page }) => {
+    // O cliente default não tem telefone (`GetSessao` não devolve contato), e
+    // o campo se comporta como placeholder — mesma cor do rótulo acima dele,
+    // que é o token secundário do produto.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    const contato = page.getByTestId('contato-cliente');
+    await expect(contato).toHaveText('Não informado');
+
+    const [corDoContato, corDoRotulo] = await contato.evaluate((valor) => {
+      const rotulo = valor.parentElement?.firstElementChild;
+      return [
+        getComputedStyle(valor).color,
+        rotulo === null || rotulo === undefined ? '' : getComputedStyle(rotulo).color,
+      ];
+    });
+    expect(corDoContato).toBe(corDoRotulo);
   });
 
   test('o card recolhido não deixa faixa em branco abaixo do cabeçalho', async ({ page }) => {

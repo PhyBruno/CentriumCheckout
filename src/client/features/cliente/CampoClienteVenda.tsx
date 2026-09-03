@@ -143,6 +143,19 @@ export function CampoClienteVenda(): ReactElement {
     clienteAtual === null || clienteAtual.documento === null || clienteAtual.documento === ''
       ? null
       : clienteAtual.documento;
+  /**
+   * Celular vazio conta como ausente, junto com `null`: o cadastro sem
+   * telefone chega das duas formas — `GetSessao` não devolve contato do
+   * cliente default e `GetCliente` devolve string vazia — e para o operador é
+   * o mesmo caso.
+   */
+  const contatoDoCliente =
+    clienteAtual?.celular === undefined ||
+    clienteAtual.celular === null ||
+    clienteAtual.celular === ''
+      ? null
+      : clienteAtual.celular;
+
   const identificacaoDoCliente =
     clienteAtual === null
       ? null
@@ -479,13 +492,19 @@ export function CampoClienteVenda(): ReactElement {
               <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                 <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
+                {/* Sem contato, o campo se comporta como um placeholder — texto
+                    e cor secundária, como o "Bipe ou digite" da barra de produto
+                    (pedido do usuário, 2026-09-03). O traço anterior era ambíguo:
+                    lido rápido, parecia um contato curto ou um campo quebrado, e
+                    não dizia que o cadastro simplesmente não tem telefone. */}
                 <span
-                  className="truncate text-base font-medium text-foreground"
+                  className={cn(
+                    'truncate text-base font-medium',
+                    contatoDoCliente === null ? 'text-muted-foreground' : 'text-foreground',
+                  )}
                   data-testid="contato-cliente"
                 >
-                  {clienteAtual?.celular === undefined || clienteAtual.celular === null
-                    ? '—'
-                    : clienteAtual.celular}
+                  {contatoDoCliente ?? 'Não informado'}
                 </span>
               </span>
             </div>
