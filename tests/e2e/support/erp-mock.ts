@@ -141,6 +141,10 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     SessaoUsuario: {
       UsuarioCodigo: 42,
       UsuarioNome: 'Operador de Teste',
+      // Identidade exibida na barra superior — sintética, como o resto do mock.
+      EmpresaNomeFantasia: 'Organizações Tabajara',
+      EmpresaRazaoSocial: 'Tabajara Comércio Ltda',
+      caixa: 3,
       TipoPreco: config.tipoPreco,
       CadMaqCod: config.cadMaqCod,
       ListaPrecoDefault: 3,

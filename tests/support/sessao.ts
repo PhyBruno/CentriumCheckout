@@ -17,6 +17,10 @@ export function registroBootstrapDe(
     _versionHash: 'hash-de-teste',
     SessaoUsuario: {
       TipoPreco: 8,
+      EmpresaNomeFantasia: 'Organizações Tabajara',
+      EmpresaRazaoSocial: 'Tabajara Comércio Ltda',
+      UsuarioNome: 'Bruno',
+      caixa: 3,
       CadMaqCod: 'PDV01',
       CadSerieNFCe: '1',
       CadMaqHost: '127.0.0.1:4545',
