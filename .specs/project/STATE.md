@@ -1580,3 +1580,22 @@ Segundo trade-off, menor: a classificação por contagem de dígitos (14 → CNP
 **Também nesta rodada (regressão de CSS, sem decisão de produto):** `overflow-clip-margin: 4px` em `.cc-colapsavel > *` — introduzido para devolver o anel de `focus-visible` que `overflow: hidden` cortava — valia também com o bloco recolhido, e deixava escapar uma faixa de 4px do conteúdo abaixo do cabeçalho. A folga passou a ser presa a `.cc-colapsavel-aberto > *`: existe enquanto o bloco está aberto e some no instante em que ele recolhe.
 
 **Impact:** `src/client/features/cliente/CampoClienteVenda.tsx` (`zerarIdentificacao`, foco no campo de documento), `src/client/features/cliente/ModalBuscaCliente.tsx` (desvio de CNPJ na área de resultados, `SemResultados` sem CTA), `src/client/styles/global.css` (`cc-colapsavel`), `tests/e2e/identificacao-cliente.spec.ts` (5 casos novos, 2 atualizados). Nenhuma spec de `specs/005-identificacao-cadastro-cliente/` muda de requisito — `FR-010` e o passo 5 do `quickstart.md` seguem descrevendo a recusa; o que se corrige é o desfecho de UI, que elas não fixavam. Nenhum item novo em `.specs/project/PENDENCIES.md`.
+
+### AD-135: O campo de identificação devolve a identidade que o operador digitou, e o rótulo deixa de anunciar CNPJ (2026-09-03)
+
+**Decision:** Duas mudanças no primeiro campo do card de cliente, pedidas pelo usuário em 2026-09-03:
+
+1. **Rótulo "Código do cliente ou CPF"**, no lugar de "CPF/CNPJ". É um desvio deliberado do Pencil (nó `Rótulo CPF/CNPJ`), e o desenho é que ficou defasado: o campo passou a aceitar também o **código do cliente** (até 6 dígitos) e deixou de aceitar **CNPJ** (AD-133). Um rótulo que anuncia CNPJ oferece justamente o que a norma proíbe, e esconde a entrada que o operador mais usa no caixa.
+2. **O campo devolve a identidade que foi usada para identificar, não a que o ERP considera principal.** Quem digitou `1255` continua lendo `1255`; quem digitou o CPF continua lendo o CPF com máscara. `GetCliente` devolve as duas identidades do mesmo cadastro, e escolher por conta própria faria o campo reescrever a entrada do operador por uma que ele não digitou.
+
+   A face é **código** — não documento — em todos os caminhos que não passam pelo campo: cliente default (`GetSessao` não devolve documento, AD-108), candidato escolhido no modal e cliente recém-cadastrado. Nos dois últimos o operador buscou por nome ou preencheu um formulário; o `CodCliente` é o que identifica o cadastro que passou a valer, e no cadastro novo é o único dado que ele ainda não tinha. Documento vazio também cai no código: existe cadastro sem CPF no varejo, e um campo em branco esconderia quem está na venda.
+
+**Rationale:** O campo é a única memória visível de "por onde esta venda foi identificada". Trocar a identidade exibida apaga essa informação exatamente no caso em que ela importa — o operador que confere o código de um cliente de convênio não quer ler o CPF de volta.
+
+**Trade-off:** A mesma venda pode exibir identificações diferentes conforme o caminho usado, o que é assimétrico à primeira vista. Aceito: a assimetria é a informação — ela conta o que aconteceu, e o cadastro é o mesmo nos dois casos.
+
+**Corrida conhecida, não corrigida nesta rodada:** digitar por cima do campo enquanto uma identificação anterior ainda está em voo faz o espelhamento reescrever o que está sendo digitado quando aquela consulta conclui (`buscando` já barra a segunda consulta). É pré-existente ao pedido, exige uma janela de ~100ms entre a digitação e a resposta do ERP, e não foi observada em uso real — está registrada aqui porque foi diagnosticada durante esta rodada, ao ser reproduzida por um teste E2E que digitava sem esperar a primeira identificação terminar.
+
+**Complementa:** **AD-108** (cliente default sem `GetCliente`, que já fazia o campo mostrar o código quando não há documento) e **AD-133** (recusa de pessoa jurídica, que tornou o rótulo antigo enganoso).
+
+**Impact:** `src/client/features/cliente/CampoClienteVenda.tsx` (estado `faceDaIdentificacao`, rótulo do campo), `tests/e2e/identificacao-cliente.spec.ts` (4 casos novos, 1 atualizado). O Pencil (`design/CentriumCheckout.pen`) segue com o rótulo antigo — divergência conhecida, registrada aqui e no TSDoc do componente. Nenhum item novo em `.specs/project/PENDENCIES.md`.

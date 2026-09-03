@@ -51,8 +51,15 @@ import { useIdentificacaoCliente } from './useCliente';
  * cliente — que é `FR-005`, não origem.
  *
  * Os dois caminhos de identificação são superfícies distintas, como o desenho
- * separa (`research.md` D2): o campo CPF/CNPJ resolve por `GetCliente`
- * (`CLI-01`) e a lupa abre a busca por termo livre (`CLI-02`).
+ * separa (`research.md` D2): o campo de identificação resolve por
+ * `GetCliente` (`CLI-01`) e a lupa abre a busca por termo livre (`CLI-02`).
+ *
+ * **Um desvio deliberado do Pencil**: o rótulo do primeiro campo é "Código do
+ * cliente ou CPF", não o "CPF/CNPJ" desenhado (pedido do usuário,
+ * 2026-09-03). O desenho é anterior a duas decisões que mudaram o que o campo
+ * aceita — ele passou a receber também o código do cliente e deixou de
+ * receber CNPJ (AD-133) —, e um rótulo que anuncia CNPJ ofereceria justamente
+ * o que a norma proíbe.
  */
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
@@ -99,24 +106,49 @@ export function CampoClienteVenda(): ReactElement {
   }, [pedidosDeFocoNoDocumento]);
 
   /**
-   * O campo mostra o documento do cliente identificado, com máscara de leitura
-   * (pedido do usuário, 2026-09-03) — antes ele era esvaziado depois da busca,
-   * e o operador perdia de vista qual documento tinha identificado a venda.
+   * Qual das duas identidades do cliente o campo mostra depois de identificar:
+   * o **código** ou o **documento**.
+   *
+   * O campo aceita as duas (`classificarEntradaCliente`), e o operador vê de
+   * volta a que ele próprio usou — quem digitou `1255` continua lendo
+   * `1255`, quem digitou o CPF continua lendo o CPF com máscara (pedido do
+   * usuário, 2026-09-03). Trocar a face por conta própria faria o campo
+   * "corrigir" a entrada do operador para uma identidade que ele não escolheu.
+   *
+   * `'codigo'` é o padrão porque é a face de quem **não** digitou nada no
+   * campo: o cliente default (`GetSessao` não devolve documento, AD-108), o
+   * candidato escolhido no modal e o cliente recém-cadastrado — nos dois
+   * últimos o operador buscou por nome ou preencheu um formulário, e o código é
+   * o que identifica o cadastro que passou a valer.
+   */
+  const [faceDaIdentificacao, setFaceDaIdentificacao] = useState<'codigo' | 'documento'>('codigo');
+
+  /**
+   * O campo mostra a identificação do cliente atual, com máscara de leitura
+   * quando é documento (pedido do usuário, 2026-09-03) — antes ele era
+   * esvaziado depois da busca, e o operador perdia de vista quem tinha
+   * identificado a venda.
    *
    * Ajustado durante a renderização, não num efeito: é "estado derivado de uma
    * prop que mudou" (o cliente do store), e um efeito daria um quadro com o
-   * documento antigo em tela. `documentoEspelhado` guarda o valor que a
+   * valor antigo em tela. `documentoEspelhado` guarda o valor que a
    * sincronização já aplicou, para o operador poder digitar por cima sem o
    * campo voltar sozinho ao cliente atual a cada tecla.
+   *
+   * Documento vazio cai no código pelo mesmo motivo do cliente default: existe
+   * cadastro sem CPF no varejo, e um campo em branco esconderia quem está na
+   * venda.
    */
-  /**
-   * Sem documento, o campo mostra o **código** do cliente (pedido do usuário,
-   * 2026-09-03): é o caso do cliente default, que `GetSessao` entrega sem
-   * CPF/CNPJ (AD-108) — e deixar o campo vazio esconderia do operador quem
-   * está na venda.
-   */
+  const documentoDoCliente =
+    clienteAtual === null || clienteAtual.documento === null || clienteAtual.documento === ''
+      ? null
+      : clienteAtual.documento;
   const identificacaoDoCliente =
-    clienteAtual === null ? null : (clienteAtual.documento ?? String(clienteAtual.codigoCliente));
+    clienteAtual === null
+      ? null
+      : faceDaIdentificacao === 'documento' && documentoDoCliente !== null
+        ? documentoDoCliente
+        : String(clienteAtual.codigoCliente);
   const [documentoEspelhado, setDocumentoEspelhado] = useState(identificacaoDoCliente);
   if (identificacaoDoCliente !== documentoEspelhado) {
     setDocumentoEspelhado(identificacaoDoCliente);
@@ -239,6 +271,10 @@ export function CampoClienteVenda(): ReactElement {
         return;
       }
       if (resultado.situacao === 'identificado') {
+        // A face segue o que o operador digitou, não o que o ERP devolveu: o
+        // cadastro resolvido tem as duas identidades, e trocar uma pela outra
+        // reescreveria a entrada dele.
+        setFaceDaIdentificacao(entrada.tipo === 'CPF' ? 'documento' : 'codigo');
         concluirIdentificacao();
       }
     } finally {
@@ -262,6 +298,9 @@ export function CampoClienteVenda(): ReactElement {
       return;
     }
     if (resultado.situacao === 'identificado') {
+      // Busca por termo livre não passa pelo campo: o operador procurou por
+      // nome, e o código é o que identifica o cadastro escolhido.
+      setFaceDaIdentificacao('codigo');
       concluirIdentificacao();
     }
   }
@@ -346,7 +385,9 @@ export function CampoClienteVenda(): ReactElement {
             <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
               <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-                <span className="text-[10px] font-semibold text-muted-foreground">CPF/CNPJ</span>
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  Código do cliente ou CPF
+                </span>
                 <input
                   className="w-full bg-transparent font-mono text-base font-medium tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
                   data-testid="campo-documento-cliente"
@@ -466,6 +507,10 @@ export function CampoClienteVenda(): ReactElement {
           // ao ritmo dele.
           const resultado = await cadastrar(dados);
           if (resultado.situacao === 'identificado') {
+            // O `CodCliente` só existe depois do `PostCliente`: é o dado novo
+            // da operação, e o que o operador precisa anotar do cadastro que
+            // acabou de criar.
+            setFaceDaIdentificacao('codigo');
             setCadastroAberto(false);
             concluirIdentificacao();
           }

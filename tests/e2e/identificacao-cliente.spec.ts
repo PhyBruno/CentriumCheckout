@@ -346,6 +346,66 @@ test.describe('Correções de 2026-09-03 (segunda rodada)', () => {
     await expect(page.getByTestId('cadastro-simplificado')).toHaveCount(0);
   });
 
+  test('o rótulo do campo anuncia código ou CPF, nunca CNPJ', async ({ page }) => {
+    // Desvio deliberado do Pencil, que desenha "CPF/CNPJ": o campo passou a
+    // aceitar código do cliente e deixou de aceitar CNPJ (AD-133).
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    const card = page.getByTestId('cliente-da-venda');
+    await expect(card.getByText('Código do cliente ou CPF')).toBeVisible();
+    await expect(card.getByText('CPF/CNPJ', { exact: true })).toHaveCount(0);
+  });
+
+  test('escolher no modal preserva o código do cadastro escolhido', async ({ page }) => {
+    // A busca livre não passa pelo campo: o operador procurou por nome, e o
+    // código é o que identifica o cadastro que passou a valer.
+    await abrirTelaDeVenda(page);
+    await buscarPorTermo(page, 'CONVENIADO');
+    await page.getByTestId('candidato-cliente').first().click();
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expandirCardCliente(page);
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('2538');
+  });
+
+  test('cadastrar um cliente novo preserva o código recém-criado', async ({ page }) => {
+    // O `CodCliente` só existe depois do `PostCliente` — é o dado novo da
+    // operação. O mock numera os criados a partir de 9001.
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_INEXISTENTE);
+
+    await expect(page.getByTestId('modal-cadastro-cliente')).toBeVisible();
+    await page.getByTestId('campo-cadastro-nome').fill('CLIENTE NOVO CODIGO');
+    await page.getByTestId('campo-cadastro-cep').fill('89000-000');
+    await page.getByTestId('salvar-cliente').click();
+
+    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE NOVO CODIGO');
+    await expandirCardCliente(page);
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('9001');
+  });
+
+  test('trocar a face acompanha o que o operador digitou, nos dois sentidos', async ({ page }) => {
+    // Mesmo cadastro, duas identidades: o campo devolve a que foi usada em
+    // cada tentativa, sem "corrigir" a entrada do operador.
+    await abrirTelaDeVenda(page);
+    await identificarPorDocumento(page, CPF_VAREJO);
+    // O card recolhido é a prova de que a identificação terminou. Digitar por
+    // cima antes disso é uma corrida: `buscando` barraria a segunda consulta e
+    // o espelhamento da primeira reescreveria o campo.
+    await esperarCamposRecolhidos(page);
+    await expandirCardCliente(page);
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('122.980.239-80');
+
+    // Enter no próprio campo, não o botão: o card acabou de reabrir e a altura
+    // ainda está animando, então o clique disputaria posição com a transição.
+    await page.getByTestId('campo-documento-cliente').fill('1255');
+    await page.getByTestId('campo-documento-cliente').press('Enter');
+    await esperarCamposRecolhidos(page);
+    await expandirCardCliente(page);
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('1255');
+  });
+
   test('a folga do corte existe só com o bloco aberto', async ({ page }) => {
     // `overflow-clip-margin` devolve o espaço do anel de `focus-visible`, que
     // `overflow: hidden` comia — mas a mesma folga aplicada ao bloco recolhido
@@ -627,6 +687,12 @@ test.describe('Código ou documento no mesmo campo (correções de 2026-09-03)',
 
     await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
     expect((await contadores(request)).getCliente).toBe(1);
+
+    // Quem digitou o código lê o código de volta — o CPF do mesmo cadastro
+    // seria uma identidade que o operador não escolheu (pedido do usuário,
+    // 2026-09-03).
+    await expandirCardCliente(page);
+    await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('1255');
   });
 
   test('pontos e traços são descartados antes de consultar o ERP', async ({ page }) => {
