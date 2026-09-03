@@ -58,7 +58,7 @@ Como operador de caixa em mobile, quero apontar a câmera do dispositivo para o 
 ### Edge Cases
 
 - Quais fluxos não estão disponíveis no layout mobile? A importação de documento pronto para faturamento e a recuperação de uma venda suspensa/com falha de emissão — ambos permanecem exclusivos do layout desktop.
-- O pagamento por terminal físico (cartão integrado) está disponível no mobile? Não — depende de hardware conectado ao ponto de venda, incompatível com o uso em tablet/celular. O pagamento via PIX permanece disponível, por não depender de hardware físico.
+- O pagamento por terminal físico (cartão integrado) está disponível no mobile? Sim — nas mesmas condições do desktop, decididas só pela configuração do ambiente. **Corrigido em 2026-09-03 (AD-144):** a resposta anterior era "não", por supor hardware incompatível com tablet/celular; o usuário revogou essa premissa. O pagamento via PIX segue disponível como sempre.
 - Telas de gestão/retaguarda (ex.: sangria, suprimento, fechamento de caixa) estão disponíveis no mobile? Não — permanecem exclusivas do layout desktop.
 - Atalhos de teclado pensados para operador com teclado físico/leitor fixo continuam ativos no mobile? Não — são desativados nesse layout, sem equivalente touch necessário.
 - Qual o comportamento da leitura de código de barras por câmera em um navegador ou dispositivo sem suporte a essa funcionalidade? A opção fica inteiramente ausente da interface — sem versão desabilitada nem mensagem de indisponibilidade.
@@ -75,7 +75,7 @@ Como operador de caixa em mobile, quero apontar a câmera do dispositivo para o 
 - **FR-006**: No layout mobile, em um navegador/dispositivo com suporte, o sistema MUST permitir que o operador ative a câmera do dispositivo para ler o código de barras de um produto, como alternativa à digitação ou ao leitor físico.
 - **FR-007**: Quando um código de barras é lido com sucesso pela câmera, o sistema MUST inserir o produto correspondente pelo mesmo caminho já usado para entrada via leitor físico ou digitação.
 - **FR-008**: O sistema MUST NOT oferecer, no layout mobile, os fluxos de importação de documento pronto para faturamento e de recuperação de venda suspensa/com falha — ambos permanecem exclusivos do desktop.
-- **FR-009**: O sistema MUST NOT tentar pagamento por terminal físico no layout mobile, independentemente da configuração; formas de pagamento que não dependem de hardware físico (ex.: PIX) MUST permanecer disponíveis.
+- **FR-009**: O sistema MUST oferecer no layout mobile as mesmas formas de pagamento e integrações do desktop — inclusive a de terminal físico —, decididas só pela configuração do ambiente, sem nenhuma regra de disponibilidade baseada no layout. **Corrigido em 2026-09-03 (AD-144):** o texto anterior proibia o pagamento por terminal físico no mobile; a proibição foi revogada pelo usuário.
 - **FR-010**: O sistema MUST NOT oferecer telas de gestão/retaguarda no layout mobile.
 - **FR-011**: Quando o navegador ou dispositivo em uso não suportar a leitura de código de barras pela câmera, o sistema MUST NOT exibir a opção ao operador — nem botão desabilitado, nem mensagem de indisponibilidade; a leitura por câmera fica inteiramente ausente da interface nesses casos.
 

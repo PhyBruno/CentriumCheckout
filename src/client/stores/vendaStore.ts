@@ -8,7 +8,7 @@ import type { CarrinhoDeps, CarrinhoSlice } from './slices/carrinhoSlice';
 import { criarClienteSlice } from './slices/clienteSlice';
 import type { ClienteDeps, ClienteSlice } from './slices/clienteSlice';
 import { criarIdentidadeVendaSlice } from './slices/identidadeVendaSlice';
-import type { IdentidadeVendaSlice } from './slices/identidadeVendaSlice';
+import type { IdentidadeVendaDeps, IdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import { useSessionStore } from './sessionStore';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
 import { fetchProduto } from '../services/produto/produtoQueries';
@@ -116,15 +116,30 @@ export function clienteDepsPadrao(depsCarrinho: CarrinhoDeps): ClienteDeps {
   };
 }
 
+/**
+ * Dependências da identidade da venda na composição real (AD-139).
+ *
+ * `podeMutarCarrinho` é **o mesmo** predicado do carrinho e do cliente, pelo
+ * mesmo motivo de `clienteDepsPadrao`: uma terceira regra de "quando a venda
+ * pode ser mutada" poderia divergir em silêncio (AD-043).
+ */
+export function identidadeVendaDepsPadrao(depsCarrinho: CarrinhoDeps): IdentidadeVendaDeps {
+  return {
+    podeMutarCarrinho: depsCarrinho.podeMutarCarrinho,
+    ...(depsCarrinho.avisar ? { avisar: depsCarrinho.avisar } : {}),
+  };
+}
+
 export function criarVendaStore(
   depsCarrinho: CarrinhoDeps = carrinhoDepsPadrao,
   depsCliente: ClienteDeps = clienteDepsPadrao(depsCarrinho),
+  depsIdentidade: IdentidadeVendaDeps = identidadeVendaDepsPadrao(depsCarrinho),
 ) {
   return create<VendaState>()(
     immer((...args) => ({
       ...criarAuditoriaSlice(...args),
       ...criarCarrinhoSlice(depsCarrinho)(...args),
-      ...criarIdentidadeVendaSlice(...args),
+      ...criarIdentidadeVendaSlice(depsIdentidade)(...args),
       ...criarClienteSlice(depsCliente)(...args),
     })),
   );
@@ -141,14 +156,31 @@ export const useVendaStore = criarVendaStore();
  * outro. Um slice que chamasse o outro precisaria conhecê-lo, acoplamento que
  * os slices existentes não têm entre si.
  *
- * Chamado ao abrir a tela de venda, depois de cada finalização/suspensão
- * bem-sucedida e, futuramente, pelas features 006 (DAV) e 011 (retomada de
- * rascunho) — estas com `origem`/`numeroNota` do documento carregado.
+ * Chamado ao abrir a tela de venda e depois de cada finalização/suspensão
+ * bem-sucedida.
+ *
+ * **A importação de DAV (feature 006) não passa por aqui** (AD-137), embora
+ * este TSDoc antecipasse que passaria: importar um documento acontece **no
+ * meio** de uma venda, e `resetarAuditoria` apagaria o histórico do que o
+ * operador já fez (contra `FR-009` da feature 001). A 006 grava só a identidade
+ * — `definirIdentidadeVenda({ origem: 'DAV', numeroNota })` — e acrescenta
+ * `DAV_IMPORTADO` à trilha existente. A feature 011 decidirá a sua por conta;
+ * `abrirSessaoDeVenda` continua sendo o caminho de quem de fato **inicia** uma
+ * sessão de venda do zero.
+ *
+ * As três ações que ela chama são as **não guardadas** por `podeMutarCarrinho()`
+ * — `resetarAuditoria` (001), `iniciarIdentidadeVenda` (004, AD-139) e
+ * `inicializarClientePadrao` (005) —, e é por isso que abrir a venda seguinte
+ * continua funcionando no ponto em que ela é chamada: logo depois de
+ * `FaturarNFCe` retornar sucesso, com o pagamento aprovado ainda em estado
+ * (`useFinalizarOuSuspenderVenda.ts`). Trocar `iniciarIdentidadeVenda` pela
+ * `definirIdentidadeVenda` guardada faria a abertura virar um no-op silencioso
+ * assim que a feature 008 ligasse o predicado real.
  */
 export function abrirSessaoDeVenda(origem: OrigemVenda, numeroNota = 0): void {
   const venda = useVendaStore.getState();
   venda.resetarAuditoria(origem);
-  venda.definirIdentidadeVenda({ origem, numeroNota });
+  venda.iniciarIdentidadeVenda({ origem, numeroNota });
 
   // Pré-seleção do cliente default (feature 005, `FR-004`/AD-032): acontece
   // aqui, e não dentro de um slice, pelo mesmo motivo dos dois acima — é o

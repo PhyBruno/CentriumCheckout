@@ -37,6 +37,12 @@ export interface ConfigMockErp {
    * sucesso parcial (`contracts/faturamento-api.md`).
    */
   faturarSemNotaFiscal: boolean;
+  /**
+   * `GetDav` recusa o documento — é como o ERP responde quando outro operador
+   * já o faturou. O Checkout não tem lock nenhum (`FR-010`/AD-052): só reage
+   * ao erro devolvido.
+   */
+  davJaFaturado: boolean;
 }
 
 export interface ContadoresMockErp {
@@ -50,6 +56,8 @@ export interface ContadoresMockErp {
   getCliente: number;
   getListaClientes: number;
   postCliente: number;
+  listaDavs: number;
+  getDav: number;
 }
 
 const CONFIG_PADRAO: ConfigMockErp = {
@@ -61,6 +69,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   tipoImpressao: 'E',
   statusFaturarNFCe: 200,
   faturarSemNotaFiscal: false,
+  davJaFaturado: false,
 };
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
@@ -74,6 +83,8 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getCliente: 0,
   getListaClientes: 0,
   postCliente: 0,
+  listaDavs: 0,
+  getDav: 0,
 };
 
 /** Base64 sintético — não é um PDF real, só precisa ser string não-vazia. */
@@ -250,6 +261,130 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     ListaPreco: 3,
   },
 };
+
+/**
+ * DAVs prontos para faturamento (feature 006).
+ *
+ * O documento devolvido por `GetDav` tem **o mesmo shape** de `CarregarNFCe`/
+ * `FaturarNFCe` (AD-057) e **não** traz `DavNum` (AD-107) nem descrição de
+ * produto (AD-096) nem nome de vendedor (AD-095) — as três ausências são o
+ * contrato real, não simplificação do mock.
+ *
+ * O preço de `001234` no documento é 7,77, deliberadamente diferente do 10,00
+ * do `CATALOGO`: é o que deixa o E2E provar que a linha importada entra
+ * congelada, com o preço do documento e não com o de catálogo (`FR-006`).
+ */
+/**
+ * `YYYY-MM-DD` de hoje deslocado em dias.
+ *
+ * As emissões dos DAVs sintéticos são **relativas**, e não datas fixas de 2026:
+ * a janela de importação abre com o período padrão dos últimos 7 dias (pedido
+ * do usuário, 2026-09-03), e um documento com data fixa sairia da lista assim
+ * que o calendário passasse dela — a suíte quebraria sozinha com o tempo.
+ */
+export function emissaoRelativa(dias: number): string {
+  const hoje = new Date();
+  const data = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias);
+  const doisDigitos = (valor: number): string => String(valor).padStart(2, '0');
+  return `${String(data.getFullYear())}-${doisDigitos(data.getMonth() + 1)}-${doisDigitos(data.getDate())}`;
+}
+
+/** Emissão de cada DAV sintético, em dias antes de hoje. */
+export const DIAS_DE_EMISSAO = { conveniado: -1, varejo: -4 } as const;
+
+const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<string, unknown> }> =
+  {
+    '004821': {
+      lista: {
+        NumeroDAV: '004821',
+        Titulo: 'PV-11842',
+        Senha: '',
+        DataEmissao: emissaoRelativa(DIAS_DE_EMISSAO.conveniado),
+        ClienteCodigo: 2538,
+        ClienteNome: 'CLIENTE CONVENIADO',
+        VendedorCodigo: 12,
+        ValorTotal: 15.54,
+      },
+      documento: {
+        Empresa: 1,
+        SuspenderOuFaturar: '',
+        clienteCodigo: 2538,
+        vendedorCodigo: 12,
+        CondicaoPagamentoCodigo: 1,
+        NumeroNota: 90210,
+        CadSerieNFCe: '1',
+        UsuarioCodigo: 42,
+        Log: '',
+        produtos: [
+          {
+            sequencial: 1,
+            codigoProduto: '001234',
+            quantidade: 2,
+            precoUnitario: 7.77,
+            DescontoPercentual: 0,
+            DescontoValor: 0,
+            UDM: 'UN',
+            ValorBruto: 15.54,
+            ValorTotal: 15.54,
+          },
+        ],
+        FormasDePagamento: [
+          {
+            FormaCodigo: 1,
+            FormaMeioPagtoNFe: '01',
+            FormaValor: 15.54,
+            FormaIntegracaoCartao: '',
+            FormaFpgUtiCar: '',
+            FormaEntrada: '',
+            TEFidentificacao: 0,
+            TEFCNPJ: '',
+            TEFBandeira: '',
+            TEFNumeroAutorizacao: '',
+            TEFTipoIntegracao: '',
+            FormaPixGUID: '',
+            TicketDevolucao: '',
+          },
+        ],
+      },
+    },
+    '004790': {
+      lista: {
+        NumeroDAV: '004790',
+        Titulo: 'ORC-00915',
+        Senha: '',
+        DataEmissao: emissaoRelativa(DIAS_DE_EMISSAO.varejo),
+        ClienteCodigo: 1255,
+        ClienteNome: 'CLIENTE VAREJO',
+        VendedorCodigo: 8,
+        ValorTotal: 20.0,
+      },
+      documento: {
+        Empresa: 1,
+        SuspenderOuFaturar: '',
+        clienteCodigo: 1255,
+        vendedorCodigo: 8,
+        CondicaoPagamentoCodigo: 1,
+        NumeroNota: 90211,
+        CadSerieNFCe: '1',
+        UsuarioCodigo: 42,
+        Log: '',
+        produtos: [
+          {
+            sequencial: 1,
+            codigoProduto: '003000',
+            quantidade: 1,
+            precoUnitario: 20.0,
+            DescontoPercentual: 0,
+            DescontoValor: 0,
+            UDM: 'UN',
+            ValorBruto: 20.0,
+            ValorTotal: 20.0,
+          },
+        ],
+        FormasDePagamento: [],
+      },
+    },
+  };
 
 function payloadGetSessao(config: ConfigMockErp): unknown {
   return {
@@ -606,6 +741,82 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       };
 
       return reply.send([]);
+    },
+  );
+
+  app.get<{
+    Querystring: {
+      Txtbusca?: string;
+      Datainicial?: string;
+      Datafinal?: string;
+      Pagina?: string;
+      Tamanhopagina?: string;
+    };
+  }>('/ApiCentriumOAuth/ListaDAVs', async (request, reply) => {
+    contadores.negocio += 1;
+    contadores.listaDavs += 1;
+
+    const termo = (request.query.Txtbusca ?? '').toUpperCase();
+    const de = request.query.Datainicial ?? '';
+    const ate = request.query.Datafinal ?? '';
+
+    const todos = Object.values(DAVS)
+      .map((dav) => dav.lista)
+      .filter((dav) => {
+        const alvo = `${String(dav['NumeroDAV'])} ${String(dav['Titulo'])} ${String(
+          dav['ClienteNome'],
+        )}`.toUpperCase();
+        if (termo !== '' && !alvo.includes(termo)) {
+          return false;
+        }
+        // Comparação lexicográfica é exata em `YYYY-MM-DD`, o formato do
+        // contrato — não há fuso nem parsing envolvido.
+        const emissao = String(dav['DataEmissao']);
+        if (de !== '' && emissao < de) {
+          return false;
+        }
+        if (ate !== '' && emissao > ate) {
+          return false;
+        }
+        return true;
+      });
+
+    const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
+    const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
+    const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
+    const paginaAtual = Math.min(paginaPedida, totalPaginas);
+    const inicio = (paginaAtual - 1) * registrosPorPagina;
+
+    return reply.send({
+      CheckoutListaDAVs: {
+        PaginaAtual: paginaAtual,
+        RegistrosPorPagina: registrosPorPagina,
+        TotalRegistros: todos.length,
+        TotalPaginas: totalPaginas,
+        DAV: todos.slice(inicio, inicio + registrosPorPagina),
+      },
+      messages: [],
+    });
+  });
+
+  app.get<{ Querystring: { Numerodav?: string } }>(
+    '/ApiCentriumOAuth/GetDav',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.getDav += 1;
+
+      // Documento já faturado por outra sessão: o ERP recusa e o Checkout só
+      // reage (D7/AD-052) — não há lock do lado do Checkout (`FR-010`).
+      if (config.davJaFaturado) {
+        return reply.code(409).send({ error: 'DAV já faturado' });
+      }
+
+      const dav = DAVS[request.query.Numerodav ?? ''];
+      if (dav === undefined) {
+        return reply.code(404).send({ error: 'DAV não encontrado' });
+      }
+
+      return reply.send({ OutCheckoutFaturarNFCe: dav.documento, messages: [] });
     },
   );
 

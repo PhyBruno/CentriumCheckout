@@ -49,7 +49,7 @@ Pós-condições: todo item devolvido tem exatamente os 7 campos convertidos; ne
 | `projetarAtalhos` | cenários brutos, catálogo de condições/formas da sessão, `plataforma` | `ListaAtalhos` | idempotente e determinística: mesma entrada ⇒ mesma saída, sempre na mesma ordem (I2, I5, I10) |
 | `buscarAtalho` | `ListaAtalhos`, `TeclaAtalho` | `AtalhoVendaRapida \| undefined` | consulta pura |
 
-`plataforma` é **parâmetro**, não leitura de `window` — é o que torna I10 testável sem renderizar nada e o que reaproveita o padrão de AD-074 (feature 008).
+`plataforma` é **parâmetro**, não leitura de `window` — é o que torna I10 testável sem renderizar nada, reaproveitando o padrão de capacidade injetada estreado em AD-074. Atenção: desde AD-144 (2026-09-03) a feature 008 **não** recebe mais `plataforma`; o parâmetro aqui é desta feature e existe pelo `FR-020` (venda rápida é desktop-only), sem relação com TEF.
 
 ---
 

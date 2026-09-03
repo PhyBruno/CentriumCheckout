@@ -89,6 +89,6 @@ export function ScannerCamera(props: ScannerCameraProps): JSX.Element | null;
 | 003 — carrinho | `ScannerCamera` alimenta `EntradaCodigo`/`inserirItem`, sem caminho de inserção paralelo. Grid/entrada rápida de 003 são renderizadas sem alteração dentro de `DesktopLayout`/`EtapaClienteProdutos`. |
 | 004 — finalização/suspensão | `DesktopLayout` e `EtapaRevisao` renderizam os gatilhos de UI que 004 vai expor (`FIN-001`/`FIN-002`, AD-089) — este plano não define a action/hook que 004 vai oferecer, só reserva o ponto de composição. |
 | 005 — cliente | Campo/modal de cliente de 005 é renderizado sem alteração em `DesktopLayout` e `EtapaClienteProdutos`. |
-| 008 — pagamento | `EtapaPagamento` compõe o painel de pagamento de 008, excluindo o roteamento a TEF no mobile (regra pertence a 008, AD-074) — este plano só garante que a etapa mobile nunca importa um componente exclusivo de TEF. |
+| 008 — pagamento | `EtapaPagamento` compõe o painel de pagamento de 008 **inteiro**, TEF incluído — desde AD-144 (2026-09-03) não há exclusão de integração por layout, e esta feature não injeta mais `plataforma` nas capacidades de pagamento. |
 | 012 — vendedor | Campo/modal de vendedor de 012 é renderizado sem alteração em `DesktopLayout` e `EtapaClienteProdutos` (`VEND-*`). |
 | 006 — importação de DAV / 011 — recuperação de NFCe | Renderizados **apenas** dentro de `DesktopLayout` — `MobileWizard` e suas etapas nunca importam esses componentes (`FR-008`, AD-046). |

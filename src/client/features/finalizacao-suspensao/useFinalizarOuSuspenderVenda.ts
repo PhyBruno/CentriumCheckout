@@ -165,7 +165,15 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           linhas: venda.linhas,
           identidade: venda.identidadeVenda,
           cadSerieNFCe: sessao.CadSerieNFCe,
-          clienteCodigo: sessao.ClienteDefaultCodigo,
+          // O cliente **da venda**, com o default do PDV só como fallback
+          // (AD-032). Até aqui o retrato mandava `ClienteDefaultCodigo` sempre:
+          // este arquivo é da feature 004, escrita antes de existir slice de
+          // cliente, e a 005 não voltou para religar o campo. O efeito era uma
+          // NFCe emitida para o consumidor padrão mesmo com o operador tendo
+          // identificado outro cliente — silencioso, visível só na nota. Achado
+          // pelo E2E da importação de DAV, que exige o cliente do documento no
+          // faturamento (`FR-007` da 006), mas o defeito era da 005.
+          clienteCodigo: venda.clienteAtual?.codigoCliente ?? sessao.ClienteDefaultCodigo,
           vendedorCodigo,
           condicaoPagamentoCodigo: injetadas.condicaoPagamentoCodigo?.() ?? 0,
           eventos: venda.eventos,

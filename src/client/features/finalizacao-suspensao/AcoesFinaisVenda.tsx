@@ -3,6 +3,7 @@ import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
+import { BotaoMenuImportacao } from '../dav/BotaoMenuImportacao';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
@@ -87,13 +88,36 @@ export function ProvedorFinalizacaoVenda({
 }
 
 /**
- * Não há o que suspender numa venda sem item: `SUSPENDER` criaria um rascunho
- * vazio no ERP, que o operador teria de limpar depois (pedido do usuário,
- * 2026-09-02). Linha cancelada não conta — ela permanece no array por
- * rastreabilidade (`CART-08`), mas não é venda a suspender.
+ * Não há o que suspender numa venda em que nada foi lançado: `SUSPENDER`
+ * criaria um rascunho vazio no ERP, que o operador teria de limpar depois
+ * (pedido do usuário, 2026-09-02).
+ *
+ * **Linha cancelada conta** (pedido do usuário, 2026-09-03, corrigindo a regra
+ * anterior): ela permanece no array por rastreabilidade (`CART-08`) e é prova
+ * de que a venda foi digitada. Uma venda cujos itens foram todos cancelados é
+ * exatamente o caso em que o operador precisa desistir — travar o botão ali o
+ * deixava sem saída na tela.
  */
 function useVendaTemItem(): boolean {
-  return useVendaStore((estado) => linhasAtivas(estado.linhas).length > 0);
+  return useVendaStore((estado) => estado.linhas.length > 0);
+}
+
+/**
+ * Por que "Cancelar venda" está bloqueado — a frase que o operador lê ao clicar
+ * no botão bloqueado (padrão de `lib/bloqueio.ts`, pedido do usuário
+ * 2026-09-03), ou `null` quando a ação está disponível.
+ *
+ * O envio vem primeiro porque é o estado mais transitório: dizer "não há itens"
+ * a quem está esperando o ERP responder seria falso.
+ */
+function motivoDeBloqueioDoCancelar(travado: boolean, temItem: boolean): string | null {
+  if (travado) {
+    return 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
+  }
+  if (!temItem) {
+    return 'Não há nada a cancelar: nenhum item foi lançado nesta venda.';
+  }
+  return null;
 }
 
 /**
@@ -125,10 +149,11 @@ function useFinalizacaoVenda(): ApiFinalizacaoVenda {
  * Faixa "Atalhos da venda" do Pencil (`nyfSI`): linha horizontal de 44px, gap
  * de 10px, logo abaixo do cartão de produtos.
  *
- * "Cancelar venda" é o **primeiro** atalho, à esquerda. Os outros dois do
- * desenho — "Menu Gerencial" e "Menu Importação" — pertencem a outras features
- * e ainda não existem; por isso o atalho ocupa um terço da faixa em vez de
- * esticar, para que os dois vizinhos entrem no lugar certo quando chegarem.
+ * "Cancelar venda" é o **primeiro** atalho, à esquerda, e "Menu Importação" é o
+ * **terceiro** (feature 006). O segundo do desenho — "Menu Gerencial" —
+ * pertence a outra feature e ainda não existe; por isso cada atalho ocupa um
+ * terço da faixa em vez de esticar, para que ele entre no lugar certo quando
+ * chegar.
  */
 export function BarraAtalhosVenda(): ReactElement {
   const { estado, suspender } = useFinalizacaoVenda();
@@ -143,9 +168,14 @@ export function BarraAtalhosVenda(): ReactElement {
           onCancelar={() => {
             void suspender();
           }}
-          enviando={travado}
-          bloqueado={!temItem}
+          bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
         />
+      </div>
+      {/* Terceiro terço, encostado à direita: o vão do meio é o lugar que o
+          "Menu Gerencial" vai ocupar, e deixá-lo vazio agora evita mexer no
+          posicionamento dos outros dois quando ele chegar. */}
+      <div className="ml-auto flex w-[calc((100%-20px)/3)]">
+        <BotaoMenuImportacao />
       </div>
     </div>
   );
@@ -196,8 +226,7 @@ export function AcoesVendaCompactas(): ReactElement {
           void suspender();
         }}
         compacto
-        enviando={travado}
-        bloqueado={!temItem}
+        bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
       />
     </div>
   );

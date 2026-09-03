@@ -401,6 +401,19 @@ button,
     color var(--cc-motion-rapido) var(--cc-ease-saida);
 }
 
+/**
+ * Todo botão de ação vira mãozinha no hover — o navegador não faz isso
+ * sozinho (`<button>` nasce com cursor `default`, diferente de `<a>`), e o
+ * produto tinha ficado sem essa regra em nenhum lugar (pedido do usuário,
+ * 2026-09-03). Fica de fora dos estados bloqueados, que já têm seu próprio
+ * cursor (`disabled:pointer-events-none` e `aria-disabled:cursor-not-allowed`
+ * em `buttonVariants`, `components/ui/button.tsx`).
+ */
+button:not(:disabled):not([aria-disabled='true']),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
 @keyframes cc-fade-entra {
   from {
     opacity: 0;

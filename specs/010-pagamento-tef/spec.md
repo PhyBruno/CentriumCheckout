@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "O operador precisa aplicar uma forma de pagamento cobrada no terminal físico do ponto de venda — uma vez aprovada, ela fica travada na venda; a opção só aparece quando o ambiente a utiliza, e não está disponível no layout mobile."
+**Input**: User description: "O operador precisa aplicar uma forma de pagamento cobrada no terminal físico do ponto de venda — uma vez aprovada, ela fica travada na venda; a opção só aparece quando o ambiente a utiliza." **Revisado em 2026-09-03 (AD-144):** a descrição original terminava com "e não está disponível no layout mobile" — essa restrição foi revogada pelo usuário e não vale mais.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -43,7 +43,7 @@ Como operador de caixa, não quero ver a opção de pagamento pelo terminal fís
 
 - O que acontece com uma venda que já tem um pagamento pelo terminal físico aprovado, se o operador tentar suspendê-la? A suspensão fica bloqueada — a mesma regra que impede remover esse pagamento também impede suspender a venda.
 - O Checkout imprime algum comprovante para esse pagamento? Não — o comprovante é emitido pelo próprio terminal físico.
-- Essa forma de pagamento está disponível no layout mobile? Não — depende de um terminal físico conectado ao ponto de venda, sem equivalente para uso em tablet/celular, independentemente da configuração do ambiente.
+- Essa forma de pagamento está disponível no layout mobile? Sim — nas mesmas condições do desktop, decididas só pela configuração do ambiente. **Corrigido em 2026-09-03 (AD-144 em `.specs/project/STATE.md`):** a resposta anterior era "não", por supor que o terminal físico não tem equivalente em tablet/celular; o usuário informa que o dispositivo móvel também pode alcançá-lo.
 
 ## Requirements *(mandatory)*
 
@@ -54,7 +54,7 @@ Como operador de caixa, não quero ver a opção de pagamento pelo terminal fís
 - **FR-003**: Uma vez que um pagamento pelo terminal físico é aprovado, o sistema MUST NOT permitir a remoção desse pagamento da venda.
 - **FR-004**: O sistema MUST bloquear a suspensão de uma venda que tenha um pagamento pelo terminal físico já aprovado.
 - **FR-005**: O sistema MUST NOT imprimir nenhum comprovante para um pagamento aprovado pelo terminal físico — essa responsabilidade é do próprio terminal.
-- **FR-006**: O sistema MUST NOT oferecer nem tentar esse pagamento no layout mobile, independentemente da configuração do ambiente.
+- **FR-006**: O sistema MUST oferecer e tentar esse pagamento no layout mobile nas mesmas condições do desktop — a disponibilidade depende só da configuração do ambiente, nunca do layout. **Corrigido em 2026-09-03 (AD-144):** o texto anterior proibia esse pagamento no mobile; o usuário revogou a proibição.
 
 ## Success Criteria *(mandatory)*
 

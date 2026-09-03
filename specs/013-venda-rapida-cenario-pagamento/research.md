@@ -128,7 +128,7 @@ Em contrapartida, três coisas que o ERP **não** garante e que a implementaçã
 
 **Decisão**: a exclusividade de desktop (`FR-020`) é aplicada pela mesma capacidade `plataforma` já injetada na feature 008 — a projeção de atalhos devolve lista vazia quando a plataforma é mobile.
 
-**Rationale**: decisão direta do usuário (2026-08-31): venda rápida restrita ao desktop, sem equivalente tocável. Modelar como dado injetado (e não como `if (isMobile)` espalhado na UI) repete o padrão já validado em AD-074 (exclusão do TEF no mobile), mantém a regra testável sem renderizar componente e evita divergência entre "não mostra" e "não aciona" — com lista vazia, as duas coisas são a mesma coisa.
+**Rationale**: decisão direta do usuário (2026-08-31): venda rápida restrita ao desktop, sem equivalente tocável. Modelar como dado injetado (e não como `if (isMobile)` espalhado na UI) repete o padrão de capacidade injetada que AD-074 estreou — **o padrão continua válido, a regra de TEF que o originou não: AD-144 (2026-09-03) liberou o TEF no mobile** —, mantém a regra testável sem renderizar componente e evita divergência entre "não mostra" e "não aciona" — com lista vazia, as duas coisas são a mesma coisa.
 
 ---
 

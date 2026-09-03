@@ -52,20 +52,20 @@ Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Tr
 
 ## D5 — Roteamento por `FormaMeioPagtoNFe`, com capacidades injetadas
 
-**Decision**: `resolverIntegracao(forma, capacidades)` é uma função pura que devolve `'TEF' | 'PIX_DINAMICO' | 'NENHUMA'`. As `capacidades` (`tefAtivo`, `pixAtivo`, `plataforma`) são **injetadas**, nunca lidas de dentro do domínio. Tabela de decisão:
+**Decision**: `resolverIntegracao(forma, capacidades)` é uma função pura que devolve `'TEF' | 'PIX_DINAMICO' | 'NENHUMA'`. As `capacidades` (`tefAtivo`, `pixAtivo`) são **injetadas**, nunca lidas de dentro do domínio. **Revisado em 2026-09-03 (AD-144):** `plataforma` saiu das capacidades — o layout deixou de ser insumo do roteamento quando o usuário revogou a exclusão de TEF no mobile. Tabela de decisão:
 
 | `FormaMeioPagtoNFe` | Condição | Resultado |
 |---|---|---|
-| `CartaoCredito`, `CartaoDebito` | `tefAtivo && plataforma !== 'MOBILE'` | `TEF` |
+| `CartaoCredito`, `CartaoDebito` | `tefAtivo` | `TEF` |
 | `CartaoCredito`, `CartaoDebito` | caso contrário | `NENHUMA` |
 | `Pix` | `pixAtivo` | `PIX_DINAMICO` |
 | `Pix` | `!pixAtivo` | forma oculta/desabilitada (`FR-003`) |
 | `PixEstatico` | sempre | `NENHUMA` (`FR-006`) |
 | qualquer outro | sempre | `NENHUMA` |
 
-**Rationale**: `PAY-08` define a regra e AD-074 acrescenta a exclusão mobile do TEF (PIX permanece). Injetar as capacidades é o que satisfaz a Constitution II (Dependency Inversion): o domínio de pagamento não importa o slice de sessão nem o hook de layout, e o teste cobre as 4 combinações de flags sem montar nada. Também é o que mantém a feature 008 **independente** das features 009 (PIX) e 010 (TEF): ela decide *qual* integração acionar e devolve o veredito; *como* acionar é responsabilidade delas.
+**Rationale**: `PAY-08` define a regra, e ela vale igual em qualquer layout (AD-144 revogou a exclusão mobile do TEF que AD-074 havia acrescentado). Injetar as capacidades é o que satisfaz a Constitution II (Dependency Inversion): o domínio de pagamento não importa o slice de sessão, e o teste cobre as combinações de flags sem montar nada. Também é o que mantém a feature 008 **independente** das features 009 (PIX) e 010 (TEF): ela decide *qual* integração acionar e devolve o veredito; *como* acionar é responsabilidade delas.
 
-**Alternatives considered**: *Ler `ConfiguracoesTEF.TEFAtivo` direto de dentro do domínio*: rejeitado — acopla a matemática de roteamento ao formato do bootstrap e impede testar o caso mobile sem stubar o store.
+**Alternatives considered**: *Ler `ConfiguracoesTEF.TEFAtivo` direto de dentro do domínio*: rejeitado — acopla a matemática de roteamento ao formato do bootstrap e impede testar as combinações de flags sem stubar o store.
 
 ---
 

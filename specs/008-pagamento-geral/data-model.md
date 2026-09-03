@@ -230,6 +230,6 @@ Construído por `interpretarRespostaTicket` a partir de `ValidaTicketDevolucaoOu
 | 002 — sessão/bootstrap | 002 → 008 | `CondicoesDePagamento[]`, `ConfiguracoesTEF.TEFAtivo`, `ConfiguracoesPIX.UtilizaCentriumPAG` |
 | 003 — carrinho | 008 → 003 | `podeMutarCarrinho()` injetado; 003 → 008: subtotal e linhas ativas para o rateio |
 | 004 — finalização | 008 → 004 | `CondicaoPagamentoCodigo`, `FormasDePagamento[]` montados e o rateio do desconto de capa |
-| 007 — layout mobile | 007 → 008 | `plataforma` nas `CapacidadesPagamento` (exclusão de TEF, AD-074) |
+| 007 — layout mobile | — | **sem fluxo de dados desde AD-144 (2026-09-03).** A 007 injetava `plataforma` nas `CapacidadesPagamento` só para excluir o TEF no mobile (AD-074); revogada a exclusão, o pagamento não consulta mais o layout |
 | 009 — PIX | 008 → 009 | veredito `PIX_DINAMICO`; 009 → 008: aprovação/recusa e `FormaPixGUID` |
 | 010 — TEF | 008 → 010 | veredito `TEF`; 010 → 008: aprovação/recusa e os campos `TEF*` |

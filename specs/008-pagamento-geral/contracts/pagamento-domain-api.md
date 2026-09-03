@@ -37,12 +37,14 @@ export function exigeDocumentoImpresso(forma: FormaPagamento): false;  // sempre
 
 ```ts
 export type IntegracaoPagamento = 'NENHUMA' | 'TEF' | 'PIX_DINAMICO';
-export type Plataforma = 'DESKTOP' | 'MOBILE';
 
+// AD-144 (2026-09-03): `plataforma: Plataforma` saiu daqui. Era consultada só
+// para vetar TEF no mobile (AD-074), veto que o usuário revogou — nenhuma outra
+// regra desta feature depende do layout. Se alguma vier a depender, o campo
+// volta; a 013 obtém a plataforma pelo hook da 007, não por este contrato.
 export interface CapacidadesPagamento {
-  readonly tefAtivo: boolean;      // ConfiguracoesTEF.TEFAtivo
-  readonly pixAtivo: boolean;      // ConfiguracoesPIX.UtilizaCentriumPAG
-  readonly plataforma: Plataforma; // feature 007
+  readonly tefAtivo: boolean; // ConfiguracoesTEF.TEFAtivo
+  readonly pixAtivo: boolean; // ConfiguracoesPIX.UtilizaCentriumPAG
 }
 
 export function resolverIntegracao(
@@ -58,8 +60,8 @@ export function formaDisponivel(
 
 Função **pura e total** — tabela de decisão completa em `research.md`, D5. Contrato de comportamento:
 
-1. `CartaoCredito`/`CartaoDebito` → `'TEF'` **somente** se `tefAtivo && plataforma !== 'MOBILE'`; caso contrário `'NENHUMA'` (AD-074: no mobile o cartão segue como pagamento manual, sem integração).
-2. `Pix` → `'PIX_DINAMICO'` se `pixAtivo`; a plataforma **não** influencia (AD-074: PIX permanece no mobile).
+1. `CartaoCredito`/`CartaoDebito` → `'TEF'` se `tefAtivo`; caso contrário `'NENHUMA'` (AD-144: o layout não entra na conta — cartão com TEF ativo roteia para TEF também no mobile).
+2. `Pix` → `'PIX_DINAMICO'` se `pixAtivo` — igualmente sem consultar o layout.
 3. `PixEstatico` → sempre `'NENHUMA'` (`FR-006`).
 4. Qualquer outro meio → `'NENHUMA'` (`FR-004` AC3).
 
@@ -190,7 +192,7 @@ interface PagamentoDeps {
 }
 ```
 
-O slice de pagamento **não importa** o slice de carrinho, o hook de layout, nem os módulos de PIX/TEF. É o que permite testar todo o comportamento — inclusive o mobile sem TEF e a recusa de integração — sem montar componente nem rede.
+O slice de pagamento **não importa** o slice de carrinho, o hook de layout, nem os módulos de PIX/TEF. É o que permite testar todo o comportamento — inclusive a recusa de integração — sem montar componente nem rede.
 
 ### Contrato de comportamento das actions
 
@@ -226,7 +228,7 @@ O slice de pagamento **não importa** o slice de carrinho, o hook de layout, nem
 | 001 — auditoria | recebe os 5 eventos de pagamento pelo dispatcher tipado |
 | 003 — carrinho | recebe `podeMutarCarrinho()` injetado; fornece `subtotalCarrinho()` e `linhasRateaveis()` |
 | 004 — finalização | chama `montarPagamentosParaPayload()` e `limparPagamentos()` |
-| 007 — layout mobile | fornece `plataforma` em `capacidades()`; nenhuma regra de pagamento é duplicada na camada de layout |
+| 007 — layout mobile | nenhuma regra de pagamento é duplicada na camada de layout — e, desde AD-144, nenhuma capacidade de plataforma é injetada aqui: o pagamento roteia igual nos dois layouts |
 | 009 — PIX | recebe o veredito `PIX_DINAMICO` via `iniciarIntegracao`; responde por `confirmarPagamentoIntegrado`/`recusarPagamentoIntegrado` |
-| 010 — TEF | idem, com o veredito `TEF` — e nunca é acionada quando `plataforma === 'MOBILE'` (AD-074) |
+| 010 — TEF | idem, com o veredito `TEF` — acionada em qualquer layout, desde que `tefAtivo` (AD-144 revogou a exclusão mobile de AD-074) |
 | 013 — venda rápida (F6–F9) | **acrescentado em 2026-08-31 (AD-104)**: consome `selecionarCondicao`, a aplicação de forma, `saldoEmAberto` e `resolverIntegracao` como **portas injetadas**, para lançar o pagamento inteiro por atalho de teclado. Não reimplementa saldo, troco, rateio nem roteamento; recebe o veredito de integração e apenas aguarda o desfecho antes de decidir sobre a finalização automática. As operações listadas em `specs/013-venda-rapida-cenario-pagamento/contracts/venda-rapida-domain-api.md` passam a ser superfície pública deste domínio, não detalhe interno |

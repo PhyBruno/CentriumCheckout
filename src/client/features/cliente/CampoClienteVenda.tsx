@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import {
   apenasDigitos,
@@ -225,6 +226,20 @@ export function CampoClienteVenda(): ReactElement {
     setExpandido(true);
     setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }
+
+  /**
+   * Por que "Identificar" está bloqueado — a frase que o operador lê ao clicar
+   * nele bloqueado (padrão de `lib/bloqueio.ts`, pedido do usuário
+   * 2026-09-03), ou `null` quando dá para identificar.
+   *
+   * São os dois mesmos termos da guarda de `identificar()`, na mesma ordem:
+   * botão e função respondem à mesma condição, escrita uma vez só.
+   */
+  const bloqueioDeIdentificacao: MotivoBloqueio = buscando
+    ? 'Aguarde: a consulta ao ERP ainda está em andamento.'
+    : documento.trim() === ''
+      ? 'Digite o CPF do consumidor para identificar.'
+      : null;
 
   async function identificar(): Promise<void> {
     const termo = documento.trim();
@@ -477,10 +492,10 @@ export function CampoClienteVenda(): ReactElement {
                 type="button"
                 className="h-[42px] w-[126px] shrink-0 gap-[7px] rounded-full text-base font-bold"
                 data-testid="identificar-cliente"
-                disabled={documento.trim() === '' || buscando}
-                onClick={() => {
+                {...atributosDeBloqueio(bloqueioDeIdentificacao)}
+                onClick={acaoBloqueavel(bloqueioDeIdentificacao, () => {
                   void identificar();
-                }}
+                })}
               >
                 <UserCheck className="size-4" aria-hidden="true" />
                 Identificar

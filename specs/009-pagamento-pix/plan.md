@@ -22,7 +22,7 @@ O maior achado desta fase foi a semântica real de `StatusPIXOutput.StatusTransa
 
 **Testing**: Vitest + Testing Library. Unitários puros (sem React) para: `interpretarStatusPix` (10 literais confirmados, AD-102, + `default` desconhecido, `data-model.md` J2), `validarValorMinimoPix`, `montarDadosPagador` (cliente identificado × default × `null`). Integração para a máquina de estados do modal (`data-model.md` §4): geração → polling → aprovação; geração → polling → falha terminal; geração → fechamento manual; geração → erro de rede → retry com novo `TrnGUID`. Teste negativo explícito de que nenhuma chamada de cancelamento é feita em qualquer caminho de abandono (`data-model.md` J5, mesmo padrão do teste negativo de impressão da feature 008). Playwright para o fluxo dourado de `quickstart.md`.
 
-**Target Platform**: Navegador (Chrome prioritário), desktop e mobile — PIX é uma das únicas duas integrações que **permanecem** disponíveis no mobile (AD-074; a outra é nenhuma, já que TEF é excluído). Nenhuma ramificação de código por plataforma dentro desta feature.
+**Target Platform**: Navegador (Chrome prioritário), desktop e mobile — PIX está disponível nos dois layouts, e desde AD-144 (2026-09-03) o TEF também, já que a exclusão mobile de AD-074 foi revogada. Nenhuma ramificação de código por plataforma dentro desta feature.
 
 **Performance Goals**: Polling fixo de 10s, sem backoff (AD-026, decisão deliberada) — nenhuma meta de performance além de garantir que o `refetchInterval` para de fato quando o modal fecha ou o status resolve (`data-model.md` J3), para não deixar requests órfãos.
 

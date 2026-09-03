@@ -830,6 +830,39 @@ test.describe('Código ou documento no mesmo campo (correções de 2026-09-03)',
   });
 });
 
+test.describe('Bloqueio explicativo (pedido do usuário, 2026-09-03)', () => {
+  test('"Identificar" sem documento digitado explica o motivo ao ser clicado', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    // O campo nasce espelhando a identificação do cliente default (o código),
+    // então é preciso esvaziá-lo para chegar ao estado bloqueado — que é o que
+    // o operador produz ao apagar o que estava lá para digitar outro CPF.
+    await page.getByTestId('campo-documento-cliente').fill('');
+
+    // O botão é `aria-disabled`, não `disabled`, para o clique poder informar a
+    // razão em vez de não fazer nada. (`force`: a checagem de actionability do
+    // Playwright recusa `aria-disabled`; o navegador clica sem problema.)
+    const identificar = page.getByTestId('identificar-cliente');
+    await expect(identificar).toBeDisabled();
+    await expect(identificar).toHaveAttribute('title', /digite o cpf do consumidor/i);
+    // O card abre com transição de altura: sem esperar o fim, o botão ainda
+    // está fora da faixa visível do container e o clique cai no container.
+    // `dispatchEvent`, e não um clique de ponteiro: o card abre com transição
+    // de altura e o container recorta o que ainda não coube, então um clique
+    // por coordenada entrega o evento ao container em vez do botão, de forma
+    // dependente do tempo. O gesto físico sobre um botão bloqueado já está
+    // coberto pelo E2E do "Menu Importação"; o que este caso prova é que o
+    // bloqueio **explica** em vez de silenciar.
+    await expect(identificar).toBeVisible();
+    await identificar.dispatchEvent('click');
+
+    await expect(page.getByText(/digite o cpf do consumidor/i).first()).toBeVisible();
+    // E a venda segue com o cliente default, sem nenhuma identificação.
+    await expect(page.getByTestId('status-cliente')).toHaveText('CONSUMIDOR FINAL');
+  });
+});
+
 test.describe('Verificação manual apoiada pelo E2E', () => {
   test('F5 no meio da venda descarta o cliente selecionado (Constitution VI)', async ({ page }) => {
     await abrirTelaDeVenda(page);

@@ -10,14 +10,14 @@ O operador pode usar o PDV em tablet/celular, onde uma tela única com todas as 
 
 O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor mobile` dentro de `Cliente e NFCe mobile` (etapa 1, `PDV Mobile 01`) — abre o mesmo modal de `.specs/features/selecao-vendedor/spec.md`, sem necessidade de spec própria aqui.
 
-**Escopo mobile confirmado (2026-08-25, AD-046; complementado em 2026-08-26, AD-074):**
+**Escopo mobile confirmado (2026-08-25, AD-046; complementado em 2026-08-26, AD-074; a regra de TEF revisada em 2026-09-03, AD-144):**
 - Modal de importação de DAV (`.specs/features/importacao-dav/spec.md`) é **desktop-only**.
 - Modal de recuperação de NFCe (`.specs/features/recuperacao-nfce/spec.md`) também é **desktop-only**.
 - Cadastro de cliente (`.specs/features/identificacao-cadastro-cliente/spec.md`, `CLI-03`/`CLI-04`) DEVE existir no mobile — precisa de adaptação de layout (fase Design desta feature).
 - Fluxo de pagamento (`.specs/features/pagamento-geral/spec.md`) precisa de adaptação de layout no mobile — inferida pela IA na fase Design, sem detalhamento adicional confirmado pelo usuário nesta rodada.
 - **(AD-074)** Busca e cadastro de cliente, inserção/edição/exclusão de item normal, identificação de vendedor e seleção de condição/forma de pagamento funcionam normalmente no mobile — mesmo fluxo do desktop, sujeito só à adaptação de layout já prevista acima.
-- **(AD-074)** TEF **não** é chamado no mobile, independentemente de `ConfiguracoesTEF.TEFAtivo` — ver `.specs/features/pagamento-tef/spec.md`.
-- **(AD-074)** PIX permanece disponível no mobile — exceção à exclusão de TEF, já que não depende de terminal físico.
+- **(AD-144, 2026-09-03 — substitui a regra que AD-074 fixava aqui)** TEF **é** chamado no mobile nas mesmas condições do desktop, decididas só por `ConfiguracoesTEF.TEFAtivo`. A exclusão anterior ("TEF não é chamado no mobile") foi revogada pelo usuário: o dispositivo móvel também pode alcançar o terminal, então quem decide é o cadastro do ERP, não o layout. Ver `.specs/features/pagamento-tef/spec.md`.
+- **(AD-074)** PIX permanece disponível no mobile — hoje sem nada de excepcional nisso, já que o TEF também está.
 - **(AD-086)** O botão "Scanner", já previsto na etapa de produtos do design mobile, ativa a câmera do dispositivo para leitura de código de barras via API nativa `BarcodeDetector`, sem biblioteca de decodificação externa. Funciona **somente em Chrome no Android** — nenhum outro navegador/plataforma é suportado por esta decisão. **(AD-090)** Fora de Chrome/Android, o botão fica **oculto** — sem versão desabilitada nem mensagem de indisponibilidade.
 
 ## Goals
@@ -34,7 +34,7 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 | Modal menu gerencial no mobile | Confirmado (2026-08-21): é uma tela só de desktop — não existe equivalente no design mobile (nenhum dos 3 frames do wizard o referencia) e não há necessidade de operação de retaguarda (sangria, suprimento, fechamento de caixa) durante o fluxo de venda em tablet/celular. Ver `.specs/codebase/ARCHITECTURE.md` |
 | Modal de importação de DAV no mobile | Confirmado (2026-08-25, AD-046): decisão direta do usuário — desktop-only, ver `.specs/features/importacao-dav/spec.md` |
 | Modal de recuperação de NFCe no mobile | Confirmado (2026-08-25, AD-046): decisão direta do usuário — desktop-only, ver `.specs/features/recuperacao-nfce/spec.md` |
-| TEF no mobile | Confirmado (2026-08-26, AD-074): decisão direta do usuário — TEF depende de terminal físico conectado ao PDV, incompatível com uso em tablet/celular. PIX permanece disponível no mobile (não depende de hardware). Ver `.specs/features/pagamento-tef/spec.md` |
+| ~~TEF no mobile~~ — **deixou de ser exclusão em 2026-09-03 (AD-144)** | O TEF **está** disponível no mobile, decidido só por `ConfiguracoesTEF.TEFAtivo`, como no desktop. AD-074 o havia excluído supondo terminal físico sem equivalente em tablet/celular; o usuário revogou essa premissa. Esta linha permanece na tabela só para quem procurar a exclusão antiga. Ver `.specs/features/pagamento-tef/spec.md` |
 
 ---
 

@@ -295,7 +295,10 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
     expect(useVendaStore.getState().linhas[0]?.origem).toBe('BUSCA');
     // Nenhuma prévia ficou pendente: a barra volta ao estado vazio.
     expect(screen.getByTestId('campo-codigo-produto')).toHaveValue('');
-    expect(screen.getByTestId('previa-confirmar')).toBeDisabled();
+    // `aria-disabled`, não `disabled`: o botão bloqueado continua clicável para
+    // explicar o motivo (`lib/bloqueio.ts`), e o `toBeDisabled` do jest-dom só
+    // enxerga o atributo nativo.
+    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
   });
 
   it("produto editável ('E') escolhido no modal continua exigindo revisão — não insere sozinho", async () => {

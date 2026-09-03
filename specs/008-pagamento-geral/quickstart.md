@@ -51,15 +51,16 @@ npx tsc --noEmit                                  # gate obrigatório antes de q
 
 Teste unitário puro sobre `resolverIntegracao`, sem montar componente. Matriz mínima:
 
-| `FormaMeioPagtoNFe` | `tefAtivo` | `pixAtivo` | `plataforma` | Esperado |
-|---|---|---|---|---|
-| `CartaoCredito` | `true` | — | `DESKTOP` | `TEF` |
-| `CartaoCredito` | `true` | — | `MOBILE` | `NENHUMA` ← AD-074 |
-| `CartaoDebito` | `false` | — | `DESKTOP` | `NENHUMA` |
-| `Pix` | — | `true` | `MOBILE` | `PIX_DINAMICO` ← PIX permanece no mobile |
-| `Pix` | — | `false` | `DESKTOP` | forma indisponível |
-| `PixEstatico` | — | `true` | `DESKTOP` | `NENHUMA` ← `FR-006` |
-| `Dinheiro` | `true` | `true` | `DESKTOP` | `NENHUMA` |
+A matriz não tem mais eixo de plataforma (AD-144, 2026-09-03): o veredito é o mesmo no desktop e no mobile, inclusive para cartão com TEF ativo — a linha que esperava `NENHUMA` no mobile foi removida.
+
+| `FormaMeioPagtoNFe` | `tefAtivo` | `pixAtivo` | Esperado |
+|---|---|---|---|
+| `CartaoCredito` | `true` | — | `TEF` (em qualquer layout) |
+| `CartaoDebito` | `false` | — | `NENHUMA` |
+| `Pix` | — | `true` | `PIX_DINAMICO` (em qualquer layout) |
+| `Pix` | — | `false` | forma indisponível |
+| `PixEstatico` | — | `true` | `NENHUMA` ← `FR-006` |
+| `Dinheiro` | `true` | `true` | `NENHUMA` |
 
 **A linha que mais importa**: `CartaoCredito` + `tefAtivo: true` + `MOBILE` → `NENHUMA`. Se essa falhar, `FR-007` está violado — o Checkout tentaria acionar um terminal físico a partir de um tablet.
 

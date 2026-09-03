@@ -39,7 +39,7 @@ Como Checkout, quero identificar a integração correta a partir da forma de pag
 1. **Given** uma forma de pagamento por cartão com a integração de terminal físico ativa, **When** o operador a seleciona, **Then** o sistema aciona essa integração e só registra o pagamento após a aprovação dela.
 2. **Given** a forma de pagamento PIX dinâmico com a integração ativa, **When** o operador a seleciona, **Then** o sistema aciona o fluxo de PIX e só registra o pagamento após a confirmação.
 3. **Given** uma forma de pagamento que não depende de nenhuma integração externa, **When** o operador a seleciona, **Then** o sistema segue o fluxo normal, sem acionar nenhuma integração.
-4. **Given** o layout mobile, **When** o operador tenta aplicar um pagamento por cartão, **Then** o sistema nunca aciona a integração de terminal físico, independentemente da configuração do ambiente; o PIX continua disponível normalmente.
+4. **Given** o layout mobile, **When** o operador aplica um pagamento por cartão, **Then** o sistema aciona a integração de terminal físico exatamente como no desktop, se a configuração do ambiente a habilitar; o PIX continua disponível normalmente. **Corrigido em 2026-09-03 (AD-144):** este cenário exigia o oposto — que a integração nunca fosse acionada no mobile.
 
 ---
 
@@ -109,7 +109,7 @@ Como operador de caixa, quero aplicar desconto direto em um item ou no total da 
 - **FR-004**: O sistema MUST rotear automaticamente um pagamento por cartão para a integração de terminal físico quando ela estiver habilitada e aplicável, e MUST só registrar esse pagamento após a aprovação dessa integração.
 - **FR-005**: O sistema MUST rotear automaticamente um pagamento por PIX dinâmico para sua integração dedicada quando aplicável, consultando seu status periodicamente, e MUST só registrar esse pagamento após a confirmação.
 - **FR-006**: O sistema MUST NOT rotear uma forma de PIX estático para a integração de PIX dinâmico automaticamente.
-- **FR-007**: O sistema MUST NOT acionar a integração de terminal físico em nenhuma hipótese no layout mobile, independentemente da configuração do ambiente; o pagamento por PIX MUST permanecer disponível no mobile.
+- **FR-007**: O sistema MUST rotear as integrações de pagamento sem considerar o layout — a integração de terminal físico e o PIX MUST estar disponíveis no mobile nas mesmas condições do desktop, decididas só pela configuração do ambiente. **Corrigido em 2026-09-03 (AD-144):** o texto anterior proibia a integração de terminal físico no mobile.
 - **FR-008**: O sistema MUST permitir que o operador aplique um vale devolução a uma forma de pagamento elegível.
 - **FR-009**: O sistema MUST NOT revalidar um vale devolução na finalização da venda — ele é validado e consumido uma única vez, no momento da aplicação.
 - **FR-010**: O sistema MUST tratar uma forma de pagamento sem elegibilidade de vale devolução explicitamente configurada como elegível por padrão, em vez de bloqueá-la.

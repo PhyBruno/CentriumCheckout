@@ -19,6 +19,7 @@ import type { abrirPdfNFCe } from '../../src/client/services/impressao/abrirPdfN
 import { CHAVE_RAIZ_PRODUTO } from '../../src/client/services/produto/produtoQueries';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
+import { clienteCheckoutDe } from '../support/cliente';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -484,13 +485,24 @@ function renderizarAtalhos(cenario: Cenario) {
 }
 
 describe('correções do usuário (2026-09-02)', () => {
-  it('desabilita "Cancelar venda" enquanto a venda não tem item', () => {
+  it('desabilita "Cancelar venda" enquanto a venda não tem item, com o motivo legível no botão', async () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
     useVendaStore.getState().limparCarrinho();
 
     render(renderizarAtalhos(cenario));
 
-    expect(screen.getByTestId('botao-cancelar-venda')).toBeDisabled();
+    // `aria-disabled`, não `disabled`: o botão bloqueado precisa continuar
+    // clicável para dizer por que está bloqueado (`lib/bloqueio.ts`). O texto
+    // do motivo é afirmado aqui pelo `title`; que ele **também** vira
+    // notificação ao clicar é o que o E2E verifica, com o toast real na tela.
+    const botao = screen.getByTestId('botao-cancelar-venda');
+    expect(botao).toHaveAttribute('aria-disabled', 'true');
+    expect(botao).toHaveAttribute('title', expect.stringMatching(/nenhum item foi lançado/i));
+
+    await userEvent.click(botao);
+
+    // Clicar bloqueado não suspende nada: nenhum retrato foi ao ERP.
+    expect(cenario.enviados).toHaveLength(0);
   });
 
   it('habilita "Cancelar venda" assim que existe linha ativa', () => {
@@ -498,16 +510,20 @@ describe('correções do usuário (2026-09-02)', () => {
 
     render(renderizarAtalhos(cenario));
 
-    expect(screen.getByTestId('botao-cancelar-venda')).toBeEnabled();
+    expect(screen.getByTestId('botao-cancelar-venda')).not.toHaveAttribute('aria-disabled');
   });
 
-  it('não conta linha cancelada como venda a suspender (CART-08)', () => {
+  it('habilita "Cancelar venda" quando só restam linhas canceladas (correção de 2026-09-03)', () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
     useVendaStore.setState({ linhas: [linhaDe({ cancelada: true })] });
 
     render(renderizarAtalhos(cenario));
 
-    expect(screen.getByTestId('botao-cancelar-venda')).toBeDisabled();
+    // A regra anterior exigia linha **ativa** e deixava o operador sem saída
+    // numa venda cujos itens foram todos cancelados: nada a finalizar e nada a
+    // cancelar. A linha cancelada continua no array por rastreabilidade
+    // (`CART-08`) e é prova de que a venda foi digitada.
+    expect(screen.getByTestId('botao-cancelar-venda')).not.toHaveAttribute('aria-disabled');
   });
 
   it('comunica a suspensão por notificação, não por texto fixo na tela', async () => {
@@ -628,5 +644,44 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
     });
 
     expect(cenario.enviados).toHaveLength(1);
+  });
+});
+
+describe('cliente do retrato (regressão achada pela feature 006)', () => {
+  it('envia o cliente identificado na venda, não o default do PDV', async () => {
+    // Carrinho vazio na hora de selecionar: sem SKU vivo, a troca de cliente
+    // não dispara re-fetch de preço, e o teste fica sobre o retrato.
+    useVendaStore.getState().limparCarrinho();
+    await act(async () => {
+      await useVendaStore
+        .getState()
+        .selecionarCliente(clienteCheckoutDe({ CodCliente: 2538 }), 'BUSCA_DOCUMENTO');
+    });
+    useVendaStore.setState({ linhas: [linhaDe({ quantidadeEmUnidades: 1, precoUnitario: 1000 })] });
+
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    // `ClienteDefaultCodigo` do bootstrap sintético é `1`. Antes desta correção
+    // o retrato mandava sempre esse `1`, e a NFCe saía para o consumidor padrão
+    // mesmo com outro cliente identificado.
+    expect(cenario.enviados[0]?.clienteCodigo).toBe(2538);
+  });
+
+  it('cai no cliente default do PDV quando não houve identificação (AD-032)', async () => {
+    useVendaStore.getState().limparCliente();
+
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(cenario.enviados[0]?.clienteCodigo).toBe(1);
   });
 });
