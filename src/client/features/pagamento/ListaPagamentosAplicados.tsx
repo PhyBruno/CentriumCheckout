@@ -7,7 +7,7 @@ import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
 import { useVendaStore } from '../../stores/vendaStore';
-import { ICONE_POR_MEIO } from './iconePorMeio';
+import { iconeDoPagamento } from './iconePorMeio';
 import { ModalPix } from './pix/ModalPix';
 
 /**
@@ -110,9 +110,7 @@ export function ListaPagamentosAplicados(): ReactElement | null {
 function usePixPendente(): ReactElement | null {
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
-  const confirmarPagamentoIntegrado = useVendaStore(
-    (estado) => estado.confirmarPagamentoIntegrado,
-  );
+  const confirmarPagamentoIntegrado = useVendaStore((estado) => estado.confirmarPagamentoIntegrado);
   const recusarPagamentoIntegrado = useVendaStore((estado) => estado.recusarPagamentoIntegrado);
 
   // O catálogo já está em cache (`staleTime` de 30 min, `PAY-01`): a mesma query
@@ -165,7 +163,7 @@ interface ItemPagamentoAplicadoProps {
 
 /** Uma faixa da lista — o nó `vmqVn` ("PIX aplicado") do Pencil. */
 function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoProps): ReactElement {
-  const Icone = ICONE_POR_MEIO[pagamento.meioPagtoNFe];
+  const Icone = iconeDoPagamento(pagamento);
   const nome = ROTULO_POR_MEIO[pagamento.meioPagtoNFe];
   const anotacao = anotacaoDoPagamento(pagamento);
   const motivoBloqueio = motivoBloqueioRemocao(pagamento);

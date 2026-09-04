@@ -46,10 +46,14 @@ export interface ConfigMockErp {
   /**
    * `ConfiguracoesPIX.UtilizaCentriumPAG` (feature 009).
    *
-   * Fica **desligado por padrão** de propósito: é o cenário do quickstart da 008
-   * e o que mantém toda forma roteando para `NENHUMA`. O E2E de PIX o liga
-   * explicitamente — invertê-lo aqui faria a suíte inteira passar a depender da
-   * cobrança PIX para quitar uma venda.
+   * **Ligado por padrão** desde 2026-09-04 (pedido do usuário): o `GetSessao`
+   * sintético precisa expor PIX para que o fluxo da 009 seja testável à mão na
+   * stack local, sem um `POST /__mock/config` antes de cada sessão.
+   *
+   * Não afeta as demais suítes: só a forma `Pix` roteia para `PIX_DINAMICO`
+   * (`resolverIntegracao`), e nenhum outro cenário a aplica — os que quitam uma
+   * venda usam dinheiro (`quitarVendaEmDinheiro`). Quem precisar do PIX
+   * desligado — o cenário "forma indisponível" — manda `{"pixAtivo": false}`.
    */
   pixAtivo: boolean;
   /** `ConfiguracoesPIX.MinimoPix`, em **reais** (`double`), como o ERP devolve. */
@@ -91,8 +95,14 @@ const CONFIG_PADRAO: ConfigMockErp = {
   statusFaturarNFCe: 200,
   faturarSemNotaFiscal: false,
   davJaFaturado: false,
-  pixAtivo: false,
-  minimoPix: 0,
+  pixAtivo: true,
+  /**
+   * R$ 5,00 — piso realista e **abaixo** do total de qualquer cenário que
+   * aplique PIX, de modo que o valor mínimo nunca bloqueia por acidente. Quem
+   * quiser exercitar o bloqueio (`FR-009`) sobe este número acima do total da
+   * venda em vez de montar um carrinho menor.
+   */
+  minimoPix: 5,
   statusPixTransicoes: ['G', 'P'],
 };
 

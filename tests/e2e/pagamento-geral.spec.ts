@@ -204,7 +204,16 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
   });
 
-  test('trocar a condição de pagamento esvazia as formas já aplicadas (I9)', async ({ page }) => {
+  /**
+   * I9 reescrita pelo usuário em 2026-09-04: **uma condição por venda**.
+   *
+   * A versão anterior deste cenário afirmava que trocar a condição esvaziava as
+   * formas aplicadas — e o slice de fato as **apagava**, em silêncio. Agora a
+   * troca é recusada, e a única saída continua sendo explícita: "Limpar".
+   */
+  test('com forma aplicada, a condição não pode mais ser trocada e nada é apagado', async ({
+    page,
+  }) => {
     await stubarImpressoraLocal(page);
     await abrirTelaDeVenda(page);
     await biparProduto(page, ITENS[0].sku, 1);
@@ -213,9 +222,41 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     await aplicarPagamento(page, 'opcao-forma-1', '10,00');
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
 
-    // Reselecionar a **mesma** condição não é troca: a lista sobrevive. É o caso
-    // que distingue "trocou de condição" de "clicou de novo na que já estava".
-    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-1');
+    const condicao = page.getByTestId('combobox-condicao-pagamento');
+    await expect(condicao).toHaveAttribute('aria-disabled', 'true');
+    await expect(condicao).toHaveAttribute('title', /uma condição só/i);
+
+    // `force`, porque o Playwright considera `aria-disabled` como não-acionável
+    // e recusaria o clique sozinho — e é justamente o clique que precisa ser
+    // exercitado: o padrão desta base é `aria-disabled` + `acaoBloqueavel`, não
+    // `disabled` nativo (AD-143), então o evento **chega** ao handler e o que o
+    // impede de abrir a lista é código nosso, não o navegador.
+    await condicao.click({ force: true });
+    await expect(page.getByTestId('opcao-condicao-2')).toHaveCount(0);
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+
+    // "Limpar" é a saída, e ela zera a pedido do operador — não por baixo dele.
+    await page.getByTestId('limpar-pagamento').click();
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    await expect(condicao).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  test('trocar a condição antes de cobrar limpa a forma escolhida no combobox', async ({
+    page,
+  }) => {
+    await stubarImpressoraLocal(page);
+    await abrirTelaDeVenda(page);
+    await biparProduto(page, ITENS[0].sku, 1);
+
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-1');
+    await escolherNoCombobox(page, 'combobox-forma-pagamento', 'opcao-forma-1');
+    await expect(page.getByTestId('combobox-forma-pagamento')).toContainText('DINHEIRO');
+
+    // A condição "30 DIAS" não oferece DINHEIRO: manter a escolha anterior
+    // exibiria o nome de uma forma que a condição nova não tem (pedido do
+    // usuário, 2026-09-04).
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-2');
+    await expect(page.getByTestId('combobox-forma-pagamento')).toContainText('Selecione a forma');
+    await expect(page.getByTestId('combobox-forma-pagamento')).not.toContainText('DINHEIRO');
   });
 });

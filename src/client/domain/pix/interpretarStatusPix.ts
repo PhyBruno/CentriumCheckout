@@ -19,12 +19,7 @@
 export type StatusTransacaoLiteral = 'C' | 'A' | 'G' | 'P' | 'M' | 'X' | 'R' | 'E' | 'F' | 'O';
 
 export type MotivoFalhaPix =
-  | 'EXPIRADA'
-  | 'RECUSADA'
-  | 'ERRO'
-  | 'FECHADA'
-  | 'ASSOCIACAO_REMOVIDA'
-  | 'DESCONHECIDO';
+  'EXPIRADA' | 'RECUSADA' | 'ERRO' | 'FECHADA' | 'ASSOCIACAO_REMOVIDA' | 'DESCONHECIDO';
 
 /**
  * União discriminada: o call site nunca lê `motivo` sem antes checar

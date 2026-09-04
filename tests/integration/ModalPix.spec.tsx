@@ -98,9 +98,7 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
   const cliente: ErpClient = {
     chamar(caminho: string, init: RequestInit = {}): Promise<ResultadoChamadaErp> {
       const corpo =
-        typeof init.body === 'string'
-          ? (JSON.parse(init.body) as Record<string, unknown>)
-          : null;
+        typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null;
       chamadas.push({ caminho, corpo });
 
       if (caminho.startsWith(CAMINHO_GERAR)) {
@@ -184,10 +182,7 @@ interface Desfechos {
   readonly abandonados: string[];
 }
 
-function renderizar(
-  cliente: ErpClient,
-  sobrescritas: Partial<ModalPixProps> = {},
-): Desfechos {
+function renderizar(cliente: ErpClient, sobrescritas: Partial<ModalPixProps> = {}): Desfechos {
   const desfechos: Desfechos = { aprovados: [], abandonados: [] };
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -393,24 +388,27 @@ describe('US3 — fechar a cobrança pendente e trocar de forma', () => {
     ['E', 'ERRO'],
     ['F', 'FECHADA'],
     ['O', 'ASSOCIACAO_REMOVIDA'],
-  ])('falha terminal %s reportada pelo ERP abandona a cobrança como %s', async (literal, motivo) => {
-    const { cliente, chamadas } = erpFake({ statusSequencia: ['G', literal] });
-    const desfechos = renderizar(cliente);
+  ])(
+    'falha terminal %s reportada pelo ERP abandona a cobrança como %s',
+    async (literal, motivo) => {
+      const { cliente, chamadas } = erpFake({ statusSequencia: ['G', literal] });
+      const desfechos = renderizar(cliente);
 
-    await screen.findByTestId('pix-qrcode');
+      await screen.findByTestId('pix-qrcode');
 
-    await waitFor(() => {
-      expect(desfechos.abandonados).toEqual([motivo]);
-    });
+      await waitFor(() => {
+        expect(desfechos.abandonados).toEqual([motivo]);
+      });
 
-    expect(desfechos.aprovados).toHaveLength(0);
-    expect(avisos.some((aviso) => aviso.includes(AVISO_DESASSOCIACAO_MANUAL))).toBe(true);
-    expect(apenasGerarEStatus(chamadas)).toBe(true);
+      expect(desfechos.aprovados).toHaveLength(0);
+      expect(avisos.some((aviso) => aviso.includes(AVISO_DESASSOCIACAO_MANUAL))).toBe(true);
+      expect(apenasGerarEStatus(chamadas)).toBe(true);
 
-    const consultasAoFalhar = consultasDeStatus(chamadas);
-    await esperarAlemDeUmTick();
-    expect(consultasDeStatus(chamadas)).toBe(consultasAoFalhar);
-  });
+      const consultasAoFalhar = consultasDeStatus(chamadas);
+      await esperarAlemDeUmTick();
+      expect(consultasDeStatus(chamadas)).toBe(consultasAoFalhar);
+    },
+  );
 
   // J2 pelo lado da UI: um literal que o ERP não documentou nunca vira aprovação.
   it('status desconhecido abandona a cobrança em vez de aprová-la', async () => {
@@ -437,9 +435,7 @@ describe('US2 — PIX indisponível nunca alcança esta feature', () => {
   it('sem UtilizaCentriumPAG o roteamento nunca devolve PIX_DINAMICO', () => {
     expect(resolverIntegracao(FORMA_PIX, { tefAtivo: false, pixAtivo: false })).toBe('NENHUMA');
     expect(resolverIntegracao(FORMA_PIX, { tefAtivo: true, pixAtivo: false })).toBe('NENHUMA');
-    expect(resolverIntegracao(FORMA_PIX, { tefAtivo: false, pixAtivo: true })).toBe(
-      'PIX_DINAMICO',
-    );
+    expect(resolverIntegracao(FORMA_PIX, { tefAtivo: false, pixAtivo: true })).toBe('PIX_DINAMICO');
   });
 
   it('sem o veredito de PIX o modal não é montado e nenhuma cobrança é possível', () => {

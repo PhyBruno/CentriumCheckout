@@ -1,5 +1,12 @@
 import { Copy, QrCode, RefreshCw, TriangleAlert, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactElement,
+} from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import type { ClienteVenda } from '../../../domain/cliente/clienteVenda';
@@ -416,7 +423,9 @@ export function ModalPix({
               {/* Bloco escuro `ZgrCz` — o valor é o único número da tela e usa a
                   maior escala tipográfica do produto. */}
               <div className="flex w-full flex-col items-center gap-[6px] rounded-[20px] bg-[var(--cc-color-surface-dark)] p-base">
-                <span className="text-base text-[var(--cc-color-on-dark-muted)]">Valor a cobrar</span>
+                <span className="text-base text-[var(--cc-color-on-dark-muted)]">
+                  Valor a cobrar
+                </span>
                 <span
                   className="font-mono text-2xl leading-[1.05] font-semibold tabular-nums text-[var(--cc-color-on-primary)]"
                   data-testid="pix-valor-a-cobrar"

@@ -14,8 +14,9 @@ import { formaDisponivel } from '../../domain/pagamento/roteamentoIntegracao';
 import { ZERO_CENTAVOS } from '../../domain/precificacao/dinheiro';
 import { totalVenda } from '../../domain/precificacao/linha';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
+import { AVISO_CONDICAO_COM_PAGAMENTO } from '../../stores/slices/pagamentoSlice';
 import { useVendaStore } from '../../stores/vendaStore';
-import { ICONE_POR_MEIO } from './iconePorMeio';
+import { iconeDaForma } from './iconePorMeio';
 
 /**
  * Comboboxes de **condição** e **forma** de pagamento do cartão "Pagamento e
@@ -309,6 +310,16 @@ export function SeletorCondicaoPagamento(): ReactElement {
    */
   const subtotal = useVendaStore((estado) => totalVenda(estado.linhas));
 
+  /**
+   * Uma condição por venda (regra do usuário, 2026-09-04): com forma já
+   * inserida, o controle inteiro fecha.
+   *
+   * O bloqueio é da mesma frase que o slice usa ao recusar — não uma segunda
+   * redação —, porque quem decide de verdade é `selecionarCondicao`; aqui a
+   * regra só chega ao operador **antes** de ele abrir a lista e escolher.
+   */
+  const temPagamento = useVendaStore((estado) => estado.pagamentos.length > 0);
+
   const condicoes = catalogo.data?.condicoes ?? [];
 
   // Ordem das causas: primeiro o que impede o controle de existir (catálogo em
@@ -322,9 +333,11 @@ export function SeletorCondicaoPagamento(): ReactElement {
       ? 'Catálogo de pagamento indisponível: recarregue a tela de venda.'
       : condicoes.length === 0
         ? 'Nenhuma condição de pagamento cadastrada para este ponto de venda.'
-        : subtotal === ZERO_CENTAVOS
-          ? 'Insira ao menos um produto na venda antes de escolher a condição de pagamento.'
-          : null;
+        : temPagamento
+          ? AVISO_CONDICAO_COM_PAGAMENTO
+          : subtotal === ZERO_CENTAVOS
+            ? 'Insira ao menos um produto na venda antes de escolher a condição de pagamento.'
+            : null;
 
   return (
     <ComboboxPagamento
@@ -407,8 +420,7 @@ export function SeletorFormaPagamento({
   // estado "PIX escolhido"; manter o cartão com DINHEIRO selecionado mostraria
   // um ícone que contradiz o texto ao lado dele. Sem escolha, volta ao
   // `credit-card` do desenho, que é o placeholder genérico do controle.
-  const Icone =
-    formaSelecionada === null ? CreditCard : ICONE_POR_MEIO[formaSelecionada.meioPagtoNFe];
+  const Icone = formaSelecionada === null ? CreditCard : iconeDaForma(formaSelecionada);
 
   return (
     <ComboboxPagamento

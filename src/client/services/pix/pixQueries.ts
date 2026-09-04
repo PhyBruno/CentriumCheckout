@@ -49,7 +49,11 @@ function reaisDeCentavos(valor: number): number {
   return valor / CENTAVOS_POR_REAL;
 }
 
-async function chamarErp(cliente: ErpClient, caminho: string, init: RequestInit): Promise<Response> {
+async function chamarErp(
+  cliente: ErpClient,
+  caminho: string,
+  init: RequestInit,
+): Promise<Response> {
   const resultado = await cliente.chamar(caminho, init);
 
   switch (resultado.estado) {

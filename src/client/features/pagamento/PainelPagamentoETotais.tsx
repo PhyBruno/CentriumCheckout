@@ -104,6 +104,30 @@ export function PainelPagamentoETotais(): ReactElement {
    * dois leem o mesmo rascunho, e quem os compõe é quem o segura.
    */
   const [formaSelecionada, setFormaSelecionada] = useState<FormaPagamento | null>(null);
+  const [valeAberto, setValeAberto] = useState(false);
+
+  /**
+   * Trocar a condição **limpa a forma escolhida** (pedido do usuário,
+   * 2026-09-04).
+   *
+   * As formas pertencem à condição: mantida a escolha anterior, o combobox
+   * exibiria o nome de uma forma que a condição nova não oferece, e
+   * `EntradaPagamento` aceitaria um valor para ela — `aplicarPagamento` recusaria
+   * só no clique, com a frase de forma fora da condição. Zerar aqui faz o
+   * controle voltar a "Selecione a forma", que é o estado verdadeiro.
+   *
+   * Comparação do valor anterior durante o render, não `useEffect`: o reset
+   * acontece **antes** da pintura, sem um quadro intermediário exibindo a forma
+   * antiga sob a condição nova (padrão de `abertoAnterior` em
+   * `ModalValeDevolucao`).
+   */
+  const codigoCondicao = useVendaStore((estado) => estado.condicaoSelecionada?.codigo ?? null);
+  const [codigoCondicaoAnterior, setCodigoCondicaoAnterior] = useState(codigoCondicao);
+  if (codigoCondicao !== codigoCondicaoAnterior) {
+    setCodigoCondicaoAnterior(codigoCondicao);
+    setFormaSelecionada(null);
+    setValeAberto(false);
+  }
 
   /**
    * Escolher a forma de vale devolução **abre o modal do ticket**; qualquer
@@ -123,7 +147,6 @@ export function PainelPagamentoETotais(): ReactElement {
     }
   }
 
-  const [valeAberto, setValeAberto] = useState(false);
   const formaDoVale =
     valeAberto && formaSelecionada !== null && ehFormaDeValeDevolucao(formaSelecionada)
       ? formaSelecionada

@@ -296,6 +296,15 @@ export const AVISO_VENDA_SEM_VALOR =
   'Esta venda não tem valor a cobrar: revise o desconto de capa ou os itens antes de adicionar um pagamento.';
 export const AVISO_FORMA_FORA_DA_CONDICAO =
   'Esta forma de pagamento não pertence à condição selecionada.';
+/**
+ * Troca de condição com forma já inserida (regra do usuário, 2026-09-04).
+ *
+ * A frase nomeia a regra ("uma condição por venda") e a saída ("Limpar"), porque
+ * o que o operador tentaria sozinho — escolher outra condição de novo — nunca
+ * vai funcionar, e antes desta guarda o gesto apagava as formas em silêncio.
+ */
+export const AVISO_CONDICAO_COM_PAGAMENTO =
+  'Esta venda já tem forma de pagamento aplicada e cada venda usa uma condição só: use "Limpar" para recomeçar o pagamento.';
 export const AVISO_PAGAMENTO_IRREVERSIVEL =
   'Pagamento aprovado por TEF/PIX não pode ser removido: o estorno é operação do ERP.';
 export const AVISO_DESCONTO_COM_PAGAMENTO =
@@ -569,24 +578,37 @@ export function criarPagamentoSlice(
 
       selecionarCondicao: (condicao) => {
         const atual = get().condicaoSelecionada;
-        // Reselecionar a mesma condição não é troca: não esvazia a lista nem
-        // duplica o evento de auditoria.
+        // Reselecionar a mesma condição não é troca: não avisa nem duplica o
+        // evento de auditoria.
         if (atual !== null && atual.codigo === condicao.codigo) {
           return;
         }
 
-        // I9: trocar a condição esvazia os pagamentos. As formas pertencem à
-        // condição — mantê-las sob outra condição enviaria ao ERP uma
-        // combinação que o catálogo nunca ofereceu (`research.md` D2).
+        // I9, reescrita pelo usuário em 2026-09-04: **cada venda tem uma
+        // condição só**, e com forma já inserida a condição não muda mais.
         //
-        // `valesDevolucao` sai junto, e isso **faltava**: cada vale é vinculado
-        // a um `idPagamento`, e esvaziar só a lista de pagamentos deixava o
-        // ticket órfão, apontando para um pagamento que não existe mais. Como a
-        // guarda de código repetido em `aplicarValeDevolucao` consulta essa
-        // lista, o operador ficava sem conseguir reinformar o mesmo vale na
-        // condição nova. `removerPagamento` já filtrava os dois; esta era a
-        // única porta que esquecia.
-        set({ condicaoSelecionada: condicao, pagamentos: [], valesDevolucao: [] });
+        // Antes esta porta *trocava* a condição e esvaziava `pagamentos` e
+        // `valesDevolucao` no mesmo `set` — as formas eram de fato **apagadas**
+        // do estado (não apenas ocultadas), então nunca chegariam ao ERP; o
+        // operador via a lista sumir sem nenhuma explicação e sem gesto que a
+        // trouxesse de volta. Um esvaziamento silencioso é o pior desfecho
+        // possível para um dado que o caixa acabou de digitar: a alternativa
+        // honesta é recusar a troca e dizer por quê.
+        //
+        // A recusa é no-op com aviso, nunca exceção — mesmo padrão de
+        // `carrinhoBloqueado()`. A saída existe e a frase a nomeia: "Limpar"
+        // (`descartarPagamento`), que zera condição, formas, desconto e vales de
+        // uma vez, com o operador sabendo o que está descartando.
+        if (get().pagamentos.length > 0) {
+          deps.avisar?.(AVISO_CONDICAO_COM_PAGAMENTO);
+          return;
+        }
+
+        // Sem pagamento não há o que esvaziar: `valesDevolucao` só existe
+        // vinculado a um `idPagamento`, então a lista vazia acima implica esta
+        // vazia também. Trocar a condição aqui é só corrigir uma escolha feita
+        // antes de começar a cobrar.
+        set({ condicaoSelecionada: condicao });
 
         get().registrarEventoAuditoria(
           eventoCondicaoPagamentoAplicada({ condicao: condicao.descricao }),

@@ -26,6 +26,7 @@ import {
   type IdentidadeVendaDeps,
 } from '../../src/client/stores/slices/identidadeVendaSlice';
 import {
+  AVISO_CONDICAO_COM_PAGAMENTO,
   AVISO_DESCONTO_COM_PAGAMENTO,
   AVISO_DESCONTO_ZERA_A_VENDA,
   AVISO_DESCONTO_ZERA_ITEM,
@@ -259,13 +260,46 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
     ).toHaveLength(1);
   });
 
-  it('trocar a condição esvazia os pagamentos aplicados (I9)', async () => {
-    const { store } = montarStore();
+  /**
+   * I9 reescrita pelo usuário em 2026-09-04: **uma condição por venda**.
+   *
+   * Antes esta porta trocava a condição e **apagava** os pagamentos no mesmo
+   * `set` — o operador via a lista sumir sem explicação e sem gesto que a
+   * trouxesse de volta. Agora a troca é recusada com aviso, e nada muta.
+   */
+  it('trocar a condição com forma aplicada é recusado, sem apagar nada (I9)', async () => {
+    const { store, avisar } = montarStore();
     await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
     expect(store.getState().pagamentos).toHaveLength(1);
 
     store.getState().selecionarCondicao(A_PRAZO);
 
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_VISTA.codigo);
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(avisar).toHaveBeenCalledWith(AVISO_CONDICAO_COM_PAGAMENTO);
+    // Nenhum evento de condição além do da montagem: a recusa não é uma
+    // aplicação de condição.
+    expect(
+      tiposDeEvento(store).filter((tipo) => tipo === 'CONDICAO_PAGAMENTO_APLICADA'),
+    ).toHaveLength(1);
+  });
+
+  it('sem pagamento aplicado, trocar a condição continua livre', () => {
+    const { store } = montarStore();
+
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
+  });
+
+  it('"Limpar" é a saída: descartarPagamento libera a troca de condição', async () => {
+    const { store } = montarStore();
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+
+    store.getState().descartarPagamento();
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
     expect(store.getState().pagamentos).toEqual([]);
   });
 
