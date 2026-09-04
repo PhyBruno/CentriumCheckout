@@ -226,12 +226,14 @@ export async function fetchDav(
  * @param dav Linha selecionada na listagem. `clienteNome` é o único campo lido
  * dela — `clienteCodigo` vem sempre da resposta de `GetDav`, nunca da lista.
  */
-export function fonteDav(dav: { readonly numeroDav: string; readonly clienteNome: string }): FonteDocumento {
+export function fonteDav(dav: {
+  readonly numeroDav: string;
+  readonly clienteNome: string;
+}): FonteDocumento {
   return {
     origem: 'DAV',
     clienteNome: dav.clienteNome,
-    carregar: (erpClient) =>
-      fetchDav(dav.numeroDav, erpClient === undefined ? {} : { erpClient }),
+    carregar: (erpClient) => fetchDav(dav.numeroDav, erpClient === undefined ? {} : { erpClient }),
     // `numeroDav` existe só nesta trilha local: não é reenviado a `FaturarNFCe`
     // (AD-107), onde o vínculo com a origem é o `NumeroNota`.
     eventoDeImportacao: (venda) =>

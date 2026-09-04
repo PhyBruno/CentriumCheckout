@@ -27,12 +27,7 @@
  * rótulo só apagaria essa distinção da trilha de auditoria.
  */
 export type OrigemCliente =
-  | 'DEFAULT'
-  | 'BUSCA_DOCUMENTO'
-  | 'BUSCA_LIVRE'
-  | 'CADASTRO_SIMPLIFICADO'
-  | 'DAV'
-  | 'RASCUNHO';
+  'DEFAULT' | 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'CADASTRO_SIMPLIFICADO' | 'DAV' | 'RASCUNHO';
 
 /** As origens que representam uma escolha explícita do operador (D9). */
 export type OrigemSelecaoCliente = Exclude<OrigemCliente, 'DEFAULT' | 'CADASTRO_SIMPLIFICADO'>;

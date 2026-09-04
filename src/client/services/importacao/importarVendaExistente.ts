@@ -53,10 +53,7 @@ import type { ErpClient } from '../erpClient';
  * `podeMutar`, que a 008 fecha (`pagamentoSlice.podeMutarCarrinho`).
  */
 export type MotivoRecusaImportacao =
-  | 'venda-bloqueada'
-  | 'ja-importou-documento'
-  | 'carrinho-populado'
-  | 'cliente-identificado';
+  'venda-bloqueada' | 'ja-importou-documento' | 'carrinho-populado' | 'cliente-identificado';
 
 /** Retrato mínimo da venda para decidir a recusa — sem Zustand, sem React. */
 export interface EstadoVendaParaImportacao {

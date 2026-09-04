@@ -95,7 +95,10 @@ interface Rota {
  * limitação que T006 afirma, então reproduzi-la aqui é o ponto do teste.
  */
 function instalarFetch(
-  opcoes: { readonly rascunhos?: readonly Record<string, unknown>[]; readonly tamanhoPagina?: number } = {},
+  opcoes: {
+    readonly rascunhos?: readonly Record<string, unknown>[];
+    readonly tamanhoPagina?: number;
+  } = {},
 ): Rota {
   const rota: Rota = { urls: [] };
   const todos = opcoes.rascunhos ?? [rascunhoDaLista(), rascunhoVarejo()];

@@ -46,7 +46,25 @@ description: "Task list template for feature implementation"
 1. **`data-model.md` J5/J6 estão superados.** Este plano mandava `resetarAuditoria()` + `VENDA_INICIADA` na retomada. Prevalece a decisão da 006 (AD-137): o histórico é preservado e emite-se `NFCE_RECUPERADA`. Motivo — a pré-condição já garante que a venda não foi efetivamente iniciada (sem cliente identificado, item, condição ou forma), então não há histórico a zerar; e `VENDA_INICIADA` afirmaria um início de sessão que aconteceu antes, em `abrirSessaoDeVenda`.
 2. **A UI omite o que o contrato não sustenta.** `GetListaNFCes` só aceita `Txtbusca`/`Pagina`/`Tamanhopagina`, então os filtros "Status"/"Vendedor"/"Caixa"/"Série" do Pencil não são desenhados; a coluna "Série" dá lugar a **Emissão** e "Caixa" a **Operador** (campos que existem na linha). Mesmo critério de AD-024/AD-093/AD-095.
 
-**Tarefa não concluída** (uma só): **T026** — dos 6 cenários do `quickstart.md`, os de listar/buscar, retomar, reinserir item, finalizar venda retomada e ausência de lock entre operadores viraram teste automatizado; só a leitura manual da trilha de auditoria não foi executada a olho (o conteúdo do evento `NFCE_RECUPERADA` é afirmado por `tests/integration/recuperacaoNFCe.spec.ts`).
+**T026 concluída (2026-09-04)** — os 6 cenários do `quickstart.md` viraram verificação executável, e os três critérios de sucesso estão cobertos:
+
+| Cenário | Onde |
+|---|---|
+| 1. Listar e buscar | `ModalRecuperacaoNFCe.spec.tsx` (esqueleto, listagem, paginação, busca por cliente/vendedor, número da nota sem resultado) + E2E |
+| 2. Retomar para o carrinho | `recuperacaoNFCe.spec.ts` § "quickstart Cenário 2" — 2 itens congelados a preço do documento, forma em dinheiro `APROVADO`, cliente/vendedor/identidade |
+| 3. Reinserir item já presente | `ModalRecuperacaoNFCe.spec.tsx` (T016) — linha nova a preço de catálogo, congelada intacta |
+| 4. Finalizar a venda retomada | `tests/e2e/recuperacao-nfce.spec.ts` — `NumeroNota` do rascunho no payload de `FaturarNFCe` |
+| 5. Auditoria da retomada | `recuperacaoNFCe.spec.ts` § "quickstart Cenário 5" |
+| 6. Sem lock entre operadores | `recuperacaoNFCe.spec.ts` § "quickstart Cenário 6" — duas retomadas simultâneas, nenhuma chamada de bloqueio |
+
+- **SC-001** (nada é redigitado): itens, pagamento, cliente, vendedor e identidade chegam do documento — Cenário 2.
+- **SC-002** (o preço não diverge, exceto após reinserção explícita): Cenário 2 (preços exatos) e Cenário 3 (a reinserção cria linha nova, sem tocar na congelada).
+- **SC-003** (venda retomada segue as mesmas regras): o E2E quita pela UI de pagamento e finaliza pelo caminho normal da 004.
+
+**Dois achados do T026, ambos registrados:**
+
+1. **A fixture mandava `FormaMeioPagtoNFe: '01'`** — o código numérico da NFe num campo que o ERP preenche com **nomes** (AD-023). A forma era descartada em silêncio, com aviso no console, então o passo 4 do Cenário 2 nunca havia sido verificado de fato: os testes da 006 usam espião no lugar da action real, o que provava a chamada da porta, não a chegada do pagamento à venda. Corrigido em `tests/support/recuperacao.ts` (`formaDinheiroDoRascunho`), e o Cenário 2 passou a usar a action real do slice. O `erp-mock` do E2E já tinha sido corrigido antes, de outra forma: lá o DAV ficou **sem** forma, porque um DAV é documento pendente de cobrança — um rascunho de NFCe, ao contrário, volta já pago.
+2. **J6 não é cumprido à letra:** a hidratação emite `CLIENTE_SELECIONADO` além de `NFCE_RECUPERADA`, e esse evento não carrega a origem — na trilha ele é indistinguível de uma escolha manual. Vem da 006, não é regressão da 011. Não foi suprimido (o cliente de fato mudou); registrado como item 45 de `PENDENCIES.md` e fixado por teste.
 
 **T005, T006 e T016** foram escritas em `tests/integration/ModalRecuperacaoNFCe.spec.tsx` (10 casos): esqueleto do Boneyard durante o carregamento, listagem com os campos reais do contrato, paginação, teto de `Tamanhopagina`, busca por nome de cliente e de vendedor, busca por número da nota devolvendo vazio (limitação real, `research.md` D1), a seleção sendo solta ao trocar a busca, e — para T016 — a retomada deixando a linha congelada e a reinserção manual do mesmo SKU criando **linha nova a preço de catálogo**, sem tocar na congelada (invariante I3/AD-067 da 003). A rede é trocada no `fetch` global, não injetada por prop, para que a validação Zod de fronteira também seja exercitada.
 
@@ -160,7 +178,7 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 
 - [X] T024 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
 - [X] T025 E2E `tests/e2e/recuperacao-nfce.spec.ts` (fluxo dourado do `quickstart.md`, via Playwright, mock de rede não de função): abrir modal → buscar por nome de cliente → selecionar rascunho → confirmar carrinho populado com preço/pagamento/cliente/vendedor do rascunho → finalizar venda → confirmar `NumeroNota` no payload de rede
-- [ ] T026 Rodar os 6 cenários de `quickstart.md` (listar/buscar, retomar, reinserir item, finalizar venda retomada, auditoria da retomada, sem lock entre operadores) e confirmar `SC-001`/`SC-002`/`SC-003`
+- [X] T026 Rodar os 6 cenários de `quickstart.md` (listar/buscar, retomar, reinserir item, finalizar venda retomada, auditoria da retomada, sem lock entre operadores) e confirmar `SC-001`/`SC-002`/`SC-003`
 
 ---
 

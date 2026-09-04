@@ -175,10 +175,7 @@ export interface ApiImportacaoDocumento {
  * cliente ali seria inventar uma resposta antes da pergunta. A regra é a mesma
  * para DAV e para NFCe, então um hook só serve os dois (AD-166).
  */
-export function useRecusaDeImportacao(): Pick<
-  ApiImportacaoDocumento,
-  'recusa' | 'recusaAtual'
-> {
+export function useRecusaDeImportacao(): Pick<ApiImportacaoDocumento, 'recusa' | 'recusaAtual'> {
   // O seletor devolve `string | null`, não um objeto: com a comparação padrão
   // do Zustand, um retrato novo a cada render provocaria re-render infinito.
   const recusa = useVendaStore((venda) => recusaDeImportacao(estadoParaImportacao(venda)));
