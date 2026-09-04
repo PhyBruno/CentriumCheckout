@@ -7,7 +7,7 @@
  */
 
 import { centavos, somar, subtrair, ZERO_CENTAVOS, type Centavos } from '../precificacao/dinheiro';
-import type { FormaPagamento, MeioPagtoNFe } from './formaPagamento';
+import { geraTroco, type FormaPagamento, type MeioPagtoNFe } from './formaPagamento';
 import type { IntegracaoPagamento } from './roteamentoIntegracao';
 
 /** Máquina de estados de `PagamentoAplicado` — `data-model.md` §4. */
@@ -54,7 +54,10 @@ export interface SaldoPagamento {
 
 export type ResultadoValidacao =
   | { readonly ok: true }
-  | { readonly ok: false; readonly motivo: 'DINHEIRO_DUPLICADO' | 'SALDO_JA_COBERTO' };
+  | {
+      readonly ok: false;
+      readonly motivo: 'DINHEIRO_DUPLICADO' | 'SALDO_JA_COBERTO' | 'VALOR_ACIMA_DO_SALDO';
+    };
 
 /**
  * Algoritmo de `data-model.md` §6: `totalLiquido` é o subtotal do carrinho
@@ -91,17 +94,27 @@ export function calcularSaldo(
  * apenas pagamentos que não estejam `RECUSADO` — um pagamento recusado já foi
  * retirado do fluxo e não deveria travar uma nova tentativa.
  *
- * O terceiro parâmetro `saldoRestante` é **opcional** por design: esta função
- * decide `DINHEIRO_DUPLICADO` sem depender do saldo, mas o motivo
- * `SALDO_JA_COBERTO` só existe quando o chamador já calculou o saldo (via
- * `calcularSaldo`). Passar o saldo é o que permite ao slice reaproveitar a
- * mesma checagem para os dois casos sem duplicar a regra; omiti-lo mantém a
- * função utilizável em qualquer teste que só queira a checagem de duplicidade.
+ * `VALOR_ACIMA_DO_SALDO` (`FR-024`): uma forma que **não gera troco** — tudo o
+ * que não é `Dinheiro` — não pode receber mais do que o saldo em aberto. O
+ * excedente não teria para onde ir: `FR-012` proíbe troco fora do dinheiro, de
+ * modo que a única saída seria truncar o valor em silêncio e registrar no ERP
+ * um `FormaValor` diferente do que o operador digitou — justamente o que se
+ * pede que não aconteça. Trinta reais cobrados a mais no cartão não voltam pelo
+ * caixa: quem estorna é a operadora. Recusar com aviso devolve a decisão a quem
+ * pode tomá-la.
+ *
+ * Os dois últimos parâmetros são **opcionais** por design: esta função decide
+ * `DINHEIRO_DUPLICADO` sem depender de nenhum deles. `SALDO_JA_COBERTO` exige o
+ * saldo já calculado (via `calcularSaldo`) e `VALOR_ACIMA_DO_SALDO` exige
+ * também o valor que o operador digitou. Passá-los é o que permite ao slice
+ * reaproveitar a mesma checagem para os três casos sem duplicar regra; omiti-los
+ * mantém a função utilizável em qualquer teste que só queira a duplicidade.
  */
 export function podeAplicarForma(
   forma: FormaPagamento,
   pagamentosAtuais: readonly PagamentoAplicado[],
   saldoRestante?: Centavos,
+  valorInformado?: Centavos,
 ): ResultadoValidacao {
   const naoRecusados = pagamentosAtuais.filter((pagamento) => pagamento.status !== 'RECUSADO');
 
@@ -112,8 +125,16 @@ export function podeAplicarForma(
     return { ok: false, motivo: 'DINHEIRO_DUPLICADO' };
   }
 
-  if (saldoRestante !== undefined && saldoRestante === ZERO_CENTAVOS) {
+  if (saldoRestante === undefined) {
+    return { ok: true };
+  }
+
+  if (saldoRestante === ZERO_CENTAVOS) {
     return { ok: false, motivo: 'SALDO_JA_COBERTO' };
+  }
+
+  if (valorInformado !== undefined && !geraTroco(forma) && valorInformado > saldoRestante) {
+    return { ok: false, motivo: 'VALOR_ACIMA_DO_SALDO' };
   }
 
   return { ok: true };
@@ -125,10 +146,15 @@ export function podeAplicarForma(
  *
  * Para `Dinheiro`: `valorAplicado = min(valorInformado, saldoRestante)` e
  * `valorRecebido = valorInformado` — o excedente nunca entra em
- * `valorAplicado`, ele só aparece como troco em `calcularSaldo`. Para
- * qualquer outra forma: `valorRecebido = null` e `valorAplicado` é o valor
- * informado/autorizado, também limitado ao saldo restante (`FR-012`: nenhuma
- * outra forma gera troco).
+ * `valorAplicado`, ele só aparece como troco em `calcularSaldo`.
+ *
+ * Para qualquer outra forma: `valorRecebido = null` e `valorAplicado` continua
+ * limitado ao saldo. Esse `min` deixou de ser o caminho normal desde `FR-024`:
+ * um valor acima do saldo numa forma sem troco é **recusado** por
+ * `podeAplicarForma` antes de chegar aqui, em vez de truncado em silêncio. Ele
+ * permanece como rede de segurança — se um chamador futuro esquecer de passar
+ * `valorInformado` à validação, o pior desfecho é um valor truncado, nunca um
+ * `FormaValor` acima do total da nota.
  */
 export function derivarValores(
   forma: FormaPagamento,

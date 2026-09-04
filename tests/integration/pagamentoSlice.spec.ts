@@ -33,6 +33,7 @@ import {
   AVISO_PAGAMENTO_IRREVERSIVEL,
   AVISO_VALE_INDISPONIVEL,
   AVISO_VALE_INELEGIVEL,
+  AVISO_VALOR_ACIMA_DO_SALDO,
   criarPagamentoSlice,
   type ContextoIntegracao,
   type FormaCandidata,
@@ -493,15 +494,63 @@ describe('pagamentoSlice — split e troco (T024/T026, Cenário 3)', () => {
     expect(saldo.totalAplicado).toBe(10_000);
   });
 
-  it('Pix acima do saldo restante limita o valorAplicado e não gera troco (FR-012)', async () => {
+  it('Pix no valor exato do saldo é aplicado e não gera troco (FR-012)', async () => {
     const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
 
-    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(15_000) });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
     store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'GUID-EXEMPLO' });
 
     expect(store.getState().pagamentos[0]?.valorAplicado).toBe(10_000);
     expect(store.getState().pagamentos[0]?.valorRecebido).toBeNull();
     expect(store.getState().saldo().troco).toBe(0);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * FR-024 — forma sem troco não recebe acima do saldo
+ * ------------------------------------------------------------------ */
+
+/**
+ * Correção do usuário (2026-09-04). Até então o excedente de uma forma sem
+ * troco era **truncado em silêncio** por `derivarValores`: o operador digitava
+ * 150,00 no PIX de uma venda de 100,00 e o ERP recebia `FormaValor: 100.00`,
+ * sem que nada avisasse que o valor mudou.
+ */
+describe('pagamentoSlice — forma sem troco acima do saldo (FR-024)', () => {
+  it('recusa Pix acima do saldo, avisa, e não muta nem aciona integração', async () => {
+    const { store, validarInsercao, iniciarIntegracao, avisar } = montarStore({
+      capacidades: { tefAtivo: false, pixAtivo: true },
+    });
+
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(15_000) });
+
+    expect(avisar).toHaveBeenCalledWith(AVISO_VALOR_ACIMA_DO_SALDO);
+    expect(store.getState().pagamentos).toEqual([]);
+    // `FR-020`: recusa local não consulta o ERP nem abre cobrança PIX.
+    expect(validarInsercao).not.toHaveBeenCalled();
+    expect(iniciarIntegracao).not.toHaveBeenCalled();
+  });
+
+  it('recusa cartão acima do saldo restante de um pagamento parcial', async () => {
+    const { store, avisar } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(6_000) });
+    expect(store.getState().saldo().saldoRestante).toBe(4_000);
+
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(4_001) });
+
+    expect(avisar).toHaveBeenCalledWith(AVISO_VALOR_ACIMA_DO_SALDO);
+    expect(store.getState().pagamentos).toHaveLength(1);
+  });
+
+  it('dinheiro acima do saldo continua aceito — o excedente é troco', async () => {
+    const { store, avisar } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(15_000) });
+
+    expect(avisar).not.toHaveBeenCalledWith(AVISO_VALOR_ACIMA_DO_SALDO);
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(store.getState().saldo().troco).toBe(5_000);
   });
 });
 

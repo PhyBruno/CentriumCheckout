@@ -72,6 +72,8 @@ Como operador de caixa, quero aplicar múltiplas formas de pagamento na mesma ve
 1. **Given** uma venda com total pendente, **When** o operador aplica mais de uma forma de pagamento, **Then** os valores aplicados são somados até cobrir o total.
 2. **Given** um pagamento em dinheiro que excede o total (ou o saldo restante, em uma divisão), **When** o valor é informado, **Then** o sistema calcula e exibe o troco; **Given** um pagamento em cartão ou PIX, **When** ele é aplicado, **Then** nenhum troco é calculado.
 3. **Given** uma forma "dinheiro" já aplicada na venda, **When** o operador tenta aplicar outra forma "dinheiro", **Then** o sistema bloqueia a inserção e avisa que já existe uma forma "dinheiro" aplicada.
+4. **Given** uma venda com saldo em aberto, **When** o operador informa em cartão, PIX ou qualquer outra forma que não seja dinheiro um valor **maior** que esse saldo, **Then** o sistema recusa a inserção e avisa o operador, sem aplicar nada e sem reduzir o valor para caber no saldo.
+5. **Given** uma venda já coberta por um pagamento em dinheiro acima do total, **When** o operador olha o painel de totais, **Then** o troco é exibido como informação normal, e o realce de alerta é reservado ao saldo que ainda falta cobrir.
 
 ---
 
@@ -126,6 +128,7 @@ Como operador de caixa, quero aplicar desconto direto em um item ou no total da 
 - **FR-021**: Ao remover uma forma de pagamento aplicada, o sistema MUST invalidar o veredito de validação vigente, de modo que a próxima inserção seja validada de novo.
 - **FR-022**: O sistema MUST carregar, para cada forma de pagamento do catálogo da sessão, a indicação de **entrada** (`FormaEntrada`/`FpgEnt`) além da elegibilidade de crediário, e MUST enviá-la em cada forma do retrato da venda — sem esse campo o ERP não consegue avaliar o crediário e a validação prévia aprova vendas que deveria barrar (AD-111).
 - **FR-023**: Enquanto houver qualquer forma de pagamento aplicada à venda, o sistema MUST bloquear a alteração do carrinho, do cliente, do vendedor e do desconto sobre o total; alterar qualquer um deles MUST exigir a remoção prévia da forma aplicada (AD-113).
+- **FR-024**: O sistema MUST recusar a aplicação de uma forma de pagamento que não gera troco — toda forma que não seja dinheiro — quando o valor informado for maior que o saldo em aberto da venda, avisando o operador; e MUST NOT truncar o valor em silêncio para caber no saldo. Só o dinheiro pode receber valor acima do saldo, e o excedente vira troco (`FR-012`). O excedente de uma forma sem troco não teria destino: registrá-lo produziria um valor de pagamento maior que o total da nota, e truncá-lo registraria no ERP um valor diferente do que o operador digitou — em cartão ou PIX, o estorno da diferença é operação da operadora, não do caixa.
 
 ### Key Entities *(include if feature involves data)*
 

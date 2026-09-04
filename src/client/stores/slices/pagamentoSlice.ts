@@ -227,6 +227,13 @@ export interface PagamentoSlice {
 
 export const AVISO_DINHEIRO_DUPLICADO = 'Já existe uma forma dinheiro aplicada nesta venda.';
 export const AVISO_SALDO_JA_COBERTO = 'O saldo desta venda já está totalmente coberto.';
+/**
+ * `FR-024`. A frase nomeia a causa (a forma não gera troco) e a saída (informar
+ * no máximo o que falta), porque a alternativa que o operador tentaria sozinho
+ * — insistir no mesmo valor — nunca funciona.
+ */
+export const AVISO_VALOR_ACIMA_DO_SALDO =
+  'Esta forma de pagamento não gera troco: informe no máximo o valor que falta para fechar a venda.';
 export const AVISO_VALIDACAO_INDISPONIVEL =
   'Não foi possível validar a venda no ERP: o pagamento não foi aplicado.';
 export const AVISO_FORMA_FORA_DA_CONDICAO =
@@ -247,6 +254,7 @@ export const AVISO_VALE_INDISPONIVEL =
 const AVISO_POR_MOTIVO_LOCAL = {
   DINHEIRO_DUPLICADO: AVISO_DINHEIRO_DUPLICADO,
   SALDO_JA_COBERTO: AVISO_SALDO_JA_COBERTO,
+  VALOR_ACIMA_DO_SALDO: AVISO_VALOR_ACIMA_DO_SALDO,
 } as const;
 
 const CENTAVOS_POR_REAL = 100;
@@ -344,7 +352,15 @@ export function criarPagamentoSlice(
     ): Promise<void> {
       const saldo = saldoAtual();
 
-      const validacaoLocal = podeAplicarForma(forma, get().pagamentos, saldo.saldoRestante);
+      // `valorInformado` entra na validação (`FR-024`): sem ele a checagem não
+      // conseguiria distinguir "cabe no saldo" de "excede", e uma forma sem
+      // troco seria truncada em silêncio por `derivarValores`.
+      const validacaoLocal = podeAplicarForma(
+        forma,
+        get().pagamentos,
+        saldo.saldoRestante,
+        valorInformado,
+      );
       if (!validacaoLocal.ok) {
         deps.avisar?.(AVISO_POR_MOTIVO_LOCAL[validacaoLocal.motivo]);
         return;

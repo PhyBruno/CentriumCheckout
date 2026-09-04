@@ -127,3 +127,65 @@ describe('podeAplicarForma — I2/FR-013/AD-036 e SALDO_JA_COBERTO', () => {
     expect(resultado).toEqual({ ok: false, motivo: 'SALDO_JA_COBERTO' });
   });
 });
+
+/**
+ * `FR-024` (correção do usuário, 2026-09-04): o que não gera troco não pode
+ * receber mais do que o saldo em aberto. Antes disso `derivarValores` truncava
+ * em silêncio, e o ERP recebia um `FormaValor` diferente do que o operador
+ * digitou.
+ */
+describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
+  it('recusa cartão acima do saldo restante', () => {
+    const resultado = podeAplicarForma(
+      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      [],
+      emCentavos(5000),
+      emCentavos(5001),
+    );
+
+    expect(resultado).toEqual({ ok: false, motivo: 'VALOR_ACIMA_DO_SALDO' });
+  });
+
+  it('recusa PIX acima do saldo restante', () => {
+    const resultado = podeAplicarForma(
+      formaDe({ meioPagtoNFe: 'Pix' }),
+      [],
+      emCentavos(5000),
+      emCentavos(9000),
+    );
+
+    expect(resultado).toEqual({ ok: false, motivo: 'VALOR_ACIMA_DO_SALDO' });
+  });
+
+  it('aceita cartão exatamente no saldo restante — o limite é inclusivo', () => {
+    const resultado = podeAplicarForma(
+      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      [],
+      emCentavos(5000),
+      emCentavos(5000),
+    );
+
+    expect(resultado).toEqual({ ok: true });
+  });
+
+  it('aceita dinheiro acima do saldo: o excedente é troco (FR-012)', () => {
+    const resultado = podeAplicarForma(
+      formaDe({ meioPagtoNFe: 'Dinheiro' }),
+      [],
+      emCentavos(5000),
+      emCentavos(20000),
+    );
+
+    expect(resultado).toEqual({ ok: true });
+  });
+
+  it('sem o valor informado, a checagem de excedente é ignorada', () => {
+    const resultado = podeAplicarForma(
+      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      [],
+      emCentavos(5000),
+    );
+
+    expect(resultado).toEqual({ ok: true });
+  });
+});

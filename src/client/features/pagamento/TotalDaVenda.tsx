@@ -28,9 +28,16 @@ import { useVendaStore } from '../../stores/vendaStore';
  * porém, se chama "Métrica Troco", e a venda tem os dois desfechos. O cartão
  * exibe portanto a face que existe no momento: "Faltante" com o saldo restante
  * enquanto houver saldo, "Troco" com o troco depois de coberto (`FR-012`: só
- * dinheiro gera troco, e é `calcularSaldo` quem decide isso). A cor `$danger` do
- * nó `p58ay` vale para as duas: nos dois casos há um valor pendente de ação do
- * operador — cobrar o restante ou devolver o troco.
+ * dinheiro gera troco, e é `calcularSaldo` quem decide isso).
+ *
+ * **A cor `$danger` do nó `p58ay` é só do "Faltante".** A implementação
+ * original a aplicava aos dois desfechos, com o argumento de que ambos pedem
+ * ação do operador. Está errado, e o usuário corrigiu (2026-09-04): vermelho
+ * nesta tela significa **venda que ainda não fecha** — é o mesmo sinal do
+ * "Faltante R$ …" da lista de pagamentos aplicados. Troco não é pendência de
+ * cobrança: é o desfecho normal de um pagamento em dinheiro, com a venda já
+ * coberta. Pintá-lo de vermelho gastava o único sinal de alarme da tela no caso
+ * em que está tudo certo. O troco usa o mesmo tratamento de "Recebido".
  */
 export function TotalDaVenda(): ReactElement {
   // Um seletor por campo, em vez de um `estado.saldo()` só: `saldo()` monta um
@@ -82,7 +89,7 @@ export function TotalDaVenda(): ReactElement {
             destacado
           />
         ) : (
-          <MetricaPagamento rotulo="Troco" valor={troco} testId="metrica-troco" destacado />
+          <MetricaPagamento rotulo="Troco" valor={troco} testId="metrica-troco" destacado={false} />
         )}
       </div>
     </section>
@@ -93,7 +100,7 @@ interface MetricaPagamentoProps {
   readonly rotulo: string;
   readonly valor: Centavos;
   readonly testId: string;
-  /** `$danger` do nó `p58ay` — o valor que ainda pede ação do operador. */
+  /** `$danger` do nó `p58ay` — reservado ao saldo que impede a venda de fechar. */
   readonly destacado: boolean;
 }
 
