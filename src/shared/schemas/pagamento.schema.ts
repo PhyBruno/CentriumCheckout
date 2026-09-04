@@ -192,12 +192,21 @@ export const configuracoesTEFSchema = z.looseObject({
 
 /**
  * `ConfiguracoesPIX` — mesmo raciocínio de `configuracoesTEFSchema`: bloco
- * ausente vira PIX desligado. `MinimoPix`/`TempoEspera` passam por
- * `looseObject` sem uso nesta feature (consumidos pela feature 009).
+ * ausente vira PIX desligado.
+ *
+ * `MinimoPix` chega do ERP como `double` **em reais** e é convertido a
+ * `Centavos` aqui, na fronteira, como todo valor monetário (Constitution V,
+ * `contracts/pix-domain-api.md` §1) — antes da feature 009 ele só atravessava o
+ * `looseObject` sem uso. Continua `optional()`: empresa sem piso configurado não
+ * é erro de fronteira, e quem lê trata a ausência como zero.
+ *
+ * `TempoEspera` segue sem uso — o intervalo de sondagem do PIX é fixo em 10s por
+ * AD-026, decisão de produto que **não** vem do bootstrap. Deixá-lo aqui só
+ * documenta o campo do contrato.
  */
 export const configuracoesPIXSchema = z.looseObject({
   UtilizaCentriumPAG: z.boolean(),
-  MinimoPix: z.number().optional(),
+  MinimoPix: valorEmCentavos.optional(),
   TempoEspera: z.number().optional(),
 });
 

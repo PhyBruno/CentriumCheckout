@@ -209,7 +209,22 @@ export const pagamentoDepsPadrao: PagamentoDeps = {
   capacidades: capacidadesDoBootstrap,
   validarTicket: (codigo) => validarTicket(codigo),
   iniciarIntegracao: () => {
-    /* features 009 (PIX) e 010 (TEF) — o veredito já foi emitido pelo domínio. */
+    /**
+     * Continua no-op **de propósito**, e não por a 009 estar pendente.
+     *
+     * A feature 009 (PIX) já está implementada e liga a sua janela por outro
+     * caminho: `ListaPagamentosAplicados` monta `ModalPix` a partir do próprio
+     * `PagamentoAplicado` em `PENDENTE_INTEGRACAO` com `integracao ===
+     * 'PIX_DINAMICO'` (ver `usePixPendente` naquele arquivo). Como a janela é
+     * função do estado, chamar algo aqui criaria um **segundo** gatilho para o
+     * mesmo desfecho — e dois disparos independentes divergiriam em silêncio,
+     * que é exatamente o que a nota final de `specs/009-pagamento-pix/tasks.md`
+     * proíbe.
+     *
+     * A porta permanece no contrato porque o veredito `TEF` (feature 010) ainda
+     * não tem dono, e porque removê-la obrigaria o slice a conhecer quem executa
+     * a integração (Constitution II).
+     */
   },
   validarInsercao: () => Promise.resolve({ aceita: true as const }),
   invalidarVeredito: () => {

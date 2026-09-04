@@ -43,6 +43,25 @@ export interface ConfigMockErp {
    * ao erro devolvido.
    */
   davJaFaturado: boolean;
+  /**
+   * `ConfiguracoesPIX.UtilizaCentriumPAG` (feature 009).
+   *
+   * Fica **desligado por padrão** de propósito: é o cenário do quickstart da 008
+   * e o que mantém toda forma roteando para `NENHUMA`. O E2E de PIX o liga
+   * explicitamente — invertê-lo aqui faria a suíte inteira passar a depender da
+   * cobrança PIX para quitar uma venda.
+   */
+  pixAtivo: boolean;
+  /** `ConfiguracoesPIX.MinimoPix`, em **reais** (`double`), como o ERP devolve. */
+  minimoPix: number;
+  /**
+   * Literais que `StatusPIX` devolve, um por consulta; o último se repete.
+   *
+   * `['G', 'P']` reproduz o fluxo dourado do quickstart em dois ticks —
+   * "Aguardando Pagamento" e então "Pagamento Recebido". Um cenário de recusa
+   * troca isto por `['G', 'R']`.
+   */
+  statusPixTransicoes: readonly string[];
 }
 
 export interface ContadoresMockErp {
@@ -58,6 +77,8 @@ export interface ContadoresMockErp {
   postCliente: number;
   listaDavs: number;
   getDav: number;
+  gerarPix: number;
+  statusPix: number;
 }
 
 const CONFIG_PADRAO: ConfigMockErp = {
@@ -70,6 +91,9 @@ const CONFIG_PADRAO: ConfigMockErp = {
   statusFaturarNFCe: 200,
   faturarSemNotaFiscal: false,
   davJaFaturado: false,
+  pixAtivo: false,
+  minimoPix: 0,
+  statusPixTransicoes: ['G', 'P'],
 };
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
@@ -85,6 +109,8 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   postCliente: 0,
   listaDavs: 0,
   getDav: 0,
+  gerarPix: 0,
+  statusPix: 0,
 };
 
 /**
@@ -113,6 +139,17 @@ const TICKETS_DEVOLUCAO: Record<
 
 /** Base64 sintético — não é um PDF real, só precisa ser string não-vazia. */
 const PDF_SINTETICO = 'JVBERi0xLjQtc2ludGV0aWNv';
+
+/**
+ * "Copia e cola" e QR Code sintéticos do PIX (feature 009).
+ *
+ * O payload segue a **forma** de um BR Code (EMV) sem ser um: o Checkout não o
+ * interpreta, só o decodifica de base64 e o exibe. O `Trnbase64image` não é um
+ * JPEG válido — basta ser base64 para o navegador aceitar a `data:` URL.
+ */
+const COPIA_E_COLA_PIX =
+  '00020126580014BR.GOV.BCB.PIX0136sintetico-0000-4000-8000-00000000520400005303986540565.505802BR5913CENTRIUM LTDA6009SAO PAULO62070503***6304AB12';
+const QRCODE_PIX_BASE64 = '/9j/4AAQSkZJRgABAQAAc2ludGV0aWNv';
 const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
 
 /**
@@ -507,12 +544,22 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       /**
        * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
        * as formas roteando para `NENHUMA` (`resolverIntegracao`), de modo que um
-       * pagamento aplicado já entra `APROVADO` sem depender das features 009/010,
-       * que não existem. É também o cenário do fluxo dourado do quickstart
-       * ("desktop com `tefAtivo: false`").
+       * pagamento aplicado já entra `APROVADO` sem depender das features 009/010.
+       * É também o cenário do fluxo dourado do quickstart da 008 ("desktop com
+       * `tefAtivo: false`").
+       *
+       * O PIX deixou de ser uma constante e passou a vir de `config.pixAtivo`
+       * (feature 009): `pagamento-pix.spec.ts` o liga por `/__mock/config` antes
+       * de abrir a tela. O **padrão continua desligado** de propósito — ligá-lo
+       * aqui faria toda venda quitada por PIX nas demais suítes passar a depender
+       * de um QR Code e de uma sondagem de 10s.
        */
       ConfiguracoesTEF: { TEFAtivo: false },
-      ConfiguracoesPIX: { UtilizaCentriumPAG: false, MinimoPix: 0, TempoEspera: 10 },
+      ConfiguracoesPIX: {
+        UtilizaCentriumPAG: config.pixAtivo,
+        MinimoPix: config.minimoPix,
+        TempoEspera: 10,
+      },
     },
     messages: [],
   };
@@ -531,6 +578,8 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   /** Cadastro criado por `PostCliente` durante o teste — descartado no reset. */
   const documentosCriados: string[] = [];
   let ultimoRetratoFaturado: Record<string, unknown> | null = null;
+  /** Último `SDTCentriumPag_Post` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
+  let ultimoGerarPix: Record<string, unknown> | null = null;
 
   await app.register(import('@fastify/formbody'));
 
@@ -539,6 +588,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     config = { ...CONFIG_PADRAO };
     contadores = { ...CONTADORES_ZERADOS };
     ultimoRetratoFaturado = null;
+    ultimoGerarPix = null;
     // Cadastro criado por `PostCliente` num teste não pode vazar para o
     // próximo: o cenário "documento inexistente" depende de o CPF continuar
     // ausente.
@@ -557,6 +607,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   /** Último retrato recebido — deixa o E2E afirmar `NumeroNota`, `Log` etc. */
   app.get('/__mock/ultimo-faturamento', async () => ({ retrato: ultimoRetratoFaturado }));
+
+  /** Último corpo de `GerarPIX` — `TrnValor`, `FPgCod` e os dados do pagador. */
+  app.get('/__mock/ultimo-pix', async () => ({ sdt: ultimoGerarPix }));
 
   // --- Contrato do ERP ----------------------------------------------------
   app.post('/oauth/access_token', async (_request, reply) => {
@@ -947,6 +1000,56 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       }
 
       return reply.send({ ...conhecido, messages: [] });
+    },
+  );
+
+  /**
+   * `GerarPIX` (feature 009, `contracts/erp-pix-api.md` §1).
+   *
+   * Devolve o `TrnGUID` que o **cliente** enviou — é assim que o ERP real se
+   * comporta: o GUID é gerado no Checkout e é a chave primária lógica da
+   * transação (`research.md` D3). O mock ecoá-lo é o que deixa o E2E provar que
+   * o mesmo valor volta como `FormaPixGUID` no retrato de `FaturarNFCe`.
+   *
+   * Os dois base64 são sintéticos: `Trnbase64image` não é um JPEG de verdade —
+   * o navegador só precisa aceitar a `data:` URL — e `Trnbase64text` é o "copia
+   * e cola" fictício codificado, para o `atob` do mapper ter o que decodificar.
+   */
+  app.post<{ Body: { SDTCentriumPag_Post?: Record<string, unknown> } }>(
+    '/ApiCentriumOAuth/GerarPIX',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.gerarPix += 1;
+
+      const enviado = request.body.SDTCentriumPag_Post ?? {};
+      ultimoGerarPix = enviado;
+
+      return reply.send({
+        TrnGUID: String(enviado['TrnGUID'] ?? ''),
+        Trnbase64text: Buffer.from(COPIA_E_COLA_PIX, 'utf8').toString('base64'),
+        Trnbase64image: QRCODE_PIX_BASE64,
+        messages: [],
+      });
+    },
+  );
+
+  /**
+   * `StatusPIX` (`contracts/erp-pix-api.md` §2) — consome
+   * `config.statusPixTransicoes`, uma posição por consulta, repetindo a última.
+   * É o que permite ao teste desenhar "pendente, pendente, pago" sem depender do
+   * relógio real.
+   */
+  app.get<{ Querystring: { Trnguid?: string } }>(
+    '/ApiCentriumOAuth/StatusPIX',
+    async (_request, reply) => {
+      contadores.negocio += 1;
+      const indice = Math.min(contadores.statusPix, config.statusPixTransicoes.length - 1);
+      contadores.statusPix += 1;
+
+      return reply.send({
+        StatusTransacao: config.statusPixTransicoes[indice] ?? 'G',
+        messages: [],
+      });
     },
   );
 

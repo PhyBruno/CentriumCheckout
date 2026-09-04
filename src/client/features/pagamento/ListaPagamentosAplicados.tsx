@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import type { MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
 import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/saldoPagamento';
-import { formatarCentavos } from '../../domain/precificacao/dinheiro';
+import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
+import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
 import { useVendaStore } from '../../stores/vendaStore';
 import { ICONE_POR_MEIO } from './iconePorMeio';
+import { ModalPix } from './pix/ModalPix';
 
 /**
  * Bloco "Pagamentos aplicados" do cartão de pagamento (T028, `FR-011`/`FR-012`)
@@ -48,6 +50,8 @@ export function ListaPagamentosAplicados(): ReactElement | null {
   // render — o Zustand v5 trataria como mudança e o componente entraria em laço.
   const saldoRestante = useVendaStore((estado) => estado.saldo().saldoRestante);
 
+  const cobrancaPix = usePixPendente();
+
   if (pagamentos.length === 0) {
     return null;
   }
@@ -75,7 +79,82 @@ export function ListaPagamentosAplicados(): ReactElement | null {
           />
         ))}
       </ul>
+
+      {cobrancaPix}
     </section>
+  );
+}
+
+/**
+ * Ponto de disparo real da integração PIX (T024, feature 009) — substitui o stub
+ * no-op de `iniciarIntegracao` deixado pela feature 008
+ * (`vendaStore.pagamentoDepsPadrao`).
+ *
+ * **Por que a janela nasce do estado, e não de um callback.** O contrato da 008
+ * entrega a integração por `iniciarIntegracao(integracao, ctx)`, uma porta
+ * imperativa chamada de dentro do slice. Montar o modal a partir dela exigiria
+ * guardar o contexto em algum lugar — um estado paralelo ao `PagamentoAplicado`,
+ * capaz de discordar dele. Aqui a janela é uma **função** do pagamento que está
+ * `PENDENTE_INTEGRACAO` com `integracao === 'PIX_DINAMICO'`: existe exatamente
+ * enquanto esse pagamento existir, e some no instante em que ele é confirmado ou
+ * removido. O stub em `vendaStore` continua no-op de propósito — não há segundo
+ * mecanismo de disparo (`tasks.md`, nota final).
+ *
+ * `find`, não `filter`: `PENDENTE_INTEGRACAO` bloqueia a inserção da próxima
+ * forma até resolver, então há no máximo um por vez (invariante J1 da 009).
+ *
+ * O `idPagamento` fica **fechado dentro dos callbacks**, e não copiado para
+ * dentro da cobrança: é o vínculo único entre a janela e o pagamento que a
+ * originou (ver `domain/pix/cobrancaPix.ts`).
+ */
+function usePixPendente(): ReactElement | null {
+  const pagamentos = useVendaStore((estado) => estado.pagamentos);
+  const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
+  const confirmarPagamentoIntegrado = useVendaStore(
+    (estado) => estado.confirmarPagamentoIntegrado,
+  );
+  const recusarPagamentoIntegrado = useVendaStore((estado) => estado.recusarPagamentoIntegrado);
+
+  // O catálogo já está em cache (`staleTime` de 30 min, `PAY-01`): a mesma query
+  // alimenta o combobox de forma ao lado, e chegar aqui exige ter aplicado uma
+  // forma dele. Sem dado carregado o piso é zero, isto é, sem bloqueio por valor
+  // mínimo — recusar a cobrança por um dado que ainda não chegou seria pior do
+  // que deixar o próprio ERP recusá-la.
+  const catalogo = useCondicoesPagamento();
+  const minimoPix = catalogo.data?.minimoPix ?? ZERO_CENTAVOS;
+
+  const pendente = pagamentos.find(
+    (pagamento) =>
+      pagamento.status === 'PENDENTE_INTEGRACAO' && pagamento.integracao === 'PIX_DINAMICO',
+  );
+
+  if (pendente === undefined) {
+    return null;
+  }
+
+  return (
+    <ModalPix
+      // A janela é recriada do zero a cada pagamento pendente: sem a `key`, um
+      // segundo PIX na mesma venda reaproveitaria o componente montado e as
+      // travas de "uma geração por montagem" impediriam a nova cobrança.
+      key={pendente.idPagamento}
+      formaCodigo={pendente.formaCodigo}
+      valor={pendente.valorAplicado}
+      minimoPix={minimoPix}
+      clienteAtual={clienteAtual}
+      onAprovado={(pixGuid) => {
+        confirmarPagamentoIntegrado(pendente.idPagamento, { pixGuid });
+      }}
+      onAbandonado={(motivo) => {
+        recusarPagamentoIntegrado(pendente.idPagamento, motivo);
+      }}
+      onFechar={() => {
+        // Fechar é consequência de `onAprovado`/`onAbandonado`: os dois mudam o
+        // status do pagamento, e a janela desmonta sozinha na renderização
+        // seguinte. Um estado de "aberto" aqui seria uma segunda verdade sobre a
+        // mesma coisa.
+      }}
+    />
   );
 }
 

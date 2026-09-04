@@ -28,9 +28,10 @@ import {
   bootstrapPagamentoSchema,
   validaTicketDevolucaoOutputSchema,
 } from '../../../shared/schemas/pagamento.schema';
+import type { Centavos } from '../../domain/precificacao/dinheiro';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
-import { paraCapacidadesPagamento, paraCondicoesPagamento } from './pagamentoMapper';
+import { paraCapacidadesPagamento, paraCondicoesPagamento, paraMinimoPix } from './pagamentoMapper';
 
 const ROTA_BOOTSTRAP = '/api/bootstrap';
 const CAMINHO_VALIDA_TICKET = '/ApiCentriumOAuth/ValidaTicketDevolucao';
@@ -48,6 +49,15 @@ export interface PagamentoQueriesDeps {
 export interface CatalogoPagamento {
   readonly condicoes: readonly CondicaoPagamento[];
   readonly capacidades: CapacidadesPagamento;
+  /**
+   * `ConfiguracoesPIX.MinimoPix` (feature 009, `research.md` D13/AD-047).
+   *
+   * Viaja **junto do catálogo**, e não numa query própria: é o mesmo payload de
+   * `/api/bootstrap` que já é lido aqui, e o modal de PIX só é alcançável depois
+   * de uma forma deste catálogo ter sido aplicada — buscá-lo de novo seria uma
+   * segunda leitura da mesma rota com outro ciclo de frescor.
+   */
+  readonly minimoPix: Centavos;
 }
 
 /**
@@ -88,6 +98,7 @@ export async function fetchCondicoesPagamento(
   return {
     condicoes: paraCondicoesPagamento(validado.data.SessaoUsuario.CondicoesDePagamento),
     capacidades: paraCapacidadesPagamento(validado.data.SessaoUsuario),
+    minimoPix: paraMinimoPix(validado.data.SessaoUsuario),
   };
 }
 

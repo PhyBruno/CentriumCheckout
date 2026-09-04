@@ -5579,5 +5579,23 @@
       "src/client/stores/slices/pagamentoSlice.ts"
     ],
     "date": "2026-09-04"
+  },
+  {
+    "type": "decision",
+    "content": "AD-158: modal PIX nasce do estado; iniciarIntegracao segue no-op",
+    "tags": ["009", "pagamento-pix", "ad-158"],
+    "files": [
+      "src/client/features/pagamento/pix/ModalPix.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      "src/client/stores/vendaStore.ts"
+    ],
+    "date": "2026-09-04"
+  },
+  {
+    "type": "fact",
+    "content": "E2E pagamento-geral e importacao-dav ja falhavam: SKUs ausentes no mock",
+    "tags": ["e2e", "mock", "pre-existente"],
+    "files": ["tests/e2e/support/erp-mock.ts", "tests/e2e/pagamento-geral.spec.ts"],
+    "date": "2026-09-04"
   }
 ]
