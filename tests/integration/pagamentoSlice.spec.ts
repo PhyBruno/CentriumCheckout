@@ -390,7 +390,41 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
  * Venda sem valor líquido não recebe pagamento (pedido do usuário, 2026-09-04)
  * ------------------------------------------------------------------ */
 
+describe('pagamentoSlice — o desconto de capa congela o carrinho (regra do usuário, 2026-09-04)', () => {
+  it('desconto aplicado bloqueia a mutação, e removê-lo devolve a mutabilidade', () => {
+    const { store } = montarStore();
+    // Sem condição, o carrinho estaria livre; é o desconto que o congela aqui.
+    store.getState().descartarPagamento();
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
+
+    store.getState().aplicarDescontoCapa('VALOR', 1_000);
+
+    expect(store.getState().podeMutarCarrinho()).toBe(false);
+
+    store.getState().removerDescontoCapa();
+
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
+  });
+});
+
 describe('pagamentoSlice — venda sem valor a cobrar', () => {
+  it('o vale devolução recusa antes de consultar o ERP e antes de pedir confirmação de perda', async () => {
+    // Correção da revisão: o fluxo consultava `ValidaTicketDevolucao`, calculava
+    // um excedente igual ao ticket inteiro e pedia ao operador que confirmasse
+    // a perda — para só então recusar por venda sem valor.
+    const { store, avisar, validarTicket } = montarStore({ subtotal: 0 });
+    const confirmarExcedente = vi.fn(async () => true);
+
+    const aplicado = await store
+      .getState()
+      .aplicarValeDevolucao(VALE, 'TICKET-1', confirmarExcedente);
+
+    expect(aplicado).toBe(false);
+    expect(validarTicket).not.toHaveBeenCalled();
+    expect(confirmarExcedente).not.toHaveBeenCalled();
+    expect(avisar).toHaveBeenCalledWith(AVISO_VENDA_SEM_VALOR);
+  });
+
   it('recusa a forma com o motivo próprio, não com "saldo já coberto"', async () => {
     const { store, avisar, validarInsercao } = montarStore({ subtotal: 0 });
 

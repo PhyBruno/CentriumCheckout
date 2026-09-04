@@ -64,6 +64,35 @@ describe('recusaDoDescontoCapa — a venda e cada item precisam sobreviver ao de
     expect(recusaDoDescontoCapa(centavos(300), SUBTOTAL, CARRINHO)).toBe('ZERA_UM_ITEM');
   });
 
+  it('linha que já valia zero não recusa o desconto — a regra é sobre a transição', () => {
+    // Correção da revisão (2026-09-04): um brinde de `PrecoVenda = 0`, ou uma
+    // linha de DAV cujo desconto igualava o bruto, fazia `0 - 0 < 1` e travava
+    // **todo** desconto de capa, inclusive R$ 0,01, com a mensagem de "zeraria
+    // um item" — sobre um item que o operador não zerou.
+    const comBrinde: readonly LinhaRateavel[] = [
+      { idLinha: 'brinde', totalLiquido: centavos(0) },
+      { idLinha: 'pago', totalLiquido: centavos(10000) },
+    ];
+
+    expect(recusaDoDescontoCapa(centavos(1), centavos(10000), comBrinde)).toBeNull();
+    expect(recusaDoDescontoCapa(centavos(5000), centavos(10000), comBrinde)).toBeNull();
+    // Com duas linhas o brinde nem chega a decidir: o clamp devolve a parcela
+    // dele para a linha paga, que fica com 1 centavo — aceito.
+    expect(recusaDoDescontoCapa(centavos(9999), centavos(10000), comBrinde)).toBeNull();
+
+    // As demais linhas continuam protegidas. Com duas pagas, 199,99 sobre
+    // 200,00 sobra 100,00 para cada uma depois do clamp do brinde, e a que
+    // recebe a parcela inteira zera.
+    const brindeMaisDuasPagas: readonly LinhaRateavel[] = [
+      { idLinha: 'brinde', totalLiquido: centavos(0) },
+      { idLinha: 'paga-1', totalLiquido: centavos(10000) },
+      { idLinha: 'paga-2', totalLiquido: centavos(10000) },
+    ];
+    expect(recusaDoDescontoCapa(centavos(19999), centavos(20000), brindeMaisDuasPagas)).toBe(
+      'ZERA_UM_ITEM',
+    );
+  });
+
   it('sem linhas, só a primeira regra fala: não há rateio a examinar', () => {
     expect(recusaDoDescontoCapa(centavos(1000), SUBTOTAL, [])).toBeNull();
     expect(recusaDoDescontoCapa(SUBTOTAL, SUBTOTAL, [])).toBe('ZERA_A_VENDA');

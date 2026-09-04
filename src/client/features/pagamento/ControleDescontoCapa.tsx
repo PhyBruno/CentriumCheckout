@@ -3,7 +3,7 @@ import { useState, type KeyboardEvent, type ReactElement } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { cn } from '@/lib/utils';
 import { resolverDescontoCapa } from '../../domain/pagamento/descontoCapa';
-import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
+import { ZERO_CENTAVOS, formatarCentavos, type Centavos } from '../../domain/precificacao/dinheiro';
 import { totalVenda } from '../../domain/precificacao/linha';
 import { useVendaStore } from '../../stores/vendaStore';
 import { lerCentavosDigitados } from './EntradaPagamento';
@@ -120,10 +120,34 @@ export function ControleDescontoCapa(): ReactElement {
    */
   const subtotal = useVendaStore((estado) => totalVenda(estado.linhas));
   const percentualDigitado = lerPercentualDigitado(entradaTexto);
-  const equivalenteFinanceiro =
-    percentualDigitado === null
-      ? (descontoCapa?.valorResolvido ?? ZERO_CENTAVOS)
-      : resolverDescontoCapa('PERCENTUAL', percentualDigitado, subtotal);
+  const equivalenteFinanceiro = resolverEquivalente();
+
+  function resolverEquivalente(): Centavos {
+    // Campo vazio: mostra o desconto que a venda de fato tem — nenhum, na
+    // maioria das vezes.
+    if (entradaTexto.trim() === '') {
+      return descontoCapa?.valorResolvido ?? ZERO_CENTAVOS;
+    }
+
+    // Texto que não é um percentual legível ("10,25", "abc") vale **zero**, não
+    // o desconto anterior. Cair no anterior reproduzia justamente o defeito que
+    // esta linha existe para corrigir: enquanto o operador digitava a segunda
+    // casa decimal, a tela mostrava o valor antigo como se fosse o dele.
+    if (percentualDigitado === null) {
+      return ZERO_CENTAVOS;
+    }
+
+    // Texto que corresponde exatamente ao desconto vigente: prefere o
+    // `valorResolvido` gravado. Hoje os dois números coincidem — o carrinho não
+    // muda enquanto há desconto —, mas ler o store aqui é o que garante que a
+    // linha descreva a **venda**, e não uma conta refeita a partir de um
+    // subtotal que poderia ser outro.
+    if (descontoCapa?.modo === 'PERCENTUAL' && descontoCapa.entrada === percentualDigitado) {
+      return descontoCapa.valorResolvido;
+    }
+
+    return resolverDescontoCapa('PERCENTUAL', percentualDigitado, subtotal);
+  }
 
   const [ultimoAplicado, setUltimoAplicado] = useState(descontoCapa);
   if (descontoCapa !== ultimoAplicado) {

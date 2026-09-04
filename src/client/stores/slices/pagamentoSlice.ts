@@ -572,7 +572,15 @@ export function criarPagamentoSlice(
         // I9: trocar a condição esvazia os pagamentos. As formas pertencem à
         // condição — mantê-las sob outra condição enviaria ao ERP uma
         // combinação que o catálogo nunca ofereceu (`research.md` D2).
-        set({ condicaoSelecionada: condicao, pagamentos: [] });
+        //
+        // `valesDevolucao` sai junto, e isso **faltava**: cada vale é vinculado
+        // a um `idPagamento`, e esvaziar só a lista de pagamentos deixava o
+        // ticket órfão, apontando para um pagamento que não existe mais. Como a
+        // guarda de código repetido em `aplicarValeDevolucao` consulta essa
+        // lista, o operador ficava sem conseguir reinformar o mesmo vale na
+        // condição nova. `removerPagamento` já filtrava os dois; esta era a
+        // única porta que esquecia.
+        set({ condicaoSelecionada: condicao, pagamentos: [], valesDevolucao: [] });
 
         get().registrarEventoAuditoria(
           eventoCondicaoPagamentoAplicada({ condicao: condicao.descricao }),
@@ -733,6 +741,17 @@ export function criarPagamentoSlice(
        * que o cliente nunca pagou (verificado na KB, 2026-09-04).
        */
       aplicarValeDevolucao: async (forma, codigo, confirmarExcedente) => {
+        // **Primeira** guarda, antes de qualquer rede (correção da revisão,
+        // 2026-09-04): numa venda de líquido zero o excedente calculado adiante
+        // é o ticket inteiro, e o fluxo pedia ao operador que confirmasse perder
+        // os R$ 25,00 do vale — para então `aplicarNucleo` recusar a inserção
+        // por venda sem valor. Confirmar uma perda e receber uma recusa é o pior
+        // desfecho possível de uma tela de caixa.
+        if (saldoAtual().totalLiquido === ZERO_CENTAVOS) {
+          deps.avisar?.(AVISO_VENDA_SEM_VALOR);
+          return false;
+        }
+
         if (!ehFormaDeValeDevolucao(forma)) {
           deps.avisar?.(AVISO_VALE_FORMA_ERRADA);
           return false;
@@ -891,6 +910,14 @@ export function criarPagamentoSlice(
         // sem a checagem de dinheiro único: um DAV pode legitimamente trazer
         // duas formas Dinheiro. Sem evento por forma: a 006 dispara um único
         // `DAV_IMPORTADO` que cobre a importação inteira.
+        //
+        // **Também sem a guarda de venda sem valor**, e isto é decisão, não
+        // esquecimento (revisão de 2026-09-04): esta porta não é gesto do
+        // operador, é o replay de um documento que o ERP já emitiu. Recusar as
+        // formas de um DAV cujo total ficou zerado deixaria a venda importada
+        // pela metade — com os itens dentro e o pagamento fora —, que é pior do
+        // que reproduzir fielmente um documento estranho. A guarda vale para o
+        // que o operador digita; o que o ERP já registrou entra como está.
         aplicarPagamentos(importados);
       },
 
@@ -911,7 +938,23 @@ export function criarPagamentoSlice(
         // O predicado é o mesmo de cliente e identidade da venda (AD-043), de
         // propósito: uma segunda regra de "a venda ainda pode mudar" divergiria
         // em silêncio. A saída é `descartarPagamento()`.
+        //
+        // **O desconto de capa congela junto** (regra do usuário, 2026-09-04:
+        // "se tiver condição, desconto, forma de pagamento, etc, não pode
+        // voltar e mudar o carrinho"). Não é só simetria: é o que torna
+        // verdadeira a promessa de `recusaDoDescontoCapa`. Aquela guarda valida
+        // o rateio contra as linhas **do instante da aplicação**, e
+        // `montarPagamentosParaPayload` rateia de novo, na finalização, com as
+        // linhas de então — sem revalidar. Com o carrinho livre no meio, um
+        // desconto aceito sobre duas linhas de R$ 100,00 sobrevivia à redução
+        // de uma delas para R$ 10,00 e o clamp a zerava no cupom; pior, um
+        // desconto maior que a soma restante fazia `ratearDescontoCapa`
+        // **lançar** dentro da finalização, depois de o evento terminal já ter
+        // sido registrado. Congelar o carrinho enquanto há desconto elimina as
+        // duas transições — a pré-condição daquela função passa a ser
+        // invariante, não coincidência.
         get().condicaoSelecionada === null &&
+        get().descontoCapa === null &&
         !get().pagamentos.some((pagamento) => pagamento.status === 'APROVADO'),
 
       saldo: saldoAtual,

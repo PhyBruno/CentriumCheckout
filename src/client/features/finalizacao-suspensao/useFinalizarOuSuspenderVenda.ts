@@ -176,7 +176,28 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       // produzir dois rateios diferentes se o carrinho mudasse no meio.
       // As portas injetadas continuam tendo precedência: é o que mantém o teste
       // da máquina de estados independente do slice de pagamento.
-      const pagamentosDaVenda = venda.montarPagamentosParaPayload();
+      //
+      // Envolvida em `try/catch` como defesa em profundidade (revisão de
+      // 2026-09-04): `ratearDescontoCapa` **lança** quando o desconto de capa
+      // excede a soma das linhas, e aqui a exceção escaparia como rejeição de
+      // promise — botão que não faz nada, com o evento terminal
+      // (`VENDA_FINALIZADA`/`VENDA_SUSPENSA`) já registrado numa venda que nunca
+      // foi enviada. Desde que o desconto de capa também congela o carrinho, a
+      // pré-condição daquela função é invariante e este `catch` não deveria
+      // rodar nunca; se rodar, é bug de composição, e falhar visível é melhor do
+      // que travar em silêncio.
+      let pagamentosDaVenda;
+      try {
+        pagamentosDaVenda = venda.montarPagamentosParaPayload();
+      } catch (erro) {
+        console.error('[finalização] falha ao montar a parte de pagamento do retrato.', erro);
+        aplicarEstado({
+          tipo: 'falha-negocio',
+          mensagem:
+            'Não foi possível montar o pagamento desta venda: revise o desconto e as formas aplicadas.',
+        });
+        return;
+      }
 
       // Stub de T029 até a feature 012 selecionar o vendedor: usa o vendedor do
       // PDV publicado no bootstrap quando ele existe. `VendedorCodigo` ainda não

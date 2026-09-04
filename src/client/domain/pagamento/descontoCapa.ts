@@ -120,6 +120,20 @@ export function recusaDoDescontoCapa(
 
   const rateio = ratearDescontoCapa(descontoCapa, linhas);
   for (const linha of linhas) {
+    // Linha que **já** valia menos de um centavo antes do rateio não é
+    // responsabilidade deste desconto, e por isso não o recusa. Sem esta
+    // condição, um brinde cadastrado com `PrecoVenda = 0` — ou uma linha de DAV
+    // cujo desconto igualava o bruto — travava **todo** desconto de capa,
+    // inclusive R$ 0,01: a parcela dela é zero, `0 - 0 = 0` é menor que o
+    // mínimo, e o operador lia "zeraria um item" sobre um item que ele não
+    // zerou, sem nenhum valor menor capaz de liberar a operação.
+    //
+    // A regra é sobre a **transição**: recusa-se o desconto que faz uma linha
+    // viável deixar de ser.
+    if (linha.totalLiquido < TOTAL_MINIMO_DA_LINHA) {
+      continue;
+    }
+
     const parcela = rateio.get(linha.idLinha) ?? ZERO_CENTAVOS;
     if (linha.totalLiquido - parcela < TOTAL_MINIMO_DA_LINHA) {
       return 'ZERA_UM_ITEM';

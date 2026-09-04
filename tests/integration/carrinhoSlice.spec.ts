@@ -9,7 +9,7 @@ import { useInsercaoDeProduto } from '../../src/client/features/carrinho/useCarr
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import type { CarrinhoDeps, InserirItemInput } from '../../src/client/stores/slices/carrinhoSlice';
 import { criarVendaStore, useVendaStore } from '../../src/client/stores/vendaStore';
-import { respostaGetProduto, snapshotDe, unidades } from '../support/precificacao';
+import { emCentavos, respostaGetProduto, snapshotDe, unidades } from '../support/precificacao';
 
 /**
  * Invariantes de estado do carrinho (`quickstart.md`, Camada 2).
@@ -63,6 +63,66 @@ describe('carrinhoSlice — cenário de aceitação central (T031)', () => {
     expect(linhas[1]?.cancelada).toBe(true);
     // 4. O total não inclui a linha cancelada (SC-003).
     expect(totalVenda(linhas)).toBe(3000);
+  });
+});
+
+/**
+ * O desconto de um item não pode zerar o item (pedido do usuário, 2026-09-04).
+ *
+ * A guarda vive no slice, e não no campo de desconto da barra de entrada,
+ * porque `descontoManual` é absoluto sobre o total e **não** escala com a
+ * quantidade: reduzir a quantidade zera a linha sem que ninguém toque no
+ * desconto — e num produto que a barra sequer deixa editar.
+ */
+describe('carrinhoSlice — desconto que zera a linha (correção da revisão, 2026-09-04)', () => {
+  it('recusa a inserção cujo desconto consome a linha inteira', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    // 1 un × 10,00 com 10,00 de desconto manual.
+    store.getState().inserirItem({
+      snapshot: produto,
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+      descontoManual: emCentavos(1000),
+    });
+
+    expect(store.getState().linhas).toHaveLength(0);
+    expect(avisar).toHaveBeenCalledOnce();
+  });
+
+  it('recusa a redução de quantidade que zera uma linha com desconto absoluto', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    // 10 un × 10,00 = 100,00, com 50,00 de desconto → total 50,00. Aceito.
+    store.getState().inserirItem({
+      snapshot: produto,
+      quantidade: unidades(10),
+      origem: 'MANUAL',
+      descontoManual: emCentavos(5000),
+    });
+    expect(store.getState().linhas).toHaveLength(1);
+
+    // Reduzir para 5 un deixa o bruto em 50,00 — exatamente o desconto.
+    store.getState().editarItem('linha-1', 'quantidade', unidades(5));
+
+    expect(store.getState().linhas[0]?.quantidade).toBe(unidades(10));
+    expect(avisar).toHaveBeenCalledOnce();
+  });
+
+  it('não recusa linha que vale zero por preço, e não por desconto — brinde é vendável', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: '000999', precoBase: 0, precosFaixa: [0, 0, 0, 0, 0] }),
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas).toHaveLength(1);
+    expect(avisar).not.toHaveBeenCalled();
   });
 });
 
