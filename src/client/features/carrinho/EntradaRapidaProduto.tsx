@@ -105,7 +105,8 @@ function SimboloReal({ testId }: { testId: string }): ReactElement {
  * entrada e insere direto, sem exibir revisão (produto pesável/simples/balança
  * — `'S'`/`'B'`/`''`). TAB é a tecla de **revisão**: carrega o produto via
  * `GetProduto` (`revisarPorCodigo`) e preenche todas as células com os dados
- * reais.
+ * reais — mas só quando há código digitado; com o campo vazio TAB volta a ser
+ * navegação e leva o foco à lupa de busca (pedido do usuário, 2026-09-04).
  *
  * Quantidade, preço e desconto são sempre `<input>` de verdade — não só
  * texto — para participarem da navegação por TAB. Unidade também é um
@@ -510,12 +511,22 @@ export function EntradaRapidaProduto(): ReactElement {
   // única e vive em `aoTeclarNoCartao` (pedido do usuário, 2026-09-03: Enter
   // confirma a partir de qualquer campo da barra, não só do código).
   function aoTeclarNoCodigo(evento: KeyboardEvent<HTMLInputElement>): void {
-    if (evento.key === 'Tab') {
-      // TAB não sai do campo: no PDV ele é a tecla de revisão, não de
-      // navegação (AD-027/AD-063).
-      evento.preventDefault();
-      void revisarEntrada();
+    if (evento.key !== 'Tab') {
+      return;
     }
+    // Campo vazio: não há código a revisar, então TAB volta a ser a tecla de
+    // navegação e segue para a próxima ação da barra — a lupa de busca, que é
+    // o próximo elemento focável no DOM (pedido do usuário, 2026-09-04).
+    // Sem isto, o `preventDefault()` abaixo engolia o TAB e o foco ficava
+    // preso no campo vazio, obrigando o operador a pegar o mouse para abrir a
+    // busca por termo livre.
+    if (texto.trim() === '') {
+      return;
+    }
+    // Com código digitado, TAB não sai do campo: no PDV ele é a tecla de
+    // revisão, não de navegação (AD-027/AD-063).
+    evento.preventDefault();
+    void revisarEntrada();
   }
 
   /**

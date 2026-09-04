@@ -1946,3 +1946,13 @@ Isso mantém as duas exigências do usuário, que só parecem opostas: o equival
 O valor recebido bloqueia **só** por venda sem valor, e não pelos demais motivos de `bloqueioDeInsercao`: "escolha a forma antes" impede *adicionar*, não digitar, e travar o campo por isso obrigaria o caixa a escolher a forma antes de poder teclar o valor — invertendo a ordem natural do gesto.
 
 **Impact:** `src/client/stores/slices/pagamentoSlice.ts`, `src/client/features/pagamento/` (`ControleDescontoCapa`, `EntradaPagamento`) e `tests/unit/client/pagamento/ControleDescontoCapa.spec.tsx`. 649 testes verdes, `tsc --noEmit` e `eslint` limpos.
+
+### AD-155: TAB no campo de código vazio volta a ser navegação — vai para a lupa de busca (2026-09-04)
+
+**Pedido do usuário:** *"Ao passar TAB na insercao do item, SE nao tiver nenhum código de item, o foco deve ir para a proxima acao (que no caso é a lupa de busca de item)."*
+
+AD-027/AD-063 fixaram TAB como tecla de **revisão** na barra de entrada rápida: `aoTeclarNoCodigo` chamava `preventDefault()` em todo TAB e disparava `revisarEntrada()`. Mas `revisarEntrada()` já retorna cedo com o campo vazio — não há código a resolver —, então o `preventDefault()` engolia a tecla sem nada em troca: o foco ficava preso no campo vazio e o operador precisava do mouse para abrir a busca por termo livre.
+
+A guarda agora é explícita: com `texto.trim() === ''` o handler sai **antes** do `preventDefault()`, e o TAB segue a ordem natural do DOM — o próximo elemento focável depois do campo de código é justamente o botão "Buscar produto". Não foi preciso `ref` nem `.focus()` programático; deixar o navegador navegar preserva de graça o Shift+TAB e a ordem de tabulação do resto da tela. Com código digitado nada muda: TAB continua sendo revisão, não navegação.
+
+**Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`aoTeclarNoCodigo` e o JSDoc do componente) e `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (dois casos novos: campo vazio navega para a lupa, campo preenchido segue revisando). 7 testes do spec verdes e `tsc --noEmit` limpo.

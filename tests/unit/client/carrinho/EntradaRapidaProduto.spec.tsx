@@ -319,3 +319,54 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
     expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 });
+
+describe('EntradaRapidaProduto — TAB no campo de código (pedido do usuário, 2026-09-04)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [] });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+  });
+
+  it('com o campo vazio, TAB navega para a lupa de busca em vez de tentar revisar', async () => {
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-codigo-produto')).toHaveFocus();
+    });
+
+    await usuario.tab();
+
+    expect(screen.getByTestId('abrir-busca-produto')).toHaveFocus();
+  });
+
+  it('com código digitado, TAB continua sendo revisão — o foco não sai para a lupa', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ Produto: respostaGetProduto({ ProdutoPesavelEditavel: 'E' }) }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
+
+    // Revisão carregada (produto `'E'` abre a prévia editável) e nenhuma linha
+    // inserida — o TAB não virou navegação.
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    });
+    expect(screen.getByTestId('abrir-busca-produto')).not.toHaveFocus();
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+
+    vi.unstubAllGlobals();
+  });
+});
