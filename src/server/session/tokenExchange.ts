@@ -62,6 +62,15 @@ export async function trocarCredenciaisPorToken(
     client_id: credenciais.client_id,
     client_secret: credenciais.client_secret,
     grant_type: 'password',
+    /**
+     * `scope=FullControl` sempre, mesmo confirmado como não estritamente
+     * obrigatório neste tenant (token sai válido sem ele e chama
+     * `GetListaProdutos` normalmente) — decisão explícita do usuário
+     * (2026-09-04, AD-165) pra não depender de um GAM de outro tenant/versão
+     * aceitar o grant sem escopo. Sem custo conhecido: o único efeito visto é
+     * o GAM ecoar `scope: "gam_user_data"` na resposta, que o Checkout ignora.
+     */
+    scope: 'FullControl',
     username: credenciais.username,
     password: credenciais.password,
     /**
@@ -75,11 +84,6 @@ export async function trocarCredenciaisPorToken(
      * 2026-09-04 contra o ERP real, isolando só o nome do campo: mantido o
      * mesmo `Repository` (inválido de propósito), o erro mudou de "conexão não
      * especificada" para "Repositório não encontrado" ao renomear o campo.
-     *
-     * `scope` **não** entra no corpo: a mesma verificação mostrou que o ERP
-     * devolve `200` com `access_token` válido sem ele, e um token obtido sem
-     * `scope` chama `GetListaProdutos` normalmente. Enviar `scope=FullControl`
-     * só faz o GAM ecoar `scope: "gam_user_data"` — nada que o Checkout leia.
      */
     additional_parameters: JSON.stringify({
       AuthenticationTypeName: 'local',

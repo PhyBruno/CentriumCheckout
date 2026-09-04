@@ -71,6 +71,22 @@ describe('trocarCredenciaisPorToken', () => {
   });
 
   /**
+   * `scope=FullControl` sempre, mesmo não sendo estritamente exigido pelo GAM
+   * do tenant testado ao vivo (AD-165) — decisão do usuário pra não depender
+   * de um GAM de outro tenant/versão aceitar o grant sem escopo.
+   */
+  it('sempre envia scope=FullControl', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaJson({ access_token: 'token-sintetico' }));
+
+    await trocarCredenciaisPorToken(credenciais, { env: envDeTeste(), fetchImpl });
+
+    const corpo = new URLSearchParams(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(corpo.get('scope')).toBe('FullControl');
+  });
+
+  /**
    * O nome do campo é o bug mais caro que este módulo já teve (AD-165): em
    * camelCase o GAM responde `401` "A conexão ao GAM não foi especificada" antes
    * de olhar o `Repository`, e **todo** login do Checkout falha. Como o corpo é
@@ -93,6 +109,7 @@ describe('trocarCredenciaisPorToken', () => {
       'client_secret',
       'grant_type',
       'password',
+      'scope',
       'username',
     ]);
   });
