@@ -1,20 +1,12 @@
-import { ArrowUpDown, Equal } from 'lucide-react';
+import { Equal } from 'lucide-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
 import { gooeyToast } from 'goey-toast';
-// Só o tipo: quem aplica `atributosDeBloqueio`/`acaoBloqueavel` sobre cada
-// opção é o `ComboboxPagamento` — o motivo é decidido aqui e consumido lá.
-import type { MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useVendaStore } from '../../stores/vendaStore';
 import { lerCentavosDigitados } from './EntradaPagamento';
-import { ComboboxPagamento } from './SeletorCondicaoForma';
 
 type ModoAjuste = 'PERCENTUAL' | 'VALOR';
-
-/** Motivo fixo do tipo "Acréscimo" — ver o TSDoc do componente. */
-const MOTIVO_ACRESCIMO_INDISPONIVEL =
-  'Acréscimo não existe no Checkout: o ajuste de capa da venda só aplica desconto.';
 
 /** `"5"`, `"5,5"` ou `"5.5"` → `5.5`; entrada inválida vira `null`. */
 function lerPercentualDigitado(texto: string): number | null {
@@ -41,11 +33,9 @@ function lerPercentualDigitado(texto: string): number | null {
  *
  * O que o desenho monta, e o que cada peça faz:
  *
- * - **Cabeçalho** (`iJ4fT`/`zpr9g`) — "Desconto / Acréscimo", Inter 13/600.
- * - **"Combobox tipo ajuste"** (`uEPUi`) — 158×44, raio 12, fundo
- *   `$surface-soft`, borda `$hairline`, ícone lucide `arrow-up-down` de 15px em
- *   `$body`, texto 13/600 e `chevron-down` de 16px.
- * - **"Campo valor ajuste"** (`a2PXo`) — preenche o resto da linha, 44px, raio
+ * - **Cabeçalho** (`iJ4fT`/`zpr9g`) — Inter 13/600. O desenho o rotula
+ *   "Desconto / Acréscimo"; aqui ele é só "Desconto" (ver abaixo).
+ * - **"Campo valor ajuste"** (`a2PXo`) — ocupa a linha inteira, 44px, raio
  *   12, `padding: 0 8px`, valor em **Geist Mono 14/600** e, encostado à direita,
  *   o "Toggle unidade ajuste" (`FC8Sd`): dois botões de 28px e raio 8, o inativo
  *   em `$surface-strong`/`$body` e o ativo em `$cb-blue`/branco, rótulos 11/700.
@@ -60,14 +50,22 @@ function lerPercentualDigitado(texto: string): number | null {
  * por conta própria; ele formata com `formatarCentavos` o que o domínio
  * resolveu.
  *
- * **"Acréscimo" existe no desenho e não no domínio.** Nem `FR-015` nem o
- * contrato do slice (`aplicarDescontoCapa(modo, entrada)`,
- * `contracts/pagamento-domain-api.md` §2) preveem acréscimo de capa, e o
- * componente não pode inventar a regra. A opção aparece na lista, como o Pencil
- * a nomeia, mas **bloqueada com motivo** (`lib/bloqueio.ts`): clicar explica que
- * o Checkout só desconta. Suprimi-la deixaria o operador procurando por um item
- * que o rótulo do bloco anuncia; deixá-la escolhível prometeria um efeito que
- * nada implementa.
+ * **"Acréscimo" não existe — nem no domínio, nem no ERP.** O nó `uEPUi`
+ * ("Combobox tipo ajuste", 158×44) oferece escolher entre desconto e acréscimo,
+ * e a implementação original o reproduziu com a opção "Acréscimo" bloqueada com
+ * motivo. Essa leitura caiu em 2026-09-04: `CheckoutFaturarNFCe`
+ * (`ApiCentriumOAuth.yaml`, linhas 1462–1553) **não tem nenhum campo de
+ * acréscimo** — a única saída monetária de ajuste é `DescontoPercentual`/
+ * `DescontoValor` por linha de produto, que é justamente onde o rateio de
+ * AD-098 grava. Não existe payload capaz de transportar um acréscimo ao ERP, e
+ * `FR-015`/AD-039 tampouco o preveem.
+ *
+ * Um seletor de um item só não é um seletor: com o acréscimo impossível, o
+ * combobox foi **removido** e o bloco virou o que sempre foi — o campo de
+ * desconto da capa. Mantê-lo custava 158px da largura do cartão para prometer
+ * uma opção que nenhuma camada abaixo consegue cumprir, e era ele que
+ * espremia o campo de valor até o toggle R$/% escapar para fora do cartão
+ * (o scroll lateral relatado no mesmo dia).
  *
  * **Sem teto e sem autorização** (`FR-015`/AD-039): não há limite máximo nem
  * pedido de senha. A única guarda é I8 (`desconto <= subtotal`), e ela vive no
@@ -159,11 +157,6 @@ export function ControleDescontoCapa(): ReactElement {
     }
   }
 
-  /** `null` para "Desconto"; "Acréscimo" é sempre bloqueado (ver TSDoc). */
-  function bloqueioDoTipo(tipo: 'DESCONTO' | 'ACRESCIMO'): MotivoBloqueio {
-    return tipo === 'ACRESCIMO' ? MOTIVO_ACRESCIMO_INDISPONIVEL : null;
-  }
-
   return (
     <section
       className="flex w-full flex-col gap-[6px]"
@@ -171,90 +164,55 @@ export function ControleDescontoCapa(): ReactElement {
       aria-label="Desconto da venda"
     >
       <header className="flex w-full items-center justify-between">
-        <span className="text-base font-semibold text-foreground">Desconto / Acréscimo</span>
+        <span className="text-base font-semibold text-foreground">Desconto</span>
       </header>
 
-      <div className="flex h-11 w-full items-center gap-xs">
-        <ComboboxPagamento
-          rotulo="Tipo de ajuste"
-          rotuloVisivel={false}
-          icone={<ArrowUpDown className="size-[15px] text-muted-foreground" />}
-          textoSelecionado="Desconto"
-          placeholder="Desconto"
-          opcoes={[
-            {
-              chave: 'DESCONTO',
-              texto: 'Desconto',
-              selecionada: true,
-              bloqueio: bloqueioDoTipo('DESCONTO'),
-              aoEscolher: () => {
-                // Já é o único tipo vigente — escolher de novo não muda nada, e
-                // reaplicar aqui repetiria o desconto sem o operador ter mexido
-                // no valor.
-              },
-            },
-            {
-              chave: 'ACRESCIMO',
-              texto: 'Acréscimo',
-              selecionada: false,
-              bloqueio: bloqueioDoTipo('ACRESCIMO'),
-              aoEscolher: () => {
-                // Inalcançável: `acaoBloqueavel` intercepta e explica o motivo.
-              },
-            },
-          ]}
-          bloqueio={null}
-          classeTrigger="w-[158px] shrink-0 px-sm"
-          classeTexto="text-base"
-          testId="combobox-tipo-ajuste"
-          idOpcao={(chave) => `opcao-tipo-ajuste-${chave.toLowerCase()}`}
+      {/* Uma peça só na linha, sem wrapper de layout: com o combobox de tipo
+          removido, o campo é a linha inteira. */}
+      <span className="flex h-11 w-full min-w-0 items-center justify-between gap-xs rounded-lg border border-border bg-muted px-xs">
+        <input
+          className="w-full min-w-0 bg-transparent font-mono text-md font-semibold tabular-nums outline-none"
+          data-testid="campo-valor-ajuste"
+          aria-label={modo === 'PERCENTUAL' ? 'Desconto em porcentagem' : 'Desconto em reais'}
+          autoComplete="off"
+          inputMode="decimal"
+          placeholder="0,00"
+          value={entradaTexto}
+          onChange={(evento) => {
+            setEntradaTexto(evento.target.value);
+          }}
+          // Aplica ao sair do campo e no Enter, nunca a cada tecla: digitar
+          // "10" passaria por "1" no caminho, e cada passagem seria um
+          // desconto aplicado de verdade (com auditoria e rateio) por engano.
+          onBlur={() => {
+            aplicar(modo, entradaTexto);
+          }}
+          onKeyDown={aoTeclar}
         />
 
-        <span className="flex h-full min-w-0 flex-1 items-center justify-between gap-xs rounded-lg border border-border bg-muted px-xs">
-          <input
-            className="w-full min-w-0 bg-transparent font-mono text-md font-semibold tabular-nums outline-none"
-            data-testid="campo-valor-ajuste"
-            aria-label={modo === 'PERCENTUAL' ? 'Desconto em porcentagem' : 'Desconto em reais'}
-            autoComplete="off"
-            inputMode="decimal"
-            placeholder="0,00"
-            value={entradaTexto}
-            onChange={(evento) => {
-              setEntradaTexto(evento.target.value);
+        <span
+          className="flex shrink-0 items-center gap-[3px]"
+          role="group"
+          aria-label="Unidade do desconto"
+        >
+          <BotaoUnidade
+            rotulo="R$"
+            ativo={modo === 'VALOR'}
+            testId="toggle-ajuste-valor"
+            aoAcionar={() => {
+              trocarModo('VALOR');
             }}
-            // Aplica ao sair do campo e no Enter, nunca a cada tecla: digitar
-            // "10" passaria por "1" no caminho, e cada passagem seria um
-            // desconto aplicado de verdade (com auditoria e rateio) por engano.
-            onBlur={() => {
-              aplicar(modo, entradaTexto);
-            }}
-            onKeyDown={aoTeclar}
           />
-
-          <span
-            className="flex shrink-0 items-center gap-[3px]"
-            role="group"
-            aria-label="Unidade do desconto"
-          >
-            <BotaoUnidade
-              rotulo="R$"
-              ativo={modo === 'VALOR'}
-              testId="toggle-ajuste-valor"
-              aoAcionar={() => {
-                trocarModo('VALOR');
-              }}
-            />
-            <BotaoUnidade
-              rotulo="%"
-              ativo={modo === 'PERCENTUAL'}
-              testId="toggle-ajuste-percentual"
-              aoAcionar={() => {
-                trocarModo('PERCENTUAL');
-              }}
-            />
-          </span>
+          <BotaoUnidade
+            rotulo="%"
+            ativo={modo === 'PERCENTUAL'}
+            testId="toggle-ajuste-percentual"
+            aoAcionar={() => {
+              trocarModo('PERCENTUAL');
+            }}
+          />
         </span>
-      </div>
+      </span>
 
       <div className="flex w-full items-center justify-end gap-[5px]">
         <Equal className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />

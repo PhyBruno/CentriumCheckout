@@ -73,8 +73,18 @@ export function PainelPagamentoETotais(): ReactElement {
           pagamentos aplicados é a única parte que cresce sem limite. Sem isto,
           uma venda com muitas formas empurraria o bloco de total e o botão de
           finalizar para fora do cartão — e o botão de finalizar é justamente o
-          que não pode sumir. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-base overflow-y-auto">
+          que não pode sumir.
+
+          `overflow-x-hidden` é obrigatório junto do `overflow-y-auto`, não
+          decoração: pelo CSS, `overflow-x: visible` combinado com um
+          `overflow-y` não-visível é **computado como `auto`**, então declarar só
+          o eixo vertical cria uma barra horizontal na primeira vez que qualquer
+          filho estourar 1px. Foi o que aconteceu em 2026-09-04 (scroll lateral
+          no cartão de pagamento). A causa daquele estouro já foi removida em
+          `ControleDescontoCapa`; esta trava impede que o próximo bloco a crescer
+          o traga de volta. A coluna nunca rola na horizontal por desenho: todos
+          os blocos são `w-full` com conteúdo encolhível. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-base overflow-x-hidden overflow-y-auto">
         <SeletorCondicaoPagamento />
         <ControleDescontoCapa />
         <SeletorFormaPagamento

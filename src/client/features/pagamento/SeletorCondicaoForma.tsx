@@ -48,27 +48,23 @@ export interface OpcaoCombobox {
 }
 
 export interface ComboboxPagamentoProps {
-  /** Sempre obrigatório — é o nome acessível do controle, visível ou não. */
+  /** Rótulo visível acima do controle e nome acessível dele. */
   readonly rotulo: string;
-  /** `false` quando o bloco já tem um cabeçalho próprio (caso do tipo de ajuste). */
-  readonly rotuloVisivel?: boolean;
   readonly icone: ReactNode;
   readonly textoSelecionado: string | null;
   readonly placeholder: string;
   readonly opcoes: readonly OpcaoCombobox[];
   /** Bloqueio do combobox inteiro (catálogo carregando, sem condição escolhida…). */
   readonly bloqueio: MotivoBloqueio;
-  /** Borda 1.5px em `--primary`, como o Pencil desenha o combobox de condição. */
-  readonly destacado?: boolean;
-  readonly classeTrigger?: string;
-  readonly classeTexto?: string;
   readonly testId: string;
   readonly idOpcao: (chave: string) => string;
 }
 
 /**
  * Combobox do cartão de pagamento — compartilhado pelos dois seletores deste
- * arquivo e pelo tipo de ajuste de `ControleDescontoCapa.tsx`.
+ * arquivo (condição e forma). Os dois têm o mesmo tratamento visual: 44px, raio
+ * 12, fundo `$surface-soft` e borda `$hairline` de 1px, como o Pencil desenha
+ * `IHcIy` e `UwoSd`.
  *
  * **Não é um `<select>` nativo.** Um `<option disabled>` é inerte e silencioso,
  * exatamente o que `lib/bloqueio.ts` proíbe: a forma indisponível (Pix sem
@@ -85,15 +81,11 @@ export interface ComboboxPagamentoProps {
  */
 export function ComboboxPagamento({
   rotulo,
-  rotuloVisivel = true,
   icone,
   textoSelecionado,
   placeholder,
   opcoes,
   bloqueio,
-  destacado = false,
-  classeTrigger = '',
-  classeTexto = 'text-md',
   testId,
   idOpcao,
 }: ComboboxPagamentoProps): ReactElement {
@@ -129,11 +121,9 @@ export function ComboboxPagamento({
         }
       }}
     >
-      {rotuloVisivel ? (
-        <span className="text-base font-semibold text-foreground" id={idRotulo}>
-          {rotulo}
-        </span>
-      ) : null}
+      <span className="text-base font-semibold text-foreground" id={idRotulo}>
+        {rotulo}
+      </span>
 
       <button
         ref={trigger}
@@ -142,11 +132,16 @@ export function ComboboxPagamento({
         aria-haspopup="listbox"
         aria-expanded={aberto}
         aria-controls={idLista}
-        {...(rotuloVisivel ? { 'aria-labelledby': idRotulo } : { 'aria-label': rotulo })}
+        aria-labelledby={idRotulo}
         className={cn(
-          'flex h-11 w-full items-center justify-between gap-xs rounded-lg bg-muted px-[14px] text-left',
-          destacado ? 'border-[1.5px] border-primary' : 'border border-border',
-          classeTrigger,
+          'flex h-11 w-full items-center justify-between gap-xs rounded-lg border border-border bg-muted px-[14px] text-left',
+          // O realce em `--primary` existe **só enquanto o controle está de
+          // fato focado** (TAB). No Pencil ele aparece desenhado no combobox de
+          // condição, mas ali ilustra o estado focado, não um destaque
+          // permanente — verificado com o autor do desenho em 2026-09-04. Anel
+          // idêntico ao dos demais controles da base (`BotaoFinalizarVenda`,
+          // `campo-data`), para o foco ter uma única aparência no produto.
+          'outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
         )}
         data-testid={testId}
         {...atributosDeBloqueio(bloqueio)}
@@ -160,8 +155,7 @@ export function ComboboxPagamento({
           </span>
           <span
             className={cn(
-              'truncate font-semibold',
-              classeTexto,
+              'truncate text-md font-semibold',
               textoSelecionado === null ? 'text-muted-foreground' : 'text-foreground',
             )}
           >
@@ -219,15 +213,17 @@ export function ComboboxPagamento({
 
 /**
  * Combobox de condição de pagamento (nó `oGiPa`): rótulo Inter 13/600, controle
- * de 44px com raio 12, fundo `$surface-soft` e **borda de 1.5px em `$cb-blue`**,
- * ícone lucide `layers` de 16px na cor primária, texto 14/600 e `chevron-down`
- * de 16px em `$body`.
+ * de 44px com raio 12, fundo `$surface-soft` e borda `$hairline` de 1px, ícone
+ * lucide `layers` de 16px na cor primária, texto 14/600 e `chevron-down` de
+ * 16px em `$body`.
  *
- * A borda primária é constante, como o desenho a traz: no cartão ela marca a
- * condição como o **primeiro passo** do pagamento, não um estado de foco — os
- * outros comboboxes da mesma tela (forma, tipo de ajuste) aparecem com a borda
- * `$hairline` de 1px mesmo já tendo valor escolhido, então a diferença não é
- * "preenchido × vazio".
+ * **A borda em `$cb-blue` do desenho não é permanente.** O nó `IHcIy` traz
+ * `stroke: $cb-blue` de 1.5px, e a implementação original a reproduziu fixa,
+ * lendo-a como "primeiro passo do pagamento". Está errado: o autor do desenho
+ * confirmou (2026-09-04) que aquele contorno apenas ilustra o combobox **com o
+ * foco dentro dele**. Por isso o controle usa a mesma borda `$hairline` dos
+ * demais e só ganha o realce em `focus-visible` — o que também o torna
+ * navegável por TAB de forma perceptível, coisa que a borda constante escondia.
  *
  * Estado sem escolha: o único ponto em que o desenho não ajuda (ele mostra só
  * "2x sem juros"). O controle exibe o placeholder em `$body`, mesmo tratamento
@@ -264,7 +260,6 @@ export function SeletorCondicaoPagamento(): ReactElement {
         },
       }))}
       bloqueio={bloqueio}
-      destacado
       testId="combobox-condicao-pagamento"
       idOpcao={(chave) => `opcao-condicao-${chave}`}
     />
