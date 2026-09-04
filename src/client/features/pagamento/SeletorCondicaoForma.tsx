@@ -11,6 +11,8 @@ import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/
 import { cn } from '@/lib/utils';
 import type { CondicaoPagamento, FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { formaDisponivel } from '../../domain/pagamento/roteamentoIntegracao';
+import { ZERO_CENTAVOS } from '../../domain/precificacao/dinheiro';
+import { totalVenda } from '../../domain/precificacao/linha';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
 import { useVendaStore } from '../../stores/vendaStore';
 import { ICONE_POR_MEIO } from './iconePorMeio';
@@ -290,16 +292,31 @@ export function SeletorCondicaoPagamento(): ReactElement {
   const catalogo = useCondicoesPagamento();
   const condicaoSelecionada = useVendaStore((estado) => estado.condicaoSelecionada);
   const selecionarCondicao = useVendaStore((estado) => estado.selecionarCondicao);
+  /**
+   * Subtotal **bruto** das linhas ativas, não `saldo().totalLiquido`: o que
+   * decide se há venda a cobrar é existir mercadoria, e o líquido já desconta a
+   * capa — que nunca chega a zerar a venda desde a guarda de
+   * `recusaDoDescontoCapa`. Devolve um primitivo, então o seletor não recria
+   * referência a cada render.
+   */
+  const subtotal = useVendaStore((estado) => totalVenda(estado.linhas));
 
   const condicoes = catalogo.data?.condicoes ?? [];
 
+  // Ordem das causas: primeiro o que impede o controle de existir (catálogo em
+  // voo, fora do ar, vazio), depois o que impede **esta** venda de usá-lo. Com
+  // a venda sem valor não há o que parcelar, e escolher a condição aqui só
+  // levaria o operador ao combobox de forma para descobrir, um passo adiante,
+  // que não existe saldo a cobrir (pedido do usuário, 2026-09-04).
   const bloqueio: MotivoBloqueio = catalogo.isPending
     ? 'Aguarde: o catálogo de condições de pagamento ainda está carregando.'
     : catalogo.isError
       ? 'Catálogo de pagamento indisponível: recarregue a tela de venda.'
       : condicoes.length === 0
         ? 'Nenhuma condição de pagamento cadastrada para este ponto de venda.'
-        : null;
+        : subtotal === ZERO_CENTAVOS
+          ? 'Insira ao menos um produto na venda antes de escolher a condição de pagamento.'
+          : null;
 
   return (
     <ComboboxPagamento

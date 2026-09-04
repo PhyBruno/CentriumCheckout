@@ -8,12 +8,16 @@ import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
  * ```text
  * carrinho com 3 itens (100,00)
  *   → selecionar condição "A VISTA"
- *   → aplicar desconto de capa 10% (total 90,00)
+ *   → aplicar desconto de capa 2% (total 98,00)
  *   → aplicar CartaoCredito 60,00
- *   → aplicar Dinheiro recebido 40,00  (aplicado 30,00, troco 10,00)
+ *   → aplicar Dinheiro recebido 40,00  (aplicado 38,00, troco 2,00)
  *   → saldo zerado, botão "Finalizar Venda" habilitado
- *   → payload: Σ FormaValor = 90,00; DescontoValor por item soma 10,00; sem campo de troco
+ *   → payload: Σ FormaValor = 98,00; DescontoValor por item soma 2,00; sem campo de troco
  * ```
+ *
+ * O quickstart original usava 10%; o percentual caiu para 2% em 2026-09-04,
+ * quando o desconto de capa passou a recusar todo rateio que zere um item — com
+ * 10,00 divididos entre 70,00 / 29,00 / 1,00, a menor linha zerava.
  *
  * O mock roda com `TEFAtivo: false` e `UtilizaCentriumPAG: false`
  * (`support/erp-mock.ts`), que é exatamente o cenário do quickstart: com as duas
@@ -115,26 +119,32 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-1');
     await expect(page.getByTestId('combobox-condicao-pagamento')).toContainText('A VISTA');
 
-    // --- desconto de capa de 10% (`FR-015`/`FR-016`, US5) ----------------------
-    // O total cai de 100,00 para 90,00; o rateio só se materializa na montagem
+    // --- desconto de capa de 2% (`FR-015`/`FR-016`, US5) -----------------------
+    // O total cai de 100,00 para 98,00; o rateio só se materializa na montagem
     // do payload (AD-098), então aqui a prova é o total exibido.
-    await page.getByTestId('campo-valor-ajuste').fill('10');
+    //
+    // 2%, e não os 10% do quickstart original: com 10,00 rateados igualmente
+    // entre 70,00 / 29,00 / 1,00, a terceira linha seria zerada pelo clamp, e
+    // desde 2026-09-04 o desconto de capa recusa exatamente isso — nenhum item
+    // pode ficar valendo menos de 0,01 depois do rateio. 2,00 dá 0,67 / 0,67 /
+    // 0,66 e deixa a menor linha em 0,34.
+    await page.getByTestId('campo-valor-ajuste').fill('2');
     await page.getByTestId('campo-valor-ajuste').press('Enter');
-    await expect(page.getByTestId('equivalente-financeiro-desconto-capa')).toContainText('10,00');
-    await expect(page.getByTestId('total-a-pagar')).toContainText('90,00');
+    await expect(page.getByTestId('equivalente-financeiro-desconto-capa')).toContainText('2,00');
+    await expect(page.getByTestId('total-a-pagar')).toContainText('98,00');
 
     // --- cartão de crédito de 60,00 (sem TEF ⇒ aprovado na hora) --------------
     await aplicarPagamento(page, 'opcao-forma-2', '60,00');
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
-    await expect(page.getByTestId('pagamentos-saldo-restante')).toContainText('30,00');
+    await expect(page.getByTestId('pagamentos-saldo-restante')).toContainText('38,00');
 
-    // --- dinheiro recebido 40,00 ⇒ aplicado 30,00, troco 10,00 ----------------
+    // --- dinheiro recebido 40,00 ⇒ aplicado 38,00, troco 2,00 -----------------
     // É a linha que prova `FR-012`/SC-002: o excedente vira troco e **não** entra
     // em `valorAplicado`, senão a soma das formas estouraria o total da nota.
     await aplicarPagamento(page, 'opcao-forma-1', '40,00');
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(2);
     await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
-    await expect(page.getByTestId('total-da-venda')).toContainText('10,00');
+    await expect(page.getByTestId('total-da-venda')).toContainText('2,00');
 
     // --- saldo zerado libera a finalização ------------------------------------
     const botaoFinalizar = page.getByTestId('botao-finalizar-venda');
@@ -150,11 +160,11 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     const formas = retrato?.FormasDePagamento ?? [];
     expect(formas).toHaveLength(2);
 
-    // `Σ FormaValor` é **exatamente** o total líquido: 60,00 + 30,00 = 90,00.
-    // O troco de 10,00 não aparece em campo nenhum — não existe campo de troco
+    // `Σ FormaValor` é **exatamente** o total líquido: 60,00 + 38,00 = 98,00.
+    // O troco de 2,00 não aparece em campo nenhum — não existe campo de troco
     // no contrato (`research.md` D3).
     const somaFormas = formas.reduce((total, forma) => total + (forma.FormaValor ?? 0), 0);
-    expect(somaFormas).toBeCloseTo(90, 2);
+    expect(somaFormas).toBeCloseTo(98, 2);
     expect(JSON.stringify(retrato)).not.toContain('roco');
 
     // `FormaEntrada` ecoado do catálogo em toda forma (`FR-022`/AD-111): sem ele
@@ -164,14 +174,15 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     }
 
     // O desconto de capa só existe no payload diluído por item — não há campo de
-    // cabeçalho para ele. Soma exata de 10,00, e o clamp (AD-098) impede que a
-    // linha de 1,00 fique negativa.
+    // cabeçalho para ele. Soma exata de 2,00, e **nenhum item fica abaixo de
+    // 0,01**: é a guarda de 2026-09-04, que só deixa passar o desconto cujo
+    // rateio preserva todas as linhas.
     const itens = retrato?.produtos ?? [];
     expect(itens).toHaveLength(3);
     const somaDescontos = itens.reduce((total, item) => total + (item.DescontoValor ?? 0), 0);
-    expect(somaDescontos).toBeCloseTo(10, 2);
+    expect(somaDescontos).toBeCloseTo(2, 2);
     for (const item of itens) {
-      expect(item.ValorTotal ?? 0).toBeGreaterThanOrEqual(0);
+      expect(item.ValorTotal ?? 0).toBeGreaterThanOrEqual(0.01);
     }
   });
 

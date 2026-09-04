@@ -3,6 +3,7 @@ import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
 import {
   ErroDescontoCapaAcimaDoSubtotal,
   ratearDescontoCapa,
+  recusaDoDescontoCapa,
   resolverDescontoCapa,
   type LinhaRateavel,
 } from '../../../../src/client/domain/pagamento/descontoCapa';
@@ -23,6 +24,63 @@ describe('resolverDescontoCapa — resolução da entrada do operador (FR-015)',
 
   it('sem teto (AD-039): percentual acima de 100 não é recusado aqui — a guarda I8 vive no slice', () => {
     expect(resolverDescontoCapa('PERCENTUAL', 150, centavos(10000))).toBe(15000);
+  });
+});
+
+/**
+ * Guarda do desconto de capa (pedido do usuário, 2026-09-04): ele não pode
+ * zerar o total da venda nem o de um item depois do rateio.
+ *
+ * A regra **aperta** AD-098 sem revogá-la: `ratearDescontoCapa` continua
+ * clampando a linha que estoura, mas um desconto que chegue a clampar deixa de
+ * ser aceitável na entrada — clamp significa linha valendo zero.
+ */
+describe('recusaDoDescontoCapa — a venda e cada item precisam sobreviver ao desconto', () => {
+  const CARRINHO: readonly LinhaRateavel[] = [
+    { idLinha: 'L1', totalLiquido: centavos(7000) },
+    { idLinha: 'L2', totalLiquido: centavos(2900) },
+    { idLinha: 'L3', totalLiquido: centavos(100) },
+  ];
+  const SUBTOTAL = centavos(10000);
+
+  it('desconto acima do subtotal: ZERA_A_VENDA', () => {
+    expect(recusaDoDescontoCapa(centavos(15000), SUBTOTAL, CARRINHO)).toBe('ZERA_A_VENDA');
+  });
+
+  it('desconto exatamente igual ao subtotal: ZERA_A_VENDA — o antigo limite `> subtotal` aceitava', () => {
+    expect(recusaDoDescontoCapa(SUBTOTAL, SUBTOTAL, CARRINHO)).toBe('ZERA_A_VENDA');
+  });
+
+  it('desconto que o clamp faria zerar a linha de 1,00: ZERA_UM_ITEM, embora caiba no subtotal', () => {
+    expect(recusaDoDescontoCapa(centavos(1000), SUBTOTAL, CARRINHO)).toBe('ZERA_UM_ITEM');
+  });
+
+  it('2,99 é o maior desconto aceito neste carrinho; 3,00 já zera a linha de 1,00', () => {
+    // O limite não é `D/3 <= 99` puro: com 2,99 o maior resto dá 1,00 / 1,00 /
+    // 0,99 — a sobra vai para os menores índices, e a menor linha fica
+    // justamente com o centavo que a salva. Em 3,00 a divisão fecha exata em
+    // 1,00 para cada uma e L3 zera.
+    expect(recusaDoDescontoCapa(centavos(299), SUBTOTAL, CARRINHO)).toBeNull();
+    expect(recusaDoDescontoCapa(centavos(300), SUBTOTAL, CARRINHO)).toBe('ZERA_UM_ITEM');
+  });
+
+  it('sem linhas, só a primeira regra fala: não há rateio a examinar', () => {
+    expect(recusaDoDescontoCapa(centavos(1000), SUBTOTAL, [])).toBeNull();
+    expect(recusaDoDescontoCapa(SUBTOTAL, SUBTOTAL, [])).toBe('ZERA_A_VENDA');
+  });
+
+  it('carrinho vazio (subtotal zero) recusa qualquer desconto, inclusive zero', () => {
+    expect(recusaDoDescontoCapa(centavos(0), centavos(0), [])).toBe('ZERA_A_VENDA');
+  });
+
+  it('nunca lança quando o desconto excede a soma das linhas — recusa antes de ratear', () => {
+    // `ratearDescontoCapa` lançaria aqui; a guarda existe justamente para que
+    // o slice nunca alcance esse caminho.
+    const soAMenorLinha: readonly LinhaRateavel[] = [
+      { idLinha: 'L3', totalLiquido: centavos(100) },
+    ];
+    expect(() => recusaDoDescontoCapa(centavos(9999), SUBTOTAL, soAMenorLinha)).not.toThrow();
+    expect(recusaDoDescontoCapa(centavos(9999), SUBTOTAL, soAMenorLinha)).toBe('ZERA_A_VENDA');
   });
 });
 

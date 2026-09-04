@@ -10,6 +10,7 @@
 import {
   ZERO_CENTAVOS,
   calcularTotalLinha,
+  centavos,
   multiplicarPorQuantidade,
   somar,
   type Centavos,
@@ -79,6 +80,20 @@ export interface LinhaCarrinho {
   readonly precoCongelado: boolean;
   readonly origem: OrigemLinha;
 }
+
+/**
+ * Menor total que uma linha ativa pode ter depois de qualquer desconto — um
+ * centavo (pedido do usuário, 2026-09-04).
+ *
+ * Não é o mesmo piso de `calcularTotalLinha`, que impede o total **negativo**
+ * (invariante I8) e aceita zero: aqui a regra é de negócio, não de aritmética —
+ * uma linha zerada é um produto entregue de graça, e o operador precisa ser
+ * avisado em vez de descobrir isso no cupom. Vale para os dois caminhos que
+ * conseguem zerar uma linha: o desconto digitado no item
+ * (`EntradaRapidaProduto`) e o rateio do desconto de capa
+ * (`domain/pagamento/descontoCapa.ts`).
+ */
+export const TOTAL_MINIMO_DA_LINHA = centavos(1);
 
 /** As origens que produzem linha com preço congelado (invariante I5). */
 export function origemCongelaPreco(origem: OrigemLinha): boolean {

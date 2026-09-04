@@ -164,7 +164,15 @@ export function ControleDescontoCapa(): ReactElement {
     // desconto (medido: 43px entre o campo e o rótulo "Forma de pagamento").
     // Pedido do usuário, 2026-09-04.
     <section
-      className="flex w-full flex-col gap-xxs"
+      className={cn(
+        'flex w-full flex-col gap-xxs',
+        // A linha do equivalente financeiro é rodapé do campo, não um bloco
+        // próprio: os 8px de `gap-xs` da coluna do cartão a empurravam para
+        // longe do "Forma de pagamento" logo abaixo. A margem negativa devolve
+        // metade dessa folga e só existe no modo percentual, que é o único em
+        // que a linha é renderizada (pedido do usuário, 2026-09-04).
+        modo === 'PERCENTUAL' && 'mb-[-4px]',
+      )}
       data-testid="controle-desconto-capa"
       aria-label="Desconto da venda"
     >

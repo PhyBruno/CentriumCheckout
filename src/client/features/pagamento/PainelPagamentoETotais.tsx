@@ -1,4 +1,4 @@
-import { Lock, WalletCards } from 'lucide-react';
+import { WalletCards } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
@@ -83,16 +83,15 @@ export function PainelPagamentoETotais(): ReactElement {
       data-testid="painel-pagamento-totais"
     >
       {/* Nó `y3cr1` "Cabeçalho pagamento": ícone `wallet-cards` de 20px + título
-          Inter 18/600 à esquerda, pílula "Seguro" à direita. */}
-      <header className="flex h-9 shrink-0 items-center justify-between">
-        <div className="flex items-center gap-[10px]">
-          <WalletCards className="size-5 shrink-0 text-foreground" aria-hidden="true" />
-          <h2 className="text-[18px] font-semibold text-foreground">Pagamento</h2>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5">
-          <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="text-sm font-semibold text-foreground">Seguro</span>
-        </div>
+          Inter 18/600.
+
+          A pílula "Seguro" (cadeado + rótulo) que o desenho põe à direita foi
+          **removida** a pedido do usuário (2026-09-04): ela não descreve nenhum
+          estado do sistema — não há um modo inseguro do qual distinguir esta
+          tela —, então é ornamento ocupando a única faixa livre do cabeçalho. */}
+      <header className="flex h-9 shrink-0 items-center gap-[10px]">
+        <WalletCards className="size-5 shrink-0 text-foreground" aria-hidden="true" />
+        <h2 className="text-[18px] font-semibold text-foreground">Pagamento</h2>
       </header>
 
       {/* A área central rola: o cartão tem altura fixa (a da tela) e a lista de

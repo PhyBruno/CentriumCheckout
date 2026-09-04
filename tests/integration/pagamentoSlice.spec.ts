@@ -26,8 +26,9 @@ import {
   type IdentidadeVendaDeps,
 } from '../../src/client/stores/slices/identidadeVendaSlice';
 import {
-  AVISO_DESCONTO_ACIMA_DO_SUBTOTAL,
   AVISO_DESCONTO_COM_PAGAMENTO,
+  AVISO_DESCONTO_ZERA_A_VENDA,
+  AVISO_DESCONTO_ZERA_ITEM,
   AVISO_DINHEIRO_DUPLICADO,
   AVISO_FORMA_FORA_DA_CONDICAO,
   AVISO_PAGAMENTO_IRREVERSIVEL,
@@ -638,21 +639,49 @@ describe('pagamentoSlice — desconto de capa (T032/T033, Cenário 4)', () => {
     store.getState().aplicarDescontoCapa('VALOR', 15_000);
 
     expect(store.getState().descontoCapa).toBeNull();
-    expect(avisar).toHaveBeenCalledWith(AVISO_DESCONTO_ACIMA_DO_SUBTOTAL);
+    expect(avisar).toHaveBeenCalledWith(AVISO_DESCONTO_ZERA_A_VENDA);
+  });
+
+  it('desconto exatamente igual ao subtotal é bloqueado: a venda não pode zerar', () => {
+    // O antigo limite (`> subtotal`) aceitava este caso e produzia uma nota de
+    // R$ 0,00 — nenhuma forma de pagamento consegue fechá-la (pedido do
+    // usuário, 2026-09-04).
+    const { store, avisar } = montarStore({ linhas: LINHAS });
+
+    store.getState().aplicarDescontoCapa('VALOR', 10_000);
+
+    expect(store.getState().descontoCapa).toBeNull();
+    expect(avisar).toHaveBeenCalledWith(AVISO_DESCONTO_ZERA_A_VENDA);
+  });
+
+  it('desconto que o rateio faria zerar uma linha é bloqueado, mesmo cabendo no subtotal', () => {
+    // 10,00 entre 70,00 / 29,00 / 1,00: a divisão igual daria 3,33 a cada uma,
+    // a terceira estoura e o clamp a fixa em 1,00 — deixando-a valendo zero.
+    // Cabe no subtotal (o total ainda seria 90,00), e é justamente o caso que a
+    // regra nova recusa (pedido do usuário, 2026-09-04).
+    const { store, avisar } = montarStore({ linhas: LINHAS });
+
+    store.getState().aplicarDescontoCapa('VALOR', 1_000);
+
+    expect(store.getState().descontoCapa).toBeNull();
+    expect(avisar).toHaveBeenCalledWith(AVISO_DESCONTO_ZERA_ITEM);
   });
 
   it('removerDescontoCapa zera o rateio sem deixar resíduo (FR-015)', () => {
     const { store } = montarStore({ linhas: LINHAS });
 
-    store.getState().aplicarDescontoCapa('VALOR', 1_000);
-    // Afirmado por chave, não por posição: `ratearDescontoCapa` devolve as
-    // linhas fixadas pelo clamp antes das redivididas, e a ordem de iteração do
-    // `Map` não faz parte do contrato — o que importa é a parcela de cada linha.
+    // 2,97 divide exato em 99 centavos por linha e deixa a de 1,00 valendo o
+    // mínimo de 1 centavo — o maior desconto de divisão exata que este carrinho
+    // aceita. A partir de 3,00 a parcela chega a 1,00 e cai em
+    // `AVISO_DESCONTO_ZERA_ITEM`.
+    store.getState().aplicarDescontoCapa('VALOR', 297);
+    // Afirmado por chave, não por posição: a ordem de iteração do `Map` não faz
+    // parte do contrato — o que importa é a parcela de cada linha.
     const comDesconto = store.getState().montarPagamentosParaPayload().rateioDescontoCapa;
-    expect(comDesconto.get('linha-1')).toBe(450);
-    expect(comDesconto.get('linha-2')).toBe(450);
-    expect(comDesconto.get('linha-3')).toBe(100);
-    expect(store.getState().saldo().totalLiquido).toBe(9_000);
+    expect(comDesconto.get('linha-1')).toBe(99);
+    expect(comDesconto.get('linha-2')).toBe(99);
+    expect(comDesconto.get('linha-3')).toBe(99);
+    expect(store.getState().saldo().totalLiquido).toBe(9_703);
 
     store.getState().removerDescontoCapa();
 

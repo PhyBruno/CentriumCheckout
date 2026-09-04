@@ -9,11 +9,13 @@
  */
 
 import {
+  ZERO_CENTAVOS,
   aplicarPercentual,
   centavos,
   distribuirPorMaiorResto,
   type Centavos,
 } from '../precificacao/dinheiro';
+import { TOTAL_MINIMO_DA_LINHA } from '../precificacao/linha';
 
 /** Linha do carrinho elegível para o rateio — só o que o algoritmo precisa. */
 export interface LinhaRateavel {
@@ -59,6 +61,72 @@ export function resolverDescontoCapa(
   // 'VALOR': a entrada já chega em centavos inteiros — `centavos()` recusa
   // fração em vez de arredondar (mesma defesa de fronteira de `dinheiro.ts`).
   return centavos(entrada);
+}
+
+/**
+ * Por que um desconto de capa não pode ser aplicado — `null` significa "pode".
+ *
+ * - `ZERA_A_VENDA` — o desconto engole o subtotal inteiro. Não sobra nota a
+ *   emitir: `Σ FormaValor` seria zero e não existe pagamento capaz de fechar
+ *   uma venda de R$ 0,00.
+ * - `ZERA_UM_ITEM` — o total da venda ainda é positivo, mas o **rateio** deixa
+ *   pelo menos uma linha valendo menos de um centavo.
+ */
+export type RecusaDescontoCapa = 'ZERA_A_VENDA' | 'ZERA_UM_ITEM';
+
+/**
+ * Guarda do desconto de capa antes de aplicá-lo (pedido do usuário,
+ * 2026-09-04): ele nunca pode zerar o valor da venda **nem** o de um item
+ * depois do rateio.
+ *
+ * **Aperta AD-098 sem revogá-la.** O rateio continua sendo divisão igual com
+ * clamp e redistribuição, e `ratearDescontoCapa` continua fixando no próprio
+ * `totalLiquido` a linha cuja parcela estouraria. O que muda é que esse
+ * desfecho deixa de ser aceitável na entrada: uma linha fixada no teto fica
+ * valendo zero, e é exatamente isso que a regra nova proíbe. Na prática,
+ * portanto, todo desconto aceito daqui em diante produz um rateio **sem
+ * clamp** — o clamp segue no algoritmo como rede de segurança do caminho de
+ * montagem do payload, que não repete esta checagem.
+ *
+ * `subtotal` e `linhas` chegam separados, e não derivados um do outro, porque
+ * são portas distintas do slice (`subtotalCarrinho()` e `linhasRateaveis()`):
+ * em produção coincidem, mas depender dessa coincidência faria a função mentir
+ * quando não coincidissem. Com `linhas` vazia só a primeira regra pode falar —
+ * não há rateio a examinar.
+ *
+ * Nunca lança: a pré-condição de `ratearDescontoCapa` (`desconto <= Σ linhas`)
+ * é verificada aqui antes da chamada, e violá-la já é `ZERA_A_VENDA`.
+ */
+export function recusaDoDescontoCapa(
+  descontoCapa: Centavos,
+  subtotal: Centavos,
+  linhas: readonly LinhaRateavel[],
+): RecusaDescontoCapa | null {
+  if (descontoCapa >= subtotal) {
+    return 'ZERA_A_VENDA';
+  }
+
+  if (linhas.length === 0) {
+    return null;
+  }
+
+  const somaTotalLiquido = linhas.reduce<number>(
+    (acumulado, linha) => acumulado + linha.totalLiquido,
+    0,
+  );
+  if (descontoCapa >= somaTotalLiquido) {
+    return 'ZERA_A_VENDA';
+  }
+
+  const rateio = ratearDescontoCapa(descontoCapa, linhas);
+  for (const linha of linhas) {
+    const parcela = rateio.get(linha.idLinha) ?? ZERO_CENTAVOS;
+    if (linha.totalLiquido - parcela < TOTAL_MINIMO_DA_LINHA) {
+      return 'ZERA_UM_ITEM';
+    }
+  }
+
+  return null;
 }
 
 /**

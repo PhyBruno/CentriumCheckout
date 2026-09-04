@@ -5563,5 +5563,21 @@
       "src/client/features/dav/ModalImportacaoDav.tsx"
     ],
     "date": "2026-09-03"
+  },
+  {
+    "type": "decision",
+    "content": "AD-151: desconto nao pode zerar venda nem item; condicao exige subtotal",
+    "tags": [
+      "008",
+      "desconto",
+      "rateio",
+      "ad-151"
+    ],
+    "files": [
+      "src/client/domain/pagamento/descontoCapa.ts",
+      "src/client/domain/precificacao/linha.ts",
+      "src/client/stores/slices/pagamentoSlice.ts"
+    ],
+    "date": "2026-09-04"
   }
 ]

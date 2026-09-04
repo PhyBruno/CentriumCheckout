@@ -11,8 +11,9 @@ import { useVendaStore } from '../../stores/vendaStore';
  *
  * Estrutura do nó: coluna de 360px, fundo `$surface-dark`, raio 20,
  * `padding: 14px`, `gap: 8px`. Dentro dela, "Linha total" (`XOhWa`) com o rótulo
- * "Total a pagar" (Inter 13/600 em `#DDE3EA`, `HBR0z`) e a moeda "BRL" (Geist
- * Mono 12/600 em `#8E99A8`, `X227y`); o "Valor total" (`Gbx9F`) em Geist Mono
+ * "Total a pagar" (Inter 13/600 em `#DDE3EA`, `HBR0z`) — a etiqueta de moeda
+ * "BRL" que o desenho põe ao lado dele (`X227y`) **não é renderizada**, ver o
+ * comentário no JSX; o "Valor total" (`Gbx9F`) em Geist Mono
  * 32/600, `line-height` 34, branco; e "Métricas pagamento" (`ZwhZ1`, row, gap 8)
  * com dois cartões `flex: 1` de fundo `$surface-dark-elevated`, raio 14,
  * `padding: 9px`, `gap: 4px` — rótulo Inter 12/**400** em `#8E99A8` e valor
@@ -55,16 +56,13 @@ export function TotalDaVenda(): ReactElement {
       className="flex w-full flex-col gap-xs rounded-[20px] bg-[var(--cc-color-surface-dark)] p-[14px]"
       data-testid="total-da-venda"
     >
-      <div className="flex w-full items-center justify-between">
-        <span className="text-base font-semibold text-[var(--cc-color-on-dark-strong)]">
-          Total a pagar
-        </span>
-        {/* "BRL" é Geist Mono no nó `X227y` — é uma etiqueta de moeda, e no
-            vocabulário desta base todo dado tabular/monetário é mono. */}
-        <span className="font-mono text-sm font-semibold text-[var(--cc-color-on-dark-muted)]">
-          BRL
-        </span>
-      </div>
+      {/* A etiqueta de moeda "BRL" (nó `X227y`, à direita do rótulo) foi
+          **removida** a pedido do usuário (2026-09-04): o valor logo abaixo já
+          é formatado com "R$" por `formatarCentavos`, e o Checkout não opera em
+          outra moeda — a etiqueta só repetia, em inglês, o que o número diz. */}
+      <span className="text-base font-semibold text-[var(--cc-color-on-dark-strong)]">
+        Total a pagar
+      </span>
 
       <p
         className="font-mono text-2xl leading-[34px] font-semibold tabular-nums text-[var(--cc-color-on-dark)]"

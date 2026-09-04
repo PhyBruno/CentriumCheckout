@@ -15,6 +15,7 @@ import type {
 } from '../../../../src/client/domain/pagamento/formaPagamento';
 import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
+import { linhaDe } from '../../../support/precificacao';
 
 /**
  * Navegação por setas nos comboboxes de pagamento — pedido do usuário
@@ -270,7 +271,14 @@ function envolverComQueryClient(no: ReactElement): ReactNode {
 
 describe('Seletores de pagamento — setas ligadas ao catálogo real', () => {
   beforeEach(() => {
-    useVendaStore.setState({ condicaoSelecionada: null, pagamentos: [] });
+    // Uma linha no carrinho é pré-requisito do combobox de condição desde
+    // 2026-09-04: com subtotal 0,00 ele fica bloqueado, porque não há venda a
+    // cobrar. Os testes daqui exercitam a navegação, não essa guarda.
+    useVendaStore.setState({
+      condicaoSelecionada: null,
+      pagamentos: [],
+      linhas: [linhaDe({ precoUnitario: 1_000, quantidadeEmUnidades: 1 })],
+    });
     useVendaStore.getState().resetarAuditoria('NOVA');
     vi.stubGlobal(
       'fetch',
@@ -305,6 +313,28 @@ describe('Seletores de pagamento — setas ligadas ao catálogo real', () => {
 
     await usuario.keyboard('{ArrowDown}');
     expect(useVendaStore.getState().condicaoSelecionada?.descricao).toBe('A PRAZO');
+  });
+
+  it('condição: com o carrinho vazio o combobox fica bloqueado mesmo com o catálogo carregado', async () => {
+    // Pedido do usuário (2026-09-04): sem subtotal não há venda a cobrar.
+    const usuario = userEvent.setup();
+    useVendaStore.setState({ linhas: [] });
+    render(envolverComQueryClient(createElement(SeletorCondicaoPagamento)));
+
+    // O `title` é o que distingue este bloqueio do de "catálogo ainda
+    // carregando": os dois produzem `aria-disabled`, só o motivo os separa.
+    const combobox = screen.getByTestId('combobox-condicao-pagamento');
+    await waitFor(() => {
+      expect(combobox).toHaveAttribute(
+        'title',
+        'Insira ao menos um produto na venda antes de escolher a condição de pagamento.',
+      );
+    });
+    expect(combobox).toHaveAttribute('aria-disabled', 'true');
+
+    combobox.focus();
+    await usuario.keyboard('{ArrowDown}');
+    expect(useVendaStore.getState().condicaoSelecionada).toBeNull();
   });
 
   it('forma: ArrowDown percorre as formas da condição e pula o PIX sem integração', async () => {

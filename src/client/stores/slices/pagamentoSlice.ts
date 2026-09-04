@@ -16,9 +16,11 @@ import {
 } from '../../domain/pagamento/formaPagamento';
 import {
   ratearDescontoCapa,
+  recusaDoDescontoCapa,
   resolverDescontoCapa,
   type DescontoCapa,
   type LinhaRateavel,
+  type RecusaDescontoCapa,
 } from '../../domain/pagamento/descontoCapa';
 import {
   resolverIntegracao,
@@ -272,8 +274,24 @@ export const AVISO_PAGAMENTO_IRREVERSIVEL =
   'Pagamento aprovado por TEF/PIX não pode ser removido: o estorno é operação do ERP.';
 export const AVISO_DESCONTO_COM_PAGAMENTO =
   'Esta venda já tem pagamento aplicado: o desconto não pode mais ser alterado.';
-export const AVISO_DESCONTO_ACIMA_DO_SUBTOTAL =
-  'O desconto não pode ser maior que o total da venda.';
+/**
+ * As duas recusas do desconto de capa (pedido do usuário, 2026-09-04).
+ *
+ * Substituem o antigo `AVISO_DESCONTO_ACIMA_DO_SUBTOTAL` ("não pode ser maior
+ * que o total"), que descrevia um limite que já não é o vigente: hoje o
+ * desconto também não pode **igualar** o total, e a segunda frase cobre o caso
+ * que o texto único não sabia nomear — o total da venda continua positivo, mas
+ * o rateio zera uma das linhas.
+ */
+export const AVISO_DESCONTO_ZERA_A_VENDA =
+  'O desconto não pode zerar o total da venda: informe um valor menor que o total.';
+export const AVISO_DESCONTO_ZERA_ITEM =
+  'Este desconto zeraria um item da venda: no rateio, cada item precisa continuar valendo pelo menos R$ 0,01.';
+
+const AVISO_POR_RECUSA_DESCONTO: Record<RecusaDescontoCapa, string> = {
+  ZERA_A_VENDA: AVISO_DESCONTO_ZERA_A_VENDA,
+  ZERA_UM_ITEM: AVISO_DESCONTO_ZERA_ITEM,
+};
 export const AVISO_VALE_FORMA_ERRADA =
   'Esta forma de pagamento não é vale devolução: escolha a forma de vale no catálogo.';
 export const AVISO_VALE_SEM_CODIGO = 'Informe o código do vale devolução.';
@@ -634,11 +652,14 @@ export function criarPagamentoSlice(
         const subtotal = deps.subtotalCarrinho();
         const valorResolvido = resolverDescontoCapa(modo, entrada, subtotal);
 
-        // Guarda 2 — I8: acima do subtotal, o rateio não teria como fechar e
-        // `ratearDescontoCapa` lançaria. Barrar aqui é o que mantém a
-        // pré-condição daquela função sempre verdadeira.
-        if (valorResolvido > subtotal) {
-          deps.avisar?.(AVISO_DESCONTO_ACIMA_DO_SUBTOTAL);
+        // Guarda 2 — I8, apertada pelo usuário em 2026-09-04: além de manter a
+        // pré-condição de `ratearDescontoCapa` (`desconto <= Σ linhas`), o
+        // desconto agora não pode zerar nem o total da venda nem o de um item
+        // depois do rateio. Quem decide é o domínio; aqui só se traduz a recusa
+        // na frase que o operador lê ao sair do campo.
+        const recusa = recusaDoDescontoCapa(valorResolvido, subtotal, deps.linhasRateaveis());
+        if (recusa !== null) {
+          deps.avisar?.(AVISO_POR_RECUSA_DESCONTO[recusa]);
           return;
         }
 

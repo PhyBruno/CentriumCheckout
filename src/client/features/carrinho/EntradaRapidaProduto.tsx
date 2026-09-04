@@ -1,5 +1,6 @@
 import { Barcode, Minus, Plus, Search } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ import {
   somar,
   type Centavos,
 } from '../../domain/precificacao/dinheiro';
+import { TOTAL_MINIMO_DA_LINHA } from '../../domain/precificacao/linha';
 import {
   MILESIMOS_POR_UNIDADE,
   formatarQuantidade,
@@ -38,6 +40,16 @@ const CENTAVOS_POR_REAL = 100;
 const ID_CAMPO_QUANTIDADE = 'previa-campo-quantidade';
 const UMA_UNIDADE = milesimos(MILESIMOS_POR_UNIDADE);
 const QUANTIDADE_INICIAL = milesimosDeUnidades(1);
+
+/**
+ * Desconto que consome o item inteiro (pedido do usuário, 2026-09-04).
+ *
+ * A frase nomeia a saída — reduzir o desconto — porque o gesto que o operador
+ * tentaria sozinho (confirmar assim mesmo) não funciona: o botão de inserir
+ * fica bloqueado enquanto o total não voltar a `TOTAL_MINIMO_DA_LINHA`.
+ */
+const AVISO_DESCONTO_ZERA_ITEM =
+  'O desconto não pode zerar o item: reduza o valor para o total ficar em pelo menos R$ 0,01.';
 
 /** `"12,34"` e `"12.34"` → `1234` centavos; entrada inválida vira `null`. */
 function lerCentavos(texto: string): Centavos | null {
@@ -212,6 +224,30 @@ export function EntradaRapidaProduto(): ReactElement {
     : (linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS);
   const descontoTotalLido =
     descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
+
+  /**
+   * Total da linha como ela entraria na venda — a mesma função do domínio que
+   * o carrinho usa (`calcularTotalLinha`), nunca uma subtração local: o total
+   * exibido, o total gravado e o total validado precisam ser o mesmo número.
+   */
+  const totalItemLido =
+    quantidadeLida === null || precoLido === null || descontoTotalLido === null
+      ? null
+      : calcularTotalLinha(precoLido, quantidadeLida, descontoTotalLido);
+
+  /**
+   * O desconto digitado consome o item inteiro (pedido do usuário,
+   * 2026-09-04). Só é possível em produto `'E'`, o único em que o campo de
+   * desconto aceita digitação — nos demais o valor exibido é o da própria linha
+   * e o operador não tem como estragá-lo daqui.
+   *
+   * `calcularTotalLinha` tem piso zero (invariante I8), então um desconto
+   * exagerado não produz total negativo: ele produz **zero**, que é exatamente
+   * o desfecho que esta guarda existe para recusar — um produto entregue de
+   * graça, sem ninguém ser avisado.
+   */
+  const descontoZeraItem =
+    editavel && totalItemLido !== null && totalItemLido < TOTAL_MINIMO_DA_LINHA;
 
   // Foco automático ao resolver (TAB) ou ao recarregar uma linha existente
   // (lápis): produto editável pousa na quantidade — primeiro campo da
@@ -510,24 +546,32 @@ export function EntradaRapidaProduto(): ReactElement {
   const podeConfirmar =
     resolvido === null && linhaEmEdicao === null
       ? !ocupado && texto.trim() !== ''
-      : quantidadeLida !== null && precoLido !== null && descontoTotalLido !== null;
+      : quantidadeLida !== null &&
+        precoLido !== null &&
+        descontoTotalLido !== null &&
+        !descontoZeraItem;
 
   /**
    * Por que o botão de inserir está bloqueado — a frase que o operador lê ao
    * clicar nele bloqueado (padrão de `lib/bloqueio.ts`, pedido do usuário
    * 2026-09-03), ou `null` quando dá para inserir.
    *
-   * Os três motivos são exatamente os três termos de `podeConfirmar`, na mesma
-   * ordem: sem esse espelho, o texto poderia dizer uma coisa e o bloqueio
-   * responder a outra.
+   * Os motivos são exatamente os termos de `podeConfirmar`, na mesma ordem:
+   * sem esse espelho, o texto poderia dizer uma coisa e o bloqueio responder a
+   * outra. O desconto que zera o item vem antes do genérico "há um valor
+   * inválido" porque ele **é** um valor bem formado — o operador digitou um
+   * número legítimo que a regra de negócio recusa, e a frase genérica o faria
+   * procurar um erro de digitação que não existe.
    */
   const bloqueioDeInsercao: MotivoBloqueio = podeConfirmar
     ? null
     : ocupado
       ? 'Aguarde: o produto ainda está sendo consultado no ERP.'
-      : resolvido === null && linhaEmEdicao === null
-        ? 'Digite ou bipe o código do produto para inserir.'
-        : 'Revise quantidade, preço e desconto: há um valor inválido.';
+      : descontoZeraItem
+        ? AVISO_DESCONTO_ZERA_ITEM
+        : resolvido === null && linhaEmEdicao === null
+          ? 'Digite ou bipe o código do produto para inserir.'
+          : 'Revise quantidade, preço e desconto: há um valor inválido.';
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -705,6 +749,18 @@ export function EntradaRapidaProduto(): ReactElement {
                   setDescontoTexto(evento.target.value);
                 }
               }}
+              // Avisa ao **sair do campo**, não a cada tecla (pedido do
+              // usuário, 2026-09-04): digitar "10,00" num item de 10,00 passa
+              // por "1", "1,0"… e cada passagem dispararia um toast idêntico
+              // sobre um valor que o operador ainda está escrevendo. Mesma
+              // política do desconto de capa, que aplica no `blur` e no Enter.
+              // O texto permanece no campo para ser corrigido; quem impede a
+              // inserção é `bloqueioDeInsercao`.
+              onBlur={() => {
+                if (descontoZeraItem) {
+                  gooeyToast.warning(AVISO_DESCONTO_ZERA_ITEM);
+                }
+              }}
             />
           </span>
         </label>
@@ -718,9 +774,7 @@ export function EntradaRapidaProduto(): ReactElement {
             )}
             data-testid="previa-total-item"
           >
-            {quantidadeLida === null || precoLido === null || descontoTotalLido === null
-              ? formatarCentavos(ZERO_CENTAVOS)
-              : formatarCentavos(calcularTotalLinha(precoLido, quantidadeLida, descontoTotalLido))}
+            {formatarCentavos(totalItemLido ?? ZERO_CENTAVOS)}
           </strong>
         </label>
 
