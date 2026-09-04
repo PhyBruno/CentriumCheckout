@@ -12,26 +12,10 @@ import {
   interpretarStatusPix,
   type ResultadoStatusPix,
 } from '../../domain/pix/interpretarStatusPix';
+import { decodificarSeBase64, fonteDeImagemBase64 } from '../../domain/pix/base64';
 import type { CobrancaPix } from '../../domain/pix/cobrancaPix';
 import type { Centavos } from '../../domain/precificacao/dinheiro';
 import type { GerarPixOutput, StatusPixOutput } from '../../../shared/schemas/pix.schema';
-
-/**
- * Decodifica o "copia e cola" (`Trnbase64text`).
- *
- * Falha de decodificação devolve `''` em vez de lançar: o QR Code — o caminho
- * principal de pagamento — já está na tela nesse ponto, e derrubar o modal por
- * causa do texto auxiliar tiraria do operador o único meio que ele tem de
- * receber. A ausência aparece como o campo vazio, que é honesto.
- */
-function decodificarCopiaECola(base64: string): string {
-  try {
-    return atob(base64);
-  } catch {
-    console.warn('[pix] `Trnbase64text` não é base64 válido: "copia e cola" ficará indisponível.');
-    return '';
-  }
-}
 
 /**
  * `valor` e `trnGuid` vêm do **call site**, não da resposta.
@@ -49,8 +33,12 @@ export function paraCobrancaPix(
 ): CobrancaPix {
   return {
     trnGuid,
-    qrCodeImagemBase64: saida.Trnbase64image,
-    copiaECola: decodificarCopiaECola(saida.Trnbase64text),
+    // Os dois campos chegam **codificados** e nenhum dos dois pode confiar no
+    // nome: a imagem precisa do tipo MIME real e o texto precisa da checagem de
+    // "isto é mesmo base64?" antes de qualquer `atob` (pedido do usuário,
+    // 2026-09-04, itens 5 e 6). As duas regras vivem em `domain/pix/base64.ts`.
+    qrCodeFonte: fonteDeImagemBase64(saida.Trnbase64image),
+    copiaECola: decodificarSeBase64(saida.Trnbase64text),
     valor,
   };
 }

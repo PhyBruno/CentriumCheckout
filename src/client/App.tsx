@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { useAvisoAoSair } from './lib/useAvisoAoSair';
 import {
   bootstrapDb,
   criarRepositorioBootstrap,
@@ -216,6 +217,28 @@ function TelaDeVenda({ onRecarregarBootstrap }: TelaDeVendaProps): ReactElement 
   const cadMaqCod = useSessionStore((estado) => estado.registro?.SessaoUsuario.CadMaqCod ?? null);
   const linhas = useVendaStore((estado) => estado.linhas);
   const houveEscolhaExplicita = useVendaStore((estado) => estado.houveEscolhaExplicita);
+
+  /**
+   * Há algo que um F5 destruiria (item 8 do usuário, 2026-09-04).
+   *
+   * **Cliente default não conta** — é o mesmo recorte de `vendaAtiva` logo
+   * abaixo, e pelo mesmo motivo (AD-138): a pré-seleção automática do consumidor
+   * padrão não é ação do operador, então perdê-la num reload não perde nada que
+   * ele tenha digitado. Perguntar ali transformaria o aviso em ruído de fundo, e
+   * um aviso que aparece sempre deixa de ser lido.
+   *
+   * **Linha cancelada conta**, e é deliberado: `linhas.length`, não
+   * `linhasAtivas`. A linha cancelada permanece no array por rastreabilidade
+   * (`CART-08`) e é prova de que houve digitação — a mesma leitura que
+   * `useVendaTemItem` faz para liberar o "Cancelar venda". Um carrinho cujos
+   * itens foram todos cancelados ainda carrega o histórico de auditoria da
+   * venda, que o reload apagaria.
+   *
+   * Pagamento não precisa entrar na conta: não existe pagamento sem condição
+   * escolhida, e não existe condição escolhida sem item no carrinho.
+   */
+  const haVendaAPerder = houveEscolhaExplicita || linhas.length > 0;
+  useAvisoAoSair(haVendaAPerder);
 
   // Abre a sessão de venda quando a tela entra em cena, e só se ainda não
   // houver uma aberta: a tela pode remontar no meio de uma venda (recarga do

@@ -61,11 +61,24 @@ export interface ConfigMockErp {
   /**
    * Literais que `StatusPIX` devolve, um por consulta; o último se repete.
    *
-   * `['G', 'P']` reproduz o fluxo dourado do quickstart em dois ticks —
-   * "Aguardando Pagamento" e então "Pagamento Recebido". Um cenário de recusa
-   * troca isto por `['G', 'R']`.
+   * **Vazio por padrão desde 2026-09-04** (pedido do usuário, item 4): sem
+   * roteiro, o mock passa a decidir pelo **relógio** — devolve `'G'` até
+   * `atrasoPagamentoPixMs` depois da geração e `'P'` a partir dali. É o que faz
+   * a stack local se comportar como o mundo real, em que o cliente leva algum
+   * tempo para abrir o app do banco; antes disto o `['G', 'P']` padrão marcava a
+   * cobrança como paga no segundo tick, e o operador nunca via o estado de
+   * espera.
+   *
+   * Um roteiro explícito continua tendo precedência e é o que os cenários
+   * automatizados usam — `['G', 'R']` para recusa, `['G']` para uma cobrança que
+   * nunca é paga —, porque teste não pode depender de relógio.
    */
   statusPixTransicoes: readonly string[];
+  /**
+   * Quanto tempo, em milissegundos, entre `GerarPIX` e o status virar pago
+   * (`'P'`). Só vale quando `statusPixTransicoes` está vazio.
+   */
+  atrasoPagamentoPixMs: number;
 }
 
 export interface ContadoresMockErp {
@@ -103,7 +116,9 @@ const CONFIG_PADRAO: ConfigMockErp = {
    * venda em vez de montar um carrinho menor.
    */
   minimoPix: 5,
-  statusPixTransicoes: ['G', 'P'],
+  statusPixTransicoes: [],
+  /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
+  atrasoPagamentoPixMs: 20_000,
 };
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
@@ -170,7 +185,23 @@ const PDF_SINTETICO = 'JVBERi0xLjQtc2ludGV0aWNv';
  */
 const COPIA_E_COLA_PIX =
   '00020126580014BR.GOV.BCB.PIX0136sintetico-0000-4000-8000-00000000520400005303986540565.505802BR5913CENTRIUM LTDA6009SAO PAULO62070503***6304AB12';
-const QRCODE_PIX_BASE64 = '/9j/4AAQSkZJRgABAQAAc2ludGV0aWNv';
+/**
+ * PNG **de verdade**, 116×116, com padrão de QR sintético — três marcadores de
+ * canto, linhas de temporização e trama determinística.
+ *
+ * Substituiu um `/9j/…` de 32 caracteres que não era imagem nenhuma (correção do
+ * usuário, 2026-09-04, item 5). Aquele valor bastava para o E2E afirmar o
+ * formato da `data:` URL, mas na stack local o operador via um ícone de imagem
+ * quebrada e não tinha como distinguir "o mock é falso" de "a decodificação está
+ * errada" — que era justamente o defeito sendo investigado.
+ *
+ * Não codifica nenhum payload: escanear não leva a lugar nenhum, e não deveria —
+ * é um mock. O que ele prova é o caminho inteiro, do `Trnbase64image` até os
+ * 200×200 na tela, com o tipo MIME detectado a partir dos bytes (`image/png`,
+ * não o `image/jpeg` que a versão anterior do modal declarava para tudo).
+ */
+const QRCODE_PIX_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAAAAABx8Un7AAABX0lEQVR42u3aMZbDMAgEUN//0k6TJg4wA9ZYLkZNiij8vLdEILzHUazzu6r3o33VZ+AyugQ9g3UNmiHXz0T7oj1G9ShKkCypMqyKa3QvmgXODoEoEY2+C2UOgmq/0X0oe+BnyYWKwa0qY7SNMo3X5HXcDRq9hZ5gdQ7yKoF+YhqVotnfFxVvVBSYC5hRLZoFRQ0YkyxlEhmVoEyxrQIxF+O/OEZlaJRAVZPW/Z2Hr0alKLuxU9jZZDSqRVFFQAdAp1k3qkcnw6tqiFFdjI3uQ5mg44cGRqUoKtjshYoB05u4UQmKijWbcFSDZ1SKrhhIMl9g+RTUKD1LQo1ZlVxoIGn0GZR5QMcMG1sNt9FHUOaQZh68UwNmo1J08iABNV7MYNKoFoXN8WRiggq5UTlaBaaGisQF2ug7UObwZy9SRt+Dogvx6J/bjMpRdijRHYyMirjR2yhzcE/wbqEwugT9AFWb2HnFIHy/AAAAAElFTkSuQmCC';
 const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
 
 /**
@@ -769,6 +800,14 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   let ultimoRetratoFaturado: Record<string, unknown> | null = null;
   /** Último `SDTCentriumPag_Post` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
   let ultimoGerarPix: Record<string, unknown> | null = null;
+  /**
+   * Instante de geração de cada `TrnGUID`, para o status por relógio.
+   *
+   * Por GUID, e não um escalar único: uma venda pode gerar mais de uma cobrança
+   * (o operador desiste da primeira e tenta de novo), e um relógio global faria
+   * a segunda nascer já "quase paga", herdando o tempo da primeira.
+   */
+  const geracoesPix = new Map<string, number>();
 
   await app.register(import('@fastify/formbody'));
 
@@ -778,6 +817,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     contadores = { ...CONTADORES_ZERADOS };
     ultimoRetratoFaturado = null;
     ultimoGerarPix = null;
+    geracoesPix.clear();
     // Cadastro criado por `PostCliente` num teste não pode vazar para o
     // próximo: o cenário "documento inexistente" depende de o CPF continuar
     // ausente.
@@ -1213,8 +1253,13 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       const enviado = request.body.SDTCentriumPag_Post ?? {};
       ultimoGerarPix = enviado;
 
+      const guid = String(enviado['TrnGUID'] ?? '');
+      // Marca o nascimento da cobrança — é o zero da contagem que `StatusPIX`
+      // usa quando não há roteiro de transições configurado.
+      geracoesPix.set(guid, Date.now());
+
       return reply.send({
-        TrnGUID: String(enviado['TrnGUID'] ?? ''),
+        TrnGUID: guid,
         Trnbase64text: Buffer.from(COPIA_E_COLA_PIX, 'utf8').toString('base64'),
         Trnbase64image: QRCODE_PIX_BASE64,
         messages: [],
@@ -1223,20 +1268,43 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   );
 
   /**
-   * `StatusPIX` (`contracts/erp-pix-api.md` §2) — consome
-   * `config.statusPixTransicoes`, uma posição por consulta, repetindo a última.
-   * É o que permite ao teste desenhar "pendente, pendente, pago" sem depender do
-   * relógio real.
+   * `StatusPIX` (`contracts/erp-pix-api.md` §2), com **dois modos**.
+   *
+   * 1. **Roteiro** — `config.statusPixTransicoes` não vazio: consome uma posição
+   *    por consulta, repetindo a última. É o modo dos cenários automatizados,
+   *    que precisam desenhar "pendente, pendente, pago" (ou "pendente, recusado")
+   *    sem depender do relógio real.
+   * 2. **Relógio** — roteiro vazio, que é o **padrão** desde 2026-09-04 (pedido
+   *    do usuário, item 4): a cobrança fica `'G'` (Aguardando Pagamento) e só
+   *    vira `'P'` (Pagamento Recebido) `atrasoPagamentoPixMs` depois de ter sido
+   *    gerada. É o que reproduz, na stack local, o intervalo entre o QR Code
+   *    aparecer e o cliente de fato pagar — antes disto o PIX nascia praticamente
+   *    pago e o estado de espera era invisível ao teste manual.
+   *
+   * Um `Trnguid` que este mock nunca gerou responde `'G'`: sem registro de
+   * nascimento não há o que contar, e responder "pago" a uma cobrança
+   * desconhecida seria o pior desfecho possível.
    */
   app.get<{ Querystring: { Trnguid?: string } }>(
     '/ApiCentriumOAuth/StatusPIX',
-    async (_request, reply) => {
+    async (request, reply) => {
       contadores.negocio += 1;
-      const indice = Math.min(contadores.statusPix, config.statusPixTransicoes.length - 1);
+      const consultasAnteriores = contadores.statusPix;
       contadores.statusPix += 1;
 
+      if (config.statusPixTransicoes.length > 0) {
+        const indice = Math.min(consultasAnteriores, config.statusPixTransicoes.length - 1);
+        return reply.send({
+          StatusTransacao: config.statusPixTransicoes[indice] ?? 'G',
+          messages: [],
+        });
+      }
+
+      const geradoEm = geracoesPix.get(request.query.Trnguid ?? '');
+      const pago = geradoEm !== undefined && Date.now() - geradoEm >= config.atrasoPagamentoPixMs;
+
       return reply.send({
-        StatusTransacao: config.statusPixTransicoes[indice] ?? 'G',
+        StatusTransacao: pago ? 'P' : 'G',
         messages: [],
       });
     },

@@ -34,7 +34,7 @@ import {
   AVISO_VENDA_SEM_VALOR,
   AVISO_DINHEIRO_DUPLICADO,
   AVISO_FORMA_FORA_DA_CONDICAO,
-  AVISO_PAGAMENTO_IRREVERSIVEL,
+  AVISO_TEF_IRREVERSIVEL,
   AVISO_VALE_FORMA_ERRADA,
   AVISO_VALE_INDISPONIVEL,
   AVISO_VALE_JA_APLICADO,
@@ -382,7 +382,7 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     store.getState().removerPagamento('pag-1');
 
-    expect(avisar).toHaveBeenCalledWith(AVISO_PAGAMENTO_IRREVERSIVEL);
+    expect(avisar).toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
     expect(store.getState().pagamentos).toHaveLength(1);
     expect(store.getState().podeMutarCarrinho()).toBe(false);
   });
@@ -395,9 +395,45 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     store.getState().descartarPagamento();
 
-    expect(avisar).toHaveBeenCalledWith(AVISO_PAGAMENTO_IRREVERSIVEL);
+    expect(avisar).toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
     expect(store.getState().condicaoSelecionada).not.toBeNull();
     expect(store.getState().pagamentos).toHaveLength(1);
+  });
+
+  /**
+   * AD-161 (itens 2 e 3 do usuário, 2026-09-04). A regra anterior tratava PIX e
+   * TEF como o mesmo caso; o usuário separou os dois. O que este teste trava é o
+   * recorte: PIX **sai** e o evento de auditoria continua sendo emitido — a
+   * confirmação que a UI exibe decide se `removerPagamento` é chamada, nunca se
+   * o log é escrito.
+   */
+  it('PIX aprovado sai da venda e preserva o log — só o TEF é irreversível (AD-161)', async () => {
+    const { store, avisar } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-exemplo' });
+    expect(store.getState().pagamentos[0]?.status).toBe('APROVADO');
+
+    store.getState().removerPagamento('pag-1');
+
+    expect(avisar).not.toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
+    expect(store.getState().pagamentos).toHaveLength(0);
+    expect(
+      store.getState().eventos.some((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA'),
+    ).toBe(true);
+  });
+
+  it('descartarPagamento aceita venda com PIX aprovado (AD-161)', async () => {
+    const { store, avisar } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-exemplo' });
+
+    store.getState().descartarPagamento();
+
+    expect(avisar).not.toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().pagamentos).toHaveLength(0);
   });
 
   it('descartarPagamento limpa condição, formas, desconto e vales, e audita cada forma removida', async () => {

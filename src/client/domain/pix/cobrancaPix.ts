@@ -39,9 +39,22 @@ import type { Centavos } from '../precificacao/dinheiro';
 export interface CobrancaPix {
   /** Gerado no cliente a cada tentativa, nunca reaproveitado (J4, `research.md` D3/D12). */
   readonly trnGuid: string;
-  /** `GerarPIXOutput.Trnbase64image` — vai direto para `<img src="data:image/jpeg;base64,…">`. */
-  readonly qrCodeImagemBase64: string;
-  /** `GerarPIXOutput.Trnbase64text` já decodificado (`atob`) — o "copia e cola". */
+  /**
+   * `GerarPIXOutput.Trnbase64image` já convertido em `data:` URL pronta para o
+   * `src` de uma `<img>`, com o tipo MIME detectado a partir dos primeiros bytes
+   * (`fonteDeImagemBase64`).
+   *
+   * O campo guarda a URL, e não o base64 cru, porque o tipo real só se descobre
+   * olhando o conteúdo: a versão anterior (`qrCodeImagemBase64`) obrigava a UI a
+   * escolher um tipo, e ela escolhia `image/jpeg` para tudo — inclusive para os
+   * PNG que o `PGetBarCodeImage` do ERP gera (correção do usuário, 2026-09-04).
+   * `''` quando o ERP não mandou imagem nenhuma.
+   */
+  readonly qrCodeFonte: string;
+  /**
+   * `GerarPIXOutput.Trnbase64text` decodificado **quando de fato é base64**, e
+   * repassado intacto quando não é (`decodificarSeBase64`).
+   */
   readonly copiaECola: string;
   /** Valor cobrado, congelado no instante da geração (`research.md` D6). */
   readonly valor: Centavos;

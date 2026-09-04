@@ -47,7 +47,17 @@ export type EstadoEnvio =
     }
   | { readonly tipo: 'falha-negocio'; readonly mensagem: string }
   /** Aguardando confirmação manual do operador — `FR-004`/AD-038. */
-  | { readonly tipo: 'falha-rede'; readonly operacao: SuspenderOuFaturar };
+  | { readonly tipo: 'falha-rede'; readonly operacao: SuspenderOuFaturar }
+  /**
+   * "Cancelar venda" pedido com uma cobrança PIX na venda — aguardando
+   * confirmação do operador (item 1.1 do usuário, 2026-09-04).
+   *
+   * Estado da máquina, e não `useState` solto no componente, porque as duas
+   * superfícies de cancelamento (desktop e mobile) compartilham **uma** máquina
+   * pelo provider: um estado local em cada uma permitiria a janela aparecer
+   * numa e o envio partir da outra.
+   */
+  | { readonly tipo: 'confirmar-suspensao-pix' };
 
 /**
  * Dependências que **outras features** possuem e esta só consome
@@ -62,8 +72,20 @@ export type EstadoEnvio =
 export interface FinalizacaoDeps {
   /** Feature 014 — veredito favorável vigente (`FR-014`, AD-113). */
   readonly podeFinalizar?: () => boolean;
-  /** Feature 008 — TEF/PIX aprovado bloqueia suspender (`FR-005`, AD-042). */
+  /**
+   * Feature 008 — **TEF aprovado** bloqueia suspender (`FR-005`, AD-042,
+   * recortado por AD-161).
+   *
+   * O nome continua genérico porque a porta é injetada por chamadores que não
+   * precisam saber qual integração é irreversível; o que mudou é o padrão, que
+   * hoje olha só o TEF.
+   */
   readonly temPagamentoNaoRemovivel?: () => boolean;
+  /**
+   * Feature 009 — há cobrança PIX nesta venda (pendente ou aprovada). Não
+   * bloqueia: exige confirmação (item 1.1 do usuário).
+   */
+  readonly temPixNaVenda?: () => boolean;
   /** Feature 008 — formas já aplicadas, repassadas sem interpretar. */
   readonly formasDePagamento?: () => readonly FormaDePagamentoRetrato[];
   /** Feature 008 — condição vigente; escalar, uma por venda. */
@@ -86,6 +108,11 @@ export interface ApiFinalizacaoVenda {
   suspender(): Promise<void>;
   /** Único caminho de reenvio após `falha-rede` (`FR-004`). */
   confirmarReenvio(): Promise<void>;
+  /**
+   * Único caminho a partir de `confirmar-suspensao-pix`: prossegue com a
+   * suspensão sabendo que a cobrança PIX segue viva no banco.
+   */
+  confirmarSuspensao(): Promise<void>;
   /** Fecha o desfecho corrente e volta a `ocioso`. */
   descartar(): void;
 }
@@ -93,8 +120,15 @@ export interface ApiFinalizacaoVenda {
 const AVISO_VALIDACAO_PENDENTE =
   'A venda ainda não tem validação aprovada do ERP. Revise os pagamentos antes de finalizar.';
 
+/**
+ * Bloqueio de suspensão — **só TEF** (item 1.2 do usuário, 2026-09-04).
+ *
+ * A frase nomeia a ordem correta das operações, porque o que o operador tentaria
+ * sozinho (clicar de novo) nunca funciona: o cancelamento do TEF acontece antes
+ * do cancelamento da venda, nunca depois.
+ */
 const AVISO_SUSPENSAO_BLOQUEADA =
-  'Já há pagamento aprovado que não pode ser removido: esta venda não pode mais ser suspensa.';
+  'Há cartão aprovado no TEF nesta venda: cancele a transação do TEF antes de cancelar a venda.';
 
 const ERRO_SEM_CONFIGURACAO =
   'Configuração do ponto de venda indisponível: a venda não pode ser finalizada nem suspensa.';
@@ -107,21 +141,38 @@ const MENSAGEM_VENDA_SUSPENSA = 'Venda suspensa. O rascunho continua disponível
 const ESTADO_INICIAL: EstadoEnvio = { tipo: 'ocioso' };
 
 /**
- * Há pagamento aprovado por integração externa (TEF/PIX) na venda — feature
- * 008, invariante I6 (AD-030/AD-042).
+ * Há cartão aprovado no TEF nesta venda — feature 008, invariante I6
+ * (AD-030/AD-042, recortado por AD-161).
  *
  * É a mesma condição que torna `removerPagamento` um no-op no slice, lida aqui
  * do estado em vez de por porta injetada porque o pagamento agora faz parte do
- * `vendaStore`. Suspender uma venda nessa situação deixaria dinheiro já
- * movimentado fora do Checkout preso a um rascunho: o estorno é operação do
- * ERP/adquirente, não do caixa.
+ * `vendaStore`. Suspender uma venda nessa situação deixaria uma transação viva
+ * no terminal físico presa a um rascunho, e o cancelamento dela precisa vir
+ * **antes** (item 1.2 do usuário, 2026-09-04).
+ *
+ * O PIX saiu desta condição: ver `temPixNaVenda`.
  */
-function temPagamentoIrreversivel(): boolean {
+function temTefAprovado(): boolean {
   return useVendaStore
     .getState()
     .pagamentos.some(
-      (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+      (pagamento) => pagamento.integracao === 'TEF' && pagamento.status === 'APROVADO',
     );
+}
+
+/**
+ * Há cobrança PIX nesta venda, **em qualquer status**.
+ *
+ * Pendente conta tanto quanto aprovada, e é deliberado: o gatilho da confirmação
+ * não é "o dinheiro entrou", é "existe uma cobrança registrada no banco que o
+ * Checkout não sabe cancelar". Uma cobrança pendente é exatamente o caso em que
+ * o cliente ainda pode pagá-la depois de a venda já ter virado rascunho — o pior
+ * desfecho possível, e o que a confirmação existe para anunciar.
+ */
+function temPixNaVenda(): boolean {
+  return useVendaStore
+    .getState()
+    .pagamentos.some((pagamento) => pagamento.integracao === 'PIX_DINAMICO');
 }
 
 export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFinalizacaoVenda {
@@ -292,7 +343,15 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
   );
 
   const iniciar = useCallback(
-    async (operacao: SuspenderOuFaturar): Promise<void> => {
+    async (
+      operacao: SuspenderOuFaturar,
+      /**
+       * O operador já confirmou que aceita deixar a cobrança PIX viva no banco.
+       * Só `confirmarSuspensao` passa `true` — é o que impede o diálogo de
+       * reaparecer em laço logo depois de ser confirmado.
+       */
+      pixConfirmado = false,
+    ): Promise<void> => {
       const atual = estadoRef.current;
       const injetadas = depsRef.current;
       const avisar = (mensagem: string): void => {
@@ -330,14 +389,33 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
         return;
       }
 
-      // Bloqueio de suspensão por pagamento não removível — mesma regra de
-      // `CART-09` (`FR-005`/`FR-006`, AD-030/AD-042). Nunca se aplica a
-      // `FATURAR`: finalizar com pagamento aprovado é o caminho normal.
+      // Bloqueio de suspensão por TEF aprovado — mesma regra de `CART-09`
+      // (`FR-005`/`FR-006`, AD-030/AD-042, recortada por AD-161). Nunca se
+      // aplica a `FATURAR`: finalizar com pagamento aprovado é o caminho normal.
       if (
         operacao === 'SUSPENDER' &&
-        (injetadas.temPagamentoNaoRemovivel?.() ?? temPagamentoIrreversivel())
+        (injetadas.temPagamentoNaoRemovivel?.() ?? temTefAprovado())
       ) {
         avisar(AVISO_SUSPENSAO_BLOQUEADA);
+        return;
+      }
+
+      // Cobrança PIX na venda: **confirmação**, não bloqueio (item 1.1 do
+      // usuário, 2026-09-04). Antes disto a venda com PIX aprovado caía no
+      // bloqueio acima e o operador ficava sem saída nenhuma; com PIX pendente
+      // ela era suspensa em silêncio, e a cobrança seguia no banco sem ninguém
+      // ser avisado. As duas situações agora passam pela mesma pergunta.
+      //
+      // A checagem fica **antes** do evento terminal de auditoria logo abaixo:
+      // `VENDA_SUSPENSA` só pode ser registrado quando a suspensão de fato vai
+      // acontecer — registrá-lo aqui e o operador cancelar deixaria o histórico
+      // afirmando uma suspensão que nunca houve.
+      if (
+        operacao === 'SUSPENDER' &&
+        !pixConfirmado &&
+        (injetadas.temPixNaVenda?.() ?? temPixNaVenda())
+      ) {
+        aplicarEstado({ tipo: 'confirmar-suspensao-pix' });
         return;
       }
 
@@ -353,8 +431,24 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
 
       await despachar(operacao);
     },
-    [despachar],
+    [aplicarEstado, despachar],
   );
+
+  /**
+   * Único caminho a partir de `confirmar-suspensao-pix`.
+   *
+   * Volta a `ocioso` **antes** de reentrar em `iniciar`: o guard de "envio em
+   * curso" no topo daquela função rejeita qualquer estado que não seja ocioso ou
+   * um desfecho já visto, e sem a limpeza a confirmação seria descartada em
+   * silêncio — o pior desfecho para um botão que o operador acabou de clicar.
+   */
+  const confirmarSuspensao = useCallback(async (): Promise<void> => {
+    if (estadoRef.current.tipo !== 'confirmar-suspensao-pix') {
+      return;
+    }
+    aplicarEstado(ESTADO_INICIAL);
+    await iniciar('SUSPENDER', true);
+  }, [aplicarEstado, iniciar]);
 
   const confirmarReenvio = useCallback(async (): Promise<void> => {
     const atual = estadoRef.current;
@@ -370,10 +464,11 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       finalizar: () => iniciar('FATURAR'),
       suspender: () => iniciar('SUSPENDER'),
       confirmarReenvio,
+      confirmarSuspensao,
       descartar: () => {
         aplicarEstado(ESTADO_INICIAL);
       },
     }),
-    [aplicarEstado, confirmarReenvio, estado, iniciar],
+    [aplicarEstado, confirmarReenvio, confirmarSuspensao, estado, iniciar],
   );
 }

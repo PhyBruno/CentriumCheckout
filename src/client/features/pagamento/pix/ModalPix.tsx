@@ -1,4 +1,4 @@
-import { Copy, QrCode, RefreshCw, TriangleAlert, X } from 'lucide-react';
+import { CircleCheck, Copy, QrCode, RefreshCw, TriangleAlert, X } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import type { ClienteVenda } from '../../../domain/cliente/clienteVenda';
 import type { CobrancaPix } from '../../../domain/pix/cobrancaPix';
 import { MENSAGEM_POR_MOTIVO_FALHA } from '../../../domain/pix/interpretarStatusPix';
@@ -16,6 +17,12 @@ import { montarDadosPagador } from '../../../domain/pix/montarDadosPagador';
 import { validarValorMinimoPix } from '../../../domain/pix/validarValorMinimoPix';
 import { formatarCentavos, type Centavos } from '../../../domain/precificacao/dinheiro';
 import { useGerarPix, useStatusPix, type PixQueriesDeps } from '../../../services/pix/pixQueries';
+import {
+  AVISO_DESASSOCIACAO_MANUAL,
+  CHAMADA_PIX_NAO_E_CANCELADO,
+  DESTAQUE_PIX_SEGUE_NO_BANCO,
+} from './avisosPix';
+import { DialogoConfirmacaoPix } from './DialogoConfirmacaoPix';
 
 /**
  * Janela de cobrança PIX (T016–T018, T021–T022) — réplica do frame
@@ -39,12 +46,12 @@ import { useGerarPix, useStatusPix, type PixQueriesDeps } from '../../../service
  * `$surface-dark`, raio 20, rótulo 13/400 em `#8E99A8` e valor em **Geist Mono
  * 32/600** branco) e a badge `$success-soft` (`hKvqW`) com o ponto de 7px e o
  * texto "Aguardando confirmação" em `$success-ink`; rodapé (`N4kBap`) de 60px
- * com borda superior e o botão pílula "Cancelar operação" (`nl8xt`, 36px de
- * altura, `$surface-strong`, ícone `x` de 15px).
+ * com borda superior e o botão pílula do rodapé (`nl8xt`, 36px de altura,
+ * `$surface-strong`, ícone `x` de 15px).
  *
- * **Três estados sem nó correspondente no `.pen`.** O desenho modela um único
- * instante — a cobrança já gerada, aguardando pagamento. Os outros dois existem
- * de fato e precisam de tela:
+ * **Quatro estados sem nó correspondente no `.pen`.** O desenho modela um único
+ * instante — a cobrança já gerada, aguardando pagamento. Os outros existem de
+ * fato e precisam de tela:
  *
  * 1. **Gerando** — o corpo mostra o mesmo cartão do QR Code com o shimmer já
  *    usado no skeleton de carregamento (`cc-shimmer`), e não um spinner novo: a
@@ -55,14 +62,55 @@ import { useGerarPix, useStatusPix, type PixQueriesDeps } from '../../../service
  *    o que mantém o motivo na tela depois que o toast some.
  * 3. **Valor abaixo do mínimo** (`FR-009`) — a janela **não chega a aparecer**:
  *    avisa por toast e devolve o desfecho na mesma passagem, sem tocar a rede.
+ * 4. **Aprovado** (novo, 2026-09-04) — ver "A janela sobrevive à aprovação",
+ *    abaixo.
  *
- * **Nenhuma chamada de cancelamento é feita, em nenhum caminho** (invariante J5,
- * `research.md` D11): não existe endpoint para isso no contrato. Fechar a janela
- * com a cobrança pendente — ou receber uma falha terminal do ERP — apenas remove
- * o pagamento local e avisa o operador de que a desassociação, se necessária, é
- * feita na Central de Transações PIX do ERP.
+ * ---
  *
- * **Fechamento manual e falha terminal convergem no mesmo call site** (T022,
+ * ### A janela trava enquanto o pagamento não é aprovado (pedido do usuário, 2026-09-04)
+ *
+ * **Regra vigente:** enquanto o PIX não é dado por pago, a janela não fecha por
+ * gesto acidental — ESC não faz nada e o `X` do cabeçalho fica bloqueado. A
+ * única saída é o botão do rodapé, **"Desistir da operação"**, e ele passa por
+ * uma confirmação explícita antes de abandonar a cobrança.
+ *
+ * Isto substitui o desenho original em dois pontos, e os dois foram decisão
+ * direta do usuário:
+ *
+ * - o cabeçalho ganhou um `X` que o `.pen` não tem — ele existe para o estado
+ *   **aprovado**, em que fechar é inofensivo e o operador precisa de um gesto
+ *   óbvio para seguir a venda;
+ * - o rodapé deixou de dizer "Cancelar operação" e passou a dizer "Desistir da
+ *   operação". O rótulo anterior prometia um cancelamento que o Checkout não
+ *   executa: não há endpoint de cancelamento de PIX no contrato (invariante J5),
+ *   e quem cancela de fato é o banco. Um botão que promete cancelar e apenas
+ *   remove a forma da tela é a pior espécie de falso positivo num caixa.
+ *
+ * A confirmação existe porque o gesto é irreversível **do lado de fora**: a
+ * cobrança já pode ter sido registrada, e a partir daqui ninguém no Checkout
+ * consegue desfazê-la.
+ *
+ * ### A janela sobrevive à aprovação por 10 segundos
+ *
+ * Ao detectar `APROVADO`, `onAprovado` é chamado na hora — o pagamento vira
+ * `APROVADO` no `vendaStore` imediatamente, e nenhum dinheiro fica invisível
+ * para a venda. O que muda é que a janela **não desmonta junto**: ela troca para
+ * o estado aprovado (disco verde, badge "Pagamento confirmado") e só chama
+ * `onFechar` 10 segundos depois. É o tempo de o operador ver que deu certo antes
+ * de a tela voltar para a venda; nesse intervalo o `X` e o ESC já funcionam,
+ * para quem não quiser esperar.
+ *
+ * Isso exige que quem monta a janela a mantenha montada depois da aprovação —
+ * ver `usePixPendente` em `ListaPagamentosAplicados.tsx`, que passou a seguir o
+ * `idPagamento` exibido em vez de só procurar um pagamento pendente.
+ *
+ * ### Nenhuma chamada de cancelamento é feita, em nenhum caminho
+ *
+ * Invariante J5 (`research.md` D11): não existe endpoint para isso no contrato.
+ * Desistir da cobrança pendente — ou receber uma falha terminal do ERP — apenas
+ * remove o pagamento local e avisa o operador de onde a cobrança se resolve.
+ *
+ * **Desistência manual e falha terminal convergem no mesmo call site** (T022,
  * `data-model.md` §4): `abandonar()` é uma função só, acionada por dois gatilhos
  * diferentes. Dois caminhos de código para o mesmo desfecho divergiriam com o
  * tempo — e o desfecho aqui é o que decide se a venda fica com um pagamento
@@ -97,18 +145,35 @@ export interface ModalPixProps {
   readonly onFechar: () => void;
   /** Injetável só para teste — ver `PixQueriesDeps.intervaloMs`. */
   readonly deps?: PixQueriesDeps;
+  /**
+   * Quanto tempo a janela permanece na tela depois da aprovação.
+   *
+   * Injetável **só** para teste, pelo mesmo motivo de `intervaloMs`: um teste
+   * que esperasse 10 segundos reais mediria o agendador, não o comportamento. O
+   * padrão é o que o usuário pediu.
+   */
+  readonly atrasoFechamentoMs?: number;
 }
 
 export const MOTIVO_FECHADO_PELO_OPERADOR = 'FECHADO_PELO_OPERADOR';
 export const MOTIVO_ABAIXO_DO_MINIMO = 'VALOR_ABAIXO_DO_MINIMO';
 
 /**
- * A frase termina apontando **onde** resolver, porque o Checkout não tem como
- * desfazer a cobrança: sem essa indicação o operador procuraria na própria tela
- * um botão de cancelar que não existe (`research.md` D11).
+ * Reexportado de `avisosPix.ts` para não quebrar quem já importava a constante
+ * daqui (os testes de integração da 009, entre outros). A definição mora lá
+ * porque quatro telas de três features diferentes a usam.
  */
-export const AVISO_DESASSOCIACAO_MANUAL =
-  'Se a cobrança tiver sido registrada, será necessário desassociá-la manualmente na Central de Transações PIX do ERP.';
+export { AVISO_DESASSOCIACAO_MANUAL };
+
+/** Pedido do usuário (2026-09-04): 10 segundos entre a aprovação e o fechamento. */
+export const MS_FECHAMENTO_APOS_APROVACAO = 10_000;
+
+/**
+ * Frase do `X` bloqueado. Diz o que falta acontecer, não "não pode": num caixa,
+ * a pergunta do operador é sempre "e agora?", e a resposta é o botão do rodapé.
+ */
+const MOTIVO_JANELA_TRAVADA =
+  'Aguarde a confirmação do pagamento. Se o cliente desistiu, use "Desistir da operação".';
 
 const DEPS_VAZIAS: PixQueriesDeps = {};
 
@@ -121,10 +186,14 @@ export function ModalPix({
   onAbandonado,
   onFechar,
   deps = DEPS_VAZIAS,
+  atrasoFechamentoMs = MS_FECHAMENTO_APOS_APROVACAO,
 }: ModalPixProps): ReactElement | null {
   const [cobranca, setCobranca] = useState<CobrancaPix | null>(null);
   /** Desliga o polling na **mesma renderização** que processa o desfecho (J3). */
   const [resolvido, setResolvido] = useState(false);
+  /** Pagamento confirmado: libera o fechamento e agenda o automático. */
+  const [aprovado, setAprovado] = useState(false);
+  const [confirmandoDesistencia, setConfirmandoDesistencia] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const refDialogo = useRef<HTMLDivElement>(null);
 
@@ -164,7 +233,7 @@ export function ModalPix({
       });
   }, [gerar, formaCodigo, valor, clienteAtual]);
 
-  /** Fechamento manual e falha terminal: **um** caminho de código (T022). */
+  /** Desistência manual e falha terminal: **um** caminho de código (T022). */
   const abandonar = useCallback(
     (motivo: string, mensagem: string): void => {
       if (desfechoEmitido.current) {
@@ -215,20 +284,40 @@ export function ModalPix({
     if (resultado.situacao === 'APROVADO') {
       desfechoEmitido.current = true;
       setResolvido(true);
+      // O pagamento entra aprovado na venda **agora**; só a janela é que espera.
+      // Adiar também `onAprovado` deixaria o total da venda mentindo por 10s.
+      setAprovado(true);
       onAprovado(cobranca.trnGuid);
-      onFechar();
       return;
     }
     abandonar(
       resultado.motivo,
       `${MENSAGEM_POR_MOTIVO_FALHA[resultado.motivo]} ${AVISO_DESASSOCIACAO_MANUAL}`,
     );
-  }, [resultado, cobranca, onAprovado, onFechar, abandonar]);
+  }, [resultado, cobranca, onAprovado, abandonar]);
 
-  const fecharManualmente = useCallback((): void => {
+  // Fechamento automático. `atrasoFechamentoMs <= 0` fecha na próxima volta do
+  // laço de eventos em vez de agendar — é o que permite ao teste checar o estado
+  // aprovado sem depender de relógio.
+  useEffect(() => {
+    if (!aprovado) {
+      return;
+    }
+    const temporizador = setTimeout(onFechar, Math.max(atrasoFechamentoMs, 0));
+    return () => {
+      clearTimeout(temporizador);
+    };
+  }, [aprovado, atrasoFechamentoMs, onFechar]);
+
+  /**
+   * Desiste da cobrança. Chamado pela confirmação — nunca direto por um clique,
+   * exceto quando não há cobrança nenhuma a desassociar.
+   */
+  const desistir = useCallback((): void => {
+    setConfirmandoDesistencia(false);
     // Sem cobrança gerada não há o que desassociar: o erro de geração é o caso
-    // em que nada chegou ao ERP, e avisar sobre a Central de Transações ali
-    // mandaria o operador procurar uma cobrança inexistente.
+    // em que nada chegou ao ERP, e avisar sobre o banco ali mandaria o operador
+    // procurar uma cobrança inexistente.
     if (cobranca === null) {
       if (!desfechoEmitido.current) {
         desfechoEmitido.current = true;
@@ -243,20 +332,32 @@ export function ModalPix({
     );
   }, [cobranca, abandonar, onAbandonado, onFechar]);
 
+  /** Gesto do rodapé: pede confirmação quando existe cobrança viva. */
+  const pedirDesistencia = useCallback((): void => {
+    if (cobranca === null) {
+      desistir();
+      return;
+    }
+    setConfirmandoDesistencia(true);
+  }, [cobranca, desistir]);
+
+  // ESC só fecha **depois** de aprovado (pedido do usuário, 2026-09-04). Com a
+  // cobrança pendente a tecla é deliberadamente inerte: era o gesto que mais
+  // facilmente deixava uma cobrança órfã no banco sem o operador perceber.
   // Ouvinte de `window`, como nos demais modais desta base: um `onKeyDown` no
   // backdrop só dispara com o foco dentro do modal, e um clique no fundo faria a
   // tecla parar de funcionar.
   useEffect(() => {
     const aoTeclar = (evento: globalThis.KeyboardEvent): void => {
-      if (evento.key === 'Escape') {
-        fecharManualmente();
+      if (evento.key === 'Escape' && aprovado) {
+        onFechar();
       }
     };
     window.addEventListener('keydown', aoTeclar);
     return () => {
       window.removeEventListener('keydown', aoTeclar);
     };
-  }, [fecharManualmente]);
+  }, [aprovado, onFechar]);
 
   if (abaixoDoMinimo) {
     return null;
@@ -309,6 +410,7 @@ export function ModalPix({
   }
 
   const emErro = status === 'erro' && cobranca === null;
+  const bloqueioDoFechar: MotivoBloqueio = aprovado ? null : MOTIVO_JANELA_TRAVADA;
 
   return (
     <div
@@ -323,23 +425,47 @@ export function ModalPix({
         className="cc-modal-entra flex max-h-full w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-lg"
         onKeyDown={prenderFoco}
       >
-        {/* Cabeçalho `lSsvw`. O desenho **não** tem botão de fechar aqui — a
-            única saída é "Cancelar operação", no rodapé. Acrescentar um segundo
-            gesto de fechar daria ao operador dois caminhos para a mesma decisão
-            irreversível (a cobrança fica pendurada no ERP), e o desenho é
-            explícito em oferecer um só. */}
+        {/* Cabeçalho `lSsvw`, com o `X` que o desenho não tem — ver o TSDoc do
+            componente: ele existe para o estado aprovado, e fica bloqueado (com
+            motivo, nunca `disabled` mudo) enquanto o pagamento não confirma. */}
         <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
-          <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]">
-            <QrCode className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+          <span
+            className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]"
+            data-testid="pix-disco-cabecalho"
+          >
+            {aprovado ? (
+              <CircleCheck className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+            ) : (
+              <QrCode className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+            )}
           </span>
-          <div className="flex flex-col gap-[2px]">
+          <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
             <h2 className="text-xl leading-[1.2] font-semibold text-foreground">
               Pagamento via PIX
             </h2>
-            <p className="text-base leading-[1.2] font-medium text-muted-foreground">
-              {emErro ? 'Falha ao gerar a cobrança' : 'Aguardando pagamento'}
+            <p
+              className="text-base leading-[1.2] font-medium text-muted-foreground"
+              data-testid="pix-subtitulo"
+            >
+              {aprovado
+                ? 'Pagamento aprovado'
+                : emErro
+                  ? 'Falha ao gerar a cobrança'
+                  : 'Aguardando pagamento'}
             </p>
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon-sm"
+            className="shrink-0 rounded-full"
+            data-testid="fechar-modal-pix"
+            aria-label="Fechar"
+            {...atributosDeBloqueio(bloqueioDoFechar)}
+            onClick={acaoBloqueavel(bloqueioDoFechar, onFechar)}
+          >
+            <X className="size-4 text-muted-foreground" aria-hidden="true" />
+          </Button>
         </header>
 
         <div className="flex flex-col items-center gap-md overflow-y-auto px-lg py-7">
@@ -377,14 +503,18 @@ export function ModalPix({
                   <img
                     className="size-[200px]"
                     data-testid="pix-qrcode"
-                    src={`data:image/jpeg;base64,${cobranca.qrCodeImagemBase64}`}
+                    // Já é uma `data:` URL pronta, com o tipo MIME detectado no
+                    // mapper a partir dos bytes reais — a UI não escolhe formato.
+                    src={cobranca.qrCodeFonte}
                     alt="QR Code do PIX para pagamento"
                   />
                 )}
               </div>
 
               <p className="w-full text-center text-base leading-[1.4] text-muted-foreground">
-                Abra o app do seu banco e escaneie o QR Code para concluir o pagamento.
+                {aprovado
+                  ? 'Pagamento confirmado pelo banco. Esta janela fecha sozinha em instantes.'
+                  : 'Abra o app do seu banco e escaneie o QR Code para concluir o pagamento.'}
               </p>
 
               {/* Faixa `HVY3r`. O código fica em Geist Mono, como todo valor
@@ -434,7 +564,9 @@ export function ModalPix({
                 </span>
               </div>
 
-              {/* Badge `hKvqW` no estado `$success-soft` do nó `uwg5J`. */}
+              {/* Badge `hKvqW` no estado `$success-soft` do nó `uwg5J`. O ponto
+                  pulsa enquanto se espera e fica sólido ao confirmar — a mesma
+                  badge dizendo duas coisas diferentes. */}
               <span
                 className="flex items-center gap-[6px] rounded-full bg-[var(--cc-color-up-soft)] px-sm py-[5px]"
                 data-testid="pix-badge-status"
@@ -444,7 +576,7 @@ export function ModalPix({
                   aria-hidden="true"
                 />
                 <span className="text-sm font-semibold whitespace-nowrap text-[var(--cc-color-up-ink)]">
-                  Aguardando confirmação
+                  {aprovado ? 'Pagamento confirmado' : 'Aguardando confirmação'}
                 </span>
               </span>
             </>
@@ -465,18 +597,47 @@ export function ModalPix({
               Tentar novamente
             </Button>
           )}
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-9 gap-xs rounded-full px-base text-base font-semibold"
-            data-testid="cancelar-operacao-pix"
-            onClick={fecharManualmente}
-          >
-            <X className="size-[15px] text-muted-foreground" aria-hidden="true" />
-            Cancelar operação
-          </Button>
+          {aprovado ? (
+            <Button
+              type="button"
+              className="h-9 gap-xs rounded-full px-base text-base font-semibold"
+              data-testid="concluir-pix"
+              onClick={onFechar}
+            >
+              <CircleCheck className="size-4" aria-hidden="true" />
+              Concluir
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-9 gap-xs rounded-full px-base text-base font-semibold"
+              data-testid="desistir-operacao-pix"
+              onClick={pedirDesistencia}
+            >
+              <X className="size-[15px] text-muted-foreground" aria-hidden="true" />
+              Desistir da operação
+            </Button>
+          )}
         </footer>
       </div>
+
+      {confirmandoDesistencia && (
+        <DialogoConfirmacaoPix
+          testId="confirmar-desistencia-pix"
+          titulo="Desistir da cobrança PIX?"
+          subtitulo="A cobrança já foi gerada no banco"
+          chamada={CHAMADA_PIX_NAO_E_CANCELADO}
+          explicacao={AVISO_DESASSOCIACAO_MANUAL}
+          destaque={DESTAQUE_PIX_SEGUE_NO_BANCO}
+          rotuloConfirmar="Desistir mesmo assim"
+          rotuloCancelar="Continuar aguardando"
+          onConfirmar={desistir}
+          onCancelar={() => {
+            setConfirmandoDesistencia(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -305,8 +305,26 @@ export const AVISO_FORMA_FORA_DA_CONDICAO =
  */
 export const AVISO_CONDICAO_COM_PAGAMENTO =
   'Esta venda já tem forma de pagamento aplicada e cada venda usa uma condição só: use "Limpar" para recomeçar o pagamento.';
-export const AVISO_PAGAMENTO_IRREVERSIVEL =
-  'Pagamento aprovado por TEF/PIX não pode ser removido: o estorno é operação do ERP.';
+/**
+ * Só o **TEF** aprovado trava a remoção (correção do usuário, 2026-09-04).
+ *
+ * A regra anterior — herdada de AD-030/AD-042 — travava TEF **e** PIX com a
+ * mesma frase. O usuário corrigiu a premissa: os dois casos não são iguais.
+ *
+ * - **TEF** continua irremovível. A transação vive no terminal físico, e
+ *   removê-la da venda sem cancelá-la lá deixa o Checkout e a operadora
+ *   discordando sobre um dinheiro que já saiu do cartão do cliente. O
+ *   cancelamento acontece **antes**, no terminal (e, quando a feature 010
+ *   existir, pelo endpoint de cancelamento do ERP — ver
+ *   `.specs/features/pagamento-tef/spec.md`).
+ * - **PIX** passou a ser removível. Não há terminal a sincronizar: a cobrança
+ *   vive no banco, o Checkout nunca soube cancelá-la (invariante J5, não existe
+ *   endpoint), e travar a forma na venda não desfazia nada — só prendia o
+ *   operador numa venda que ele precisava reorganizar. A remoção agora exige
+ *   confirmação explícita, que é onde o aviso sobre o banco aparece.
+ */
+export const AVISO_TEF_IRREVERSIVEL =
+  'Cartão aprovado no TEF não pode ser removido: cancele a transação no terminal antes.';
 export const AVISO_DESCONTO_COM_PAGAMENTO =
   'Esta venda já tem pagamento aplicado: o desconto não pode mais ser alterado.';
 /**
@@ -682,11 +700,18 @@ export function criarPagamentoSlice(
           return;
         }
 
-        // I6 (`research.md` D11): TEF/PIX aprovado já movimentou dinheiro fora
-        // do Checkout — removê-lo daqui criaria divergência com o ERP e com o
-        // adquirente (Constitution III). O estorno é operação do ERP.
-        if (alvo.integracao !== 'NENHUMA' && alvo.status === 'APROVADO') {
-          deps.avisar?.(AVISO_PAGAMENTO_IRREVERSIVEL);
+        // I6, reescrita pelo usuário em 2026-09-04: **só o TEF** aprovado é
+        // irremovível. Ele vive no terminal físico, e tirar a forma da venda sem
+        // cancelar lá deixaria o Checkout e a operadora discordando sobre um
+        // dinheiro já debitado (Constitution III).
+        //
+        // O PIX saiu desta guarda de propósito. Removê-lo **não** estorna nada —
+        // e nunca estornou: o Checkout não tem endpoint de cancelamento de PIX.
+        // Travar a forma aqui não protegia o dinheiro do cliente, só impedia o
+        // operador de reorganizar a venda. Quem avisa que a cobrança segue viva
+        // no banco é a confirmação da UI, antes de chamar esta action.
+        if (alvo.integracao === 'TEF' && alvo.status === 'APROVADO') {
+          deps.avisar?.(AVISO_TEF_IRREVERSIVEL);
           return;
         }
 
@@ -858,14 +883,17 @@ export function criarPagamentoSlice(
       descartarPagamento: () => {
         const { condicaoSelecionada, descontoCapa, pagamentos } = get();
 
-        // I6: o mesmo motivo que `removerPagamento` dá para uma forma isolada
-        // vale para o descarte em bloco — o estorno é operação do ERP.
+        // I6: o mesmo recorte de `removerPagamento` vale para o descarte em
+        // bloco — só o TEF aprovado trava, porque só ele tem uma transação viva
+        // num terminal que precisa ser cancelada antes. Um PIX na venda não
+        // impede o descarte; quem avisa que a cobrança segue no banco é a
+        // confirmação que a UI exibe antes de chamar esta action.
         if (
           pagamentos.some(
-            (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+            (pagamento) => pagamento.integracao === 'TEF' && pagamento.status === 'APROVADO',
           )
         ) {
-          deps.avisar?.(AVISO_PAGAMENTO_IRREVERSIVEL);
+          deps.avisar?.(AVISO_TEF_IRREVERSIVEL);
           return;
         }
 

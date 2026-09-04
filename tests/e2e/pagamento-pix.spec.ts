@@ -10,8 +10,15 @@ import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
  *   → QR Code renderizado a partir de Trnbase64image
  *   → "copia e cola" decodificado e copiável
  *   → StatusPIX devolve 'G' e depois 'P'
- *   → janela fecha sozinha, PIX listado como aplicado, saldo zerado
+ *   → janela mostra o estado aprovado e fecha sozinha
+ *   → PIX listado como aplicado, saldo zerado
  * ```
+ *
+ * **`statusPixTransicoes` é sempre explícito aqui** (AD-161): desde 2026-09-04 o
+ * mock, sem roteiro, decide o status pelo **relógio** — pago 20s depois de
+ * gerado, que é o que o teste manual na stack local precisa. Um E2E que
+ * dependesse disso mediria o relógio, então cada cenário abaixo continua
+ * desenhando a sequência que quer.
  *
  * Mock de **rede**, não de função: os dois endpoints existem de verdade no ERP
  * mockado (`support/erp-mock.ts`), atrás do proxy `/api/erp/*` do BFF, e o
@@ -96,8 +103,16 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
 
     const qrCode = page.getByTestId('pix-qrcode');
     await expect(qrCode).toBeVisible();
+    // `image/png`, não `image/jpeg`: o tipo é detectado a partir dos bytes reais
+    // do `Trnbase64image` (AD-161, item 5) — antes disto a UI declarava JPEG para
+    // qualquer conteúdo, inclusive para os PNG que o ERP de fato gera.
     const src = await qrCode.getAttribute('src');
-    expect(src).toMatch(/^data:image\/jpeg;base64,.+/);
+    expect(src).toMatch(/^data:image\/png;base64,.+/);
+    // A imagem precisa de fato **carregar**: um base64 que não é imagem passaria
+    // pela asserção de `src` acima e ainda assim mostraria um ícone quebrado.
+    await expect
+      .poll(async () => qrCode.evaluate((elemento: HTMLImageElement) => elemento.naturalWidth))
+      .toBeGreaterThan(0);
 
     // O "copia e cola" chega em base64 e é exibido **decodificado** — se o
     // `atob` do mapper fosse esquecido, o texto na tela seria o base64 cru.
@@ -125,7 +140,17 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     expect(sdt?.TrnPagadorFone).toBe('');
 
     // --- aprovação detectada pela sondagem (`FR-001`/`FR-002`) ---------------
-    await expect(page.getByTestId('modal-pix')).toHaveCount(0, { timeout: 60_000 });
+    // A janela **não** desmonta na aprovação: ela mostra o estado aprovado e só
+    // então fecha sozinha, 10s depois (AD-161, item 7).
+    await expect(page.getByTestId('pix-badge-status')).toContainText('Pagamento confirmado', {
+      timeout: 60_000,
+    });
+    await expect(page.getByTestId('fechar-modal-pix')).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+
+    await expect(page.getByTestId('modal-pix')).toHaveCount(0, { timeout: 30_000 });
 
     const aplicado = page.getByTestId('pagamento-aplicado');
     await expect(aplicado).toHaveCount(1);
@@ -137,7 +162,7 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
   });
 
-  test('fechar a janela com o PIX pendente libera a venda para outra forma', async ({
+  test('desistir da janela com o PIX pendente libera a venda para outra forma', async ({
     page,
     request,
   }) => {
@@ -149,7 +174,17 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     await aplicarPix(page, TOTAL_DO_CARRINHO);
 
     await expect(page.getByTestId('pix-qrcode')).toBeVisible();
-    await page.getByTestId('cancelar-operacao-pix').click();
+
+    // ESC é inerte com a cobrança pendente (AD-161, item 7): era o gesto que
+    // mais facilmente deixava uma cobrança órfã no banco sem o operador notar.
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('modal-pix')).toBeVisible();
+
+    // A saída existe, é deliberada e passa por confirmação. O rótulo diz
+    // "Desistir", e não "Cancelar", porque o Checkout não cancela cobrança PIX.
+    await page.getByTestId('desistir-operacao-pix').click();
+    await expect(page.getByTestId('confirmar-desistencia-pix')).toBeVisible();
+    await page.getByTestId('confirmar-desistencia-pix-confirmar').click();
 
     // `FR-004`–`FR-007`: o pagamento pendente sai da lista — não fica órfão — e
     // o saldo volta cheio, disponível para outra forma.
@@ -163,5 +198,50 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
 
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
     await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
+  });
+
+  /**
+   * AD-161 (itens 1.1, 2 e 3 do usuário, 2026-09-04) — o recorte que separou PIX
+   * de TEF, exercitado de ponta a ponta com um PIX **já aprovado**, que era
+   * exatamente o estado em que o operador ficava sem saída:
+   *
+   * - "Cancelar venda" não era bloqueado nem perguntado nada (item 1);
+   * - a forma PIX não podia ser removida da lista (item 2);
+   * - não havia confirmação nenhuma (item 3).
+   */
+  test('com PIX aprovado: cancelar venda pergunta, e a forma pode ser removida com confirmação', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(120_000);
+
+    await configurarPix(request, ['P']);
+    await abrirVendaComItem(page);
+    await aplicarPix(page, TOTAL_DO_CARRINHO);
+
+    // Aprovado no primeiro tick; a janela se despede sozinha depois de 10s.
+    await expect(page.getByTestId('modal-pix')).toHaveCount(0, { timeout: 60_000 });
+    const aplicado = page.getByTestId('pagamento-aplicado');
+    await expect(aplicado).toHaveAttribute('data-status', 'APROVADO');
+
+    // --- item 1.1: cancelar a venda pergunta antes ---------------------------
+    await page.getByTestId('botao-cancelar-venda').click();
+    await expect(page.getByTestId('confirmar-suspensao-pix')).toBeVisible();
+
+    // Recusar a confirmação não suspende nada: a venda continua exatamente como
+    // estava, com o PIX aplicado.
+    await page.getByTestId('confirmar-suspensao-pix-cancelar').click();
+    await expect(page.getByTestId('confirmar-suspensao-pix')).toHaveCount(0);
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+
+    // --- itens 2 e 3: remover o PIX, com confirmação -------------------------
+    await page.getByTestId('remover-pagamento').click();
+    await expect(page.getByTestId('confirmar-remocao-pix')).toBeVisible();
+    await page.getByTestId('confirmar-remocao-pix-confirmar').click();
+
+    // A forma sai e o bloco inteiro some (sem pagamento não há o que listar) —
+    // a venda volta a poder ser reorganizada com outra forma.
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    await expect(page.getByTestId('pagamentos-aplicados')).toHaveCount(0);
   });
 });

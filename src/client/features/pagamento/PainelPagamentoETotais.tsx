@@ -9,6 +9,12 @@ import { ControleDescontoCapa } from './ControleDescontoCapa';
 import { EntradaPagamento } from './EntradaPagamento';
 import { ListaPagamentosAplicados } from './ListaPagamentosAplicados';
 import { ModalValeDevolucao } from './ModalValeDevolucao';
+import {
+  AVISO_DESASSOCIACAO_MANUAL,
+  CHAMADA_PIX_NAO_E_CANCELADO,
+  DESTAQUE_PIX_SEGUE_NO_BANCO,
+} from './pix/avisosPix';
+import { DialogoConfirmacaoPix } from './pix/DialogoConfirmacaoPix';
 import { SeletorCondicaoPagamento, SeletorFormaPagamento } from './SeletorCondicaoForma';
 import { TotalDaVenda } from './TotalDaVenda';
 
@@ -52,39 +58,74 @@ import { TotalDaVenda } from './TotalDaVenda';
  * Mora no cabeçalho, e não junto da lista de pagamentos, porque a lista pode
  * estar vazia — o congelamento começa na condição, antes da primeira forma.
  *
- * Bloqueio explicativo em dois casos, nunca `disabled` (AD-143): nada a limpar,
- * e pagamento TEF/PIX aprovado (I6 — o estorno é do ERP). A recusa de verdade
- * mora em `descartarPagamento`; aqui ela é antecipada para o operador ler o
- * motivo antes de tentar.
+ * Bloqueio explicativo, nunca `disabled` (AD-143), em dois casos: nada a limpar,
+ * e **cartão aprovado no TEF** (I6 — a transação vive no terminal físico e o
+ * cancelamento acontece lá, antes). A recusa de verdade mora em
+ * `descartarPagamento`; aqui ela é antecipada para o operador ler o motivo antes
+ * de tentar.
+ *
+ * **PIX não bloqueia mais, pergunta** (AD-161, item 2 do usuário): descartar o
+ * pagamento com uma cobrança PIX na venda passa pela mesma confirmação da
+ * remoção individual. A regra é a de sempre — o Checkout não cancela cobrança
+ * PIX —, e travar o botão nunca desfez nada; só deixava o operador sem saída.
  */
 function BotaoLimparPagamento(): ReactElement {
   const condicaoSelecionada = useVendaStore((estado) => estado.condicaoSelecionada);
   const descontoCapa = useVendaStore((estado) => estado.descontoCapa);
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const descartarPagamento = useVendaStore((estado) => estado.descartarPagamento);
+  const [confirmando, setConfirmando] = useState(false);
 
-  const temIrreversivel = pagamentos.some(
-    (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+  const temTefAprovado = pagamentos.some(
+    (pagamento) => pagamento.integracao === 'TEF' && pagamento.status === 'APROVADO',
   );
+  const temPix = pagamentos.some((pagamento) => pagamento.integracao === 'PIX_DINAMICO');
   const vazio = condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null;
 
-  const bloqueio: MotivoBloqueio = temIrreversivel
-    ? 'Pagamento aprovado por TEF/PIX não pode ser removido: o estorno é operação do ERP.'
+  const bloqueio: MotivoBloqueio = temTefAprovado
+    ? 'Cartão aprovado no TEF não pode ser removido: cancele a transação no terminal antes.'
     : vazio
       ? 'Não há condição, desconto ou forma de pagamento nesta venda para limpar.'
       : null;
 
   return (
-    <button
-      type="button"
-      className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-50 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-      data-testid="limpar-pagamento"
-      {...atributosDeBloqueio(bloqueio)}
-      onClick={acaoBloqueavel(bloqueio, descartarPagamento)}
-    >
-      <Eraser className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      Limpar
-    </button>
+    <>
+      <button
+        type="button"
+        className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-50 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        data-testid="limpar-pagamento"
+        {...atributosDeBloqueio(bloqueio)}
+        onClick={acaoBloqueavel(bloqueio, () => {
+          if (temPix) {
+            setConfirmando(true);
+            return;
+          }
+          descartarPagamento();
+        })}
+      >
+        <Eraser className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        Limpar
+      </button>
+
+      {confirmando && (
+        <DialogoConfirmacaoPix
+          testId="confirmar-limpeza-pix"
+          titulo="Limpar o pagamento com PIX gerado?"
+          subtitulo="A cobrança já foi gerada no banco"
+          chamada={CHAMADA_PIX_NAO_E_CANCELADO}
+          explicacao={AVISO_DESASSOCIACAO_MANUAL}
+          destaque={DESTAQUE_PIX_SEGUE_NO_BANCO}
+          rotuloConfirmar="Limpar mesmo assim"
+          onConfirmar={() => {
+            descartarPagamento();
+            setConfirmando(false);
+          }}
+          onCancelar={() => {
+            setConfirmando(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 

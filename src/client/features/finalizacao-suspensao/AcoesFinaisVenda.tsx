@@ -4,6 +4,11 @@ import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
 import { BotaoMenuImportacao } from '../dav/BotaoMenuImportacao';
+import {
+  AVISO_DESASSOCIACAO_MANUAL,
+  CHAMADA_PIX_NAO_E_CANCELADO,
+} from '../pagamento/pix/avisosPix';
+import { DialogoConfirmacaoPix } from '../pagamento/pix/DialogoConfirmacaoPix';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
@@ -51,7 +56,7 @@ export function ProvedorFinalizacaoVenda({
 }: ProvedorFinalizacaoVendaProps): ReactElement {
   const api = useFinalizarOuSuspenderVenda(deps);
   const sessao = useSessionStore((s) => s.registro?.SessaoUsuario ?? null);
-  const { estado, confirmarReenvio, descartar } = api;
+  const { estado, confirmarReenvio, confirmarSuspensao, descartar } = api;
 
   return (
     <ContextoFinalizacao.Provider value={api}>
@@ -59,6 +64,27 @@ export function ProvedorFinalizacaoVenda({
 
       {estado.tipo === 'falha-negocio' && (
         <DialogoErroFaturamento mensagem={estado.mensagem} onFechar={descartar} />
+      )}
+
+      {/* "Cancelar venda" com cobrança PIX na venda (item 1.1 do usuário,
+          2026-09-04). Fica aqui, e não dentro de `BarraAtalhosVenda`, pelo mesmo
+          motivo dos outros diálogos: é modal de tela cheia e as duas superfícies
+          de cancelamento (desktop e mobile) compartilham esta máquina. */}
+      {estado.tipo === 'confirmar-suspensao-pix' && (
+        <DialogoConfirmacaoPix
+          testId="confirmar-suspensao-pix"
+          titulo="Cancelar a venda com PIX gerado?"
+          subtitulo="A venda vira rascunho no ERP, a cobrança não"
+          chamada={CHAMADA_PIX_NAO_E_CANCELADO}
+          explicacao={AVISO_DESASSOCIACAO_MANUAL}
+          destaque="Se o cliente pagar o PIX depois disto, o dinheiro terá entrado numa venda que virou rascunho — e só o banco desfaz."
+          rotuloConfirmar="Cancelar a venda mesmo assim"
+          rotuloCancelar="Voltar para a venda"
+          onConfirmar={() => {
+            void confirmarSuspensao();
+          }}
+          onCancelar={descartar}
+        />
       )}
 
       {estado.tipo === 'falha-rede' && (

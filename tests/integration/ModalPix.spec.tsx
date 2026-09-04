@@ -355,8 +355,9 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
 });
 
 describe('US3 — fechar a cobrança pendente e trocar de forma', () => {
-  // T019 / `FR-004`–`FR-007` (quickstart Cenário 3).
-  it('fechar manualmente avisa, devolve o abandono e para o polling', async () => {
+  // T019 / `FR-004`–`FR-007` (quickstart Cenário 3), reescrito em 2026-09-04:
+  // o gesto passou a ser "Desistir da operação" **com confirmação** (AD-161).
+  it('desistir avisa, devolve o abandono e para o polling — depois de confirmado', async () => {
     const usuario = userEvent.setup();
     const { cliente, chamadas } = erpFake({ statusSequencia: ['G'] });
     const desfechos = renderizar(cliente);
@@ -366,7 +367,15 @@ describe('US3 — fechar a cobrança pendente e trocar de forma', () => {
       expect(consultasDeStatus(chamadas)).toBeGreaterThan(0);
     });
 
-    await usuario.click(screen.getByTestId('cancelar-operacao-pix'));
+    await usuario.click(screen.getByTestId('desistir-operacao-pix'));
+
+    // Nada aconteceu ainda: o clique só abre a pergunta. Antes de AD-161 este
+    // mesmo clique já abandonava a cobrança, sem o operador saber que ela
+    // continuaria viva no banco.
+    expect(desfechos.abandonados).toHaveLength(0);
+    await screen.findByTestId('confirmar-desistencia-pix');
+
+    await usuario.click(screen.getByTestId('confirmar-desistencia-pix-confirmar'));
 
     expect(desfechos.abandonados).toEqual([MOTIVO_FECHADO_PELO_OPERADOR]);
     expect(desfechos.aprovados).toHaveLength(0);
@@ -421,6 +430,88 @@ describe('US3 — fechar a cobrança pendente e trocar de forma', () => {
       expect(desfechos.abandonados).toEqual(['DESCONHECIDO']);
     });
     expect(desfechos.aprovados).toHaveLength(0);
+  });
+});
+
+/**
+ * AD-161 (item 7 do usuário, 2026-09-04). A janela deixou de ser fechável por
+ * gesto acidental enquanto a cobrança não é paga, e passou a sobreviver dez
+ * segundos à aprovação.
+ */
+describe('A janela trava enquanto o PIX não é aprovado', () => {
+  it('ESC não fecha nem abandona a cobrança pendente', async () => {
+    const usuario = userEvent.setup();
+    const { cliente } = erpFake({ statusSequencia: ['G'] });
+    const desfechos = renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.keyboard('{Escape}');
+
+    expect(desfechos.abandonados).toHaveLength(0);
+    expect(desfechos.aprovados).toHaveLength(0);
+    expect(screen.getByTestId('modal-pix')).toBeInTheDocument();
+  });
+
+  it('o X do cabeçalho fica bloqueado com motivo, nunca `disabled` mudo', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['G'] });
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+
+    const fechar = screen.getByTestId('fechar-modal-pix');
+    expect(fechar).toHaveAttribute('aria-disabled', 'true');
+    // O `disabled` nativo mataria o clique, e com ele o motivo — o operador
+    // ficaria sem saber o que fazer (`lib/bloqueio.ts`).
+    expect(fechar).not.toBeDisabled();
+  });
+
+  it('aprovado: confirma o pagamento na hora, mostra o estado e só então fecha sozinho', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['G', 'P'] });
+    const fechamentos: number[] = [];
+    const desfechos = renderizar(cliente, {
+      // Zero: o fechamento é agendado para a próxima volta do laço de eventos em
+      // vez de dez segundos reais — o que se afirma aqui é a **ordem** (aprova,
+      // pinta, fecha), não a duração.
+      atrasoFechamentoMs: 0,
+      onFechar: () => fechamentos.push(Date.now()),
+    });
+
+    await screen.findByTestId('pix-qrcode');
+
+    await waitFor(() => {
+      expect(desfechos.aprovados).toHaveLength(1);
+    });
+
+    // O pagamento entra aprovado na venda **antes** de a janela sair: adiar
+    // `onAprovado` junto com o fechamento deixaria o total da venda mentindo.
+    expect(screen.getByTestId('pix-badge-status')).toHaveTextContent('Pagamento confirmado');
+    expect(screen.getByTestId('pix-subtitulo')).toHaveTextContent('Pagamento aprovado');
+    // Com o pagamento confirmado o fechamento manual é liberado.
+    expect(screen.getByTestId('fechar-modal-pix')).not.toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('concluir-pix')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fechamentos).toHaveLength(1);
+    });
+  });
+
+  it('ESC fecha depois de aprovado', async () => {
+    const usuario = userEvent.setup();
+    const { cliente } = erpFake({ statusSequencia: ['P'] });
+    const fechamentos: number[] = [];
+    const desfechos = renderizar(cliente, {
+      // Grande o bastante para o automático não disparar durante o teste: o que
+      // se mede aqui é o ESC, não o temporizador.
+      atrasoFechamentoMs: 60_000,
+      onFechar: () => fechamentos.push(Date.now()),
+    });
+
+    await waitFor(() => {
+      expect(desfechos.aprovados).toHaveLength(1);
+    });
+
+    await usuario.keyboard('{Escape}');
+    expect(fechamentos).toHaveLength(1);
   });
 });
 

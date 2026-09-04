@@ -1,5 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import type { MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
@@ -8,6 +8,12 @@ import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinhe
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
 import { useVendaStore } from '../../stores/vendaStore';
 import { iconeDoPagamento } from './iconePorMeio';
+import {
+  AVISO_DESASSOCIACAO_MANUAL,
+  CHAMADA_PIX_NAO_E_CANCELADO,
+  DESTAQUE_PIX_SEGUE_NO_BANCO,
+} from './pix/avisosPix';
+import { DialogoConfirmacaoPix } from './pix/DialogoConfirmacaoPix';
 import { ModalPix } from './pix/ModalPix';
 
 /**
@@ -50,10 +56,44 @@ export function ListaPagamentosAplicados(): ReactElement | null {
   // render — o Zustand v5 trataria como mudança e o componente entraria em laço.
   const saldoRestante = useVendaStore((estado) => estado.saldo().saldoRestante);
 
+  /**
+   * Remoção de PIX aguardando confirmação (item 3 do usuário, 2026-09-04).
+   *
+   * Guarda o `idPagamento`, e não o `PagamentoAplicado`: o objeto do estado é
+   * substituído a cada mutação do slice, e uma cópia congelada aqui poderia
+   * confirmar a remoção de uma versão que não existe mais. O `id` é estável.
+   */
+  const [idAConfirmar, setIdAConfirmar] = useState<string | null>(null);
+
   const cobrancaPix = usePixPendente();
 
   if (pagamentos.length === 0) {
     return null;
+  }
+
+  /**
+   * Remover PIX pede confirmação; qualquer outra forma sai direto.
+   *
+   * O desvio acontece **aqui**, e não dentro do slice, porque o slice não pode
+   * abrir janela nem esperar por uma resposta do operador sem virar assíncrono —
+   * e `removerPagamento` é chamada por outros caminhos (a limpeza pós-entrega da
+   * 004, por exemplo) que não devem perguntar nada a ninguém. A regra de negócio
+   * ("PIX pode sair da venda") mora no slice; a pergunta mora na tela.
+   *
+   * O log é preservado nos dois caminhos: quem registra
+   * `FORMA_PAGAMENTO_REMOVIDA` é `removerPagamento`, e a confirmação só decide
+   * **se** ela é chamada.
+   */
+  function pedirRemocao(idPagamento: string): void {
+    const alvo = pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
+    if (alvo === undefined) {
+      return;
+    }
+    if (alvo.integracao === 'PIX_DINAMICO') {
+      setIdAConfirmar(idPagamento);
+      return;
+    }
+    removerPagamento(idPagamento);
   }
 
   return (
@@ -75,12 +115,31 @@ export function ListaPagamentosAplicados(): ReactElement | null {
           <ItemPagamentoAplicado
             key={pagamento.idPagamento}
             pagamento={pagamento}
-            onRemover={removerPagamento}
+            onRemover={pedirRemocao}
           />
         ))}
       </ul>
 
       {cobrancaPix}
+
+      {idAConfirmar !== null && (
+        <DialogoConfirmacaoPix
+          testId="confirmar-remocao-pix"
+          titulo="Remover o PIX da venda?"
+          subtitulo="A cobrança já foi gerada no banco"
+          chamada={CHAMADA_PIX_NAO_E_CANCELADO}
+          explicacao={AVISO_DESASSOCIACAO_MANUAL}
+          destaque={DESTAQUE_PIX_SEGUE_NO_BANCO}
+          rotuloConfirmar="Remover mesmo assim"
+          onConfirmar={() => {
+            removerPagamento(idAConfirmar);
+            setIdAConfirmar(null);
+          }}
+          onCancelar={() => {
+            setIdAConfirmar(null);
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -106,12 +165,29 @@ export function ListaPagamentosAplicados(): ReactElement | null {
  * O `idPagamento` fica **fechado dentro dos callbacks**, e não copiado para
  * dentro da cobrança: é o vínculo único entre a janela e o pagamento que a
  * originou (ver `domain/pix/cobrancaPix.ts`).
+ *
+ * ---
+ *
+ * ### Por que a janela seguiu o `idPagamento` em vez de "existe um pendente?"
+ *
+ * Desde 2026-09-04 a janela permanece 10 segundos na tela **depois** da
+ * aprovação (pedido do usuário — ver o TSDoc de `ModalPix`). O pagamento deixa
+ * de ser `PENDENTE_INTEGRACAO` no instante em que o polling confirma, então a
+ * condição antiga ("existe um pagamento pendente de PIX?") desmontaria a janela
+ * exatamente no quadro em que ela precisa mostrar que deu certo.
+ *
+ * A correção é mínima e preserva a decisão de AD-158: a janela continua sendo
+ * função do estado, só que do **pagamento que ela está exibindo**, seguido por
+ * `id`. Um pendente novo entra em cena; a saída é sempre `onFechar`, e nunca um
+ * segundo estado de "aberto" capaz de discordar do slice — se o pagamento sumir
+ * da lista (recusa, remoção), a janela some junto, sem gesto nenhum.
  */
 function usePixPendente(): ReactElement | null {
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
   const confirmarPagamentoIntegrado = useVendaStore((estado) => estado.confirmarPagamentoIntegrado);
   const recusarPagamentoIntegrado = useVendaStore((estado) => estado.recusarPagamentoIntegrado);
+  const [idExibido, setIdExibido] = useState<string | null>(null);
 
   // O catálogo já está em cache (`staleTime` de 30 min, `PAY-01`): a mesma query
   // alimenta o combobox de forma ao lado, e chegar aqui exige ter aplicado uma
@@ -126,31 +202,48 @@ function usePixPendente(): ReactElement | null {
       pagamento.status === 'PENDENTE_INTEGRACAO' && pagamento.integracao === 'PIX_DINAMICO',
   );
 
-  if (pendente === undefined) {
+  // Entrada em cena durante o render, não em `useEffect` (mesmo padrão de
+  // `codigoCondicaoAnterior` em `PainelPagamentoETotais`): o efeito abriria a
+  // janela um quadro depois, deixando a tela de venda visível por um instante
+  // com um pagamento pendente que ninguém está resolvendo. O `set` converge —
+  // no render seguinte os dois `id` são iguais e nada mais muda.
+  if (pendente !== undefined && pendente.idPagamento !== idExibido) {
+    setIdExibido(pendente.idPagamento);
+  }
+
+  // Segue o pagamento **exibido**, em qualquer status: é o que mantém a janela
+  // de pé durante os 10 segundos do estado aprovado. Some sozinha quando o
+  // pagamento deixa a lista (recusa/remoção) — `find` devolve `undefined`.
+  const exibido =
+    idExibido === null
+      ? undefined
+      : pagamentos.find((pagamento) => pagamento.idPagamento === idExibido);
+
+  if (exibido === undefined) {
     return null;
   }
 
   return (
     <ModalPix
-      // A janela é recriada do zero a cada pagamento pendente: sem a `key`, um
-      // segundo PIX na mesma venda reaproveitaria o componente montado e as
-      // travas de "uma geração por montagem" impediriam a nova cobrança.
-      key={pendente.idPagamento}
-      formaCodigo={pendente.formaCodigo}
-      valor={pendente.valorAplicado}
+      // A janela é recriada do zero a cada pagamento: sem a `key`, um segundo
+      // PIX na mesma venda reaproveitaria o componente montado e as travas de
+      // "uma geração por montagem" impediriam a nova cobrança.
+      key={exibido.idPagamento}
+      formaCodigo={exibido.formaCodigo}
+      valor={exibido.valorAplicado}
       minimoPix={minimoPix}
       clienteAtual={clienteAtual}
       onAprovado={(pixGuid) => {
-        confirmarPagamentoIntegrado(pendente.idPagamento, { pixGuid });
+        confirmarPagamentoIntegrado(exibido.idPagamento, { pixGuid });
       }}
       onAbandonado={(motivo) => {
-        recusarPagamentoIntegrado(pendente.idPagamento, motivo);
+        recusarPagamentoIntegrado(exibido.idPagamento, motivo);
       }}
       onFechar={() => {
-        // Fechar é consequência de `onAprovado`/`onAbandonado`: os dois mudam o
-        // status do pagamento, e a janela desmonta sozinha na renderização
-        // seguinte. Um estado de "aberto" aqui seria uma segunda verdade sobre a
-        // mesma coisa.
+        // Único caminho de saída da janela — o automático de 10s depois da
+        // aprovação, o `X`, o ESC (só com o pagamento aprovado) e a desistência
+        // confirmada convergem todos aqui.
+        setIdExibido(null);
       }}
     />
   );
@@ -201,9 +294,10 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
             escolher essa forma. O ticket aparece nesta faixa como a anotação
             "Vale <código>", ao lado do nome. */}
         {/* Bloqueio explicativo, nunca `disabled` nativo (`lib/bloqueio.ts`):
-            remover um TEF/PIX já aprovado é impossível (I6), e o operador
-            precisa ouvir **por quê** ao clicar — no `disabled` o clique não
-            produz evento nenhum e o motivo morre no `title`. */}
+            remover um TEF já aprovado é impossível (I6), e o operador precisa
+            ouvir **por quê** ao clicar — no `disabled` o clique não produz
+            evento nenhum e o motivo morre no `title`. O PIX não é bloqueado:
+            ele passa pela confirmação de `pedirRemocao`. */}
         <Button
           type="button"
           variant="secondary"
@@ -224,19 +318,26 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
 }
 
 /**
- * I6 (`data-model.md` §4): pagamento aprovado por integração externa não sai da
- * venda por aqui — o dinheiro já saiu da mão do cliente e quem desfaz é a
- * operadora ou a conta PIX, não o Checkout. O slice trata a chamada como no-op;
- * este motivo é o que impede o operador de descobrir isso clicando no vazio.
+ * I6, reescrita pelo usuário em 2026-09-04: **só o TEF aprovado** bloqueia a
+ * remoção.
+ *
+ * A regra anterior bloqueava as duas integrações. Ela partia da ideia de que
+ * "dinheiro já movimentado não sai da venda" — verdade para o TEF, cuja
+ * transação vive num terminal físico que precisa ser cancelado antes, e falsa
+ * para o PIX: o Checkout nunca teve como cancelar uma cobrança PIX (invariante
+ * J5 — não existe endpoint), então travar a forma na tela não protegia o
+ * dinheiro de ninguém, só prendia o operador. Hoje o PIX sai da venda mediante
+ * confirmação explícita, e é a confirmação que informa que a cobrança segue viva
+ * no banco.
+ *
+ * Bloqueio explicativo, nunca `disabled` mudo (`lib/bloqueio.ts`): é o motivo
+ * que impede o operador de descobrir a regra clicando no vazio.
  */
 function motivoBloqueioRemocao(pagamento: PagamentoAplicado): MotivoBloqueio {
-  if (pagamento.status !== 'APROVADO' || pagamento.integracao === 'NENHUMA') {
+  if (pagamento.status !== 'APROVADO' || pagamento.integracao !== 'TEF') {
     return null;
   }
-  if (pagamento.integracao === 'PIX_DINAMICO') {
-    return 'PIX já aprovado não pode ser removido da venda: a devolução é feita pela conta PIX.';
-  }
-  return 'Cartão já aprovado no TEF não pode ser removido da venda: cancele a transação na operadora.';
+  return 'Cartão já aprovado no TEF não pode ser removido da venda: cancele a transação no terminal antes.';
 }
 
 /**
