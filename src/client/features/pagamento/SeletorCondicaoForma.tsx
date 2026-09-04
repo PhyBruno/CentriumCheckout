@@ -13,6 +13,7 @@ import type { CondicaoPagamento, FormaPagamento } from '../../domain/pagamento/f
 import { formaDisponivel } from '../../domain/pagamento/roteamentoIntegracao';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
 import { useVendaStore } from '../../stores/vendaStore';
+import { ICONE_POR_MEIO } from './iconePorMeio';
 
 /**
  * Comboboxes de **condição** e **forma** de pagamento do cartão "Pagamento e
@@ -365,10 +366,19 @@ export function SeletorFormaPagamento({
         ? 'Esta condição de pagamento não tem nenhuma forma cadastrada.'
         : null;
 
+  // O ícone segue o **meio** da forma escolhida, pelo mesmo mapa da lista de
+  // pagamentos aplicados (`iconePorMeio.ts`) — pedido do usuário, 2026-09-04.
+  // O nó `R7ZC2` do Pencil desenha `credit-card` fixo, mas ali ele ilustra o
+  // estado "PIX escolhido"; manter o cartão com DINHEIRO selecionado mostraria
+  // um ícone que contradiz o texto ao lado dele. Sem escolha, volta ao
+  // `credit-card` do desenho, que é o placeholder genérico do controle.
+  const Icone =
+    formaSelecionada === null ? CreditCard : ICONE_POR_MEIO[formaSelecionada.meioPagtoNFe];
+
   return (
     <ComboboxPagamento
       rotulo="Forma de pagamento"
-      icone={<CreditCard className="size-4 text-muted-foreground" />}
+      icone={<Icone className="size-4 text-muted-foreground" />}
       textoSelecionado={formaSelecionada?.descricao ?? null}
       placeholder="Selecione a forma"
       opcoes={formas.map((forma) => ({

@@ -1,4 +1,4 @@
-import { Banknote, CreditCard, QrCode, Ticket, Trash2, type LucideIcon } from 'lucide-react';
+import { Ticket, Trash2 } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
@@ -7,6 +7,7 @@ import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/
 import { ehElegivelParaVale } from '../../domain/pagamento/valeDevolucao';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useVendaStore } from '../../stores/vendaStore';
+import { ICONE_POR_MEIO } from './iconePorMeio';
 import { ModalValeDevolucao } from './ModalValeDevolucao';
 
 /**
@@ -34,11 +35,12 @@ import { ModalValeDevolucao } from './ModalValeDevolucao';
  * 2. **"Texto restante" some quando o saldo está coberto.** O nó só existe no
  *    estado "falta pagar"; escrever "Faltante R$ 0,00" seria afirmar uma falta
  *    que não existe.
- * 3. **Ícone só para os meios que o Pencil desenha** — `qr-code` (PIX),
- *    `banknote` (Dinheiro) e `credit-card` (cartão), os mesmos do nó "Métodos de
- *    pagamento rápidos" (`Botão PIX`/`Botão Dinheiro`/`Botão Cartão de …`). Os
- *    demais meios da união `MeioPagtoNFe` não têm ícone no desenho, e a faixa
- *    entra sem ícone em vez de receber um genérico escolhido por conta própria.
+ * 3. **Todo meio tem ícone**, vindo de `iconePorMeio.ts` — o mesmo mapa que o
+ *    combobox de forma usa. O Pencil só nomeia três (`qr-code`, `banknote`,
+ *    `credit-card`, no nó "Métodos de pagamento rápidos"); os outros 18 são
+ *    inferidos, por decisão do usuário (2026-09-04). A versão anterior deixava
+ *    os inferidos **sem ícone**, o que produzia faixas visualmente diferentes na
+ *    mesma lista sem que a diferença dissesse nada ao operador.
  */
 export function ListaPagamentosAplicados(): ReactElement | null {
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
@@ -182,9 +184,7 @@ function ItemPagamentoAplicado({
       data-status={pagamento.status}
     >
       <span className="flex min-w-0 items-center gap-xs">
-        {Icone === undefined ? null : (
-          <Icone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        )}
+        <Icone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="truncate text-base font-semibold text-foreground">{nome}</span>
         {anotacao === null ? null : (
           <span
@@ -280,15 +280,6 @@ const ANOTACAO_POR_STATUS: Record<StatusPagamento, string | null> = {
   APROVADO: null,
   PENDENTE_INTEGRACAO: 'Aguardando',
   RECUSADO: 'Recusado',
-};
-
-/** Ícones do nó "Métodos de pagamento rápidos" do Pencil (linhas 2276–2388). */
-const ICONE_POR_MEIO: Partial<Record<MeioPagtoNFe, LucideIcon>> = {
-  Pix: QrCode,
-  PixEstatico: QrCode,
-  Dinheiro: Banknote,
-  CartaoCredito: CreditCard,
-  CartaoDebito: CreditCard,
 };
 
 /**

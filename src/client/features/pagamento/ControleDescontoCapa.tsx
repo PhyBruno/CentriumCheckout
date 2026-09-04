@@ -158,8 +158,13 @@ export function ControleDescontoCapa(): ReactElement {
   }
 
   return (
+    // `gap-xxs` (4px) em vez dos 6px do nó `Jup0R`: com o equivalente
+    // financeiro ainda presente no modo percentual, os 6px somados aos 8px da
+    // coluna do cartão empurravam a seção de forma de pagamento longe demais do
+    // desconto (medido: 43px entre o campo e o rótulo "Forma de pagamento").
+    // Pedido do usuário, 2026-09-04.
     <section
-      className="flex w-full flex-col gap-[6px]"
+      className="flex w-full flex-col gap-xxs"
       data-testid="controle-desconto-capa"
       aria-label="Desconto da venda"
     >
@@ -214,19 +219,28 @@ export function ControleDescontoCapa(): ReactElement {
         </span>
       </span>
 
-      <div className="flex w-full items-center justify-end gap-[5px]">
-        <Equal className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-        {/* O valor em reais do desconto vigente, seja ele percentual ou não:
-            é `valorResolvido`, calculado pelo domínio (`resolverDescontoCapa`)
-            e só formatado aqui. */}
-        <strong
-          className="font-mono text-sm font-bold tabular-nums text-[var(--cc-color-accent-yellow)]"
-          data-testid="equivalente-financeiro-desconto-capa"
-        >
-          {formatarCentavos(descontoCapa?.valorResolvido ?? ZERO_CENTAVOS)}
-        </strong>
-        <span className="text-xs font-medium text-muted-foreground">sobre o subtotal</span>
-      </div>
+      {/* "Valor calculado ajuste" (`Zdqgn`) — **só no modo percentual**, por
+          decisão do usuário (2026-09-04). Em reais o equivalente financeiro é
+          o próprio número que o operador acabou de digitar, e repeti-lo logo
+          abaixo do campo não informa nada: ocupa uma linha e ainda afasta o
+          bloco de desconto da seção de forma de pagamento. O desenho mostra a
+          linha porque desenha justamente o estado percentual (toggle `%` ativo,
+          "2,00" → "R$ 3,29"). */}
+      {modo === 'PERCENTUAL' ? (
+        <div className="flex w-full items-center justify-end gap-[5px] leading-none">
+          <Equal className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+          {/* É `valorResolvido`, calculado pelo domínio (`resolverDescontoCapa`)
+              e só formatado aqui — o componente nunca converte percentual em
+              reais por conta própria. */}
+          <strong
+            className="font-mono text-sm font-bold tabular-nums text-[var(--cc-color-accent-yellow)]"
+            data-testid="equivalente-financeiro-desconto-capa"
+          >
+            {formatarCentavos(descontoCapa?.valorResolvido ?? ZERO_CENTAVOS)}
+          </strong>
+          <span className="text-xs font-medium text-muted-foreground">sobre o subtotal</span>
+        </div>
+      ) : null}
     </section>
   );
 }
