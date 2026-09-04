@@ -1968,3 +1968,22 @@ Complemento de AD-155, no sentido oposto. Devolver o TAB ao navegador resolveu o
 O `focoVendaStore` deixa de ser um canal de mão única (era só `focarCodigoProduto`, do cliente para o produto) e ganha o par simétrico `pedidosDeFocoNoDocumento`/`focarDocumentoCliente`. **Quem expande é o `CampoClienteVenda`**, não o emissor: o estado de expansão é dele, e o campo só aceita foco depois que o React tira o `inert` no commit. Por isso o pedido externo alimenta o contador local que já existia para a recusa de pessoa jurídica (AD-133), em vez de chamar `focus()` direto — `setExpandido(true)` e o incremento entram no mesmo lote, e o efeito de foco roda no render seguinte, já sem `inert`. Contador, e não booleano, pela mesma razão de sempre: dois Shift+TAB seguidos precisam disparar o efeito duas vezes.
 
 **Impact:** `src/client/stores/focoVendaStore.ts`, `src/client/features/carrinho/EntradaRapidaProduto.tsx`, `src/client/features/cliente/CampoClienteVenda.tsx`, `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` e `tests/unit/client/cliente/CampoClienteVenda.spec.tsx` (novo — o card não tinha spec). 654 testes verdes, `tsc --noEmit` e `eslint` limpos.
+
+### AD-157: Quantidade, preço e desconto do item são obrigatórios — sair do campo vazio avisa e devolve o foco (2026-09-04)
+
+**Pedido do usuário:** *"Corrija na insercao do item: 1 - A quantidade está permitindo ficar zero, ou sem informacao nenhuma, não pode, ao tentar passar do campo tem que dar erro com notificacao e voltar o foco para o campo referente. 2 - o PREÇO UNITARIO está permitindo ficar zero, ou sem informacao nenhuma, não pode (…). 3 - O desconto do item está permitindo ficar zero, ou sem informacao nenhuma, não pode (…)."*
+
+Os três campos digitáveis da prévia de item aceitavam sair vazios: `lerQuantidadeTexto`/`lerCentavos` devolviam `null`, o botão "+" ficava bloqueado e nada mais acontecia. O operador só descobria o problema ao clicar no "+" bloqueado — ou, pior, ao apertar Enter, que chama `confirmar()` direto sem passar por `acaoBloqueavel` e retornava **em silêncio**: nem inseria, nem explicava.
+
+Agora cada campo confere o próprio valor no `blur` (`exigirCampo`): toast de erro com o motivo e foco de volta ao campo, texto preservado para correção. `previaValida()` repete a mesma sequência no Enter, e `bloqueioDeInsercao` passa a responder com **o mesmo aviso** de cada campo em vez do genérico "há um valor inválido" — o operador lê a mesma frase pelos três caminhos.
+
+**Zero é recusado em quantidade e preço, mas não em desconto** (decisão do usuário, mesma data). Um item sem desconto é o caso normal e o campo nasce em `0,00`; exigir desconto positivo tornaria impossível a inserção mais comum do caixa. No desconto, portanto, só o campo vazio (ou texto que `lerCentavos` não entende) prende o foco — o desconto grande demais continua coberto por AD-151, que avisa sem tomar o foco porque ali o valor está escrito e a decisão é do operador.
+
+Dois limites deliberados, ambos para não criar beco sem saída:
+
+- **`precoInvalido`/`descontoInvalido` só existem quando o campo é digitável** (`pesavelEditavel === 'E'`). Em `'S'`/`'B'`/`''` os valores vêm do cadastro ou da própria linha e o campo é `readOnly`: bloquear por um preço zerado no cadastro prenderia o foco num campo que o operador não pode corrigir.
+- **A quantidade só é exigida com um produto em revisão.** Com a barra vazia nada do que está na prévia entra na venda — a inserção rápida usa o multiplicador do próprio código (`"2*7891…"`) —, e prender o foco ali impediria a bipagem do próximo item.
+
+O `.focus()` de `exigirCampo` vai num `setTimeout` de 0, não direto: na saída por TAB (ou por clique em outro controle) o navegador move o foco **depois** do handler de `blur`, e um foco pedido de dentro dele seria desfeito no mesmo gesto.
+
+**Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`exigirCampo`, `previaValida`, os derivados `quantidadeInvalida`/`precoInvalido`/`descontoInvalido`, `podeConfirmar`, `bloqueioDeInsercao` e os três `onBlur`) e `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (quatro casos novos, incluindo o de que `0,00` no desconto continua válido e confirma). 658 testes verdes, `tsc --noEmit` e `eslint` limpos.

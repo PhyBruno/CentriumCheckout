@@ -321,6 +321,119 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
   });
 });
 
+/**
+ * Campos obrigatórios da prévia (pedido do usuário, 2026-09-04): sair de
+ * quantidade, preço ou desconto vazio — ou com quantidade/preço zerados — avisa
+ * e devolve o foco ao campo. Zero **é** válido no desconto, o estado normal de
+ * um item sem desconto (decisão do usuário na mesma data).
+ *
+ * Os casos usam o lápis (`carregarParaEdicao`) para montar a prévia editável
+ * sem `fetch`: é o mesmo estado em que a barra fica ao resolver um produto
+ * `'E'` por TAB — `editavel` vem de `pesavelEditavel === 'E'` nos dois
+ * caminhos.
+ */
+describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do usuário, 2026-09-04)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [] });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+  });
+
+  async function abrirPreviaEditavel(): Promise<void> {
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ pesavelEditavel: 'E', precoBase: 1000 }),
+      quantidadeEmUnidades: 2,
+      precoUnitario: 1000,
+      descontoManual: 50,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+    renderBarra();
+    act(() => {
+      useEdicaoItemStore.getState().carregarParaEdicao(linha);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+  }
+
+  it('quantidade vazia não deixa o foco sair do campo', async () => {
+    const usuario = userEvent.setup();
+    await abrirPreviaEditavel();
+
+    await usuario.clear(screen.getByTestId('previa-quantidade'));
+    await usuario.tab();
+
+    // O foco chega a sair (o navegador termina o TAB) e volta em seguida —
+    // por isso `waitFor`, e não uma asserção síncrona.
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
+    // Enter também não insere com o campo vazio, e continua devolvendo o foco.
+    await usuario.keyboard('{Enter}');
+    expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(2000);
+  });
+
+  it('quantidade zerada é recusada como se estivesse vazia', async () => {
+    const usuario = userEvent.setup();
+    await abrirPreviaEditavel();
+
+    await usuario.clear(screen.getByTestId('previa-quantidade'));
+    await usuario.type(screen.getByTestId('previa-quantidade'), '0');
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('preço unitário vazio ou zerado não deixa o foco sair do campo', async () => {
+    const usuario = userEvent.setup();
+    await abrirPreviaEditavel();
+
+    await usuario.clear(screen.getByTestId('previa-preco-unitario'));
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toHaveFocus();
+    });
+
+    await usuario.type(screen.getByTestId('previa-preco-unitario'), '0,00');
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toHaveFocus();
+    });
+    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
+    expect(useVendaStore.getState().linhas[0]?.precoUnitario).toBe(1000);
+  });
+
+  it('desconto vazio não deixa o foco sair do campo, mas 0,00 é aceito', async () => {
+    const usuario = userEvent.setup();
+    await abrirPreviaEditavel();
+
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-desconto-item')).toHaveFocus();
+    });
+    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
+
+    // Zero é o item sem desconto — segue valendo, e confirma normalmente.
+    await usuario.type(screen.getByTestId('previa-desconto-item'), '0,00');
+    expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled', 'true');
+    await usuario.keyboard('{Enter}');
+
+    const editada = useVendaStore.getState().linhas.find((linha) => linha.idLinha === 'linha-1');
+    expect(editada?.descontoManual).toBe(0);
+    expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
+  });
+});
+
 describe('EntradaRapidaProduto — TAB no campo de código (pedido do usuário, 2026-09-04)', () => {
   beforeEach(() => {
     useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
