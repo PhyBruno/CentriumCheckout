@@ -244,6 +244,16 @@ export interface PagamentoSlice {
     confirmarExcedente?: (excedente: ExcedenteDeVale) => Promise<boolean>,
   ): Promise<boolean>;
   limparPagamentos(): void;
+  /**
+   * Devolve a venda ao estado "sem pagamento" a **pedido do operador**, para
+   * reabrir a edição do carrinho (pedido do usuário, 2026-09-04).
+   *
+   * Não é `limparPagamentos`: aquela é a limpeza pós-entrega da feature 004,
+   * chamada depois de o ERP confirmar, e por isso não tem guarda nenhuma.
+   * Esta é um gesto de tela e recusa o que I6 já protege — um TEF/PIX aprovado
+   * movimentou dinheiro fora do Checkout e não desaparece por um clique.
+   */
+  descartarPagamento(): void;
   /** Feature 006 — importação de DAV/rascunho, nunca gesto do operador. */
   importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;
 
@@ -268,6 +278,16 @@ export const AVISO_VALOR_ACIMA_DO_SALDO =
   'Esta forma de pagamento não gera troco: informe no máximo o valor que falta para fechar a venda.';
 export const AVISO_VALIDACAO_INDISPONIVEL =
   'Não foi possível validar a venda no ERP: o pagamento não foi aplicado.';
+/**
+ * Venda cujo total líquido é zero (pedido do usuário, 2026-09-04).
+ *
+ * Distinta de `AVISO_SALDO_JA_COBERTO`, que descreve o desfecho **feliz** —
+ * havia valor e ele já foi todo pago. Aqui não houve valor nenhum a cobrar, e
+ * dizer "já está coberto" mandaria o operador procurar um pagamento que não
+ * existe em vez de olhar o desconto ou os itens.
+ */
+export const AVISO_VENDA_SEM_VALOR =
+  'Esta venda não tem valor a cobrar: revise o desconto de capa ou os itens antes de adicionar um pagamento.';
 export const AVISO_FORMA_FORA_DA_CONDICAO =
   'Esta forma de pagamento não pertence à condição selecionada.';
 export const AVISO_PAGAMENTO_IRREVERSIVEL =
@@ -412,6 +432,22 @@ export function criarPagamentoSlice(
       ticketDevolucao: string | null = null,
     ): Promise<boolean> {
       const saldo = saldoAtual();
+
+      // Guarda anterior a toda regra de forma (pedido do usuário, 2026-09-04):
+      // uma venda sem valor líquido não recebe pagamento nenhum. Precisa vir
+      // antes de `podeAplicarForma`, e não dentro dela: com `totalLiquido` zero
+      // o `saldoRestante` também é zero, e a função pura responderia
+      // `SALDO_JA_COBERTO` — a frase certa para o desfecho oposto, o da venda
+      // integralmente paga.
+      //
+      // Em tese `recusaDoDescontoCapa` já impede o desconto de zerar a venda;
+      // esta guarda cobre o que acontece **depois** dele: itens cancelados
+      // derrubam o subtotal sem tocar no desconto já aplicado, e `calcularSaldo`
+      // pisa o líquido em zero (AD-150).
+      if (saldo.totalLiquido === ZERO_CENTAVOS) {
+        deps.avisar?.(AVISO_VENDA_SEM_VALOR);
+        return false;
+      }
 
       // `valorInformado` entra na validação (`FR-024`): sem ele a checagem não
       // conseguiria distinguir "cabe no saldo" de "excede", e uma forma sem
@@ -771,6 +807,47 @@ export function criarPagamentoSlice(
         });
       },
 
+      descartarPagamento: () => {
+        const { condicaoSelecionada, descontoCapa, pagamentos } = get();
+
+        // I6: o mesmo motivo que `removerPagamento` dá para uma forma isolada
+        // vale para o descarte em bloco — o estorno é operação do ERP.
+        if (
+          pagamentos.some(
+            (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+          )
+        ) {
+          deps.avisar?.(AVISO_PAGAMENTO_IRREVERSIVEL);
+          return;
+        }
+
+        if (condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null) {
+          return;
+        }
+
+        // Um evento por forma descartada, com o rótulo resolvido **antes** do
+        // `set`: depois dele a condição já não existe e `rotuloDoPagamento`
+        // cairia no `meioPagtoNFe` técnico. O desconto de capa não gera evento
+        // aqui pelo mesmo motivo de `aplicarDescontoCapa` — ele é auditado pela
+        // feature 004 na finalização.
+        const rotulos = pagamentos.map(rotuloDoPagamento);
+
+        set({
+          condicaoSelecionada: null,
+          pagamentos: [],
+          descontoCapa: null,
+          valesDevolucao: [],
+        });
+
+        for (const formaPagamento of rotulos) {
+          get().registrarEventoAuditoria(eventoFormaPagamentoRemovida({ formaPagamento }));
+        }
+
+        // `FR-021`/I11, mesma razão de `removerPagamento`: o veredito da 014
+        // valia para a venda daquele instante.
+        deps.invalidarVeredito();
+      },
+
       importarFormasDePagamento: (formas) => {
         const importados: PagamentoAplicado[] = [];
 
@@ -818,9 +895,23 @@ export function criarPagamentoSlice(
       },
 
       podeMutarCarrinho: () =>
-        // I7: **qualquer** pagamento aprovado congela o carrinho.
-        // `PENDENTE_INTEGRACAO` não congela — enquanto a integração não aprovar,
-        // nada foi registrado (`FR-004`/`FR-005`).
+        // I7, ampliada pelo usuário em 2026-09-04: **escolher a condição já
+        // congela a venda**, antes de qualquer forma ser aplicada. A condição é
+        // o ponto em que o operador declara que terminou de montar a compra e
+        // passou a cobrá-la; deixar a grid editável a partir daí permitiria
+        // mudar o total por baixo de um pagamento em curso — e a condição é
+        // justamente o que o gate da 014 e o rateio do desconto de capa tomam
+        // como fixo.
+        //
+        // Continua valendo a parte anterior: qualquer pagamento **aprovado**
+        // congela. `PENDENTE_INTEGRACAO` não congela por si — enquanto a
+        // integração não aprovar, nada foi registrado (`FR-004`/`FR-005`) —,
+        // mas na prática ele só existe com condição escolhida, que já congelou.
+        //
+        // O predicado é o mesmo de cliente e identidade da venda (AD-043), de
+        // propósito: uma segunda regra de "a venda ainda pode mudar" divergiria
+        // em silêncio. A saída é `descartarPagamento()`.
+        get().condicaoSelecionada === null &&
         !get().pagamentos.some((pagamento) => pagamento.status === 'APROVADO'),
 
       saldo: saldoAtual,

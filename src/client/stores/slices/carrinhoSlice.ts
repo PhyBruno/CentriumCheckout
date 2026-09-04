@@ -135,8 +135,18 @@ export interface CarrinhoSlice {
   editarSnapshotDescricao(codigoProduto: string, descricao: string): void;
 }
 
+/**
+ * Frase única para os dois motivos que `podeMutarCarrinho()` reúne — condição
+ * de pagamento escolhida e forma já aprovada (pedido do usuário, 2026-09-04).
+ *
+ * Nomeia a **saída**, não só o impedimento: o operador precisa saber que existe
+ * um caminho de volta ("Limpar" no cartão de pagamento, `descartarPagamento`),
+ * senão a única leitura possível é a de que a venda travou. O texto anterior
+ * falava só de "pagamento aprovado", que deixou de ser o gatilho mais comum —
+ * hoje basta escolher a condição.
+ */
 const AVISO_CARRINHO_BLOQUEADO =
-  'Já há pagamento aprovado nesta venda: os itens não podem mais ser alterados.';
+  'Esta venda já está em pagamento: use "Limpar" no cartão de pagamento para remover a condição e as formas e voltar a editar os itens.';
 
 function idAleatorio(): string {
   return crypto.randomUUID();

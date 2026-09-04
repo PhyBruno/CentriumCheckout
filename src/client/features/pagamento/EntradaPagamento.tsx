@@ -77,6 +77,13 @@ export interface EntradaPagamentoProps {
  */
 export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement {
   const aplicarPagamento = useVendaStore((estado) => estado.aplicarPagamento);
+  /**
+   * Venda sem valor a cobrar (pedido do usuário, 2026-09-04). A mesma guarda
+   * existe no slice (`AVISO_VENDA_SEM_VALOR`) e é ela que decide de verdade;
+   * aqui o motivo aparece antes do clique, para o operador não digitar um valor
+   * que já se sabe recusado.
+   */
+  const totalLiquido = useVendaStore((estado) => estado.saldo().totalLiquido);
 
   const [valorTexto, setValorTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -93,21 +100,23 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
    */
   const bloqueioDeInsercao: MotivoBloqueio = enviando
     ? 'Aguarde: o pagamento anterior ainda está sendo processado.'
-    : forma === null
-      ? 'Escolha a forma de pagamento antes de adicionar o valor recebido.'
-      : // O valor de um vale devolução é o do ticket, decidido pelo ERP
-        // (`DevValTot`) e baixado inteiro — não existe uso parcial. Deixar o
-        // campo aceitar um número aqui prometeria um controle que o operador
-        // não tem sobre esse valor.
-        ehFormaDeValeDevolucao(forma)
-        ? 'O valor do vale devolução vem do ticket: informe o código na janela do vale.'
-        : valorTexto.trim() === ''
-          ? 'Informe o valor recebido para adicionar o pagamento.'
-          : valorLido === null
-            ? 'Valor inválido: use apenas números, com no máximo duas casas decimais.'
-            : valorLido === ZERO_CENTAVOS
-              ? 'O valor recebido precisa ser maior que zero.'
-              : null;
+    : totalLiquido === ZERO_CENTAVOS
+      ? 'Esta venda não tem valor a cobrar: revise o desconto de capa ou os itens antes de adicionar um pagamento.'
+      : forma === null
+        ? 'Escolha a forma de pagamento antes de adicionar o valor recebido.'
+        : // O valor de um vale devolução é o do ticket, decidido pelo ERP
+          // (`DevValTot`) e baixado inteiro — não existe uso parcial. Deixar o
+          // campo aceitar um número aqui prometeria um controle que o operador
+          // não tem sobre esse valor.
+          ehFormaDeValeDevolucao(forma)
+          ? 'O valor do vale devolução vem do ticket: informe o código na janela do vale.'
+          : valorTexto.trim() === ''
+            ? 'Informe o valor recebido para adicionar o pagamento.'
+            : valorLido === null
+              ? 'Valor inválido: use apenas números, com no máximo duas casas decimais.'
+              : valorLido === ZERO_CENTAVOS
+                ? 'O valor recebido precisa ser maior que zero.'
+                : null;
 
   async function adicionar(): Promise<void> {
     // Guarda repetida no clique, não só na renderização: o estado pode mudar

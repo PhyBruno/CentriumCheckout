@@ -194,6 +194,14 @@ export function ComboboxPagamento({
         aria-labelledby={idRotulo}
         className={cn(
           'flex h-11 w-full items-center justify-between gap-xs rounded-lg border border-border bg-muted px-[14px] text-left',
+          // Mesmo cursor do "Cancelar venda" bloqueado (pedido do usuário,
+          // 2026-09-04): `components/ui/button.tsx` traz
+          // `aria-disabled:cursor-not-allowed` no seu `cva`, e este trigger é um
+          // `<button>` cru, fora daquele componente — sem a classe, o ponteiro
+          // continuava anunciando um controle clicável. Só o cursor: a opacidade
+          // que o `Button` também aplica apagaria o texto da condição já
+          // escolhida, que o operador precisa continuar lendo.
+          'aria-disabled:cursor-not-allowed',
           // O realce em `--primary` existe **só enquanto o controle está de
           // fato focado** (TAB). No Pencil ele aparece desenhado no combobox de
           // condição, mas ali ilustra o estado focado, não um destaque
@@ -374,6 +382,14 @@ export function SeletorFormaPagamento({
 
   const capacidades = catalogo.data?.capacidades ?? null;
   const formas = condicaoSelecionada?.formas ?? [];
+  /**
+   * Total já com o desconto de capa — aqui, sim, o líquido: uma venda cujo
+   * desconto consumiu tudo não tem o que cobrar, e oferecer formas de pagamento
+   * nela levaria o operador a um "Adicionar pagamento" que só sabe recusar
+   * (pedido do usuário, 2026-09-04). `calcularSaldo` pisa o líquido em zero, de
+   * modo que este é o mesmo número mostrado em "Total a pagar".
+   */
+  const totalLiquido = useVendaStore((estado) => estado.saldo().totalLiquido);
 
   const bloqueio: MotivoBloqueio = catalogo.isPending
     ? 'Aguarde: o catálogo de formas de pagamento ainda está carregando.'
@@ -381,7 +397,9 @@ export function SeletorFormaPagamento({
       ? 'Escolha primeiro a condição de pagamento: as formas disponíveis vêm dela.'
       : formas.length === 0
         ? 'Esta condição de pagamento não tem nenhuma forma cadastrada.'
-        : null;
+        : totalLiquido === ZERO_CENTAVOS
+          ? 'Esta venda não tem valor a cobrar: revise o desconto ou os itens antes de escolher a forma de pagamento.'
+          : null;
 
   // O ícone segue o **meio** da forma escolhida, pelo mesmo mapa da lista de
   // pagamentos aplicados (`iconePorMeio.ts`) — pedido do usuário, 2026-09-04.

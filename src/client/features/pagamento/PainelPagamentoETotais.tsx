@@ -1,5 +1,7 @@
-import { WalletCards } from 'lucide-react';
+import { Eraser, WalletCards } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { useVendaStore } from '../../stores/vendaStore';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import { AcoesFinaisVenda } from '../finalizacao-suspensao/AcoesFinaisVenda';
@@ -36,6 +38,56 @@ import { TotalDaVenda } from './TotalDaVenda';
  * esta. O cabeçalho abaixo ocupa hoje o topo do cartão; quando a 013 chegar,
  * ela entra acima dele sem mover mais nada.
  */
+/**
+ * "Limpar" — descarta condição, formas, desconto de capa e vales da venda
+ * (pedido do usuário, 2026-09-04).
+ *
+ * **Existe porque a condição de pagamento passou a congelar o carrinho.** Sem
+ * um caminho de volta, escolher a condição por engano deixaria o operador preso:
+ * a grid recusaria toda edição e não haveria gesto capaz de desfazer a escolha —
+ * o combobox só troca de condição, nunca a desmarca. A frase que o carrinho
+ * mostra ao recusar uma edição (`AVISO_CARRINHO_BLOQUEADO`) aponta para este
+ * botão pelo nome.
+ *
+ * Mora no cabeçalho, e não junto da lista de pagamentos, porque a lista pode
+ * estar vazia — o congelamento começa na condição, antes da primeira forma.
+ *
+ * Bloqueio explicativo em dois casos, nunca `disabled` (AD-143): nada a limpar,
+ * e pagamento TEF/PIX aprovado (I6 — o estorno é do ERP). A recusa de verdade
+ * mora em `descartarPagamento`; aqui ela é antecipada para o operador ler o
+ * motivo antes de tentar.
+ */
+function BotaoLimparPagamento(): ReactElement {
+  const condicaoSelecionada = useVendaStore((estado) => estado.condicaoSelecionada);
+  const descontoCapa = useVendaStore((estado) => estado.descontoCapa);
+  const pagamentos = useVendaStore((estado) => estado.pagamentos);
+  const descartarPagamento = useVendaStore((estado) => estado.descartarPagamento);
+
+  const temIrreversivel = pagamentos.some(
+    (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+  );
+  const vazio = condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null;
+
+  const bloqueio: MotivoBloqueio = temIrreversivel
+    ? 'Pagamento aprovado por TEF/PIX não pode ser removido: o estorno é operação do ERP.'
+    : vazio
+      ? 'Não há condição, desconto ou forma de pagamento nesta venda para limpar.'
+      : null;
+
+  return (
+    <button
+      type="button"
+      className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-50 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      data-testid="limpar-pagamento"
+      {...atributosDeBloqueio(bloqueio)}
+      onClick={acaoBloqueavel(bloqueio, descartarPagamento)}
+    >
+      <Eraser className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      Limpar
+    </button>
+  );
+}
+
 export function PainelPagamentoETotais(): ReactElement {
   /**
    * Forma escolhida para a **próxima** inserção — rascunho de UI, não estado de
@@ -88,10 +140,14 @@ export function PainelPagamentoETotais(): ReactElement {
           A pílula "Seguro" (cadeado + rótulo) que o desenho põe à direita foi
           **removida** a pedido do usuário (2026-09-04): ela não descreve nenhum
           estado do sistema — não há um modo inseguro do qual distinguir esta
-          tela —, então é ornamento ocupando a única faixa livre do cabeçalho. */}
-      <header className="flex h-9 shrink-0 items-center gap-[10px]">
-        <WalletCards className="size-5 shrink-0 text-foreground" aria-hidden="true" />
-        <h2 className="text-[18px] font-semibold text-foreground">Pagamento</h2>
+          tela. A faixa que ela ocupava passou a receber o botão "Limpar", que
+          é a saída do congelamento descrito abaixo. */}
+      <header className="flex h-9 shrink-0 items-center justify-between gap-[10px]">
+        <div className="flex min-w-0 items-center gap-[10px]">
+          <WalletCards className="size-5 shrink-0 text-foreground" aria-hidden="true" />
+          <h2 className="text-[18px] font-semibold text-foreground">Pagamento</h2>
+        </div>
+        <BotaoLimparPagamento />
       </header>
 
       {/* A área central rola: o cartão tem altura fixa (a da tela) e a lista de

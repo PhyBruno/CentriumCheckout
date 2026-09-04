@@ -29,6 +29,8 @@ import {
   AVISO_DESCONTO_COM_PAGAMENTO,
   AVISO_DESCONTO_ZERA_A_VENDA,
   AVISO_DESCONTO_ZERA_ITEM,
+  AVISO_SALDO_JA_COBERTO,
+  AVISO_VENDA_SEM_VALOR,
   AVISO_DINHEIRO_DUPLICADO,
   AVISO_FORMA_FORA_DA_CONDICAO,
   AVISO_PAGAMENTO_IRREVERSIVEL,
@@ -301,7 +303,16 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
  * ------------------------------------------------------------------ */
 
 describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', () => {
-  it('dinheiro sem integração bloqueia o carrinho, e removê-lo devolve a mutabilidade', async () => {
+  it('a condição escolhida já bloqueia o carrinho, antes de qualquer forma (pedido do usuário, 2026-09-04)', () => {
+    // `montarStore` seleciona A_VISTA na montagem — é o estado em que a tela
+    // fica assim que o operador escolhe a condição, sem nenhum pagamento.
+    const { store } = montarStore();
+
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().podeMutarCarrinho()).toBe(false);
+  });
+
+  it('dinheiro sem integração bloqueia o carrinho; removê-lo não basta, é o descarte que devolve a mutabilidade', async () => {
     const { store } = montarStore();
 
     await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
@@ -309,7 +320,14 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     store.getState().removerPagamento('pag-1');
 
+    // A forma saiu, mas a condição continua escolhida — e desde 2026-09-04 é
+    // ela, sozinha, que congela a venda.
     expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().podeMutarCarrinho()).toBe(false);
+
+    store.getState().descartarPagamento();
+
+    expect(store.getState().condicaoSelecionada).toBeNull();
     expect(store.getState().podeMutarCarrinho()).toBe(true);
   });
 
@@ -333,6 +351,56 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     expect(avisar).toHaveBeenCalledWith(AVISO_PAGAMENTO_IRREVERSIVEL);
     expect(store.getState().pagamentos).toHaveLength(1);
     expect(store.getState().podeMutarCarrinho()).toBe(false);
+  });
+
+  it('descartarPagamento recusa quando há TEF aprovado — I6 vale para o bloco como para a forma', async () => {
+    const { store, avisar } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-exemplo' });
+
+    store.getState().descartarPagamento();
+
+    expect(avisar).toHaveBeenCalledWith(AVISO_PAGAMENTO_IRREVERSIVEL);
+    expect(store.getState().condicaoSelecionada).not.toBeNull();
+    expect(store.getState().pagamentos).toHaveLength(1);
+  });
+
+  it('descartarPagamento limpa condição, formas, desconto e vales, e audita cada forma removida', async () => {
+    // Sem `linhas`: com a lista de rateio vazia, só a regra "não zera a venda"
+    // fala, e 10,00 sobre um subtotal de 100,00 passa.
+    const { store, invalidarVeredito } = montarStore();
+
+    store.getState().aplicarDescontoCapa('VALOR', 1_000);
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(1_000) });
+
+    store.getState().descartarPagamento();
+
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().descontoCapa).toBeNull();
+    expect(store.getState().valesDevolucao).toEqual([]);
+    expect(tiposDeEvento(store)).toContain('FORMA_PAGAMENTO_REMOVIDA');
+    // `FR-021`/I11: o veredito da 014 valia para a venda daquele instante.
+    expect(invalidarVeredito).toHaveBeenCalled();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Venda sem valor líquido não recebe pagamento (pedido do usuário, 2026-09-04)
+ * ------------------------------------------------------------------ */
+
+describe('pagamentoSlice — venda sem valor a cobrar', () => {
+  it('recusa a forma com o motivo próprio, não com "saldo já coberto"', async () => {
+    const { store, avisar, validarInsercao } = montarStore({ subtotal: 0 });
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(1_000) });
+
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(avisar).toHaveBeenCalledWith(AVISO_VENDA_SEM_VALOR);
+    expect(avisar).not.toHaveBeenCalledWith(AVISO_SALDO_JA_COBERTO);
+    // A recusa é local: o ERP não chega a ser consultado (`FR-020`).
+    expect(validarInsercao).not.toHaveBeenCalled();
   });
 });
 
@@ -406,9 +474,12 @@ describe('pagamentoSlice — roteamento de integração (T021/T022/T023)', () =>
       formaCodigo: CARTAO.codigo,
       valor: 7_000,
     });
-    // Pendente não conta para o total aplicado nem bloqueia o carrinho.
+    // Pendente não conta para o total aplicado. O carrinho, porém, já está
+    // congelado — não por este pagamento, mas pela condição escolhida na
+    // montagem do store (regra de 2026-09-04): um `PENDENTE_INTEGRACAO` na
+    // prática só existe com condição selecionada.
     expect(store.getState().saldo().totalAplicado).toBe(0);
-    expect(store.getState().podeMutarCarrinho()).toBe(true);
+    expect(store.getState().podeMutarCarrinho()).toBe(false);
     expect(tiposDeEvento(store)).not.toContain('FORMA_PAGAMENTO_APLICADA');
 
     store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: undefined });

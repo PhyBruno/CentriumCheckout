@@ -2,16 +2,26 @@ import { Equal } from 'lucide-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { cn } from '@/lib/utils';
+import { resolverDescontoCapa } from '../../domain/pagamento/descontoCapa';
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
+import { totalVenda } from '../../domain/precificacao/linha';
 import { useVendaStore } from '../../stores/vendaStore';
 import { lerCentavosDigitados } from './EntradaPagamento';
 
 type ModoAjuste = 'PERCENTUAL' | 'VALOR';
 
-/** `"5"`, `"5,5"` ou `"5.5"` → `5.5`; entrada inválida vira `null`. */
+/**
+ * `"5"`, `"5,5"` ou `"5.5"` → `5.5`; entrada inválida vira `null`.
+ *
+ * **Uma casa decimal, não duas** (pedido do usuário, 2026-09-04): `"99,9"` é o
+ * formato do produto. A segunda casa não sobrevive ao arredondamento em nenhum
+ * carrinho pequeno — `aplicarPercentual` fecha em centavo inteiro, de modo que
+ * `10,25%` e `10,3%` de R$ 40,00 dão o mesmo valor — e prometia uma precisão
+ * que o resultado nunca teve.
+ */
 function lerPercentualDigitado(texto: string): number | null {
   const normalizado = texto.trim().replace(',', '.');
-  if (normalizado === '' || !/^\d+(\.\d{1,2})?$/.test(normalizado)) {
+  if (normalizado === '' || !/^\d+(\.\d)?$/.test(normalizado)) {
     return null;
   }
   return Number(normalizado);
@@ -93,6 +103,28 @@ export function ControleDescontoCapa(): ReactElement {
    * texto a partir de `entrada` exigiria dividir centavos por 100 aqui dentro —
    * conversão monetária que não pertence a um componente.
    */
+  /**
+   * Equivalente financeiro do que está **no campo agora**, não do que foi
+   * aceito (correção do usuário, 2026-09-04).
+   *
+   * O sintoma relatado: digitar 100% deixava a linha "= R$ …" parada no valor
+   * anterior, porque ela lia `descontoCapa.valorResolvido` do store — e um
+   * desconto recusado nunca chega ao store. O operador via o número antigo
+   * junto do aviso de recusa e não tinha como relacionar os dois.
+   *
+   * Quem converte percentual em reais continua sendo o domínio
+   * (`resolverDescontoCapa`, o mesmo que o slice chama): o componente só
+   * escolhe **qual entrada** mostrar resolvida. Enquanto o texto for um
+   * percentual legível, é o texto; quando não for (campo vazio, "abc"), cai no
+   * valor efetivamente aplicado, que é o que a venda de fato tem.
+   */
+  const subtotal = useVendaStore((estado) => totalVenda(estado.linhas));
+  const percentualDigitado = lerPercentualDigitado(entradaTexto);
+  const equivalenteFinanceiro =
+    percentualDigitado === null
+      ? (descontoCapa?.valorResolvido ?? ZERO_CENTAVOS)
+      : resolverDescontoCapa('PERCENTUAL', percentualDigitado, subtotal);
+
   const [ultimoAplicado, setUltimoAplicado] = useState(descontoCapa);
   if (descontoCapa !== ultimoAplicado) {
     setUltimoAplicado(descontoCapa);
@@ -132,7 +164,7 @@ export function ControleDescontoCapa(): ReactElement {
 
     const percentual = lerPercentualDigitado(bruto);
     if (percentual === null) {
-      gooeyToast.warning('Percentual inválido: use apenas números, com até duas casas decimais.');
+      gooeyToast.warning('Percentual inválido: use apenas números, com até uma casa decimal.');
       return;
     }
     if (percentual === 0) {
@@ -237,14 +269,15 @@ export function ControleDescontoCapa(): ReactElement {
       {modo === 'PERCENTUAL' ? (
         <div className="flex w-full items-center justify-end gap-[5px] leading-none">
           <Equal className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-          {/* É `valorResolvido`, calculado pelo domínio (`resolverDescontoCapa`)
-              e só formatado aqui — o componente nunca converte percentual em
-              reais por conta própria. */}
+          {/* Resolvido pelo domínio (`resolverDescontoCapa`) e só formatado
+              aqui — o componente nunca converte percentual em reais por conta
+              própria. Acompanha o texto digitado, inclusive quando a aplicação
+              é recusada: ver `equivalenteFinanceiro`. */}
           <strong
             className="font-mono text-sm font-bold tabular-nums text-[var(--cc-color-accent-yellow)]"
             data-testid="equivalente-financeiro-desconto-capa"
           >
-            {formatarCentavos(descontoCapa?.valorResolvido ?? ZERO_CENTAVOS)}
+            {formatarCentavos(equivalenteFinanceiro)}
           </strong>
           <span className="text-xs font-medium text-muted-foreground">sobre o subtotal</span>
         </div>
