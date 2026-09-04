@@ -219,9 +219,18 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       switch (resultado.estado) {
         case 'sucesso':
           // Limpeza na mesma transação de UI, e só aqui (`FR-012`): carrinho +
-          // cache de produto (`useEncerrarVenda`, feature 003), auditoria
-          // (feature 001) e identidade da venda (feature 004).
+          // cache de produto (`useEncerrarVenda`, feature 003), pagamento
+          // (feature 008), auditoria (feature 001) e identidade da venda
+          // (feature 004).
+          //
+          // `limparPagamentos()` **faltava** aqui, e a ausência era visível:
+          // com o carrinho zerado e o desconto de capa ainda de pé, o bloco de
+          // totais passava a calcular `0 − desconto` e exibia "Total a pagar"
+          // **negativo** logo depois de finalizar (correção do usuário,
+          // 2026-09-04). Pior que o sintoma era o silencioso: condição, formas
+          // aplicadas e vales de devolução sobreviviam para a venda seguinte.
           encerrarVenda();
+          useVendaStore.getState().limparPagamentos();
           useVendaStore.getState().descartarAuditoria();
           useVendaStore.getState().resetarIdentidadeVenda();
           // Abre a próxima sessão no mesmo ponto do descarte. Sem isto o

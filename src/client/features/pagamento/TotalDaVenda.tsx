@@ -30,14 +30,13 @@ import { useVendaStore } from '../../stores/vendaStore';
  * enquanto houver saldo, "Troco" com o troco depois de coberto (`FR-012`: só
  * dinheiro gera troco, e é `calcularSaldo` quem decide isso).
  *
- * **A cor `$danger` do nó `p58ay` é só do "Faltante".** A implementação
- * original a aplicava aos dois desfechos, com o argumento de que ambos pedem
- * ação do operador. Está errado, e o usuário corrigiu (2026-09-04): vermelho
- * nesta tela significa **venda que ainda não fecha** — é o mesmo sinal do
- * "Faltante R$ …" da lista de pagamentos aplicados. Troco não é pendência de
- * cobrança: é o desfecho normal de um pagamento em dinheiro, com a venda já
- * coberta. Pintá-lo de vermelho gastava o único sinal de alarme da tela no caso
- * em que está tudo certo. O troco usa o mesmo tratamento de "Recebido".
+ * **Três tons, um por significado** (correções do usuário, 2026-09-04):
+ * vermelho (`$danger`, o do nó `p58ay`) **só** no "Faltante", porque nesta tela
+ * ele significa venda que ainda não fecha; verde (`$up`) no troco **maior que
+ * zero**, que é dinheiro a devolver — desfecho que deu certo e ainda pede um
+ * gesto; neutro no resto, inclusive no troco zerado. A implementação original
+ * pintava os dois desfechos de vermelho, gastando o único sinal de alarme da
+ * tela justamente no caso em que está tudo certo.
  */
 export function TotalDaVenda(): ReactElement {
   // Um seletor por campo, em vez de um `estado.saldo()` só: `saldo()` monta um
@@ -75,33 +74,51 @@ export function TotalDaVenda(): ReactElement {
       </p>
 
       <div className="flex w-full items-start gap-xs">
-        <MetricaPagamento
-          rotulo="Recebido"
-          valor={totalAplicado}
-          testId="metrica-recebido"
-          destacado={false}
-        />
+        <MetricaPagamento rotulo="Recebido" valor={totalAplicado} testId="metrica-recebido" />
         {emAberto ? (
           <MetricaPagamento
             rotulo="Faltante"
             valor={saldoRestante}
             testId="metrica-faltante"
-            destacado
+            tom="alerta"
           />
         ) : (
-          <MetricaPagamento rotulo="Troco" valor={troco} testId="metrica-troco" destacado={false} />
+          <MetricaPagamento
+            rotulo="Troco"
+            valor={troco}
+            testId="metrica-troco"
+            // Verde **só quando há troco de verdade**: é dinheiro na gaveta a
+            // devolver, e o verde marca o desfecho que deu certo. Zero volta ao
+            // neutro — pintar de verde um troco inexistente anunciaria uma ação
+            // que não existe (correção do usuário, 2026-09-04).
+            tom={troco > 0 ? 'sucesso' : 'neutro'}
+          />
         )}
       </div>
     </section>
   );
 }
 
+/**
+ * - `neutro` — informação, sem ação pendente (o padrão).
+ * - `alerta` — `$danger` do nó `p58ay`, reservado ao saldo que impede a venda
+ *   de fechar.
+ * - `sucesso` — `$up`, o verde da família semântica já usada nos modais de
+ *   desfecho aprovado.
+ */
+type TomMetrica = 'neutro' | 'alerta' | 'sucesso';
+
+const CLASSE_POR_TOM: Record<TomMetrica, string> = {
+  neutro: 'text-[var(--cc-color-on-dark-strong)]',
+  alerta: 'text-destructive',
+  sucesso: 'text-[var(--cc-color-up)]',
+};
+
 interface MetricaPagamentoProps {
   readonly rotulo: string;
   readonly valor: Centavos;
   readonly testId: string;
-  /** `$danger` do nó `p58ay` — reservado ao saldo que impede a venda de fechar. */
-  readonly destacado: boolean;
+  readonly tom?: TomMetrica;
 }
 
 /** Um dos dois cartões de "Métricas pagamento" (nós `C4iSu`/`pysG9`). */
@@ -109,7 +126,7 @@ function MetricaPagamento({
   rotulo,
   valor,
   testId,
-  destacado,
+  tom = 'neutro',
 }: MetricaPagamentoProps): ReactElement {
   return (
     <div
@@ -120,12 +137,7 @@ function MetricaPagamento({
           bloco (nós `Hk9A7`/`I8ZFCW`) — é o que faz o valor logo abaixo
           dominar a leitura. */}
       <span className="text-sm font-normal text-[var(--cc-color-on-dark-muted)]">{rotulo}</span>
-      <span
-        className={cn(
-          'font-mono text-[15px] font-semibold tabular-nums',
-          destacado ? 'text-destructive' : 'text-[var(--cc-color-on-dark-strong)]',
-        )}
-      >
+      <span className={cn('font-mono text-[15px] font-semibold tabular-nums', CLASSE_POR_TOM[tom])}>
         {formatarCentavos(valor)}
       </span>
     </div>

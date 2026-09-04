@@ -1,10 +1,12 @@
-import { Ticket, TicketCheck, X } from 'lucide-react';
+import { Ticket, TicketCheck, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
+import { formatarCentavos } from '../../domain/precificacao/dinheiro';
+import type { ExcedenteDeVale } from '../../stores/slices/pagamentoSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 
 /**
@@ -28,14 +30,20 @@ import { useVendaStore } from '../../stores/vendaStore';
  * um campo só. Os modais existentes (960/1120px) são tabelas de resultado, e
  * esticar um campo de código por 960px produziria uma faixa vazia.
  *
- * **Elegibilidade (AD-048/`FR-010`)**: `fpgUtiCar` vazio significa **elegível**.
- * Forma inelegível não deixa o controle inerte — ele fica bloqueado
- * *explicando o motivo* (`lib/bloqueio.ts`), porque `disabled` nativo não emite
- * evento e o operador ficaria sem saber por que o clique não fez nada.
+ * **Quando esta janela existe** (AD-149/`FR-008`): só quando a forma escolhida
+ * é a de vale devolução (`FpgUtiCar = 'VDV'`). Quem decide é quem a monta
+ * (`PainelPagamentoETotais`), então aqui não há estado de "forma inelegível" —
+ * a janela não chega a abrir para uma forma comum.
  *
- * **Nenhuma rede aqui**: `aplicarValeDevolucao` é a única action assíncrona do
- * slice e chama `ValidaTicketDevolucao` exatamente uma vez por vale
- * (`FR-009`/`PAY-06`). O componente aciona a action e lê o resultado no estado.
+ * **Duas etapas, um só ida ao ERP** (`FR-026`): validado o ticket, se ele valer
+ * mais do que falta pagar, o corpo troca para um painel de confirmação com os
+ * três números (vale, faltante, perda) e o rodapé passa a oferecer "Aplicar
+ * mesmo assim". A espera é feita com um `Promise` resolvido por clique, para o
+ * slice decidir tudo numa passagem — sem revalidar o ticket depois da resposta.
+ *
+ * **Nenhuma rede aqui**: `aplicarValeDevolucao` chama `ValidaTicketDevolucao`
+ * exatamente uma vez por vale (`FR-009`/`PAY-06`). O componente aciona a action,
+ * responde à pergunta do excedente e lê o desfecho.
  */
 export interface ModalValeDevolucaoProps {
   readonly aberto: boolean;
@@ -51,6 +59,9 @@ export function ModalValeDevolucao({
 }: ModalValeDevolucaoProps): ReactElement | null {
   const [codigo, setCodigo] = useState('');
   const [enviando, setEnviando] = useState(false);
+  /** `null` = sem pergunta pendente; preenchido = painel de confirmação em tela. */
+  const [excedente, setExcedente] = useState<ExcedenteDeVale | null>(null);
+  const resolverExcedente = useRef<((confirmado: boolean) => void) | null>(null);
   const refDialogo = useRef<HTMLDivElement>(null);
 
   const aplicarValeDevolucao = useVendaStore((estado) => estado.aplicarValeDevolucao);
@@ -90,7 +101,7 @@ export function ModalValeDevolucao({
   }
 
   const codigoLimpo = codigo.trim();
-  const motivoBloqueio = motivoBloqueioAplicacao(codigoLimpo, enviando);
+  const motivoBloqueio = excedente === null ? motivoBloqueioAplicacao(codigoLimpo, enviando) : null;
 
   /**
    * Fecha **só quando o pagamento entrou**. Se o ERP recusar o ticket (vencido,
@@ -102,15 +113,37 @@ export function ModalValeDevolucao({
     setEnviando(true);
     let aplicado = false;
     try {
-      aplicado = await aplicarValeDevolucao(forma, codigoLimpo);
+      aplicado = await aplicarValeDevolucao(forma, codigoLimpo, pedirConfirmacaoDoExcedente);
     } finally {
       setEnviando(false);
+      setExcedente(null);
+      resolverExcedente.current = null;
     }
     if (aplicado) {
       onFechar();
     } else {
       setCodigo('');
     }
+  }
+
+  /**
+   * Mostra o painel de confirmação e **suspende** a aplicação até o operador
+   * responder. O `Promise` fica pendurado num `ref` porque a resposta chega por
+   * clique, num render posterior: é o padrão de "confirm como promessa", e é o
+   * que permite ao slice manter a decisão numa única passagem — com o ticket já
+   * validado, sem uma segunda ida ao ERP.
+   */
+  function pedirConfirmacaoDoExcedente(dados: ExcedenteDeVale): Promise<boolean> {
+    setExcedente(dados);
+    return new Promise<boolean>((resolve) => {
+      resolverExcedente.current = resolve;
+    });
+  }
+
+  function responderExcedente(confirmado: boolean): void {
+    resolverExcedente.current?.(confirmado);
+    resolverExcedente.current = null;
+    setExcedente(null);
   }
 
   const confirmar = acaoBloqueavel(motivoBloqueio, () => {
@@ -217,9 +250,50 @@ export function ModalValeDevolucao({
               }}
             />
           </label>
-          <p className="text-sm font-medium text-muted-foreground">
-            O valor do vale é validado no ERP e abatido desta forma de pagamento.
-          </p>
+          {excedente === null ? (
+            <p className="text-sm font-medium text-muted-foreground">
+              O valor do vale é validado no ERP e abatido desta forma de pagamento.
+            </p>
+          ) : (
+            /* `FR-026`. O painel diz os três números — o que o vale vale, o que
+               falta pagar e o que se perde — porque "não gera troco" sozinho não
+               deixa o operador medir a consequência antes de decidir por um
+               cliente que está na frente dele. */
+            <div
+              className="flex flex-col gap-xs rounded-lg bg-[var(--cc-color-warning-soft)] px-sm py-sm"
+              data-testid="confirmar-excedente-vale"
+              role="alert"
+            >
+              <div className="flex items-start gap-xs">
+                <TriangleAlert
+                  className="mt-[2px] size-4.5 shrink-0 text-[var(--cc-color-accent-yellow)]"
+                  aria-hidden="true"
+                />
+                <p className="text-base font-semibold text-foreground">
+                  Vale devolução não gera troco.
+                </p>
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                O vale é de{' '}
+                <strong className="font-mono tabular-nums text-foreground">
+                  {formatarCentavos(excedente.valorTicket)}
+                </strong>{' '}
+                e faltam{' '}
+                <strong className="font-mono tabular-nums text-foreground">
+                  {formatarCentavos(excedente.saldoRestante)}
+                </strong>{' '}
+                nesta venda. A diferença de{' '}
+                <strong
+                  className="font-mono tabular-nums text-destructive"
+                  data-testid="excedente-perdido"
+                >
+                  {formatarCentavos(excedente.excedente)}
+                </strong>{' '}
+                será perdida: o ERP baixa o ticket inteiro no faturamento, e não há devolução do que
+                sobra.
+              </p>
+            </div>
+          )}
         </div>
 
         <footer className="flex h-[60px] shrink-0 items-center justify-end gap-[10px] border-t border-border px-lg">
@@ -228,21 +302,46 @@ export function ModalValeDevolucao({
             variant="secondary"
             size="sm"
             className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-            onClick={onFechar}
+            data-testid="cancelar-vale-devolucao"
+            // Com a pergunta do excedente em tela, "Cancelar" responde **não** e
+            // devolve o operador ao campo, em vez de fechar a janela: ele acabou
+            // de digitar o código e a saída provável é tentar outro, não desistir
+            // do vale.
+            onClick={() => {
+              if (excedente === null) {
+                onFechar();
+              } else {
+                responderExcedente(false);
+              }
+            }}
           >
             <X className="size-3.5" aria-hidden="true" />
             Cancelar
           </Button>
-          <Button
-            type="button"
-            className="h-11 w-[156px] gap-xs rounded-full text-md font-bold"
-            data-testid="confirmar-vale-devolucao"
-            {...atributosDeBloqueio(motivoBloqueio)}
-            onClick={confirmar}
-          >
-            <TicketCheck className="size-4.5" aria-hidden="true" />
-            Aplicar vale
-          </Button>
+          {excedente === null ? (
+            <Button
+              type="button"
+              className="h-11 w-[156px] gap-xs rounded-full text-md font-bold"
+              data-testid="confirmar-vale-devolucao"
+              {...atributosDeBloqueio(motivoBloqueio)}
+              onClick={confirmar}
+            >
+              <TicketCheck className="size-4.5" aria-hidden="true" />
+              Aplicar vale
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="h-11 gap-xs rounded-full px-base text-md font-bold"
+              data-testid="confirmar-excedente-vale-devolucao"
+              onClick={() => {
+                responderExcedente(true);
+              }}
+            >
+              <TicketCheck className="size-4.5" aria-hidden="true" />
+              Aplicar mesmo assim
+            </Button>
+          )}
         </footer>
       </div>
     </div>

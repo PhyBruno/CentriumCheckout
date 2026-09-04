@@ -34,7 +34,7 @@ import {
   type SaldoPagamento,
 } from '../../domain/pagamento/saldoPagamento';
 import { ehFormaDeValeDevolucao, type ResultadoTicket } from '../../domain/pagamento/valeDevolucao';
-import { ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
+import { subtrair, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import type { FormaDePagamentoRetrato } from '../../domain/venda/montarRetratoVenda';
 
 /**
@@ -141,6 +141,16 @@ export interface DadosIntegracao {
  * Tipos próprios do slice
  * ------------------------------------------------------------------ */
 
+/**
+ * Quanto de um vale devolução se perderia por não haver troco (`FR-026`).
+ * Entregue à UI para que a confirmação mostre números, não uma frase genérica.
+ */
+export interface ExcedenteDeVale {
+  readonly valorTicket: Centavos;
+  readonly saldoRestante: Centavos;
+  readonly excedente: Centavos;
+}
+
 /** Vale consumido **uma única vez**, na aplicação (`data-model.md` §2). */
 export interface ValeDevolucaoAplicado {
   readonly codigo: string;
@@ -220,8 +230,17 @@ export interface PagamentoSlice {
   /**
    * Valida o ticket no ERP e, se válido, **insere o pagamento** de valor igual
    * ao do vale. Devolve `true` quando o pagamento entrou.
+   *
+   * `confirmarExcedente` é consultado **só** quando o ticket vale mais do que
+   * falta pagar (`FR-026`). Ausente, o excedente é tratado como não confirmado
+   * e nada é aplicado — o padrão seguro para qualquer chamador que ainda não
+   * saiba perguntar.
    */
-  aplicarValeDevolucao(forma: FormaPagamento, codigo: string): Promise<boolean>;
+  aplicarValeDevolucao(
+    forma: FormaPagamento,
+    codigo: string,
+    confirmarExcedente?: (excedente: ExcedenteDeVale) => Promise<boolean>,
+  ): Promise<boolean>;
   limparPagamentos(): void;
   /** Feature 006 — importação de DAV/rascunho, nunca gesto do operador. */
   importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;
@@ -656,7 +675,7 @@ export function criarPagamentoSlice(
        * vezes na venda, o ERP baixaria um só, e a nota fecharia com um valor
        * que o cliente nunca pagou (verificado na KB, 2026-09-04).
        */
-      aplicarValeDevolucao: async (forma, codigo) => {
+      aplicarValeDevolucao: async (forma, codigo, confirmarExcedente) => {
         if (!ehFormaDeValeDevolucao(forma)) {
           deps.avisar?.(AVISO_VALE_FORMA_ERRADA);
           return false;
@@ -694,10 +713,29 @@ export function criarPagamentoSlice(
           return false;
         }
 
-        // O valor é o do ticket, não um valor digitado: `DevValTot` é baixado
-        // inteiro pelo ERP, não existe uso parcial. Se ele não couber no saldo,
-        // `FR-024` recusa dentro de `aplicarNucleo` — e é o desfecho certo:
-        // consumir um ticket de 25,00 numa venda de 10,00 perderia os 15,00.
+        // `FR-026`: o ticket pode valer mais do que falta pagar. Não dá para
+        // recusar (o cliente ficaria sem usar o vale) nem para aplicar calado
+        // (o excedente **não vira troco** — o ERP baixa `DevValTot` inteiro na
+        // ação `'emitir'` e a diferença se perde). O operador decide, com o
+        // valor da perda na frente. Recusar a confirmação não consome nada: o
+        // ticket só muda de situação no faturamento.
+        const excedente = subtrair(resultado.valor, saldoAtual().saldoRestante);
+        if (excedente > ZERO_CENTAVOS) {
+          const confirmado = await (confirmarExcedente?.({
+            valorTicket: resultado.valor,
+            saldoRestante: saldoAtual().saldoRestante,
+            excedente,
+          }) ?? Promise.resolve(false));
+
+          if (!confirmado) {
+            return false;
+          }
+        }
+
+        // O valor é o do ticket, não um valor digitado. `derivarValores` limita
+        // `valorAplicado` ao saldo, e é o correto: a nota fecha pelo total dela
+        // (`Σ FormaValor` nunca excede), enquanto o ticket é consumido por
+        // inteiro no ERP — que é exatamente a perda que a confirmação anunciou.
         return aplicarNucleo(forma, resultado.valor, 'MANUAL', codigoLimpo);
       },
 

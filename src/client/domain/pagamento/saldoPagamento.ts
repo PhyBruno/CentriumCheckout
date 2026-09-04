@@ -8,6 +8,7 @@
 
 import { centavos, somar, subtrair, ZERO_CENTAVOS, type Centavos } from '../precificacao/dinheiro';
 import { geraTroco, type FormaPagamento, type MeioPagtoNFe } from './formaPagamento';
+import { ehFormaDeValeDevolucao } from './valeDevolucao';
 import type { IntegracaoPagamento } from './roteamentoIntegracao';
 
 /** Máquina de estados de `PagamentoAplicado` — `data-model.md` §4. */
@@ -72,7 +73,11 @@ export function calcularSaldo(
   descontoCapa: Centavos,
   pagamentos: readonly PagamentoAplicado[],
 ): SaldoPagamento {
-  const totalLiquido = subtrair(subtotalCarrinho, descontoCapa);
+  // Nunca negativo. I8 já garante `desconto <= subtotal` no momento em que o
+  // desconto é aplicado, mas o subtotal cai depois — ao esvaziar o carrinho no
+  // fim da venda, por exemplo — e um desconto sobrevivente produziria um "Total
+  // a pagar" negativo em tela. Zero é a leitura correta: não há o que cobrar.
+  const totalLiquido = centavos(Math.max(0, subtrair(subtotalCarrinho, descontoCapa)));
   const aprovados = pagamentos.filter((pagamento) => pagamento.status === 'APROVADO');
   const totalAplicado = aprovados.reduce<Centavos>(
     (acumulado, pagamento) => somar(acumulado, pagamento.valorAplicado),
@@ -133,7 +138,18 @@ export function podeAplicarForma(
     return { ok: false, motivo: 'SALDO_JA_COBERTO' };
   }
 
-  if (valorInformado !== undefined && !geraTroco(forma) && valorInformado > saldoRestante) {
+  // O vale devolução é a exceção: o valor não foi digitado, é o do ticket, e o
+  // ERP baixa `DevValTot` inteiro na hora de faturar — recusar aqui deixaria o
+  // operador sem nenhuma saída para um vale maior que a compra. Ele **pode**
+  // entrar, com a diferença perdida, desde que o operador confirme isso
+  // explicitamente; a confirmação é responsabilidade de `aplicarValeDevolucao`,
+  // não desta função pura (`FR-024`/`FR-026`).
+  if (
+    valorInformado !== undefined &&
+    !geraTroco(forma) &&
+    !ehFormaDeValeDevolucao(forma) &&
+    valorInformado > saldoRestante
+  ) {
     return { ok: false, motivo: 'VALOR_ACIMA_DO_SALDO' };
   }
 

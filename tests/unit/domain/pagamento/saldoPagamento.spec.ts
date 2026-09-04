@@ -42,6 +42,15 @@ describe('derivarValores — única fonte de valorAplicado/valorRecebido (data-m
 });
 
 describe('calcularSaldo — algoritmo de data-model.md §6', () => {
+  it('totalLiquido nunca é negativo — carrinho esvaziado com desconto de pé (correção 2026-09-04)', () => {
+    // É o estado do instante seguinte à finalização, antes de o desconto ser
+    // limpo: sem o piso em zero, "Total a pagar" exibia um valor negativo.
+    const saldo = calcularSaldo(emCentavos(0), emCentavos(200), []);
+
+    expect(saldo.totalLiquido).toBe(0);
+    expect(saldo.saldoRestante).toBe(0);
+  });
+
   it('aplica o desconto de capa antes de comparar com os pagamentos', () => {
     const saldo = calcularSaldo(emCentavos(10000), emCentavos(2000), []);
 
@@ -174,6 +183,17 @@ describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
       [],
       emCentavos(5000),
       emCentavos(20000),
+    );
+
+    expect(resultado).toEqual({ ok: true });
+  });
+
+  it('a forma de vale devolução é isenta — o excedente dela é decidido por confirmação (FR-026)', () => {
+    const resultado = podeAplicarForma(
+      formaDe({ meioPagtoNFe: 'Outros', fpgUtiCar: 'VDV' }),
+      [],
+      emCentavos(5000),
+      emCentavos(15000),
     );
 
     expect(resultado).toEqual({ ok: true });

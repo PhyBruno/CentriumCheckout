@@ -753,16 +753,57 @@ describe('pagamentoSlice — vale devolução como forma de pagamento (VDV)', ()
     expect(avisar).toHaveBeenCalledWith(AVISO_VALE_FORMA_ERRADA);
   });
 
-  it('ticket maior que o saldo é recusado — o ERP baixa DevValTot inteiro (FR-024)', async () => {
-    const { store, validarTicket, avisar } = montarStore();
+  it('ticket maior que o saldo pergunta antes; recusada a confirmação, nada é aplicado (FR-026)', async () => {
+    const { store, validarTicket } = montarStore();
+    validarTicket.mockResolvedValue({ valido: true, valor: centavos(15_000) });
+    const confirmar = vi.fn(async () => false);
+
+    const aplicado = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE, confirmar);
+
+    expect(aplicado).toBe(false);
+    expect(confirmar).toHaveBeenCalledWith({
+      valorTicket: 15_000,
+      saldoRestante: 10_000,
+      excedente: 5_000,
+    });
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().valesDevolucao).toEqual([]);
+  });
+
+  it('confirmado o excedente, aplica limitado ao saldo — a nota fecha e o ticket se perde (FR-026)', async () => {
+    const { store, validarTicket } = montarStore();
+    validarTicket.mockResolvedValue({ valido: true, valor: centavos(15_000) });
+    const confirmar = vi.fn(async () => true);
+
+    const aplicado = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE, confirmar);
+
+    expect(aplicado).toBe(true);
+    // `Σ FormaValor` nunca ultrapassa o total da nota, mesmo com o ticket maior.
+    expect(store.getState().pagamentos[0]?.valorAplicado).toBe(10_000);
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+    // Vale devolução não gera troco (`FR-012`): os 50,00 excedentes somem.
+    expect(store.getState().saldo().troco).toBe(0);
+  });
+
+  it('sem callback de confirmação, o excedente não é aplicado — o padrão é seguro', async () => {
+    const { store, validarTicket } = montarStore();
     validarTicket.mockResolvedValue({ valido: true, valor: centavos(15_000) });
 
     const aplicado = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
 
     expect(aplicado).toBe(false);
     expect(store.getState().pagamentos).toEqual([]);
-    expect(store.getState().valesDevolucao).toEqual([]);
-    expect(avisar).toHaveBeenCalledWith(AVISO_VALOR_ACIMA_DO_SALDO);
+  });
+
+  it('ticket que cabe no saldo não pergunta nada', async () => {
+    const { store, validarTicket } = montarStore();
+    validarTicket.mockResolvedValue({ valido: true, valor: centavos(2_550) });
+    const confirmar = vi.fn(async () => true);
+
+    await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE, confirmar);
+
+    expect(confirmar).not.toHaveBeenCalled();
+    expect(store.getState().pagamentos).toHaveLength(1);
   });
 
   it('ERP indisponível avisa e não muta nada, sem evento de auditoria', async () => {
