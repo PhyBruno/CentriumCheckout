@@ -53,7 +53,7 @@ export function PainelPagamentoETotais(): ReactElement {
 
   return (
     <aside
-      className="flex h-full w-[392px] shrink-0 flex-col gap-base rounded-3xl border border-border bg-card p-base"
+      className="flex h-full w-[392px] shrink-0 flex-col gap-xs rounded-3xl border border-border bg-card p-base"
       data-testid="painel-pagamento-totais"
     >
       {/* Nó `y3cr1` "Cabeçalho pagamento": ícone `wallet-cards` de 20px + título
@@ -83,8 +83,28 @@ export function PainelPagamentoETotais(): ReactElement {
           no cartão de pagamento). A causa daquele estouro já foi removida em
           `ControleDescontoCapa`; esta trava impede que o próximo bloco a crescer
           o traga de volta. A coluna nunca rola na horizontal por desenho: todos
-          os blocos são `w-full` com conteúdo encolhível. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-base overflow-x-hidden overflow-y-auto">
+          os blocos são `w-full` com conteúdo encolhível.
+
+          O corte horizontal também comia o anel de `focus-visible` dos
+          comboboxes, que se desenha 3px **para fora** da borda — o realce
+          aparecia recortado nas laterais. `-mx-1 px-1` devolve essa folga por
+          dentro: a coluna passa a ser 8px mais larga que a área útil do cartão
+          (avançando sob o `p-base` do `aside`, que tem 16px de sobra) e recupera
+          os mesmos 8px como padding, então o conteúdo continua com a largura de
+          antes e o anel cabe inteiro na região não recortada.
+
+          `overflow-clip-margin` seria o recurso natural aqui (como no
+          colapsável do card de cliente, AD-134) e **não funciona neste caso**:
+          pelo CSS, `overflow-x: clip` ao lado de um `overflow-y` que rola tem
+          valor usado `hidden`, e a margem de clipe só vale para `clip` de
+          verdade — verificado no navegador, o computado volta `hidden`.
+
+          `gap-xs`, não `gap-base`: no Pencil os blocos do cartão distam ~8px
+          (`oGiPa` y=104 → `Jup0R` y=178 → `uZUQX` y=274 → `J3Y1L` y=350,
+          descontadas as alturas), e os 16px anteriores esticavam a coluna a
+          ponto de o operador perder a relação entre condição, desconto e
+          forma. */}
+      <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-xs overflow-x-hidden overflow-y-auto px-1">
         <SeletorCondicaoPagamento />
         <ControleDescontoCapa />
         <SeletorFormaPagamento
@@ -98,7 +118,7 @@ export function PainelPagamentoETotais(): ReactElement {
       {/* Total e ações finais ficam fixos no pé do cartão, fora da rolagem: no
           desenho eles são o fecho da coluna, e são a informação que o operador
           confere no instante de cobrar. */}
-      <div className="flex shrink-0 flex-col gap-base">
+      <div className="flex shrink-0 flex-col gap-sm">
         <TotalDaVenda />
         <AcoesFinaisVenda />
       </div>

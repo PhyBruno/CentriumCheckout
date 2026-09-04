@@ -99,11 +99,67 @@ export function ComboboxPagamento({
     trigger.current?.focus();
   }
 
+  /**
+   * Move a seleção **sem abrir a lista** (pedido do usuário, 2026-09-04).
+   *
+   * O caixa percorre condição e forma com as setas, no ritmo do teclado: abrir
+   * o painel a cada tecla forçaria um Enter ou um clique por escolha e mataria
+   * justamente o ganho.
+   *
+   * Regras, na ordem em que o operador as encontra:
+   *
+   * - **Sem nada escolhido, só para baixo.** `ArrowDown` pega a primeira opção;
+   *   `ArrowUp` não faz nada, porque não existe "anterior à primeira" — subir a
+   *   partir do vazio para o fim da lista escolheria a última condição sem que
+   *   o operador tivesse pedido nenhuma.
+   * - **Com algo escolhido, os dois sentidos**, um passo por tecla.
+   * - **Sem circular nas pontas.** Chegar ao fim e continuar apertando mantém a
+   *   escolha atual, em vez de voltar ao começo: numa lista curta o retorno
+   *   silencioso ao topo troca a forma escolhida sem o operador perceber.
+   * - **Opção bloqueada é pulada, não parada.** `formaDisponivel` recusa, por
+   *   exemplo, PIX sem integração (`FR-002`/`FR-003`); a seta atravessa essas e
+   *   vai para a próxima escolhível — parar numa opção que o clique recusaria
+   *   deixaria o teclado preso num item que o mouse não consegue selecionar.
+   */
+  function navegarPorSeta(direcao: 1 | -1): void {
+    const escolhiveis = opcoes.filter((opcao) => opcao.bloqueio === null);
+    const atual = escolhiveis.findIndex((opcao) => opcao.selecionada);
+
+    if (atual === -1) {
+      if (direcao === 1) {
+        escolhiveis[0]?.aoEscolher();
+      }
+      return;
+    }
+
+    escolhiveis[atual + direcao]?.aoEscolher();
+  }
+
   function aoTeclar(evento: KeyboardEvent<HTMLDivElement>): void {
     if (evento.key === 'Escape' && aberto) {
       evento.preventDefault();
       fecharEDevolverFoco();
+      return;
     }
+
+    if (evento.key !== 'ArrowDown' && evento.key !== 'ArrowUp') {
+      return;
+    }
+
+    // Com a lista aberta as setas pertencem a ela, não ao trigger: mudar a
+    // seleção por baixo enquanto o operador lê as opções moveria o realce sem
+    // que ele tivesse escolhido nada.
+    //
+    // Combobox bloqueado ignora a tecla **em silêncio**, sem o toast de
+    // `acaoBloqueavel`: uma seta segurada dispara `keydown` em repetição e
+    // encheria a tela de avisos idênticos. O motivo continua sendo dito no
+    // clique, que é gesto único.
+    if (aberto || bloqueio !== null) {
+      return;
+    }
+
+    evento.preventDefault();
+    navegarPorSeta(evento.key === 'ArrowDown' ? 1 : -1);
   }
 
   return (
