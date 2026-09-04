@@ -1,5 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import { useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -68,6 +68,39 @@ export function ListaPagamentosAplicados(): ReactElement | null {
 
   const cobrancaPix = usePixPendente();
 
+  /**
+   * A lista salta para a forma recém-inserida (pedido do usuário, 2026-09-04).
+   *
+   * A rolagem agora mora **dentro** desta lista, não na coluna do cartão: numa
+   * venda com muitas formas, a última inserida nasceria fora da área visível, e
+   * o operador não teria confirmação nenhuma de que a inserção aconteceu — o
+   * campo de valor apenas se esvaziaria. O gesto que ele faria à mão (rolar até
+   * o fim) é o que o efeito faz por ele.
+   *
+   * A dependência é o **id da última forma**, não o tamanho do array nem o array
+   * inteiro: desde AD-163 remover não tira o item da lista, só o marca
+   * `EXCLUIDO`, então o comprimento não distingue mais inserção de exclusão, e
+   * `pagamentos` muda de referência a cada mutação do slice (confirmação de PIX,
+   * recusa de TEF) — rolar em todas elas arrancaria a lista de onde o operador a
+   * deixou para reler uma forma anterior. Só uma forma nova no fim muda esse id.
+   *
+   * `scrollTop = scrollHeight` em vez de `scrollIntoView` no último `<li>`:
+   * `scrollIntoView` rola **todo** ancestral rolável até o elemento, incluindo a
+   * coluna do cartão, que só rola em tela baixa demais — e nesse caso ela
+   * arrastaria junto o seletor de condição e o campo de valor para fora da vista.
+   * Aqui o alvo é explicitamente esta lista, e nada mais se move.
+   */
+  const listaRef = useRef<HTMLUListElement>(null);
+  const idUltimoPagamento = pagamentos.at(-1)?.idPagamento ?? null;
+
+  useEffect(() => {
+    const lista = listaRef.current;
+    if (lista === null) {
+      return;
+    }
+    lista.scrollTop = lista.scrollHeight;
+  }, [idUltimoPagamento]);
+
   if (pagamentos.length === 0) {
     return null;
   }
@@ -98,8 +131,8 @@ export function ListaPagamentosAplicados(): ReactElement | null {
   }
 
   return (
-    <section className="flex w-full flex-col gap-xxs" data-testid="pagamentos-aplicados">
-      <header className="flex w-full items-center justify-between">
+    <section className="flex min-h-0 w-full flex-col gap-xxs" data-testid="pagamentos-aplicados">
+      <header className="flex w-full shrink-0 items-center justify-between">
         <h3 className="text-base font-semibold text-foreground">Pagamentos aplicados</h3>
         {saldoRestante > 0 ? (
           <span
@@ -111,7 +144,31 @@ export function ListaPagamentosAplicados(): ReactElement | null {
         ) : null}
       </header>
 
-      <ul className="flex w-full flex-col gap-xxs">
+      {/* **Só esta lista rola** (pedido do usuário, 2026-09-04). Antes a barra
+          nascia na coluna inteira do cartão: crescer a lista empurrava condição,
+          desconto e forma para cima e para fora da vista, e o operador rolava um
+          bloco de controles para chegar a uma lista logo abaixo deles. Agora a
+          lista é o único bloco da coluna com `min-h-0`, então é ela que o flex
+          escolhe para absorver a falta de espaço — encolhe até a altura
+          disponível e ganha a barra por dentro, com todo o resto do cartão
+          parado.
+
+          `overflow-x-hidden` junto do `overflow-y-auto`, nunca sozinho, pelo
+          mesmo motivo já anotado na coluna do cartão (`PainelPagamentoETotais`):
+          pelo CSS, `overflow-x: visible` ao lado de um `overflow-y` não-visível
+          é computado como `auto`, e a primeira faixa a estourar 1px criaria uma
+          barra horizontal aqui dentro.
+
+          `-mx-1 px-1` devolve, por dentro, a folga que esse corte tirava do anel
+          de `focus-visible` do botão de remover — ele se desenha 3px para fora
+          da borda e apareceria recortado nas laterais. A lista fica 8px mais
+          larga que a área útil (avançando sob o `p-base` do cartão) e recupera
+          os mesmos 8px como padding: as faixas mantêm a largura de antes e
+          continuam alinhadas com os blocos de cima. */}
+      <ul
+        ref={listaRef}
+        className="-mx-1 flex min-h-0 flex-col gap-xxs overflow-x-hidden overflow-y-auto px-1"
+      >
         {pagamentos.map((pagamento) => (
           <ItemPagamentoAplicado
             key={pagamento.idPagamento}
@@ -277,7 +334,10 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
   return (
     <li
       className={cn(
-        'flex h-[34px] w-full items-center justify-between rounded-lg bg-muted px-sm',
+        // `shrink-0`: a lista virou área rolável e encolhe quando o cartão
+        // aperta. Sem isto o flex tiraria a altura das próprias faixas — as 34px
+        // do desenho viram 20 e nada rola, porque o conteúdo "cabe" espremido.
+        'flex h-[34px] w-full shrink-0 items-center justify-between rounded-lg bg-muted px-sm',
         excluido && 'text-muted-foreground line-through',
       )}
       data-testid="pagamento-aplicado"

@@ -225,11 +225,19 @@ export function PainelPagamentoETotais(): ReactElement {
         <BotaoLimparPagamento />
       </header>
 
-      {/* A área central rola: o cartão tem altura fixa (a da tela) e a lista de
-          pagamentos aplicados é a única parte que cresce sem limite. Sem isto,
-          uma venda com muitas formas empurraria o bloco de total e o botão de
-          finalizar para fora do cartão — e o botão de finalizar é justamente o
-          que não pode sumir.
+      {/* Na prática esta coluna **não rola**: quem rola é a lista de pagamentos
+          aplicados, por dentro (pedido do usuário, 2026-09-04). O cartão tem
+          altura fixa (a da tela) e a lista é a única parte que cresce sem
+          limite — e é também o único bloco daqui marcado com `min-h-0`, então é
+          ela que o flex escolhe para absorver a falta de espaço; condição,
+          desconto e campo de valor param no tamanho do próprio conteúdo. Uma
+          venda com muitas formas encolhe a lista e ganha barra dentro dela, em
+          vez de arrastar os controles de cima para fora da vista.
+
+          A rolagem declarada aqui é a **rede de segurança** para o caso em que
+          nem a lista zerada basta (tela baixa demais para os blocos fixos): sem
+          ela, o bloco de total e o botão de finalizar sairiam do cartão — e o
+          botão de finalizar é justamente o que não pode sumir.
 
           `overflow-x-hidden` é obrigatório junto do `overflow-y-auto`, não
           decoração: pelo CSS, `overflow-x: visible` combinado com um
