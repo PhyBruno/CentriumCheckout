@@ -1,25 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ehElegivelParaVale,
+  ehFormaDeValeDevolucao,
   interpretarRespostaTicket,
 } from '../../../../src/client/domain/pagamento/valeDevolucao';
 import { emCentavos, formaDe } from '../../../support/pagamento';
 
-describe('ehElegivelParaVale — AD-048/D10', () => {
-  it('fpgUtiCar vazio é elegível', () => {
-    expect(ehElegivelParaVale(formaDe({ fpgUtiCar: '' }))).toBe(true);
+/**
+ * Substitui os casos de AD-048/D10, que liam `fpgUtiCar` como sinalizador de
+ * elegibilidade e tratavam vazio como elegível. Decisão do usuário
+ * (2026-09-04): `'VDV'` identifica a forma **que é** o vale devolução, e nada
+ * mais.
+ */
+describe('ehFormaDeValeDevolucao — só `VDV` (revoga AD-048/D10)', () => {
+  it('fpgUtiCar "VDV" é a forma de vale devolução', () => {
+    expect(ehFormaDeValeDevolucao(formaDe({ fpgUtiCar: 'VDV' }))).toBe(true);
   });
 
-  it('fpgUtiCar só com espaços é elegível', () => {
-    expect(ehElegivelParaVale(formaDe({ fpgUtiCar: '   ' }))).toBe(true);
+  it('fpgUtiCar vazio NÃO é vale devolução — é uma forma comum', () => {
+    expect(ehFormaDeValeDevolucao(formaDe({ fpgUtiCar: '' }))).toBe(false);
   });
 
-  it('fpgUtiCar "VDV" é elegível', () => {
-    expect(ehElegivelParaVale(formaDe({ fpgUtiCar: 'VDV' }))).toBe(true);
+  it('fpgUtiCar só com espaços NÃO é vale devolução', () => {
+    expect(ehFormaDeValeDevolucao(formaDe({ fpgUtiCar: '   ' }))).toBe(false);
   });
 
-  it('valor explicitamente diferente de vale devolução é inelegível', () => {
-    expect(ehElegivelParaVale(formaDe({ fpgUtiCar: 'OUTRO' }))).toBe(false);
+  it('qualquer outro valor NÃO é vale devolução', () => {
+    expect(ehFormaDeValeDevolucao(formaDe({ fpgUtiCar: 'OUTRO' }))).toBe(false);
+  });
+
+  it('normaliza espaços e caixa — o cadastro do ERP é string livre', () => {
+    expect(ehFormaDeValeDevolucao(formaDe({ fpgUtiCar: ' vdv ' }))).toBe(true);
   });
 });
 

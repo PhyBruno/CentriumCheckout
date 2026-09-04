@@ -33,8 +33,8 @@ import {
   type PagamentoAplicado,
   type SaldoPagamento,
 } from '../../domain/pagamento/saldoPagamento';
-import { ehElegivelParaVale, type ResultadoTicket } from '../../domain/pagamento/valeDevolucao';
-import { somar, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
+import { ehFormaDeValeDevolucao, type ResultadoTicket } from '../../domain/pagamento/valeDevolucao';
+import { ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import type { FormaDePagamentoRetrato } from '../../domain/venda/montarRetratoVenda';
 
 /**
@@ -199,7 +199,14 @@ export interface PagamentoSlice {
   pagamentos: PagamentoAplicado[];
   /** Um único desconto de capa; aplicar de novo substitui, nunca acumula. */
   descontoCapa: DescontoCapa | null;
-  valeDevolucao: ValeDevolucaoAplicado | null;
+  /**
+   * Vales já aplicados nesta venda, um por pagamento de forma `'VDV'`.
+   *
+   * Lista, e não escalar: nada no ERP limita a venda a **um** vale, e o cliente
+   * pode chegar com dois tickets de devoluções diferentes. O que não pode
+   * repetir é o **mesmo código** — ver `aplicarValeDevolucao`.
+   */
+  valesDevolucao: ValeDevolucaoAplicado[];
 
   selecionarCondicao(condicao: CondicaoPagamento): void;
   aplicarPagamento(input: AplicarPagamentoInput): Promise<void>;
@@ -210,7 +217,11 @@ export interface PagamentoSlice {
   removerPagamento(idPagamento: string): void;
   aplicarDescontoCapa(modo: 'PERCENTUAL' | 'VALOR', entrada: number): void;
   removerDescontoCapa(): void;
-  aplicarValeDevolucao(codigo: string, idPagamento: string): Promise<void>;
+  /**
+   * Valida o ticket no ERP e, se válido, **insere o pagamento** de valor igual
+   * ao do vale. Devolve `true` quando o pagamento entrou.
+   */
+  aplicarValeDevolucao(forma: FormaPagamento, codigo: string): Promise<boolean>;
   limparPagamentos(): void;
   /** Feature 006 — importação de DAV/rascunho, nunca gesto do operador. */
   importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;
@@ -244,10 +255,14 @@ export const AVISO_DESCONTO_COM_PAGAMENTO =
   'Esta venda já tem pagamento aplicado: o desconto não pode mais ser alterado.';
 export const AVISO_DESCONTO_ACIMA_DO_SUBTOTAL =
   'O desconto não pode ser maior que o total da venda.';
-export const AVISO_VALE_INELEGIVEL = 'Esta forma de pagamento não aceita vale devolução.';
-export const AVISO_VALE_SEM_PAGAMENTO =
-  'Selecione uma forma de pagamento já aplicada antes de informar o vale.';
-export const AVISO_VALE_JA_APLICADO = 'Esta venda já tem um vale de devolução aplicado.';
+export const AVISO_VALE_FORMA_ERRADA =
+  'Esta forma de pagamento não é vale devolução: escolha a forma de vale no catálogo.';
+export const AVISO_VALE_SEM_CODIGO = 'Informe o código do vale devolução.';
+/**
+ * Repetição **do mesmo código** na mesma venda. Não é "a venda já tem um vale":
+ * dois tickets diferentes são legítimos — o cliente pode ter duas devoluções.
+ */
+export const AVISO_VALE_JA_APLICADO = 'Este vale devolução já foi aplicado nesta venda.';
 export const AVISO_VALE_INDISPONIVEL =
   'Não foi possível validar o vale devolução no ERP: nada foi aplicado.';
 
@@ -349,7 +364,16 @@ export function criarPagamentoSlice(
       forma: FormaPagamento,
       valorInformado: Centavos,
       origem: OrigemAcionamento,
-    ): Promise<void> {
+      /**
+       * Código do ticket, quando a forma **é** a de vale devolução
+       * (`ehFormaDeValeDevolucao`). Entra por aqui, e não por um caminho
+       * paralelo, para o vale passar pelas mesmas guardas de qualquer outra
+       * forma — `FR-024` inclusive, que é o que impede consumir um ticket de
+       * 25,00 numa venda de 10,00 (o ERP baixa `DevValTot` inteiro, não há uso
+       * parcial).
+       */
+      ticketDevolucao: string | null = null,
+    ): Promise<boolean> {
       const saldo = saldoAtual();
 
       // `valorInformado` entra na validação (`FR-024`): sem ele a checagem não
@@ -363,7 +387,7 @@ export function criarPagamentoSlice(
       );
       if (!validacaoLocal.ok) {
         deps.avisar?.(AVISO_POR_MOTIVO_LOCAL[validacaoLocal.motivo]);
-        return;
+        return false;
       }
 
       // `derivarValores` roda antes do gate porque é puro e não muta nada: a
@@ -391,12 +415,12 @@ export function criarPagamentoSlice(
         // Tratar indisponibilidade como aprovação tácita deixaria passar
         // exatamente a venda que o gate existe para barrar (`FR-019`).
         deps.avisar?.(AVISO_VALIDACAO_INDISPONIVEL);
-        return;
+        return false;
       }
 
       if (!veredito.aceita) {
         deps.avisar?.(veredito.motivo);
-        return;
+        return false;
       }
 
       const integracao = resolverIntegracao(forma, deps.capacidades());
@@ -418,10 +442,26 @@ export function criarPagamentoSlice(
         status: integracao === 'NENHUMA' ? 'APROVADO' : 'PENDENTE_INTEGRACAO',
         dadosTEF: null,
         pixGuid: null,
-        ticketDevolucao: null,
+        ticketDevolucao,
       };
 
       aplicarPagamentos([...get().pagamentos, pagamento]);
+
+      if (ticketDevolucao !== null) {
+        // O vale entra no estado **junto** com o pagamento que ele criou, e não
+        // antes: se qualquer guarda acima recusasse, o código ficaria registrado
+        // como usado numa venda que nunca o aplicou, e o operador não
+        // conseguiria mais informá-lo.
+        set({
+          valesDevolucao: [
+            ...get().valesDevolucao,
+            { codigo: ticketDevolucao, valor: valorAplicado, idPagamento },
+          ],
+        });
+        get().registrarEventoAuditoria(
+          eventoValeDevolucaoUsado({ codigoVale: ticketDevolucao, valor: valorAplicado }),
+        );
+      }
 
       if (integracao !== 'NENHUMA') {
         deps.iniciarIntegracao(integracao, {
@@ -429,7 +469,7 @@ export function criarPagamentoSlice(
           formaCodigo: forma.codigo,
           valor: valorAplicado,
         });
-        return;
+        return true;
       }
 
       // `FORMA_PAGAMENTO_APLICADA` só existe quando o status é `APROVADO`: um
@@ -438,13 +478,15 @@ export function criarPagamentoSlice(
       get().registrarEventoAuditoria(
         eventoFormaPagamentoAplicada({ formaPagamento: forma.descricao, valor: valorAplicado }),
       );
+
+      return true;
     }
 
     return {
       condicaoSelecionada: null,
       pagamentos: [],
       descontoCapa: null,
-      valeDevolucao: null,
+      valesDevolucao: [],
 
       selecionarCondicao: (condicao) => {
         const atual = get().condicaoSelecionada;
@@ -464,7 +506,9 @@ export function criarPagamentoSlice(
         );
       },
 
-      aplicarPagamento: (input) => aplicarNucleo(input.forma, input.valorInformado, 'MANUAL'),
+      aplicarPagamento: async (input) => {
+        await aplicarNucleo(input.forma, input.valorInformado, 'MANUAL');
+      },
 
       aplicarForma: async (codigo, valor) => {
         const forma = formaDoCatalogo(codigo);
@@ -545,9 +589,9 @@ export function criarPagamentoSlice(
         // ao qual foi vinculado. Deixá-lo no estado apontando para um
         // `idPagamento` que não existe mais produziria um `TicketDevolucao`
         // órfão, que nenhuma forma do payload carregaria.
-        if (get().valeDevolucao?.idPagamento === idPagamento) {
-          set({ valeDevolucao: null });
-        }
+        set({
+          valesDevolucao: get().valesDevolucao.filter((vale) => vale.idPagamento !== idPagamento),
+        });
 
         // `FR-021`/I11: o veredito da 014 valia para a venda **daquele**
         // instante. Removida uma forma, a próxima inserção precisa consultar o
@@ -592,65 +636,69 @@ export function criarPagamentoSlice(
         set({ descontoCapa: null });
       },
 
-      aplicarValeDevolucao: async (codigo, idPagamento) => {
-        const alvo = get().pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
-        if (alvo === undefined) {
-          deps.avisar?.(AVISO_VALE_SEM_PAGAMENTO);
-          return;
+      /**
+       * Valida o ticket e, se válido, **insere o pagamento** com o valor dele.
+       *
+       * O vale é uma forma de pagamento como as outras — a que tem
+       * `FpgUtiCar = 'VDV'` no cadastro. Por isso o desfecho aqui é uma inserção
+       * pelo `aplicarNucleo`, e não um remendo sobre um pagamento existente: o
+       * ticket ganha as mesmas guardas de qualquer forma (dinheiro duplicado
+       * não se aplica, saldo coberto, `FR-024`, gate da 014) e vai para o
+       * payload como `FormasDePagamento[]` com o seu `TicketDevolucao`, que é
+       * exatamente o formato que `CheckoutFaturarNFCe` espera.
+       *
+       * **Ordem das guardas.** Forma errada e código repetido são recusados
+       * **sem rede**: `PValidaTicketNFCe` com ação `'validar'` é uma consulta
+       * barata, mas perguntar ao ERP sobre um ticket que já está nesta venda não
+       * responderia nada de novo — ele só é marcado como usado (`DevTicSit = 3`)
+       * na ação `'emitir'`, no faturamento, e até lá `'validar'` devolveria
+       * **válido de novo**. Sem esta guarda local o mesmo ticket entraria duas
+       * vezes na venda, o ERP baixaria um só, e a nota fecharia com um valor
+       * que o cliente nunca pagou (verificado na KB, 2026-09-04).
+       */
+      aplicarValeDevolucao: async (forma, codigo) => {
+        if (!ehFormaDeValeDevolucao(forma)) {
+          deps.avisar?.(AVISO_VALE_FORMA_ERRADA);
+          return false;
         }
 
-        // Decisão própria: o estado guarda **um** `ValeDevolucaoAplicado`
-        // (`data-model.md` §2). Sem esta guarda, um segundo vale substituiria o
-        // primeiro em silêncio — e o primeiro já teria sido consumido no ERP.
-        if (get().valeDevolucao !== null) {
+        const codigoLimpo = codigo.trim();
+        if (codigoLimpo === '') {
+          deps.avisar?.(AVISO_VALE_SEM_CODIGO);
+          return false;
+        }
+
+        if (get().valesDevolucao.some((vale) => vale.codigo === codigoLimpo)) {
           deps.avisar?.(AVISO_VALE_JA_APLICADO);
-          return;
-        }
-
-        const forma = formaDoCatalogo(alvo.formaCodigo);
-        if (forma === undefined || !ehElegivelParaVale(forma)) {
-          // Inelegível é no-op **sem chamada de rede**: perguntar ao ERP sobre
-          // um vale que não poderia ser usado consumiria a validação à toa.
-          deps.avisar?.(AVISO_VALE_INELEGIVEL);
-          return;
+          return false;
         }
 
         let resultado: ResultadoTicket;
         try {
-          resultado = await deps.validarTicket(codigo);
+          resultado = await deps.validarTicket(codigoLimpo);
         } catch {
           // Mesmo desfecho de `aplicarNucleo`: ERP fora do ar não muta nada e
           // não vira evento — recusa é decisão do ERP, isto aqui é falha técnica.
           deps.avisar?.(AVISO_VALE_INDISPONIVEL);
-          return;
+          return false;
         }
 
         if (!resultado.valido) {
           // A mensagem exibida é a **do ERP**, não uma reescrita local: só ele
-          // sabe se o ticket já foi usado, expirou ou é de outra empresa.
+          // distingue "vencido", "ainda não emitido", "já utilizado no documento
+          // N" e "inválido" — os quatro desfechos de `PValidaTicketNFCe`.
           deps.avisar?.(resultado.mensagem);
           get().registrarEventoAuditoria(
-            eventoPagamentoRecusado({ tipo: alvo.meioPagtoNFe, motivo: resultado.mensagem }),
+            eventoPagamentoRecusado({ tipo: forma.meioPagtoNFe, motivo: resultado.mensagem }),
           );
-          return;
+          return false;
         }
 
-        aplicarPagamentos(
-          get().pagamentos.map((pagamento) =>
-            pagamento.idPagamento === idPagamento
-              ? {
-                  ...pagamento,
-                  valorAplicado: somar(pagamento.valorAplicado, resultado.valor),
-                  ticketDevolucao: codigo,
-                }
-              : pagamento,
-          ),
-        );
-        set({ valeDevolucao: { codigo, valor: resultado.valor, idPagamento } });
-
-        get().registrarEventoAuditoria(
-          eventoValeDevolucaoUsado({ codigoVale: codigo, valor: resultado.valor }),
-        );
+        // O valor é o do ticket, não um valor digitado: `DevValTot` é baixado
+        // inteiro pelo ERP, não existe uso parcial. Se ele não couber no saldo,
+        // `FR-024` recusa dentro de `aplicarNucleo` — e é o desfecho certo:
+        // consumir um ticket de 25,00 numa venda de 10,00 perderia os 15,00.
+        return aplicarNucleo(forma, resultado.valor, 'MANUAL', codigoLimpo);
       },
 
       limparPagamentos: () => {
@@ -660,7 +708,7 @@ export function criarPagamentoSlice(
           condicaoSelecionada: null,
           pagamentos: [],
           descontoCapa: null,
-          valeDevolucao: null,
+          valesDevolucao: [],
         });
       },
 

@@ -3,6 +3,7 @@ import { useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
+import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import { ZERO_CENTAVOS, centavos, type Centavos } from '../../domain/precificacao/dinheiro';
 import { useVendaStore } from '../../stores/vendaStore';
 
@@ -94,13 +95,19 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
     ? 'Aguarde: o pagamento anterior ainda está sendo processado.'
     : forma === null
       ? 'Escolha a forma de pagamento antes de adicionar o valor recebido.'
-      : valorTexto.trim() === ''
-        ? 'Informe o valor recebido para adicionar o pagamento.'
-        : valorLido === null
-          ? 'Valor inválido: use apenas números, com no máximo duas casas decimais.'
-          : valorLido === ZERO_CENTAVOS
-            ? 'O valor recebido precisa ser maior que zero.'
-            : null;
+      : // O valor de um vale devolução é o do ticket, decidido pelo ERP
+        // (`DevValTot`) e baixado inteiro — não existe uso parcial. Deixar o
+        // campo aceitar um número aqui prometeria um controle que o operador
+        // não tem sobre esse valor.
+        ehFormaDeValeDevolucao(forma)
+        ? 'O valor do vale devolução vem do ticket: informe o código na janela do vale.'
+        : valorTexto.trim() === ''
+          ? 'Informe o valor recebido para adicionar o pagamento.'
+          : valorLido === null
+            ? 'Valor inválido: use apenas números, com no máximo duas casas decimais.'
+            : valorLido === ZERO_CENTAVOS
+              ? 'O valor recebido precisa ser maior que zero.'
+              : null;
 
   async function adicionar(): Promise<void> {
     // Guarda repetida no clique, não só na renderização: o estado pode mudar

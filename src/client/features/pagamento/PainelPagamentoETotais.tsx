@@ -1,10 +1,12 @@
 import { Lock, WalletCards } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
+import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import { AcoesFinaisVenda } from '../finalizacao-suspensao/AcoesFinaisVenda';
 import { ControleDescontoCapa } from './ControleDescontoCapa';
 import { EntradaPagamento } from './EntradaPagamento';
 import { ListaPagamentosAplicados } from './ListaPagamentosAplicados';
+import { ModalValeDevolucao } from './ModalValeDevolucao';
 import { SeletorCondicaoPagamento, SeletorFormaPagamento } from './SeletorCondicaoForma';
 import { TotalDaVenda } from './TotalDaVenda';
 
@@ -50,6 +52,30 @@ export function PainelPagamentoETotais(): ReactElement {
    * dois leem o mesmo rascunho, e quem os compõe é quem o segura.
    */
   const [formaSelecionada, setFormaSelecionada] = useState<FormaPagamento | null>(null);
+
+  /**
+   * Escolher a forma de vale devolução **abre o modal do ticket**; qualquer
+   * outra forma só vira o rascunho da próxima inserção.
+   *
+   * O gesto é um só para o operador: ele percorre o combobox e, ao parar na
+   * forma de vale, já é levado a digitar o código — sem um segundo controle
+   * escondido em outro lugar da tela. Um `useEffect` sobre `formaSelecionada`
+   * faria o mesmo, mas reabriria o modal a cada re-render que reescrevesse o
+   * estado, inclusive depois de o operador cancelar; a decisão pertence ao
+   * evento de escolha, não ao valor resultante.
+   */
+  function escolherForma(forma: FormaPagamento): void {
+    setFormaSelecionada(forma);
+    if (ehFormaDeValeDevolucao(forma)) {
+      setValeAberto(true);
+    }
+  }
+
+  const [valeAberto, setValeAberto] = useState(false);
+  const formaDoVale =
+    valeAberto && formaSelecionada !== null && ehFormaDeValeDevolucao(formaSelecionada)
+      ? formaSelecionada
+      : null;
 
   return (
     <aside
@@ -109,10 +135,25 @@ export function PainelPagamentoETotais(): ReactElement {
         <ControleDescontoCapa />
         <SeletorFormaPagamento
           formaSelecionada={formaSelecionada}
-          onSelecionarForma={setFormaSelecionada}
+          onSelecionarForma={escolherForma}
         />
         <EntradaPagamento forma={formaSelecionada} />
         <ListaPagamentosAplicados />
+
+        {/* O modal do vale abre a partir da **escolha da forma**, não de um
+            botão na lista: o vale devolução é a própria forma de pagamento
+            (`FpgUtiCar = 'VDV'`), e o "valor recebido" dela é o valor do
+            ticket, que só o ERP conhece. Montado aqui porque é aqui que mora a
+            forma escolhida. */}
+        {formaDoVale !== null && (
+          <ModalValeDevolucao
+            aberto
+            forma={formaDoVale}
+            onFechar={() => {
+              setFormaSelecionada(null);
+            }}
+          />
+        )}
       </div>
 
       {/* Total e ações finais ficam fixos no pé do cartão, fora da rolagem: no

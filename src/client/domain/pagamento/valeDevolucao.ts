@@ -1,7 +1,7 @@
 /**
  * Elegibilidade e interpretação de resposta de vale devolução (T006).
  *
- * Domínio puro: `ehElegivelParaVale` decide sem rede: `interpretarRespostaTicket`
+ * Domínio puro: `ehFormaDeValeDevolucao` decide sem rede: `interpretarRespostaTicket`
  * apenas traduz um shape já validado na fronteira Zod (produzido por
  * `src/shared/schemas/pagamento.schema.ts`, de outro agente) numa união
  * discriminada que o call site não consegue ler errado.
@@ -25,18 +25,31 @@ export type ResultadoTicket =
   | { readonly valido: true; readonly valor: Centavos }
   | { readonly valido: false; readonly mensagem: string };
 
+/** Valor de `FpgUtiCar` que marca a forma como sendo a de vale devolução. */
+const MARCA_VALE_DEVOLUCAO = 'VDV';
+
 /**
- * AD-048/`research.md` D10 — decisão direta do usuário, contrária à
- * recomendação original: **ausência de dado é elegibilidade**. `fpgUtiCar`
- * só vem preenchido quando a empresa tem regra dinâmica de forma de
- * pagamento configurada (AD-024); no fallback do ERP ele chega vazio, e
- * tratar isso como inelegível bloquearia a maioria das empresas. Só um valor
- * explicitamente diferente de vale devolução (nem vazio, nem `'VDV'`) torna a
- * forma inelegível.
+ * A forma **é** o vale devolução — não "aceita um vale por cima".
+ *
+ * `FpgUtiCar` é atributo de `TTPAGAM_WEB`, o cadastro de formas de pagamento,
+ * copiado sem transformação para o catálogo da sessão por
+ * `PCheckout_GetSessao` (verificado na KB, 2026-09-04). `'VDV'` nele identifica
+ * a forma de vale devolução; **qualquer outro valor, inclusive vazio, é uma
+ * forma comum**.
+ *
+ * **Isto substitui AD-048/`research.md` D10.** Aquela decisão lia `fpgUtiCar`
+ * como um sinalizador de elegibilidade e tratava vazio como elegível — o que
+ * tornava *toda* forma do catálogo capaz de receber um ticket, e obrigava o
+ * operador a inserir um pagamento primeiro para só depois somar o vale por cima
+ * dele. Além de não corresponder ao cadastro, aquele caminho conseguia levar
+ * `Σ FormaValor` acima do total da nota. Decisão do usuário em 2026-09-04:
+ * `'VDV'` e nada mais.
+ *
+ * A comparação normaliza espaços e caixa porque o campo é `string` livre no
+ * cadastro — um `'vdv '` digitado pelo lojista descreve a mesma forma.
  */
-export function ehElegivelParaVale(forma: FormaPagamento): boolean {
-  const valor = forma.fpgUtiCar.trim();
-  return valor === '' || valor === 'VDV';
+export function ehFormaDeValeDevolucao(forma: FormaPagamento): boolean {
+  return forma.fpgUtiCar.trim().toUpperCase() === MARCA_VALE_DEVOLUCAO;
 }
 
 /**

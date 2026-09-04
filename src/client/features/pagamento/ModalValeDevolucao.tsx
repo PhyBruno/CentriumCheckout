@@ -1,11 +1,10 @@
-import { CircleCheck, Ticket, TicketCheck, X } from 'lucide-react';
+import { Ticket, TicketCheck, X } from 'lucide-react';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
-import { ehElegivelParaVale } from '../../domain/pagamento/valeDevolucao';
 import { useVendaStore } from '../../stores/vendaStore';
 
 /**
@@ -41,33 +40,20 @@ import { useVendaStore } from '../../stores/vendaStore';
 export interface ModalValeDevolucaoProps {
   readonly aberto: boolean;
   readonly onFechar: () => void;
-  /** Forma do pagamento alvo — é ela que decide a elegibilidade (AD-048). */
+  /** Forma de vale devolução escolhida (`FpgUtiCar = 'VDV'`). */
   readonly forma: FormaPagamento;
-  /** Pagamento que recebe o vale; o vínculo é feito pelo slice. */
-  readonly idPagamento: string;
 }
 
 export function ModalValeDevolucao({
   aberto,
   onFechar,
   forma,
-  idPagamento,
 }: ModalValeDevolucaoProps): ReactElement | null {
   const [codigo, setCodigo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const refDialogo = useRef<HTMLDivElement>(null);
 
   const aplicarValeDevolucao = useVendaStore((estado) => estado.aplicarValeDevolucao);
-  // O desfecho é lido do estado, não de um retorno: `aplicarValeDevolucao`
-  // devolve `Promise<void>` e já emite o toast do vale inválido. Quem afirma que
-  // deu certo é o `ticketDevolucao` gravado no pagamento — a mesma informação
-  // que a finalização vai enviar ao ERP, não uma cópia paralela dela.
-  const ticketAplicado =
-    useVendaStore(
-      (estado) =>
-        estado.pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento)
-          ?.ticketDevolucao,
-    ) ?? null;
 
   const [abertoAnterior, setAbertoAnterior] = useState(aberto);
   if (aberto !== abertoAnterior) {
@@ -103,16 +89,27 @@ export function ModalValeDevolucao({
     return null;
   }
 
-  const elegivel = ehElegivelParaVale(forma);
   const codigoLimpo = codigo.trim();
-  const motivoBloqueio = motivoBloqueioAplicacao(forma, elegivel, codigoLimpo, enviando);
+  const motivoBloqueio = motivoBloqueioAplicacao(codigoLimpo, enviando);
 
+  /**
+   * Fecha **só quando o pagamento entrou**. Se o ERP recusar o ticket (vencido,
+   * já utilizado, inexistente) o toast do slice explica e o modal permanece
+   * aberto com o campo pronto — o operador quase sempre tem outro código na mão,
+   * e fechar o obrigaria a reabrir para tentar de novo.
+   */
   async function aplicar(): Promise<void> {
     setEnviando(true);
+    let aplicado = false;
     try {
-      await aplicarValeDevolucao(codigoLimpo, idPagamento);
+      aplicado = await aplicarValeDevolucao(forma, codigoLimpo);
     } finally {
       setEnviando(false);
+    }
+    if (aplicado) {
+      onFechar();
+    } else {
+      setCodigo('');
     }
   }
 
@@ -195,64 +192,34 @@ export function ModalValeDevolucao({
         </header>
 
         <div className="flex flex-col gap-sm px-lg py-base">
-          {ticketAplicado === null ? (
-            <>
-              {elegivel ? null : (
-                <p
-                  className="rounded-lg bg-muted px-sm py-xs text-sm font-medium text-destructive"
-                  data-testid="vale-forma-inelegivel"
-                >
-                  {MOTIVO_FORMA_INELEGIVEL}
-                </p>
-              )}
-              <label className="flex h-11 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
-                <TicketCheck
-                  className="size-4.5 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <span className="sr-only">Código do vale devolução</span>
-                <input
-                  className="h-full w-full bg-transparent font-mono tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
-                  data-testid="campo-codigo-vale"
-                  autoComplete="off"
-                  autoFocus
-                  placeholder="Código do vale"
-                  value={codigo}
-                  onChange={(evento) => {
-                    setCodigo(evento.target.value);
-                  }}
-                  onKeyDown={(evento) => {
-                    // Enter confirma — o operador digita o código com o leitor
-                    // ou pelo teclado e não deveria precisar tirar a mão dele.
-                    // Passa pelo mesmo `acaoBloqueavel` do botão: bloqueado por
-                    // teclado explica o motivo igual a bloqueado por clique.
-                    if (evento.key === 'Enter') {
-                      evento.preventDefault();
-                      confirmar();
-                    }
-                  }}
-                />
-              </label>
-              <p className="text-sm font-medium text-muted-foreground">
-                O valor do vale é validado no ERP e abatido desta forma de pagamento.
-              </p>
-            </>
-          ) : (
-            <div
-              className="flex items-center gap-sm rounded-lg bg-muted px-sm py-sm"
-              data-testid="vale-aplicado"
-            >
-              <CircleCheck className="size-5 shrink-0 text-primary" aria-hidden="true" />
-              <div className="flex min-w-0 flex-col">
-                <span className="text-base font-semibold text-foreground">
-                  Vale devolução aplicado
-                </span>
-                <span className="truncate font-mono text-sm font-medium tabular-nums text-muted-foreground">
-                  {ticketAplicado}
-                </span>
-              </div>
-            </div>
-          )}
+          <label className="flex h-11 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
+            <TicketCheck className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="sr-only">Código do vale devolução</span>
+            <input
+              className="h-full w-full bg-transparent font-mono tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
+              data-testid="campo-codigo-vale"
+              autoComplete="off"
+              autoFocus
+              placeholder="Código do vale"
+              value={codigo}
+              onChange={(evento) => {
+                setCodigo(evento.target.value);
+              }}
+              onKeyDown={(evento) => {
+                // Enter confirma — o operador digita o código com o leitor
+                // ou pelo teclado e não deveria precisar tirar a mão dele.
+                // Passa pelo mesmo `acaoBloqueavel` do botão: bloqueado por
+                // teclado explica o motivo igual a bloqueado por clique.
+                if (evento.key === 'Enter') {
+                  evento.preventDefault();
+                  confirmar();
+                }
+              }}
+            />
+          </label>
+          <p className="text-sm font-medium text-muted-foreground">
+            O valor do vale é validado no ERP e abatido desta forma de pagamento.
+          </p>
         </div>
 
         <footer className="flex h-[60px] shrink-0 items-center justify-end gap-[10px] border-t border-border px-lg">
@@ -264,20 +231,18 @@ export function ModalValeDevolucao({
             onClick={onFechar}
           >
             <X className="size-3.5" aria-hidden="true" />
-            {ticketAplicado === null ? 'Cancelar' : 'Fechar'}
+            Cancelar
           </Button>
-          {ticketAplicado === null ? (
-            <Button
-              type="button"
-              className="h-11 w-[156px] gap-xs rounded-full text-md font-bold"
-              data-testid="confirmar-vale-devolucao"
-              {...atributosDeBloqueio(motivoBloqueio)}
-              onClick={confirmar}
-            >
-              <TicketCheck className="size-4.5" aria-hidden="true" />
-              Aplicar vale
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            className="h-11 w-[156px] gap-xs rounded-full text-md font-bold"
+            data-testid="confirmar-vale-devolucao"
+            {...atributosDeBloqueio(motivoBloqueio)}
+            onClick={confirmar}
+          >
+            <TicketCheck className="size-4.5" aria-hidden="true" />
+            Aplicar vale
+          </Button>
         </footer>
       </div>
     </div>
@@ -285,30 +250,19 @@ export function ModalValeDevolucao({
 }
 
 /**
- * `FR-010`/AD-048 — ausência de configuração é elegibilidade, então este texto
- * só aparece quando `fpgUtiCar` traz um valor **explicitamente** diferente de
- * vale devolução. Ele nomeia a regra do ERP, não um código de erro: o operador
- * precisa saber que a saída é trocar de forma, não insistir no código.
- */
-const MOTIVO_FORMA_INELEGIVEL =
-  'Esta forma de pagamento não aceita vale devolução no cadastro do ERP. Escolha outra forma para usar o vale.';
-
-/**
  * Um só motivo por vez, na ordem em que o operador consegue agir: primeiro o que
- * exige trocar de forma, depois o que exige digitar, por último o que exige
- * esperar. Devolver `null` é o que libera a ação (`lib/bloqueio.ts`).
+ * exige digitar, depois o que exige esperar. Devolver `null` é o que libera a
+ * ação (`lib/bloqueio.ts`).
+ *
+ * Não há mais motivo de "forma inelegível": o modal **só existe** quando a forma
+ * escolhida é a de vale devolução (`FpgUtiCar = 'VDV'`), e quem decide isso é
+ * quem o monta. As recusas do ERP — vencido, ainda não emitido, já utilizado no
+ * documento N, inexistente — chegam por toast com a mensagem do próprio ERP,
+ * porque só ele as distingue.
  */
-function motivoBloqueioAplicacao(
-  forma: FormaPagamento,
-  elegivel: boolean,
-  codigoLimpo: string,
-  enviando: boolean,
-): MotivoBloqueio {
-  if (!elegivel) {
-    return MOTIVO_FORMA_INELEGIVEL;
-  }
+function motivoBloqueioAplicacao(codigoLimpo: string, enviando: boolean): MotivoBloqueio {
   if (codigoLimpo === '') {
-    return `Informe o código do vale devolução para aplicá-lo em ${forma.descricao}.`;
+    return 'Informe o código do vale devolução.';
   }
   if (enviando) {
     return 'O vale informado está sendo validado no ERP. Aguarde o resultado.';

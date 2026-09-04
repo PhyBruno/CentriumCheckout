@@ -31,8 +31,9 @@ import {
   AVISO_DINHEIRO_DUPLICADO,
   AVISO_FORMA_FORA_DA_CONDICAO,
   AVISO_PAGAMENTO_IRREVERSIVEL,
+  AVISO_VALE_FORMA_ERRADA,
   AVISO_VALE_INDISPONIVEL,
-  AVISO_VALE_INELEGIVEL,
+  AVISO_VALE_JA_APLICADO,
   AVISO_VALOR_ACIMA_DO_SALDO,
   criarPagamentoSlice,
   type ContextoIntegracao,
@@ -79,7 +80,10 @@ const CARTAO = formaDe({
   meioPagtoNFe: 'CartaoCredito',
   integracaoCartao: '1',
   tipoTransacaoTEF: 'CREDITO',
-  fpgUtiCar: 'VDV',
+  // Cartão comum: `fpgUtiCar` vazio. Antes era `'VDV'`, porque sob AD-048 esse
+  // valor significava "aceita vale"; hoje ele significa "**é** o vale
+  // devolução", e um cartão de crédito não é.
+  fpgUtiCar: '',
 });
 
 const PIX = formaDe({ codigo: 3, descricao: 'PIX', entrada: 'S', meioPagtoNFe: 'Pix' });
@@ -91,7 +95,7 @@ const PIX_ESTATICO = formaDe({
   meioPagtoNFe: 'PixEstatico',
 });
 
-/** `fpgUtiCar` explicitamente diferente de vale devolução → inelegível (AD-048). */
+/** Outro cartão comum — `fpgUtiCar` preenchido, mas não com `'VDV'`. */
 const CARTAO_SEM_VALE = formaDe({
   codigo: 5,
   descricao: 'CARTAO DEBITO',
@@ -101,10 +105,23 @@ const CARTAO_SEM_VALE = formaDe({
   fpgUtiCar: 'OUTRO',
 });
 
+/**
+ * A forma de vale devolução: `FpgUtiCar = 'VDV'`. `meioPagtoNFe` é `'Outros'`
+ * porque o vale não tem meio próprio na tabela da NFCe — e é o que faz
+ * `resolverIntegracao` devolver `NENHUMA`, aprovando o pagamento na hora.
+ */
+const VALE = formaDe({
+  codigo: 6,
+  descricao: 'VALE DEVOLUCAO',
+  entrada: 'N',
+  meioPagtoNFe: 'Outros',
+  fpgUtiCar: 'VDV',
+});
+
 function condicaoDe(
   codigo: number,
   descricao: string,
-  formas: readonly FormaPagamento[] = [DINHEIRO, CARTAO, PIX, PIX_ESTATICO, CARTAO_SEM_VALE],
+  formas: readonly FormaPagamento[] = [DINHEIRO, CARTAO, PIX, PIX_ESTATICO, CARTAO_SEM_VALE, VALE],
 ): CondicaoPagamento {
   return {
     codigo,
@@ -661,75 +678,123 @@ describe('pagamentoSlice — desconto de capa (T032/T033, Cenário 4)', () => {
  * T038 — vale devolução
  * ------------------------------------------------------------------ */
 
-describe('pagamentoSlice — vale devolução (T038, Cenário 5)', () => {
+/**
+ * O vale devolução é a **forma** `FpgUtiCar = 'VDV'`, e aplicá-lo insere um
+ * pagamento com o valor do ticket. Substitui os casos de AD-048, em que o vale
+ * era somado sobre um pagamento já existente.
+ */
+describe('pagamentoSlice — vale devolução como forma de pagamento (VDV)', () => {
   const CODIGO_VALE = 'TCK-000000-EXEMPLO';
 
-  it('vale válido soma o valor ao pagamento vinculado e emite VALE_DEVOLUCAO_USADO', async () => {
+  it('vale válido insere o pagamento com o valor do ticket e emite VALE_DEVOLUCAO_USADO', async () => {
     const { store, validarTicket } = montarStore();
     validarTicket.mockResolvedValue({ valido: true, valor: centavos(2_550) });
-    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(7_000) });
 
-    await store.getState().aplicarValeDevolucao(CODIGO_VALE, 'pag-1');
+    const aplicado = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
 
-    expect(store.getState().pagamentos[0]?.valorAplicado).toBe(9_550);
+    expect(aplicado).toBe(true);
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(store.getState().pagamentos[0]?.valorAplicado).toBe(2_550);
     expect(store.getState().pagamentos[0]?.ticketDevolucao).toBe(CODIGO_VALE);
-    expect(store.getState().valeDevolucao).toEqual({
-      codigo: CODIGO_VALE,
-      valor: 2_550,
-      idPagamento: 'pag-1',
-    });
+    expect(store.getState().valesDevolucao).toEqual([
+      { codigo: CODIGO_VALE, valor: 2_550, idPagamento: 'pag-1' },
+    ]);
     const usado = store.getState().eventos.find((evento) => evento.tipo === 'VALE_DEVOLUCAO_USADO');
     expect(usado?.detalhes).toEqual({ codigoVale: CODIGO_VALE, valor: 2_550 });
   });
 
-  it('vale inválido avisa com a mensagem do ERP e emite PAGAMENTO_RECUSADO sem mutar', async () => {
+  it('o mesmo código duas vezes é recusado sem rede — o ERP só baixa o ticket no faturamento', async () => {
     const { store, validarTicket, avisar } = montarStore();
-    validarTicket.mockResolvedValue({ valido: false, mensagem: 'Ticket já utilizado' });
-    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(7_000) });
+    validarTicket.mockResolvedValue({ valido: true, valor: centavos(2_550) });
+    await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
 
-    await store.getState().aplicarValeDevolucao(CODIGO_VALE, 'pag-1');
+    const segundo = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
 
-    expect(store.getState().pagamentos[0]?.valorAplicado).toBe(7_000);
-    expect(store.getState().pagamentos[0]?.ticketDevolucao).toBeNull();
-    expect(store.getState().valeDevolucao).toBeNull();
-    expect(avisar).toHaveBeenCalledWith('Ticket já utilizado');
-    const recusa = store.getState().eventos.find((evento) => evento.tipo === 'PAGAMENTO_RECUSADO');
-    expect(recusa?.detalhes).toEqual({ tipo: 'CartaoCredito', motivo: 'Ticket já utilizado' });
+    expect(segundo).toBe(false);
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(avisar).toHaveBeenCalledWith(AVISO_VALE_JA_APLICADO);
+    // Sem 2ª consulta: `PValidaTicketNFCe` ainda diria "válido", porque o ticket
+    // só vira `DevTicSit = 3` na ação 'emitir', no faturamento.
+    expect(validarTicket).toHaveBeenCalledTimes(1);
   });
 
-  it('forma inelegível é no-op com aviso, sem nenhuma chamada de rede (AD-048)', async () => {
+  it('dois tickets diferentes na mesma venda são aceitos', async () => {
+    const { store, validarTicket } = montarStore();
+    validarTicket.mockResolvedValue({ valido: true, valor: centavos(2_000) });
+
+    await store.getState().aplicarValeDevolucao(VALE, 'TCK-A');
+    await store.getState().aplicarValeDevolucao(VALE, 'TCK-B');
+
+    expect(store.getState().pagamentos).toHaveLength(2);
+    expect(store.getState().valesDevolucao.map((vale) => vale.codigo)).toEqual(['TCK-A', 'TCK-B']);
+  });
+
+  it('vale inválido avisa com a mensagem do ERP e emite PAGAMENTO_RECUSADO sem inserir', async () => {
     const { store, validarTicket, avisar } = montarStore();
-    await store
-      .getState()
-      .aplicarPagamento({ forma: CARTAO_SEM_VALE, valorInformado: centavos(7_000) });
+    validarTicket.mockResolvedValue({ valido: false, mensagem: 'Ticket já utilizado' });
 
-    await store.getState().aplicarValeDevolucao(CODIGO_VALE, 'pag-1');
+    const aplicado = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
 
+    expect(aplicado).toBe(false);
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().valesDevolucao).toEqual([]);
+    expect(avisar).toHaveBeenCalledWith('Ticket já utilizado');
+    const recusa = store.getState().eventos.find((evento) => evento.tipo === 'PAGAMENTO_RECUSADO');
+    expect(recusa?.detalhes).toEqual({ tipo: 'Outros', motivo: 'Ticket já utilizado' });
+  });
+
+  it('forma que não é VDV é no-op com aviso, sem nenhuma chamada de rede', async () => {
+    const { store, validarTicket, avisar } = montarStore();
+
+    const aplicado = await store.getState().aplicarValeDevolucao(CARTAO, CODIGO_VALE);
+
+    expect(aplicado).toBe(false);
     expect(validarTicket).not.toHaveBeenCalled();
-    expect(avisar).toHaveBeenCalledWith(AVISO_VALE_INELEGIVEL);
+    expect(avisar).toHaveBeenCalledWith(AVISO_VALE_FORMA_ERRADA);
+  });
+
+  it('ticket maior que o saldo é recusado — o ERP baixa DevValTot inteiro (FR-024)', async () => {
+    const { store, validarTicket, avisar } = montarStore();
+    validarTicket.mockResolvedValue({ valido: true, valor: centavos(15_000) });
+
+    const aplicado = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
+
+    expect(aplicado).toBe(false);
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().valesDevolucao).toEqual([]);
+    expect(avisar).toHaveBeenCalledWith(AVISO_VALOR_ACIMA_DO_SALDO);
   });
 
   it('ERP indisponível avisa e não muta nada, sem evento de auditoria', async () => {
     const { store, validarTicket, avisar } = montarStore();
-    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(7_000) });
     validarTicket.mockRejectedValue(new Error('rede indisponível'));
     const eventosAntes = tiposDeEvento(store);
 
-    await store.getState().aplicarValeDevolucao(CODIGO_VALE, 'pag-1');
+    await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
 
     expect(avisar).toHaveBeenCalledWith(AVISO_VALE_INDISPONIVEL);
-    expect(store.getState().pagamentos[0]?.valorAplicado).toBe(7_000);
-    expect(store.getState().pagamentos[0]?.ticketDevolucao).toBeNull();
-    expect(store.getState().valeDevolucao).toBeNull();
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().valesDevolucao).toEqual([]);
     // Indisponibilidade técnica não é evento de domínio: a trilha fica intacta.
     expect(tiposDeEvento(store)).toEqual(eventosAntes);
+  });
+
+  it('remover o pagamento do vale libera o código para ser informado de novo', async () => {
+    const { store, validarTicket } = montarStore();
+    validarTicket.mockResolvedValue({ valido: true, valor: centavos(2_550) });
+    await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
+
+    store.getState().removerPagamento('pag-1');
+    expect(store.getState().valesDevolucao).toEqual([]);
+
+    const denovo = await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
+    expect(denovo).toBe(true);
   });
 
   it('o ticket é validado exatamente uma vez — a montagem do payload nunca revalida (FR-009/SC-001)', async () => {
     const { store, validarTicket } = montarStore();
     validarTicket.mockResolvedValue({ valido: true, valor: centavos(2_550) });
-    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(7_000) });
-    await store.getState().aplicarValeDevolucao(CODIGO_VALE, 'pag-1');
+    await store.getState().aplicarValeDevolucao(VALE, CODIGO_VALE);
 
     store.getState().saldo();
     const payload = store.getState().montarPagamentosParaPayload();
@@ -845,7 +910,7 @@ describe('pagamentoSlice — importação e limpeza', () => {
     expect(store.getState().pagamentos).toEqual([]);
     expect(store.getState().condicaoSelecionada).toBeNull();
     expect(store.getState().descontoCapa).toBeNull();
-    expect(store.getState().valeDevolucao).toBeNull();
+    expect(store.getState().valesDevolucao).toEqual([]);
   });
 });
 
@@ -865,11 +930,12 @@ describe('pagamentoSlice — auditoria da venda (Cenário 8, FR-017)', () => {
     await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(3_000) });
     // Cenário 6: remoção do pagamento reversível.
     store.getState().removerPagamento('pag-2');
-    // Cenário 5: vale sobre a forma elegível remanescente.
-    await store.getState().aplicarValeDevolucao('TCK-000000-EXEMPLO', 'pag-1');
-    // Recusa de integração: último evento da trilha.
+    // Cenário 5: vale devolução entra como a sua própria forma de pagamento.
+    await store.getState().aplicarValeDevolucao(VALE, 'TCK-000000-EXEMPLO');
+    // Recusa de integração: último evento da trilha. O PIX é `pag-4` — o vale
+    // acima consumiu `pag-3`, por ser um pagamento como qualquer outro.
     await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(450) });
-    store.getState().recusarPagamentoIntegrado('pag-3', 'QR Code expirado');
+    store.getState().recusarPagamentoIntegrado('pag-4', 'QR Code expirado');
 
     // A ordem **de posição no array** é a autoritativa. `timestamp` não é
     // afirmado como estritamente crescente: o carimbo tem resolução de
@@ -880,7 +946,12 @@ describe('pagamentoSlice — auditoria da venda (Cenário 8, FR-017)', () => {
       'FORMA_PAGAMENTO_APLICADA',
       'FORMA_PAGAMENTO_APLICADA',
       'FORMA_PAGAMENTO_REMOVIDA',
+      // O vale devolução emite **dois** eventos, porque são dois fatos: um
+      // ticket foi consumido e uma forma de pagamento entrou na venda. `FR-017`
+      // pede os dois, e a trilha precisa mostrar a forma para o valor do vale
+      // não aparecer sem origem.
       'VALE_DEVOLUCAO_USADO',
+      'FORMA_PAGAMENTO_APLICADA',
       'PAGAMENTO_RECUSADO',
     ]);
   });

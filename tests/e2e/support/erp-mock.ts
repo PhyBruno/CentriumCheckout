@@ -87,6 +87,30 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getDav: 0,
 };
 
+/**
+ * Tickets de devolução sintéticos, um por desfecho de `PValidaTicketNFCe`.
+ * `ValorTicket` em reais, como o ERP devolve (`double`).
+ */
+const TICKETS_DEVOLUCAO: Record<
+  string,
+  { ValorTicket: number; Valido: boolean; Mensagem: string }
+> = {
+  'TCK-VALIDO': { ValorTicket: 25.5, Valido: true, Mensagem: 'Ticket Válido' },
+  /** Cabe numa venda pequena sem estourar o saldo — exercita `FR-024` pelo outro lado. */
+  'TCK-PEQUENO': { ValorTicket: 5.0, Valido: true, Mensagem: 'Ticket Válido' },
+  'TCK-USADO': {
+    ValorTicket: 0,
+    Valido: false,
+    Mensagem: 'Ticket de devolução já foi utilizado no documento : 90210/1',
+  },
+  'TCK-VENCIDO': {
+    ValorTicket: 0,
+    Valido: false,
+    Mensagem: 'Ticket de devolução vencido em 01/08/2026',
+  },
+  'TCK-NAO-EMITIDO': { ValorTicket: 0, Valido: false, Mensagem: 'Ticket ainda não emitido !' },
+};
+
 /** Base64 sintético — não é um PDF real, só precisa ser string não-vazia. */
 const PDF_SINTETICO = 'JVBERi0xLjQtc2ludGV0aWNv';
 const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
@@ -422,9 +446,12 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
        *
        * `FormaEntrada` está em toda forma de propósito: sem ele o ERP calcula
        * crediário zero e a validação prévia aprova exatamente o que existe para
-       * barrar (`FR-022`/AD-111). `FormaFpgUtiCar` vazio significa **elegível**
-       * para vale devolução (AD-048) — daí o cartão de crédito ser o único com
-       * valor preenchido, para o E2E ter os dois lados da elegibilidade.
+       * barrar (`FR-022`/AD-111).
+       *
+       * `FormaFpgUtiCar = 'VDV'` identifica a **forma de vale devolução**, e
+       * nada mais: as demais formas o trazem vazio, como um cadastro comum. A
+       * leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
+       * 2026-09-04.
        */
       CondicoesDePagamento: [
         {
@@ -451,6 +478,18 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
               FormaMeioPagtoNFe: 'CartaoCredito',
               FormaIntegracaoCartao: '1',
               FormaTipoTransacaoTEF: 'CREDITO',
+              FormaFpgUtiCar: '',
+            },
+            {
+              // A forma de **vale devolução**: é `FpgUtiCar = 'VDV'` que a
+              // identifica, e escolhê-la abre a janela do ticket em vez do
+              // campo de valor.
+              FormaCodigo: 4,
+              FormaDescricao: 'VALE DEVOLUCAO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'Outros',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
               FormaFpgUtiCar: 'VDV',
             },
             {
@@ -876,6 +915,38 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       }
 
       return reply.send({ OutCheckoutFaturarNFCe: dav.documento, messages: [] });
+    },
+  );
+
+  /**
+   * `ValidaTicketDevolucao` — espelha os desfechos de `PValidaTicketNFCe` com a
+   * ação `'validar'` (lido na KB em 2026-09-04): situação 2 é válido e devolve
+   * `DevValTot`; 1 ("ainda não emitido"), 3 ("já utilizado no documento N"), 4
+   * ("vencido") e inexistente devolvem `Valido: false` com a mensagem do ERP.
+   *
+   * O ticket **não** é marcado como usado aqui: isso é a ação `'emitir'`, que só
+   * acontece no faturamento. É justamente por isso que validar o mesmo código
+   * duas vezes devolveria "válido" nas duas, e a guarda contra repetição precisa
+   * viver no Checkout.
+   */
+  app.post<{ Body: { ticketDevolucao?: string } }>(
+    '/ApiCentriumOAuth/ValidaTicketDevolucao',
+    async (request, reply) => {
+      contadores.negocio += 1;
+
+      const ticket = (request.body.ticketDevolucao ?? '').trim().toUpperCase();
+      const conhecido = TICKETS_DEVOLUCAO[ticket];
+
+      if (conhecido === undefined) {
+        return reply.send({
+          ValorTicket: 0,
+          Valido: false,
+          Mensagem: `Ticket de devolução: ${ticket} inválido !`,
+          messages: [],
+        });
+      }
+
+      return reply.send({ ...conhecido, messages: [] });
     },
   );
 
