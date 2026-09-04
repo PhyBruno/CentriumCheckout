@@ -62,7 +62,9 @@ A matriz não tem mais eixo de plataforma (AD-144, 2026-09-03): o veredito é o 
 | `PixEstatico` | — | `true` | `NENHUMA` ← `FR-006` |
 | `Dinheiro` | `true` | `true` | `NENHUMA` |
 
-**A linha que mais importa**: `CartaoCredito` + `tefAtivo: true` + `MOBILE` → `NENHUMA`. Se essa falhar, `FR-007` está violado — o Checkout tentaria acionar um terminal físico a partir de um tablet.
+**A linha que mais importa**: `PixEstatico` + `pixAtivo: true` → `NENHUMA`. Se essa falhar, `FR-006` está violado — o Checkout tentaria gerar cobrança dinâmica para um QR estático, que não tem ciclo de confirmação.
+
+> **Não existe mais linha de plataforma nesta matriz.** Até 2026-09-03 a linha crítica era `CartaoCredito` + `tefAtivo: true` + `MOBILE` → `NENHUMA`, redação de `FR-007` sob AD-074. **AD-144 revogou** essa exclusão: cartão com TEF ativo roteia para `TEF` em qualquer layout, e `resolverIntegracao` não recebe plataforma nenhuma. Um teste que ainda espere `NENHUMA` no mobile está afirmando o comportamento **errado**.
 
 ---
 

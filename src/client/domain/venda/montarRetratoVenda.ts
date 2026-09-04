@@ -13,7 +13,7 @@
  * devolve sempre o mesmo objeto, sem ler relógio nem gerar identificador.
  */
 
-import { somar, type Centavos } from '../precificacao/dinheiro';
+import { centavos, somar, ZERO_CENTAVOS, type Centavos } from '../precificacao/dinheiro';
 import { linhasAtivas, totalBruto, totalLinha, type LinhaCarrinho } from '../precificacao/linha';
 import { MILESIMOS_POR_UNIDADE, type Milesimos } from '../precificacao/quantidade';
 import { serializarLogAuditoria } from '../auditoria/serializarLog';
@@ -132,27 +132,53 @@ function suspenderOuFaturar(operacao: OperacaoVenda): SuspenderOuFaturar {
  * `Log` de auditoria como `PRODUTO_CANCELADO` — enviá-las como item da NFCe
  * faturaria um produto que o operador removeu.
  */
-function itensDoRetrato(linhas: readonly LinhaCarrinho[]): readonly ItemRetratoVenda[] {
-  return linhasAtivas(linhas).map((linha, indice) => ({
-    sequencial: indice + 1,
-    codigoProduto: linha.snapshot.codigoProduto,
-    quantidade: unidadesDeMilesimos(linha.quantidade),
-    precoUnitario: reaisDeCentavos(linha.precoUnitario),
-    // O contrato tem os dois campos, mas o percentual não reproduz o mesmo
-    // centavo do desconto absoluto já calculado pelo carrinho — mandar os dois
-    // deixaria o ERP escolher qual aplicar (`erp-pagamento-api.md`, §3).
-    DescontoPercentual: SEM_DESCONTO_PERCENTUAL,
-    DescontoValor: reaisDeCentavos(somar(linha.descontoConvenio, linha.descontoManual)),
-    UDM: linha.snapshot.unidadeMedida,
-    ValorBruto: reaisDeCentavos(totalBruto(linha)),
-    ValorTotal: reaisDeCentavos(totalLinha(linha)),
-  }));
+function itensDoRetrato(
+  linhas: readonly LinhaCarrinho[],
+  rateioDescontoCapa: ReadonlyMap<string, Centavos>,
+): readonly ItemRetratoVenda[] {
+  return linhasAtivas(linhas).map((linha, indice) => {
+    // O desconto de capa **não existe como campo de cabeçalho** em
+    // `CheckoutFaturarNFCe` (`erp-pagamento-api.md` §3): a única forma de
+    // expressá-lo no contrato é diluído por item, e é por isso que o rateio de
+    // `FR-016` é obrigatório e não preferência de design. Ele **soma** ao
+    // desconto que a linha já trazia (convênio + manual) em vez de substituí-lo
+    // — os três são descontos distintos concedidos na mesma venda.
+    const descontoDaLinha = somar(linha.descontoConvenio, linha.descontoManual);
+    const parcelaDeCapa = rateioDescontoCapa.get(linha.idLinha) ?? ZERO_CENTAVOS;
+    const descontoTotal = somar(descontoDaLinha, parcelaDeCapa);
+
+    return {
+      sequencial: indice + 1,
+      codigoProduto: linha.snapshot.codigoProduto,
+      quantidade: unidadesDeMilesimos(linha.quantidade),
+      precoUnitario: reaisDeCentavos(linha.precoUnitario),
+      // O contrato tem os dois campos, mas o percentual não reproduz o mesmo
+      // centavo do desconto absoluto já calculado pelo carrinho — mandar os dois
+      // deixaria o ERP escolher qual aplicar (`erp-pagamento-api.md`, §3).
+      DescontoPercentual: SEM_DESCONTO_PERCENTUAL,
+      DescontoValor: reaisDeCentavos(descontoTotal),
+      UDM: linha.snapshot.unidadeMedida,
+      ValorBruto: reaisDeCentavos(totalBruto(linha)),
+      // O clamp do rateio (AD-098) garante que a parcela nunca excede o total
+      // líquido da linha, então `ValorTotal` não fica negativo — item negativo é
+      // rejeitado pela SEFAZ. O piso aqui é defesa em profundidade, não a regra:
+      // quem a garante é `ratearDescontoCapa`.
+      ValorTotal: reaisDeCentavos(centavos(Math.max(0, totalLinha(linha) - parcelaDeCapa))),
+    };
+  });
 }
 
+/**
+ * @param rateioDescontoCapa Parcela do desconto de capa por `idLinha`, vinda de
+ * `pagamentoSlice.montarPagamentosParaPayload()` (feature 008). Omitido quando
+ * não há desconto de capa — é o caso da maioria das vendas, e da feature 014
+ * quando ela valida uma venda antes de qualquer desconto.
+ */
 export function montarRetratoVenda(
   snapshot: SnapshotVenda,
   operacao: OperacaoVenda,
   pagamentos: readonly FormaDePagamentoRetrato[],
+  rateioDescontoCapa: ReadonlyMap<string, Centavos> = new Map(),
 ): CheckoutFaturarNFCe {
   return {
     SuspenderOuFaturar: suspenderOuFaturar(operacao),
@@ -161,7 +187,7 @@ export function montarRetratoVenda(
     clienteCodigo: snapshot.clienteCodigo,
     vendedorCodigo: snapshot.vendedorCodigo,
     CondicaoPagamentoCodigo: snapshot.condicaoPagamentoCodigo,
-    produtos: itensDoRetrato(snapshot.linhas),
+    produtos: itensDoRetrato(snapshot.linhas, rateioDescontoCapa),
     FormasDePagamento: pagamentos,
     // O log entra serializado e íntegro — sem filtrar, resumir nem reordenar
     // (`contracts/auditoria-events.md`). `FR-011`: vale para `FATURAR` **e**

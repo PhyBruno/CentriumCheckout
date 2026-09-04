@@ -124,14 +124,26 @@ function motivoDeBloqueioDoCancelar(travado: boolean, temItem: boolean): string 
  * Só se fatura o que tem valor: sem linha ativa, ou com subtotal zerado, não há
  * NFCe a emitir e o botão fica desabilitado (pedido do usuário, 2026-09-02).
  *
- * A feature 008 **estende** esta condição — lá o botão também fica desabilitado
- * enquanto os pagamentos aplicados não cobrirem o subtotal. Por isso a regra
- * mora num seletor só, e não espalhada pelo componente.
+ * **Estendido pela feature 008 (2026-09-03):** ter valor deixou de bastar — o
+ * botão só libera quando os pagamentos aprovados cobrem o total líquido
+ * (`saldoRestante === 0`), que é o fecho do fluxo dourado de
+ * `specs/008-pagamento-geral/quickstart.md`. Sem isso o operador emitiria uma
+ * NFCe cujo `Σ FormaValor` não fecha com o total da nota — divergência fiscal
+ * que só apareceria na conferência.
+ *
+ * A regra mora num seletor só, e não espalhada pelo componente, justamente para
+ * que essa extensão fosse um lugar só.
  */
 function useVendaTemValorAFaturar(): boolean {
-  return useVendaStore(
+  // Seletores separados e primitivos: `saldo()` monta um objeto novo a cada
+  // chamada, e devolvê-lo do seletor daria referência diferente por render — o
+  // Zustand v5 leria como mudança e o componente entraria em laço.
+  const temItemComValor = useVendaStore(
     (estado) => linhasAtivas(estado.linhas).length > 0 && totalVenda(estado.linhas) > 0,
   );
+  const saldoRestante = useVendaStore((estado) => estado.saldo().saldoRestante);
+
+  return temItemComValor && saldoRestante === 0;
 }
 
 function useFinalizacaoVenda(): ApiFinalizacaoVenda {

@@ -7,13 +7,25 @@
  * Pencil (`design/HTML - Pencil/CentriumCheckout.html`). Sem isso, o
  * `font-family` abaixo nunca resolve para a fonte real — cai direto no
  * fallback do sistema (Segoe UI no Windows), visualmente distinto do design.
+ *
+ * O peso **700** entrou com o cartão de pagamento (feature 008): o Pencil pede
+ * 700 em Geist Mono no "Equivalente financeiro" do desconto de capa
+ * (`design/CentriumCheckout.pen`, nó `O89FKo`) e em Inter no texto do botão
+ * "Adicionar pagamento" (`g0NUgT`), no prefixo "R$" (`F2SfP`) e nos rótulos do
+ * toggle R$/% (`VY1hS`/`wzjWV`). Sem o `@import`, `font-bold` não tem arquivo
+ * de fonte para resolver e o navegador **sintetiza** o negrito engrossando o
+ * 400 — traço mais sujo e métrica diferente da do design. Os `font-bold` que já
+ * existiam na base (`ModalBuscaProduto`, `CampoClienteVenda`, `ModalImportacaoDav`…)
+ * caíam nessa síntese e passam a usar o peso real agora.
  */
 @import '@fontsource/inter/400.css';
 @import '@fontsource/inter/500.css';
 @import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
 @import '@fontsource/geist-mono/400.css';
 @import '@fontsource/geist-mono/500.css';
 @import '@fontsource/geist-mono/600.css';
+@import '@fontsource/geist-mono/700.css';
 
 /**
  * Design tokens do Centrium Checkout.
@@ -50,6 +62,16 @@
   --cc-color-surface-dark-elevated: #16181c;
   --cc-color-on-dark: #ffffff;
   --cc-color-on-dark-soft: #a8acb3;
+  /* Os dois degraus de texto do bloco escuro "Total da venda" (nó `LcGwh` do
+     Pencil, `design/HTML - Pencil/CentriumCheckout.html`). `-strong` é o rótulo
+     "Total a pagar" e o valor da métrica "Recebido" (`#DDE3EA`, nós `HBR0z` e
+     `VgwEQ`); `-muted` é o texto secundário — "BRL" e os rótulos das métricas
+     (`#8E99A8`, nós `X227y`, `Hk9A7`, `I8ZFCW`). Nenhum dos dois é
+     `--cc-color-on-dark-soft` (#A8ACB3), que fica onde está: reaproveitá-lo
+     aproximaria a cor "de perto o suficiente" e apagaria a hierarquia que o
+     desenho monta com três valores distintos sobre o mesmo fundo. */
+  --cc-color-on-dark-strong: #dde3ea;
+  --cc-color-on-dark-muted: #8e99a8;
 
   /* --- Cor: divisores --------------------------------------------------- */
   --cc-color-hairline: #dee1e6;

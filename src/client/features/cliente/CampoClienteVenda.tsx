@@ -36,7 +36,10 @@ import { useIdentificacaoCliente } from './useCliente';
  * **Nasce colapsado** (pedido do usuário, 2026-09-03): o cabeçalho já responde
  * "quem é o cliente desta venda", que é a pergunta do dia a dia; os campos de
  * identificação são exceção, e mantê-los sempre abertos custaria uma faixa de
- * altura permanente ao carrinho.
+ * altura permanente ao carrinho. **Expande sozinho** quando o operador volta
+ * para cá com Shift+TAB a partir do código de produto (`focoVendaStore`,
+ * pedido do usuário 2026-09-04) — recolhido, o campo é `inert` e o gesto não
+ * teria para onde levar o foco.
  *
  * **A pílula do Vendedor vem de `SessaoUsuario`, não de `GetCliente`**: o
  * schema `ClienteCheckout` do contrato não tem nenhum campo de vendedor
@@ -114,6 +117,29 @@ export function CampoClienteVenda(): ReactElement {
     }
     campoDocumento.current?.focus();
   }, [pedidosDeFocoNoDocumento]);
+
+  /**
+   * Pedido de foco vindo de fora — hoje só o Shift+TAB no campo de código de
+   * produto (pedido do usuário, 2026-09-04): o passo anterior do fluxo do
+   * caixa é a identificação do cliente, não o botão "Recolhido" que a ordem do
+   * DOM ofereceria.
+   *
+   * **Expande o card antes de focar**, e é por isso que o pedido externo passa
+   * pelo contador local em vez de chamar `focus()` aqui: enquanto recolhido, o
+   * bloco é `inert` e o campo não aceita foco nenhum. Os dois `set` entram no
+   * mesmo lote, o React aplica o novo render (sem `inert`) e só então o efeito
+   * de cima foca — mesma mecânica de `zerarIdentificacao`.
+   */
+  const pedidosExternosDeFocoNoDocumento = useFocoVendaStore(
+    (estado) => estado.pedidosDeFocoNoDocumento,
+  );
+  useEffect(() => {
+    if (pedidosExternosDeFocoNoDocumento === 0) {
+      return;
+    }
+    setExpandido(true);
+    setPedidosDeFocoNoDocumento((atual) => atual + 1);
+  }, [pedidosExternosDeFocoNoDocumento]);
 
   /**
    * Qual das duas identidades do cliente o campo mostra depois de identificar:

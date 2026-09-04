@@ -1,5 +1,13 @@
 import { Barcode, Minus, Plus, Search } from 'lucide-react';
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactElement,
+  type RefObject,
+} from 'react';
+import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -12,6 +20,7 @@ import {
   somar,
   type Centavos,
 } from '../../domain/precificacao/dinheiro';
+import { TOTAL_MINIMO_DA_LINHA } from '../../domain/precificacao/linha';
 import {
   MILESIMOS_POR_UNIDADE,
   formatarQuantidade,
@@ -39,6 +48,35 @@ const ID_CAMPO_QUANTIDADE = 'previa-campo-quantidade';
 const UMA_UNIDADE = milesimos(MILESIMOS_POR_UNIDADE);
 const QUANTIDADE_INICIAL = milesimosDeUnidades(1);
 
+/**
+ * Desconto que consome o item inteiro (pedido do usuário, 2026-09-04).
+ *
+ * A frase nomeia a saída — reduzir o desconto — porque o gesto que o operador
+ * tentaria sozinho (confirmar assim mesmo) não funciona: o botão de inserir
+ * fica bloqueado enquanto o total não voltar a `TOTAL_MINIMO_DA_LINHA`.
+ */
+const AVISO_DESCONTO_ZERA_ITEM =
+  'O desconto não pode zerar o item: reduza o valor para o total ficar em pelo menos R$ 0,01.';
+
+/**
+ * Campos obrigatórios da prévia (pedido do usuário, 2026-09-04): sair de
+ * quantidade, preço ou desconto com o campo vazio — ou com quantidade/preço
+ * zerados — é erro, avisado na hora e com o foco devolvido ao campo.
+ *
+ * **Zero é recusado em quantidade e preço, mas não em desconto** (decisão do
+ * usuário na mesma data): um item sem desconto é o caso normal, e o campo
+ * nasce em `0,00`; exigir um desconto positivo impediria a inserção mais
+ * comum do caixa. No desconto, portanto, só o campo vazio (ou um texto que
+ * `lerCentavos` não entende) bloqueia — o desconto grande demais continua
+ * coberto por `AVISO_DESCONTO_ZERA_ITEM`.
+ */
+const AVISO_QUANTIDADE_INVALIDA =
+  'Informe a quantidade do item: ela precisa ser um número maior que zero.';
+const AVISO_PRECO_INVALIDO =
+  'Informe o preço unitário do item: ele precisa ser um valor maior que zero.';
+const AVISO_DESCONTO_INVALIDO =
+  'Informe o desconto do item: digite 0,00 quando não houver desconto.';
+
 /** `"12,34"` e `"12.34"` → `1234` centavos; entrada inválida vira `null`. */
 function lerCentavos(texto: string): Centavos | null {
   const normalizado = texto.trim().replace(',', '.');
@@ -60,6 +98,29 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
   }
   const unidades = Number(normalizado);
   return unidades > 0 ? milesimosDeUnidades(unidades) : null;
+}
+
+/**
+ * Recusa a saída de um campo obrigatório: avisa o operador e devolve o foco ao
+ * campo (pedido do usuário, 2026-09-04).
+ *
+ * O `.focus()` vai agendado (`setTimeout` de 0), não direto: quando a saída é
+ * um TAB — ou um clique em outro controle — o navegador ainda move o foco
+ * **depois** de o handler de `blur` rodar, e um foco pedido dentro dele seria
+ * desfeito no mesmo gesto. Agendar para o fim da fila deixa a navegação
+ * terminar e só então traz o foco de volta, que é o comportamento pedido
+ * ("voltar o foco para o campo referente").
+ *
+ * O texto digitado permanece no campo, como no aviso de desconto que zera o
+ * item: quem impede a inserção é `bloqueioDeInsercao`, e apagar o que o
+ * operador escreveu tiraria dele a chance de só corrigir um dígito.
+ */
+function exigirCampo(campo: RefObject<HTMLInputElement | null>, aviso: string): void {
+  gooeyToast.error(aviso);
+  window.setTimeout(() => {
+    campo.current?.focus();
+    campo.current?.select();
+  }, 0);
 }
 
 /**
@@ -93,7 +154,8 @@ function SimboloReal({ testId }: { testId: string }): ReactElement {
  * entrada e insere direto, sem exibir revisão (produto pesável/simples/balança
  * — `'S'`/`'B'`/`''`). TAB é a tecla de **revisão**: carrega o produto via
  * `GetProduto` (`revisarPorCodigo`) e preenche todas as células com os dados
- * reais.
+ * reais — mas só quando há código digitado; com o campo vazio TAB volta a ser
+ * navegação e leva o foco à lupa de busca (pedido do usuário, 2026-09-04).
  *
  * Quantidade, preço e desconto são sempre `<input>` de verdade — não só
  * texto — para participarem da navegação por TAB. Unidade também é um
@@ -187,6 +249,10 @@ export function EntradaRapidaProduto(): ReactElement {
 
   const campoCodigo = useRef<HTMLInputElement>(null);
   const campoQuantidade = useRef<HTMLInputElement>(null);
+  // Preço e desconto ganharam ref pelo mesmo motivo que a quantidade sempre
+  // teve: sair deles com valor inválido devolve o foco ao campo (`exigirCampo`).
+  const campoPreco = useRef<HTMLInputElement>(null);
+  const campoDesconto = useRef<HTMLInputElement>(null);
   const botaoConfirmar = useRef<HTMLButtonElement>(null);
 
   // `linhaEmEdicao` (item já inserido, recarregado pelo lápis) e `resolvido`
@@ -212,6 +278,45 @@ export function EntradaRapidaProduto(): ReactElement {
     : (linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS);
   const descontoTotalLido =
     descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
+
+  /**
+   * Total da linha como ela entraria na venda — a mesma função do domínio que
+   * o carrinho usa (`calcularTotalLinha`), nunca uma subtração local: o total
+   * exibido, o total gravado e o total validado precisam ser o mesmo número.
+   */
+  const totalItemLido =
+    quantidadeLida === null || precoLido === null || descontoTotalLido === null
+      ? null
+      : calcularTotalLinha(precoLido, quantidadeLida, descontoTotalLido);
+
+  /**
+   * O desconto digitado consome o item inteiro (pedido do usuário,
+   * 2026-09-04). Só é possível em produto `'E'`, o único em que o campo de
+   * desconto aceita digitação — nos demais o valor exibido é o da própria linha
+   * e o operador não tem como estragá-lo daqui.
+   *
+   * `calcularTotalLinha` tem piso zero (invariante I8), então um desconto
+   * exagerado não produz total negativo: ele produz **zero**, que é exatamente
+   * o desfecho que esta guarda existe para recusar — um produto entregue de
+   * graça, sem ninguém ser avisado.
+   */
+  const descontoZeraItem =
+    editavel && totalItemLido !== null && totalItemLido < TOTAL_MINIMO_DA_LINHA;
+
+  /**
+   * Os três campos digitáveis da prévia são obrigatórios (pedido do usuário,
+   * 2026-09-04) — ver os `AVISO_*` no topo do arquivo para o porquê de o zero
+   * ser recusado em quantidade e preço, mas não em desconto.
+   *
+   * `precoInvalido` e `descontoInvalido` só existem quando o campo é de fato
+   * digitável (`editavel`): em produto `'S'`/`'B'`/`''` os dois valores vêm do
+   * cadastro ou da própria linha, o campo é `readOnly` e o operador não tem
+   * como estragá-los daqui — bloqueá-lo por um preço zerado no cadastro seria
+   * um beco sem saída, sem campo onde corrigir.
+   */
+  const quantidadeInvalida = quantidadeLida === null;
+  const precoInvalido = editavel && (precoLido === null || precoLido <= ZERO_CENTAVOS);
+  const descontoInvalido = editavel && descontoManualLido === null;
 
   // Foco automático ao resolver (TAB) ou ao recarregar uma linha existente
   // (lápis): produto editável pousa na quantidade — primeiro campo da
@@ -280,6 +385,9 @@ export function EntradaRapidaProduto(): ReactElement {
    * mesma regra — quem está revisando um item não perde o campo.
    */
   const pedidosDeFocoNoCodigo = useFocoVendaStore((estado) => estado.pedidosDeFocoNoCodigo);
+  // Sentido inverso: Shift+TAB no campo de código devolve o foco ao card de
+  // cliente (ver `aoTeclarNoCodigo`).
+  const focarDocumentoCliente = useFocoVendaStore((estado) => estado.focarDocumentoCliente);
   useEffect(() => {
     if (pedidosDeFocoNoCodigo > 0 && resolvido === null) {
       campoCodigo.current?.focus();
@@ -425,7 +533,37 @@ export function EntradaRapidaProduto(): ReactElement {
     await resolverEExibir(codigoProduto, 'BUSCA');
   }
 
+  /**
+   * Confere os campos obrigatórios da prévia na ordem em que o operador os
+   * percorre e para no primeiro inválido, avisando e devolvendo o foco a ele.
+   *
+   * Existe para o Enter, que confirma direto de qualquer campo e não passa por
+   * `acaoBloqueavel`: sem esta guarda, Enter com um campo vazio simplesmente
+   * não fazia nada — `confirmar()` retornava em silêncio e o operador ficava
+   * sem inserção e sem explicação. Pelo botão "+", `bloqueioDeInsercao` já
+   * barra antes e diz o mesmo motivo.
+   */
+  function previaValida(): boolean {
+    if (quantidadeInvalida) {
+      exigirCampo(campoQuantidade, AVISO_QUANTIDADE_INVALIDA);
+      return false;
+    }
+    if (precoInvalido) {
+      exigirCampo(campoPreco, AVISO_PRECO_INVALIDO);
+      return false;
+    }
+    if (descontoInvalido) {
+      exigirCampo(campoDesconto, AVISO_DESCONTO_INVALIDO);
+      return false;
+    }
+    return true;
+  }
+
   function confirmar(): void {
+    if (!semResolucao && !previaValida()) {
+      return;
+    }
+
     // Correção do usuário (2026-09-03): lápis da grid/lista mobile — edita a
     // linha já inserida em vez de criar uma nova (`editarItem` por campo, via
     // `confirmarEdicaoDeLinha`). Produto pesável (`'S'`/`'B'`) só libera a
@@ -474,12 +612,34 @@ export function EntradaRapidaProduto(): ReactElement {
   // única e vive em `aoTeclarNoCartao` (pedido do usuário, 2026-09-03: Enter
   // confirma a partir de qualquer campo da barra, não só do código).
   function aoTeclarNoCodigo(evento: KeyboardEvent<HTMLInputElement>): void {
-    if (evento.key === 'Tab') {
-      // TAB não sai do campo: no PDV ele é a tecla de revisão, não de
-      // navegação (AD-027/AD-063).
-      evento.preventDefault();
-      void revisarEntrada();
+    if (evento.key !== 'Tab') {
+      return;
     }
+    // Shift+TAB volta para o passo anterior do fluxo do caixa: a identificação
+    // do cliente (pedido do usuário, 2026-09-04). A ordem natural do DOM
+    // levaria ao botão "Recolhido" do cabeçalho do card — um controle de
+    // layout, não uma etapa da venda —, e o campo de documento nem é
+    // alcançável enquanto o card está recolhido (`inert`). Por isso o pedido
+    // vai pelo `focoVendaStore`: quem expande e foca é o `CampoClienteVenda`,
+    // dono desse estado.
+    if (evento.shiftKey) {
+      evento.preventDefault();
+      focarDocumentoCliente();
+      return;
+    }
+    // Campo vazio: não há código a revisar, então TAB volta a ser a tecla de
+    // navegação e segue para a próxima ação da barra — a lupa de busca, que é
+    // o próximo elemento focável no DOM (pedido do usuário, 2026-09-04).
+    // Sem isto, o `preventDefault()` abaixo engolia o TAB e o foco ficava
+    // preso no campo vazio, obrigando o operador a pegar o mouse para abrir a
+    // busca por termo livre.
+    if (texto.trim() === '') {
+      return;
+    }
+    // Com código digitado, TAB não sai do campo: no PDV ele é a tecla de
+    // revisão, não de navegação (AD-027/AD-063).
+    evento.preventDefault();
+    void revisarEntrada();
   }
 
   /**
@@ -507,27 +667,45 @@ export function EntradaRapidaProduto(): ReactElement {
     }
   }
 
-  const podeConfirmar =
-    resolvido === null && linhaEmEdicao === null
-      ? !ocupado && texto.trim() !== ''
-      : quantidadeLida !== null && precoLido !== null && descontoTotalLido !== null;
+  const podeConfirmar = semResolucao
+    ? !ocupado && texto.trim() !== ''
+    : !quantidadeInvalida &&
+      !precoInvalido &&
+      !descontoInvalido &&
+      precoLido !== null &&
+      descontoTotalLido !== null &&
+      !descontoZeraItem;
 
   /**
    * Por que o botão de inserir está bloqueado — a frase que o operador lê ao
    * clicar nele bloqueado (padrão de `lib/bloqueio.ts`, pedido do usuário
    * 2026-09-03), ou `null` quando dá para inserir.
    *
-   * Os três motivos são exatamente os três termos de `podeConfirmar`, na mesma
-   * ordem: sem esse espelho, o texto poderia dizer uma coisa e o bloqueio
-   * responder a outra.
+   * Os motivos são exatamente os termos de `podeConfirmar`, na mesma ordem:
+   * sem esse espelho, o texto poderia dizer uma coisa e o bloqueio responder a
+   * outra. Cada campo obrigatório vazio ou zerado responde com o mesmo aviso
+   * que `previaValida` dá ao sair dele (pedido do usuário, 2026-09-04) — o
+   * operador lê a mesma frase pelos dois caminhos, em vez de um genérico aqui
+   * e um específico ali. O desconto que zera o item vem depois dos três porque
+   * ele **é** um valor bem formado: o operador digitou um número legítimo que
+   * a regra de negócio recusa, e só faz sentido apontá-lo quando não há mais
+   * nenhum campo por preencher.
    */
   const bloqueioDeInsercao: MotivoBloqueio = podeConfirmar
     ? null
     : ocupado
       ? 'Aguarde: o produto ainda está sendo consultado no ERP.'
-      : resolvido === null && linhaEmEdicao === null
+      : semResolucao
         ? 'Digite ou bipe o código do produto para inserir.'
-        : 'Revise quantidade, preço e desconto: há um valor inválido.';
+        : quantidadeInvalida
+          ? AVISO_QUANTIDADE_INVALIDA
+          : precoInvalido
+            ? AVISO_PRECO_INVALIDO
+            : descontoInvalido
+              ? AVISO_DESCONTO_INVALIDO
+              : descontoZeraItem
+                ? AVISO_DESCONTO_ZERA_ITEM
+                : 'Revise quantidade, preço e desconto: há um valor inválido.';
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -641,6 +819,18 @@ export function EntradaRapidaProduto(): ReactElement {
               onChange={(evento) => {
                 setQuantidadeTexto(evento.target.value);
               }}
+              // Quantidade vazia ou zerada não sai do campo (pedido do
+              // usuário, 2026-09-04). Só vale com um produto em revisão: com a
+              // barra vazia nada do que está aqui entra na venda — a inserção
+              // rápida pelo código usa o multiplicador do próprio código
+              // ("2*7891...", `confirmarEntradaRapida`) —, e prender o foco num
+              // campo que ninguém vai ler impediria o operador de bipar o
+              // próximo item.
+              onBlur={() => {
+                if (!semResolucao && quantidadeInvalida) {
+                  exigirCampo(campoQuantidade, AVISO_QUANTIDADE_INVALIDA);
+                }
+              }}
             />
             <Button
               type="button"
@@ -676,6 +866,7 @@ export function EntradaRapidaProduto(): ReactElement {
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-preco-unitario-simbolo" />
             <input
+              ref={campoPreco}
               className={cn(classeValorDigitavel, semResolucao && 'text-muted-foreground')}
               inputMode="decimal"
               data-testid="previa-preco-unitario"
@@ -684,6 +875,14 @@ export function EntradaRapidaProduto(): ReactElement {
               onChange={(evento) => {
                 if (editavel) {
                   setPrecoTexto(evento.target.value);
+                }
+              }}
+              // Preço vazio ou zerado não sai do campo (pedido do usuário,
+              // 2026-09-04) — só onde há campo para corrigir, isto é, em
+              // produto `'E'` (`precoInvalido` já embute o `editavel`).
+              onBlur={() => {
+                if (precoInvalido) {
+                  exigirCampo(campoPreco, AVISO_PRECO_INVALIDO);
                 }
               }}
             />
@@ -695,6 +894,7 @@ export function EntradaRapidaProduto(): ReactElement {
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-desconto-item-simbolo" />
             <input
+              ref={campoDesconto}
               className={cn(classeValorDigitavel, semResolucao && 'text-muted-foreground')}
               inputMode="decimal"
               data-testid="previa-desconto-item"
@@ -703,6 +903,28 @@ export function EntradaRapidaProduto(): ReactElement {
               onChange={(evento) => {
                 if (editavel) {
                   setDescontoTexto(evento.target.value);
+                }
+              }}
+              // Avisa ao **sair do campo**, não a cada tecla (pedido do
+              // usuário, 2026-09-04): digitar "10,00" num item de 10,00 passa
+              // por "1", "1,0"… e cada passagem dispararia um toast idêntico
+              // sobre um valor que o operador ainda está escrevendo. Mesma
+              // política do desconto de capa, que aplica no `blur` e no Enter.
+              // O texto permanece no campo para ser corrigido; quem impede a
+              // inserção é `bloqueioDeInsercao`.
+              //
+              // Campo vazio vem primeiro e **prende o foco**: sem número
+              // nenhum não há total a conferir, então o aviso de desconto que
+              // zera o item nem chega a fazer sentido. O desconto grande
+              // demais continua só avisando, sem tomar o foco — o valor está
+              // escrito e o operador decide se reduz ou desiste do item.
+              onBlur={() => {
+                if (descontoInvalido) {
+                  exigirCampo(campoDesconto, AVISO_DESCONTO_INVALIDO);
+                  return;
+                }
+                if (descontoZeraItem) {
+                  gooeyToast.warning(AVISO_DESCONTO_ZERA_ITEM);
                 }
               }}
             />
@@ -718,9 +940,7 @@ export function EntradaRapidaProduto(): ReactElement {
             )}
             data-testid="previa-total-item"
           >
-            {quantidadeLida === null || precoLido === null || descontoTotalLido === null
-              ? formatarCentavos(ZERO_CENTAVOS)
-              : formatarCentavos(calcularTotalLinha(precoLido, quantidadeLida, descontoTotalLido))}
+            {formatarCentavos(totalItemLido ?? ZERO_CENTAVOS)}
           </strong>
         </label>
 

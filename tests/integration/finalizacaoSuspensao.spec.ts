@@ -20,6 +20,7 @@ import { CHAVE_RAIZ_PRODUTO } from '../../src/client/services/produto/produtoQue
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
 import { clienteCheckoutDe } from '../support/cliente';
+import { pagamentoDe } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -89,6 +90,11 @@ beforeEach(() => {
   venda.resetarAuditoria('NOVA');
   venda.resetarIdentidadeVenda();
   venda.limparCarrinho();
+  // Zera o pagamento junto com o resto da venda (feature 008). Sem isto, um
+  // teste que aplica pagamento deixa `podeMutarCarrinho()` em `false` para o
+  // próximo — e `selecionarCliente`/`editarItem` viram no-op silencioso, que é
+  // exatamente o bloqueio de I7 funcionando fora de hora.
+  venda.limparPagamentos();
   useVendaStore.setState({ linhas: [linhaDe({ quantidadeEmUnidades: 2, precoUnitario: 1000 })] });
 });
 
@@ -613,8 +619,23 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
     expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
   });
 
-  it('habilita "Finalizar venda" com item e subtotal positivo', () => {
+  // Comportamento **estendido pela feature 008** (2026-09-03): ter item com
+  // valor deixou de bastar. Enquanto os pagamentos aprovados não cobrem o total
+  // líquido, finalizar emitiria uma NFCe cujo `Σ FormaValor` não fecha com o
+  // total da nota — por isso o botão só libera com `saldoRestante === 0`.
+  it('mantém "Finalizar venda" desabilitado enquanto o saldo não é coberto', () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+
+    renderizarAcoes(cenario);
+
+    expect(useVendaStore.getState().saldo().saldoRestante).toBeGreaterThan(0);
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+  });
+
+  it('habilita "Finalizar venda" com item, subtotal positivo e saldo coberto', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    const total = useVendaStore.getState().saldo().totalLiquido;
+    useVendaStore.setState({ pagamentos: [pagamentoDe({ valorAplicado: total })] });
 
     renderizarAcoes(cenario);
 

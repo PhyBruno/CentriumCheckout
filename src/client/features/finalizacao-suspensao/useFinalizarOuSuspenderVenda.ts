@@ -106,6 +106,24 @@ const MENSAGEM_VENDA_SUSPENSA = 'Venda suspensa. O rascunho continua disponível
 
 const ESTADO_INICIAL: EstadoEnvio = { tipo: 'ocioso' };
 
+/**
+ * Há pagamento aprovado por integração externa (TEF/PIX) na venda — feature
+ * 008, invariante I6 (AD-030/AD-042).
+ *
+ * É a mesma condição que torna `removerPagamento` um no-op no slice, lida aqui
+ * do estado em vez de por porta injetada porque o pagamento agora faz parte do
+ * `vendaStore`. Suspender uma venda nessa situação deixaria dinheiro já
+ * movimentado fora do Checkout preso a um rascunho: o estorno é operação do
+ * ERP/adquirente, não do caixa.
+ */
+function temPagamentoIrreversivel(): boolean {
+  return useVendaStore
+    .getState()
+    .pagamentos.some(
+      (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+    );
+}
+
 export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFinalizacaoVenda {
   const [estado, setEstado] = useState<EstadoEnvio>(ESTADO_INICIAL);
   const encerrarVenda = useEncerrarVenda();
@@ -151,6 +169,36 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       const sessao = registro.SessaoUsuario;
       const injetadas = depsRef.current;
 
+      // A parte de pagamento do retrato vem pronta da feature 008: condição,
+      // formas aprovadas e o rateio do desconto de capa (`erp-pagamento-api.md`
+      // §3). Montada **uma vez** por despacho porque o rateio é calculado na
+      // montagem — chamá-la por campo repetiria o cálculo e, pior, poderia
+      // produzir dois rateios diferentes se o carrinho mudasse no meio.
+      // As portas injetadas continuam tendo precedência: é o que mantém o teste
+      // da máquina de estados independente do slice de pagamento.
+      //
+      // Envolvida em `try/catch` como defesa em profundidade (revisão de
+      // 2026-09-04): `ratearDescontoCapa` **lança** quando o desconto de capa
+      // excede a soma das linhas, e aqui a exceção escaparia como rejeição de
+      // promise — botão que não faz nada, com o evento terminal
+      // (`VENDA_FINALIZADA`/`VENDA_SUSPENSA`) já registrado numa venda que nunca
+      // foi enviada. Desde que o desconto de capa também congela o carrinho, a
+      // pré-condição daquela função é invariante e este `catch` não deveria
+      // rodar nunca; se rodar, é bug de composição, e falhar visível é melhor do
+      // que travar em silêncio.
+      let pagamentosDaVenda;
+      try {
+        pagamentosDaVenda = venda.montarPagamentosParaPayload();
+      } catch (erro) {
+        console.error('[finalização] falha ao montar a parte de pagamento do retrato.', erro);
+        aplicarEstado({
+          tipo: 'falha-negocio',
+          mensagem:
+            'Não foi possível montar o pagamento desta venda: revise o desconto e as formas aplicadas.',
+        });
+        return;
+      }
+
       // Stub de T029 até a feature 012 selecionar o vendedor: usa o vendedor do
       // PDV publicado no bootstrap quando ele existe. `VendedorCodigo` ainda não
       // está no schema Zod (é campo da 012), então é lido com narrow explícito —
@@ -175,11 +223,13 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           // faturamento (`FR-007` da 006), mas o defeito era da 005.
           clienteCodigo: venda.clienteAtual?.codigoCliente ?? sessao.ClienteDefaultCodigo,
           vendedorCodigo,
-          condicaoPagamentoCodigo: injetadas.condicaoPagamentoCodigo?.() ?? 0,
+          condicaoPagamentoCodigo:
+            injetadas.condicaoPagamentoCodigo?.() ?? pagamentosDaVenda.CondicaoPagamentoCodigo,
           eventos: venda.eventos,
         },
         operacao,
-        injetadas.formasDePagamento?.() ?? [],
+        injetadas.formasDePagamento?.() ?? pagamentosDaVenda.FormasDePagamento,
+        pagamentosDaVenda.rateioDescontoCapa,
       );
 
       aplicarEstado({ tipo: 'enviando', operacao });
@@ -190,9 +240,18 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       switch (resultado.estado) {
         case 'sucesso':
           // Limpeza na mesma transação de UI, e só aqui (`FR-012`): carrinho +
-          // cache de produto (`useEncerrarVenda`, feature 003), auditoria
-          // (feature 001) e identidade da venda (feature 004).
+          // cache de produto (`useEncerrarVenda`, feature 003), pagamento
+          // (feature 008), auditoria (feature 001) e identidade da venda
+          // (feature 004).
+          //
+          // `limparPagamentos()` **faltava** aqui, e a ausência era visível:
+          // com o carrinho zerado e o desconto de capa ainda de pé, o bloco de
+          // totais passava a calcular `0 − desconto` e exibia "Total a pagar"
+          // **negativo** logo depois de finalizar (correção do usuário,
+          // 2026-09-04). Pior que o sintoma era o silencioso: condição, formas
+          // aplicadas e vales de devolução sobreviviam para a venda seguinte.
           encerrarVenda();
+          useVendaStore.getState().limparPagamentos();
           useVendaStore.getState().descartarAuditoria();
           useVendaStore.getState().resetarIdentidadeVenda();
           // Abre a próxima sessão no mesmo ponto do descarte. Sem isto o
@@ -274,7 +333,10 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       // Bloqueio de suspensão por pagamento não removível — mesma regra de
       // `CART-09` (`FR-005`/`FR-006`, AD-030/AD-042). Nunca se aplica a
       // `FATURAR`: finalizar com pagamento aprovado é o caminho normal.
-      if (operacao === 'SUSPENDER' && (injetadas.temPagamentoNaoRemovivel?.() ?? false)) {
+      if (
+        operacao === 'SUSPENDER' &&
+        (injetadas.temPagamentoNaoRemovivel?.() ?? temPagamentoIrreversivel())
+      ) {
         avisar(AVISO_SUSPENSAO_BLOQUEADA);
         return;
       }

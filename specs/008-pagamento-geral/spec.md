@@ -72,6 +72,8 @@ Como operador de caixa, quero aplicar múltiplas formas de pagamento na mesma ve
 1. **Given** uma venda com total pendente, **When** o operador aplica mais de uma forma de pagamento, **Then** os valores aplicados são somados até cobrir o total.
 2. **Given** um pagamento em dinheiro que excede o total (ou o saldo restante, em uma divisão), **When** o valor é informado, **Then** o sistema calcula e exibe o troco; **Given** um pagamento em cartão ou PIX, **When** ele é aplicado, **Then** nenhum troco é calculado.
 3. **Given** uma forma "dinheiro" já aplicada na venda, **When** o operador tenta aplicar outra forma "dinheiro", **Then** o sistema bloqueia a inserção e avisa que já existe uma forma "dinheiro" aplicada.
+4. **Given** uma venda com saldo em aberto, **When** o operador informa em cartão, PIX ou qualquer outra forma que não seja dinheiro um valor **maior** que esse saldo, **Then** o sistema recusa a inserção e avisa o operador, sem aplicar nada e sem reduzir o valor para caber no saldo.
+5. **Given** uma venda já coberta por um pagamento em dinheiro acima do total, **When** o operador olha o painel de totais, **Then** o troco é exibido como informação normal, e o realce de alerta é reservado ao saldo que ainda falta cobrir.
 
 ---
 
@@ -110,9 +112,10 @@ Como operador de caixa, quero aplicar desconto direto em um item ou no total da 
 - **FR-005**: O sistema MUST rotear automaticamente um pagamento por PIX dinâmico para sua integração dedicada quando aplicável, consultando seu status periodicamente, e MUST só registrar esse pagamento após a confirmação.
 - **FR-006**: O sistema MUST NOT rotear uma forma de PIX estático para a integração de PIX dinâmico automaticamente.
 - **FR-007**: O sistema MUST rotear as integrações de pagamento sem considerar o layout — a integração de terminal físico e o PIX MUST estar disponíveis no mobile nas mesmas condições do desktop, decididas só pela configuração do ambiente. **Corrigido em 2026-09-03 (AD-144):** o texto anterior proibia a integração de terminal físico no mobile.
-- **FR-008**: O sistema MUST permitir que o operador aplique um vale devolução a uma forma de pagamento elegível.
-- **FR-009**: O sistema MUST NOT revalidar um vale devolução na finalização da venda — ele é validado e consumido uma única vez, no momento da aplicação.
-- **FR-010**: O sistema MUST tratar uma forma de pagamento sem elegibilidade de vale devolução explicitamente configurada como elegível por padrão, em vez de bloqueá-la.
+- **FR-008**: O sistema MUST reconhecer, no catálogo de formas de pagamento, a forma que o cadastro do ERP marca como sendo **de vale devolução**, e ao escolhê-la MUST pedir o código do vale em vez do valor — o valor do pagamento é o valor do ticket, informado pelo ERP, e MUST NOT ser digitado pelo operador.
+- **FR-009**: O sistema MUST NOT revalidar um vale devolução na finalização da venda — ele é validado uma única vez, no momento da aplicação, e consumido pelo ERP no faturamento.
+- **FR-010**: O sistema MUST tratar como forma de vale devolução **apenas** aquela explicitamente marcada como tal no cadastro; toda forma sem essa marcação, inclusive a que não traz marcação alguma, MUST ser tratada como forma comum.
+- **FR-025**: O sistema MUST recusar a aplicação do **mesmo código** de vale devolução mais de uma vez na mesma venda, avisando o operador. Códigos distintos MUST continuar sendo aceitos. O ERP só marca o ticket como consumido no faturamento, de modo que uma segunda consulta de validação o aprovaria de novo — sem esta guarda a venda registraria duas vezes um crédito que existe uma só.
 - **FR-011**: O sistema MUST permitir que o operador aplique mais de uma forma de pagamento na mesma venda, somando os valores aplicados até cobrir o total.
 - **FR-012**: O sistema MUST calcular e exibir troco somente quando a forma de pagamento é dinheiro e o valor recebido excede o total (ou o saldo restante, em uma divisão de pagamento); nenhuma outra forma de pagamento MUST gerar troco calculado.
 - **FR-013**: O sistema MUST bloquear a aplicação de uma segunda forma "dinheiro" na mesma venda, avisando o operador de que já existe uma aplicada.
@@ -126,12 +129,14 @@ Como operador de caixa, quero aplicar desconto direto em um item ou no total da 
 - **FR-021**: Ao remover uma forma de pagamento aplicada, o sistema MUST invalidar o veredito de validação vigente, de modo que a próxima inserção seja validada de novo.
 - **FR-022**: O sistema MUST carregar, para cada forma de pagamento do catálogo da sessão, a indicação de **entrada** (`FormaEntrada`/`FpgEnt`) além da elegibilidade de crediário, e MUST enviá-la em cada forma do retrato da venda — sem esse campo o ERP não consegue avaliar o crediário e a validação prévia aprova vendas que deveria barrar (AD-111).
 - **FR-023**: Enquanto houver qualquer forma de pagamento aplicada à venda, o sistema MUST bloquear a alteração do carrinho, do cliente, do vendedor e do desconto sobre o total; alterar qualquer um deles MUST exigir a remoção prévia da forma aplicada (AD-113).
+- **FR-024**: O sistema MUST recusar a aplicação de uma forma de pagamento que não gera troco — toda forma que não seja dinheiro — quando o valor informado for maior que o saldo em aberto da venda, avisando o operador; e MUST NOT truncar o valor em silêncio para caber no saldo. Só o dinheiro pode receber valor acima do saldo, e o excedente vira troco (`FR-012`). O excedente de uma forma sem troco não teria destino: registrá-lo produziria um valor de pagamento maior que o total da nota, e truncá-lo registraria no ERP um valor diferente do que o operador digitou — em cartão ou PIX, o estorno da diferença é operação da operadora, não do caixa. **Exceção: o vale devolução**, cujo valor não é digitado pelo operador — ver `FR-026`.
+- **FR-026**: Quando o valor do vale devolução for maior que o saldo em aberto, o sistema MUST permitir a aplicação, mas MUST antes exibir uma confirmação explícita informando que vale devolução não gera troco e MUST mostrar quanto se perde; só MUST aplicar o pagamento se o operador confirmar. Recusar a confirmação MUST NOT aplicar nada e MUST NOT consumir o ticket. O valor registrado na nota MUST ser limitado ao saldo em aberto — o ticket é baixado por inteiro no ERP no momento do faturamento, e a diferença não retorna ao cliente.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Forma de Pagamento**: um meio que o operador pode aplicar à venda (dinheiro, cartão, PIX, vale, etc.), cada uma com suas próprias regras de elegibilidade e comportamento.
 - **Pagamento Aplicado**: um valor aplicado à venda sob uma forma específica, podendo fazer parte de uma divisão entre múltiplas formas.
-- **Vale Devolução**: um crédito que o cliente pode aplicar a uma condição de pagamento elegível.
+- **Vale Devolução**: um crédito emitido numa devolução anterior, que o cliente usa como **forma de pagamento** — a forma que o cadastro do ERP marca para esse fim. O valor é o do ticket e é usado por inteiro; não há uso parcial.
 
 ## Success Criteria *(mandatory)*
 

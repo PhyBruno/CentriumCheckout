@@ -87,6 +87,30 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getDav: 0,
 };
 
+/**
+ * Tickets de devolução sintéticos, um por desfecho de `PValidaTicketNFCe`.
+ * `ValorTicket` em reais, como o ERP devolve (`double`).
+ */
+const TICKETS_DEVOLUCAO: Record<
+  string,
+  { ValorTicket: number; Valido: boolean; Mensagem: string }
+> = {
+  'TCK-VALIDO': { ValorTicket: 25.5, Valido: true, Mensagem: 'Ticket Válido' },
+  /** Cabe numa venda pequena sem estourar o saldo — exercita `FR-024` pelo outro lado. */
+  'TCK-PEQUENO': { ValorTicket: 5.0, Valido: true, Mensagem: 'Ticket Válido' },
+  'TCK-USADO': {
+    ValorTicket: 0,
+    Valido: false,
+    Mensagem: 'Ticket de devolução já foi utilizado no documento : 90210/1',
+  },
+  'TCK-VENCIDO': {
+    ValorTicket: 0,
+    Valido: false,
+    Mensagem: 'Ticket de devolução vencido em 01/08/2026',
+  },
+  'TCK-NAO-EMITIDO': { ValorTicket: 0, Valido: false, Mensagem: 'Ticket ainda não emitido !' },
+};
+
 /** Base64 sintético — não é um PDF real, só precisa ser string não-vazia. */
 const PDF_SINTETICO = 'JVBERi0xLjQtc2ludGV0aWNv';
 const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
@@ -415,6 +439,80 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       // (`specs/004-.../contracts/impressao-local-api.md`).
       CadMaqHost: '127.0.0.1:4545',
       TipoImpressao: config.tipoImpressao,
+      /**
+       * Catálogo de pagamento da feature 008. **Não existe endpoint dedicado**
+       * (AD-097): condições e formas chegam embutidas na sessão, e é daqui que
+       * `useCondicoesPagamento` as lê (`erp-pagamento-api.md` §1).
+       *
+       * `FormaEntrada` está em toda forma de propósito: sem ele o ERP calcula
+       * crediário zero e a validação prévia aprova exatamente o que existe para
+       * barrar (`FR-022`/AD-111).
+       *
+       * `FormaFpgUtiCar = 'VDV'` identifica a **forma de vale devolução**, e
+       * nada mais: as demais formas o trazem vazio, como um cadastro comum. A
+       * leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
+       * 2026-09-04.
+       */
+      CondicoesDePagamento: [
+        {
+          CondicaoCodigo: 1,
+          CondicaoDescricao: 'A VISTA',
+          CondicaoPrazo: 0,
+          CondicaoMinimoEntrada: 0,
+          CondicaoDesconto: 0,
+          CondicaoDescontoMaximo: 0,
+          CondicaoFormasDePagamento: [
+            {
+              FormaCodigo: 1,
+              FormaDescricao: 'DINHEIRO',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'Dinheiro',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 2,
+              FormaDescricao: 'CARTAO CREDITO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'CartaoCredito',
+              FormaIntegracaoCartao: '1',
+              FormaTipoTransacaoTEF: 'CREDITO',
+              FormaFpgUtiCar: '',
+            },
+            {
+              // A forma de **vale devolução**: é `FpgUtiCar = 'VDV'` que a
+              // identifica, e escolhê-la abre a janela do ticket em vez do
+              // campo de valor.
+              FormaCodigo: 4,
+              FormaDescricao: 'VALE DEVOLUCAO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'Outros',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: 'VDV',
+            },
+            {
+              FormaCodigo: 3,
+              FormaDescricao: 'PIX',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'Pix',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+          ],
+        },
+      ],
+      /**
+       * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
+       * as formas roteando para `NENHUMA` (`resolverIntegracao`), de modo que um
+       * pagamento aplicado já entra `APROVADO` sem depender das features 009/010,
+       * que não existem. É também o cenário do fluxo dourado do quickstart
+       * ("desktop com `tefAtivo: false`").
+       */
+      ConfiguracoesTEF: { TEFAtivo: false },
+      ConfiguracoesPIX: { UtilizaCentriumPAG: false, MinimoPix: 0, TempoEspera: 10 },
     },
     messages: [],
   };
@@ -817,6 +915,38 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       }
 
       return reply.send({ OutCheckoutFaturarNFCe: dav.documento, messages: [] });
+    },
+  );
+
+  /**
+   * `ValidaTicketDevolucao` — espelha os desfechos de `PValidaTicketNFCe` com a
+   * ação `'validar'` (lido na KB em 2026-09-04): situação 2 é válido e devolve
+   * `DevValTot`; 1 ("ainda não emitido"), 3 ("já utilizado no documento N"), 4
+   * ("vencido") e inexistente devolvem `Valido: false` com a mensagem do ERP.
+   *
+   * O ticket **não** é marcado como usado aqui: isso é a ação `'emitir'`, que só
+   * acontece no faturamento. É justamente por isso que validar o mesmo código
+   * duas vezes devolveria "válido" nas duas, e a guarda contra repetição precisa
+   * viver no Checkout.
+   */
+  app.post<{ Body: { ticketDevolucao?: string } }>(
+    '/ApiCentriumOAuth/ValidaTicketDevolucao',
+    async (request, reply) => {
+      contadores.negocio += 1;
+
+      const ticket = (request.body.ticketDevolucao ?? '').trim().toUpperCase();
+      const conhecido = TICKETS_DEVOLUCAO[ticket];
+
+      if (conhecido === undefined) {
+        return reply.send({
+          ValorTicket: 0,
+          Valido: false,
+          Mensagem: `Ticket de devolução: ${ticket} inválido !`,
+          messages: [],
+        });
+      }
+
+      return reply.send({ ...conhecido, messages: [] });
     },
   );
 

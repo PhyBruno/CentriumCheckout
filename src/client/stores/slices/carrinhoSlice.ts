@@ -11,8 +11,10 @@ import {
 } from '../../domain/importacaoVenda/mapearVendaExistente';
 import { somar, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import {
+  TOTAL_MINIMO_DA_LINHA,
   origemCongelaPreco,
   participaDaPrecificacao,
+  totalLinha,
   type LinhaCarrinho,
   type SnapshotPrecoProduto,
 } from '../../domain/precificacao/linha';
@@ -135,8 +137,46 @@ export interface CarrinhoSlice {
   editarSnapshotDescricao(codigoProduto: string, descricao: string): void;
 }
 
+/**
+ * Frase única para os dois motivos que `podeMutarCarrinho()` reúne — condição
+ * de pagamento escolhida e forma já aprovada (pedido do usuário, 2026-09-04).
+ *
+ * Nomeia a **saída**, não só o impedimento: o operador precisa saber que existe
+ * um caminho de volta ("Limpar" no cartão de pagamento, `descartarPagamento`),
+ * senão a única leitura possível é a de que a venda travou. O texto anterior
+ * falava só de "pagamento aprovado", que deixou de ser o gatilho mais comum —
+ * hoje basta escolher a condição.
+ */
 const AVISO_CARRINHO_BLOQUEADO =
-  'Já há pagamento aprovado nesta venda: os itens não podem mais ser alterados.';
+  'Esta venda já está em pagamento: use "Limpar" no cartão de pagamento para remover condição, desconto e formas e voltar a editar os itens.';
+
+/**
+ * O desconto **do item** não pode zerar o item (pedido do usuário,
+ * 2026-09-04). Mesmo piso do rateio do desconto de capa
+ * (`TOTAL_MINIMO_DA_LINHA`), aplicado aqui à linha inteira.
+ */
+const AVISO_DESCONTO_ZERA_A_LINHA =
+  'O desconto deste item zeraria o total dele: reduza o desconto ou aumente a quantidade.';
+
+/**
+ * A linha terminaria valendo menos de um centavo **por causa de um desconto**.
+ *
+ * O `desconto > 0` não é detalhe: um produto de brinde cadastrado com
+ * `PrecoVenda = 0` vale zero sem que ninguém o tenha descontado, e recusá-lo
+ * aqui impediria de vender o que o cadastro do ERP permite. O que a regra proíbe
+ * é o desconto **consumir** a linha.
+ *
+ * Vive no slice, e não no componente, porque a quantidade também zera uma linha:
+ * `descontoManual` é absoluto sobre o total e **não** escala com ela (só
+ * `descontoConvenio` é recalculado por `repricarSku`). Uma linha de DAV com 10
+ * un × R$ 10,00 e R$ 50,00 de desconto vale R$ 50,00; reduzida para 5 un, vale
+ * zero — sem que o campo de desconto tenha sido tocado, e num produto que a
+ * barra de entrada nem deixa editar.
+ */
+function descontoZeraALinha(linha: LinhaCarrinho): boolean {
+  const desconto = somar(linha.descontoConvenio, linha.descontoManual);
+  return desconto > ZERO_CENTAVOS && totalLinha(linha) < TOTAL_MINIMO_DA_LINHA;
+}
 
 function idAleatorio(): string {
   return crypto.randomUUID();
@@ -222,11 +262,21 @@ export function criarCarrinhoSlice(
 
         const codigoProduto = input.snapshot.codigoProduto;
         const linhas = reprecificarSku([...get().linhas, novaLinha], codigoProduto);
-        aplicarLinhas(linhas);
 
         // A auditoria registra o preço **após** a reprecificação: é o valor que
         // de fato entrou na venda (`research.md`, D11).
         const inserida = linhas.find((linha) => linha.idLinha === novaLinha.idLinha) ?? novaLinha;
+
+        // Checado **depois** da reprecificação e **antes** da gravação: o
+        // desconto de convênio só existe a partir dela, e uma linha recusada não
+        // pode chegar ao estado nem por um quadro.
+        if (descontoZeraALinha(inserida)) {
+          deps.avisar?.(AVISO_DESCONTO_ZERA_A_LINHA);
+          return;
+        }
+
+        aplicarLinhas(linhas);
+
         get().registrarEventoAuditoria(
           eventoProdutoInserido({
             codigoProduto,
@@ -266,9 +316,21 @@ export function criarCarrinhoSlice(
         const deveReprecificar =
           campo === 'quantidade' || (estavaCongelada && campo !== 'precoUnitario');
 
-        aplicarLinhas(
-          deveReprecificar ? reprecificarSku(comEdicao, alvo.snapshot.codigoProduto) : comEdicao,
-        );
+        const resultantes = deveReprecificar
+          ? reprecificarSku(comEdicao, alvo.snapshot.codigoProduto)
+          : comEdicao;
+
+        // Vale para **qualquer** campo, não só o desconto: reduzir a quantidade
+        // ou o preço de uma linha que já tem desconto absoluto zera o total dela
+        // do mesmo jeito. É por isso que a guarda mora aqui, e não no campo de
+        // desconto da barra de entrada.
+        const resultante = resultantes.find((linha) => linha.idLinha === idLinha);
+        if (resultante !== undefined && descontoZeraALinha(resultante)) {
+          deps.avisar?.(AVISO_DESCONTO_ZERA_A_LINHA);
+          return;
+        }
+
+        aplicarLinhas(resultantes);
 
         get().registrarEventoAuditoria(
           eventoProdutoAlterado({
