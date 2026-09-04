@@ -121,6 +121,17 @@ const TICKETS_DEVOLUCAO: Record<
   string,
   { ValorTicket: number; Valido: boolean; Mensagem: string }
 > = {
+  /**
+   * Ticket de mesa para uso manual: cobre exatamente o produto `001234` (10,00),
+   * então digitar `VALE10` na janela de vale devolução fecha uma venda de um item
+   * só, sem excedente e sem troco. É o caminho mais curto para ver a forma de
+   * vale funcionando de ponta a ponta na stack local.
+   *
+   * Os `TCK-*` abaixo continuam existindo para os cenários automatizados, que
+   * precisam de valores que **não** casam com o saldo — é assim que exercitam a
+   * confirmação de excedente (`FR-026`).
+   */
+  VALE10: { ValorTicket: 10.0, Valido: true, Mensagem: 'Ticket Válido' },
   'TCK-VALIDO': { ValorTicket: 25.5, Valido: true, Mensagem: 'Ticket Válido' },
   /** Cabe numa venda pequena sem estourar o saldo — exercita `FR-024` pelo outro lado. */
   'TCK-PEQUENO': { ValorTicket: 5.0, Valido: true, Mensagem: 'Ticket Válido' },
@@ -211,6 +222,74 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     QtdMinimaPreco5: 0,
     UDM: 'UN',
     ProdutoPesavelEditavel: 'E',
+  },
+  /**
+   * Os três itens do fluxo dourado da feature 008 — 70,00 + 29,00 + 1,00 = 100,00
+   * (`pagamento-geral.spec.ts`).
+   *
+   * **Faltavam.** A 006 e a 008 editaram este arquivo em branches paralelas e o
+   * merge das PRs #50/#51 preservou o catálogo de pagamento da 008 mas não os
+   * produtos que os cenários dela bipam: os três testes de `pagamento-geral`
+   * falhavam em `biparProduto` desde então, antes de qualquer coisa da 009.
+   *
+   * O código de cada um codifica o próprio preço (`070000` → 70,00) para que a
+   * conta do cenário continue legível ao ler o teste. Preço redondo, sem faixa de
+   * quantidade e sem edição: o que esses cenários exercitam é o pagamento, não a
+   * precificação.
+   */
+  '070000': {
+    CodigoProduto: '070000',
+    Descricao: 'PRODUTO 70 REAIS',
+    Referencia: 'REF-070',
+    CodigoBarras: '7890000000070',
+    PrecoVenda: 70.0,
+    PrecoVenda1: 70.0,
+    PrecoVenda2: 0,
+    PrecoVenda3: 0,
+    PrecoVenda4: 0,
+    PrecoVenda5: 0,
+    QtdMinimaPreco2: 0,
+    QtdMinimaPreco3: 0,
+    QtdMinimaPreco4: 0,
+    QtdMinimaPreco5: 0,
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+  },
+  '029000': {
+    CodigoProduto: '029000',
+    Descricao: 'PRODUTO 29 REAIS',
+    Referencia: 'REF-029',
+    CodigoBarras: '7890000000029',
+    PrecoVenda: 29.0,
+    PrecoVenda1: 29.0,
+    PrecoVenda2: 0,
+    PrecoVenda3: 0,
+    PrecoVenda4: 0,
+    PrecoVenda5: 0,
+    QtdMinimaPreco2: 0,
+    QtdMinimaPreco3: 0,
+    QtdMinimaPreco4: 0,
+    QtdMinimaPreco5: 0,
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+  },
+  '001000': {
+    CodigoProduto: '001000',
+    Descricao: 'PRODUTO 1 REAL',
+    Referencia: 'REF-001',
+    CodigoBarras: '7890000000010',
+    PrecoVenda: 1.0,
+    PrecoVenda1: 1.0,
+    PrecoVenda2: 0,
+    PrecoVenda3: 0,
+    PrecoVenda4: 0,
+    PrecoVenda5: 0,
+    QtdMinimaPreco2: 0,
+    QtdMinimaPreco3: 0,
+    QtdMinimaPreco4: 0,
+    QtdMinimaPreco5: 0,
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
   },
 };
 
@@ -389,23 +468,30 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
             ValorTotal: 15.54,
           },
         ],
-        FormasDePagamento: [
-          {
-            FormaCodigo: 1,
-            FormaMeioPagtoNFe: '01',
-            FormaValor: 15.54,
-            FormaIntegracaoCartao: '',
-            FormaFpgUtiCar: '',
-            FormaEntrada: '',
-            TEFidentificacao: 0,
-            TEFCNPJ: '',
-            TEFBandeira: '',
-            TEFNumeroAutorizacao: '',
-            TEFTipoIntegracao: '',
-            FormaPixGUID: '',
-            TicketDevolucao: '',
-          },
-        ],
+        /**
+         * **Sem forma de pagamento** — um DAV é um documento pendente de
+         * cobrança, e é o operador quem escolhe como recebê-lo no Checkout.
+         *
+         * Antes havia aqui uma forma com `FormaMeioPagtoNFe: '01'`, o código
+         * numérico da NFe. O domínio `Nfce_FormaPagto` do ERP usa **nomes**
+         * (AD-023, os mesmos que `GetSessao` devolve no catálogo abaixo), então
+         * `importarFormasDePagamento` a descartava como meio desconhecido, com
+         * aviso no console: a forma nunca chegou à venda em nenhum momento da
+         * história desta suíte.
+         *
+         * Corrigi-la para `'Dinheiro'` teria efeito colateral: um pagamento
+         * importado entra `APROVADO`, e pagamento aprovado **congela a venda**
+         * (I7) — o que contradiz os dois cenários que este DAV existe para
+         * exercitar, "item novo é precificado normalmente" e "segundo documento
+         * é recusado por já ter documento" (que passaria a ser recusado por já
+         * ter pagamento). Remover a forma diz a verdade sobre o documento e
+         * preserva o que cada cenário mede; a importação de formas continua
+         * coberta por `mapearVendaExistente.spec.ts` e pelo `pagamentoSlice`.
+         *
+         * Quem finaliza uma venda importada quita antes pela UI
+         * (`quitarVendaEmDinheiro`), como todo E2E desde a feature 008.
+         */
+        FormasDePagamento: [],
       },
     },
     '004790': {
@@ -485,10 +571,17 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
        * crediário zero e a validação prévia aprova exatamente o que existe para
        * barrar (`FR-022`/AD-111).
        *
-       * `FormaFpgUtiCar = 'VDV'` identifica a **forma de vale devolução**, e
-       * nada mais: as demais formas o trazem vazio, como um cadastro comum. A
-       * leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
-       * 2026-09-04.
+       * **`FormaFpgUtiCar = 'VDV'` identifica a forma de vale devolução, e nada
+       * mais.** Uma única forma do catálogo o traz — `FormaCodigo: 4` — e é ela
+       * que abre a janela do ticket ao ser escolhida; **toda** outra forma,
+       * cartão inclusive, o traz vazio e é uma forma comum, com campo de valor.
+       * A leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
+       * 2026-09-04, e `ehFormaDeValeDevolucao` já compara só contra `'VDV'`.
+       * Se o cartão abrir a janela do vale numa stack local, o build servido
+       * está defasado — não é o cadastro.
+       *
+       * Os códigos 1–4 são estáveis: os cenários E2E os endereçam por
+       * `opcao-forma-<codigo>`. Formas novas entram a partir do 5.
        */
       CondicoesDePagamento: [
         {
@@ -509,6 +602,9 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
               FormaFpgUtiCar: '',
             },
             {
+              // Forma **comum**, não vale: `FpgUtiCar` vazio. Com `TEFAtivo` a
+              // integração roteia para TEF (feature 010); sem ele, vira
+              // pagamento manual — nunca a janela do ticket.
               FormaCodigo: 2,
               FormaDescricao: 'CARTAO CREDITO',
               FormaEntrada: 'N',
@@ -518,9 +614,10 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
               FormaFpgUtiCar: '',
             },
             {
-              // A forma de **vale devolução**: é `FpgUtiCar = 'VDV'` que a
-              // identifica, e escolhê-la abre a janela do ticket em vez do
-              // campo de valor.
+              // A **única** forma de vale devolução do catálogo: é `FpgUtiCar =
+              // 'VDV'` que a identifica, e escolhê-la abre a janela do ticket em
+              // vez do campo de valor. Tickets válidos em `TICKETS_DEVOLUCAO` —
+              // `VALE10` fecha uma venda do produto `001234` sem excedente.
               FormaCodigo: 4,
               FormaDescricao: 'VALE DEVOLUCAO',
               FormaEntrada: 'N',
@@ -534,6 +631,88 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
               FormaDescricao: 'PIX',
               FormaEntrada: 'S',
               FormaMeioPagtoNFe: 'Pix',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 5,
+              FormaDescricao: 'CARTAO DEBITO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'CartaoDebito',
+              FormaIntegracaoCartao: '1',
+              FormaTipoTransacaoTEF: 'DEBITO',
+              FormaFpgUtiCar: '',
+            },
+            {
+              // `PixEstatico` **nunca** roteia para a integração dinâmica
+              // (`FR-006` da 008): existe aqui para que a stack local mostre, no
+              // mesmo combobox, a forma que abre a janela de QR Code e a que não
+              // abre.
+              FormaCodigo: 6,
+              FormaDescricao: 'PIX ESTATICO',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'PixEstatico',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 7,
+              FormaDescricao: 'VALE ALIMENTACAO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'ValeAlimentacao',
+              FormaIntegracaoCartao: '2',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+          ],
+        },
+        {
+          /**
+           * Segunda condição, a prazo. Existe para que o combobox de condição
+           * tenha de fato o que escolher — com uma única condição, trocar de
+           * condição (I9: a troca esvazia as formas aplicadas) não é exercitável
+           * à mão.
+           *
+           * As formas dela são **outras**, não as mesmas com outro código: é o
+           * que torna visível a regra de que a forma pertence à condição, e que
+           * uma forma de outra condição é recusada (`AVISO_FORMA_FORA_DA_CONDICAO`).
+           *
+           * `CondicaoMinimoEntrada: 20` (R$ 20,00) e `FormaEntrada: 'S'` no
+           * boleto: sem `FpgEnt` o ERP calcula crediário zero e o gate da 014
+           * aprova o que deveria barrar (`FR-022`/AD-111).
+           */
+          CondicaoCodigo: 2,
+          CondicaoDescricao: '30 DIAS',
+          CondicaoPrazo: 30,
+          CondicaoMinimoEntrada: 20,
+          CondicaoDesconto: 0,
+          CondicaoDescontoMaximo: 5,
+          CondicaoFormasDePagamento: [
+            {
+              FormaCodigo: 8,
+              FormaDescricao: 'BOLETO 30 DIAS',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'BoletoBancario',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 9,
+              FormaDescricao: 'CREDIARIO LOJA',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'CreditoLoja',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 10,
+              FormaDescricao: 'DUPLICATA MERCANTIL',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'DuplicataMercantil',
               FormaIntegracaoCartao: '',
               FormaTipoTransacaoTEF: '',
               FormaFpgUtiCar: '',
