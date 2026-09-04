@@ -2,6 +2,7 @@ import { Trash2 } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { cn } from '@/lib/utils';
 import type { MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
 import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/saldoPagamento';
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
@@ -254,16 +255,31 @@ interface ItemPagamentoAplicadoProps {
   readonly onRemover: (idPagamento: string) => void;
 }
 
-/** Uma faixa da lista — o nó `vmqVn` ("PIX aplicado") do Pencil. */
+/**
+ * Uma faixa da lista — o nó `vmqVn` ("PIX aplicado") do Pencil.
+ *
+ * **Excluída fica riscada, mas não sai da lista** (pedido do usuário,
+ * 2026-09-04) — mesmo tratamento do item cancelado do carrinho (`GridItens`,
+ * `linha.cancelada`): `text-muted-foreground line-through`, texto `sr-only`
+ * anunciando o estado para leitor de tela, e o botão de remover some (nada a
+ * remover de novo). A forma excluída não vai ao ERP — `montarPagamentosParaPayload`
+ * só envia `APROVADO` —, mas o log de inserção/exclusão continua no array de
+ * eventos, escrito por `removerPagamento` antes de a UI sequer saber que a
+ * exclusão aconteceu.
+ */
 function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoProps): ReactElement {
   const Icone = iconeDoPagamento(pagamento);
   const nome = ROTULO_POR_MEIO[pagamento.meioPagtoNFe];
   const anotacao = anotacaoDoPagamento(pagamento);
   const motivoBloqueio = motivoBloqueioRemocao(pagamento);
+  const excluido = pagamento.status === 'EXCLUIDO';
 
   return (
     <li
-      className="flex h-[34px] w-full items-center justify-between rounded-lg bg-muted px-sm"
+      className={cn(
+        'flex h-[34px] w-full items-center justify-between rounded-lg bg-muted px-sm',
+        excluido && 'text-muted-foreground line-through',
+      )}
       data-testid="pagamento-aplicado"
       data-id-pagamento={pagamento.idPagamento}
       data-status={pagamento.status}
@@ -279,6 +295,7 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
             {anotacao}
           </span>
         )}
+        {excluido ? <span className="sr-only"> (pagamento excluído)</span> : null}
       </span>
 
       <span className="flex shrink-0 items-center gap-[6px]">
@@ -298,20 +315,22 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
             ouvir **por quê** ao clicar — no `disabled` o clique não produz
             evento nenhum e o motivo morre no `title`. O PIX não é bloqueado:
             ele passa pela confirmação de `pedirRemocao`. */}
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon-xs"
-          className="size-[26px] shrink-0 rounded-full text-muted-foreground"
-          data-testid="remover-pagamento"
-          aria-label={`Remover ${nome}`}
-          {...atributosDeBloqueio(motivoBloqueio)}
-          onClick={acaoBloqueavel(motivoBloqueio, () => {
-            onRemover(pagamento.idPagamento);
-          })}
-        >
-          <Trash2 className="size-3.5" aria-hidden="true" />
-        </Button>
+        {excluido ? null : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon-xs"
+            className="size-[26px] shrink-0 rounded-full text-muted-foreground"
+            data-testid="remover-pagamento"
+            aria-label={`Remover ${nome}`}
+            {...atributosDeBloqueio(motivoBloqueio)}
+            onClick={acaoBloqueavel(motivoBloqueio, () => {
+              onRemover(pagamento.idPagamento);
+            })}
+          >
+            <Trash2 className="size-3.5" aria-hidden="true" />
+          </Button>
+        )}
       </span>
     </li>
   );
@@ -359,6 +378,10 @@ const ANOTACAO_POR_STATUS: Record<StatusPagamento, string | null> = {
   APROVADO: null,
   PENDENTE_INTEGRACAO: 'Aguardando',
   RECUSADO: 'Recusado',
+  // `null`, como `APROVADO`: quem comunica a exclusão é o riscado + o
+  // `sr-only` da faixa, não um texto que substituiria a anotação "Vale
+  // <código>" — o operador ainda precisa ver qual vale ficou de fora.
+  EXCLUIDO: null,
 };
 
 /**

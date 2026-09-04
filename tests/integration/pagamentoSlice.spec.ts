@@ -354,9 +354,11 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     store.getState().removerPagamento('pag-1');
 
-    // A forma saiu, mas a condição continua escolhida — e desde 2026-09-04 é
-    // ela, sozinha, que congela a venda.
-    expect(store.getState().pagamentos).toEqual([]);
+    // A forma fica riscada na lista (AD-16x), não some do array — mas a
+    // condição continua escolhida, e desde 2026-09-04 é ela, sozinha, que
+    // congela a venda.
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
     expect(store.getState().podeMutarCarrinho()).toBe(false);
 
     store.getState().descartarPagamento();
@@ -403,11 +405,12 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
   /**
    * AD-161 (itens 2 e 3 do usuário, 2026-09-04). A regra anterior tratava PIX e
    * TEF como o mesmo caso; o usuário separou os dois. O que este teste trava é o
-   * recorte: PIX **sai** e o evento de auditoria continua sendo emitido — a
-   * confirmação que a UI exibe decide se `removerPagamento` é chamada, nunca se
-   * o log é escrito.
+   * recorte: PIX **é riscado** (não desaparece do array — pedido do usuário,
+   * 2026-09-04) e o evento de auditoria continua sendo emitido — a confirmação
+   * que a UI exibe decide se `removerPagamento` é chamada, nunca se o log é
+   * escrito.
    */
-  it('PIX aprovado sai da venda e preserva o log — só o TEF é irreversível (AD-161)', async () => {
+  it('PIX aprovado fica excluído (riscado) na venda e preserva o log — só o TEF é irreversível (AD-161)', async () => {
     const { store, avisar } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
 
     await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
@@ -417,7 +420,11 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     store.getState().removerPagamento('pag-1');
 
     expect(avisar).not.toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
-    expect(store.getState().pagamentos).toHaveLength(0);
+    // Fica na lista, riscado — não sai do array. `calcularSaldo` e
+    // `montarPagamentosParaPayload` já ignoram tudo que não é `APROVADO`.
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    expect(store.getState().saldo().totalAplicado).toBe(0);
     expect(
       store.getState().eventos.some((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA'),
     ).toBe(true);

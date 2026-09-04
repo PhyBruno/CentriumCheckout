@@ -41,6 +41,17 @@ import { iconeDaForma } from './iconePorMeio';
  * em bloqueio explicativo.
  */
 
+/**
+ * Como a opção foi escolhida — teclado (seta) ou mouse (clique).
+ *
+ * Existe porque as duas formas de escolher não significam a mesma coisa para
+ * quem decide abrir uma janela de confirmação (pedido do usuário, 2026-09-04):
+ * a seta percorre a lista no ritmo do teclado, sem gesto de confirmação; o
+ * clique é único e deliberado. Ver o TSDoc de `escolherForma` em
+ * `PainelPagamentoETotais.tsx`, o único call site que hoje diferencia os dois.
+ */
+export type OrigemSelecao = 'teclado' | 'mouse';
+
 /** Uma linha da lista aberta do combobox. */
 export interface OpcaoCombobox {
   readonly chave: string;
@@ -48,7 +59,7 @@ export interface OpcaoCombobox {
   readonly selecionada: boolean;
   /** `null` = escolhível; texto = frase que o operador lê ao tentar escolher. */
   readonly bloqueio: MotivoBloqueio;
-  readonly aoEscolher: () => void;
+  readonly aoEscolher: (origem: OrigemSelecao) => void;
 }
 
 export interface ComboboxPagamentoProps {
@@ -131,12 +142,12 @@ export function ComboboxPagamento({
 
     if (atual === -1) {
       if (direcao === 1) {
-        escolhiveis[0]?.aoEscolher();
+        escolhiveis[0]?.aoEscolher('teclado');
       }
       return;
     }
 
-    escolhiveis[atual + direcao]?.aoEscolher();
+    escolhiveis[atual + direcao]?.aoEscolher('teclado');
   }
 
   function aoTeclar(evento: KeyboardEvent<HTMLDivElement>): void {
@@ -264,7 +275,7 @@ export function ComboboxPagamento({
                   data-testid={idOpcao(opcao.chave)}
                   {...atributosDeBloqueio(opcao.bloqueio)}
                   onClick={acaoBloqueavel(opcao.bloqueio, () => {
-                    opcao.aoEscolher();
+                    opcao.aoEscolher('mouse');
                     fecharEDevolverFoco();
                   })}
                 >
@@ -363,7 +374,7 @@ export function SeletorCondicaoPagamento(): ReactElement {
 
 export interface SeletorFormaPagamentoProps {
   readonly formaSelecionada: FormaPagamento | null;
-  readonly onSelecionarForma: (forma: FormaPagamento) => void;
+  readonly onSelecionarForma: (forma: FormaPagamento, origem: OrigemSelecao) => void;
 }
 
 /**
@@ -438,8 +449,8 @@ export function SeletorFormaPagamento({
           capacidades !== null && !formaDisponivel(forma, capacidades)
             ? motivoDeIndisponibilidade(forma)
             : null,
-        aoEscolher: () => {
-          onSelecionarForma(forma);
+        aoEscolher: (origem) => {
+          onSelecionarForma(forma, origem);
         },
       }))}
       bloqueio={bloqueio}

@@ -696,7 +696,9 @@ export function criarPagamentoSlice(
 
       removerPagamento: (idPagamento) => {
         const alvo = get().pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
-        if (alvo === undefined) {
+        // `EXCLUIDO` é terminal: excluir de novo o que já está riscado não tem
+        // efeito, nem gera um segundo evento de auditoria.
+        if (alvo === undefined || alvo.status === 'EXCLUIDO') {
           return;
         }
 
@@ -715,14 +717,24 @@ export function criarPagamentoSlice(
           return;
         }
 
+        // A forma **fica na lista**, com o status virando `EXCLUIDO` — mesmo
+        // tratamento do item cancelado do carrinho (pedido do usuário,
+        // 2026-09-04): é rastreabilidade, não apagamento. `calcularSaldo` e
+        // `montarPagamentosParaPayload` já só enxergam `APROVADO`, então a forma
+        // excluída some do saldo e do envelope ao ERP sem precisar de um
+        // segundo filtro aqui — a UI é quem risca a linha.
         aplicarPagamentos(
-          get().pagamentos.filter((pagamento) => pagamento.idPagamento !== idPagamento),
+          get().pagamentos.map((pagamento) =>
+            pagamento.idPagamento === idPagamento
+              ? { ...pagamento, status: 'EXCLUIDO' as const }
+              : pagamento,
+          ),
         );
 
-        // Decisão própria (não está no contrato): o vale acompanha o pagamento
-        // ao qual foi vinculado. Deixá-lo no estado apontando para um
-        // `idPagamento` que não existe mais produziria um `TicketDevolucao`
-        // órfão, que nenhuma forma do payload carregaria.
+        // O vale sai da lista de aplicados: o ticket não chegou a ser
+        // consumido de fato (o ERP só marca `DevTicSit = 3` no faturamento, e a
+        // forma excluída não vai ao payload), então o mesmo código pode ser
+        // informado de novo nesta venda.
         set({
           valesDevolucao: get().valesDevolucao.filter((vale) => vale.idPagamento !== idPagamento),
         });

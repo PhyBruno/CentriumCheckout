@@ -1,317 +1,5 @@
 [
   {
-    "id": "mem:1787256725744",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "resolve",
-      "pend"
-    ],
-    "files": [
-      ".specs/project/ROADMAP.md"
-    ],
-    "file_path": ".specs/project/ROADMAP.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.744910+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:16:58.303550+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [
-        "register_edit"
-      ],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725704",
-    "kind": "decision",
-    "content": "Reorganiza .specs/ para conformidade com SDD: PROJECT/ROADMAP/codebase/features criados, ARCHITECTURE.md da raiz removido, STATE.md reclassificado",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap"
-    ],
-    "files": [
-      "ARCHITECTURE.md",
-      ".specs/project/STATE.md",
-      ".specs/project/PROJECT.md",
-      ".specs/project/ROADMAP.md",
-      ".specs/codebase/ARCHITECTURE.md",
-      ".specs/codebase/STACK.md",
-      ".specs/codebase/INTEGRATIONS.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/importacao-dav/spec.md",
-      ".specs/features/layout-responsivo-mobile/spec.md"
-    ],
-    "file_path": "ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.704880+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-20T20:12:05.704891+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787256725733",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/project/PROJECT.md"
-    ],
-    "file_path": ".specs/project/PROJECT.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.733016+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:34:58.072761+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787257672011",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "018",
-      "boneyard",
-      "goey",
-      "toast",
-      "shadcn",
-      "instalados",
-      "como",
-      "depend",
-      "023",
-      "novo"
-    ],
-    "files": [
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": ".dual-graph/context-store.json",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:27:52.011277+00:00",
-    "created_epoch": 1787257672,
-    "updated_at": "2026-09-03T18:00:04.951458+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787314538804",
-    "kind": "decision",
-    "content": "Resolve pend\u00eancias de CONCERNS.md (codigoEmpresa/Empresa, refresh_token, baseDomain, Docker); corrige AD-002; adiciona AD-019; atualiza AD-005/AD-011; dispara subagente para Specify de Modal vendedor/menu gerencial",
-    "tags": [
-      "resolve",
-      "pend",
-      "ncias",
-      "concerns",
-      "codigoempresa",
-      "empresa",
-      "refresh_token",
-      "basedomain"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md",
-      ".specs/project/STATE.md",
-      ".specs/project/ROADMAP.md",
-      ".specs/codebase/ARCHITECTURE.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:15:38.804922+00:00",
-    "created_epoch": 1787314538,
-    "updated_at": "2026-08-21T12:15:38.804927+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787317048462",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "revis",
-      "cruzada",
-      "toda",
-      "specs",
-      "subagentes",
-      "alinhamento",
-      "rebaixa",
-      "getlistaclientes",
-      "023",
-      "novo"
-    ],
-    "files": [
-      ".specs/features/selecao-vendedor/spec.md"
-    ],
-    "file_path": ".specs/features/selecao-vendedor/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:57:28.462281+00:00",
-    "created_epoch": 1787317048,
-    "updated_at": "2026-08-25T11:16:33.235748+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787317048331",
-    "kind": "decision",
-    "content": "Revis\u00e3o cruzada de toda .specs/ (15 subagentes) + alinhamento: rebaixa GetListaClientes/StatusPIX/ListaNFCEs a pendente, fecha lacuna vendedorCodigo em FaturarNFCe, corrige inventario CarregarNFCe, confirma menu gerencial desktop-only (AD-021)",
-    "tags": [
-      "revis",
-      "cruzada",
-      "toda",
-      "specs",
-      "subagentes",
-      "alinhamento",
-      "rebaixa",
-      "getlistaclientes"
-    ],
-    "files": [
-      ".specs/project/PROJECT.md",
-      ".specs/project/ROADMAP.md",
-      ".specs/project/STATE.md",
-      ".specs/codebase/STACK.md",
-      ".specs/codebase/ARCHITECTURE.md",
-      ".specs/codebase/INTEGRATIONS.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/importacao-dav/spec.md",
-      ".specs/features/layout-responsivo-mobile/spec.md",
-      ".specs/features/selecao-vendedor/spec.md"
-    ],
-    "file_path": ".specs/project/PROJECT.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:57:28.331235+00:00",
-    "created_epoch": 1787317048,
-    "updated_at": "2026-08-21T12:57:28.331242+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787334007679",
-    "kind": "decision",
-    "content": "AD-023: novo ApiCentriumOAuth.yaml + verificacao KB GenExus resolvem maioria das pendencias de API (GetListaClientes, StatusPIX, GetListaVendedores, GetListaNFCes, DescontoConvenio%, FormaMeioPagtoNFe, NumeroNota, ValidaTicketDevolucao)",
-    "tags": [
-      "023",
-      "novo",
-      "apicentriumoauth",
-      "yaml",
-      "verificacao",
-      "genexus",
-      "resolvem",
-      "maioria"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md",
-      ".specs/codebase/INTEGRATIONS.md",
-      ".specs/project/STATE.md",
-      ".specs/features/selecao-vendedor/spec.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/importacao-dav/spec.md",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T17:40:07.679069+00:00",
-    "created_epoch": 1787334007,
-    "updated_at": "2026-08-21T17:40:07.679076+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787334256509",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -5333,7 +5021,9 @@
       "confirmacao",
       "tef",
       "bloqueia",
-      "modal"
+      "modal",
+      "163",
+      "origem"
     ],
     "files": [
       "tests/integration/pagamentoSlice.spec.ts"
@@ -5343,7 +5033,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.483263+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.483287+00:00",
+    "updated_at": "2026-09-04T16:02:17.620313+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5366,7 +5056,9 @@
       "confirmacao",
       "tef",
       "bloqueia",
-      "modal"
+      "modal",
+      "163",
+      "origem"
     ],
     "files": [
       "tests/e2e/pagamento-pix.spec.ts"
@@ -5376,7 +5068,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.457698+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.457711+00:00",
+    "updated_at": "2026-09-04T16:02:17.673152+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5465,7 +5157,9 @@
       "confirmacao",
       "tef",
       "bloqueia",
-      "modal"
+      "modal",
+      "163",
+      "origem"
     ],
     "files": [
       "src/client/stores/slices/pagamentoSlice.ts"
@@ -5475,7 +5169,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.377872+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.377884+00:00",
+    "updated_at": "2026-09-04T16:02:17.512392+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5498,7 +5192,9 @@
       "confirmacao",
       "tef",
       "bloqueia",
-      "modal"
+      "modal",
+      "163",
+      "origem"
     ],
     "files": [
       "src/client/features/pagamento/ListaPagamentosAplicados.tsx"
@@ -5508,7 +5204,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.348172+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.348188+00:00",
+    "updated_at": "2026-09-04T16:02:17.606461+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5783,7 +5479,9 @@
       "confirmacao",
       "tef",
       "bloqueia",
-      "modal"
+      "modal",
+      "163",
+      "origem"
     ],
     "files": [
       "src/client/features/pagamento/PainelPagamentoETotais.tsx"
@@ -5793,7 +5491,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.362757+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.362778+00:00",
+    "updated_at": "2026-09-04T16:02:17.583461+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5960,7 +5658,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.546052+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:36:25.216884+00:00",
+    "updated_at": "2026-09-04T16:02:17.688886+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -6061,6 +5759,278 @@
     "created_at": "2026-09-04T15:36:25.206324+00:00",
     "created_epoch": 1788536185,
     "updated_at": "2026-09-04T15:36:25.206343+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537734653",
+    "kind": "decision",
+    "content": "AD-163: origem teclado/mouse decide modal do vale; sem forma nao digita valor; exclusao risca (nao apaga)",
+    "tags": [
+      "163",
+      "pagamento",
+      "vale-devolucao",
+      "exclusao",
+      "ui"
+    ],
+    "files": [
+      "src/client/domain/pagamento/saldoPagamento.ts",
+      "src/client/stores/slices/pagamentoSlice.ts",
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+      "src/client/features/pagamento/EntradaPagamento.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      ".specs/project/STATE.md"
+    ],
+    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:14.603490+00:00",
+    "created_epoch": 1788537734,
+    "updated_at": "2026-09-04T16:02:14.603490+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788537737660",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/client/pagamento/EntradaPagamento.spec.tsx"
+    ],
+    "file_path": "tests/unit/client/pagamento/EntradaPagamento.spec.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.660016+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.660029+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737633",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/domain/pagamento/saldoPagamento.spec.ts"
+    ],
+    "file_path": "tests/unit/domain/pagamento/saldoPagamento.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.633758+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.633772+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737497",
+    "kind": "decision",
+    "content": "AD-163: origem da sele\u00e7\u00e3o (teclado/mouse) decide abertura do modal de vale devolu\u00e7\u00e3o; campo de valor recebido trava sem forma escolhida; exclus\u00e3o de forma de pagamento passa a status EXCLUIDO (riscado, permanece na lista, some do saldo/payload ao ERP)",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pagamento/saldoPagamento.ts",
+      "src/client/stores/slices/pagamentoSlice.ts",
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+      "src/client/features/pagamento/EntradaPagamento.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      "tests/integration/pagamentoSlice.spec.ts",
+      "tests/unit/domain/pagamento/saldoPagamento.spec.ts",
+      "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx",
+      "tests/unit/client/pagamento/EntradaPagamento.spec.tsx",
+      "tests/e2e/pagamento-pix.spec.ts",
+      ".specs/project/STATE.md"
+    ],
+    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.497578+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.497586+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1788537737500",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pagamento/saldoPagamento.ts"
+    ],
+    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.500933+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.500946+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737571",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.571582+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.571593+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737595",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/EntradaPagamento.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/EntradaPagamento.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.595750+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.595765+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737646",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx"
+    ],
+    "file_path": "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.646674+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.646689+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],

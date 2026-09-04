@@ -15,7 +15,11 @@ import {
   DESTAQUE_PIX_SEGUE_NO_BANCO,
 } from './pix/avisosPix';
 import { DialogoConfirmacaoPix } from './pix/DialogoConfirmacaoPix';
-import { SeletorCondicaoPagamento, SeletorFormaPagamento } from './SeletorCondicaoForma';
+import {
+  SeletorCondicaoPagamento,
+  SeletorFormaPagamento,
+  type OrigemSelecao,
+} from './SeletorCondicaoForma';
 import { TotalDaVenda } from './TotalDaVenda';
 
 /**
@@ -171,19 +175,26 @@ export function PainelPagamentoETotais(): ReactElement {
   }
 
   /**
-   * Escolher a forma de vale devolução **abre o modal do ticket**; qualquer
-   * outra forma só vira o rascunho da próxima inserção.
+   * Escolher a forma de vale devolução **por clique do mouse** abre o modal do
+   * ticket; qualquer outra forma, ou a mesma escolhida pela seta do teclado, só
+   * vira o rascunho da próxima inserção.
    *
-   * O gesto é um só para o operador: ele percorre o combobox e, ao parar na
-   * forma de vale, já é levado a digitar o código — sem um segundo controle
-   * escondido em outro lugar da tela. Um `useEffect` sobre `formaSelecionada`
-   * faria o mesmo, mas reabriria o modal a cada re-render que reescrevesse o
-   * estado, inclusive depois de o operador cancelar; a decisão pertence ao
-   * evento de escolha, não ao valor resultante.
+   * **A origem decide, não a forma** (correção do usuário, 2026-09-04). Antes o
+   * modal abria sempre que o vale virava `formaSelecionada`, inclusive ao
+   * percorrer o combobox com as setas — e a seta existe justamente para passear
+   * pelas opções no ritmo do teclado, sem confirmar nenhuma. Abrir uma janela a
+   * cada opção sobrevoada obrigaria um Escape por tecla, e o operador que só
+   * queria ver a próxima forma acabava preso numa janela que não pediu. O
+   * clique do mouse é gesto único e deliberado — é o que garante que o operador
+   * quis mesmo aquela forma, não apenas passou por ela.
+   *
+   * Um `useEffect` sobre `formaSelecionada` não distinguiria as duas origens
+   * (o valor resultante é o mesmo nos dois casos); a decisão só existe no
+   * evento de escolha, por isso `aoEscolher` carrega a origem até aqui.
    */
-  function escolherForma(forma: FormaPagamento): void {
+  function escolherForma(forma: FormaPagamento, origem: OrigemSelecao): void {
     setFormaSelecionada(forma);
-    if (ehFormaDeValeDevolucao(forma)) {
+    if (origem === 'mouse' && ehFormaDeValeDevolucao(forma)) {
       setValeAberto(true);
     }
   }

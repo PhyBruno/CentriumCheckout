@@ -145,10 +145,7 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     await expect(page.getByTestId('pix-badge-status')).toContainText('Pagamento confirmado', {
       timeout: 60_000,
     });
-    await expect(page.getByTestId('fechar-modal-pix')).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    await expect(page.getByTestId('fechar-modal-pix')).not.toHaveAttribute('aria-disabled', 'true');
 
     await expect(page.getByTestId('modal-pix')).toHaveCount(0, { timeout: 30_000 });
 
@@ -239,9 +236,13 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     await expect(page.getByTestId('confirmar-remocao-pix')).toBeVisible();
     await page.getByTestId('confirmar-remocao-pix-confirmar').click();
 
-    // A forma sai e o bloco inteiro some (sem pagamento não há o que listar) —
-    // a venda volta a poder ser reorganizada com outra forma.
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
-    await expect(page.getByTestId('pagamentos-aplicados')).toHaveCount(0);
+    // A forma fica riscada na lista, não some (pedido do usuário, 2026-09-04):
+    // é rastreabilidade, igual ao produto cancelado no carrinho. Só sai do
+    // saldo e do envelope ao ERP — o bloco continua visível e o botão de
+    // remover, sem nada a remover de novo, desaparece.
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
+    await expect(page.getByTestId('remover-pagamento')).toHaveCount(0);
+    await expect(page.getByTestId('pagamentos-aplicados')).toHaveCount(1);
   });
 });

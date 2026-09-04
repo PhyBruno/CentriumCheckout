@@ -101,6 +101,26 @@ describe('calcularSaldo — algoritmo de data-model.md §6', () => {
     expect(saldo.totalAplicado).toBe(0);
     expect(saldo.saldoRestante).toBe(10000);
   });
+
+  /**
+   * `EXCLUIDO` (pedido do usuário, 2026-09-04): a forma que o operador riscou
+   * da lista fica no array (é rastreabilidade), mas não pode voltar a contar
+   * como dinheiro em caixa — mesmo recorte de `PENDENTE_INTEGRACAO` acima.
+   */
+  it('pagamento EXCLUIDO não conta em totalAplicado nem reduz o saldo restante', () => {
+    const excluido = pagamentoDe({
+      meioPagtoNFe: 'Dinheiro',
+      valorAplicado: 5000,
+      valorRecebido: 5000,
+      status: 'EXCLUIDO',
+    });
+
+    const saldo = calcularSaldo(emCentavos(10000), emCentavos(0), [excluido]);
+
+    expect(saldo.totalAplicado).toBe(0);
+    expect(saldo.saldoRestante).toBe(10000);
+    expect(saldo.troco).toBe(0);
+  });
 });
 
 describe('podeAplicarForma — I2/FR-013/AD-036 e SALDO_JA_COBERTO', () => {
@@ -116,6 +136,19 @@ describe('podeAplicarForma — I2/FR-013/AD-036 e SALDO_JA_COBERTO', () => {
     const recusado = pagamentoDe({ meioPagtoNFe: 'Dinheiro', status: 'RECUSADO' });
 
     const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: 'Dinheiro' }), [recusado]);
+
+    expect(resultado).toEqual({ ok: true });
+  });
+
+  /**
+   * `EXCLUIDO` (pedido do usuário, 2026-09-04): a forma que o operador riscou
+   * da lista já saiu do fluxo, pela mesma razão de `RECUSADO` — não deveria
+   * travar uma nova tentativa de dinheiro.
+   */
+  it('ignora pagamentos EXCLUIDO ao checar duplicidade de dinheiro', () => {
+    const excluido = pagamentoDe({ meioPagtoNFe: 'Dinheiro', status: 'EXCLUIDO' });
+
+    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: 'Dinheiro' }), [excluido]);
 
     expect(resultado).toEqual({ ok: true });
   });
