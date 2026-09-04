@@ -1956,3 +1956,15 @@ AD-027/AD-063 fixaram TAB como tecla de **revisão** na barra de entrada rápida
 A guarda agora é explícita: com `texto.trim() === ''` o handler sai **antes** do `preventDefault()`, e o TAB segue a ordem natural do DOM — o próximo elemento focável depois do campo de código é justamente o botão "Buscar produto". Não foi preciso `ref` nem `.focus()` programático; deixar o navegador navegar preserva de graça o Shift+TAB e a ordem de tabulação do resto da tela. Com código digitado nada muda: TAB continua sendo revisão, não navegação.
 
 **Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`aoTeclarNoCodigo` e o JSDoc do componente) e `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (dois casos novos: campo vazio navega para a lupa, campo preenchido segue revisando). 7 testes do spec verdes e `tsc --noEmit` limpo.
+
+### AD-156: Shift+TAB no código de produto volta para a identificação do cliente, expandindo o card (2026-09-04)
+
+**Pedido do usuário:** *"Se estiver com o foco na inserção do item, ao apertar shift tab, o foco não deve ir para 'Recolhido', deve ir para o campo de inserção do código do cliente, expandindo a seção do cliente automaticamente."*
+
+Complemento de AD-155, no sentido oposto. Devolver o TAB ao navegador resolveu o caminho para a frente (a lupa), mas para trás a ordem do DOM oferece o botão "Recolhido" do cabeçalho do card de cliente — um controle de **layout**, não uma etapa da venda. Pior: o passo que o operador realmente quer, o campo "Código do cliente ou CPF", é inalcançável enquanto o card está recolhido, porque o bloco colapsável fica `inert` (AD-134). Sem intervenção, Shift+TAB levaria o caixa ao único controle da região que não serve para nada no fluxo dele.
+
+`aoTeclarNoCodigo` passa a tratar `shiftKey` **antes** de qualquer outra regra: `preventDefault()` e um pedido de foco pelo `focoVendaStore`. Vale inclusive com código digitado — Shift+TAB nunca foi revisão, e a guarda antiga o mandava para `revisarEntrada()` junto com o TAB.
+
+O `focoVendaStore` deixa de ser um canal de mão única (era só `focarCodigoProduto`, do cliente para o produto) e ganha o par simétrico `pedidosDeFocoNoDocumento`/`focarDocumentoCliente`. **Quem expande é o `CampoClienteVenda`**, não o emissor: o estado de expansão é dele, e o campo só aceita foco depois que o React tira o `inert` no commit. Por isso o pedido externo alimenta o contador local que já existia para a recusa de pessoa jurídica (AD-133), em vez de chamar `focus()` direto — `setExpandido(true)` e o incremento entram no mesmo lote, e o efeito de foco roda no render seguinte, já sem `inert`. Contador, e não booleano, pela mesma razão de sempre: dois Shift+TAB seguidos precisam disparar o efeito duas vezes.
+
+**Impact:** `src/client/stores/focoVendaStore.ts`, `src/client/features/carrinho/EntradaRapidaProduto.tsx`, `src/client/features/cliente/CampoClienteVenda.tsx`, `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` e `tests/unit/client/cliente/CampoClienteVenda.spec.tsx` (novo — o card não tinha spec). 654 testes verdes, `tsc --noEmit` e `eslint` limpos.

@@ -5,6 +5,7 @@ import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EntradaRapidaProduto } from '../../../../src/client/features/carrinho/EntradaRapidaProduto';
 import { useEdicaoItemStore } from '../../../../src/client/stores/edicaoItemStore';
+import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 import { linhaDe, respostaGetProduto, snapshotDe } from '../../../support/precificacao';
@@ -339,6 +340,29 @@ describe('EntradaRapidaProduto — TAB no campo de código (pedido do usuário, 
     await usuario.tab();
 
     expect(screen.getByTestId('abrir-busca-produto')).toHaveFocus();
+  });
+
+  it('Shift+TAB pede o foco no cliente em vez de voltar para o cabeçalho "Recolhido"', async () => {
+    const usuario = userEvent.setup();
+    useFocoVendaStore.setState({ pedidosDeFocoNoDocumento: 0 });
+    renderBarra();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-codigo-produto')).toHaveFocus();
+    });
+
+    await usuario.tab({ shift: true });
+
+    // O foco não saiu do campo por conta do navegador: quem o move é o
+    // `CampoClienteVenda`, que expande o card ao receber o pedido (o card não
+    // existe nesta árvore de teste — ver o spec dele).
+    expect(useFocoVendaStore.getState().pedidosDeFocoNoDocumento).toBe(1);
+
+    // Vale também com código digitado: Shift+TAB nunca é revisão.
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab({ shift: true });
+    expect(useFocoVendaStore.getState().pedidosDeFocoNoDocumento).toBe(2);
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 
   it('com código digitado, TAB continua sendo revisão — o foco não sai para a lupa', async () => {

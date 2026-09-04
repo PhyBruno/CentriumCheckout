@@ -317,6 +317,9 @@ export function EntradaRapidaProduto(): ReactElement {
    * mesma regra — quem está revisando um item não perde o campo.
    */
   const pedidosDeFocoNoCodigo = useFocoVendaStore((estado) => estado.pedidosDeFocoNoCodigo);
+  // Sentido inverso: Shift+TAB no campo de código devolve o foco ao card de
+  // cliente (ver `aoTeclarNoCodigo`).
+  const focarDocumentoCliente = useFocoVendaStore((estado) => estado.focarDocumentoCliente);
   useEffect(() => {
     if (pedidosDeFocoNoCodigo > 0 && resolvido === null) {
       campoCodigo.current?.focus();
@@ -512,6 +515,18 @@ export function EntradaRapidaProduto(): ReactElement {
   // confirma a partir de qualquer campo da barra, não só do código).
   function aoTeclarNoCodigo(evento: KeyboardEvent<HTMLInputElement>): void {
     if (evento.key !== 'Tab') {
+      return;
+    }
+    // Shift+TAB volta para o passo anterior do fluxo do caixa: a identificação
+    // do cliente (pedido do usuário, 2026-09-04). A ordem natural do DOM
+    // levaria ao botão "Recolhido" do cabeçalho do card — um controle de
+    // layout, não uma etapa da venda —, e o campo de documento nem é
+    // alcançável enquanto o card está recolhido (`inert`). Por isso o pedido
+    // vai pelo `focoVendaStore`: quem expande e foca é o `CampoClienteVenda`,
+    // dono desse estado.
+    if (evento.shiftKey) {
+      evento.preventDefault();
+      focarDocumentoCliente();
       return;
     }
     // Campo vazio: não há código a revisar, então TAB volta a ser a tecla de
