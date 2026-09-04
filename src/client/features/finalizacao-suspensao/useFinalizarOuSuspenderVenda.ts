@@ -303,7 +303,10 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       // Bloqueio de suspensão por pagamento não removível — mesma regra de
       // `CART-09` (`FR-005`/`FR-006`, AD-030/AD-042). Nunca se aplica a
       // `FATURAR`: finalizar com pagamento aprovado é o caminho normal.
-      if (operacao === 'SUSPENDER' && (injetadas.temPagamentoNaoRemovivel?.() ?? temPagamentoIrreversivel())) {
+      if (
+        operacao === 'SUSPENDER' &&
+        (injetadas.temPagamentoNaoRemovivel?.() ?? temPagamentoIrreversivel())
+      ) {
         avisar(AVISO_SUSPENSAO_BLOQUEADA);
         return;
       }
