@@ -1,13 +1,13 @@
 import { gooeyToast } from 'goey-toast';
+import { fonteDav, type DavListado } from '../../services/dav/davQueries';
 import {
   ErroImportacaoRecusada,
   importarVendaExistente,
   recusaDeImportacao,
-  type DavListado,
   type EstadoVendaParaImportacao,
   type ImportacaoVendaDeps,
   type MotivoRecusaImportacao,
-} from '../../services/dav/davQueries';
+} from '../../services/importacao/importarVendaExistente';
 import {
   ErroClienteNaoEncontrado,
   fetchClientePorCodigo,
@@ -198,7 +198,7 @@ export function useImportacaoDav(
     };
 
     try {
-      await importarVendaExistente(dav.numeroDav, { clienteNome: dav.clienteNome }, deps);
+      await importarVendaExistente(fonteDav(dav), deps);
       return true;
     } catch (erro) {
       // Toda a rede acontece antes da primeira mutação (`davQueries.ts`), então

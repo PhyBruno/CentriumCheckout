@@ -3,7 +3,10 @@ import { useState, type ReactElement } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { cn } from '@/lib/utils';
 import { atributosDeBloqueio } from '@/lib/bloqueio';
-import { mensagemDeRecusa, type ImportacaoVendaDeps } from '../../services/dav/davQueries';
+import {
+  mensagemDeRecusa,
+  type ImportacaoVendaDeps,
+} from '../../services/importacao/importarVendaExistente';
 import { ModalImportacaoDav } from './ModalImportacaoDav';
 import { useImportacaoDav } from './useImportacaoDav';
 

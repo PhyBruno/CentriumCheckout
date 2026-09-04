@@ -1,18 +1,17 @@
 /**
- * Camada de rede e orquestração da importação de DAV (T007, T011–T017).
+ * Camada de rede da importação de DAV (T007, T011–T017).
  *
  * Todas as chamadas passam pelo proxy autenticado `/api/erp/*` da feature 002 —
  * o frontend nunca fala com o ERP direto, e `Empresa`/`Authorization` são
  * injetados no servidor.
  *
- * `importarVendaExistente` é a **orquestração** da feature: é ela que conecta
- * carrinho (003), cliente (005), vendedor (012), pagamento (008) e auditoria
- * (001). Mora aqui, na camada de serviço, e não num slice novo, porque nenhum
- * slice conhece os outros — é essa fronteira que a Dependency Inversion da
- * Constitution II protege, e que a feature 005 já estabeleceu (`carrinhoSlice`
- * nunca importa `clienteSlice`). Por isso o módulo também não importa
- * `vendaStore`: tudo o que ele muta chega por `ImportacaoVendaDeps`, e quem
- * liga as pontas é o hook de `features/dav/`.
+ * A **orquestração** que popula a venda (carrinho, cliente, vendedor, pagamento
+ * e auditoria) nasceu aqui e mudou para
+ * `services/importacao/importarVendaExistente.ts` quando a feature 011 chegou
+ * (AD-166): ela é idêntica para DAV e para rascunho de NFCe, e a única
+ * diferença — qual endpoint devolve o documento — está isolada em
+ * `fonteDav`, logo abaixo. O que sobra neste módulo é só o que é de fato
+ * específico do DAV.
  */
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
@@ -21,18 +20,11 @@ import {
   listaDavsOutputSchema,
   type CheckoutFaturarNFCe,
 } from '../../../shared/schemas/dav.schema';
-import type { ClienteCheckout } from '../../../shared/schemas/cliente.schema';
-import type { EventoAuditoriaRegistravel } from '../../domain/auditoria/eventos';
 import { eventoDavImportado } from '../../domain/auditoria/eventos';
-import {
-  mapearVendaExistente,
-  type FormaPagamentoImportada,
-  type LinhaImportada,
-  type VendaImportada,
-} from '../../domain/importacaoVenda/mapearVendaExistente';
 import type { Centavos } from '../../domain/precificacao/dinheiro';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
+import type { FonteDocumento } from '../importacao/importarVendaExistente';
 
 const CAMINHO_LISTA_DAVS = '/ApiCentriumOAuth/ListaDAVs';
 const CAMINHO_GET_DAV = '/ApiCentriumOAuth/GetDav';
@@ -52,101 +44,6 @@ const LIMITE_TAMANHO_PAGINA = 50;
 
 export interface DavQueriesDeps {
   readonly erpClient?: ErpClient;
-}
-
-/**
- * Por que a venda em curso não aceita a importação de um documento.
- *
- * Um documento importado **substitui** a venda: traz os itens, o cliente, o
- * vendedor e as formas de pagamento já registrados no ERP, e passa a ser a
- * NFCe rascunho daquela venda. Não existe "mesclar" — `FaturarNFCe` carrega um
- * único `NumeroNota` (`montarRetratoVenda.ts`) e um único cliente. Importar
- * sobre uma venda já em digitação misturaria dois documentos num só, e o
- * operador só descobriria na nota emitida.
- *
- * Regra pedida diretamente pelo usuário (2026-09-03): um DAV/NFCe **não** pode
- * ser importado para dentro de uma venda que já tem cliente ou item — a
- * tentativa é recusada com notificação de erro.
- */
-export type MotivoRecusaImportacao =
-  'venda-bloqueada' | 'ja-importou-documento' | 'carrinho-populado' | 'cliente-identificado';
-
-/** Retrato mínimo da venda para decidir a recusa — sem Zustand, sem React. */
-export interface EstadoVendaParaImportacao {
-  /** `identidadeVenda.numeroNota`; `0` para venda criada do zero. */
-  readonly numeroNota: number;
-  /** Mesmo predicado de bloqueio pós-pagamento do carrinho/cliente (AD-043). */
-  readonly podeMutar: boolean;
-  /**
-   * Linhas no carrinho, **canceladas inclusive** (pedido do usuário,
-   * 2026-09-03).
-   *
-   * A pergunta aqui não é "há o que faturar?", e sim "esta venda já foi
-   * digitada?". A linha cancelada permanece no array por rastreabilidade
-   * (`CART-08`) e vai junto no `Log` de auditoria e no retrato de
-   * `FaturarNFCe`: importar um documento por cima misturaria o que o operador
-   * lançou e cancelou com o conteúdo do documento, dentro de uma nota só.
-   */
-  readonly linhasNaVenda: number;
-  /**
-   * Houve escolha **explícita** de cliente pelo operador.
-   *
-   * O default pré-selecionado no início da venda (AD-032) não conta: ele não é
-   * decisão do operador, e recusar por causa dele impediria toda importação —
-   * a tela de venda nasce com esse cliente aplicado.
-   */
-  readonly clienteIdentificado: boolean;
-}
-
-/**
- * Decide se a venda aceita a importação. Função **pura**: é ela que a UI
- * consulta para recusar já no clique do atalho, e a orquestração reusa antes de
- * qualquer efeito — uma regra só, dois pontos de aplicação.
- *
- * A ordem importa: o bloqueio por pagamento vem primeiro porque é o estado mais
- * restritivo, e "já importou" antes dos demais porque explica melhor o que o
- * operador está vendo do que "já tem itens" (os itens são do documento).
- */
-export function recusaDeImportacao(
-  estado: EstadoVendaParaImportacao,
-): MotivoRecusaImportacao | null {
-  if (!estado.podeMutar) {
-    return 'venda-bloqueada';
-  }
-  if (estado.numeroNota !== 0) {
-    return 'ja-importou-documento';
-  }
-  if (estado.linhasNaVenda > 0) {
-    return 'carrinho-populado';
-  }
-  if (estado.clienteIdentificado) {
-    return 'cliente-identificado';
-  }
-  return null;
-}
-
-/** Texto que o operador lê na notificação — sempre com a saída possível. */
-export function mensagemDeRecusa(motivo: MotivoRecusaImportacao): string {
-  switch (motivo) {
-    case 'venda-bloqueada':
-      return 'Já há pagamento aprovado nesta venda: não é possível importar um documento.';
-    case 'ja-importou-documento':
-      return 'Esta venda já foi iniciada a partir de um documento. Cancele a venda para importar outro.';
-    case 'carrinho-populado':
-      // "lançados", e não "no carrinho": o item cancelado também conta, e o
-      // operador que acabou de cancelar a última linha precisa entender por que
-      // o atalho continua fechado.
-      return 'Esta venda já tem itens lançados, mesmo que cancelados. Cancele a venda para importar um documento.';
-    case 'cliente-identificado':
-      return 'Esta venda já tem um cliente identificado. Cancele a venda para importar um documento.';
-  }
-}
-
-export class ErroImportacaoRecusada extends Error {
-  constructor(readonly motivo: MotivoRecusaImportacao) {
-    super(mensagemDeRecusa(motivo));
-    this.name = 'ErroImportacaoRecusada';
-  }
 }
 
 /**
@@ -318,166 +215,31 @@ export async function fetchDav(
 }
 
 /**
- * Portas da orquestração (Dependency Inversion — `contracts/importacao-domain-api.md` §3).
+ * O DAV como fonte da orquestração compartilhada
+ * (`services/importacao/importarVendaExistente.ts`).
  *
- * Todas chegam de fora, inclusive as das features **ainda não implementadas**:
- * `trocarVendedor` (012) e `importarFormasDePagamento` (008) entram como stub
- * `() => {}` até que essas features forneçam a implementação real. É o mesmo
- * padrão que a feature 004 já usa para as suas dependências futuras — a 006 não
- * fica bloqueada, e ligar as reais depois é trocar o objeto injetado, sem tocar
- * neste módulo.
+ * Este objeto é **tudo** o que a importação de DAV tem de particular: o
+ * endpoint que devolve o documento, o rótulo de origem e o evento de auditoria.
+ * Todo o resto — pré-condição, ordem dos efeitos, atomicidade, resolução de
+ * descrição — é o comportamento comum, que a 011 executa idêntico.
+ *
+ * @param dav Linha selecionada na listagem. `clienteNome` é o único campo lido
+ * dela — `clienteCodigo` vem sempre da resposta de `GetDav`, nunca da lista.
  */
-export interface ImportacaoVendaDeps {
-  /**
-   * Retrato da venda em curso. Chamada **duas vezes** por importação: antes da
-   * rede, para não gastar chamada ao ERP à toa, e de novo colada nas mutações,
-   * para que a janela dos dois `await` não deixe passar um estado que virou no
-   * meio (ver `importarVendaExistente`).
-   *
-   * É a pré-condição que impede um documento de ser importado sobre uma venda
-   * já em digitação (ver `recusaDeImportacao`). A UI aplica a mesma regra no
-   * clique do atalho; esta checagem é a que garante que nenhum outro call site
-   * futuro escape dela.
-   *
-   * Precisa ser **lida do estado a cada chamada**, nunca capturada num valor
-   * fixo: um retrato congelado tornaria a segunda checagem inútil.
-   */
-  estadoDaVenda(): EstadoVendaParaImportacao;
-  /**
-   * Feature 004 — grava `{ origem: 'DAV', numeroNota }` na identidade da venda.
-   *
-   * **É o elo que faz o DAV fechar no ERP.** `montarRetratoVenda` monta o
-   * payload de `FaturarNFCe` lendo `NumeroNota` de `identidadeVenda`
-   * (`montarRetratoVenda.ts`), e desde a remoção de `DavNum` esse número é o
-   * único vínculo com o documento de origem (AD-107). Sem esta chamada a venda
-   * importada seria faturada como venda nova, com `NumeroNota: 0`, e o DAV
-   * ficaria aberto no ERP — sem erro, sem aviso.
-   *
-   * Não é `abrirSessaoDeVenda` de propósito: aquela função **zera** o histórico
-   * de auditoria, e importar um DAV no meio de uma venda apagaria o registro do
-   * que o operador já tinha feito. A trilha correta é o histórico existente
-   * seguido de `DAV_IMPORTADO`.
-   */
-  definirIdentidadeVenda(identidade: { readonly origem: 'DAV'; readonly numeroNota: number }): void;
-  /** Feature 003 — extensão aditiva do `CarrinhoSlice`. */
-  importarLinhasCongeladas(linhas: readonly LinhaImportada[]): void;
-  /** Feature 003 — metadado de exibição, resolvido em segundo plano. */
-  editarSnapshotDescricao(codigoProduto: string, descricao: string): void;
-  /** Feature 005 — `GetCliente` por `CodCliente` (AD-115). */
-  resolverCliente(codigo: number): Promise<ClienteCheckout>;
-  /** Feature 005 — `selecionarCliente(cliente, 'DAV')`, já ligada à origem. */
-  selecionarCliente(cliente: ClienteCheckout): Promise<unknown>;
-  /** Feature 012 — stub até a seleção de vendedor existir. */
-  trocarVendedor(vendedor: { readonly codigo: number; readonly nome: string | null }): void;
-  /** Feature 008 — stub até o estado de pagamento existir. */
-  importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;
-  /** Feature 001 — dispatcher tipado do histórico de auditoria. */
-  registrarEventoAuditoria(evento: EventoAuditoriaRegistravel): void;
-  /** Feature 003 — `GetProduto`, usado **só** para `Descricao` (AD-096). */
-  buscarDescricaoProduto(codigoProduto: string): Promise<string>;
-  readonly erpClient?: ErpClient;
-}
-
-/**
- * Resolve a descrição de cada SKU distinto do documento, em paralelo e sem
- * bloquear (AD-096).
- *
- * `allSettled`, nunca `all`: uma falha isolada não pode derrubar as demais nem
- * a importação, que a esta altura já terminou. O preço **nunca** é revisitado —
- * só `Descricao` é lida da resposta, e a linha permanece com o preço do
- * documento (`FR-006`).
- */
-async function resolverDescricoes(venda: VendaImportada, deps: ImportacaoVendaDeps): Promise<void> {
-  const skus = [...new Set(venda.linhas.map((linha) => linha.codigoProduto))];
-
-  await Promise.allSettled(
-    skus.map(async (sku) => {
-      const descricao = await deps.buscarDescricaoProduto(sku);
-      if (descricao !== '') {
-        deps.editarSnapshotDescricao(sku, descricao);
-      }
-    }),
-  );
-}
-
-/**
- * Importa um documento existente para a venda em andamento (`DAV-02`).
- *
- * **Toda a rede acontece antes de qualquer mutação** — `GetDav` e o
- * `GetCliente` que resolve o cliente do documento. É o que satisfaz D7/`FR-010`
- * ao pé da letra: uma falha em qualquer um dos dois deixa o carrinho
- * exatamente como estava, sem meio-documento importado. (O contrato numera o
- * carrinho antes do cliente; a ordem foi invertida de propósito, porque a
- * numeração descreve o resultado, não a janela de falha.)
- *
- * Uma falha ao resolver o cliente aborta a importação inteira em vez de seguir
- * com o cliente anterior: `FR-007` exige que o cliente do documento substitua o
- * que estiver na venda, e importar itens sob o cliente errado produziria uma
- * NFCe com preço e destinatário divergentes do documento de origem.
- *
- * @param origemLista Linha da listagem selecionada. Carrega só `clienteNome`, o
- * único campo que `mapearVendaExistente` lê dela — `clienteCodigo` vem sempre
- * da resposta de `GetDav`, nunca da lista.
- */
-export async function importarVendaExistente(
-  numeroDav: string,
-  origemLista: { readonly clienteNome: string },
-  deps: ImportacaoVendaDeps,
-): Promise<void> {
-  // Pré-condição antes até da rede: não depende do documento, e recusar cedo
-  // evita gastar uma chamada ao ERP para depois não ter nada a desfazer.
-  const recusa = recusaDeImportacao(deps.estadoDaVenda());
-  if (recusa !== null) {
-    throw new ErroImportacaoRecusada(recusa);
-  }
-
-  const documento = await fetchDav(
-    numeroDav,
-    deps.erpClient === undefined ? {} : { erpClient: deps.erpClient },
-  );
-  const venda = mapearVendaExistente(documento, origemLista);
-  const cliente = await deps.resolverCliente(venda.clienteCodigo);
-
-  // Reverificação **depois** da rede, colada nas mutações.
-  //
-  // Entre a pré-condição acima e este ponto há dois `await` (`GetDav` e
-  // `GetCliente`), e a venda continua viva atrás da janela de importação. Sem
-  // esta segunda leitura, um estado que virasse nesse intervalo — o caso real é
-  // a feature 008 aprovando um TEF de forma assíncrona — deixaria cada mutação
-  // abaixo virar um no-op na guarda do seu próprio slice, enquanto
-  // `DAV_IMPORTADO` seria registrado e a janela fecharia como sucesso: trilha de
-  // auditoria afirmando uma importação que não aconteceu, com o carrinho vazio
-  // (AD-139). Recusar aqui devolve o erro à UI e mantém a promessa de
-  // atomicidade do parágrafo acima.
-  const recusaPosRede = recusaDeImportacao(deps.estadoDaVenda());
-  if (recusaPosRede !== null) {
-    throw new ErroImportacaoRecusada(recusaPosRede);
-  }
-
-  // Primeiro a identidade: a venda passa a ser a NFCe rascunho do documento, e
-  // só então é populada. Trocar a ordem não muda o resultado, mas esta lê como
-  // o que de fato acontece.
-  deps.definirIdentidadeVenda({ origem: 'DAV', numeroNota: venda.numeroNota });
-  deps.importarLinhasCongeladas(venda.linhas);
-  await deps.selecionarCliente(cliente);
-  deps.trocarVendedor({ codigo: venda.vendedorCodigo, nome: venda.vendedorNome });
-  deps.importarFormasDePagamento(venda.formasDePagamento);
-
-  // Um evento por importação, depois que tudo já foi populado (AD-114).
-  // `numeroDav` existe só nesta trilha local: não é reenviado a `FaturarNFCe`
-  // (AD-107).
-  deps.registrarEventoAuditoria(
-    eventoDavImportado({
-      numeroDav,
-      numeroNota: venda.numeroNota,
-      quantidadeLinhas: venda.linhas.length,
-      quantidadeFormasDePagamento: venda.formasDePagamento.length,
-    }),
-  );
-
-  // Sem `await`: a importação está completa e o operador já pode operar o
-  // carrinho. A descrição é enfeite que chega depois (AD-096) — segurá-la aqui
-  // deixaria a janela de importação aberta esperando uma chamada que, por
-  // definição, tem permissão para falhar.
-  void resolverDescricoes(venda, deps);
+export function fonteDav(dav: { readonly numeroDav: string; readonly clienteNome: string }): FonteDocumento {
+  return {
+    origem: 'DAV',
+    clienteNome: dav.clienteNome,
+    carregar: (erpClient) =>
+      fetchDav(dav.numeroDav, erpClient === undefined ? {} : { erpClient }),
+    // `numeroDav` existe só nesta trilha local: não é reenviado a `FaturarNFCe`
+    // (AD-107), onde o vínculo com a origem é o `NumeroNota`.
+    eventoDeImportacao: (venda) =>
+      eventoDavImportado({
+        numeroDav: dav.numeroDav,
+        numeroNota: venda.numeroNota,
+        quantidadeLinhas: venda.linhas.length,
+        quantidadeFormasDePagamento: venda.formasDePagamento.length,
+      }),
+  };
 }

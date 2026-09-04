@@ -15,11 +15,9 @@
  * `mapearVendaExistente` não conhece a palavra "DAV" em lugar nenhum: a origem
  * aparece só em `paraLinhaCarrinho`, na conversão para linha de carrinho.
  *
- * **Ressalva ao que `contracts/importacao-domain-api.md` promete**: o reuso é
- * "sem alteração" para `mapearVendaExistente`, não para `paraLinhaCarrinho` —
- * este último fixa `origem: 'DAV'`, e a 011 precisa de `'RASCUNHO'`. A
- * generalização é um parâmetro a mais quando a 011 for implementada; adicioná-lo
- * agora seria um grau de liberdade que nenhum call site desta feature usa.
+ * A 011 chegou (AD-166) e `paraLinhaCarrinho` recebeu o parâmetro `origem` que
+ * a ressalva anterior deste comentário previa: o grau de liberdade deixou de
+ * ser especulativo no instante em que passou a existir um segundo call site.
  */
 
 import type { Centavos } from '../precificacao/dinheiro';
@@ -172,11 +170,24 @@ export function mapearVendaExistente(
 }
 
 /**
+ * Origem de uma linha nascida de um documento já existente no ERP.
+ *
+ * As duas features que importam documento (`GetDav`/006 e `CarregarNFCe`/011)
+ * produzem linhas idênticas em tudo — congeladas, sem reprecificação — menos
+ * neste rótulo, que é o que a grid e a auditoria leem para dizer de onde a
+ * venda veio.
+ */
+export type OrigemDocumentoImportado = 'DAV' | 'RASCUNHO';
+
+/**
  * Converte uma linha importada em `LinhaCarrinho` (`data-model.md` §3).
  *
  * `idLinha` é **parâmetro**, não gerado aqui: o domínio puro não conhece
  * `crypto`, e o `CarrinhoSlice` já expõe um gerador injetável (`gerarIdLinha`)
- * que é o que torna o id determinístico em teste.
+ * que é o que torna o id determinístico em teste. `origem` é parâmetro pela
+ * razão oposta: é a **única** coisa que distingue uma linha de DAV (006) de uma
+ * linha de rascunho de NFCe (011), e fixá-la aqui obrigaria a duplicar a função
+ * inteira para mudar um literal (AD-166).
  *
  * O desconto do documento entra em `descontoManual`, não em `descontoConvenio`.
  * `descontoConvenio` é campo **derivado** — `repricarSku` o reescreve a cada
@@ -187,7 +198,11 @@ export function mapearVendaExistente(
  * comportamento correto: é um desconto já concedido e registrado no ERP, não um
  * convênio a recalcular sob o cliente atual.
  */
-export function paraLinhaCarrinho(linha: LinhaImportada, idLinha: string): LinhaCarrinho {
+export function paraLinhaCarrinho(
+  linha: LinhaImportada,
+  idLinha: string,
+  origem: OrigemDocumentoImportado,
+): LinhaCarrinho {
   return {
     idLinha,
     snapshot: {
@@ -217,6 +232,6 @@ export function paraLinhaCarrinho(linha: LinhaImportada, idLinha: string): Linha
     cancelada: false,
     // Invariante I5: derivado da origem, nunca informado pelo call site.
     precoCongelado: true,
-    origem: 'DAV',
+    origem,
   };
 }

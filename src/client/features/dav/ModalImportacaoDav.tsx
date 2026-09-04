@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useListaDavs, type DavListado } from '../../services/dav/davQueries';
-import type { ImportacaoVendaDeps } from '../../services/dav/davQueries';
+import type { ImportacaoVendaDeps } from '../../services/importacao/importarVendaExistente';
 import { useImportacaoDav } from './useImportacaoDav';
 
 /**
