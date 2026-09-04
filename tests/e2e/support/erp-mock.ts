@@ -1250,6 +1250,64 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   );
 
   /**
+   * `GetListaNFCes` — listagem de rascunhos suspensos (feature 011).
+   *
+   * Reaproveita os mesmos documentos sintéticos de `DAVS`: um rascunho de NFCe
+   * e um DAV têm o mesmo corpo (AD-057), e duplicar as fixtures faria as duas
+   * janelas do E2E divergirem sem motivo.
+   *
+   * Três diferenças de contrato em relação a `ListaDAVs`, todas reais:
+   * `Vendedor` e `Operador` vêm por **nome** (a limitação de AD-095 é de
+   * `ListaDAVs`); `Emissao` é `date-time`, não `date`; e não há filtro de
+   * período — a janela de tempo é fixa no servidor (`research.md` D1). A busca
+   * casa só nome de cliente e de vendedor, nunca o número da nota, que é o que
+   * o `DataProvider` do ERP faz.
+   *
+   * Devolve **flat na raiz, sem envelope**, como o ERP real (AD-165).
+   */
+  app.get<{
+    Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string };
+  }>('/ApiCentriumOAuth/GetListaNFCes', async (request, reply) => {
+    contadores.negocio += 1;
+
+    const termo = (request.query.Txtbusca ?? '').toUpperCase();
+
+    const todos = Object.values(DAVS)
+      .map((dav) => ({
+        NumeroNota: Number(dav.documento['NumeroNota']),
+        Cliente: String(dav.lista['ClienteNome']),
+        // Nome sintético: o vendedor tem só código no documento (AD-095), mas
+        // este contrato devolve o nome — o mock precisa fornecer um.
+        Vendedor: `VENDEDOR ${String(dav.lista['VendedorCodigo'])}`,
+        Operador: 'CAIXA 03',
+        // `date-time`: o dia sai da emissão relativa do DAV, a hora é fixa —
+        // nada no Checkout depende dela além da exibição.
+        Emissao: `${String(dav.lista['DataEmissao'])}T14:32:00`,
+        Total: String(dav.lista['ValorTotal']),
+      }))
+      .filter((rascunho) => {
+        if (termo === '') {
+          return true;
+        }
+        return `${rascunho.Cliente} ${rascunho.Vendedor}`.toUpperCase().includes(termo);
+      });
+
+    const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
+    const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
+    const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
+    const paginaAtual = Math.min(paginaPedida, totalPaginas);
+    const inicio = (paginaAtual - 1) * registrosPorPagina;
+
+    return reply.send({
+      PaginaAtual: paginaAtual,
+      RegistrosPorPagina: registrosPorPagina,
+      TotalRegistros: todos.length,
+      TotalPaginas: totalPaginas,
+      Rascunho: todos.slice(inicio, inicio + registrosPorPagina),
+    });
+  });
+
+  /**
    * `CarregarNFCe` — ao contrário de `GetDav`/`FaturarNFCe`, devolve o
    * documento **flat na raiz, sem envelope** (confirmado ao vivo 2026-09-04):
    * mesma SDT (`CheckoutFaturarNFCe`), padrão de wrapper diferente. Reaproveita

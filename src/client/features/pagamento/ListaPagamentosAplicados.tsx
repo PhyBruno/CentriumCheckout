@@ -130,8 +130,18 @@ export function ListaPagamentosAplicados(): ReactElement | null {
     removerPagamento(idPagamento);
   }
 
+  /*
+   * A seção usa `min-h-min` (min-content), não `min-h-0`: o piso dela é
+   * derivado do próprio conteúdo mínimo — cabeçalho mais **uma** faixa, que é o
+   * piso declarado no `ul` abaixo. Não cresce com o número de pagamentos,
+   * porque a altura mínima do `ul` é a que ele mesmo declara, e não a soma das
+   * faixas.
+   *
+   * Com `min-h-0` a seção colapsava a zero junto com a lista, e as faixas
+   * escapavam para fora da coluna do cartão (ver o comentário do `ul`).
+   */
   return (
-    <section className="flex min-h-0 w-full flex-col gap-xxs" data-testid="pagamentos-aplicados">
+    <section className="flex min-h-min w-full flex-col gap-xxs" data-testid="pagamentos-aplicados">
       <header className="flex w-full shrink-0 items-center justify-between">
         <h3 className="text-base font-semibold text-foreground">Pagamentos aplicados</h3>
         {saldoRestante > 0 ? (
@@ -165,9 +175,25 @@ export function ListaPagamentosAplicados(): ReactElement | null {
           larga que a área útil (avançando sob o `p-base` do cartão) e recupera
           os mesmos 8px como padding: as faixas mantêm a largura de antes e
           continuam alinhadas com os blocos de cima. */}
+      {/* `min-h-[34px]` — exatamente uma faixa — é um **piso**, não um tamanho.
+          Sem ele a lista era o único bloco flexível de uma coluna cujos outros
+          blocos são todos `shrink-0`: em 1280×720 (o PDV real, e o viewport do
+          E2E) condição, desconto, forma e valor consomem a coluna inteira, e o
+          flex entregava altura **zero** à lista. As faixas então escapavam para
+          fora do container e eram cobertas pelo bloco de total, que vem depois
+          no fluxo — o pagamento aparecia na tela, mas "Remover" ficava
+          intocável, com o clique caindo em `total-da-venda` (achado ao
+          diagnosticar `pagamento-pix.spec.ts`, 2026-09-04).
+
+          Com o piso, quando não há espaço a coluna do cartão estoura e usa o
+          próprio `overflow-y-auto` — a "rede de segurança" que
+          `PainelPagamentoETotais` já declarava e que até aqui nunca era
+          acionada, porque a lista absorvia toda a falta de espaço colapsando.
+          O bloco de total e o botão de finalizar não se movem: são irmãos da
+          coluna rolável, não filhos dela. */}
       <ul
         ref={listaRef}
-        className="-mx-1 flex min-h-0 flex-col gap-xxs overflow-x-hidden overflow-y-auto px-1"
+        className="-mx-1 flex min-h-[34px] flex-col gap-xxs overflow-x-hidden overflow-y-auto px-1"
       >
         {pagamentos.map((pagamento) => (
           <ItemPagamentoAplicado

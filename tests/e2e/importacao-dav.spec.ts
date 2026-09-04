@@ -67,8 +67,15 @@ async function abrirTelaDeVenda(page: Page): Promise<void> {
   await expect(page.getByTestId('tela-de-venda')).toBeVisible();
 }
 
+/**
+ * O atalho passou a abrir o **seletor** de tipo de importação (feature 011,
+ * AD-166), e não mais a janela de DAV direto: com "Importar NFCe" implementada,
+ * a razão que justificava pular o seletor deixou de valer.
+ */
 async function abrirJanelaDeImportacao(page: Page): Promise<void> {
   await page.getByTestId('botao-menu-importacao').click();
+  await expect(page.getByTestId('modal-menu-importacao')).toBeVisible();
+  await page.getByTestId('opcao-importar-dav').click();
   await expect(page.getByTestId('modal-importacao-dav')).toBeVisible();
   await expect(page.getByTestId('linha-dav')).toHaveCount(2);
 }
@@ -474,7 +481,7 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     // correção o atalho recusava com "já tem um cliente identificado" apontando
     // para um campo de cliente vazio (AD-139).
     await page.getByTestId('botao-menu-importacao').click();
-    await expect(page.getByTestId('modal-importacao-dav')).toBeVisible();
+    await expect(page.getByTestId('modal-menu-importacao')).toBeVisible();
   });
 
   test('segundo documento é recusado — o NumeroNota do primeiro não é sobrescrito', async ({

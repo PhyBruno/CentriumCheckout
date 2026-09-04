@@ -78,10 +78,31 @@ describe('ListaPagamentosAplicados — a rolagem é da lista e segue a última f
 
     const lista = screen.getByRole('list');
     expect(lista.className).toContain('overflow-y-auto');
-    // Sem `min-h-0` a lista não encolheria e a falta de espaço voltaria a sobrar
-    // para a coluna do cartão, que é o sintoma relatado.
-    expect(lista.className).toContain('min-h-0');
-    expect(screen.getByTestId('pagamentos-aplicados').className).toContain('min-h-0');
+  });
+
+  /**
+   * A lista encolhe, mas **nunca até zero** (2026-09-04).
+   *
+   * A versão anterior fixava `min-h-0` na lista e na seção, e era isso que
+   * causava o defeito: numa venda em 1280×720 — o PDV real — os blocos fixos da
+   * coluna (condição, desconto, forma, valor) consomem toda a altura, e o flex
+   * entregava zero ao único bloco flexível. As faixas escapavam para fora da
+   * coluna e ficavam cobertas pelo bloco de total, que vem depois no fluxo: o
+   * pagamento aparecia na tela e "Remover" era intocável, com o clique caindo em
+   * `total-da-venda`. Foi assim que `pagamento-pix.spec.ts` falhava.
+   *
+   * Com o piso, a falta de espaço passa a sobrar para a coluna do cartão, que
+   * tem `overflow-y-auto` justamente como rede de segurança — e o bloco de
+   * total e o botão de finalizar não se movem, por serem irmãos dela.
+   */
+  it('a lista nunca colapsa a zero: piso de uma faixa na lista e na seção', () => {
+    useVendaStore.setState({ pagamentos: [pagamentoDe({ valorAplicado: 1_000 })] });
+    renderizarLista();
+
+    expect(screen.getByRole('list').className).toContain('min-h-[34px]');
+    // `min-h-min` (min-content) deriva o piso da seção do próprio conteúdo —
+    // cabeçalho mais uma faixa — sem crescer com o número de pagamentos.
+    expect(screen.getByTestId('pagamentos-aplicados').className).toContain('min-h-min');
   });
 
   it('cada forma inserida traz a lista até o fim', () => {

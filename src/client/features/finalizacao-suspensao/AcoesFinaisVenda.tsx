@@ -3,7 +3,7 @@ import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
-import { BotaoMenuImportacao } from '../dav/BotaoMenuImportacao';
+import { BotaoMenuImportacao } from '../importacao/BotaoMenuImportacao';
 import {
   AVISO_DESASSOCIACAO_MANUAL,
   CHAMADA_PIX_NAO_E_CANCELADO,

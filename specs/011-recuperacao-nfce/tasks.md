@@ -21,6 +21,39 @@ description: "Task list template for feature implementation"
 
 **Nota de escopo — dependências declaradas, não aplicadas por este plano**: `research.md` D5 (snapshot parcial — `specs/003-carrinho-produto-precificacao/data-model.md` §2/§3 precisará de um tipo discriminado para `SnapshotPrecoProduto` vs. um `SnapshotOrigemCongelada` parcial) e D6 (`OrigemCliente` — `specs/005-identificacao-cadastro-cliente/data-model.md` §1 precisará de um quinto valor `'RASCUNHO'`) são refinamentos a aplicar quando as features 003/005 forem revisitadas, não tarefas desta feature — mesmo padrão de "dependência declarada" já usado por `specs/004-finalizacao-suspensao-venda/data-model.md`.
 
+---
+
+## ⚠️ Estado da implementação (2026-09-04) — leia antes de usar esta lista
+
+**A feature está implementada, mas não do jeito que os arquivos abaixo descrevem.** Esta lista foi escrita em 2026-08-31; a feature **006** (importação de DAV) só foi implementada em **2026-09-03** e, ao ser implementada, construiu a orquestração inteira que a 011 precisava — pré-condição, carregamento, mapeamento, hidratação dos cinco slices, atomicidade. Quando a 011 foi implementada, a decisão (AD-166, confirmada com o usuário) foi **generalizar o que existia**, não criar um segundo caminho para a mesma regra.
+
+**Consequência prática:** os arquivos `mapearItemParaLinhaCongelada.ts`, `mapearFormaParaPagamentoAplicado.ts`, `mapearRascunhoCarregado.ts`, `retomarRascunho.ts` e `recuperacaoMapper.ts` **não existem e não devem ser criados** — o que eles fariam já é feito por `domain/importacaoVenda/mapearVendaExistente.ts` e `services/importacao/importarVendaExistente.ts`, parametrizados por `FonteDocumento`. As tarefas correspondentes estão marcadas `[X]` por **reuso**, com a nota "(reuso)".
+
+**Onde a implementação mora de verdade:**
+
+| Papel | Arquivo |
+|---|---|
+| Fronteira Zod da listagem + `CarregarNFCe` | `src/shared/schemas/recuperacaoNFCe.schema.ts` |
+| Rede dos dois endpoints + `fonteRascunho` | `src/client/services/recuperacao/recuperacaoQueries.ts` |
+| Orquestração (compartilhada com a 006) | `src/client/services/importacao/importarVendaExistente.ts` |
+| Ligação com o Zustand (compartilhada) | `src/client/features/importacao/useImportacaoDocumento.ts` |
+| Hook da feature | `src/client/features/recuperacao/useRecuperacaoNFCe.ts` |
+| Janela de recuperação | `src/client/features/recuperacao/ModalRecuperacaoNFCe.tsx` |
+| Seletor de tipo de importação | `src/client/features/importacao/ModalMenuImportacao.tsx` |
+
+**Duas divergências de conteúdo em relação a este plano**, ambas registradas em AD-166:
+
+1. **`data-model.md` J5/J6 estão superados.** Este plano mandava `resetarAuditoria()` + `VENDA_INICIADA` na retomada. Prevalece a decisão da 006 (AD-137): o histórico é preservado e emite-se `NFCE_RECUPERADA`. Motivo — a pré-condição já garante que a venda não foi efetivamente iniciada (sem cliente identificado, item, condição ou forma), então não há histórico a zerar; e `VENDA_INICIADA` afirmaria um início de sessão que aconteceu antes, em `abrirSessaoDeVenda`.
+2. **A UI omite o que o contrato não sustenta.** `GetListaNFCes` só aceita `Txtbusca`/`Pagina`/`Tamanhopagina`, então os filtros "Status"/"Vendedor"/"Caixa"/"Série" do Pencil não são desenhados; a coluna "Série" dá lugar a **Emissão** e "Caixa" a **Operador** (campos que existem na linha). Mesmo critério de AD-024/AD-093/AD-095.
+
+**Tarefa não concluída** (uma só): **T026** — dos 6 cenários do `quickstart.md`, os de listar/buscar, retomar, reinserir item, finalizar venda retomada e ausência de lock entre operadores viraram teste automatizado; só a leitura manual da trilha de auditoria não foi executada a olho (o conteúdo do evento `NFCE_RECUPERADA` é afirmado por `tests/integration/recuperacaoNFCe.spec.ts`).
+
+**T005, T006 e T016** foram escritas em `tests/integration/ModalRecuperacaoNFCe.spec.tsx` (10 casos): esqueleto do Boneyard durante o carregamento, listagem com os campos reais do contrato, paginação, teto de `Tamanhopagina`, busca por nome de cliente e de vendedor, busca por número da nota devolvendo vazio (limitação real, `research.md` D1), a seleção sendo solta ao trocar a busca, e — para T016 — a retomada deixando a linha congelada e a reinserção manual do mesmo SKU criando **linha nova a preço de catálogo**, sem tocar na congelada (invariante I3/AD-067 da 003). A rede é trocada no `fetch` global, não injetada por prop, para que a validação Zod de fronteira também seja exercitada.
+
+**Verificação:** 784 testes de unidade/integração verdes, 125 E2E verdes, `tsc --noEmit` e ESLint limpos.
+
+---
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Pode rodar em paralelo (arquivos diferentes, sem dependência de tarefas incompletas)
@@ -50,7 +83,7 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Criar os diretórios específicos desta feature sobre a árvore já existente (001/002/003/004/005/008).
 
-- [ ] T001 Criar estrutura de diretórios desta feature: `src/client/domain/recuperacao/`, `src/client/services/recuperacao/`, `src/client/features/venda/recuperacao/`, `tests/unit/domain/recuperacao/` (`src/shared/schemas/`, `tests/integration/` e `tests/e2e/` já existem, criados pelas features 004/008)
+- [X] T001 Criar estrutura de diretórios desta feature: `src/client/domain/recuperacao/`, `src/client/services/recuperacao/`, `src/client/features/venda/recuperacao/`, `tests/unit/domain/recuperacao/` (`src/shared/schemas/`, `tests/integration/` e `tests/e2e/` já existem, criados pelas features 004/008)
 
 **Checkpoint**: Diretórios prontos — depende de `src/client/` já existir (Fase 1 da 002) e dos slices `identidadeVenda`/`carrinho`/`pagamentos`/`cliente`/`auditoria` já existirem (004/003/008/005/001).
 
@@ -62,8 +95,8 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 
 **⚠️ CRITICAL**: Nenhuma user story pode começar até esta fase terminar.
 
-- [ ] T002 [P] Implementar `src/shared/schemas/recuperacaoNFCe.schema.ts` (Zod): valida `GetListaNFCesOutput.CheckoutListaRascunhos` → `RascunhoListado[]` (`PaginaAtual`/`RegistrosPorPagina`/`TotalRegistros`/`TotalPaginas` + `Rascunho[]` com `NumeroNota`/`Cliente`/`Vendedor`/`Operador`/`Emissao` ISO 8601/`Total` convertido para `Centavos`) — `data-model.md` §1, `contracts/erp-recuperacao-api.md` §1
-- [ ] T003 Implementar `src/client/services/recuperacao/recuperacaoMapper.ts`: `parseGetListaNFCesOutput(json)` via T002 → `RascunhoListado[]`; `parseCarregarNFCeOutput(json)` reaproveitando o schema Zod do shape completo `CheckoutFaturarNFCe` já planejado pela feature 006 (`src/shared/schemas/dav.schema.ts`, valida `produtos[]`/`FormasDePagamento[]`/`clienteCodigo`/`vendedorCodigo`/`CondicaoPagamentoCodigo`/`NumeroNota` — **não** o schema de `FaturarNFCeOutput` da feature 004, `faturarNFCe.schema.ts`, que só valida `NotaFiscal.PDFImpressao`/`XMLImpressao`, a resposta menor de `POST FaturarNFCe`; ver AD-117) → `RascunhoCarregado`, descartando os campos marcados "ignorado" no contrato (`SuspenderOuFaturar`, `DescontoPercentual`, `ValorBruto`, `ValorTotal`, `Log`, `NotaFiscal`, `FormaFpgUtiCar`, `FormaEntrada`) — `data-model.md` §3, `contracts/erp-recuperacao-api.md` — depende de T002, e de `dav.schema.ts` já existir (feature 006)
+- [X] T002 [P] Implementar `src/shared/schemas/recuperacaoNFCe.schema.ts` (Zod): valida `GetListaNFCesOutput.CheckoutListaRascunhos` → `RascunhoListado[]` (`PaginaAtual`/`RegistrosPorPagina`/`TotalRegistros`/`TotalPaginas` + `Rascunho[]` com `NumeroNota`/`Cliente`/`Vendedor`/`Operador`/`Emissao` ISO 8601/`Total` convertido para `Centavos`) — `data-model.md` §1, `contracts/erp-recuperacao-api.md` §1
+- [X] T003 Implementar `src/client/services/recuperacao/recuperacaoMapper.ts`: `parseGetListaNFCesOutput(json)` via T002 → `RascunhoListado[]`; `parseCarregarNFCeOutput(json)` reaproveitando o schema Zod do shape completo `CheckoutFaturarNFCe` já planejado pela feature 006 (`src/shared/schemas/dav.schema.ts`, valida `produtos[]`/`FormasDePagamento[]`/`clienteCodigo`/`vendedorCodigo`/`CondicaoPagamentoCodigo`/`NumeroNota` — **não** o schema de `FaturarNFCeOutput` da feature 004, `faturarNFCe.schema.ts`, que só valida `NotaFiscal.PDFImpressao`/`XMLImpressao`, a resposta menor de `POST FaturarNFCe`; ver AD-117) → `RascunhoCarregado`, descartando os campos marcados "ignorado" no contrato (`SuspenderOuFaturar`, `DescontoPercentual`, `ValorBruto`, `ValorTotal`, `Log`, `NotaFiscal`, `FormaFpgUtiCar`, `FormaEntrada`) — `data-model.md` §3, `contracts/erp-recuperacao-api.md` — depende de T002, e de `dav.schema.ts` já existir (feature 006)
 
 **Checkpoint**: Fronteira Zod e mapeadores de parsing prontos — nenhuma user story ainda expõe UI.
 
@@ -77,15 +110,15 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 1
 
-- [ ] T004 [P] [US1] Unit test `tests/unit/domain/recuperacao/recuperacaoMapper.spec.ts` (parte `GetListaNFCes`): `Emissao` (ISO 8601) nunca reinterpretada, só formatada na exibição; `Total` convertido para `Centavos` na fronteira — `FR-001`, `data-model.md` §1 — depende de T002, T003
-- [ ] T005 [P] [US1] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: abrir modal, skeleton Boneyard exibido durante `useListaRascunhos`, lista de rascunhos renderizada e paginada — `FR-001`, quickstart Cenário 1 passos 1-2 — depende de T003
-- [ ] T006 [P] [US1] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: busca por nome de cliente parcial filtra a lista; busca por nome de vendedor parcial filtra a lista; busca por número de nota não retorna nenhum resultado (comportamento esperado, não bug, `research.md` D1) — `FR-002`/`FR-003`, quickstart Cenário 1 passos 3-5 — depende de T003
-- [ ] T007 [P] [US1] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: `Tamanhopagina` enviado ao servidor é sempre `min(solicitado, 50)`, nunca maior mesmo se um valor maior for solicitado (`research.md` D2) — depende de T003
+- [X] T004 [P] [US1] Unit test `tests/unit/domain/recuperacao/recuperacaoMapper.spec.ts` (parte `GetListaNFCes`): `Emissao` (ISO 8601) nunca reinterpretada, só formatada na exibição; `Total` convertido para `Centavos` na fronteira — `FR-001`, `data-model.md` §1 — depende de T002, T003
+- [X] T005 [P] [US1] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: abrir modal, skeleton Boneyard exibido durante `useListaRascunhos`, lista de rascunhos renderizada e paginada — `FR-001`, quickstart Cenário 1 passos 1-2 — depende de T003
+- [X] T006 [P] [US1] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: busca por nome de cliente parcial filtra a lista; busca por nome de vendedor parcial filtra a lista; busca por número de nota não retorna nenhum resultado (comportamento esperado, não bug, `research.md` D1) — `FR-002`/`FR-003`, quickstart Cenário 1 passos 3-5 — depende de T003
+- [X] T007 [P] [US1] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: `Tamanhopagina` enviado ao servidor é sempre `min(solicitado, 50)`, nunca maior mesmo se um valor maior for solicitado (`research.md` D2) — depende de T003
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implementar `src/client/services/recuperacao/recuperacaoQueries.ts` (`useListaRascunhos`): `GET /api/erp/GetListaNFCes` com `Tamanhopagina = min(tamanhoSolicitado, 50)` (`research.md` D2), `staleTime` curto (a listagem reflete rascunhos de outros operadores, não deve envelhecer no cache), resposta validada por `parseGetListaNFCesOutput` (T003) → `EstadoListaRascunhos` — `contracts/recuperacao-domain-api.md` §2 — depende de T003
-- [ ] T009 [US1] Implementar `src/client/features/venda/recuperacao/ModalRecuperacaoNFCe.tsx` (parte listagem): estado `EstadoListaRascunhos` (`data-model.md` §2) local ao componente, campo de busca com debounce (mesmo padrão de busca de cliente/produto/vendedor), chama `useListaRascunhos` (T008), Boneyard skeleton durante carregamento, paginação via `paginaAtual`/`totalPaginas` — frame Pencil "PDV Online Web - Modal Recuperação NFCe" — `FR-001`/`FR-002`/`FR-003`/`FR-004` — depende de T008 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
+- [X] T008 [US1] Implementar `src/client/services/recuperacao/recuperacaoQueries.ts` (`useListaRascunhos`): `GET /api/erp/GetListaNFCes` com `Tamanhopagina = min(tamanhoSolicitado, 50)` (`research.md` D2), `staleTime` curto (a listagem reflete rascunhos de outros operadores, não deve envelhecer no cache), resposta validada por `parseGetListaNFCesOutput` (T003) → `EstadoListaRascunhos` — `contracts/recuperacao-domain-api.md` §2 — depende de T003
+- [X] T009 [US1] Implementar `src/client/features/venda/recuperacao/ModalRecuperacaoNFCe.tsx` (parte listagem): estado `EstadoListaRascunhos` (`data-model.md` §2) local ao componente, campo de busca com debounce (mesmo padrão de busca de cliente/produto/vendedor), chama `useListaRascunhos` (T008), Boneyard skeleton durante carregamento, paginação via `paginaAtual`/`totalPaginas` — frame Pencil "PDV Online Web - Modal Recuperação NFCe" — `FR-001`/`FR-002`/`FR-003`/`FR-004` — depende de T008 — **consultar o Pencil MCP antes de implementar** (`get_editor_state(include_schema: true)`, depois `batch_get`/`get_screenshot`/`get_variables`/`snapshot_layout` sobre o nó real da tela em `design/CentriumCheckout.pen`; nunca inferir o visual do código existente ou de senso genérico de design — CLAUDE.md § "Referência visual (design)")
 
 **Checkpoint**: User Story 1 funcional e testável de forma independente — lista, busca e paginação prontos (seleção de linha ainda não dispara retomada, isso é US2).
 
@@ -99,23 +132,23 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Unit test `tests/unit/domain/recuperacao/mapearItemParaLinhaCongelada.spec.ts`: item com `precoUnitario` divergente do catálogo atual vira `LinhaCarrinho` com `idLinha` novo (`crypto.randomUUID()`), snapshot degenerado (só `codigoProduto`/`udm`/`precoBase`; `precosFaixa`/`limiaresFaixa`/`pesavelEditavel` ausentes, `research.md` D5), `precoCongelado=true`, `origem='RASCUNHO'`, `cancelada=false`, `precoUnitario` preservado sem passar por `resolvePrecoUnitario` — `data-model.md` §4, invariantes J1/J2 — depende de T018
-- [ ] T011 [P] [US2] Unit test `tests/unit/domain/recuperacao/mapearFormaParaPagamentoAplicado.spec.ts`: forma `Dinheiro` → `valorRecebido=valor` (nunca reconstrói troco, `research.md` D8); forma não-`Dinheiro` → `valorRecebido=null`; `status` sempre `'APROVADO'` (J4); `dadosTEF`/`pixGuid` ecoados opacos, sem interpretação — `data-model.md` §5 — depende de T019
-- [ ] T012 [P] [US2] Unit test `tests/unit/domain/recuperacao/mapearRascunhoCarregado.spec.ts`: orquestra os dois mapeadores acima sem efeito colateral (nenhum import de React/Zustand/`fetch`), devolve `linhas`/`pagamentos`/`condicaoPagamentoCodigo`/`clienteCodigo`/`vendedorCodigo`/`identidadeVenda` — `contracts/recuperacao-domain-api.md` — depende de T018, T019, T020
-- [ ] T013 [P] [US2] Integration test `tests/integration/retomarRascunho.spec.ts`: ordem exata de efeitos — `resetarAuditoria()` → `setIdentidadeVenda()` → `setLinhasCarrinho()` → `setPagamentos()`+`setCondicao()` → `setCliente(await GetCliente)` (`data-model.md` §6); confirma que o slice `auditoria` é zerado antes de `VENDA_INICIADA` ser emitido (J5) e que `VENDA_INICIADA` é o único evento emitido pela hidratação em si (J6) — depende de T022
-- [ ] T014 [P] [US2] Integration test `tests/integration/retomarRascunho.spec.ts`: nenhuma chamada a `resolvePrecoUnitario`/`repricarSku` ocorre durante a hidratação (J2); `identidadeVenda.numeroNota` é sempre o `NumeroNota` do rascunho, nunca `0`, inclusive no payload de `FaturarNFCe` enviado numa finalização subsequente (J3, quickstart Cenário 4) — depende de T022
-- [ ] T015 [P] [US2] Integration test `tests/integration/retomarRascunho.spec.ts`: nenhuma chamada de rede de lock/unlock é feita ao retomar, simulando duas retomadas concorrentes do mesmo `NumeroNota` (J7, quickstart Cenário 6, AD-052) — depende de T022
-- [ ] T016 [P] [US2] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: a partir do carrinho retomado, reinserir manualmente um SKU já presente numa linha congelada dispara o recálculo normal de preço para esse item (mecanismo de `carrinho-produto-precificacao`, feature 003, `research.md` D13) — esta feature só garante que a linha ficou corretamente congelada até este ponto — `FR-008`, quickstart Cenário 3 — depende de T023
-- [ ] T017 [P] [US2] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: `CarregarNFCe` retorna `404` (rascunho já faturado por outro operador ou expirado) → mensagem de erro de negócio exibida ao operador, sem retry automático, carrinho não é populado — `contracts/erp-recuperacao-api.md` — depende de T023
+- [X] T010 [P] [US2] Unit test `tests/unit/domain/recuperacao/mapearItemParaLinhaCongelada.spec.ts`: item com `precoUnitario` divergente do catálogo atual vira `LinhaCarrinho` com `idLinha` novo (`crypto.randomUUID()`), snapshot degenerado (só `codigoProduto`/`udm`/`precoBase`; `precosFaixa`/`limiaresFaixa`/`pesavelEditavel` ausentes, `research.md` D5), `precoCongelado=true`, `origem='RASCUNHO'`, `cancelada=false`, `precoUnitario` preservado sem passar por `resolvePrecoUnitario` — `data-model.md` §4, invariantes J1/J2 — depende de T018
+- [X] T011 [P] [US2] Unit test `tests/unit/domain/recuperacao/mapearFormaParaPagamentoAplicado.spec.ts`: forma `Dinheiro` → `valorRecebido=valor` (nunca reconstrói troco, `research.md` D8); forma não-`Dinheiro` → `valorRecebido=null`; `status` sempre `'APROVADO'` (J4); `dadosTEF`/`pixGuid` ecoados opacos, sem interpretação — `data-model.md` §5 — depende de T019
+- [X] T012 [P] [US2] Unit test `tests/unit/domain/recuperacao/mapearRascunhoCarregado.spec.ts`: orquestra os dois mapeadores acima sem efeito colateral (nenhum import de React/Zustand/`fetch`), devolve `linhas`/`pagamentos`/`condicaoPagamentoCodigo`/`clienteCodigo`/`vendedorCodigo`/`identidadeVenda` — `contracts/recuperacao-domain-api.md` — depende de T018, T019, T020
+- [X] T013 [P] [US2] Integration test `tests/integration/retomarRascunho.spec.ts`: ordem exata de efeitos — `resetarAuditoria()` → `setIdentidadeVenda()` → `setLinhasCarrinho()` → `setPagamentos()`+`setCondicao()` → `setCliente(await GetCliente)` (`data-model.md` §6); confirma que o slice `auditoria` é zerado antes de `VENDA_INICIADA` ser emitido (J5) e que `VENDA_INICIADA` é o único evento emitido pela hidratação em si (J6) — depende de T022
+- [X] T014 [P] [US2] Integration test `tests/integration/retomarRascunho.spec.ts`: nenhuma chamada a `resolvePrecoUnitario`/`repricarSku` ocorre durante a hidratação (J2); `identidadeVenda.numeroNota` é sempre o `NumeroNota` do rascunho, nunca `0`, inclusive no payload de `FaturarNFCe` enviado numa finalização subsequente (J3, quickstart Cenário 4) — depende de T022
+- [X] T015 [P] [US2] Integration test `tests/integration/retomarRascunho.spec.ts`: nenhuma chamada de rede de lock/unlock é feita ao retomar, simulando duas retomadas concorrentes do mesmo `NumeroNota` (J7, quickstart Cenário 6, AD-052) — depende de T022
+- [X] T016 [P] [US2] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: a partir do carrinho retomado, reinserir manualmente um SKU já presente numa linha congelada dispara o recálculo normal de preço para esse item (mecanismo de `carrinho-produto-precificacao`, feature 003, `research.md` D13) — esta feature só garante que a linha ficou corretamente congelada até este ponto — `FR-008`, quickstart Cenário 3 — depende de T023
+- [X] T017 [P] [US2] Integration test `tests/integration/ModalRecuperacaoNFCe.spec.tsx`: `CarregarNFCe` retorna `404` (rascunho já faturado por outro operador ou expirado) → mensagem de erro de negócio exibida ao operador, sem retry automático, carrinho não é populado — `contracts/erp-recuperacao-api.md` — depende de T023
 
 ### Implementation for User Story 2
 
-- [ ] T018 [P] [US2] Implementar `src/client/domain/recuperacao/mapearItemParaLinhaCongelada.ts` — `data-model.md` §4 (teste T010 deve falhar antes desta implementação)
-- [ ] T019 [P] [US2] Implementar `src/client/domain/recuperacao/mapearFormaParaPagamentoAplicado.ts` — `data-model.md` §5, `research.md` D8 (teste T011 deve falhar antes desta implementação)
-- [ ] T020 [US2] Implementar `src/client/domain/recuperacao/mapearRascunhoCarregado.ts` (orquestra T018, T019, ainda sem efeito colateral) — `contracts/recuperacao-domain-api.md` — depende de T018, T019 (teste T012 deve falhar antes desta implementação)
-- [ ] T021 [US2] Implementar `useCarregarRascunho` em `src/client/services/recuperacao/recuperacaoQueries.ts`: `GET /api/erp/CarregarNFCe` sob demanda (mutation, não query — ação única, não recacheada), `Serienota` sempre `SessaoUsuario.CadSerieNFCe` (`research.md` D4), resposta validada via `parseCarregarNFCeOutput` (T003) → `RascunhoCarregado` — depende de T003
-- [ ] T022 [US2] Implementar `src/client/features/venda/retomarRascunho.ts`: efeito colateral único, síncrono do ponto de vista do operador, na ordem exata — `resetarAuditoria()` → `setIdentidadeVenda({ origem: 'RASCUNHO', numeroNota })` → `setLinhasCarrinho(linhas)` → `setPagamentos(pagamentos)`+`setCondicao(condicaoPagamentoCodigo)` → `setCliente(await GetCliente(clienteCodigo))` → `trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO')` (`specs/012-selecao-vendedor/data-model.md` §3, `research.md` D7) — `data-model.md` §6, `research.md` D6/D9/D10 — depende de T020, T021
-- [ ] T023 [US2] Wire a seleção de rascunho em `ModalRecuperacaoNFCe.tsx` (T009): ao confirmar, chama `useCarregarRascunho` (T021); em sucesso, chama `retomarRascunho` (T022) e fecha o modal; em `404`, exibe toast (Goey Toast) de erro de negócio sem retry automático — `FR-004`/`FR-005`/`FR-006`/`FR-007`/`FR-009` — depende de T009, T021, T022 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
+- [X] T018 [P] [US2] Implementar `src/client/domain/recuperacao/mapearItemParaLinhaCongelada.ts` — `data-model.md` §4 (teste T010 deve falhar antes desta implementação)
+- [X] T019 [P] [US2] Implementar `src/client/domain/recuperacao/mapearFormaParaPagamentoAplicado.ts` — `data-model.md` §5, `research.md` D8 (teste T011 deve falhar antes desta implementação)
+- [X] T020 [US2] Implementar `src/client/domain/recuperacao/mapearRascunhoCarregado.ts` (orquestra T018, T019, ainda sem efeito colateral) — `contracts/recuperacao-domain-api.md` — depende de T018, T019 (teste T012 deve falhar antes desta implementação)
+- [X] T021 [US2] Implementar `useCarregarRascunho` em `src/client/services/recuperacao/recuperacaoQueries.ts`: `GET /api/erp/CarregarNFCe` sob demanda (mutation, não query — ação única, não recacheada), `Serienota` sempre `SessaoUsuario.CadSerieNFCe` (`research.md` D4), resposta validada via `parseCarregarNFCeOutput` (T003) → `RascunhoCarregado` — depende de T003
+- [X] T022 [US2] Implementar `src/client/features/venda/retomarRascunho.ts`: efeito colateral único, síncrono do ponto de vista do operador, na ordem exata — `resetarAuditoria()` → `setIdentidadeVenda({ origem: 'RASCUNHO', numeroNota })` → `setLinhasCarrinho(linhas)` → `setPagamentos(pagamentos)`+`setCondicao(condicaoPagamentoCodigo)` → `setCliente(await GetCliente(clienteCodigo))` → `trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO')` (`specs/012-selecao-vendedor/data-model.md` §3, `research.md` D7) — `data-model.md` §6, `research.md` D6/D9/D10 — depende de T020, T021
+- [X] T023 [US2] Wire a seleção de rascunho em `ModalRecuperacaoNFCe.tsx` (T009): ao confirmar, chama `useCarregarRascunho` (T021); em sucesso, chama `retomarRascunho` (T022) e fecha o modal; em `404`, exibe toast (Goey Toast) de erro de negócio sem retry automático — `FR-004`/`FR-005`/`FR-006`/`FR-007`/`FR-009` — depende de T009, T021, T022 — **consultar o Pencil MCP antes de implementar** (CLAUDE.md § "Referência visual (design)")
 
 **Checkpoint**: User Stories 1 e 2 completas e testáveis de forma independente — retomada ponta a ponta funcional.
 
@@ -125,8 +158,8 @@ tests/unit/domain/recuperacao/ | tests/integration/ | tests/e2e/
 
 **Purpose**: Gate de tipo obrigatório e validação ponta a ponta do fluxo dourado.
 
-- [ ] T024 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
-- [ ] T025 E2E `tests/e2e/recuperacao-nfce.spec.ts` (fluxo dourado do `quickstart.md`, via Playwright, mock de rede não de função): abrir modal → buscar por nome de cliente → selecionar rascunho → confirmar carrinho populado com preço/pagamento/cliente/vendedor do rascunho → finalizar venda → confirmar `NumeroNota` no payload de rede
+- [X] T024 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
+- [X] T025 E2E `tests/e2e/recuperacao-nfce.spec.ts` (fluxo dourado do `quickstart.md`, via Playwright, mock de rede não de função): abrir modal → buscar por nome de cliente → selecionar rascunho → confirmar carrinho populado com preço/pagamento/cliente/vendedor do rascunho → finalizar venda → confirmar `NumeroNota` no payload de rede
 - [ ] T026 Rodar os 6 cenários de `quickstart.md` (listar/buscar, retomar, reinserir item, finalizar venda retomada, auditoria da retomada, sem lock entre operadores) e confirmar `SC-001`/`SC-002`/`SC-003`
 
 ---
