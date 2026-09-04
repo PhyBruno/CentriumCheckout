@@ -30,20 +30,52 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
     return screen.getByTestId('equivalente-financeiro-desconto-capa').textContent ?? '';
   }
 
-  it('100% mostra o equivalente do que foi digitado, mesmo com a aplicação recusada', async () => {
+  it('enquanto 100% está no campo, o equivalente acompanha o que foi digitado', async () => {
     // O sintoma relatado: a linha "= R$ …" ficava parada no valor anterior,
     // porque lia o desconto **aplicado** — e um desconto recusado nunca chega
     // ao store. O operador via o número velho ao lado do aviso de recusa.
     const usuario = userEvent.setup();
     render(createElement(ControleDescontoCapa));
 
-    const campo = screen.getByTestId('campo-valor-ajuste');
-    await usuario.click(campo);
+    await usuario.click(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.keyboard('100');
+
+    expect(equivalente()).toContain('100,00');
+  });
+
+  it('ao sair do campo, o 100% recusado é descartado — texto e equivalente vão junto', async () => {
+    // A outra metade da mesma regra (correção do usuário, 2026-09-04): o número
+    // acompanha o campo enquanto está nele, e **some** quando a regra o recusa.
+    // Deixá-lo em tela depois da recusa foi o que produziu o desconto fantasma
+    // — texto preenchido, equivalente calculado e total a pagar sem desconto.
+    const usuario = userEvent.setup();
+    render(createElement(ControleDescontoCapa));
+
+    await usuario.click(screen.getByTestId('campo-valor-ajuste'));
     await usuario.keyboard('100');
     await usuario.tab();
 
-    expect(equivalente()).toContain('100,00');
-    // Recusado por zerar a venda: nada foi aplicado.
+    expect(useVendaStore.getState().descontoCapa).toBeNull();
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('');
+    expect(equivalente()).toContain('0,00');
+  });
+
+  it('carrinho vazio bloqueia o campo em vez de aceitar um desconto que será recusado', async () => {
+    const usuario = userEvent.setup();
+    useVendaStore.setState({ linhas: [] });
+    render(createElement(ControleDescontoCapa));
+
+    const campo = screen.getByTestId('campo-valor-ajuste');
+    expect(campo).toHaveAttribute('aria-disabled', 'true');
+    expect(campo).toHaveAttribute(
+      'title',
+      'Insira ao menos um produto na venda antes de aplicar desconto.',
+    );
+
+    await usuario.click(campo);
+    await usuario.keyboard('10');
+
+    expect(campo).toHaveValue('');
     expect(useVendaStore.getState().descontoCapa).toBeNull();
   });
 

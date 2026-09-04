@@ -227,7 +227,13 @@ export interface PagamentoSlice {
   confirmarPagamentoIntegrado(idPagamento: string, dados: DadosIntegracao): void;
   recusarPagamentoIntegrado(idPagamento: string, motivo: string): void;
   removerPagamento(idPagamento: string): void;
-  aplicarDescontoCapa(modo: 'PERCENTUAL' | 'VALOR', entrada: number): void;
+  /**
+   * Devolve `true` quando o desconto entrou. O booleano existe para o campo
+   * poder **descartar o texto recusado** (correção do usuário, 2026-09-04): sem
+   * ele, o número digitado ficava na tela como se estivesse valendo, e o
+   * operador só descobria o contrário ao ler o total.
+   */
+  aplicarDescontoCapa(modo: 'PERCENTUAL' | 'VALOR', entrada: number): boolean;
   removerDescontoCapa(): void;
   /**
    * Valida o ticket no ERP e, se válido, **insere o pagamento** de valor igual
@@ -690,7 +696,7 @@ export function criarPagamentoSlice(
         // o total líquido de uma venda que já tem dinheiro atribuído a ela.
         if (get().pagamentos.length > 0) {
           deps.avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
-          return;
+          return false;
         }
 
         const subtotal = deps.subtotalCarrinho();
@@ -704,12 +710,13 @@ export function criarPagamentoSlice(
         const recusa = recusaDoDescontoCapa(valorResolvido, subtotal, deps.linhasRateaveis());
         if (recusa !== null) {
           deps.avisar?.(AVISO_POR_RECUSA_DESCONTO[recusa]);
-          return;
+          return false;
         }
 
         // Substitui, nunca acumula. Sem evento de auditoria: o desconto é
         // auditado pela feature 004 na finalização.
         set({ descontoCapa: { modo, entrada, valorResolvido } });
+        return true;
       },
 
       removerDescontoCapa: () => {

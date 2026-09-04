@@ -1,6 +1,7 @@
 import { Equal } from 'lucide-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
 import { gooeyToast } from 'goey-toast';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { resolverDescontoCapa } from '../../domain/pagamento/descontoCapa';
 import { ZERO_CENTAVOS, formatarCentavos, type Centavos } from '../../domain/precificacao/dinheiro';
@@ -122,6 +123,18 @@ export function ControleDescontoCapa(): ReactElement {
   const percentualDigitado = lerPercentualDigitado(entradaTexto);
   const equivalenteFinanceiro = resolverEquivalente();
 
+  /**
+   * Não há o que descontar num carrinho sem valor (pedido do usuário,
+   * 2026-09-04). Qualquer número digitado aqui seria recusado pelo slice — o
+   * desconto não pode zerar a venda, e sobre um subtotal de R$ 0,00 todo
+   * desconto zera —, então o campo recusa antes, em vez de aceitar a digitação
+   * para desfazê-la no `blur`.
+   */
+  const bloqueio: MotivoBloqueio =
+    subtotal === ZERO_CENTAVOS
+      ? 'Insira ao menos um produto na venda antes de aplicar desconto.'
+      : null;
+
   function resolverEquivalente(): Centavos {
     // Campo vazio: mostra o desconto que a venda de fato tem — nenhum, na
     // maioria das vezes.
@@ -182,7 +195,7 @@ export function ControleDescontoCapa(): ReactElement {
         removerDescontoCapa();
         return;
       }
-      aplicarDescontoCapa('VALOR', valor);
+      descartarSeRecusado(aplicarDescontoCapa('VALOR', valor));
       return;
     }
 
@@ -195,7 +208,29 @@ export function ControleDescontoCapa(): ReactElement {
       removerDescontoCapa();
       return;
     }
-    aplicarDescontoCapa('PERCENTUAL', percentual);
+    descartarSeRecusado(aplicarDescontoCapa('PERCENTUAL', percentual));
+  }
+
+  /**
+   * Desconto recusado pelo slice **esvazia o campo** (correção do usuário,
+   * 2026-09-04).
+   *
+   * O defeito relatado: com o carrinho vazio, digitar "10" e sair aplicava
+   * nada — o slice recusa por zerar a venda —, mas o texto permanecia. O
+   * espelho `ultimoAplicado` abaixo só limpa quando o desconto **muda** para
+   * `null`, e aqui ele já era `null`. Ao inserir o primeiro item, a tela então
+   * mostrava "10" com o equivalente recalculado sobre o subtotal novo, e o
+   * total a pagar sem desconto nenhum: três informações, duas delas mentira.
+   *
+   * Só a recusa **de regra** limpa. Erro de formato ("10,25", "abc") não passa
+   * por aqui e mantém o texto: ali o operador tem o que corrigir, enquanto um
+   * valor recusado por regra não é aproveitável — o próprio toast já disse por
+   * quê.
+   */
+  function descartarSeRecusado(aplicado: boolean): void {
+    if (!aplicado) {
+      setEntradaTexto('');
+    }
   }
 
   function trocarModo(modoAlvo: ModoAjuste): void {
@@ -240,21 +275,33 @@ export function ControleDescontoCapa(): ReactElement {
           removido, o campo é a linha inteira. */}
       <span className="flex h-11 w-full min-w-0 items-center justify-between gap-xs rounded-lg border border-border bg-muted px-xs">
         <input
-          className="w-full min-w-0 bg-transparent font-mono text-md font-semibold tabular-nums outline-none"
+          className="w-full min-w-0 bg-transparent font-mono text-md font-semibold tabular-nums outline-none aria-disabled:cursor-not-allowed"
           data-testid="campo-valor-ajuste"
           aria-label={modo === 'PERCENTUAL' ? 'Desconto em porcentagem' : 'Desconto em reais'}
           autoComplete="off"
           inputMode="decimal"
           placeholder="0,00"
           value={entradaTexto}
+          // `readOnly`, não `disabled` (AD-143): o campo continua alcançável por
+          // TAB e o clique **explica** o motivo, em vez de não fazer nada. O
+          // cursor é o mesmo do combobox de condição bloqueado.
+          readOnly={bloqueio !== null}
+          {...atributosDeBloqueio(bloqueio)}
+          onClick={acaoBloqueavel(bloqueio, () => {
+            /* campo livre: o clique só posiciona o cursor. */
+          })}
           onChange={(evento) => {
-            setEntradaTexto(evento.target.value);
+            if (bloqueio === null) {
+              setEntradaTexto(evento.target.value);
+            }
           }}
           // Aplica ao sair do campo e no Enter, nunca a cada tecla: digitar
           // "10" passaria por "1" no caminho, e cada passagem seria um
           // desconto aplicado de verdade (com auditoria e rateio) por engano.
           onBlur={() => {
-            aplicar(modo, entradaTexto);
+            if (bloqueio === null) {
+              aplicar(modo, entradaTexto);
+            }
           }}
           onKeyDown={aoTeclar}
         />

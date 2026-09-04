@@ -1930,3 +1930,19 @@ Correções de uma revisão independente (subagent com contexto reduzido, pedida
 **(7) Exceção decidida, não esquecida:** `importarFormasDePagamento` (DAV) continua **sem** a guarda de venda sem valor. Não é gesto do operador, é replay de um documento que o ERP já emitiu; recusar as formas de um DAV de total zerado deixaria a venda importada pela metade — itens dentro, pagamento fora. Anotado no código para não voltar como achado.
 
 **Impact:** `src/client/domain/pagamento/descontoCapa.ts`, `src/client/stores/slices/pagamentoSlice.ts`, `src/client/stores/slices/carrinhoSlice.ts` (`descontoZeraALinha`, `AVISO_DESCONTO_ZERA_A_LINHA`), `src/client/features/pagamento/ControleDescontoCapa.tsx`, `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts`, `tests/integration/carrinhoSlice.spec.ts`, `tests/integration/pagamentoSlice.spec.ts` e `tests/unit/domain/pagamento/descontoCapa.spec.ts`. 647 testes verdes, `tsc --noEmit` e `eslint` limpos.
+
+### AD-154: O desconto recusado deixa de ficar em tela — `aplicarDescontoCapa` devolve `boolean`, e os campos sem valor a cobrar bloqueiam (2026-09-04)
+
+**O defeito, relatado pelo usuário:** com o carrinho vazio, digitar "10" no desconto e sair não aplicava nada — o slice recusa por zerar a venda —, **mas o texto permanecia no campo**. O espelho `ultimoAplicado` de `ControleDescontoCapa` só reescreve o campo quando `descontoCapa` **muda** para `null`, e ali ele já era `null`. Ao inserir o primeiro item, a tela passava a mostrar "10" no campo, o equivalente financeiro recalculado sobre o subtotal novo ("= R$ 10,00") e o total a pagar **sem desconto algum**: três informações na mesma tela, duas delas falsas. O agravante do equivalente veio de AD-152, que o fez acompanhar o texto digitado — correto enquanto o texto é do operador, enganoso depois que a regra o recusou.
+
+**A correção tem duas metades, e as duas eram necessárias.**
+
+**(1) `aplicarDescontoCapa` passa a devolver `boolean`**, e o campo descarta o texto quando a resposta é `false`. Só a recusa **de regra** limpa: erro de formato ("10,25", "abc") nem chega ao slice e mantém o texto, porque ali o operador tem o que corrigir — enquanto um valor recusado por regra não é aproveitável, e o toast já disse por quê. É divergência anotada do contrato (`pagamento-domain-api.md` §2 declara `void`), pelo mesmo motivo já registrado para `aplicarPagamento`: sem um ponto de retorno, o call site não tem como saber o que aconteceu.
+
+Isso mantém as duas exigências do usuário, que só parecem opostas: o equivalente financeiro **acompanha** o número enquanto ele está no campo (AD-152, "mesmo que dê erro o valor tem que atualizar") e **some junto com ele** quando a regra o descarta.
+
+**(2) Campo de desconto e campo de valor recebido bloqueiam quando não há o que cobrar** — subtotal zero no primeiro, total líquido zero no segundo. `readOnly` com `aria-disabled`, `title` e `cursor-not-allowed`, nunca `disabled` (AD-143): seguem alcançáveis por TAB e o clique explica, com o mesmo cursor do combobox de condição bloqueado. Recusar a digitação é melhor do que aceitá-la para desfazê-la no `blur`.
+
+O valor recebido bloqueia **só** por venda sem valor, e não pelos demais motivos de `bloqueioDeInsercao`: "escolha a forma antes" impede *adicionar*, não digitar, e travar o campo por isso obrigaria o caixa a escolher a forma antes de poder teclar o valor — invertendo a ordem natural do gesto.
+
+**Impact:** `src/client/stores/slices/pagamentoSlice.ts`, `src/client/features/pagamento/` (`ControleDescontoCapa`, `EntradaPagamento`) e `tests/unit/client/pagamento/ControleDescontoCapa.spec.tsx`. 649 testes verdes, `tsc --noEmit` e `eslint` limpos.

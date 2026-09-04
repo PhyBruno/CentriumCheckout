@@ -98,6 +98,12 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
    * Os motivos espelham, na mesma ordem, as guardas de `adicionar()`: uma lista
    * que divergisse da função diria uma coisa e o bloqueio responderia outra.
    */
+  /** Único motivo que trava a **digitação** — ver o comentário no `<input>`. */
+  const bloqueioDoCampo: MotivoBloqueio =
+    totalLiquido === ZERO_CENTAVOS
+      ? 'Esta venda não tem valor a cobrar: insira produtos ou revise o desconto antes de informar o valor recebido.'
+      : null;
+
   const bloqueioDeInsercao: MotivoBloqueio = enviando
     ? 'Aguarde: o pagamento anterior ainda está sendo processado.'
     : totalLiquido === ZERO_CENTAVOS
@@ -177,14 +183,31 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
           <input
             ref={campo}
             id="campo-valor-recebido"
-            className="w-full min-w-0 bg-transparent text-right font-mono text-xl font-semibold tabular-nums outline-none"
+            className="w-full min-w-0 bg-transparent text-right font-mono text-xl font-semibold tabular-nums outline-none aria-disabled:cursor-not-allowed"
             data-testid="campo-valor-recebido"
             autoComplete="off"
             inputMode="decimal"
             placeholder="0,00"
             value={valorTexto}
+            // Bloqueado **só** por venda sem valor (pedido do usuário,
+            // 2026-09-04) — não pelos demais motivos de `bloqueioDeInsercao`.
+            // "Escolha a forma antes" impede *adicionar*, não digitar: travar o
+            // campo por isso obrigaria o caixa a escolher a forma antes de poder
+            // teclar o valor, invertendo a ordem natural do gesto. Sem valor a
+            // cobrar, porém, não há número que sirva.
+            //
+            // `readOnly`, não `disabled` (AD-143): segue alcançável por TAB e o
+            // clique explica o motivo, com o mesmo cursor do combobox de
+            // condição bloqueado.
+            readOnly={bloqueioDoCampo !== null}
+            {...atributosDeBloqueio(bloqueioDoCampo)}
+            onClick={acaoBloqueavel(bloqueioDoCampo, () => {
+              /* campo livre: o clique só posiciona o cursor. */
+            })}
             onChange={(evento) => {
-              setValorTexto(evento.target.value);
+              if (bloqueioDoCampo === null) {
+                setValorTexto(evento.target.value);
+              }
             }}
             onKeyDown={aoTeclar}
           />
