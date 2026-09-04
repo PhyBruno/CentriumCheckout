@@ -241,6 +241,8 @@ export const AVISO_VALE_INELEGIVEL = 'Esta forma de pagamento não aceita vale d
 export const AVISO_VALE_SEM_PAGAMENTO =
   'Selecione uma forma de pagamento já aplicada antes de informar o vale.';
 export const AVISO_VALE_JA_APLICADO = 'Esta venda já tem um vale de devolução aplicado.';
+export const AVISO_VALE_INDISPONIVEL =
+  'Não foi possível validar o vale devolução no ERP: nada foi aplicado.';
 
 const AVISO_POR_MOTIVO_LOCAL = {
   DINHEIRO_DUPLICADO: AVISO_DINHEIRO_DUPLICADO,
@@ -597,7 +599,15 @@ export function criarPagamentoSlice(
           return;
         }
 
-        const resultado = await deps.validarTicket(codigo);
+        let resultado: ResultadoTicket;
+        try {
+          resultado = await deps.validarTicket(codigo);
+        } catch {
+          // Mesmo desfecho de `aplicarNucleo`: ERP fora do ar não muta nada e
+          // não vira evento — recusa é decisão do ERP, isto aqui é falha técnica.
+          deps.avisar?.(AVISO_VALE_INDISPONIVEL);
+          return;
+        }
 
         if (!resultado.valido) {
           // A mensagem exibida é a **do ERP**, não uma reescrita local: só ele

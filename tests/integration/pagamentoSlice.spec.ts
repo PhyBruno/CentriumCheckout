@@ -31,6 +31,7 @@ import {
   AVISO_DINHEIRO_DUPLICADO,
   AVISO_FORMA_FORA_DA_CONDICAO,
   AVISO_PAGAMENTO_IRREVERSIVEL,
+  AVISO_VALE_INDISPONIVEL,
   AVISO_VALE_INELEGIVEL,
   criarPagamentoSlice,
   type ContextoIntegracao,
@@ -657,6 +658,22 @@ describe('pagamentoSlice — vale devolução (T038, Cenário 5)', () => {
 
     expect(validarTicket).not.toHaveBeenCalled();
     expect(avisar).toHaveBeenCalledWith(AVISO_VALE_INELEGIVEL);
+  });
+
+  it('ERP indisponível avisa e não muta nada, sem evento de auditoria', async () => {
+    const { store, validarTicket, avisar } = montarStore();
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(7_000) });
+    validarTicket.mockRejectedValue(new Error('rede indisponível'));
+    const eventosAntes = tiposDeEvento(store);
+
+    await store.getState().aplicarValeDevolucao(CODIGO_VALE, 'pag-1');
+
+    expect(avisar).toHaveBeenCalledWith(AVISO_VALE_INDISPONIVEL);
+    expect(store.getState().pagamentos[0]?.valorAplicado).toBe(7_000);
+    expect(store.getState().pagamentos[0]?.ticketDevolucao).toBeNull();
+    expect(store.getState().valeDevolucao).toBeNull();
+    // Indisponibilidade técnica não é evento de domínio: a trilha fica intacta.
+    expect(tiposDeEvento(store)).toEqual(eventosAntes);
   });
 
   it('o ticket é validado exatamente uma vez — a montagem do payload nunca revalida (FR-009/SC-001)', async () => {
