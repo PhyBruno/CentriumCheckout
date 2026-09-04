@@ -65,7 +65,38 @@ describe('bootstrapPayloadSchema', () => {
 
   it('recusa ListaPrecoDefault não inteiro', () => {
     const payload = payloadValido();
-    (payload['SessaoUsuario'] as Record<string, unknown>)['ListaPrecoDefault'] = '3';
+    (payload['SessaoUsuario'] as Record<string, unknown>)['ListaPrecoDefault'] = '3,5';
+
+    expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
+  });
+
+  /**
+   * Shape **real** do `GetSessao` (AD-165), verificado ao vivo contra o ERP de
+   * demonstração em 2026-09-04: todo `int64` chega como string JSON. Os valores
+   * abaixo são sintéticos, mas os tipos são os observados — antes desta correção
+   * o bootstrap inteiro falhava contra o ERP real e o Checkout nunca abria.
+   */
+  it('aceita os inteiros de SessaoUsuario como string, como o ERP real devolve (AD-165)', () => {
+    const payload = payloadValido();
+    const sessao = payload['SessaoUsuario'] as Record<string, unknown>;
+    sessao['QtdMinCharParaConsulta'] = '3';
+    sessao['ClienteDefaultCodigo'] = '999999';
+    sessao['ListaPrecoDefault'] = '1';
+    sessao['caixa'] = '0';
+    sessao['VendedorCodigo'] = '0';
+
+    const resultado = bootstrapPayloadSchema.parse(payload);
+
+    expect(resultado.SessaoUsuario.QtdMinCharParaConsulta).toBe(3);
+    expect(resultado.SessaoUsuario.ClienteDefaultCodigo).toBe(999999);
+    expect(resultado.SessaoUsuario.ListaPrecoDefault).toBe(1);
+    expect(resultado.SessaoUsuario.caixa).toBe(0);
+    expect(resultado.SessaoUsuario.VendedorCodigo).toBe(0);
+  });
+
+  it('recusa string não numérica num campo inteiro — tolerância não é indulgência', () => {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['ClienteDefaultCodigo'] = '';
 
     expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
   });

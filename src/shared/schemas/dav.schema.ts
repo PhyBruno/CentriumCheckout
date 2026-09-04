@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { centavos } from '../../client/domain/precificacao/dinheiro';
 import { milesimosDeUnidades } from '../../client/domain/precificacao/quantidade';
+import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
 
 /**
  * Validação de fronteira das respostas de `ListaDAVs` e `GetDav` (T002,
@@ -23,11 +24,16 @@ import { milesimosDeUnidades } from '../../client/domain/precificacao/quantidade
  * (recuperação de rascunho), que só troca o endpoint chamado.
  */
 
-/** `number/format: double` do ERP → `Centavos` inteiros. */
-const valorEmCentavos = z.number().transform((valor) => centavos(Math.round(valor * 100)));
+/**
+ * `number/format: double` do ERP → `Centavos` inteiros.
+ *
+ * `numeroErp` porque o ERP real serializa decimal como string
+ * (`"ValorTotal": "89.50"`, verificado ao vivo em 2026-09-04 — AD-165).
+ */
+const valorEmCentavos = numeroErp.transform((valor) => centavos(Math.round(valor * 100)));
 
 /** `quantidade` chega em unidades, podendo ser fracionária → `Milesimos`. */
-const quantidadeEmMilesimos = z.number().transform((valor) => milesimosDeUnidades(valor));
+const quantidadeEmMilesimos = numeroErp.transform((valor) => milesimosDeUnidades(valor));
 
 /* ------------------------------------------------------------------ *
  * 1. `GET /ListaDAVs` — `ListaDAVsOutput.CheckoutListaDAVs`
@@ -49,24 +55,28 @@ export const davDaListaSchema = z.looseObject({
   Titulo: z.string(),
   /** `format: date` — `YYYY-MM-DD`. */
   DataEmissao: z.string(),
-  ClienteCodigo: z.number().int(),
+  ClienteCodigo: inteiroErp,
   ClienteNome: z.string(),
-  VendedorCodigo: z.number().int(),
+  VendedorCodigo: inteiroErp,
   /** `double` do ERP → centavos; só exibição na lista, nunca entra no cálculo. */
   ValorTotal: valorEmCentavos,
 });
 
 export const checkoutListaDavsSchema = z.looseObject({
-  PaginaAtual: z.number().int(),
-  RegistrosPorPagina: z.number().int(),
-  TotalRegistros: z.number().int(),
-  TotalPaginas: z.number().int(),
+  PaginaAtual: inteiroErp,
+  RegistrosPorPagina: inteiroErp,
+  TotalRegistros: inteiroErp,
+  TotalPaginas: inteiroErp,
   DAV: z.array(davDaListaSchema),
 });
 
-export const listaDavsOutputSchema = z.looseObject({
-  CheckoutListaDAVs: checkoutListaDavsSchema,
-});
+/**
+ * `GET /ApiCentriumOAuth/ListaDAVs` — **sem** o envelope `CheckoutListaDAVs`
+ * do YAML: o ERP real devolve `DAV`/`PaginaAtual`/`TotalRegistros` na raiz
+ * (verificado ao vivo em 2026-09-04 — AD-165). Diferente de `GetDav` logo
+ * abaixo, que **mantém** o envelope porque também devolve `messages`.
+ */
+export const listaDavsOutputSchema = semEnvelope('CheckoutListaDAVs', checkoutListaDavsSchema);
 
 /* ------------------------------------------------------------------ *
  * 2. `GET /GetDav` — `GetDavOutput.OutCheckoutFaturarNFCe`
@@ -81,12 +91,12 @@ export const listaDavsOutputSchema = z.looseObject({
  * o do documento.
  */
 export const produtoDoDocumentoSchema = z.looseObject({
-  sequencial: z.number().int(),
+  sequencial: inteiroErp,
   codigoProduto: z.string(),
   quantidade: quantidadeEmMilesimos,
   /** Congelado: nunca passa por `resolvePrecoUnitario` (AD-067). */
   precoUnitario: valorEmCentavos,
-  DescontoPercentual: z.number(),
+  DescontoPercentual: numeroErp,
   /** Absoluto, já resolvido pelo ERP. */
   DescontoValor: valorEmCentavos,
   UDM: z.string(),
@@ -94,10 +104,10 @@ export const produtoDoDocumentoSchema = z.looseObject({
 
 /** `CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem`. */
 export const formaDePagamentoDoDocumentoSchema = z.looseObject({
-  FormaCodigo: z.number().int(),
+  FormaCodigo: inteiroErp,
   FormaMeioPagtoNFe: z.string(),
   FormaValor: valorEmCentavos,
-  TEFidentificacao: z.number(),
+  TEFidentificacao: numeroErp,
   TEFCNPJ: z.string(),
   TEFBandeira: z.string(),
   TEFNumeroAutorizacao: z.string(),
@@ -123,14 +133,31 @@ export const formaDePagamentoDoDocumentoSchema = z.looseObject({
  * importação.
  */
 export const checkoutFaturarNFCeSchema = z.looseObject({
-  clienteCodigo: z.number().int(),
-  vendedorCodigo: z.number().int(),
-  CondicaoPagamentoCodigo: z.number().int(),
-  NumeroNota: z.number().int(),
+  clienteCodigo: inteiroErp,
+  vendedorCodigo: inteiroErp,
+  CondicaoPagamentoCodigo: inteiroErp,
+  NumeroNota: inteiroErp,
   produtos: z.array(produtoDoDocumentoSchema),
   FormasDePagamento: z.array(formaDePagamentoDoDocumentoSchema),
 });
 
+/**
+ * `GET /ApiCentriumOAuth/GetDav` — **mantém** o envelope, ao contrário de
+ * `ListaDAVs`/`GetProduto`/`GetCliente`.
+ *
+ * Não é inconsistência do ERP: o envelope sobrevive exatamente nos endpoints
+ * que também devolvem `messages` (`GetDav` e `FaturarNFCe`); onde a procedure
+ * tem um único parâmetro de saída, o GeneXus serializa o SDT na raiz. Os dois
+ * casos foram verificados um a um ao vivo em 2026-09-04 (AD-165) — daí
+ * `z.looseObject` aqui e `semEnvelope` lá.
+ *
+ * `produtos` e `FormasDePagamento` seguem **obrigatórios**: uma recusa de
+ * negócio do ERP (DAV não liberado, por exemplo) volta `200` com o SDT zerado e
+ * sem essas coleções, e aceitá-la importaria um documento vazio, com
+ * `clienteCodigo: 0`, como se fosse sucesso. Falhar na fronteira é o desfecho
+ * correto — o que falta é exibir a `messages[].Description` do ERP em vez do
+ * erro genérico (item registrado em `.specs/project/PENDENCIES.md`).
+ */
 export const getDavOutputSchema = z.looseObject({
   OutCheckoutFaturarNFCe: checkoutFaturarNFCeSchema,
 });

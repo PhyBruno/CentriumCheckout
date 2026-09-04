@@ -150,7 +150,9 @@ export async function fetchProduto(
     throw new ErroRespostaInvalida('GetProduto', validado.error.message);
   }
 
-  return paraSnapshotPrecoProduto(validado.data.Produto);
+  // `validado.data` já é o SDT do produto: o schema aceita a resposta com ou
+  // sem o envelope `Produto` e entrega sempre o conteúdo (AD-165).
+  return paraSnapshotPrecoProduto(validado.data);
 }
 
 /**
@@ -206,7 +208,7 @@ export async function fetchListaProdutos(
     throw new ErroRespostaInvalida('GetListaProdutos', validado.error.message);
   }
 
-  return validado.data.ListaProdutos;
+  return validado.data;
 }
 
 /**

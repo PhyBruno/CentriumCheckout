@@ -45,7 +45,7 @@ describe('trocarCredenciaisPorToken', () => {
     expect(fetchImpl.mock.calls[0]?.[0]).toBe('https://acme.apps.example.test/oauth/access_token');
   });
 
-  it('envia o grant de senha em form urlencoded com additionalParameters', async () => {
+  it('envia o grant de senha em form urlencoded com additional_parameters', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValue(respostaJson({ access_token: 'token-sintetico' }));
@@ -64,10 +64,37 @@ describe('trocarCredenciaisPorToken', () => {
     expect(corpo.get('client_secret')).toBe(credenciais.client_secret);
     expect(corpo.get('username')).toBe(credenciais.username);
     expect(corpo.get('password')).toBe(credenciais.password);
-    expect(JSON.parse(corpo.get('additionalParameters') ?? '{}')).toEqual({
+    expect(JSON.parse(corpo.get('additional_parameters') ?? '{}')).toEqual({
       AuthenticationTypeName: 'local',
       Repository: credenciais.Repository,
     });
+  });
+
+  /**
+   * O nome do campo é o bug mais caro que este módulo já teve (AD-165): em
+   * camelCase o GAM responde `401` "A conexão ao GAM não foi especificada" antes
+   * de olhar o `Repository`, e **todo** login do Checkout falha. Como o corpo é
+   * montado em `URLSearchParams`, um typo aqui não gera erro de tipo nem de
+   * lint — só uma chave a mais que o servidor ignora. Este teste é a única
+   * defesa automática contra o retorno do camelCase.
+   */
+  it('não envia o campo em camelCase (additionalParameters) — o GAM real recusa', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaJson({ access_token: 'token-sintetico' }));
+
+    await trocarCredenciaisPorToken(credenciais, { env: envDeTeste(), fetchImpl });
+
+    const corpo = new URLSearchParams(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(corpo.get('additionalParameters')).toBeNull();
+    expect([...corpo.keys()].sort()).toEqual([
+      'additional_parameters',
+      'client_id',
+      'client_secret',
+      'grant_type',
+      'password',
+      'username',
+    ]);
   });
 
   it('devolve a resposta validada pelo schema de fronteira', async () => {

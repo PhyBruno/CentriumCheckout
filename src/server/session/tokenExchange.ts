@@ -64,7 +64,24 @@ export async function trocarCredenciaisPorToken(
     grant_type: 'password',
     username: credenciais.username,
     password: credenciais.password,
-    additionalParameters: JSON.stringify({
+    /**
+     * `additional_parameters` em **snake_case** — nunca `additionalParameters`
+     * (AD-165).
+     *
+     * O GAM lê este campo antes de qualquer outra coisa: com o nome em
+     * camelCase ele nem chega a olhar o `Repository` e responde `401` "A
+     * conexão ao GAM não foi especificada", o que faz toda troca de token
+     * falhar — login inicial e renovação silenciosa. Confirmado ao vivo em
+     * 2026-09-04 contra o ERP real, isolando só o nome do campo: mantido o
+     * mesmo `Repository` (inválido de propósito), o erro mudou de "conexão não
+     * especificada" para "Repositório não encontrado" ao renomear o campo.
+     *
+     * `scope` **não** entra no corpo: a mesma verificação mostrou que o ERP
+     * devolve `200` com `access_token` válido sem ele, e um token obtido sem
+     * `scope` chama `GetListaProdutos` normalmente. Enviar `scope=FullControl`
+     * só faz o GAM ecoar `scope: "gam_user_data"` — nada que o Checkout leia.
+     */
+    additional_parameters: JSON.stringify({
       AuthenticationTypeName: 'local',
       Repository: credenciais.Repository,
     }),

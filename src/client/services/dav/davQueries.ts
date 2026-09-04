@@ -247,7 +247,9 @@ export async function fetchListaDavs(
     throw new ErroRespostaInvalida('ListaDAVs', validado.error.message);
   }
 
-  const lista = validado.data.CheckoutListaDAVs;
+  // `validado.data` já é a lista: o schema aceita a resposta com ou sem o
+  // envelope `CheckoutListaDAVs` e entrega sempre o conteúdo (AD-165).
+  const lista = validado.data;
   return {
     paginaAtual: lista.PaginaAtual,
     totalPaginas: lista.TotalPaginas,

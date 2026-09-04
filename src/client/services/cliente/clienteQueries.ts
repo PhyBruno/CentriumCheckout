@@ -109,11 +109,15 @@ async function buscarCliente(
   // (verificado no código-fonte da KB, 2026-09-03). Sem esta checagem, o
   // Checkout associaria à venda um "cliente 0" — sem nome, sem lista de preço
   // — como se a busca tivesse dado certo.
-  if (validado.data.Cliente.CodCliente <= 0) {
+  //
+  // `validado.data` já é o cliente: o schema aceita a resposta com ou sem o
+  // envelope `Cliente` e entrega sempre o conteúdo (AD-165) — o ERP real
+  // devolve os campos na raiz.
+  if (validado.data.CodCliente <= 0) {
     throw new ErroClienteNaoEncontrado(identificador);
   }
 
-  return validado.data.Cliente;
+  return validado.data;
 }
 
 /**
@@ -184,7 +188,7 @@ export async function fetchListaClientes(
     throw new ErroRespostaInvalida('GetListaClientes', validado.error.message);
   }
 
-  return validado.data.ListaClientes;
+  return validado.data;
 }
 
 /**

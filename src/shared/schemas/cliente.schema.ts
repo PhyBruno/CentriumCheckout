@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
 
 /**
  * Validação de fronteira das respostas de `GetCliente` e `GetListaClientes`, e
@@ -22,8 +23,8 @@ import { z } from 'zod';
 
 /** `SDTCheckout_GetCliente`/`ClienteCheckout` — retorno de `GetCliente`. */
 export const clienteCheckoutSchema = z.looseObject({
-  Empresa: z.number().int(),
-  CodCliente: z.number().int(),
+  Empresa: inteiroErp,
+  CodCliente: inteiroErp,
   nome: z.string(),
   cpf: z.string(),
   email: z.string(),
@@ -40,19 +41,22 @@ export const clienteCheckoutSchema = z.looseObject({
    * que a ausência deles no payload não é erro de fronteira — o cadastro
    * simplificado não os grava.
    */
-  LimiteCredito: z.number().optional(),
+  LimiteCredito: numeroErp.optional(),
   PermiteVendaCredito: z.boolean().optional(),
-  CodigoConvenio: z.number().int(),
+  CodigoConvenio: inteiroErp,
   NomeConvenio: z.string(),
   /** Percentual `0`–`100`, não valor absoluto (AD-023). */
-  DescontoConvenio: z.number(),
-  ListaPreco: z.number().int(),
+  DescontoConvenio: numeroErp,
+  ListaPreco: inteiroErp,
 });
 
-/** Envelope de `GET /ApiCentriumOAuth/GetCliente` (`GetClienteOutput`). */
-export const getClienteOutputSchema = z.looseObject({
-  Cliente: clienteCheckoutSchema,
-});
+/**
+ * `GET /ApiCentriumOAuth/GetCliente` — **sem** o envelope `{"Cliente": …}` que
+ * o `GetClienteOutput` do YAML desenha: o ERP real devolve os campos do cliente
+ * na raiz (verificado ao vivo em 2026-09-04 — AD-165). `semEnvelope` aceita as
+ * duas formas e entrega sempre o cliente.
+ */
+export const getClienteOutputSchema = semEnvelope('Cliente', clienteCheckoutSchema);
 
 /**
  * Candidato do modal de busca por termo livre.
@@ -72,27 +76,32 @@ export const enderecoDaListaSchema = z.looseObject({
 });
 
 export const clienteDaListaSchema = z.looseObject({
-  ClienteCodigo: z.number().int(),
+  /** `int64` — chega como string (`"1"`) no ERP real, número no `erp-mock`. */
+  ClienteCodigo: inteiroErp,
   ClienteNome: z.string(),
   CPF: z.string(),
-  ListaPreco: z.number().int(),
+  ListaPreco: inteiroErp,
   Celular: z.string(),
   Telefone: z.string(),
   Endereco: enderecoDaListaSchema,
 });
 
 export const checkoutListaClientesSchema = z.looseObject({
-  PaginaAtual: z.number().int(),
-  RegistrosPorPagina: z.number().int(),
-  TotalRegistros: z.number().int(),
-  TotalPaginas: z.number().int(),
+  PaginaAtual: inteiroErp,
+  RegistrosPorPagina: inteiroErp,
+  TotalRegistros: inteiroErp,
+  TotalPaginas: inteiroErp,
   Clientes: z.array(clienteDaListaSchema),
 });
 
-/** Envelope de `GET /ApiCentriumOAuth/GetListaClientes`. */
-export const getListaClientesOutputSchema = z.looseObject({
-  ListaClientes: checkoutListaClientesSchema,
-});
+/**
+ * `GET /ApiCentriumOAuth/GetListaClientes` — também **sem** envelope no ERP
+ * real: `Clientes`/`PaginaAtual`/`TotalRegistros` vêm na raiz (AD-165).
+ */
+export const getListaClientesOutputSchema = semEnvelope(
+  'ListaClientes',
+  checkoutListaClientesSchema,
+);
 
 /**
  * `GeneXus.Common.Messages_Message` — o corpo inteiro de `PostCliente`.
