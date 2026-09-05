@@ -596,6 +596,45 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
   };
 
 /**
+ * A forma que quitou o rascunho antes de ele ser suspenso (AD-169).
+ *
+ * Dinheiro pelo total exato do documento: é a quitação mais simples que existe,
+ * e o que interessa ao E2E é que a venda volte **paga** — o meio em si não muda
+ * nada no caminho de retomada.
+ *
+ * `FormaMeioPagtoNFe: 'Dinheiro'`, e nunca o código numérico `'01'` da NFe: o
+ * domínio `Nfce_FormaPagto` do ERP usa nomes (AD-023), os mesmos do catálogo de
+ * `GetSessao` acima, e com o código numérico `importarFormasDePagamento`
+ * descarta a forma em silêncio — foi assim que a chegada do pagamento à venda
+ * ficou sem verificação até 2026-09-04.
+ *
+ * O valor é **derivado** do documento, não fixo: os dois rascunhos sintéticos
+ * têm totais diferentes, e um literal aqui dessincronizaria do primeiro produto
+ * que alguém ajustasse — deixando um saldo residual que o E2E leria como bug do
+ * Checkout.
+ */
+function quitacaoDoRascunho(documento: Record<string, unknown>): Record<string, unknown> {
+  const produtos = (documento['produtos'] ?? []) as readonly Record<string, unknown>[];
+  const total = produtos.reduce((soma, produto) => soma + Number(produto['ValorTotal']), 0);
+
+  return {
+    FormaCodigo: String(1), // int64 — 'DINHEIRO' do catálogo de `GetSessao`
+    FormaMeioPagtoNFe: 'Dinheiro',
+    FormaValor: String(total), // double
+    FormaIntegracaoCartao: ' ',
+    FormaFpgUtiCar: '',
+    FormaEntrada: 'S',
+    TEFidentificacao: String(0), // int64 — item não-TEF
+    TEFCNPJ: '',
+    TEFBandeira: '',
+    TEFNumeroAutorizacao: '',
+    TEFTipoIntegracao: '',
+    FormaPixGUID: '',
+    TicketDevolucao: '',
+  };
+}
+
+/**
  * `GetSessao` real devolve `SessaoUsuario` **direto na raiz**, sem envelope
  * nem `messages` — confirmado ao vivo em 2026-09-04 contra o ERP real
  * (`c0lj6mvzeh.apps.centrium.inf.br`): a procedure só tem um output de
@@ -1313,6 +1352,15 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * mesma SDT (`CheckoutFaturarNFCe`), padrão de wrapper diferente. Reaproveita
    * os documentos sintéticos de `DAVS` — procurando por `NumeroNota`, que é o
    * mesmo em `ListaNFCes`/`GetListaNFCes` (AD-057).
+   *
+   * **Mas devolve o documento pago**, e é aqui que ele deixa de ser um DAV
+   * (AD-169). Os dois têm o mesmo corpo, e a diferença não é de shape: um DAV é
+   * documento **pendente de cobrança**, e por isso o `documento` compartilhado
+   * nasce com `FormasDePagamento: []`; um rascunho de NFCe é uma venda que foi
+   * **cobrada e depois suspensa**, e volta ao caixa já paga. Até 2026-09-04 o
+   * mock devolvia os dois iguais, e a consequência é que nenhum E2E jamais
+   * exercitou uma retomada de verdade: o carrinho não congelava, e o
+   * congelamento é o comportamento central da venda retomada.
    */
   app.get<{ Querystring: { Numeronota?: string; Serienota?: string } }>(
     '/ApiCentriumOAuth/CarregarNFCe',
@@ -1328,7 +1376,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply.code(404).send({ error: 'NFCe não encontrada' });
       }
 
-      return reply.send(documento);
+      return reply.send({ ...documento, FormasDePagamento: [quitacaoDoRascunho(documento)] });
     },
   );
 
