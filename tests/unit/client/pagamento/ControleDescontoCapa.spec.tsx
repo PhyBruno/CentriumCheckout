@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { ControleDescontoCapa } from '../../../../src/client/features/pagamento/ControleDescontoCapa';
+import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 import { linhaDe } from '../../../support/precificacao';
 
@@ -30,12 +31,50 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
     return screen.getByTestId('equivalente-financeiro-desconto-capa').textContent ?? '';
   }
 
+  /**
+   * O controle abre em `R$` desde 2026-09-05 (pedido do usuário): todo cenário
+   * de **percentual** precisa trocar o modo antes, como o operador faz. A linha
+   * "= R$ …" só existe no modo percentual, então sem isto ela nem é renderizada.
+   */
+  async function irParaPercentual(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
+    await usuario.click(screen.getByTestId('toggle-ajuste-percentual'));
+  }
+
+  it('abre em R$, não em % — é o desconto que o caixa negocia no balcão', () => {
+    render(createElement(ControleDescontoCapa));
+
+    expect(screen.getByTestId('toggle-ajuste-valor')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveAttribute(
+      'aria-label',
+      'Desconto em reais',
+    );
+    // A linha do equivalente financeiro é exclusiva do modo percentual.
+    expect(screen.queryByTestId('equivalente-financeiro-desconto-capa')).toBeNull();
+  });
+
+  it('um desconto já aplicado manda no modo de abertura, não o padrão', () => {
+    useVendaStore.setState({
+      descontoCapa: { modo: 'PERCENTUAL', entrada: 10, valorResolvido: centavos(1_000) },
+    });
+    render(createElement(ControleDescontoCapa));
+
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
   it('enquanto 100% está no campo, o equivalente acompanha o que foi digitado', async () => {
     // O sintoma relatado: a linha "= R$ …" ficava parada no valor anterior,
     // porque lia o desconto **aplicado** — e um desconto recusado nunca chega
     // ao store. O operador via o número velho ao lado do aviso de recusa.
     const usuario = userEvent.setup();
     render(createElement(ControleDescontoCapa));
+    await irParaPercentual(usuario);
 
     await usuario.click(screen.getByTestId('campo-valor-ajuste'));
     await usuario.keyboard('100');
@@ -50,6 +89,7 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
     // — texto preenchido, equivalente calculado e total a pagar sem desconto.
     const usuario = userEvent.setup();
     render(createElement(ControleDescontoCapa));
+    await irParaPercentual(usuario);
 
     await usuario.click(screen.getByTestId('campo-valor-ajuste'));
     await usuario.keyboard('100');
@@ -82,6 +122,7 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
   it('uma casa decimal é aceita e aplicada', async () => {
     const usuario = userEvent.setup();
     render(createElement(ControleDescontoCapa));
+    await irParaPercentual(usuario);
 
     await usuario.click(screen.getByTestId('campo-valor-ajuste'));
     await usuario.keyboard('99,9');
@@ -98,6 +139,7 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
   it('duas casas decimais são recusadas: o formato do produto é 99,9', async () => {
     const usuario = userEvent.setup();
     render(createElement(ControleDescontoCapa));
+    await irParaPercentual(usuario);
 
     await usuario.click(screen.getByTestId('campo-valor-ajuste'));
     await usuario.keyboard('10,25');

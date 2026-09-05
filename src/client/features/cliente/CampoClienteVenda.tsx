@@ -531,15 +531,25 @@ export function CampoClienteVenda(): ReactElement {
 
             {/* Segunda linha de campos do card (`p1hDEL`): Contato à esquerda,
                 com 243px fixos, e o par "Campo vendedor NFCe" + lupa ocupando o
-                resto, a 24px de distância — exatamente como o Pencil posiciona
-                (`AJhcG` começa em 267px, logo depois dos 243px do contato).
+                resto.
+
+                **Gap de 10px, não os 24px do Pencil** (correção do usuário,
+                2026-09-05). O desenho põe `AJhcG` em 267px — 243 do contato mais
+                24 de folga —, enquanto a linha de cima usa 10px e o campo
+                "Nome / telefone" começa em 253px. Como as duas linhas têm a
+                mesma primeira coluna de 243px, os 24px empurravam o campo de
+                vendedor 14px à direita do campo de cliente logo acima, e a
+                coluna da direita do card ficava visivelmente torta. Alinhar as
+                duas na mesma vertical vale mais do que reproduzir a folga: a
+                largura maior do campo de vendedor é preservada, porque ele
+                divide a linha com uma lupa só, e não com lupa + "Identificar".
 
                 O componente de vendedor é da feature 012 e mora em
                 `features/vendedor/`: este card só o **compõe**, sem conhecer o
                 slice dele. É a mesma relação que a linha de cima já tem com o
                 modal de busca de cliente — nenhum estado atravessa daqui para
                 lá. */}
-            <div className="flex items-center gap-lg">
+            <div className="flex items-center gap-[10px]">
               <div className="flex h-[42px] w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
                 <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">

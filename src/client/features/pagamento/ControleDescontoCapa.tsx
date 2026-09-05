@@ -88,7 +88,18 @@ export function ControleDescontoCapa(): ReactElement {
   const aplicarDescontoCapa = useVendaStore((estado) => estado.aplicarDescontoCapa);
   const removerDescontoCapa = useVendaStore((estado) => estado.removerDescontoCapa);
 
-  const [modo, setModo] = useState<ModoAjuste>(descontoCapa?.modo ?? 'PERCENTUAL');
+  /**
+   * `'VALOR'` (R$) é o padrão do controle (pedido do usuário, 2026-09-05).
+   *
+   * O desconto que o caixa negocia na boca do balcão é em reais — "tira dois
+   * reais" —, não em porcentagem: abrir em `%` fazia o valor mais comum custar
+   * um clique a mais, e um "2" digitado por reflexo virava 2% em vez de R$ 2,00.
+   *
+   * Um desconto **já aplicado** continua mandando: reabrir a tela com o modo do
+   * desconto vigente é o que mantém o campo coerente com o número que está
+   * valendo.
+   */
+  const [modo, setModo] = useState<ModoAjuste>(descontoCapa?.modo ?? 'VALOR');
   const [entradaTexto, setEntradaTexto] = useState('');
 
   /**

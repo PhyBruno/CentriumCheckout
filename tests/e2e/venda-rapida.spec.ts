@@ -249,12 +249,37 @@ test.describe('Recusas que não alteram a venda (C6, FR-009)', () => {
  * ------------------------------------------------------------------ */
 
 test.describe('O atalho não atrapalha a digitação (C8, FR-014, SC-005)', () => {
-  test('com o foco no campo de produto, F6 e F7 não lançam pagamento', async ({ page }) => {
+  test('o campo de código do produto é a exceção: o atalho dispara sem sair dele', async ({
+    page,
+  }) => {
+    // Decisão do usuário (2026-09-05). É onde o caixa passa a venda inteira:
+    // obrigá-lo a tirar o foco para fechar a venda transformaria um toque em
+    // três gestos.
     await abrirTelaDeVenda(page);
     await biparProduto(page, SKU, 1);
 
     const campo = page.getByTestId('campo-codigo-produto');
     await campo.click();
+    await expect(campo).toBeFocused();
+    await page.keyboard.press('F7');
+
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+  });
+
+  test('com o foco no campo de valor recebido, o atalho continua inerte', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await biparProduto(page, SKU, 1);
+
+    // Qualquer outro campo mantém a regra: a tecla pertence a quem digita.
+    // Condição **e** forma, porque o campo de valor só habilita com a forma
+    // escolhida. A condição 1 é a mesma dos atalhos, então o que recusa aqui é
+    // o foco, não o G5.
+    await page.getByTestId('combobox-condicao-pagamento').click();
+    await page.getByTestId('opcao-condicao-1').click();
+    await page.getByTestId('combobox-forma-pagamento').click();
+    await page.getByTestId('opcao-forma-1').click();
+    await page.getByTestId('campo-valor-recebido').click();
+    await expect(page.getByTestId('campo-valor-recebido')).toBeFocused();
     await page.keyboard.press('F6');
     await page.keyboard.press('F7');
 

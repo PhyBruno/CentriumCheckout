@@ -27,9 +27,11 @@ import { useHotkeys } from 'react-hotkeys-hook';
  * digitação e com a bipagem do leitor de código de barras é requisito de
  * correção, não higiene. O leitor se comporta como um teclado muito rápido
  * digitando dentro do campo de produto: a defesa correta é ignorar o evento
- * enquanto o foco estiver num campo de entrada — o que `enableOnFormTags:
- * false` (o padrão da biblioteca) já faz —, e **não** medir intervalo entre
+ * enquanto o foco estiver num campo de entrada, e **não** medir intervalo entre
  * teclas, que confundiria um operador rápido com um leitor.
+ *
+ * A exceção é o próprio campo de código do produto, que se declara transparente
+ * aos atalhos — ver `ATRIBUTO_ATALHOS_PERMITIDOS` abaixo.
  */
 
 /** O que um atalho global precisa declarar. */
@@ -37,6 +39,63 @@ export interface AtalhoDeTeclado {
   /** Nome da tecla como o navegador a reporta (`'F6'`), sem modificadores. */
   readonly tecla: string;
   readonly aoAcionar: () => void;
+}
+
+/**
+ * Marca um campo de entrada como **transparente** aos atalhos globais: com o
+ * foco nele, a tecla dispara em vez de ser engolida pela digitação.
+ *
+ * Espalhe no elemento: `<input {...ATRIBUTO_ATALHOS_PERMITIDOS} />`.
+ *
+ * Existe para o campo de código do produto (decisão do usuário, 2026-09-05).
+ * É onde o operador de caixa passa a venda inteira — sai dali para bipar,
+ * volta, bipa de novo —, e obrigá-lo a tirar o foco antes de fechar a venda
+ * transformaria um toque em três gestos. É a **única** exceção à regra de
+ * `FR-014`, e ela é segura pelo mesmo motivo que a regra existe: o leitor de
+ * código de barras emite dígitos e `Enter`, nunca teclas de função.
+ *
+ * A exceção é declarada **no campo**, e não numa lista de seletores aqui
+ * dentro: quem lê `EntradaRapidaProduto` vê que aquele input abre mão do
+ * bloqueio, e um campo novo não herda a exceção por acidente de seletor.
+ */
+export const ATRIBUTO_ATALHOS_PERMITIDOS = { 'data-atalhos-globais': 'permitidos' } as const;
+
+/** Etiquetas cujo foco pertence a quem digita, não ao atalho. */
+const ETIQUETAS_DE_ENTRADA = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
+/**
+ * Papéis ARIA que se comportam como campo ou como item de lista aberta.
+ *
+ * Espelha a lista que a biblioteca usa em `enableOnFormTags` — precisa ser
+ * reproduzida aqui porque este módulo desliga aquela guarda (`enableOnFormTags:
+ * true`) para poder abrir a exceção acima. Sem isto, um F6 pressionado com o
+ * combobox de condição **aberto** lançaria o pagamento em vez de escolher a
+ * opção sob o cursor.
+ */
+const PAPEIS_DE_ENTRADA = new Set([
+  'searchbox',
+  'slider',
+  'spinbutton',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'option',
+  'radio',
+  'textbox',
+]);
+
+/** O foco está num lugar onde a tecla pertence a quem digita. */
+function ehCampoQueEngoleATecla(alvo: EventTarget | null): boolean {
+  if (!(alvo instanceof HTMLElement)) {
+    return false;
+  }
+
+  const ehEntrada =
+    ETIQUETAS_DE_ENTRADA.has(alvo.tagName) ||
+    alvo.isContentEditable ||
+    PAPEIS_DE_ENTRADA.has(alvo.getAttribute('role') ?? '');
+
+  return ehEntrada && alvo.dataset['atalhosGlobais'] !== 'permitidos';
 }
 
 /**
@@ -66,7 +125,12 @@ function dentroDeModal(alvo: EventTarget | null): boolean {
  * comportamento próprio) já tratou a tecla; não há segundo dono para ela.
  */
 function eventoIgnorado(evento: KeyboardEvent): boolean {
-  return evento.repeat || evento.defaultPrevented || dentroDeModal(evento.target);
+  return (
+    evento.repeat ||
+    evento.defaultPrevented ||
+    dentroDeModal(evento.target) ||
+    ehCampoQueEngoleATecla(evento.target)
+  );
 }
 
 /**
@@ -127,13 +191,14 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
        */
       preventDefault: true,
       /**
-       * O padrão da biblioteca, declarado explicitamente porque é a regra de
-       * `FR-014` e não uma preferência: com o foco em `input`/`textarea`/
-       * `select` — e em qualquer papel ARIA de campo — a tecla pertence a quem
-       * digita, nunca ao atalho.
+       * A guarda de campo de entrada é **nossa**, em `ignoreEventWhen`, e não a
+       * da biblioteca. A regra de `FR-014` continua idêntica — com o foco num
+       * campo a tecla pertence a quem digita —, mas ela precisa admitir uma
+       * exceção declarada no próprio campo (`ATRIBUTO_ATALHOS_PERMITIDOS`), e o
+       * `enableOnFormTags` da biblioteca é tudo-ou-nada.
        */
-      enableOnFormTags: false,
-      enableOnContentEditable: false,
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
       ignoreEventWhen: eventoIgnorado,
     },
   );

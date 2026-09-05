@@ -25,16 +25,16 @@ import { useAcionarCenario } from './useAcionarCenario';
  * | raio 12, gap interno 6, conteúdo centralizado | `rounded-xl gap-[6px] justify-center` |
  * | ícone lucide de 14px | `size-3.5` |
  * | rótulo Inter 12/600 | `text-xs font-semibold` |
- * | 1º botão `#2563EB`/`#FFFFFF` | `bg-primary text-primary-foreground` |
- * | demais `#EEF0F3`/`#0A0B0D`, ícone `#5B616E` | `bg-secondary text-secondary-foreground`, ícone `text-muted-foreground` |
+ * | todos `#EEF0F3`/`#0A0B0D`, ícone `#5B616E` | `bg-secondary text-secondary-foreground`, ícone `text-muted-foreground` |
  *
- * **O destaque do primeiro botão é do desenho, não uma regra de negócio.** O
- * Pencil pinta "PIX (F6)" em azul e os outros três em cinza: é hierarquia
- * visual — a faixa tem um método principal e três alternativas —, e não um
- * estado do sistema. Por isso a condição aqui é a posição na lista, e não
- * `encerraOperacao` ou o meio de pagamento: nenhum desses significaria "este é
- * o primeiro botão da faixa", e usá-los inventaria uma semântica que o desenho
- * não tem.
+ * **Divergência deliberada do Pencil: todos os botões são cinza.** O desenho
+ * pinta o primeiro ("PIX (F6)") em azul e os outros três em cinza, e a primeira
+ * implementação reproduziu isso destacando o primeiro da lista. **Corrigido a
+ * pedido do usuário (2026-09-05).** O desenho fixou um mockup com métodos
+ * conhecidos, em que o azul dizia "este é o principal"; aqui a faixa é
+ * populada pelo cadastro do ERP, e a ordem é a das teclas — o primeiro da lista
+ * é só quem calhou de estar em F6. Pintá-lo de azul afirmaria uma hierarquia
+ * que nenhum dado sustenta, e o operador leria como "o recomendado".
  *
  * **A UI não filtra, não ordena e não reinterpreta nada**
  * (`contracts/venda-rapida-domain-api.md` §6): recebe `ListaAtalhos` pronta.
@@ -45,11 +45,10 @@ import { useAcionarCenario } from './useAcionarCenario';
 
 interface BotaoAtalhoProps {
   readonly atalho: AtalhoVendaRapida;
-  readonly destacado: boolean;
   readonly onAcionar: () => void;
 }
 
-function BotaoAtalho({ atalho, destacado, onAcionar }: BotaoAtalhoProps): ReactElement {
+function BotaoAtalho({ atalho, onAcionar }: BotaoAtalhoProps): ReactElement {
   const Icone = ICONE_POR_MEIO[atalho.meioPagtoNFe];
 
   return (
@@ -65,15 +64,10 @@ function BotaoAtalho({ atalho, destacado, onAcionar }: BotaoAtalhoProps): ReactE
         'flex h-9 min-w-0 flex-1 items-center justify-center gap-[6px] rounded-xl px-2',
         'text-xs font-semibold transition-colors outline-none',
         'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-        destacado
-          ? 'bg-primary text-primary-foreground hover:bg-[var(--cc-color-primary-active)]'
-          : 'bg-secondary text-secondary-foreground hover:bg-secondary-hover',
+        'bg-secondary text-secondary-foreground hover:bg-secondary-hover',
       )}
     >
-      <Icone
-        className={cn('size-3.5 shrink-0', destacado ? '' : 'text-muted-foreground')}
-        aria-hidden="true"
-      />
+      <Icone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="truncate">
         {atalho.nome} ({atalho.tecla})
       </span>
@@ -120,11 +114,10 @@ export function DicaAtalhos({ atalhos, onAcionar }: DicaAtalhosProps): ReactElem
       className="flex h-9 w-full shrink-0 items-center gap-[8px]"
       data-testid="dica-atalhos-venda-rapida"
     >
-      {atalhos.map((atalho, indice) => (
+      {atalhos.map((atalho) => (
         <BotaoAtalho
           key={atalho.tecla}
           atalho={atalho}
-          destacado={indice === 0}
           onAcionar={() => {
             onAcionar(atalho.tecla);
           }}

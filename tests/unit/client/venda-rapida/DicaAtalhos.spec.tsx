@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DicaAtalhos } from '../../../../src/client/features/venda-rapida/DicaAtalhos';
+import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../../../src/client/hotkeys/mapaAtalhos';
 import type { AtalhoVendaRapida } from '../../../../src/client/domain/vendaRapida/tipos';
 
 /**
@@ -109,14 +110,17 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     return render(
       <>
         <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
-        <input aria-label="Código do produto" />
+        {/* O campo de código do produto é a **única** exceção: declara-se
+            transparente aos atalhos globais, como em `EntradaRapidaProduto`. */}
+        <input aria-label="Código do produto" {...ATRIBUTO_ATALHOS_PERMITIDOS} />
         <input aria-label="Quantidade" type="number" />
+        <input aria-label="Valor recebido" />
         <textarea aria-label="Observação" />
       </>,
     );
   }
 
-  it.each(['Código do produto', 'Quantidade', 'Observação'])(
+  it.each(['Quantidade', 'Valor recebido', 'Observação'])(
     'com o foco em "%s", F6 e F8 não acionam nada',
     async (rotulo) => {
       const usuario = userEvent.setup();
@@ -131,6 +135,17 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     },
   );
 
+  it('no campo de código do produto o atalho **dispara** — a exceção da regra', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    renderizarComCampos(onAcionar);
+
+    await usuario.click(screen.getByLabelText('Código do produto'));
+    await usuario.keyboard('{F6}');
+
+    expect(onAcionar).toHaveBeenCalledExactlyOnceWith('F6');
+  });
+
   it('uma leitura de código de barras no campo de produto não vira atalho', async () => {
     const usuario = userEvent.setup({ delay: null });
     const onAcionar = vi.fn();
@@ -139,10 +154,30 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     const campo = screen.getByLabelText('Código do produto');
     await usuario.click(campo);
     // O leitor se comporta como um teclado muito rápido terminando em Enter.
+    // Mesmo com o campo transparente aos atalhos, dígitos e `Enter` não são
+    // tecla de função — é por isso que a exceção é segura.
     await usuario.keyboard('7891234567895{Enter}');
 
     expect(onAcionar).not.toHaveBeenCalled();
     expect(campo).toHaveValue('7891234567895');
+  });
+
+  it('opção de combobox aberto não dispara atalho', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(
+      <>
+        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <button type="button" role="option" aria-selected="false">
+          A VISTA
+        </button>
+      </>,
+    );
+
+    await usuario.click(screen.getByRole('option'));
+    await usuario.keyboard('{F6}');
+
+    expect(onAcionar).not.toHaveBeenCalled();
   });
 
   it('combinação com modificador é outro atalho, não este', async () => {
