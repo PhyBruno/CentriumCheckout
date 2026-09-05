@@ -2235,15 +2235,17 @@ Quatro achados da revisão da feature 011, todos corrigidos nesta passagem. O qu
 
 **Impact:** novo — `src/client/features/venda-rapida/aplicarFormaComIntegracao.ts`. Alterado — `src/client/stores/slices/pagamentoSlice.ts`.
 
-### AD-172: Atalhos de teclado do PDV têm mapa central próprio, sem `react-hotkeys-hook` (2026-09-05)
+### AD-172: O mapa central de atalhos do PDV roda sobre `react-hotkeys-hook` (2026-09-05)
 
-**Decision:** `src/client/hotkeys/mapaAtalhos.ts` expõe `useAtalhosDeTeclado(atalhos, ativo)` sobre um `keydown` de `window`, e é por ele que todo atalho global da tela de venda passa. A biblioteca `react-hotkeys-hook`, prevista em `specs/013-.../plan.md`, **não** entra.
+**Decision:** `src/client/hotkeys/mapaAtalhos.ts` expõe `useAtalhosDeTeclado(atalhos, ativo)` implementado com `useHotkeys` da `react-hotkeys-hook` (5.3.3, dependência de produção), e é por ele que todo atalho global da tela de venda passa. O casamento é por `event.key` (`useKey: true`), não por `event.code`.
 
-**Context:** a skill de projeto `react-hotkeys-pdv` exige três coisas — mapa central auditável, imunidade a digitação/bipagem e teste automatizado por atalho. Nenhuma delas depende da biblioteca. Ela não está nas dependências do projeto, nenhum outro atalho da base a usa (os modais tratam `Escape` com `keydown` nativo), e o projeto é 100% Docker: toda dependência nova entra na imagem.
+**Context:** a primeira implementação desta feature usou um `keydown` de `window` escrito à mão e **dispensou** a biblioteca prevista em `specs/013-.../plan.md` — quatro teclas não pareciam justificar uma dependência nova numa imagem Docker. **Decisão direta do usuário (2026-09-05) reverteu isso**, e a razão é de roadmap, não de estilo: o PDV vai reservar outras teclas de função — F1, F2, F3 — para ações futuras. A partir do segundo dono, o problema deixa de ser "escutar quatro teclas" e vira arbitragem entre features que não se conhecem; e um ouvinte artesanal chega lá reimplementando, aos poucos e pior, o que a biblioteca já resolve: registro por escopo, combinação com modificador, sequência, ativação condicional e a lista de tags de formulário em que um atalho não pode disparar.
 
-**A regra que o módulo protege:** o evento é ignorado quando o foco está em `input`/`textarea`/`select`/`contenteditable`, quando está dentro de um `[role="dialog"]`, quando há modificador, quando é repetição de tecla segurada e quando alguém já chamou `preventDefault`. A defesa contra o leitor de código de barras é o **foco**, não medição de intervalo entre teclas — um operador rápido não pode ser confundido com um leitor. F6–F9 levam `preventDefault` porque têm comportamento nativo no navegador.
+**Por que `useKey: true`, contra o padrão da biblioteca:** o que as features declaram são nomes de tecla (`'F6'`, e amanhã `'F1'`), não posições físicas. Nas teclas de função os dois coincidem em hardware real, mas em layout alternativo `event.code` responderia pela posição e trairia quem leu o cadastro do ERP. Tem também um efeito prático: o `user-event` não conhece teclas de função no seu mapa padrão e emite `code: 'Unknown'`, então com o padrão da biblioteca o atalho seria inverificável em teste de componente — e um atalho que só o E2E alcança é um atalho sem rede de proteção.
 
-**Impact:** novo — `src/client/hotkeys/mapaAtalhos.ts`. A skill `react-hotkeys-pdv` deve ser lida com esta substituição em mente; o que ela exige continua valendo.
+**A regra que o módulo protege (`FR-014`/`SC-005`):** o evento é ignorado com o foco em `input`/`textarea`/`select`/`contenteditable` (`enableOnFormTags: false`, o padrão, declarado explicitamente porque aqui é regra e não preferência), dentro de um `[role="dialog"]`, com modificador (a biblioteca já exige casamento exato), em repetição de tecla segurada e quando alguém já chamou `preventDefault` (os três últimos via `ignoreEventWhen`). A defesa contra o leitor de código de barras é o **foco**, nunca medição de intervalo entre teclas — um operador rápido não pode ser confundido com um leitor. F6–F9 levam `preventDefault` porque têm comportamento nativo no navegador (F6 move o foco entre painéis do Chrome).
+
+**Impact:** novo — `src/client/hotkeys/mapaAtalhos.ts`; nova dependência de produção `react-hotkeys-hook` em `package.json`. Cumpre a skill de projeto `react-hotkeys-pdv` como ela foi escrita.
 
 ### AD-173: `AtalhoVendaRapida` carrega o `meioPagtoNFe`, para a faixa de atalhos não consultar o catálogo (2026-09-05)
 

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useMemo, useRef } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 
 /**
  * Mapa central de atalhos de teclado da tela de venda (feature 013, T014).
@@ -6,50 +7,36 @@ import { useEffect, useRef } from 'react';
  * **Um lugar só, de propósito** (skill de projeto `react-hotkeys-pdv`): um
  * `keydown` solto dentro de um componente não é auditável — ninguém consegue
  * responder "quais teclas o PDV escuta?" sem varrer a base, e a próxima feature
- * que registrar uma tecla vai colidir com esta em silêncio. Todo atalho global
- * novo entra por aqui.
+ * que registrar uma tecla colide com esta em silêncio. Todo atalho global novo
+ * entra por aqui.
  *
- * ### Por que sem `react-hotkeys-hook`
+ * ### Por que `react-hotkeys-hook`, e não um `keydown` próprio
  *
- * O `plan.md` da 013 previa a biblioteca, mas ela **não** está nas dependências
- * do projeto e nenhum outro atalho da base a usa — os modais tratam `Escape`
- * com `keydown` nativo. Trazer uma dependência nova para registrar quatro teclas
- * custaria mais do que resolve, ainda mais num projeto 100% Docker onde toda
- * dependência entra na imagem. O que a skill de fato exige — mapa central,
- * imunidade a digitação/bipagem e teste automatizado — está garantido aqui.
+ * Decisão do usuário (2026-09-05), que revogou a primeira implementação desta
+ * feature: o PDV vai reservar **outras** teclas de função — F1, F2, F3 — para
+ * ações futuras, e a partir daí o problema deixa de ser "escutar quatro teclas"
+ * e passa a ser arbitragem entre vários donos. A biblioteca já resolve o que um
+ * ouvinte artesanal reimplementaria errado aos poucos: registro por escopo,
+ * combinações com modificador, sequências, ativação condicional e — o mais
+ * importante aqui — a lista de tags de formulário em que um atalho **não** deve
+ * disparar. Ver AD-172 em `.specs/project/STATE.md`.
  *
  * ### O invariante que este módulo protege (`FR-014`, `SC-005`)
  *
  * Os atalhos ficam ativos **durante toda a venda**, então a não colisão com
  * digitação e com a bipagem do leitor de código de barras é requisito de
- * correção, não higiene. O leitor de código de barras se comporta como um
- * teclado muito rápido digitando dentro do campo de produto: a defesa correta é
- * ignorar o evento sempre que o foco estiver num campo de entrada, e não medir
- * intervalo entre teclas (que confundiria um operador rápido com um leitor).
+ * correção, não higiene. O leitor se comporta como um teclado muito rápido
+ * digitando dentro do campo de produto: a defesa correta é ignorar o evento
+ * enquanto o foco estiver num campo de entrada — o que `enableOnFormTags:
+ * false` (o padrão da biblioteca) já faz —, e **não** medir intervalo entre
+ * teclas, que confundiria um operador rápido com um leitor.
  */
 
 /** O que um atalho global precisa declarar. */
 export interface AtalhoDeTeclado {
-  /** `event.key`, comparado sem distinção de caixa (`'F6'`, `'Escape'`). */
+  /** Nome da tecla como o navegador a reporta (`'F6'`), sem modificadores. */
   readonly tecla: string;
   readonly aoAcionar: () => void;
-}
-
-const ETIQUETAS_DE_ENTRADA = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
-
-/**
- * O foco está num lugar onde o operador **digita** — campo de busca de produto,
- * de quantidade, de valor, de código de vale, ou qualquer `contenteditable`.
- *
- * Nenhuma exceção por `type`: um `input[type=number]` de quantidade recebe
- * bipagem e digitação como qualquer outro, e a lista de exceções seria mais uma
- * coisa a manter sincronizada com a tela.
- */
-export function ehCampoDeEntrada(alvo: EventTarget | null): boolean {
-  if (!(alvo instanceof HTMLElement)) {
-    return false;
-  }
-  return ETIQUETAS_DE_ENTRADA.has(alvo.tagName) || alvo.isContentEditable;
 }
 
 /**
@@ -60,9 +47,26 @@ export function ehCampoDeEntrada(alvo: EventTarget | null): boolean {
  * pendente, e lançar um pagamento por baixo delas produziria uma venda que o
  * operador não consegue explicar. O marcador é o mesmo que `useFocoDeModal`
  * assume em toda a base (`role="dialog"`).
+ *
+ * Não cabe em `enableOnFormTags`: o botão "Confirmar" de um diálogo não é um
+ * campo de formulário, e é justamente sobre ele que o foco costuma estar.
  */
 function dentroDeModal(alvo: EventTarget | null): boolean {
   return alvo instanceof HTMLElement && alvo.closest('[role="dialog"]') !== null;
+}
+
+/**
+ * Eventos que nunca são atalho, qualquer que seja a tecla.
+ *
+ * `repeat`: tecla segurada dispara um acionamento por pressionada, nunca pela
+ * repetição automática do sistema — num atalho que lança pagamento, a diferença
+ * é entre um lançamento e uma enxurrada deles.
+ *
+ * `defaultPrevented`: alguém mais específico (um modal, um campo com
+ * comportamento próprio) já tratou a tecla; não há segundo dono para ela.
+ */
+function eventoIgnorado(evento: KeyboardEvent): boolean {
+  return evento.repeat || evento.defaultPrevented || dentroDeModal(evento.target);
 }
 
 /**
@@ -71,57 +75,66 @@ function dentroDeModal(alvo: EventTarget | null): boolean {
  * `ativo` desliga o mapa inteiro sem desmontar o componente — é o que permite à
  * dica de atalhos existir na árvore com a lista vazia sem escutar o teclado.
  *
- * Os atalhos ficam numa `ref` atualizada a cada render, e não no array de
- * dependências: o call site monta os handlers inline (fecham sobre o estado da
- * venda), então um efeito dependente deles se reinscreveria a cada render — e a
- * janela entre remover e adicionar o ouvinte é exatamente onde uma tecla se
- * perde.
+ * Os atalhos ficam numa `ref` atualizada a cada render, e não nas dependências
+ * do hook: o call site monta os handlers inline (fecham sobre o estado da
+ * venda), então passá-los adiante reinscreveria o ouvinte a cada render — e a
+ * janela entre remover e adicionar é exatamente onde uma tecla se perde. O que
+ * de fato muda a inscrição é a **lista de teclas**, e ela é uma string.
  */
 export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo = true): void {
   const atalhosRef = useRef<readonly AtalhoDeTeclado[]>(atalhos);
   atalhosRef.current = atalhos;
 
-  useEffect(() => {
-    if (!ativo) {
-      return;
-    }
+  // Primitiva, não array: uma lista nova a cada render teria identidade nova e
+  // faria o hook rebindar sem nada ter mudado.
+  const teclas = useMemo(
+    () => atalhos.map((atalho) => atalho.tecla.toLowerCase()).join(','),
+    [atalhos],
+  );
 
-    const aoTeclar = (evento: KeyboardEvent): void => {
-      // Já tratado por alguém mais específico (um modal, um campo com
-      // comportamento próprio): não há segundo dono para a mesma tecla.
-      if (evento.defaultPrevented) {
-        return;
-      }
-      // Combinação com modificador é outro atalho, não este.
-      if (evento.ctrlKey || evento.altKey || evento.metaKey || evento.shiftKey) {
-        return;
-      }
-      // Tecla segurada: um acionamento por pressionada, nunca por repetição
-      // automática do sistema.
-      if (evento.repeat) {
-        return;
-      }
-      if (ehCampoDeEntrada(evento.target) || dentroDeModal(evento.target)) {
-        return;
-      }
-
+  useHotkeys(
+    teclas,
+    (evento) => {
       const alvo = atalhosRef.current.find(
         (atalho) => atalho.tecla.toUpperCase() === evento.key.toUpperCase(),
       );
-      if (alvo === undefined) {
-        return;
-      }
-
-      // F6–F9 têm comportamento nativo no navegador (F6 move o foco entre
-      // painéis do Chrome): sem isto o atalho lançaria o pagamento **e** tiraria
-      // o foco da tela de venda.
-      evento.preventDefault();
-      alvo.aoAcionar();
-    };
-
-    window.addEventListener('keydown', aoTeclar);
-    return () => {
-      window.removeEventListener('keydown', aoTeclar);
-    };
-  }, [ativo]);
+      alvo?.aoAcionar();
+    },
+    {
+      // Sem tecla registrada, o mapa não escuta nada — e um F6 sem cenário volta
+      // a ser do navegador.
+      enabled: ativo && atalhos.length > 0,
+      /**
+       * Casa por `event.key` (a tecla **lógica**), não por `event.code` (a
+       * posição física), que é o padrão da biblioteca.
+       *
+       * É a semântica certa para este mapa: o que as features declaram são
+       * nomes de tecla — `'F6'` hoje, `'F1'`/`'F2'` quando as ações futuras
+       * chegarem —, e não posições num teclado. Nas teclas de função os dois
+       * coincidem em hardware real; a diferença aparece em layout alternativo,
+       * onde `code` responderia pela posição e trairia quem leu o cadastro.
+       *
+       * Tem também um efeito prático: o `user-event` não conhece teclas de
+       * função no seu mapa padrão e emite `code: 'Unknown'` para elas, então
+       * sem isto o atalho seria inverificável em teste de componente — e um
+       * atalho que só o E2E alcança é um atalho sem rede de proteção.
+       */
+      useKey: true,
+      /**
+       * F6–F9 têm comportamento nativo (F6 move o foco entre painéis do
+       * Chrome): sem isto o atalho lançaria o pagamento **e** tiraria o foco da
+       * tela de venda.
+       */
+      preventDefault: true,
+      /**
+       * O padrão da biblioteca, declarado explicitamente porque é a regra de
+       * `FR-014` e não uma preferência: com o foco em `input`/`textarea`/
+       * `select` — e em qualquer papel ARIA de campo — a tecla pertence a quem
+       * digita, nunca ao atalho.
+       */
+      enableOnFormTags: false,
+      enableOnContentEditable: false,
+      ignoreEventWhen: eventoIgnorado,
+    },
+  );
 }
