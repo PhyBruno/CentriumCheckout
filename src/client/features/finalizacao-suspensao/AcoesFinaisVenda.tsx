@@ -9,6 +9,7 @@ import {
   CHAMADA_PIX_NAO_E_CANCELADO,
 } from '../pagamento/pix/avisosPix';
 import { DialogoConfirmacaoDestrutiva } from '../pagamento/DialogoConfirmacaoDestrutiva';
+import { useVendedorAtual } from '../vendedor/useVendedor';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
@@ -229,6 +230,11 @@ export function BarraAtalhosVenda(): ReactElement {
 export function AcoesFinaisVenda(): ReactElement {
   const { estado, finalizar } = useFinalizacaoVenda();
   const haValorAFaturar = useVendaTemValorAFaturar();
+  // `FR-006`/`SC-003` (feature 012): nenhuma venda é finalizada sem um
+  // vendedor associado. `vendedorAtual` só chega `null` quando a empresa não
+  // configurou default e o operador ainda não abriu a busca — sem esta trava
+  // o botão liberaria com `vendedorCodigo: 0` (`useFinalizarOuSuspenderVenda.ts`).
+  const vendedorAtual = useVendedorAtual();
 
   return (
     <div className="flex w-full flex-col gap-xs" data-testid="acoes-finais-venda">
@@ -237,7 +243,7 @@ export function AcoesFinaisVenda(): ReactElement {
           void finalizar();
         }}
         enviando={estado.tipo === 'enviando'}
-        bloqueado={!haValorAFaturar || estado.tipo === 'falha-rede'}
+        bloqueado={!haValorAFaturar || estado.tipo === 'falha-rede' || vendedorAtual === null}
       />
     </div>
   );

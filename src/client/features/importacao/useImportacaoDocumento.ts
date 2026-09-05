@@ -15,7 +15,6 @@ import {
 import { ErroRespostaInvalida, ErroSessaoEncerrada } from '../../services/errosErp';
 import { fetchProduto, type ContextoPrecificacao } from '../../services/produto/produtoQueries';
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
-import type { OrigemSelecaoCliente } from '../../domain/cliente/clienteVenda';
 import { useSessionStore } from '../../stores/sessionStore';
 import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores/vendaStore';
 
@@ -121,20 +120,6 @@ function mensagemDeErro(erro: unknown): string {
   return 'Não foi possível carregar este documento. Ele pode já ter sido faturado.';
 }
 
-/**
- * Origem gravada no `vendedorAtual` quando o documento importado traz vendedor.
- *
- * Deriva da origem já escolhida para o cliente pelo hook da feature — as duas
- * descrevem a mesma procedência do mesmo documento, e um segundo parâmetro só
- * criaria a chance de elas divergirem. `'RASCUNHO'` é a retomada de NFCe (011,
- * que MUST passar essa origem explicitamente — `contracts/vendedor-domain-api.md`);
- * qualquer outra procedência é a importação de DAV (006), que usa o default
- * `'DAV'` da própria action.
- */
-function origemDoVendedorImportado(origemCliente: OrigemSelecaoCliente): 'RASCUNHO' | 'DAV' {
-  return origemCliente === 'RASCUNHO' ? 'RASCUNHO' : 'DAV';
-}
-
 export interface ApiImportacaoDocumento {
   /**
    * Por que a venda em curso não aceita importar um documento, ou `null`
@@ -180,12 +165,18 @@ export function useRecusaDeImportacao(): Pick<ApiImportacaoDocumento, 'recusa' |
 }
 
 /**
- * @param origemCliente Como o cliente do documento entra na venda — `'DAV'`
- * (006) ou `'RASCUNHO'` (011). Fixado pelo hook da feature, e não pelo serviço:
- * é a única coisa que distingue esta seleção de cliente das outras da 005.
+ * @param origemCliente Como o cliente **e** o vendedor do documento entram na
+ * venda — `'DAV'` (006) ou `'RASCUNHO'` (011). Fixado pelo hook da feature, e
+ * não pelo serviço: é a única coisa que distingue esta seleção de cliente das
+ * outras da 005. Tipado como `'DAV' | 'RASCUNHO'`, e não como o
+ * `OrigemSelecaoCliente` mais largo de `selecionarCliente` (que também aceita
+ * `'BUSCA_DOCUMENTO'`/`'BUSCA_LIVRE'`): um terceiro call site futuro que
+ * passasse uma dessas origens não é importação de documento nenhuma, e o tipo
+ * aqui bloqueia isso em vez de deixar `trocarVendedor` recair em `'DAV'` por
+ * default silenciosamente.
  */
 export function useImportacaoDocumento(
-  origemCliente: OrigemSelecaoCliente,
+  origemCliente: 'DAV' | 'RASCUNHO',
   sobrescritas: Partial<ImportacaoVendaDeps> = {},
 ): ApiImportacaoDocumento {
   const { recusa, recusaAtual } = useRecusaDeImportacao();
@@ -208,8 +199,7 @@ export function useImportacaoDocumento(
       // vendedor do documento, sem evento de auditoria e sem consultar
       // `podeMutarCarrinho()` — é o início de uma venda diferente sendo montada,
       // não uma troca no meio da digitação (`contracts/vendedor-domain-api.md`).
-      trocarVendedor: (vendedor) =>
-        venda.trocarVendedor(vendedor, origemDoVendedorImportado(origemCliente)),
+      trocarVendedor: (vendedor) => venda.trocarVendedor(vendedor, origemCliente),
       registrarEventoAuditoria: venda.registrarEventoAuditoria,
       importarFormasDePagamento: venda.importarFormasDePagamento,
       buscarDescricaoProduto: async (codigoProduto) => {
