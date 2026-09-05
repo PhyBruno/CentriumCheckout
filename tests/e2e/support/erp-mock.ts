@@ -87,6 +87,12 @@ export interface ConfigMockErp {
    * (`'P'`). Só vale quando `statusPixTransicoes` está vazio.
    */
   atrasoPagamentoPixMs: number;
+  /**
+   * `GetSessao` devolve `VendedorCodigo`/`VendedorNome` vazios — é a empresa que
+   * nunca configurou vendedor default (`FR-006`/`VEND-07`, feature 012). A venda
+   * nasce sem vendedor e exige seleção manual.
+   */
+  semVendedorDefault: boolean;
 }
 
 export interface ContadoresMockErp {
@@ -100,6 +106,7 @@ export interface ContadoresMockErp {
   getCliente: number;
   getListaClientes: number;
   postCliente: number;
+  getListaVendedores: number;
   listaDavs: number;
   getDav: number;
   gerarPix: number;
@@ -127,6 +134,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   statusPixTransicoes: [],
   /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
   atrasoPagamentoPixMs: 20_000,
+  semVendedorDefault: false,
 };
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
@@ -140,6 +148,7 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getCliente: 0,
   getListaClientes: 0,
   postCliente: 0,
+  getListaVendedores: 0,
   listaDavs: 0,
   getDav: 0,
   gerarPix: 0,
@@ -358,6 +367,40 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
  * cliente recém-criado — o ERP real não devolve o registro criado
  * (`contracts/erp-cliente-api.md`).
  */
+/**
+ * Vendedores sintéticos de `GetListaVendedores` (feature 012).
+ *
+ * **Nenhum campo de status/`Ativo` e nenhum campo de função/cargo**, como o
+ * contrato real: `CheckoutListaVendedores.Vendedores_Vendedores` tem só estes
+ * quatro campos (AD-103). O mock não pode oferecer o que o ERP não devolve.
+ *
+ * `21` é o `VendedorCodigo` default do `GetSessao` sintético — deliberadamente
+ * **diferente** do `UsuarioCodigo` (42) do operador, para que "o vendedor da
+ * venda não é o operador logado" (`FR-008`/`SC-001`) seja distinguível no
+ * payload de `FaturarNFCe`. Os demais existem para a busca ter mais de um
+ * candidato e para a sequência seleção → troca do Cenário 2 do `quickstart.md`.
+ */
+const VENDEDORES: readonly Record<string, unknown>[] = [
+  {
+    VendedorCodigo: String(21), // int64
+    VendedorNome: 'Mariana Alves',
+    VendedorCGC: '000.111.222-33',
+    VendedorFone: '55 47 99900-0021',
+  },
+  {
+    VendedorCodigo: String(14), // int64
+    VendedorNome: 'Marcos Pereira',
+    VendedorCGC: '111.222.333-44',
+    VendedorFone: '55 47 99900-0014',
+  },
+  {
+    VendedorCodigo: String(8), // int64
+    VendedorNome: 'Marta Souza',
+    VendedorCGC: '222.333.444-55',
+    VendedorFone: '55 47 99900-0008',
+  },
+];
+
 const CLIENTES: Record<string, Record<string, unknown>> = {
   '12298023980': {
     Empresa: String(1), // int64
@@ -663,8 +706,13 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     UsuarioTipoCodigoProduto: 'D',
     ClienteDefaultCodigo: String(1), // int64
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
-    VendedorCodigo: String(42), // int64
-    VendedorNome: 'Mariana Alves',
+    // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
+    // logado são campos genuinamente distintos (AD-056), e valores iguais aqui
+    // tornariam `FR-008`/`SC-001` indistinguível no payload de `FaturarNFCe`.
+    // `semVendedorDefault` reproduz a empresa que nunca configurou vendedor —
+    // `int64` não anulável, então o "vazio" do contrato é `0` (`FR-006`).
+    VendedorCodigo: config.semVendedorDefault ? String(0) : String(21), // int64
+    VendedorNome: config.semVendedorDefault ? '' : 'Mariana Alves',
     CadSerieNFCe: '1',
     // Aponta para o próprio mock do ERP em E2E: o serviço de impressão local
     // real depende da rede do PDV, fora do alcance do CI
@@ -1164,6 +1212,39 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         TotalRegistros: todos.length,
         TotalPaginas: totalPaginas,
         Clientes: todos.slice(inicio, inicio + registrosPorPagina),
+      });
+    },
+  );
+
+  app.get<{ Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string } }>(
+    '/ApiCentriumOAuth/GetListaVendedores',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.getListaVendedores += 1;
+
+      // Sem nenhum parâmetro de status: `GetListaVendedores` aceita só
+      // `Empresa`, `Txtbusca`, `Pagina` e `Tamanhopagina` (AD-103). Se o
+      // Checkout mandar um filtro de status, ele é ignorado aqui como seria no
+      // ERP — não há dado por trás dele.
+      const termo = (request.query.Txtbusca ?? '').toUpperCase();
+      const todos = VENDEDORES.filter((vendedor) =>
+        String(vendedor['VendedorNome']).toUpperCase().includes(termo),
+      );
+
+      const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
+      const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
+      const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
+      const paginaAtual = Math.min(paginaPedida, totalPaginas);
+      const inicio = (paginaAtual - 1) * registrosPorPagina;
+
+      // Real: flat na raiz, sem envelope `CheckoutListaVendedores` nem
+      // `messages` — `GetListaVendedores` está na lista de AD-165.
+      return reply.send({
+        PaginaAtual: paginaAtual,
+        RegistrosPorPagina: registrosPorPagina,
+        TotalRegistros: todos.length,
+        TotalPaginas: totalPaginas,
+        Vendedores: todos.slice(inicio, inicio + registrosPorPagina),
       });
     },
   );

@@ -106,6 +106,12 @@ test.describe('User Story 2 — retomar o rascunho para o carrinho', () => {
 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
     await expect(page.getByTestId('nome-cliente')).toContainText('CLIENTE CONVENIADO');
+
+    // O vendedor do rascunho sobrescreve o default do PDV — `trocarVendedor`
+    // deixou de ser stub com a feature 012, com `origem: 'RASCUNHO'`. Aqui há
+    // nome: `GetListaNFCes` devolve `Vendedor` por extenso, ao contrário de
+    // `ListaDAVs` (AD-095), então o campo não cai no fallback por código.
+    await expect(page.getByTestId('nome-vendedor')).toHaveText('VENDEDOR 12');
   });
 
   /**

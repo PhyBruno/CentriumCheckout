@@ -267,6 +267,12 @@ test.describe('User Story 2 — importar o documento completo (T023, Cenário 2)
     // A resolução do cliente do documento é por `CodCliente` (AD-115).
     expect((await contadores(request)).getCliente).toBeGreaterThan(0);
     await expect(page.getByTestId('cliente-da-venda')).toContainText('CLIENTE VAREJO');
+
+    // O vendedor do documento também entra na venda, por cima do default do PDV
+    // — `trocarVendedor` deixou de ser stub com a feature 012. `ListaDAVs` não
+    // traz nome de vendedor (AD-095), então o campo cai no fallback por código
+    // até o operador reselecionar pela lupa.
+    await expect(page.getByTestId('nome-vendedor')).toHaveText('Vendedor #8');
   });
 });
 

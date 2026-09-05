@@ -188,9 +188,6 @@ export interface FonteDocumento {
 /**
  * Portas da orquestração (Dependency Inversion —
  * `specs/006-importacao-dav/contracts/importacao-domain-api.md` §3).
- *
- * `trocarVendedor` ainda chega como stub até a feature 012 existir; ligar a real
- * é trocar o objeto injetado pelo hook, sem tocar neste módulo.
  */
 export interface ImportacaoVendaDeps {
   /**
@@ -232,7 +229,13 @@ export interface ImportacaoVendaDeps {
   resolverCliente(codigo: number): Promise<ClienteCheckout>;
   /** Feature 005 — já ligada à origem correta pelo hook que monta as portas. */
   selecionarCliente(cliente: ClienteCheckout): Promise<unknown>;
-  /** Feature 012 — stub até a seleção de vendedor existir. */
+  /**
+   * Feature 012 — sobrescreve o vendedor da venda pelo do documento.
+   *
+   * A **origem** (`'DAV'`/`'RASCUNHO'`) não entra aqui: quem monta a porta já
+   * sabe a procedência e a fecha na ligação com o slice, pela mesma razão de
+   * `selecionarCliente` acima. Esta orquestração é genérica quanto à fonte.
+   */
   trocarVendedor(vendedor: { readonly codigo: number; readonly nome: string | null }): void;
   /** Feature 008 — formas do documento entram já aprovadas, sem passar pelo gate. */
   importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;

@@ -15,7 +15,6 @@ import {
 import { ErroRespostaInvalida, ErroSessaoEncerrada } from '../../services/errosErp';
 import { fetchProduto, type ContextoPrecificacao } from '../../services/produto/produtoQueries';
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
-import type { OrigemSelecaoCliente } from '../../domain/cliente/clienteVenda';
 import { useSessionStore } from '../../stores/sessionStore';
 import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores/vendaStore';
 
@@ -27,7 +26,9 @@ import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores
  * declara **portas** (`ImportacaoVendaDeps`) e não conhece Zustand; é este hook
  * que resolve cada porta contra o `vendaStore`/`sessionStore` e contra as
  * chamadas de rede das outras features. Trocar um stub pela implementação real
- * (012) é editar este arquivo, nunca o serviço.
+ * foi sempre editar este arquivo, nunca o serviço — foi assim com
+ * `importarFormasDePagamento` (008) e com `trocarVendedor` (012), a última
+ * porta que ainda era stub.
  *
  * É **genérico quanto à procedência** (AD-166): nasceu como `useImportacaoDav`
  * e passou a servir também a recuperação de rascunho de NFCe, porque a ligação
@@ -119,29 +120,6 @@ function mensagemDeErro(erro: unknown): string {
   return 'Não foi possível carregar este documento. Ele pode já ter sido faturado.';
 }
 
-/**
- * Portas fixas — as que não dependem de nenhum estado de React.
- *
- * `trocarVendedor` ainda é **stub** até a feature 012 existir (mesmo padrão que
- * a 004 usa para as suas dependências futuras). A assinatura já é a definitiva,
- * desenhada por aquela feature: ligar a real é substituir o corpo, sem tocar na
- * orquestração nem na UI.
- *
- * `importarFormasDePagamento` **deixou de ser stub** com a feature 008: as
- * formas do documento entram no slice de pagamento já como `APROVADO`/`NENHUMA`
- * e sem passar pelo gate, porque o veredito do ERP está implícito no próprio
- * documento existir (`pagamento-domain-api.md` §2). Sem essa ligação, um
- * documento com pagamento chegava ao carrinho sem forma nenhuma e a venda seria
- * refaturada como se ninguém tivesse pago.
- */
-function stubsDeFeaturesFuturas(): Pick<ImportacaoVendaDeps, 'trocarVendedor'> {
-  return {
-    trocarVendedor: () => {
-      /* feature 012 — `vendedorSlice.trocarVendedor({ codigo, nome })`. */
-    },
-  };
-}
-
 export interface ApiImportacaoDocumento {
   /**
    * Por que a venda em curso não aceita importar um documento, ou `null`
@@ -187,12 +165,18 @@ export function useRecusaDeImportacao(): Pick<ApiImportacaoDocumento, 'recusa' |
 }
 
 /**
- * @param origemCliente Como o cliente do documento entra na venda — `'DAV'`
- * (006) ou `'RASCUNHO'` (011). Fixado pelo hook da feature, e não pelo serviço:
- * é a única coisa que distingue esta seleção de cliente das outras da 005.
+ * @param origemCliente Como o cliente **e** o vendedor do documento entram na
+ * venda — `'DAV'` (006) ou `'RASCUNHO'` (011). Fixado pelo hook da feature, e
+ * não pelo serviço: é a única coisa que distingue esta seleção de cliente das
+ * outras da 005. Tipado como `'DAV' | 'RASCUNHO'`, e não como o
+ * `OrigemSelecaoCliente` mais largo de `selecionarCliente` (que também aceita
+ * `'BUSCA_DOCUMENTO'`/`'BUSCA_LIVRE'`): um terceiro call site futuro que
+ * passasse uma dessas origens não é importação de documento nenhuma, e o tipo
+ * aqui bloqueia isso em vez de deixar `trocarVendedor` recair em `'DAV'` por
+ * default silenciosamente.
  */
 export function useImportacaoDocumento(
-  origemCliente: OrigemSelecaoCliente,
+  origemCliente: 'DAV' | 'RASCUNHO',
   sobrescritas: Partial<ImportacaoVendaDeps> = {},
 ): ApiImportacaoDocumento {
   const { recusa, recusaAtual } = useRecusaDeImportacao();
@@ -211,6 +195,11 @@ export function useImportacaoDocumento(
       editarSnapshotDescricao: venda.editarSnapshotDescricao,
       resolverCliente: (codigo) => fetchClientePorCodigo(codigo),
       selecionarCliente: (cliente) => venda.selecionarCliente(cliente, origemCliente),
+      // Feature 012, ligada ao slice real: sobrescreve `vendedorAtual` com o
+      // vendedor do documento, sem evento de auditoria e sem consultar
+      // `podeMutarCarrinho()` — é o início de uma venda diferente sendo montada,
+      // não uma troca no meio da digitação (`contracts/vendedor-domain-api.md`).
+      trocarVendedor: (vendedor) => venda.trocarVendedor(vendedor, origemCliente),
       registrarEventoAuditoria: venda.registrarEventoAuditoria,
       importarFormasDePagamento: venda.importarFormasDePagamento,
       buscarDescricaoProduto: async (codigoProduto) => {
@@ -223,7 +212,6 @@ export function useImportacaoDocumento(
         const snapshot = await fetchProduto(codigoProduto, contexto);
         return snapshot.descricao;
       },
-      ...stubsDeFeaturesFuturas(),
       ...sobrescritas,
     };
 
