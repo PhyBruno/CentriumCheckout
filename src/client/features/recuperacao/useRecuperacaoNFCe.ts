@@ -50,6 +50,10 @@ export function useRecuperacaoNFCe(
       fonteRascunho({
         numeroNota: rascunho.numeroNota,
         cliente: rascunho.cliente,
+        // O nome do vendedor só existe na listagem — o documento devolve o
+        // código (AD-095). Capturá-lo aqui é o que permite pré-selecionar o
+        // vendedor com nome, e não só com número (`FR-009`).
+        vendedor: rascunho.vendedor,
         serie: registro.SessaoUsuario.CadSerieNFCe,
       }),
     );

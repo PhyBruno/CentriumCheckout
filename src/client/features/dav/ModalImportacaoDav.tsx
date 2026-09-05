@@ -14,6 +14,7 @@ import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import { CampoData, isoRelativoAHoje } from '@/components/ui/campo-data';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useListaDavs, type DavListado } from '../../services/dav/davQueries';
@@ -154,6 +155,7 @@ export function ModalImportacaoDav({
 
   const { importar } = useImportacaoDav(deps);
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
   if (!montado) {
     return null;
@@ -200,17 +202,26 @@ export function ModalImportacaoDav({
       )}
       data-testid="modal-importacao-dav"
       onKeyDown={(evento) => {
-        // Enter importa o documento já selecionado (pedido do usuário,
-        // 2026-09-03) — o mesmo que clicar em "Importar DAV", de qualquer
-        // ponto da janela. A linha da tabela trata a tecla por conta própria e
-        // interrompe a propagação: lá o Enter ainda pode significar "selecionar
-        // esta linha", e importar a linha **anterior** seria o documento errado.
-        if (evento.key === 'Enter') {
-          void confirmarImportacao();
+        if (evento.key !== 'Enter') {
+          return;
         }
+        // Enter **em cima de um botão** é o clique daquele botão, e nada mais:
+        // sem esta guarda o evento borbulhava até aqui e a janela importava o
+        // documento selecionado antes de executar a ação escolhida — teclar
+        // Enter em "Cancelar" importava e só então fechava, que é o oposto do
+        // gesto do operador. As linhas da tabela já se defendiam com
+        // `stopPropagation`; o rodapé e o "X" não.
+        if (evento.target instanceof HTMLElement && evento.target.closest('button') !== null) {
+          return;
+        }
+        // Fora dos botões, Enter importa o documento já selecionado de
+        // qualquer ponto da janela (pedido do usuário, 2026-09-03) — o mesmo
+        // que clicar em "Importar DAV".
+        void confirmarImportacao();
       }}
     >
       <div
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Menu Importação"

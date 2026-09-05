@@ -2,6 +2,7 @@ import { ArchiveRestore, ChevronRight, Download, ReceiptText, X } from 'lucide-r
 import { useEffect, type ComponentType, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 
 /**
@@ -35,6 +36,7 @@ export function ModalMenuImportacao({
   onEscolherNFCe,
 }: ModalMenuImportacaoProps): ReactElement | null {
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
   // Mesmo ouvinte de `window` das outras janelas desta base: um `onKeyDown` no
   // backdrop só dispararia com o foco dentro do modal.
@@ -66,6 +68,7 @@ export function ModalMenuImportacao({
       data-testid="modal-menu-importacao"
     >
       <div
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Menu Importação"

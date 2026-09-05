@@ -10,7 +10,12 @@ import { clienteCheckoutDe } from '../support/cliente';
 import { snapshotDe, unidades } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 import { CODIGO_CLIENTE_DAV, SKU_DAV } from '../support/dav';
-import { NUMERO_NOTA, rascunhoDaLista, respostaCarregarNFCe } from '../support/recuperacao';
+import {
+  NUMERO_NOTA,
+  rascunhoDaLista,
+  respostaCarregarNFCe,
+  respostaRascunhoSemPagamento,
+} from '../support/recuperacao';
 
 /**
  * Janela de recuperação de NFCe — T005 (listagem e paginação), T006 (busca) e
@@ -98,11 +103,18 @@ function instalarFetch(
   opcoes: {
     readonly rascunhos?: readonly Record<string, unknown>[];
     readonly tamanhoPagina?: number;
+    /**
+     * Documento que `CarregarNFCe` devolve. O padrão já vem **pago**, como um
+     * rascunho real volta; quem precisa mexer no carrinho depois da retomada
+     * passa `respostaRascunhoSemPagamento()` (ver T016).
+     */
+    readonly documento?: Record<string, unknown>;
   } = {},
 ): Rota {
   const rota: Rota = { urls: [] };
   const todos = opcoes.rascunhos ?? [rascunhoDaLista(), rascunhoVarejo()];
   const porPagina = opcoes.tamanhoPagina ?? 20;
+  const documento = opcoes.documento ?? respostaCarregarNFCe();
 
   // Atribuído **nos dois** alvos: sob o vitest o `window` do jsdom não é o
   // mesmo objeto que `globalThis`, e `criarErpClient` captura o `fetch` que
@@ -139,7 +151,7 @@ function instalarFetch(
     }
 
     if (url.startsWith(CAMINHO_CARREGAR)) {
-      return Promise.resolve(respostaJson(respostaCarregarNFCe()));
+      return Promise.resolve(respostaJson(documento));
     }
 
     if (url.startsWith(CAMINHO_CLIENTE)) {
@@ -189,6 +201,22 @@ beforeAll(() => {
 
 beforeEach(() => {
   useSessionStore.setState({ registro: registroBootstrapDe() });
+
+  // Reset **explícito** do que `abrirSessaoDeVenda` não zera: ela cuida de
+  // auditoria, identidade e cliente default, mas não do carrinho nem do
+  // pagamento — na vida real quem os limpa é o cancelamento ou a entrega da
+  // venda. Sem isto os testes deste arquivo vazam uns nos outros: a linha
+  // deixada por um faz o seguinte cair em `recusaDeImportacao`
+  // ('carrinho-populado') e passar por acidente, sobre o estado do anterior em
+  // vez do seu próprio (achado da revisão da 011). Mesmo padrão de
+  // `importacaoDav.spec.ts` § "recusaAtual".
+  const venda = useVendaStore.getState();
+  venda.limparCarrinho();
+  venda.descartarPagamento();
+  venda.resetarIdentidadeVenda();
+  venda.limparCliente();
+  useVendaStore.setState({ houveEscolhaExplicita: false });
+
   // Venda "recém-aberta": é a única em que a importação é permitida (o cliente
   // default pré-selecionado não conta como escolha do operador, AD-032).
   abrirSessaoDeVenda('NOVA', 0);
@@ -386,9 +414,19 @@ describe('T016 — reinserir manualmente um SKU já presente numa linha congelad
    * A linha congelada fica **fora** do agregado por SKU, então a inserção não a
    * absorve nem a reprecifica: nascem duas linhas do mesmo produto, uma com o
    * preço do documento e outra com o de catálogo.
+   *
+   * **O rascunho aqui é o suspenso antes da cobrança**, sem forma de pagamento.
+   * Não é conveniência de teste: uma forma aprovada congela o carrinho inteiro
+   * (`podeMutarCarrinho`, I7), e a partir de um rascunho **já pago** — que é o
+   * caso comum — esta reinserção é um no-op e `FR-008` fica inalcançável. O
+   * conflito entre I7 e `FR-008` está aberto para decisão do usuário; até lá
+   * este teste afirma o que a implementação de fato entrega, e não mais.
    */
   it('a reinserção cria linha nova a preço de catálogo e não toca na congelada', async () => {
-    instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    instalarFetch({
+      rascunhos: [rascunhoDaLista()],
+      documento: respostaRascunhoSemPagamento(),
+    });
     await retomarPrimeiro();
 
     const congeladaAntes = useVendaStore.getState().linhas[0];
@@ -413,5 +451,67 @@ describe('T016 — reinserir manualmente um SKU já presente numa linha congelad
     expect(manual?.origem).toBe('MANUAL');
     expect(manual?.precoCongelado).toBe(false);
     expect(manual?.precoUnitario).toBe(1500);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Teclado — o Enter de um botão é o clique daquele botão
+ * ------------------------------------------------------------------ */
+
+/**
+ * O `onKeyDown` do backdrop existe para que o Enter carregue o rascunho
+ * selecionado de qualquer ponto da janela. Sem uma guarda, ele também capturava
+ * o Enter que o operador dava **em cima de um botão**: teclar Enter em
+ * "Cancelar" retomava o documento e só depois fechava a janela — o carrinho
+ * saía populado de um gesto que pedia o contrário (achado da revisão da 011,
+ * herdado do modal de DAV da 006).
+ */
+describe('teclado — Enter sobre um botão não dispara a retomada', () => {
+  async function selecionarPrimeira(): Promise<ReturnType<typeof userEvent.setup>> {
+    const usuario = userEvent.setup();
+    renderizar();
+    const linhas = await screen.findAllByTestId('linha-nfce');
+    await usuario.click(linhas[0] as HTMLElement);
+    await waitFor(() => {
+      expect(screen.getByTestId('confirmar-recuperacao-nfce')).toBeEnabled();
+    });
+    return usuario;
+  }
+
+  it('Enter em "Cancelar" fecha a janela sem carregar o rascunho', async () => {
+    const rota = instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    const usuario = await selecionarPrimeira();
+
+    screen.getByRole('button', { name: 'Cancelar' }).focus();
+    await usuario.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(rota.urls.some((url) => url.startsWith(CAMINHO_CARREGAR))).toBe(false);
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(useVendaStore.getState().identidadeVenda.numeroNota).toBe(0);
+  });
+
+  it('Enter no "X" do cabeçalho também não carrega', async () => {
+    const rota = instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    const usuario = await selecionarPrimeira();
+
+    screen.getByRole('button', { name: 'Fechar' }).focus();
+    await usuario.keyboard('{Enter}');
+
+    expect(rota.urls.some((url) => url.startsWith(CAMINHO_CARREGAR))).toBe(false);
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+  });
+
+  it('Enter fora dos botões — no campo de busca — continua carregando', async () => {
+    const rota = instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    const usuario = await selecionarPrimeira();
+
+    screen.getByTestId('campo-busca-nfce').focus();
+    await usuario.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(rota.urls.some((url) => url.startsWith(CAMINHO_CARREGAR))).toBe(true);
+    });
   });
 });

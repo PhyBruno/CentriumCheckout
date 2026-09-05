@@ -139,6 +139,7 @@ function fonte() {
   return fonteRascunho({
     numeroNota: linha.NumeroNota as number,
     cliente: linha.Cliente as string,
+    vendedor: linha.Vendedor as string,
     serie: SERIE_NFCE,
   });
 }
@@ -245,17 +246,39 @@ describe('cliente e vendedor', () => {
     expect(store.getState().clienteAtual?.origem).toBe('RASCUNHO');
   });
 
-  it('pré-seleciona o vendedor do rascunho (stub da 012)', async () => {
+  it('pré-seleciona o vendedor do rascunho, com o nome vindo da listagem', async () => {
     const { deps, trocarVendedor } = depsDe(store);
 
     await importarVendaExistente(fonte(), deps);
 
     expect(trocarVendedor).toHaveBeenCalledWith({
+      // O **código** vem do documento; o **nome** só existe em
+      // `GetListaNFCes`, que — ao contrário de `ListaDAVs` (AD-095) — o devolve
+      // por extenso. Descartá-lo deixaria a venda retomada com um vendedor sem
+      // nome tendo o dado em mãos (`FR-009`).
       codigo: CODIGO_VENDEDOR_DAV,
-      // O contrato do documento não devolve o nome (AD-095) — `null`, nunca uma
-      // string vazia que a UI exibiria como vendedor sem nome.
-      nome: null,
+      nome: 'MARIANA ALVES',
     });
+  });
+
+  it('cai para null quando a listagem devolve o vendedor em branco', async () => {
+    const { deps, trocarVendedor } = depsDe(store);
+    const linha = rascunhoDaLista({ Vendedor: '' });
+
+    await importarVendaExistente(
+      fonteRascunho({
+        numeroNota: linha.NumeroNota as number,
+        cliente: linha.Cliente as string,
+        vendedor: linha.Vendedor as string,
+        serie: SERIE_NFCE,
+      }),
+      deps,
+    );
+
+    // Nome em branco no ERP é "não informado", não string vazia: um `''`
+    // chegaria ao slice e a UI exibiria um vendedor sem nome em vez de cair no
+    // comportamento de "só o código".
+    expect(trocarVendedor).toHaveBeenCalledWith({ codigo: CODIGO_VENDEDOR_DAV, nome: null });
   });
 });
 
@@ -477,7 +500,10 @@ describe('T026 — quickstart Cenário 2: retomada completa', () => {
 
     expect(store.getState().clienteAtual?.codigoCliente).toBe(CODIGO_CLIENTE_DAV);
     expect(store.getState().clienteAtual?.origem).toBe('RASCUNHO');
-    expect(trocarVendedor).toHaveBeenCalledWith({ codigo: CODIGO_VENDEDOR_DAV, nome: null });
+    expect(trocarVendedor).toHaveBeenCalledWith({
+      codigo: CODIGO_VENDEDOR_DAV,
+      nome: 'MARIANA ALVES',
+    });
     expect(store.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
       numeroNota: NUMERO_NOTA,
