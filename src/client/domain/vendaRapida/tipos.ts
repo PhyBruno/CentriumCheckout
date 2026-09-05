@@ -101,6 +101,17 @@ export type MotivoRecusa =
   | 'ACIONAMENTO_EM_ANDAMENTO'
   | 'ATALHO_INEXISTENTE'
   /**
+   * A venda já tem condição escolhida ou forma aplicada (decisão do usuário,
+   * 2026-09-05, AD-174).
+   *
+   * O atalho carrega **um par** (condição, forma) e cada venda aceita uma
+   * condição só. Sobre uma venda que já começou a ser paga por outra condição,
+   * a única alternativa a esta recusa seria reconciliar par a par — e o desfecho
+   * de errar essa reconciliação é um pagamento lançado na condição errada, em
+   * silêncio.
+   */
+  | 'PAGAMENTO_JA_INICIADO'
+  /**
    * Permanece no tipo por completude do contrato, mas **nunca é produzido**:
    * no mobile `projetarAtalhos` já devolve `[]` (I10), então G2 responde
    * `ATALHO_INEXISTENTE` antes de qualquer checagem de plataforma

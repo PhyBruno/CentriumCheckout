@@ -13,6 +13,11 @@ import {
   type AcionarCenarioDeps,
 } from '../../src/client/features/venda-rapida/useAcionarCenario';
 import { aplicarFormaComIntegracao } from '../../src/client/features/venda-rapida/aplicarFormaComIntegracao';
+import {
+  AVISO_ATALHO_SEM_ITENS,
+  AVISO_ATALHO_SEM_SALDO,
+  AVISO_PAGAMENTO_JA_INICIADO,
+} from '../../src/client/features/venda-rapida/avisosVendaRapida';
 import { criarAuditoriaSlice } from '../../src/client/stores/slices/auditoriaSlice';
 import { criarCarrinhoSlice, type CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
 import { criarClienteSlice, type ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
@@ -59,6 +64,9 @@ const A_VISTA: CondicaoPagamento = {
   descontoMaximo: 0,
   formas: [DINHEIRO, PIX],
 };
+
+/** Segunda condição — existe só para o conflito de G5 ser exercitável. */
+const A_PRAZO: CondicaoPagamento = { ...A_VISTA, codigo: 2, descricao: 'A PRAZO' };
 
 function atalhoDe(opcoes: Partial<AtalhoVendaRapida> = {}): AtalhoVendaRapida {
   return {
@@ -144,13 +152,26 @@ function montar(opcoes: OpcoesMontagem = {}) {
     aplicarFormaComIntegracao(store, codigo, valor);
   const aplicarForma = vi.fn(opcoes.aplicarForma ?? aplicarFormaReal);
 
+  /** Aviso do **atalho** (013). O `avisar` acima é o do slice de pagamento (008). */
+  const avisarAtalho = vi.fn((_mensagem: string) => undefined);
+
   const deps: AcionarCenarioDeps = {
     obterSaldoEmAberto: () => store.getState().saldo().saldoRestante,
     vendaTemItens: () => opcoes.temItens ?? true,
+    // Lidas do store **real**, como em produção: é o que faz o segundo
+    // acionamento enxergar o que o primeiro deixou na venda.
+    condicaoDaVenda: () => store.getState().condicaoSelecionada?.codigo ?? null,
+    vendaTemFormaAplicada: () =>
+      store
+        .getState()
+        .pagamentos.some(
+          (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
+        ),
     irParaEtapaPagamento,
     selecionarCondicao,
     aplicarForma,
     finalizarVenda,
+    avisar: avisarAtalho,
     registrarEvento: (atalho, valor, finalizou) => {
       store.getState().registrarEventoAuditoria({
         tipo: 'VENDA_RAPIDA_ACIONADA',
@@ -179,6 +200,7 @@ function montar(opcoes: OpcoesMontagem = {}) {
     aplicarForma,
     iniciarIntegracao,
     avisar,
+    avisarAtalho,
   };
 }
 
@@ -260,6 +282,73 @@ describe('acionarCenario — guards G1..G4 recusam sem tocar na venda (T008)', (
     expect(store.getState().condicaoSelecionada).toBeNull();
   });
 
+  it('G5: a venda já tem **outra** condição escolhida', async () => {
+    const { store, deps, aplicarForma, avisarAtalho } = montar();
+    // O operador escolheu a condição pelo combobox, sem lançar forma nenhuma.
+    // O atalho aponta para a condição 1; a venda está na 2.
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    const resultado = await acionarCenario('F6', ATALHOS, deps);
+
+    expect(resultado).toEqual({ tipo: 'RECUSADO', motivo: 'PAGAMENTO_JA_INICIADO' });
+    expect(aplicarForma).not.toHaveBeenCalled();
+    expect(avisarAtalho).toHaveBeenCalledWith(AVISO_PAGAMENTO_JA_INICIADO);
+    // A condição do operador continua de pé: a recusa não mexe na venda.
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
+  });
+
+  it('G5: a **mesma** condição, sem forma viva, passa — é a retentativa do próprio atalho', async () => {
+    const { store, deps, avisarAtalho } = montar();
+    // O estado que um atalho recusado em P4 deixa para trás: condição posta
+    // pelo P3, nenhuma forma. Travar aqui faria o atalho envenenar a própria
+    // retentativa e exigir um "Limpar" para desfazer o que ele mesmo fez.
+    store.getState().selecionarCondicao(A_VISTA);
+
+    const resultado = await acionarCenario('F6', [atalhoDe({ encerraOperacao: false })], deps);
+
+    expect(resultado).toMatchObject({ tipo: 'LANCADO' });
+    expect(avisarAtalho).not.toHaveBeenCalled();
+    expect(store.getState().pagamentos).toHaveLength(1);
+  });
+
+  it('G5: a venda tem forma aplicada **sem** condição — o caso do DAV/rascunho retomado', async () => {
+    const { store, deps, aplicarForma, avisarAtalho } = montar();
+    // `importarFormasDePagamento` (006/011) não toca em `condicaoSelecionada`:
+    // olhar só a condição deixaria o atalho lançar por cima de um valor que o
+    // cliente já pagou e que está gravado no documento dentro do ERP.
+    store.getState().importarFormasDePagamento([
+      {
+        formaCodigo: DINHEIRO.codigo,
+        formaMeioPagtoNFe: 'Dinheiro',
+        valor: centavos(1_000),
+        tef: null,
+        pixGuid: null,
+        ticketDevolucao: null,
+      },
+    ]);
+    expect(store.getState().condicaoSelecionada).toBeNull();
+
+    const resultado = await acionarCenario('F6', ATALHOS, deps);
+
+    expect(resultado).toEqual({ tipo: 'RECUSADO', motivo: 'PAGAMENTO_JA_INICIADO' });
+    expect(aplicarForma).not.toHaveBeenCalled();
+    expect(avisarAtalho).toHaveBeenCalledWith(AVISO_PAGAMENTO_JA_INICIADO);
+  });
+
+  it('G5: o segundo acionamento é recusado porque o primeiro deixou a condição posta', async () => {
+    const { store, deps, avisarAtalho } = montar();
+
+    const primeiro = await acionarCenario('F6', [atalhoDe({ encerraOperacao: false })], deps);
+    expect(primeiro).toMatchObject({ tipo: 'LANCADO' });
+
+    const segundo = await acionarCenario('F6', [atalhoDe({ encerraOperacao: false })], deps);
+
+    expect(segundo).toEqual({ tipo: 'RECUSADO', motivo: 'PAGAMENTO_JA_INICIADO' });
+    // Um pagamento só: o atalho não divide venda entre duas condições.
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(avisarAtalho).toHaveBeenCalledWith(AVISO_PAGAMENTO_JA_INICIADO);
+  });
+
   it('G4: saldo em aberto já zerado', async () => {
     const { store, deps, aplicarForma } = montar({ subtotal: 0 });
 
@@ -277,6 +366,28 @@ describe('acionarCenario — guards G1..G4 recusam sem tocar na venda (T008)', (
     await acionarCenario('F8', ATALHOS, deps);
 
     expect(eventosDeVendaRapida(store)).toEqual([]);
+  });
+
+  it('as recusas que o operador pode resolver falam; as outras calam (FR-009)', async () => {
+    const semItens = montar({ temItens: false });
+    await acionarCenario('F6', ATALHOS, semItens.deps);
+    expect(semItens.avisarAtalho).toHaveBeenCalledWith(AVISO_ATALHO_SEM_ITENS);
+
+    const semSaldo = montar({ subtotal: 0 });
+    await acionarCenario('F6', ATALHOS, semSaldo.deps);
+    expect(semSaldo.avisarAtalho).toHaveBeenCalledWith(AVISO_ATALHO_SEM_SALDO);
+
+    // Acionamento concorrente cala: o primeiro **está acontecendo**, e avisar a
+    // cada toque encheria a tela durante uma espera de TEF/PIX.
+    const emAndamento = montar();
+    emAndamento.store.getState().marcarAcionamentoEmAndamento(true);
+    await acionarCenario('F6', ATALHOS, emAndamento.deps);
+    expect(emAndamento.avisarAtalho).not.toHaveBeenCalled();
+
+    // Lançamento recusado cala: quem recusou já falou o motivo exato.
+    const recusado = montar({ aplicarForma: () => Promise.resolve(false) });
+    await acionarCenario('F6', ATALHOS, recusado.deps);
+    expect(recusado.avisarAtalho).not.toHaveBeenCalled();
   });
 });
 

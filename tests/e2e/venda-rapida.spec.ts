@@ -198,12 +198,15 @@ test.describe('Recusas que não alteram a venda (C6, FR-009)', () => {
 
     await page.keyboard.press('F6');
 
+    await expect(page.getByText(/não há itens nesta venda/i).first()).toBeVisible();
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
     await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
     await expect(page.getByTestId('combobox-condicao-pagamento')).not.toContainText('A VISTA');
   });
 
-  test('saldo já coberto: o segundo acionamento não duplica o pagamento', async ({ page }) => {
+  test('venda já paga: o segundo acionamento não duplica nem divide o pagamento', async ({
+    page,
+  }) => {
     await abrirTelaDeVenda(page);
     await biparProduto(page, SKU, 1);
     await soltarOFoco(page);
@@ -211,9 +214,33 @@ test.describe('Recusas que não alteram a venda (C6, FR-009)', () => {
     await page.keyboard.press('F7');
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
 
-    await page.keyboard.press('F7');
+    // F6 é **outro** cenário (dinheiro), com a mesma condição: a forma viva na
+    // venda basta para recusar (G5). O atalho não divide pagamento.
+    await page.keyboard.press('F6');
 
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByText(/já tem pagamento iniciado/i).first()).toBeVisible();
+    await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
+  });
+
+  test('condição escolhida à mão bloqueia o atalho, e a escolha do operador fica de pé', async ({
+    page,
+  }) => {
+    await abrirTelaDeVenda(page);
+    await biparProduto(page, SKU, 1);
+
+    // Condição 2 ("30 DIAS") pelo combobox; os atalhos apontam para a 1.
+    await page.getByTestId('combobox-condicao-pagamento').click();
+    await page.getByTestId('opcao-condicao-2').click();
+    await expect(page.getByTestId('combobox-condicao-pagamento')).toContainText('30 DIAS');
+
+    await soltarOFoco(page);
+    await page.keyboard.press('F6');
+
+    await expect(page.getByText(/já tem pagamento iniciado/i).first()).toBeVisible();
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    // A recusa não mexe na venda: a condição do operador continua selecionada.
+    await expect(page.getByTestId('combobox-condicao-pagamento')).toContainText('30 DIAS');
   });
 });
 

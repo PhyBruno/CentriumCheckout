@@ -127,7 +127,7 @@ Os dois pontos de contrato levantados por AD-105 e AD-106 foram **fechados por d
 
 O atalho **não** ganha caminho próprio de validação: ele chama `aplicarPagamento` da feature 008, que já contém o gate. As consequências, aplicadas em `spec.md` (`FR-021`/`FR-022`):
 
-1. Toda tecla acionada dispara a mesma consulta a `ValidarNFCe` que o botão da tela de pagamento dispararia — inclusive quando o atalho é usado para lançar a segunda forma de um pagamento dividido.
+1. Toda tecla acionada dispara a mesma consulta a `ValidarNFCe` que o botão da tela de pagamento dispararia. *(A redação original acrescentava aqui "inclusive quando o atalho é usado para lançar a segunda forma de um pagamento dividido". **Esse caso deixou de existir em 2026-09-05**, por decisão direta do usuário registrada em `FR-023`/AD-174: o atalho só lança em venda sem forma aplicada, então nunca há uma "segunda forma" vinda de tecla. O que a frase afirmava do gate continua valendo para o único lançamento que o atalho faz.)*
 2. **Recusa aborta o encadeamento inteiro**: nada é lançado e a finalização automática do cenário "encerra a operação" **não** começa, mesmo com saldo que seria zerado. É o caso concreto do que `FR-011` já dizia de forma genérica ("o lançamento falhou").
 3. A exclusão mútua do gate (`emValidacao`) soma-se a `FR-015` desta feature: dois toques rápidos na mesma tecla produzem, no máximo, uma consulta e um pagamento.
 4. O achado colateral `ValidarNFCe`, registrado por esta feature no item 36 de `PENDENCIES.md` com destino provisório "feature 004", teve o destino corrigido: virou a feature 014, e o momento correto é a **inserção do pagamento**, não a finalização (AD-109).

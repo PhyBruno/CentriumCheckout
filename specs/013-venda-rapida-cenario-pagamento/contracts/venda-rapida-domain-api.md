@@ -67,12 +67,17 @@ Pós-condições: todo item devolvido tem exatamente os 7 campos convertidos; ne
 |---|---|---|
 | `obterSaldoEmAberto` | `() => Centavos` | 008 |
 | `vendaTemItens` | `() => boolean` | 003/008 |
+| `condicaoDaVenda` | `() => number \| null` | 008 (G5, `FR-023`) |
+| `vendaTemFormaAplicada` | `() => boolean` | 008 (G5, `FR-023`) |
 | `irParaEtapaPagamento` | `() => void` | 008 (`FR-019`) |
 | `selecionarCondicao` | `(codigo: number) => void` | 008 |
 | `aplicarForma` | `(codigo: number, valor: Centavos) => Promise<AplicacaoForma>` | 008 |
 | `resolverIntegracao` | `(forma) => 'TEF' \| 'PIX_DINAMICO' \| 'NENHUMA'` | 008 (reuso literal, sem alteração) |
 | `finalizarVenda` | `() => Promise<void>` | 004 |
 | `registrarEvento` | `(evento: EventoVendaRapida) => void` | 001 |
+| `avisar` | `(mensagem: string) => void` | composição (toast) |
+
+`avisar` é injetado pelo mesmo motivo de `PagamentoDeps.avisar` (008): o comando não importa a biblioteca de toast. Nem toda recusa fala — `ACIONAMENTO_EM_ANDAMENTO` cala porque o primeiro acionamento está em curso (avisar a cada toque encheria a tela durante uma espera de TEF/PIX), e `LANCAMENTO_FALHOU` cala porque quem recusou já exibiu o motivo exato; um toast genérico por cima apagaria o específico.
 
 **Invariantes que este contrato impõe ao chamador**:
 

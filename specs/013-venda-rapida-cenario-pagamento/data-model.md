@@ -49,7 +49,9 @@ O acionamento nunca devolve "sucesso parcial ambíguo". Modelar como união disc
 | `{ tipo: 'LANCADO' }` | `valorLancado: Centavos`, `finalizacaoIniciada: boolean` | pagamento aplicado (com ou sem integração externa); `finalizacaoIniciada` reflete `FR-010` |
 | `{ tipo: 'RECUSADO' }` | `motivo: MotivoRecusa` | nada foi alterado na venda (G1–G4) ou o lançamento em si falhou/foi recusado (P4, inclusive TEF/PIX recusado) |
 
-`MotivoRecusa` = `'SEM_ITENS' \| 'SEM_SALDO_EM_ABERTO' \| 'ACIONAMENTO_EM_ANDAMENTO' \| 'ATALHO_INEXISTENTE' \| 'PLATAFORMA_NAO_SUPORTADA' \| 'LANCAMENTO_FALHOU'`.
+`MotivoRecusa` = `'SEM_ITENS' \| 'SEM_SALDO_EM_ABERTO' \| 'ACIONAMENTO_EM_ANDAMENTO' \| 'ATALHO_INEXISTENTE' \| 'PLATAFORMA_NAO_SUPORTADA' \| 'LANCAMENTO_FALHOU' \| 'PAGAMENTO_JA_INICIADO'`.
+
+**`PAGAMENTO_JA_INICIADO` (acrescentado em 2026-09-05, decisão direta do usuário — `FR-023`, AD-174):** a venda já tem forma de pagamento viva, ou já tem uma condição selecionada **diferente** da do cenário. É a recusa que impede o atalho de lançar sobre uma venda começada por outro par (condição, forma) — ver G5 em §3.
 
 ### 1.5 Estado de venda introduzido
 
@@ -97,6 +99,7 @@ acionarCenario(tecla)
   ├─ G1  guard: acionamentoEmAndamento?          → RECUSADO(ACIONAMENTO_EM_ANDAMENTO)
   ├─ G2  atalho existe na ListaAtalhos?          → RECUSADO(ATALHO_INEXISTENTE / PLATAFORMA_NAO_SUPORTADA)
   ├─ G3  venda tem itens?                        → RECUSADO(SEM_ITENS)
+  ├─ G5  venda livre para este par?              → RECUSADO(PAGAMENTO_JA_INICIADO)
   ├─ G4  saldoEmAberto > 0?                      → RECUSADO(SEM_SALDO_EM_ABERTO)
   │
   ├─ P1  marca acionamentoEmAndamento = true
@@ -110,6 +113,13 @@ acionarCenario(tecla)
 ```
 
 Nenhum passo entre P3 e P5 tem diálogo de confirmação (`FR-010`). Falha em P3/P4 — inclusive TEF/PIX recusado — aborta antes de P5, preserva o estado anterior da venda e devolve o erro ao operador (`FR-011`).
+
+**G5 — venda livre para este par** (acrescentado em 2026-09-05, `FR-023`/AD-174). Recusa quando há **forma de pagamento viva** na venda (qualquer status que não `RECUSADO`/`EXCLUIDO`), ou quando há condição selecionada **diferente** de `atalho.condicaoCodigo`. Duas leituras, e não uma:
+
+- a **forma** bloqueia sempre, mesmo sob a condição certa — é o que impede o atalho de dividir pagamento e de lançar por cima de um documento retomado já pago, que chega com forma aplicada e **sem** condição (`importarFormasDePagamento` não toca em `condicaoSelecionada`);
+- a **condição** só bloqueia quando é outra. Condição igual sem forma viva é o estado que o próprio atalho deixa quando P4 falha depois de P3 (TEF recusado, veredito da 014): ali é o mesmo par, não há ambiguidade, e recusar obrigaria o operador a um "Limpar" para desfazer algo que ele nunca escolheu.
+
+Posição na sequência: **antes de G4**. As duas recusas coincidem numa venda já quitada, e das duas frases só a de G5 nomeia a saída ("Limpar") — dizer "não há saldo em aberto" a quem acabou de escolher a condição errada descreveria o sintoma e esconderia o gesto que resolve.
 
 ---
 
@@ -129,6 +139,7 @@ Nenhum passo entre P3 e P5 tem diálogo de confirmação (`FR-010`). Falha em P3
 | **I10** | Plataforma mobile ⇒ nenhum atalho listado e nenhum acionável | E6 + G2 | mesma sessão avaliada como desktop e como mobile |
 | **I11** | `encerraOperacao` indeterminado é tratado como `false` | E2 (D4) | literais `"True"`, `"true"`, `"1"`, `"False"`, `""`, `"talvez"` |
 | **I12** | Todo acionamento que altera a venda gera exatamente um evento de auditoria | P6 | um acionamento ⇒ um evento; acionamento recusado ⇒ nenhum |
+| **I13** | O atalho nunca lança sobre venda com forma aplicada, nem sob condição diferente da sua | G5 | condição diversa, forma importada de documento, e segundo acionamento após o primeiro ter lançado |
 
 ---
 
