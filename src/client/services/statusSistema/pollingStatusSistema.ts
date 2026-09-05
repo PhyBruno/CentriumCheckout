@@ -20,11 +20,24 @@ const CAMINHO_STATUS_SISTEMA = '/ApiCentriumOAuth/GetStatusSistema';
 export const INTERVALO_STATUS_SISTEMA_MS = 60_000;
 
 /**
- * A resposta é um inteiro puro, sem wrapper (`contracts/status-sistema-api.md`).
- * Validado na fronteira mesmo sendo escalar: um corpo inesperado aqui não pode
- * virar `NaN >= 1` e disparar um rebootstrap do nada (Constitution IV).
+ * A resposta é um inteiro — mas **nem sempre escalar**.
+ *
+ * `contracts/status-sistema-api.md` e o YAML descrevem um inteiro puro no corpo,
+ * e é isso que o `erp-mock` devolve. O ERP real devolve `{"Status": 0}`
+ * (verificado ao vivo em 2026-09-04 — AD-165): com o schema escalar anterior o
+ * parse falhava sempre, `consultarStatusSistema` retornava `null` em toda
+ * consulta e o rebootstrap de `FR-013`/AD-088 **nunca** disparava contra o ERP
+ * real — uma falha silenciosa, porque falha de status por desenho não vira erro
+ * visível.
+ *
+ * As duas formas são aceitas e reduzidas ao mesmo inteiro. Validado na fronteira
+ * mesmo sendo escalar: um corpo inesperado não pode virar `NaN >= 1` e disparar
+ * um rebootstrap do nada (Constitution IV).
  */
-const statusSistemaSchema = z.number().int();
+const statusSistemaSchema = z.union([
+  z.number().int(),
+  z.looseObject({ Status: z.number().int() }).transform((corpo) => corpo.Status),
+]);
 
 export interface StatusSistemaDeps {
   readonly erpClient?: ErpClient;

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { centavos, type Centavos } from '../../client/domain/precificacao/dinheiro';
 import { MEIOS_PAGTO_NFE, type MeioPagtoNFe } from '../../client/domain/pagamento/formaPagamento';
+import { inteiroErp, numeroErp } from './erpJson';
 
 /**
  * Validação de fronteira do catálogo de pagamento e do vale devolução (T007,
@@ -19,19 +20,32 @@ import { MEIOS_PAGTO_NFE, type MeioPagtoNFe } from '../../client/domain/pagament
  * (Constitution V).
  */
 
-/** `number/format: double` do ERP → `Centavos` inteiros (mesmo padrão de `precoEmCentavos`). */
-const valorEmCentavos = z.number().transform((valor) => centavos(Math.round(valor * 100)));
+/**
+ * `number/format: double` do ERP → `Centavos` inteiros (mesmo padrão de
+ * `precoEmCentavos`).
+ *
+ * `numeroErp`: no `GetSessao` real todo valor da condição chega como string
+ * (`"CondicaoMinimoEntrada": "0.00000"`, verificado ao vivo em 2026-09-04 —
+ * AD-165).
+ */
+const valorEmCentavos = numeroErp.transform((valor) => centavos(Math.round(valor * 100)));
 
 /**
  * `FormaIntegracaoCartao`: `'1'` = TEF, `'2'` = POS/avulso. `null`/ausente vira
  * `''` — o contrato de conversão (`erp-pagamento-api.md` §1) exige isso porque
  * a maioria das formas (dinheiro, PIX) nunca preenche o campo.
+ *
+ * O `.trim()` antes da união fechada não é zelo: o `GetSessao` real devolve
+ * **um espaço** (`" "`) nas formas sem integração de cartão, não a string vazia
+ * do YAML (AD-165). Sem normalizar, toda forma de dinheiro/PIX do catálogo real
+ * seria erro de fronteira e derrubaria o bootstrap inteiro.
  */
 const integracaoCartaoSchema = z
-  .union([z.literal('1'), z.literal('2'), z.literal('')])
+  .string()
   .nullable()
   .optional()
-  .transform((valor): '1' | '2' | '' => valor ?? '');
+  .transform((valor) => (valor ?? '').trim())
+  .pipe(z.union([z.literal('1'), z.literal('2'), z.literal('')]));
 
 /**
  * `FormaFpgUtiCar`: `''`/ausente significa **elegível** para vale devolução
@@ -53,7 +67,7 @@ const fpgUtiCarSchema = z
  * daquela função).
  */
 const formaPagamentoBrutaSchema = z.looseObject({
-  FormaCodigo: z.number().int(),
+  FormaCodigo: inteiroErp,
   FormaDescricao: z.string(),
   /**
    * `FpgEnt` do ERP — **obrigatório** (`FR-022`/AD-111). Sem ele o ERP calcula
@@ -139,13 +153,14 @@ export function filtrarFormasValidas(
 }
 
 const condicaoDePagamentoBrutaSchema = z.looseObject({
-  CondicaoCodigo: z.number().int(),
+  CondicaoCodigo: inteiroErp,
   CondicaoDescricao: z.string(),
-  CondicaoPrazo: z.number().int(),
+  /** Chega como `"0.00000"`/`"30.00000"` no ERP real — `inteiroErp` converte e exige inteiro. */
+  CondicaoPrazo: inteiroErp,
   CondicaoMinimoEntrada: valorEmCentavos,
   /** Percentual da condição — **não** é dinheiro, sem conversão. */
-  CondicaoDesconto: z.number(),
-  CondicaoDescontoMaximo: z.number(),
+  CondicaoDesconto: numeroErp,
+  CondicaoDescontoMaximo: numeroErp,
   CondicaoFormasDePagamento: z.array(formaPagamentoBrutaSchema),
 });
 
@@ -207,7 +222,7 @@ export const configuracoesTEFSchema = z.looseObject({
 export const configuracoesPIXSchema = z.looseObject({
   UtilizaCentriumPAG: z.boolean(),
   MinimoPix: valorEmCentavos.optional(),
-  TempoEspera: z.number().optional(),
+  TempoEspera: numeroErp.optional(),
 });
 
 /**

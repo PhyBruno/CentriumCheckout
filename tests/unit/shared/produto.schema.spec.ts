@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkoutListaProdutosSchema,
+  getListaProdutosOutputSchema,
+  getProdutoOutputSchema,
   sdtCheckoutGetProdutoSchema,
 } from '../../../src/shared/schemas/produto.schema';
 import { respostaGetProduto } from '../../support/precificacao';
@@ -59,9 +61,31 @@ describe('sdtCheckoutGetProdutoSchema', () => {
     },
   );
 
+  /**
+   * Shape **real** do `GetProduto` (AD-165), verificado ao vivo em 2026-09-04:
+   * todo `double` chega como string JSON (`"PrecoVenda1": "1.0000"`). Antes
+   * desta correção **toda** inserção de produto contra o ERP real virava
+   * `ErroRespostaInvalida` — a feature 003 inteira ficava bloqueada.
+   */
+  it('aceita preço como string numérica, como o ERP real devolve (AD-165)', () => {
+    const produto = sdtCheckoutGetProdutoSchema.parse(
+      respostaGetProduto({ PrecoVenda: '84.3530', PrecoVenda1: '1.0000' }),
+    );
+
+    expect(produto.PrecoVenda).toBe(8435);
+    expect(produto.PrecoVenda1).toBe(100);
+  });
+
   it('recusa PrecoVenda em formato não numérico', () => {
     expect(
-      sdtCheckoutGetProdutoSchema.safeParse(respostaGetProduto({ PrecoVenda: '10' })).success,
+      sdtCheckoutGetProdutoSchema.safeParse(respostaGetProduto({ PrecoVenda: 'dez reais' }))
+        .success,
+    ).toBe(false);
+  });
+
+  it('recusa PrecoVenda vazio — string vazia viraria R$ 0,00 em silêncio', () => {
+    expect(
+      sdtCheckoutGetProdutoSchema.safeParse(respostaGetProduto({ PrecoVenda: '' })).success,
     ).toBe(false);
   });
 
@@ -108,5 +132,38 @@ describe('checkoutListaProdutosSchema', () => {
     delete (lista['Produtos'] as Record<string, unknown>[])[0]?.['CodigoProduto'];
 
     expect(checkoutListaProdutosSchema.safeParse(lista).success).toBe(false);
+  });
+
+  /**
+   * AD-165 — o ERP real devolve `GetProduto`/`GetListaProdutos` **sem** o
+   * envelope nomeado do `ApiCentriumOAuth.yaml`. As duas formas precisam passar:
+   * a real (raiz) e a do YAML, que é a que o `erp-mock` das suítes E2E produz.
+   */
+  describe('envelope opcional (AD-165)', () => {
+    it('aceita GetProduto na raiz, como o ERP real devolve', () => {
+      expect(getProdutoOutputSchema.parse(respostaGetProduto()).CodigoProduto).toBe('001234');
+    });
+
+    it('aceita GetProduto dentro do envelope Produto, como o YAML e o erp-mock', () => {
+      const validado = getProdutoOutputSchema.parse({
+        Produto: respostaGetProduto(),
+        messages: [],
+      });
+
+      expect(validado.CodigoProduto).toBe('001234');
+    });
+
+    it('aceita GetListaProdutos na raiz, como o ERP real devolve', () => {
+      expect(getListaProdutosOutputSchema.parse(listaValida()).Produtos).toHaveLength(1);
+    });
+
+    it('aceita GetListaProdutos dentro do envelope ListaProdutos', () => {
+      const validado = getListaProdutosOutputSchema.parse({
+        ListaProdutos: listaValida(),
+        messages: [],
+      });
+
+      expect(validado.TotalRegistros).toBe(137);
+    });
   });
 });

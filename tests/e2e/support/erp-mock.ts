@@ -4,9 +4,17 @@ import Fastify, { type FastifyInstance } from 'fastify';
  * ERP mockado para os cenários do `quickstart.md`.
  *
  * Só existe em teste: reproduz `POST /oauth/access_token` e
- * `GET /ApiCentriumOAuth/*` nos formatos de `contracts/session-bff-api.md`, com
- * endpoints de controle (`/__mock/*`) para os testes configurarem falhas e
- * inspecionarem se o ERP chegou a ser chamado.
+ * `GET /ApiCentriumOAuth/*` no dialeto REAL confirmado ao vivo contra o ERP
+ * em 2026-09-04 (AD-165) — não o shape "de livro" do YAML/`contracts/`, que
+ * diverge em pontos importantes: a maioria dos endpoints de leitura devolve o
+ * SDT flat na raiz (sem o envelope `Get<X>Output.<Campo>` que o YAML sugere e
+ * sem `messages`); `GetDav`/`FaturarNFCe` são exceção e mantêm envelope +
+ * `messages`; campos `double`/muitos `int64` vêm como string JSON, não
+ * número; `FormaIntegracaoCartao` vem `" "` (espaço), não `""`;
+ * `GetStatusSistema` devolve `{"Status": 0}`, não o inteiro solto. Ver
+ * memória do projeto `erp-real-oauth-latencia` para o levantamento completo.
+ * Tem endpoints de controle (`/__mock/*`) para os testes configurarem falhas
+ * e inspecionarem se o ERP chegou a ser chamado.
  *
  * Todos os valores são sintéticos.
  */
@@ -207,7 +215,12 @@ const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
 /**
  * Catálogo sintético da feature 003 — um produto por fluxo de
  * `ProdutoPesavelEditavel` (`research.md`, D7). Preços em reais, como o ERP
- * devolve; `QtdMinimaPreco` em unidades inteiras.
+ * devolve.
+ *
+ * `PrecoVenda*`/`QtdMinimaPreco2..5` são `String(...)`: o ERP real devolve
+ * `double`/`int64` como string JSON, não número — confirmado ao vivo em
+ * 2026-09-04 (AD-165, `numeroErp`/`inteiroErp` em
+ * `src/shared/schemas/erpJson.ts` já toleram as duas formas).
  */
 const CATALOGO: Record<string, Record<string, unknown>> = {
   '001234': {
@@ -215,16 +228,16 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     Descricao: 'PRODUTO COM FAIXA 500G',
     Referencia: 'REF-FAIXA',
     CodigoBarras: '7890000000001',
-    PrecoVenda: 10.0,
-    PrecoVenda1: 10.0,
-    PrecoVenda2: 9.0,
-    PrecoVenda3: 0,
-    PrecoVenda4: 0,
-    PrecoVenda5: 0,
-    QtdMinimaPreco2: 5,
-    QtdMinimaPreco3: 0,
-    QtdMinimaPreco4: 0,
-    QtdMinimaPreco5: 0,
+    PrecoVenda: String(10.0),
+    PrecoVenda1: String(10.0),
+    PrecoVenda2: String(9.0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(5),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
     UDM: 'UN',
     ProdutoPesavelEditavel: '',
   },
@@ -233,16 +246,16 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     Descricao: 'PRODUTO PESAVEL KG',
     Referencia: 'REF-PESAVEL',
     CodigoBarras: '7890000000002',
-    PrecoVenda: 10.0,
-    PrecoVenda1: 10.0,
-    PrecoVenda2: 0,
-    PrecoVenda3: 0,
-    PrecoVenda4: 0,
-    PrecoVenda5: 0,
-    QtdMinimaPreco2: 0,
-    QtdMinimaPreco3: 0,
-    QtdMinimaPreco4: 0,
-    QtdMinimaPreco5: 0,
+    PrecoVenda: String(10.0),
+    PrecoVenda1: String(10.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
     UDM: 'KG',
     ProdutoPesavelEditavel: 'S',
   },
@@ -251,16 +264,16 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     Descricao: 'PRODUTO EDITAVEL',
     Referencia: 'REF-EDITAVEL',
     CodigoBarras: '7890000000003',
-    PrecoVenda: 20.0,
-    PrecoVenda1: 20.0,
-    PrecoVenda2: 0,
-    PrecoVenda3: 0,
-    PrecoVenda4: 0,
-    PrecoVenda5: 0,
-    QtdMinimaPreco2: 0,
-    QtdMinimaPreco3: 0,
-    QtdMinimaPreco4: 0,
-    QtdMinimaPreco5: 0,
+    PrecoVenda: String(20.0),
+    PrecoVenda1: String(20.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
     UDM: 'UN',
     ProdutoPesavelEditavel: 'E',
   },
@@ -283,16 +296,16 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     Descricao: 'PRODUTO 70 REAIS',
     Referencia: 'REF-070',
     CodigoBarras: '7890000000070',
-    PrecoVenda: 70.0,
-    PrecoVenda1: 70.0,
-    PrecoVenda2: 0,
-    PrecoVenda3: 0,
-    PrecoVenda4: 0,
-    PrecoVenda5: 0,
-    QtdMinimaPreco2: 0,
-    QtdMinimaPreco3: 0,
-    QtdMinimaPreco4: 0,
-    QtdMinimaPreco5: 0,
+    PrecoVenda: String(70.0),
+    PrecoVenda1: String(70.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
     UDM: 'UN',
     ProdutoPesavelEditavel: '',
   },
@@ -301,16 +314,16 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     Descricao: 'PRODUTO 29 REAIS',
     Referencia: 'REF-029',
     CodigoBarras: '7890000000029',
-    PrecoVenda: 29.0,
-    PrecoVenda1: 29.0,
-    PrecoVenda2: 0,
-    PrecoVenda3: 0,
-    PrecoVenda4: 0,
-    PrecoVenda5: 0,
-    QtdMinimaPreco2: 0,
-    QtdMinimaPreco3: 0,
-    QtdMinimaPreco4: 0,
-    QtdMinimaPreco5: 0,
+    PrecoVenda: String(29.0),
+    PrecoVenda1: String(29.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
     UDM: 'UN',
     ProdutoPesavelEditavel: '',
   },
@@ -319,16 +332,16 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     Descricao: 'PRODUTO 1 REAL',
     Referencia: 'REF-001',
     CodigoBarras: '7890000000010',
-    PrecoVenda: 1.0,
-    PrecoVenda1: 1.0,
-    PrecoVenda2: 0,
-    PrecoVenda3: 0,
-    PrecoVenda4: 0,
-    PrecoVenda5: 0,
-    QtdMinimaPreco2: 0,
-    QtdMinimaPreco3: 0,
-    QtdMinimaPreco4: 0,
-    QtdMinimaPreco5: 0,
+    PrecoVenda: String(1.0),
+    PrecoVenda1: String(1.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
     UDM: 'UN',
     ProdutoPesavelEditavel: '',
   },
@@ -347,8 +360,8 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
  */
 const CLIENTES: Record<string, Record<string, unknown>> = {
   '12298023980': {
-    Empresa: 1,
-    CodCliente: 1255,
+    Empresa: String(1), // int64
+    CodCliente: String(1255), // int64
     nome: 'CLIENTE VAREJO',
     cpf: '12298023980',
     email: 'varejo@example.test',
@@ -359,15 +372,15 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     numero: '100',
     cidade: 'AGUA DOCE',
     uf: 'SC',
-    CodigoConvenio: 0,
+    CodigoConvenio: 0, // int32
     NomeConvenio: '',
-    DescontoConvenio: 0,
-    ListaPreco: 3,
+    DescontoConvenio: String(0), // double
+    ListaPreco: String(3), // int64
     CliTip: 'F',
   },
   '89554068000': {
-    Empresa: 1,
-    CodCliente: 2538,
+    Empresa: String(1), // int64
+    CodCliente: String(2538), // int64
     nome: 'CLIENTE CONVENIADO',
     cpf: '89554068000',
     email: 'conveniado@example.test',
@@ -378,15 +391,15 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     numero: '200',
     cidade: 'SINOP',
     uf: 'MT',
-    CodigoConvenio: 7,
+    CodigoConvenio: 7, // int32
     NomeConvenio: 'CONVENIO EXEMPLO',
-    DescontoConvenio: 10,
-    ListaPreco: 7,
+    DescontoConvenio: String(10), // double
+    ListaPreco: String(7), // int64
     CliTip: 'F',
   },
   'CONSUMIDOR-FINAL': {
-    Empresa: 1,
-    CodCliente: 1,
+    Empresa: String(1), // int64
+    CodCliente: String(1), // int64
     nome: 'CONSUMIDOR FINAL',
     cpf: '',
     email: '',
@@ -397,15 +410,15 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     numero: '',
     cidade: '',
     uf: '',
-    CodigoConvenio: 0,
+    CodigoConvenio: 0, // int32
     NomeConvenio: '',
-    DescontoConvenio: 0,
-    ListaPreco: 3,
+    DescontoConvenio: String(0), // double
+    ListaPreco: String(3), // int64
     CliTip: 'F',
   },
   'SEM-DOCUMENTO': {
-    Empresa: 1,
-    CodCliente: 3100,
+    Empresa: String(1), // int64
+    CodCliente: String(3100), // int64
     nome: 'CLIENTE SEM DOCUMENTO',
     cpf: '',
     email: '',
@@ -416,15 +429,15 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     numero: '10',
     cidade: 'JOINVILLE',
     uf: 'SC',
-    CodigoConvenio: 0,
+    CodigoConvenio: 0, // int32
     NomeConvenio: '',
-    DescontoConvenio: 0,
-    ListaPreco: 3,
+    DescontoConvenio: String(0), // double
+    ListaPreco: String(3), // int64
     CliTip: 'F',
   },
   '52059715000113': {
-    Empresa: 1,
-    CodCliente: 2209,
+    Empresa: String(1), // int64
+    CodCliente: String(2209), // int64
     nome: 'NILMAQ COMERCIO DE PECAS',
     CliTip: 'J',
     cpf: '52059715000113',
@@ -436,10 +449,10 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     numero: '300',
     cidade: 'PIRAQUARA',
     uf: 'PR',
-    CodigoConvenio: 0,
+    CodigoConvenio: 0, // int32
     NomeConvenio: '',
-    DescontoConvenio: 0,
-    ListaPreco: 3,
+    DescontoConvenio: String(0), // double
+    ListaPreco: String(3), // int64
   },
 };
 
@@ -481,32 +494,40 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         Titulo: 'PV-11842',
         Senha: '',
         DataEmissao: emissaoRelativa(DIAS_DE_EMISSAO.conveniado),
+        // `ClienteCodigo`/`VendedorCodigo` são `int64` no YAML mas vêm como
+        // número NATIVO em `ListaDAVs` (confirmado ao vivo 2026-09-04) — ao
+        // contrário de `ValorTotal` (`double`), que vem string. O padrão
+        // "int64/double sempre string" não é universal; aqui é por campo.
         ClienteCodigo: 2538,
         ClienteNome: 'CLIENTE CONVENIADO',
         VendedorCodigo: 12,
-        ValorTotal: 15.54,
+        ValorTotal: String(15.54), // double
       },
       documento: {
         Empresa: 1,
         SuspenderOuFaturar: '',
-        clienteCodigo: 2538,
-        vendedorCodigo: 12,
-        CondicaoPagamentoCodigo: 1,
-        NumeroNota: 90210,
+        // Confirmado ao vivo 2026-09-04 num `FaturarNFCe` real: estes quatro
+        // (int64) vêm string; `Empresa`/`DescontoPercentual` abaixo, mesmo
+        // sendo int64/double no YAML, vieram número nativo no mesmo payload —
+        // provável eco do que foi enviado, não recalculo do ERP.
+        clienteCodigo: String(2538),
+        vendedorCodigo: String(12),
+        CondicaoPagamentoCodigo: String(1),
+        NumeroNota: String(90210),
         CadSerieNFCe: '1',
-        UsuarioCodigo: 42,
+        UsuarioCodigo: String(42),
         Log: '',
         produtos: [
           {
             sequencial: 1,
             codigoProduto: '001234',
-            quantidade: 2,
-            precoUnitario: 7.77,
+            quantidade: String(2), // double
+            precoUnitario: String(7.77), // double
             DescontoPercentual: 0,
-            DescontoValor: 0,
+            DescontoValor: String(0), // double
             UDM: 'UN',
-            ValorBruto: 15.54,
-            ValorTotal: 15.54,
+            ValorBruto: String(15.54), // double
+            ValorTotal: String(15.54), // double
           },
         ],
         /**
@@ -544,29 +565,29 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         ClienteCodigo: 1255,
         ClienteNome: 'CLIENTE VAREJO',
         VendedorCodigo: 8,
-        ValorTotal: 20.0,
+        ValorTotal: String(20.0), // double
       },
       documento: {
         Empresa: 1,
         SuspenderOuFaturar: '',
-        clienteCodigo: 1255,
-        vendedorCodigo: 8,
-        CondicaoPagamentoCodigo: 1,
-        NumeroNota: 90211,
+        clienteCodigo: String(1255),
+        vendedorCodigo: String(8),
+        CondicaoPagamentoCodigo: String(1),
+        NumeroNota: String(90211),
         CadSerieNFCe: '1',
-        UsuarioCodigo: 42,
+        UsuarioCodigo: String(42),
         Log: '',
         produtos: [
           {
             sequencial: 1,
             codigoProduto: '003000',
-            quantidade: 1,
-            precoUnitario: 20.0,
+            quantidade: String(1), // double
+            precoUnitario: String(20.0), // double
             DescontoPercentual: 0,
-            DescontoValor: 0,
+            DescontoValor: String(0), // double
             UDM: 'UN',
-            ValorBruto: 20.0,
-            ValorTotal: 20.0,
+            ValorBruto: String(20.0), // double
+            ValorTotal: String(20.0), // double
           },
         ],
         FormasDePagamento: [],
@@ -574,214 +595,222 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
     },
   };
 
+/**
+ * `GetSessao` real devolve `SessaoUsuario` **direto na raiz**, sem envelope
+ * nem `messages` — confirmado ao vivo em 2026-09-04 contra o ERP real
+ * (`c0lj6mvzeh.apps.centrium.inf.br`): a procedure só tem um output de
+ * verdade, então o GeneXus não embrulha (ver `erp-real-oauth-latencia` na
+ * memória do projeto). `int64`/`double` do YAML vêm como **string**; só
+ * `int32` fica número nativo — por isso os campos abaixo marcados `int64`
+ * são `String(...)`.
+ */
 function payloadGetSessao(config: ConfigMockErp): unknown {
   return {
-    SessaoUsuario: {
-      UsuarioCodigo: 42,
-      UsuarioNome: 'Operador de Teste',
-      // Identidade exibida na barra superior — sintética, como o resto do mock.
-      EmpresaNomeFantasia: 'Organizações Tabajara',
-      EmpresaRazaoSocial: 'Tabajara Comércio Ltda',
-      caixa: 3,
-      TipoPreco: config.tipoPreco,
-      CadMaqCod: config.cadMaqCod,
-      ListaPrecoDefault: 3,
-      CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
-      QtdMinCharParaConsulta: 3,
-      // Domain `EnumTipoCodigoProduto` da KB GeneXus (`ControlValues`):
-      // `''`→Código Reduzido, `'D'`→Código de Barras, `'C'`→Referência,
-      // `'P'`→Codigo de Barra Pesavel. `'D'` aqui é só o cenário padrão dos
-      // testes — não é o único valor válido.
-      UsuarioTipoCodigoProduto: 'D',
-      ClienteDefaultCodigo: 1,
-      ClienteDefaultNome: 'CONSUMIDOR FINAL',
-      VendedorCodigo: 42,
-      VendedorNome: 'Mariana Alves',
-      CadSerieNFCe: '1',
-      // Aponta para o próprio mock do ERP em E2E: o serviço de impressão local
-      // real depende da rede do PDV, fora do alcance do CI
-      // (`specs/004-.../contracts/impressao-local-api.md`).
-      CadMaqHost: '127.0.0.1:4545',
-      TipoImpressao: config.tipoImpressao,
-      /**
-       * Catálogo de pagamento da feature 008. **Não existe endpoint dedicado**
-       * (AD-097): condições e formas chegam embutidas na sessão, e é daqui que
-       * `useCondicoesPagamento` as lê (`erp-pagamento-api.md` §1).
-       *
-       * `FormaEntrada` está em toda forma de propósito: sem ele o ERP calcula
-       * crediário zero e a validação prévia aprova exatamente o que existe para
-       * barrar (`FR-022`/AD-111).
-       *
-       * **`FormaFpgUtiCar = 'VDV'` identifica a forma de vale devolução, e nada
-       * mais.** Uma única forma do catálogo o traz — `FormaCodigo: 4` — e é ela
-       * que abre a janela do ticket ao ser escolhida; **toda** outra forma,
-       * cartão inclusive, o traz vazio e é uma forma comum, com campo de valor.
-       * A leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
-       * 2026-09-04, e `ehFormaDeValeDevolucao` já compara só contra `'VDV'`.
-       * Se o cartão abrir a janela do vale numa stack local, o build servido
-       * está defasado — não é o cadastro.
-       *
-       * Os códigos 1–4 são estáveis: os cenários E2E os endereçam por
-       * `opcao-forma-<codigo>`. Formas novas entram a partir do 5.
-       */
-      CondicoesDePagamento: [
-        {
-          CondicaoCodigo: 1,
-          CondicaoDescricao: 'A VISTA',
-          CondicaoPrazo: 0,
-          CondicaoMinimoEntrada: 0,
-          CondicaoDesconto: 0,
-          CondicaoDescontoMaximo: 0,
-          CondicaoFormasDePagamento: [
-            {
-              FormaCodigo: 1,
-              FormaDescricao: 'DINHEIRO',
-              FormaEntrada: 'S',
-              FormaMeioPagtoNFe: 'Dinheiro',
-              FormaIntegracaoCartao: '',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: '',
-            },
-            {
-              // Forma **comum**, não vale: `FpgUtiCar` vazio. Com `TEFAtivo` a
-              // integração roteia para TEF (feature 010); sem ele, vira
-              // pagamento manual — nunca a janela do ticket.
-              FormaCodigo: 2,
-              FormaDescricao: 'CARTAO CREDITO',
-              FormaEntrada: 'N',
-              FormaMeioPagtoNFe: 'CartaoCredito',
-              FormaIntegracaoCartao: '1',
-              FormaTipoTransacaoTEF: 'CREDITO',
-              FormaFpgUtiCar: '',
-            },
-            {
-              // A **única** forma de vale devolução do catálogo: é `FpgUtiCar =
-              // 'VDV'` que a identifica, e escolhê-la abre a janela do ticket em
-              // vez do campo de valor. Tickets válidos em `TICKETS_DEVOLUCAO` —
-              // `VALE10` fecha uma venda do produto `001234` sem excedente.
-              FormaCodigo: 4,
-              FormaDescricao: 'VALE DEVOLUCAO',
-              FormaEntrada: 'N',
-              FormaMeioPagtoNFe: 'Outros',
-              FormaIntegracaoCartao: '',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: 'VDV',
-            },
-            {
-              FormaCodigo: 3,
-              FormaDescricao: 'PIX',
-              FormaEntrada: 'S',
-              FormaMeioPagtoNFe: 'Pix',
-              FormaIntegracaoCartao: '',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: '',
-            },
-            {
-              FormaCodigo: 5,
-              FormaDescricao: 'CARTAO DEBITO',
-              FormaEntrada: 'N',
-              FormaMeioPagtoNFe: 'CartaoDebito',
-              FormaIntegracaoCartao: '1',
-              FormaTipoTransacaoTEF: 'DEBITO',
-              FormaFpgUtiCar: '',
-            },
-            {
-              // `PixEstatico` **nunca** roteia para a integração dinâmica
-              // (`FR-006` da 008): existe aqui para que a stack local mostre, no
-              // mesmo combobox, a forma que abre a janela de QR Code e a que não
-              // abre.
-              FormaCodigo: 6,
-              FormaDescricao: 'PIX ESTATICO',
-              FormaEntrada: 'S',
-              FormaMeioPagtoNFe: 'PixEstatico',
-              FormaIntegracaoCartao: '',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: '',
-            },
-            {
-              FormaCodigo: 7,
-              FormaDescricao: 'VALE ALIMENTACAO',
-              FormaEntrada: 'N',
-              FormaMeioPagtoNFe: 'ValeAlimentacao',
-              FormaIntegracaoCartao: '2',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: '',
-            },
-          ],
-        },
-        {
-          /**
-           * Segunda condição, a prazo. Existe para que o combobox de condição
-           * tenha de fato o que escolher — com uma única condição, trocar de
-           * condição (I9: a troca esvazia as formas aplicadas) não é exercitável
-           * à mão.
-           *
-           * As formas dela são **outras**, não as mesmas com outro código: é o
-           * que torna visível a regra de que a forma pertence à condição, e que
-           * uma forma de outra condição é recusada (`AVISO_FORMA_FORA_DA_CONDICAO`).
-           *
-           * `CondicaoMinimoEntrada: 20` (R$ 20,00) e `FormaEntrada: 'S'` no
-           * boleto: sem `FpgEnt` o ERP calcula crediário zero e o gate da 014
-           * aprova o que deveria barrar (`FR-022`/AD-111).
-           */
-          CondicaoCodigo: 2,
-          CondicaoDescricao: '30 DIAS',
-          CondicaoPrazo: 30,
-          CondicaoMinimoEntrada: 20,
-          CondicaoDesconto: 0,
-          CondicaoDescontoMaximo: 5,
-          CondicaoFormasDePagamento: [
-            {
-              FormaCodigo: 8,
-              FormaDescricao: 'BOLETO 30 DIAS',
-              FormaEntrada: 'S',
-              FormaMeioPagtoNFe: 'BoletoBancario',
-              FormaIntegracaoCartao: '',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: '',
-            },
-            {
-              FormaCodigo: 9,
-              FormaDescricao: 'CREDIARIO LOJA',
-              FormaEntrada: 'S',
-              FormaMeioPagtoNFe: 'CreditoLoja',
-              FormaIntegracaoCartao: '',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: '',
-            },
-            {
-              FormaCodigo: 10,
-              FormaDescricao: 'DUPLICATA MERCANTIL',
-              FormaEntrada: 'N',
-              FormaMeioPagtoNFe: 'DuplicataMercantil',
-              FormaIntegracaoCartao: '',
-              FormaTipoTransacaoTEF: '',
-              FormaFpgUtiCar: '',
-            },
-          ],
-        },
-      ],
-      /**
-       * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
-       * as formas roteando para `NENHUMA` (`resolverIntegracao`), de modo que um
-       * pagamento aplicado já entra `APROVADO` sem depender das features 009/010.
-       * É também o cenário do fluxo dourado do quickstart da 008 ("desktop com
-       * `tefAtivo: false`").
-       *
-       * O PIX deixou de ser uma constante e passou a vir de `config.pixAtivo`
-       * (feature 009): `pagamento-pix.spec.ts` o liga por `/__mock/config` antes
-       * de abrir a tela. O **padrão continua desligado** de propósito — ligá-lo
-       * aqui faria toda venda quitada por PIX nas demais suítes passar a depender
-       * de um QR Code e de uma sondagem de 10s.
-       */
-      ConfiguracoesTEF: { TEFAtivo: false },
-      ConfiguracoesPIX: {
-        UtilizaCentriumPAG: config.pixAtivo,
-        MinimoPix: config.minimoPix,
-        TempoEspera: 10,
+    UsuarioCodigo: String(42), // int64
+    UsuarioNome: 'Operador de Teste',
+    // Identidade exibida na barra superior — sintética, como o resto do mock.
+    EmpresaNomeFantasia: 'Organizações Tabajara',
+    EmpresaRazaoSocial: 'Tabajara Comércio Ltda',
+    caixa: String(3), // int64
+    TipoPreco: config.tipoPreco, // int32 — número nativo
+    CadMaqCod: config.cadMaqCod,
+    ListaPrecoDefault: String(3), // int64
+    CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
+    QtdMinCharParaConsulta: String(3), // int64
+    // Domain `EnumTipoCodigoProduto` da KB GeneXus (`ControlValues`):
+    // `''`→Código Reduzido, `'D'`→Código de Barras, `'C'`→Referência,
+    // `'P'`→Codigo de Barra Pesavel. `'D'` aqui é só o cenário padrão dos
+    // testes — não é o único valor válido.
+    UsuarioTipoCodigoProduto: 'D',
+    ClienteDefaultCodigo: String(1), // int64
+    ClienteDefaultNome: 'CONSUMIDOR FINAL',
+    VendedorCodigo: String(42), // int64
+    VendedorNome: 'Mariana Alves',
+    CadSerieNFCe: '1',
+    // Aponta para o próprio mock do ERP em E2E: o serviço de impressão local
+    // real depende da rede do PDV, fora do alcance do CI
+    // (`specs/004-.../contracts/impressao-local-api.md`).
+    CadMaqHost: '127.0.0.1:4545',
+    TipoImpressao: config.tipoImpressao,
+    /**
+     * Catálogo de pagamento da feature 008. **Não existe endpoint dedicado**
+     * (AD-097): condições e formas chegam embutidas na sessão, e é daqui que
+     * `useCondicoesPagamento` as lê (`erp-pagamento-api.md` §1).
+     *
+     * `FormaEntrada` está em toda forma de propósito: sem ele o ERP calcula
+     * crediário zero e a validação prévia aprova exatamente o que existe para
+     * barrar (`FR-022`/AD-111).
+     *
+     * **`FormaFpgUtiCar = 'VDV'` identifica a forma de vale devolução, e nada
+     * mais.** Uma única forma do catálogo o traz — `FormaCodigo: 4` — e é ela
+     * que abre a janela do ticket ao ser escolhida; **toda** outra forma,
+     * cartão inclusive, o traz vazio e é uma forma comum, com campo de valor.
+     * A leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
+     * 2026-09-04, e `ehFormaDeValeDevolucao` já compara só contra `'VDV'`.
+     * Se o cartão abrir a janela do vale numa stack local, o build servido
+     * está defasado — não é o cadastro.
+     *
+     * Os códigos 1–4 são estáveis: os cenários E2E os endereçam por
+     * `opcao-forma-<codigo>`. Formas novas entram a partir do 5.
+     */
+    CondicoesDePagamento: [
+      {
+        CondicaoCodigo: String(1), // int64
+        CondicaoDescricao: 'A VISTA',
+        CondicaoPrazo: String(0), // double
+        CondicaoMinimoEntrada: String(0), // double
+        CondicaoDesconto: String(0), // double
+        CondicaoDescontoMaximo: String(0), // double
+        CondicaoFormasDePagamento: [
+          {
+            FormaCodigo: String(1), // int64
+            FormaDescricao: 'DINHEIRO',
+            FormaEntrada: 'S',
+            FormaMeioPagtoNFe: 'Dinheiro',
+            // Real: vem `" "` (espaço), nao `""`, pra toda forma deste
+            // tenant — confirmado ao vivo contra o ERP real 2026-09-04.
+            FormaIntegracaoCartao: ' ',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: '',
+          },
+          {
+            // Forma **comum**, não vale: `FpgUtiCar` vazio. Com `TEFAtivo` a
+            // integração roteia para TEF (feature 010); sem ele, vira
+            // pagamento manual — nunca a janela do ticket.
+            FormaCodigo: String(2), // int64
+            FormaDescricao: 'CARTAO CREDITO',
+            FormaEntrada: 'N',
+            FormaMeioPagtoNFe: 'CartaoCredito',
+            FormaIntegracaoCartao: '1',
+            FormaTipoTransacaoTEF: 'CREDITO',
+            FormaFpgUtiCar: '',
+          },
+          {
+            // A **única** forma de vale devolução do catálogo: é `FpgUtiCar =
+            // 'VDV'` que a identifica, e escolhê-la abre a janela do ticket em
+            // vez do campo de valor. Tickets válidos em `TICKETS_DEVOLUCAO` —
+            // `VALE10` fecha uma venda do produto `001234` sem excedente.
+            FormaCodigo: String(4), // int64
+            FormaDescricao: 'VALE DEVOLUCAO',
+            FormaEntrada: 'N',
+            FormaMeioPagtoNFe: 'Outros',
+            FormaIntegracaoCartao: ' ',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: 'VDV',
+          },
+          {
+            FormaCodigo: String(3), // int64
+            FormaDescricao: 'PIX',
+            FormaEntrada: 'S',
+            FormaMeioPagtoNFe: 'Pix',
+            FormaIntegracaoCartao: ' ',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: '',
+          },
+          {
+            FormaCodigo: String(5), // int64
+            FormaDescricao: 'CARTAO DEBITO',
+            FormaEntrada: 'N',
+            FormaMeioPagtoNFe: 'CartaoDebito',
+            FormaIntegracaoCartao: '1',
+            FormaTipoTransacaoTEF: 'DEBITO',
+            FormaFpgUtiCar: '',
+          },
+          {
+            // `PixEstatico` **nunca** roteia para a integração dinâmica
+            // (`FR-006` da 008): existe aqui para que a stack local mostre, no
+            // mesmo combobox, a forma que abre a janela de QR Code e a que não
+            // abre.
+            FormaCodigo: String(6), // int64
+            FormaDescricao: 'PIX ESTATICO',
+            FormaEntrada: 'S',
+            FormaMeioPagtoNFe: 'PixEstatico',
+            FormaIntegracaoCartao: ' ',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: '',
+          },
+          {
+            FormaCodigo: String(7), // int64
+            FormaDescricao: 'VALE ALIMENTACAO',
+            FormaEntrada: 'N',
+            FormaMeioPagtoNFe: 'ValeAlimentacao',
+            FormaIntegracaoCartao: '2',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: '',
+          },
+        ],
       },
+      {
+        /**
+         * Segunda condição, a prazo. Existe para que o combobox de condição
+         * tenha de fato o que escolher — com uma única condição, trocar de
+         * condição (I9: a troca esvazia as formas aplicadas) não é exercitável
+         * à mão.
+         *
+         * As formas dela são **outras**, não as mesmas com outro código: é o
+         * que torna visível a regra de que a forma pertence à condição, e que
+         * uma forma de outra condição é recusada (`AVISO_FORMA_FORA_DA_CONDICAO`).
+         *
+         * `CondicaoMinimoEntrada: 20` (R$ 20,00) e `FormaEntrada: 'S'` no
+         * boleto: sem `FpgEnt` o ERP calcula crediário zero e o gate da 014
+         * aprova o que deveria barrar (`FR-022`/AD-111).
+         */
+        CondicaoCodigo: String(2), // int64
+        CondicaoDescricao: '30 DIAS',
+        CondicaoPrazo: String(30), // double
+        CondicaoMinimoEntrada: String(20), // double
+        CondicaoDesconto: String(0), // double
+        CondicaoDescontoMaximo: String(5), // double
+        CondicaoFormasDePagamento: [
+          {
+            FormaCodigo: String(8), // int64
+            FormaDescricao: 'BOLETO 30 DIAS',
+            FormaEntrada: 'S',
+            FormaMeioPagtoNFe: 'BoletoBancario',
+            FormaIntegracaoCartao: ' ',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: '',
+          },
+          {
+            FormaCodigo: String(9), // int64
+            FormaDescricao: 'CREDIARIO LOJA',
+            FormaEntrada: 'S',
+            FormaMeioPagtoNFe: 'CreditoLoja',
+            FormaIntegracaoCartao: ' ',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: '',
+          },
+          {
+            FormaCodigo: String(10), // int64
+            FormaDescricao: 'DUPLICATA MERCANTIL',
+            FormaEntrada: 'N',
+            FormaMeioPagtoNFe: 'DuplicataMercantil',
+            FormaIntegracaoCartao: ' ',
+            FormaTipoTransacaoTEF: '',
+            FormaFpgUtiCar: '',
+          },
+        ],
+      },
+    ],
+    /**
+     * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
+     * as formas roteando para `NENHUMA` (`resolverIntegracao`), de modo que um
+     * pagamento aplicado já entra `APROVADO` sem depender das features 009/010.
+     * É também o cenário do fluxo dourado do quickstart da 008 ("desktop com
+     * `tefAtivo: false`").
+     *
+     * O PIX deixou de ser uma constante e passou a vir de `config.pixAtivo`
+     * (feature 009): `pagamento-pix.spec.ts` o liga por `/__mock/config` antes
+     * de abrir a tela. O **padrão continua desligado** de propósito — ligá-lo
+     * aqui faria toda venda quitada por PIX nas demais suítes passar a depender
+     * de um QR Code e de uma sondagem de 10s.
+     */
+    ConfiguracoesTEF: { TEFAtivo: false },
+    ConfiguracoesPIX: {
+      UtilizaCentriumPAG: config.pixAtivo,
+      MinimoPix: String(config.minimoPix), // double
+      TempoEspera: String(10), // int64
     },
-    messages: [],
   };
 }
 
@@ -841,11 +870,24 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   app.get('/__mock/ultimo-pix', async () => ({ sdt: ultimoGerarPix }));
 
   // --- Contrato do ERP ----------------------------------------------------
-  app.post('/oauth/access_token', async (_request, reply) => {
+  app.post('/oauth/access_token', async (request, reply) => {
     contadores.token += 1;
 
     if (config.statusToken !== 200) {
       return reply.code(config.statusToken).send({ error: 'invalid_grant' });
+    }
+
+    // Defesa contra a regressão de AD-165: o GAM real recusa
+    // `additionalParameters` (camelCase) sem sequer olhar o `Repository`. O
+    // corpo chega parseado pelo `@fastify/formbody` já registrado.
+    const corpo = request.body as Record<string, unknown> | undefined;
+    if (corpo && 'additionalParameters' in corpo && !('additional_parameters' in corpo)) {
+      return reply.code(401).send({
+        error: {
+          code: '1',
+          message: 'A conexão ao GAM não foi especificada, favor contate o administrador do GAM.',
+        },
+      });
     }
 
     return reply.send({
@@ -882,7 +924,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply.code(404).send({ error: 'produto não encontrado' });
       }
 
-      return reply.send({ Produto: produto, messages: [] });
+      // Real: flat na raiz, sem envelope `Produto` nem `messages` — confirmado
+      // ao vivo 2026-09-04 (AD-165).
+      return reply.send(produto);
     },
   );
 
@@ -918,15 +962,17 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       const inicio = (paginaAtual - 1) * registrosPorPagina;
       const produtos = todos.slice(inicio, inicio + registrosPorPagina);
 
+      // Real: campos soltos na raiz, sem envelope `ListaProdutos` nem
+      // `messages` — e `PaginaAtual`/`RegistrosPorPagina`/`TotalRegistros`/
+      // `TotalPaginas` vêm como número nativo mesmo (não string), confirmado
+      // ao vivo 2026-09-04 — só os campos de negócio (`double`/`int64` do
+      // item em si) vêm como string.
       return reply.send({
-        ListaProdutos: {
-          PaginaAtual: paginaAtual,
-          RegistrosPorPagina: registrosPorPagina,
-          TotalRegistros: todos.length,
-          TotalPaginas: totalPaginas,
-          Produtos: produtos,
-        },
-        messages: [],
+        PaginaAtual: paginaAtual,
+        RegistrosPorPagina: registrosPorPagina,
+        TotalRegistros: todos.length,
+        TotalPaginas: totalPaginas,
+        Produtos: produtos,
       });
     },
   );
@@ -959,7 +1005,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
           ? {}
           : {
               NotaFiscal: {
-                NumeroNota: 9001,
+                NumeroNota: String(9001), // int64
                 SerieNota: '1',
                 Autorizada: 'S',
                 ErroCodigo: 0,
@@ -997,31 +1043,29 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         // `PCheckout_GetCliente` **não** responde 404 quando não acha: devolve
         // `200` com o SDT recém-criado, campos no default (código-fonte da KB,
         // 2026-09-03). O mock reproduz isso — o 404 anterior era otimista e
-        // escondia o caminho real do Checkout.
+        // escondia o caminho real do Checkout. Real: flat na raiz, sem
+        // envelope `Cliente` nem `messages` (confirmado ao vivo 2026-09-04).
         return reply.send({
-          Cliente: {
-            Empresa: 0,
-            CodCliente: 0,
-            nome: '',
-            cpf: '',
-            email: '',
-            celular: '',
-            cep: '',
-            endereco: '',
-            bairro: '',
-            numero: '',
-            cidade: '',
-            uf: '',
-            CodigoConvenio: 0,
-            NomeConvenio: '',
-            DescontoConvenio: 0,
-            ListaPreco: 0,
-          },
-          messages: [],
+          Empresa: String(0), // int64
+          CodCliente: String(0), // int64
+          nome: '',
+          cpf: '',
+          email: '',
+          celular: '',
+          cep: '',
+          endereco: '',
+          bairro: '',
+          numero: '',
+          cidade: '',
+          uf: '',
+          CodigoConvenio: 0, // int32
+          NomeConvenio: '',
+          DescontoConvenio: String(0), // double
+          ListaPreco: String(0), // int64
         });
       }
 
-      return reply.send({ Cliente: cliente, messages: [] });
+      return reply.send(cliente);
     },
   );
 
@@ -1047,10 +1091,14 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
             String(cliente['cpf']).includes(termo),
         )
         .map((cliente) => ({
-          ClienteCodigo: cliente['CodCliente'],
+          ClienteCodigo: cliente['CodCliente'], // int64 — já string na fonte
           ClienteNome: cliente['nome'],
           CPF: cliente['cpf'],
-          ListaPreco: cliente['ListaPreco'],
+          // `ListaPreco` é `int32` **nesta** SDT (`SDTCheckoutListaClientes`),
+          // diferente do `int64` de `ClienteCheckout` (GetCliente singular) —
+          // dois campos homônimos, tipos diferentes no próprio contrato do
+          // ERP. Confirmado ao vivo 2026-09-04: vem número nativo aqui.
+          ListaPreco: Number(cliente['ListaPreco']),
           Celular: cliente['celular'],
           Telefone: '',
           Endereco: {
@@ -1069,15 +1117,14 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       const paginaAtual = Math.min(paginaPedida, totalPaginas);
       const inicio = (paginaAtual - 1) * registrosPorPagina;
 
+      // Real: flat na raiz, sem envelope `ListaClientes` nem `messages`
+      // (confirmado ao vivo 2026-09-04, AD-165).
       return reply.send({
-        ListaClientes: {
-          PaginaAtual: paginaAtual,
-          RegistrosPorPagina: registrosPorPagina,
-          TotalRegistros: todos.length,
-          TotalPaginas: totalPaginas,
-          Clientes: todos.slice(inicio, inicio + registrosPorPagina),
-        },
-        messages: [],
+        PaginaAtual: paginaAtual,
+        RegistrosPorPagina: registrosPorPagina,
+        TotalRegistros: todos.length,
+        TotalPaginas: totalPaginas,
+        Clientes: todos.slice(inicio, inicio + registrosPorPagina),
       });
     },
   );
@@ -1101,8 +1148,8 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // sem lista de preço nem convênio, que a procedure não grava.
       documentosCriados.push(cpf);
       CLIENTES[cpf] = {
-        Empresa: enviado['Empresa'],
-        CodCliente: 9000 + contadores.postCliente,
+        Empresa: String(enviado['Empresa']), // int64
+        CodCliente: String(9000 + contadores.postCliente), // int64
         nome: enviado['nome'],
         cpf,
         email: enviado['email'],
@@ -1113,10 +1160,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         numero: enviado['numero'],
         cidade: enviado['cidade'],
         uf: enviado['uf'],
-        CodigoConvenio: 0,
+        CodigoConvenio: 0, // int32
         NomeConvenio: '',
-        DescontoConvenio: 0,
-        ListaPreco: 0,
+        DescontoConvenio: String(0), // double
+        ListaPreco: String(0), // int64
         CliTip: 'F',
       };
 
@@ -1167,15 +1214,14 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     const paginaAtual = Math.min(paginaPedida, totalPaginas);
     const inicio = (paginaAtual - 1) * registrosPorPagina;
 
+    // Real: flat na raiz, sem envelope `CheckoutListaDAVs` nem `messages`
+    // (confirmado ao vivo 2026-09-04, AD-165).
     return reply.send({
-      CheckoutListaDAVs: {
-        PaginaAtual: paginaAtual,
-        RegistrosPorPagina: registrosPorPagina,
-        TotalRegistros: todos.length,
-        TotalPaginas: totalPaginas,
-        DAV: todos.slice(inicio, inicio + registrosPorPagina),
-      },
-      messages: [],
+      PaginaAtual: paginaAtual,
+      RegistrosPorPagina: registrosPorPagina,
+      TotalRegistros: todos.length,
+      TotalPaginas: totalPaginas,
+      DAV: todos.slice(inicio, inicio + registrosPorPagina),
     });
   });
 
@@ -1196,7 +1242,35 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply.code(404).send({ error: 'DAV não encontrado' });
       }
 
+      // `GetDav` MANTÉM o envelope + `messages` — ao contrário das listas,
+      // confirmado ao vivo 2026-09-04: o padrão acompanha exatamente quem
+      // devolve `messages` de verdade (AD-165).
       return reply.send({ OutCheckoutFaturarNFCe: dav.documento, messages: [] });
+    },
+  );
+
+  /**
+   * `CarregarNFCe` — ao contrário de `GetDav`/`FaturarNFCe`, devolve o
+   * documento **flat na raiz, sem envelope** (confirmado ao vivo 2026-09-04):
+   * mesma SDT (`CheckoutFaturarNFCe`), padrão de wrapper diferente. Reaproveita
+   * os documentos sintéticos de `DAVS` — procurando por `NumeroNota`, que é o
+   * mesmo em `ListaNFCes`/`GetListaNFCes` (AD-057).
+   */
+  app.get<{ Querystring: { Numeronota?: string; Serienota?: string } }>(
+    '/ApiCentriumOAuth/CarregarNFCe',
+    async (request, reply) => {
+      contadores.negocio += 1;
+
+      const numeroPedido = Number(request.query.Numeronota);
+      const documento = Object.values(DAVS)
+        .map((dav) => dav.documento)
+        .find((doc) => Number(doc['NumeroNota']) === numeroPedido);
+
+      if (documento === undefined) {
+        return reply.code(404).send({ error: 'NFCe não encontrada' });
+      }
+
+      return reply.send(documento);
     },
   );
 
@@ -1313,8 +1387,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   app.get('/ApiCentriumOAuth/GetStatusSistema', async (_request, reply) => {
     contadores.negocio += 1;
     contadores.getStatusSistema += 1;
-    // `0` = nada mudou desde a última captura (AD-088).
-    return reply.send(0);
+    // Real: devolve `{"Status": 0}`, não o inteiro solto que o YAML sugere —
+    // confirmado ao vivo 2026-09-04 (AD-165). `0` = nada mudou desde a
+    // última captura (AD-088).
+    return reply.send({ Status: 0 });
   });
 
   // Qualquer outro endpoint de negócio, consumido via proxy `/api/erp/*`.

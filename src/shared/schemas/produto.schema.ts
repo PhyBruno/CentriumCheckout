@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { centavos } from '../../client/domain/precificacao/dinheiro';
 import { milesimosDeUnidades } from '../../client/domain/precificacao/quantidade';
+import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
 
 /**
  * Validação de fronteira das respostas de `GetProduto` e `GetListaProdutos`
@@ -20,14 +21,17 @@ import { milesimosDeUnidades } from '../../client/domain/precificacao/quantidade
  * reinterpretar (Constitution III).
  */
 
-/** `number/format: double` do ERP → `Centavos` inteiros. */
-const precoEmCentavos = z.number().transform((valor) => centavos(Math.round(valor * 100)));
+/**
+ * `number/format: double` do ERP → `Centavos` inteiros.
+ *
+ * `numeroErp`, e não `z.number()`: o ERP real serializa todo decimal como
+ * string (`"PrecoVenda1": "1.0000"`, verificado ao vivo em 2026-09-04) — ver
+ * `erpJson.ts`. A conversão para centavos continua idêntica.
+ */
+const precoEmCentavos = numeroErp.transform((valor) => centavos(Math.round(valor * 100)));
 
 /** `QtdMinimaPreco2..5` chegam como unidades inteiras (`int64`) → `Milesimos`. */
-const unidadesEmMilesimos = z
-  .number()
-  .int()
-  .transform((valor) => milesimosDeUnidades(valor));
+const unidadesEmMilesimos = inteiroErp.transform((valor) => milesimosDeUnidades(valor));
 
 /**
  * `ProdutoPesavelEditavel` restrito aos quatro valores discretos do campo
@@ -55,10 +59,16 @@ export const sdtCheckoutGetProdutoSchema = z.looseObject({
   ProdutoPesavelEditavel: pesavelEditavelSchema,
 });
 
-/** Envelope de `GET /ApiCentriumOAuth/GetProduto` (`GetProdutoOutput` do yaml). */
-export const getProdutoOutputSchema = z.looseObject({
-  Produto: sdtCheckoutGetProdutoSchema,
-});
+/**
+ * `GET /ApiCentriumOAuth/GetProduto`.
+ *
+ * **Devolve o SDT do produto, não um envelope.** O `GetProdutoOutput` do YAML
+ * desenha `{"Produto": …}`, mas o ERP real entrega os campos na raiz da
+ * resposta (verificado ao vivo em 2026-09-04 — AD-165). `semEnvelope` aceita as
+ * duas formas e sempre entrega o objeto interno, então quem consome lê o
+ * produto direto do `safeParse`.
+ */
+export const getProdutoOutputSchema = semEnvelope('Produto', sdtCheckoutGetProdutoSchema);
 
 /**
  * Candidato do modal de busca.
@@ -77,17 +87,22 @@ export const produtoDaListaSchema = z.looseObject({
 });
 
 export const checkoutListaProdutosSchema = z.looseObject({
-  PaginaAtual: z.number().int(),
-  RegistrosPorPagina: z.number().int(),
-  TotalRegistros: z.number().int(),
-  TotalPaginas: z.number().int(),
+  PaginaAtual: inteiroErp,
+  RegistrosPorPagina: inteiroErp,
+  TotalRegistros: inteiroErp,
+  TotalPaginas: inteiroErp,
   Produtos: z.array(produtoDaListaSchema),
 });
 
-/** Envelope de `GET /ApiCentriumOAuth/GetListaProdutos`. */
-export const getListaProdutosOutputSchema = z.looseObject({
-  ListaProdutos: checkoutListaProdutosSchema,
-});
+/**
+ * `GET /ApiCentriumOAuth/GetListaProdutos` — também **sem** envelope no ERP
+ * real: a resposta traz `Produtos`/`PaginaAtual`/`TotalRegistros` na raiz, sem
+ * a chave `ListaProdutos` do YAML (AD-165).
+ */
+export const getListaProdutosOutputSchema = semEnvelope(
+  'ListaProdutos',
+  checkoutListaProdutosSchema,
+);
 
 export type SdtCheckoutGetProduto = z.infer<typeof sdtCheckoutGetProdutoSchema>;
 export type ProdutoDaLista = z.infer<typeof produtoDaListaSchema>;

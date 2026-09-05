@@ -16,16 +16,28 @@ import { z } from 'zod';
 /**
  * `GerarPIXOutput` (yaml linhas 733-740).
  *
- * Os três campos são obrigatórios: sem `Trnbase64image` não há QR Code para
- * exibir e sem `Trnbase64text` não há "copia e cola" — uma resposta sem eles não
- * é uma cobrança parcial, é uma cobrança que o operador não consegue apresentar
- * ao cliente. Falhar na fronteira leva ao toast de "Tentar novamente"
- * (`research.md` D12), que é o desfecho correto.
+ * Os três campos são obrigatórios e os dois base64 precisam ser **não-vazios**:
+ * sem `Trnbase64image` não há QR Code para exibir e sem `Trnbase64text` não há
+ * "copia e cola" — uma resposta sem eles não é uma cobrança parcial, é uma
+ * cobrança que o operador não consegue apresentar ao cliente. Falhar na
+ * fronteira leva ao toast de "Tentar novamente" (`research.md` D12), que é o
+ * desfecho correto.
+ *
+ * O `.min(1)` só foi acrescentado em 2026-09-04 (AD-165), e o TSDoc acima já
+ * dizia "obrigatórios" antes disso — `z.string()` sozinho não cumpria a
+ * promessa. `GerarPIXOutput` é o **único** endpoint do contrato sem `messages`:
+ * quando recusa a cobrança, o ERP responde `200` com
+ * `{"TrnGUID":"00000000-0000-0000-0000-000000000000","Trnbase64text":"",
+ * "Trnbase64image":""}` e nenhuma mensagem de erro (verificado ao vivo contra o
+ * ERP real). Sem este piso, `paraCobrancaPix` montaria uma cobrança com QR Code
+ * vazio e "copia e cola" vazio, e a janela de PIX abriria como se a cobrança
+ * existisse — o operador esperaria indefinidamente por um pagamento que nunca
+ * foi gerado.
  */
 export const gerarPixOutputSchema = z.looseObject({
   TrnGUID: z.string(),
-  Trnbase64text: z.string(),
-  Trnbase64image: z.string(),
+  Trnbase64text: z.string().min(1),
+  Trnbase64image: z.string().min(1),
 });
 
 /**

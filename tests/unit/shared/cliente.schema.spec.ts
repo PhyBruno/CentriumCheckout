@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   checkoutListaClientesSchema,
   clienteCheckoutSchema,
+  getClienteOutputSchema,
+  getListaClientesOutputSchema,
   postClienteOutputSchema,
   primeiroErroDeNegocio,
 } from '../../../src/shared/schemas/cliente.schema';
@@ -37,9 +39,25 @@ describe('clienteCheckoutSchema', () => {
     expect(clienteCheckoutSchema.safeParse(semConvenio).success).toBe(false);
   });
 
+  /**
+   * Shape **real** do `GetCliente` (AD-165), verificado ao vivo em 2026-09-04:
+   * `int64` e `double` chegam como string JSON (`"CodCliente": "2538"`,
+   * `"LimiteCredito": "0.00"`). Antes desta correção toda identificação de
+   * cliente contra o ERP real virava `ErroRespostaInvalida`.
+   */
+  it('aceita CodCliente e LimiteCredito como string, como o ERP real devolve (AD-165)', () => {
+    const validado = clienteCheckoutSchema.parse(
+      clienteCheckoutDe({ CodCliente: '2538' as never, LimiteCredito: '0.00' as never }),
+    );
+
+    expect(validado.CodCliente).toBe(2538);
+    expect(validado.LimiteCredito).toBe(0);
+  });
+
   it('recusa CodCliente em formato inesperado', () => {
     expect(
-      clienteCheckoutSchema.safeParse(clienteCheckoutDe({ CodCliente: '2538' as never })).success,
+      clienteCheckoutSchema.safeParse(clienteCheckoutDe({ CodCliente: 'dois mil' as never }))
+        .success,
     ).toBe(false);
   });
 
@@ -79,6 +97,61 @@ describe('checkoutListaClientesSchema', () => {
 
     expect(validado.success).toBe(true);
     expect(validado.data?.Clientes[0]?.CPF).toBe('');
+  });
+});
+
+/**
+ * AD-165 — o ERP real devolve `GetCliente`/`GetListaClientes` **sem** o envelope
+ * nomeado que o `ApiCentriumOAuth.yaml` desenha. Os dois formatos precisam
+ * passar: o real (raiz) e o do YAML, que é o que o `erp-mock` das suítes E2E
+ * produz. Em ambos, o resultado do parse é o conteúdo interno.
+ */
+describe('envelope opcional de GetCliente e GetListaClientes (AD-165)', () => {
+  function listaSintetica(): Record<string, unknown> {
+    return {
+      PaginaAtual: 1,
+      RegistrosPorPagina: 20,
+      TotalRegistros: 1,
+      TotalPaginas: 1,
+      Clientes: [clienteDaListaDe()],
+    };
+  }
+
+  it('aceita GetCliente na raiz, como o ERP real devolve', () => {
+    const validado = getClienteOutputSchema.parse(clienteCheckoutDe());
+
+    expect(validado.CodCliente).toBe(2538);
+  });
+
+  it('aceita GetCliente dentro do envelope Cliente, como o YAML e o erp-mock', () => {
+    const validado = getClienteOutputSchema.parse({
+      Cliente: clienteCheckoutDe(),
+      messages: [],
+    });
+
+    expect(validado.CodCliente).toBe(2538);
+  });
+
+  it('aceita GetListaClientes na raiz, como o ERP real devolve', () => {
+    const validado = getListaClientesOutputSchema.parse(listaSintetica());
+
+    expect(validado.Clientes).toHaveLength(1);
+  });
+
+  it('aceita GetListaClientes dentro do envelope ListaClientes', () => {
+    const validado = getListaClientesOutputSchema.parse({
+      ListaClientes: listaSintetica(),
+      messages: [],
+    });
+
+    expect(validado.TotalRegistros).toBe(1);
+  });
+
+  it('aceita ClienteCodigo como string na lista, como o ERP real devolve', () => {
+    const lista = listaSintetica();
+    lista['Clientes'] = [clienteDaListaDe({ ClienteCodigo: '1' })];
+
+    expect(getListaClientesOutputSchema.parse(lista).Clientes[0]?.ClienteCodigo).toBe(1);
   });
 });
 

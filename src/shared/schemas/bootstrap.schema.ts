@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { inteiroErp } from './erpJson';
 
 /**
  * Configuração do ponto de venda devolvida por `GET /api/bootstrap`
@@ -14,8 +15,14 @@ import { z } from 'zod';
 const TIPO_PRECO_MIN = 1;
 const TIPO_PRECO_MAX = 11;
 
+/**
+ * Todo campo numérico de `SessaoUsuario` usa `inteiroErp`, não `z.number()`:
+ * o `GetSessao` real devolve `int64` como string (`"ClienteDefaultCodigo":
+ * "999999"`, `"QtdMinCharParaConsulta": "3"`, `"caixa": "0"`), enquanto o
+ * `erp-mock` produz número. `inteiroErp` aceita os dois (AD-165).
+ */
 export const sessaoUsuarioSchema = z.looseObject({
-  TipoPreco: z.number().int().min(TIPO_PRECO_MIN).max(TIPO_PRECO_MAX),
+  TipoPreco: inteiroErp.pipe(z.number().min(TIPO_PRECO_MIN).max(TIPO_PRECO_MAX)),
   /**
    * Identidade exibida na barra superior do PDV — nome da empresa, operador
    * logado e caixa (`ApiCentriumOAuth.yaml`, schema `SessaoUsuario`).
@@ -31,7 +38,7 @@ export const sessaoUsuarioSchema = z.looseObject({
   EmpresaRazaoSocial: z.string().optional(),
   UsuarioNome: z.string().optional(),
   /** Número do caixa. Minúsculo no contrato do ERP — não é typo. */
-  caixa: z.number().int().optional(),
+  caixa: inteiroErp.optional(),
   CadMaqCod: z.string(),
   /**
    * Série da NFCe do PDV. Enviada como `CadSerieNFCe` em toda finalização/
@@ -58,7 +65,7 @@ export const sessaoUsuarioSchema = z.looseObject({
    * aplicado pelo ERP) — AD-108. Não é "lista padrão da empresa": esse conceito
    * não existe no domínio (AD-092).
    */
-  ListaPrecoDefault: z.number().int(),
+  ListaPrecoDefault: inteiroErp,
   /**
    * Repassado como está, sem interpretar nem reformatar (AD-104). A estrutura
    * interna (array JSON de strings com 7 campos delimitados por `;`) é validada
@@ -70,7 +77,7 @@ export const sessaoUsuarioSchema = z.looseObject({
    * aplica o mínimo de 3 em `PCheckout_GetSessao` — o Checkout consome o valor
    * publicado e **nunca** hardcoda 3 (feature 003).
    */
-  QtdMinCharParaConsulta: z.number().int().min(1),
+  QtdMinCharParaConsulta: inteiroErp.pipe(z.number().min(1)),
   /**
    * Enviado **sempre** como `Tipocodproduto` em `GetProduto`, nunca inferido
    * por chamada (AD-033, feature 003).
@@ -85,7 +92,7 @@ export const sessaoUsuarioSchema = z.looseObject({
    * campo cliente vazio, exigindo seleção manual (`FR-005`/`CLI-06` da feature
    * 005).
    */
-  ClienteDefaultCodigo: z.number().int(),
+  ClienteDefaultCodigo: inteiroErp,
   /**
    * Nome do cliente default, exibido no campo cliente da venda desde a
    * pré-seleção automática (feature 005, `research.md` D3).
@@ -107,7 +114,7 @@ export const sessaoUsuarioSchema = z.looseObject({
    * `optional()` pelo mesmo motivo dos demais rótulos: um cadastro sem vendedor
    * definido omite a pílula em vez de derrubar o bootstrap.
    */
-  VendedorCodigo: z.number().int().optional(),
+  VendedorCodigo: inteiroErp.optional(),
   VendedorNome: z.string().optional(),
 });
 

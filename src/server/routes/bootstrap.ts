@@ -92,8 +92,18 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
       return reply.code(502).send({ erro: 'Resposta do ERP não é JSON válido' });
     }
 
+    // `GetSessao` real devolve os campos da sessão **na raiz**, sem o envelope
+    // `SessaoUsuario` que o `GetSessaoOutput` do YAML desenha (verificado ao
+    // vivo em 2026-09-04 — AD-165). Espalhar a resposta e esperar a chave, como
+    // antes, fazia `bootstrapPayloadSchema` reprovar todo bootstrap contra o
+    // ERP real. Aqui a chave é aceita quando existe (é o que o `erp-mock`
+    // produz) e a raiz é usada quando não existe.
+    const corpo: Record<string, unknown> =
+      typeof json === 'object' && json !== null ? (json as Record<string, unknown>) : {};
+    const sessaoUsuario = 'SessaoUsuario' in corpo ? corpo['SessaoUsuario'] : corpo;
+
     const combinado = {
-      ...(typeof json === 'object' && json !== null ? json : {}),
+      SessaoUsuario: sessaoUsuario,
       tenant: sessao.tenant,
       codigoEmpresa: sessao.codigoEmpresa,
     };
