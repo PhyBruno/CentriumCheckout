@@ -11,6 +11,8 @@ import { criarIdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import type { IdentidadeVendaDeps, IdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import { criarPagamentoSlice } from './slices/pagamentoSlice';
 import type { PagamentoDeps, PagamentoSlice } from './slices/pagamentoSlice';
+import { criarVendedorSlice } from './slices/vendedorSlice';
+import type { VendedorDeps, VendedorSlice } from './slices/vendedorSlice';
 import { useSessionStore } from './sessionStore';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
 import type { CapacidadesPagamento } from '../domain/pagamento/roteamentoIntegracao';
@@ -28,15 +30,21 @@ import { sessaoPagamentoSchema } from '../../shared/schemas/pagamento.schema';
  *
  * Montado pelo padrão de slices do Zustand para ficar aberto à extensão sem
  * alteração (Open/Closed): cada feature de venda acrescenta o seu slice à
- * interseção de `VendaState` e o seu slice creator ao spread abaixo — falta o
- * vendedor (012). Por ora existem os slices de auditoria (001), carrinho (003),
- * identidade da venda (004), cliente (005) e pagamento (008).
+ * interseção de `VendaState` e o seu slice creator ao spread abaixo. Existem os
+ * slices de auditoria (001), carrinho (003), identidade da venda (004), cliente
+ * (005), pagamento (008) e vendedor (012).
+ *
+ * **A interseção é um objeto único**: dois slices que declarem o mesmo nome de
+ * campo compartilham o campo, não ganham um cada. É por isso que a flag interna
+ * do vendedor se chama `houveEscolhaExplicitaDeVendedor` e não repete o
+ * `houveEscolhaExplicita` do cliente.
  */
 export type VendaState = AuditoriaSlice &
   CarrinhoSlice &
   IdentidadeVendaSlice &
   ClienteSlice &
-  PagamentoSlice;
+  PagamentoSlice &
+  VendedorSlice;
 
 /** Configuração do PDV ainda não carregada quando o carrinho precisou dela. */
 export class ErroSessaoSemConfiguracao extends Error {
@@ -157,6 +165,21 @@ export function identidadeVendaDepsPadrao(depsCarrinho: CarrinhoDeps): Identidad
 }
 
 /**
+ * Dependências do vendedor na composição real (`research.md` D5 da 012).
+ *
+ * `podeMutarCarrinho` é **o mesmo** predicado de carrinho, cliente e identidade
+ * da venda — o quarto consumidor confirma que ele é o ponto único de verdade
+ * sobre "quando a venda pode ser mutada" (AD-043). O slice de vendedor não
+ * importa nenhum dos outros: só recebe esta porta.
+ */
+export function vendedorDepsPadrao(depsCarrinho: CarrinhoDeps): VendedorDeps {
+  return {
+    podeMutarCarrinho: depsCarrinho.podeMutarCarrinho,
+    ...(depsCarrinho.avisar ? { avisar: depsCarrinho.avisar } : {}),
+  };
+}
+
+/**
  * `ConfiguracoesTEF.TEFAtivo` e `ConfiguracoesPIX.UtilizaCentriumPAG` do
  * bootstrap (feature 002), lidos **no momento da chamada**.
  *
@@ -248,6 +271,7 @@ export function criarVendaStore(
   depsCliente: ClienteDeps = clienteDepsPadrao(depsCarrinho),
   depsIdentidade: IdentidadeVendaDeps = identidadeVendaDepsPadrao(depsCarrinho),
   depsPagamento: PagamentoDeps = pagamentoDepsPadrao,
+  depsVendedor: VendedorDeps = vendedorDepsPadrao(depsCarrinho),
 ) {
   return create<VendaState>()(
     immer((...args) => ({
@@ -256,6 +280,7 @@ export function criarVendaStore(
       ...criarIdentidadeVendaSlice(depsIdentidade)(...args),
       ...criarClienteSlice(depsCliente)(...args),
       ...criarPagamentoSlice(depsPagamento)(...args),
+      ...criarVendedorSlice(depsVendedor)(...args),
     })),
   );
 }
@@ -283,9 +308,10 @@ export const useVendaStore = criarVendaStore();
  * `abrirSessaoDeVenda` continua sendo o caminho de quem de fato **inicia** uma
  * sessão de venda do zero.
  *
- * As três ações que ela chama são as **não guardadas** por `podeMutarCarrinho()`
- * — `resetarAuditoria` (001), `iniciarIdentidadeVenda` (004, AD-139) e
- * `inicializarClientePadrao` (005) —, e é por isso que abrir a venda seguinte
+ * As quatro ações que ela chama são as **não guardadas** por
+ * `podeMutarCarrinho()` — `resetarAuditoria` (001), `iniciarIdentidadeVenda`
+ * (004, AD-139), `inicializarClientePadrao` (005) e `inicializarVendedorPadrao`
+ * (012) —, e é por isso que abrir a venda seguinte
  * continua funcionando no ponto em que ela é chamada: logo depois de
  * `FaturarNFCe` retornar sucesso, com o pagamento aprovado ainda em estado
  * (`useFinalizarOuSuspenderVenda.ts`). Trocar `iniciarIdentidadeVenda` pela
@@ -306,5 +332,10 @@ export function abrirSessaoDeVenda(origem: OrigemVenda, numeroNota = 0): void {
   const registro = useSessionStore.getState().registro;
   if (registro !== null) {
     venda.inicializarClientePadrao(registro.SessaoUsuario);
+    // Pré-seleção do vendedor default (feature 012, `FR-005`/AD-032): mesma
+    // natureza da linha acima e o mesmo motivo para viver aqui. Sem registro de
+    // bootstrap não há default a aplicar e o campo vendedor nasce vazio
+    // (`FR-006`), que é o estado inicial do slice.
+    venda.inicializarVendedorPadrao(registro.SessaoUsuario);
   }
 }
