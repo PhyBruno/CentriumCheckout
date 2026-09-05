@@ -33,10 +33,19 @@ export interface VendedorVenda {
   /** `VendedorCodigo` do item da lista, ou `SessaoUsuario.VendedorCodigo`. */
   readonly codigo: number;
   /**
-   * `null` **só** nas origens `RASCUNHO`/`DAV`: `CheckoutFaturarNFCe` — o schema
-   * devolvido por `CarregarNFCe` e `GetDav` — traz `vendedorCodigo` e nenhum
-   * campo de nome (`research.md` D4, AD-095). Em `DEFAULT`/`BUSCA` o nome sempre
-   * acompanha o código.
+   * `null` só pode ocorrer nas origens `RASCUNHO`/`DAV`, e **na prática só em
+   * `DAV`**.
+   *
+   * O que falta é o mesmo nos dois casos: `CheckoutFaturarNFCe` — o schema que
+   * `CarregarNFCe` e `GetDav` devolvem — tem `vendedorCodigo` e nenhum campo de
+   * nome. A diferença está na **listagem** que precede cada documento:
+   * `GetListaNFCes` traz `Vendedor` por extenso e a feature 011 o repassa
+   * (`recuperacaoQueries.ts`), enquanto `ListaDAVs` só tem `VendedorCodigo`
+   * (AD-095) e a 006 passa `null` por não ter o que capturar.
+   *
+   * O tipo mantém `null` para as duas porque a listagem pode devolver o nome em
+   * branco, e porque uma terceira fonte futura pode não ter lista nenhuma.
+   * Em `DEFAULT`/`BUSCA` o nome sempre acompanha o código.
    */
   readonly nome: string | null;
   readonly origem: OrigemVendedor;

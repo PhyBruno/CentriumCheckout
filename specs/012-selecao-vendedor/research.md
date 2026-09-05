@@ -61,7 +61,9 @@ Nenhum evento de auditoria é disparado por esta inicialização (D6).
 
 ---
 
-## D4 — Vendedor sem nome ao retomar rascunho ou importar DAV: mesmo fallback por código já usado por AD-095
+## D4 — Vendedor sem nome ao importar DAV: mesmo fallback por código já usado por AD-095
+
+> **Correção de 2026-09-05 — leia antes do resto desta seção.** O título e o texto abaixo tratavam retomada de rascunho e importação de DAV como o mesmo caso ("vendedor sem nome"). **Não são.** O que falta é o mesmo nos dois — `CheckoutFaturarNFCe`, devolvido por `CarregarNFCe` e por `GetDav`, tem `vendedorCodigo` e nenhum campo de nome (yaml l. 1475, verificado direto) —, mas a **listagem** que precede cada documento difere: `GetListaNFCes` devolve `Vendedor` por extenso (yaml l. 1668) e `ListaDAVs` só devolve `VendedorCodigo` (AD-095). A feature 011 já captura o nome da listagem e o repassa (`recuperacaoQueries.ts`), então **a venda retomada de rascunho exibe o vendedor por extenso** — o fallback `"Vendedor #<código>"` descrito abaixo vale, na prática, só para a importação de DAV. A action e a assinatura decididas aqui continuam corretas e inalteradas: `nome` segue `string | null`, porque a listagem pode devolver o campo em branco e porque uma fonte futura pode não ter listagem nenhuma.
 
 **Natureza**: Confirmação — generaliza o padrão que a feature 006 já reservou (`contracts/importacao-domain-api.md`, `vendedorSlice.trocarVendedor({ codigo, nome: null })`) para o caso de retomada de rascunho via `CarregarNFCe` (feature 011 — 004 não chama `CarregarNFCe`, só declarou `identidadeVenda` como pendência que 011 implementou).
 
