@@ -233,6 +233,10 @@ export function fonteDav(dav: {
   return {
     origem: 'DAV',
     clienteNome: dav.clienteNome,
+    // `ListaDAVs` devolve só `VendedorCodigo` (AD-095) — não há nome a
+    // capturar aqui, ao contrário de `GetListaNFCes`, que traz o do vendedor
+    // por extenso.
+    vendedorNome: null,
     carregar: (erpClient) => fetchDav(dav.numeroDav, erpClient === undefined ? {} : { erpClient }),
     // `numeroDav` existe só nesta trilha local: não é reenviado a `FaturarNFCe`
     // (AD-107), onde o vínculo com a origem é o `NumeroNota`.

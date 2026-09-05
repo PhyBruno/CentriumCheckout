@@ -8,7 +8,7 @@ import {
   AVISO_DESASSOCIACAO_MANUAL,
   CHAMADA_PIX_NAO_E_CANCELADO,
 } from '../pagamento/pix/avisosPix';
-import { DialogoConfirmacaoPix } from '../pagamento/pix/DialogoConfirmacaoPix';
+import { DialogoConfirmacaoDestrutiva } from '../pagamento/DialogoConfirmacaoDestrutiva';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
@@ -71,7 +71,7 @@ export function ProvedorFinalizacaoVenda({
           motivo dos outros diálogos: é modal de tela cheia e as duas superfícies
           de cancelamento (desktop e mobile) compartilham esta máquina. */}
       {estado.tipo === 'confirmar-suspensao-pix' && (
-        <DialogoConfirmacaoPix
+        <DialogoConfirmacaoDestrutiva
           testId="confirmar-suspensao-pix"
           titulo="Cancelar a venda com PIX gerado?"
           subtitulo="A venda vira rascunho no ERP, a cobrança não"

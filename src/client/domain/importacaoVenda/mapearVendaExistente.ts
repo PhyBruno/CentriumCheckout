@@ -84,8 +84,18 @@ export interface VendaImportada {
   readonly clienteNome: string;
   /** Sempre sobrescreve o vendedor atual da venda (`FR-007`). */
   readonly vendedorCodigo: number;
-  /** Sempre `null`: nenhuma fonte disponível no contrato (AD-095). */
-  readonly vendedorNome: null;
+  /**
+   * Nome do vendedor, quando a listagem de origem o devolve — `null` quando
+   * não.
+   *
+   * O documento **nunca** o traz, nas duas features: nem `GetDav` nem
+   * `CarregarNFCe` têm campo de nome de vendedor. Quem tem é a listagem, e só
+   * uma das duas: `ListaDAVs` devolve só o código (AD-095), mas
+   * `GetListaNFCes` devolve o nome por extenso. Por isso o campo vem de
+   * `origemLista`, e não da resposta — e é `null` para DAV e preenchido para
+   * rascunho de NFCe.
+   */
+  readonly vendedorNome: string | null;
   readonly linhas: readonly LinhaImportada[];
   readonly formasDePagamento: readonly FormaPagamentoImportada[];
 }
@@ -118,8 +128,9 @@ function paraTef(item: CheckoutFaturarNFCe['FormasDePagamento'][number]): TefImp
 
 /**
  * @param origemLista Linha selecionada na listagem, quando houve uma. `null`
- * quando a origem não veio de uma lista (ponto de entrada da futura feature
- * 011) — nesse caso o nome do cliente sai vazio e quem consome resolve.
+ * quando a origem não veio de uma lista — nesse caso os nomes saem vazios e
+ * quem consome resolve. `vendedorNome` é opcional porque só uma das duas
+ * listagens o devolve (`GetListaNFCes` sim, `ListaDAVs` não, AD-095).
  *
  * Nunca lança por dado de negócio ausente (documento sem forma de pagamento,
  * sem produto): devolve arrays vazios. Lança **só** por violação de contrato —
@@ -127,7 +138,10 @@ function paraTef(item: CheckoutFaturarNFCe['FormasDePagamento'][number]): TefImp
  */
 export function mapearVendaExistente(
   resposta: CheckoutFaturarNFCe,
-  origemLista: { readonly clienteNome: string } | null,
+  origemLista: {
+    readonly clienteNome: string;
+    readonly vendedorNome?: string | null;
+  } | null,
 ): VendaImportada {
   // Reforço em runtime da invariante que o schema Zod já expressa em tipo. A
   // entrada pode chegar de um caller não totalmente tipado (a resposta crua do
@@ -149,7 +163,10 @@ export function mapearVendaExistente(
     clienteCodigo: resposta.clienteCodigo,
     clienteNome: origemLista?.clienteNome ?? '',
     vendedorCodigo: resposta.vendedorCodigo,
-    vendedorNome: null,
+    // `ouNulo` porque nome em branco na listagem é "não informado", não string
+    // vazia: um `''` chegaria ao slice de vendedor e a UI exibiria um vendedor
+    // sem nome em vez de cair no comportamento de "só o código".
+    vendedorNome: ouNulo(origemLista?.vendedorNome ?? ''),
     linhas: resposta.produtos.map((produto) => ({
       codigoProduto: produto.codigoProduto,
       descricao: null,

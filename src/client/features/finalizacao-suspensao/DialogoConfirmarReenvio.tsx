@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import type { SuspenderOuFaturar } from '../../domain/venda/montarRetratoVenda';
 
 /**
@@ -38,6 +39,8 @@ export function DialogoConfirmarReenvio({
   enviando = false,
 }: DialogoConfirmarReenvioProps): ReactElement {
   const nome = NOME_DA_OPERACAO[operacao];
+  // `true`: sem prop de abertura — o pai só renderiza este diálogo aberto.
+  const janelaRef = useFocoDeModal<HTMLDivElement>(true);
 
   return (
     <div
@@ -45,6 +48,7 @@ export function DialogoConfirmarReenvio({
       data-testid="dialogo-confirmar-reenvio"
     >
       <div
+        ref={janelaRef}
         role="alertdialog"
         aria-modal="true"
         aria-label="Confirmar reenvio"

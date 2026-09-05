@@ -12,6 +12,7 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
 import type { ImportacaoVendaDeps } from '../../services/importacao/importarVendaExistente';
@@ -83,6 +84,32 @@ function formatarEmissao(iso: string): { readonly data: string; readonly hora: s
   return { data: `${dia}/${mes}/${ano}`, hora: horaParte.slice(0, 5) };
 }
 
+/**
+ * O que o leitor de tela anuncia ao chegar numa linha.
+ *
+ * A tabela é montada com `div`/`span`, e o seu cabeçalho é `aria-hidden` — ele
+ * é sinalização visual, não estrutura de tabela. Sem este rótulo a linha é lida
+ * como uma sequência crua de valores ("90210 CLIENTE TESTE 01 CAIXA 03
+ * 01/09/2026 14:32 R$ 18,50 Suspensa"), sem dizer qual campo é qual. Nomear os
+ * campos aqui é mais barato — e mais fiel ao desenho — do que converter o bloco
+ * numa `<table>` só para recuperar o cabeçalho.
+ */
+function rotuloDaLinha(
+  rascunho: RascunhoListado,
+  emissao: { readonly data: string; readonly hora: string },
+): string {
+  const quando = emissao.hora === '' ? emissao.data : `${emissao.data} às ${emissao.hora}`;
+  return [
+    `NFCe ${String(rascunho.numeroNota)}`,
+    `cliente ${rascunho.cliente}`,
+    `vendedor ${rascunho.vendedor}`,
+    `operador ${rascunho.operador}`,
+    `emissão ${quando}`,
+    `total ${formatarCentavos(rascunho.total)}`,
+    'suspensa',
+  ].join(', ');
+}
+
 export function ModalRecuperacaoNFCe({
   aberto,
   onFechar,
@@ -139,6 +166,7 @@ export function ModalRecuperacaoNFCe({
 
   const { retomar } = useRecuperacaoNFCe(deps);
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
   if (!montado) {
     return null;
@@ -174,17 +202,25 @@ export function ModalRecuperacaoNFCe({
       )}
       data-testid="modal-recuperacao-nfce"
       onKeyDown={(evento) => {
-        // Enter carrega o rascunho já selecionado, de qualquer ponto da janela
-        // — o mesmo que clicar em "Carregar NFCe". A linha da tabela trata a
-        // tecla por conta própria e interrompe a propagação: lá o Enter ainda
-        // pode significar "selecionar esta linha", e carregar a anterior seria
-        // o documento errado.
-        if (evento.key === 'Enter') {
-          void confirmarRecuperacao();
+        if (evento.key !== 'Enter') {
+          return;
         }
+        // Enter **em cima de um botão** é o clique daquele botão, e nada mais:
+        // sem esta guarda o evento borbulhava até aqui e a janela retomava o
+        // rascunho selecionado antes de executar a ação escolhida — teclar
+        // Enter em "Cancelar" importava o documento e só então fechava a
+        // janela, que é o oposto do gesto do operador. As linhas da tabela já
+        // se defendiam com `stopPropagation`; o rodapé e o "X" não.
+        if (evento.target instanceof HTMLElement && evento.target.closest('button') !== null) {
+          return;
+        }
+        // Fora dos botões, Enter carrega o rascunho já selecionado de qualquer
+        // ponto da janela — o mesmo que clicar em "Carregar NFCe".
+        void confirmarRecuperacao();
       }}
     >
       <div
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Recuperação NFCe"
@@ -318,16 +354,6 @@ export function ModalRecuperacaoNFCe({
           <div className="flex items-center gap-[10px]">
             <Button
               type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              onClick={onFechar}
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              Cancelar
-            </Button>
-            <Button
-              type="button"
               className="h-11 w-[156px] gap-xs rounded-full text-md font-bold"
               data-testid="confirmar-recuperacao-nfce"
               disabled={rascunhoSelecionado === null || carregando}
@@ -384,6 +410,7 @@ function TabelaDeRascunhos({
                 data-testid="linha-nfce"
                 data-numero-nota={rascunho.numeroNota}
                 aria-pressed={ativo}
+                aria-label={rotuloDaLinha(rascunho, emissao)}
                 className={cn(
                   'flex h-[52px] w-full items-center text-left hover:bg-accent',
                   ativo ? 'bg-secondary' : 'bg-card',

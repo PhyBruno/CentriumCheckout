@@ -166,10 +166,15 @@ export function useListaNFCes(
   deps: RecuperacaoQueriesDeps = {},
 ): UseQueryResult<PaginaDeRascunhos, Error> {
   return useQuery({
+    // `tamanhoPagina` entra na chave junto com busca e página: ele é público em
+    // `FiltrosRascunho` e altera o corpo da resposta, então omiti-lo faria duas
+    // consultas de tamanhos diferentes compartilharem a mesma entrada de cache
+    // — a segunda receberia a página da primeira sem nem chamar o ERP.
     queryKey: [
       'lista-nfces',
       filtros.txtBusca?.trim() ?? '',
       filtros.pagina ?? PAGINA_INICIAL,
+      Math.min(filtros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO, LIMITE_TAMANHO_PAGINA),
     ] as const,
     queryFn: () => fetchListaNFCes(filtros, deps),
     enabled: habilitado,
@@ -222,17 +227,22 @@ export async function fetchCarregarNFCe(
  * efeitos e atomicidade são o comportamento comum às duas features.
  *
  * @param rascunho Linha selecionada na listagem mais a série da sessão.
- * `cliente` é o nome capturado da lista; o `clienteCodigo` vem sempre da
- * resposta de `CarregarNFCe`, nunca da listagem.
+ * `cliente` e `vendedor` são os nomes capturados da lista; os **códigos** vêm
+ * sempre da resposta de `CarregarNFCe`, nunca da listagem.
  */
 export function fonteRascunho(rascunho: {
   readonly numeroNota: number;
   readonly cliente: string;
+  readonly vendedor: string;
   readonly serie: string;
 }): FonteDocumento {
   return {
     origem: 'RASCUNHO',
     clienteNome: rascunho.cliente,
+    // Diferente de `fonteDav`: este contrato devolve o vendedor por extenso, e
+    // descartá-lo faria a venda retomada exibir um vendedor sem nome tendo o
+    // dado em mãos (`FR-009`). O **código** continua vindo do documento.
+    vendedorNome: rascunho.vendedor,
     carregar: (erpClient) =>
       fetchCarregarNFCe(
         rascunho.numeroNota,

@@ -162,6 +162,16 @@ export interface FonteDocumento {
    * de documento devolve o nome, só o código (AD-095/AD-115).
    */
   readonly clienteNome: string;
+  /**
+   * Nome do vendedor capturado na linha da listagem, ou `null` quando a
+   * listagem não o devolve.
+   *
+   * É **obrigatório** declarar, mesmo sendo `null` para DAV: as duas listagens
+   * divergem justamente aqui — `ListaDAVs` só traz o código (AD-095),
+   * `GetListaNFCes` traz o nome por extenso —, e um campo opcional deixaria
+   * essa diferença passar despercebida ao escrever uma terceira fonte.
+   */
+  readonly vendedorNome: string | null;
   /** Chamada de rede que devolve o documento completo. */
   carregar(erpClient: ErpClient | undefined): Promise<CheckoutFaturarNFCe>;
   /**
@@ -288,7 +298,10 @@ export async function importarVendaExistente(
   }
 
   const documento = await fonte.carregar(deps.erpClient);
-  const venda = mapearVendaExistente(documento, { clienteNome: fonte.clienteNome });
+  const venda = mapearVendaExistente(documento, {
+    clienteNome: fonte.clienteNome,
+    vendedorNome: fonte.vendedorNome,
+  });
   const cliente = await deps.resolverCliente(venda.clienteCodigo);
 
   // Reverificação **depois** da rede, colada nas mutações.

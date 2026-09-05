@@ -1,23 +1,31 @@
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 
 /**
- * Confirmação de um gesto que deixa uma cobrança PIX pendurada fora do Checkout
- * (itens 1.1, 2 e 3 do usuário, 2026-09-04).
+ * Confirmação de um gesto cujo estrago acontece **fora** do Checkout e que ele
+ * não sabe desfazer (itens 1.1, 2 e 3 do usuário, 2026-09-04).
  *
- * **Um componente, quatro call sites**, todos com o mesmo desfecho de mundo real
- * — a cobrança segue viva no banco e alguém precisa resolvê-la lá:
+ * **Um componente, cinco call sites.** Quatro deles são a cobrança PIX que
+ * segue viva no banco depois do gesto:
  *
  * 1. `ModalPix` — desistir de uma cobrança ainda não paga;
  * 2. `ListaPagamentosAplicados` — remover uma forma PIX já aplicada;
  * 3. `PainelPagamentoETotais` — "Limpar" com PIX na venda;
  * 4. `AcoesFinaisVenda` — "Cancelar venda" com PIX na venda.
  *
+ * O quinto (AD-169) não tem nada a ver com PIX, e é o motivo de este arquivo
+ * ter saído de `pix/`: "Limpar" sobre um pagamento que veio no documento
+ * retomado descarta o registro de um valor **já recebido**, gravado no
+ * documento dentro do ERP. Mesma anatomia, mesma pergunta ao operador — "o
+ * Checkout não desfaz isto lá fora, seguimos?" —, gatilho diferente.
+ *
  * Parametrizado por texto em vez de por "tipo de confirmação" (Open/Closed,
  * Constitution II): um `variante: 'remocao' | 'suspensao' | …` obrigaria este
  * arquivo a mudar a cada novo gesto, e a tabela de textos aqui dentro
- * inevitavelmente divergiria do que cada tela de fato faz.
+ * inevitavelmente divergiria do que cada tela de fato faz. Foi o que permitiu
+ * ao quinto call site entrar sem tocar numa linha daqui.
  *
  * Anatomia idêntica à do `DialogoConfirmarReenvio` (família de alerta do Pencil,
  * derivada do nó "Modal pagamento aprovado TEF" `A9MNZI`): cabeçalho de 78px com
@@ -29,7 +37,7 @@ import { Button } from '@/components/ui/button';
  * `z-[60]`, acima do `z-50` de `ModalPix`: quando o gatilho é a própria janela do
  * PIX, a confirmação precisa cobri-la, não aparecer por baixo.
  */
-export interface DialogoConfirmacaoPixProps {
+export interface DialogoConfirmacaoDestrutivaProps {
   /** Título do cabeçalho — o gesto, na voz do operador. */
   readonly titulo: string;
   /** Subtítulo do cabeçalho — o estado da venda que torna o gesto delicado. */
@@ -48,7 +56,7 @@ export interface DialogoConfirmacaoPixProps {
   readonly testId: string;
 }
 
-export function DialogoConfirmacaoPix({
+export function DialogoConfirmacaoDestrutiva({
   titulo,
   subtitulo,
   chamada,
@@ -59,7 +67,13 @@ export function DialogoConfirmacaoPix({
   onConfirmar,
   onCancelar,
   testId,
-}: DialogoConfirmacaoPixProps): ReactElement {
+}: DialogoConfirmacaoDestrutivaProps): ReactElement {
+  // `true`: este diálogo não tem prop de abertura — o pai o renderiza só quando
+  // aberto, então existir já significa aberto. Ele empilha **por cima** de uma
+  // janela que muitas vezes já tem laço próprio (`ModalPix`, o vale devolução),
+  // e é a pilha do hook que garante que só o de cima trate o Tab.
+  const janelaRef = useFocoDeModal<HTMLDivElement>(true);
+
   // ESC cancela — nunca confirma. Numa tela de caixa a tecla de escape é o gesto
   // reflexo de "sai daqui", e mapeá-la para o desfecho destrutivo seria a pior
   // inversão possível. Ouvinte de `window`, como nos demais modais desta base:
@@ -82,6 +96,7 @@ export function DialogoConfirmacaoPix({
       data-testid={testId}
     >
       <div
+        ref={janelaRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={titulo}
