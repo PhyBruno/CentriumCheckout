@@ -478,16 +478,23 @@ describe('teclado — Enter sobre um botão não dispara a retomada', () => {
     return usuario;
   }
 
-  it('Enter em "Cancelar" fecha a janela sem carregar o rascunho', async () => {
-    const rota = instalarFetch({ rascunhos: [rascunhoDaLista()] });
+  /**
+   * O rodapé perdeu o "Cancelar" (AD-170) — quem fecha a janela é o "X". O que
+   * restou ali é a paginação, e ela é o caso mais afiado da guarda: o Enter
+   * precisa **virar a página**, e não retomar o rascunho já selecionado.
+   */
+  it('Enter na paginação vira a página sem carregar o rascunho', async () => {
+    // Uma linha por página, com os dois rascunhos: "Próxima" fica habilitada.
+    const rota = instalarFetch({ tamanhoPagina: 1 });
     const usuario = await selecionarPrimeira();
 
-    screen.getByRole('button', { name: 'Cancelar' }).focus();
+    screen.getByTestId('nfce-pagina-proxima').focus();
     await usuario.keyboard('{Enter}');
 
     await waitFor(() => {
-      expect(rota.urls.some((url) => url.startsWith(CAMINHO_CARREGAR))).toBe(false);
+      expect(screen.getByTestId('paginacao-nfce')).toHaveTextContent('2 de 2');
     });
+    expect(rota.urls.some((url) => url.startsWith(CAMINHO_CARREGAR))).toBe(false);
     expect(useVendaStore.getState().linhas).toHaveLength(0);
     expect(useVendaStore.getState().identidadeVenda.numeroNota).toBe(0);
   });

@@ -2,6 +2,7 @@ import { Check, UserRoundPlus, X } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { formatarCEP, validarFormatoCEP, validarFormatoCPF } from '../../domain/cliente/documento';
 import type { CadastroSimplificadoInput } from '../../domain/cliente/clienteVenda';
@@ -71,6 +72,7 @@ export function FormCadastroSimplificado({
   }
 
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  const janelaRef = useFocoDeModal<HTMLFormElement>(aberto);
 
   // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
   // animação de saída (`usePresenca`).
@@ -114,6 +116,7 @@ export function FormCadastroSimplificado({
       }}
     >
       <form
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Cadastrar cliente"
@@ -257,14 +260,6 @@ export function FormCadastroSimplificado({
         </div>
 
         <footer className="flex h-[76px] shrink-0 items-center justify-end gap-sm border-t border-border px-lg">
-          <Button
-            type="button"
-            variant="secondary"
-            className="rounded-full px-md py-sm text-lg font-semibold"
-            onClick={onFechar}
-          >
-            Cancelar
-          </Button>
           <Button
             type="submit"
             className="gap-xs rounded-full px-md py-sm text-lg font-semibold"

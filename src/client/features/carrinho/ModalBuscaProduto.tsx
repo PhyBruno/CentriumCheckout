@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { useBuscaProdutos } from '../../services/produto/produtoQueries';
 import { useQtdMinCharParaConsulta } from './useCarrinho';
@@ -89,6 +90,7 @@ export function ModalBuscaProduto({
   const busca = useBuscaProdutos(termoDebounced, { qtdMinCharParaConsulta: minimo, pagina });
 
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
   // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
   // animação de saída (`usePresenca`).
@@ -118,6 +120,7 @@ export function ModalBuscaProduto({
       }}
     >
       <div
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Buscar produto"
@@ -254,16 +257,6 @@ export function ModalBuscaProduto({
                 <ChevronRight className="size-3.5" aria-hidden="true" />
               </Button>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="gap-xs rounded-full"
-              onClick={onFechar}
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              Cancelar
-            </Button>
           </footer>
         )}
       </div>

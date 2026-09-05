@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 
 /**
  * Confirmação de um gesto cujo estrago acontece **fora** do Checkout e que ele
@@ -67,6 +68,12 @@ export function DialogoConfirmacaoDestrutiva({
   onCancelar,
   testId,
 }: DialogoConfirmacaoDestrutivaProps): ReactElement {
+  // `true`: este diálogo não tem prop de abertura — o pai o renderiza só quando
+  // aberto, então existir já significa aberto. Ele empilha **por cima** de uma
+  // janela que muitas vezes já tem laço próprio (`ModalPix`, o vale devolução),
+  // e é a pilha do hook que garante que só o de cima trate o Tab.
+  const janelaRef = useFocoDeModal<HTMLDivElement>(true);
+
   // ESC cancela — nunca confirma. Numa tela de caixa a tecla de escape é o gesto
   // reflexo de "sai daqui", e mapeá-la para o desfecho destrutivo seria a pior
   // inversão possível. Ouvinte de `window`, como nos demais modais desta base:
@@ -89,6 +96,7 @@ export function DialogoConfirmacaoDestrutiva({
       data-testid={testId}
     >
       <div
+        ref={janelaRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={titulo}

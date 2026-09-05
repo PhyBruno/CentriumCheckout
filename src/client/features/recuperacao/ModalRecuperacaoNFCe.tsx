@@ -354,16 +354,6 @@ export function ModalRecuperacaoNFCe({
           <div className="flex items-center gap-[10px]">
             <Button
               type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              onClick={onFechar}
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              Cancelar
-            </Button>
-            <Button
-              type="button"
               className="h-11 w-[156px] gap-xs rounded-full text-md font-bold"
               data-testid="confirmar-recuperacao-nfce"
               disabled={rascunhoSelecionado === null || carregando}

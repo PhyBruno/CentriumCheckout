@@ -118,18 +118,11 @@ export function ModalMenuImportacao({
           />
         </div>
 
-        <footer className="flex h-[60px] shrink-0 items-center justify-end border-t border-border px-lg">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-            onClick={onFechar}
-          >
-            <X className="size-3.5" aria-hidden="true" />
-            Cancelar
-          </Button>
-        </footer>
+        {/* Sem rodapé (AD-170). O do Pencil tinha um item só, "Cancelar", que
+            fazia exatamente o que o "X" do cabeçalho já faz. Removido o botão,
+            sobrava uma faixa de 60px com hairline e nada dentro — pior do que
+            não existir. Divergência deliberada do frame `yg9zq`, a pedido do
+            usuário (2026-09-04). */}
       </div>
     </div>
   );

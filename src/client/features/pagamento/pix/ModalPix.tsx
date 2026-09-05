@@ -1,15 +1,9 @@
 import { CircleCheck, Copy, QrCode, RefreshCw, TriangleAlert, X } from 'lucide-react';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactElement,
-} from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import type { ClienteVenda } from '../../../domain/cliente/clienteVenda';
 import type { CobrancaPix } from '../../../domain/pix/cobrancaPix';
 import { MENSAGEM_POR_MOTIVO_FALHA } from '../../../domain/pix/interpretarStatusPix';
@@ -195,7 +189,12 @@ export function ModalPix({
   const [aprovado, setAprovado] = useState(false);
   const [confirmandoDesistencia, setConfirmandoDesistencia] = useState(false);
   const [copiado, setCopiado] = useState(false);
-  const refDialogo = useRef<HTMLDivElement>(null);
+  /**
+   * Substitui o laço de foco próprio desta janela (AD-170). O ouvinte local só
+   * via a tecla com o foco já dentro, não devolvia o foco ao fechar, e não
+   * cedia a vez à confirmação de desistência que abre por cima dela.
+   */
+  const janelaRef = useFocoDeModal<HTMLDivElement>(true);
 
   /**
    * Um desfecho por cobrança. Sem esta trava, a aprovação detectada num tick
@@ -378,37 +377,6 @@ export function ModalPix({
     }
   }
 
-  /**
-   * Prende o foco no diálogo — mesmo `prenderFoco` de `ModalValeDevolucao`. Sem
-   * isto o foco escapa para a tela de venda por baixo, que está inerte.
-   */
-  function prenderFoco(evento: KeyboardEvent<HTMLDivElement>): void {
-    if (evento.key !== 'Tab') {
-      return;
-    }
-    const raiz = refDialogo.current;
-    if (raiz === null) {
-      return;
-    }
-    const focaveis = raiz.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
-    const primeiro = focaveis[0];
-    const ultimo = focaveis[focaveis.length - 1];
-    if (primeiro === undefined || ultimo === undefined) {
-      return;
-    }
-    if (evento.shiftKey && document.activeElement === primeiro) {
-      evento.preventDefault();
-      ultimo.focus();
-      return;
-    }
-    if (!evento.shiftKey && document.activeElement === ultimo) {
-      evento.preventDefault();
-      primeiro.focus();
-    }
-  }
-
   const emErro = status === 'erro' && cobranca === null;
   const bloqueioDoFechar: MotivoBloqueio = aprovado ? null : MOTIVO_JANELA_TRAVADA;
 
@@ -418,12 +386,11 @@ export function ModalPix({
       data-testid="modal-pix"
     >
       <div
-        ref={refDialogo}
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Pagamento via PIX"
         className="cc-modal-entra flex max-h-full w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-lg"
-        onKeyDown={prenderFoco}
       >
         {/* Cabeçalho `lSsvw`, com o `X` que o desenho não tem — ver o TSDoc do
             componente: ele existe para o estado aprovado, e fica bloqueado (com

@@ -158,6 +158,74 @@ test.describe('pré-condição — venda já iniciada', () => {
 });
 
 /**
+ * O laço de foco das janelas (AD-170).
+ *
+ * Existe como E2E, e não como teste de componente, porque o defeito que ele
+ * pega é de **navegador**: o jsdom não move foco por Tab, então nenhum teste de
+ * unidade teria visto o laço nascer morto por causa da montagem adiada de
+ * `usePresenca` — só a validação manual viu, e é ela que este arquivo
+ * substitui daqui em diante.
+ */
+test.describe('foco preso à janela', () => {
+  /** O foco está dentro do diálogo de `testId`? */
+  async function focoDentroDe(page: Page, testId: string): Promise<boolean> {
+    return page.evaluate((id) => {
+      const janela = document.querySelector(`[data-testid="${id}"] [role="dialog"]`);
+      const ativo = document.activeElement;
+      return janela !== null && ativo !== null && janela.contains(ativo);
+    }, testId);
+  }
+
+  test('Tab e Shift+Tab dão a volta sem cair na tela de trás', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeRecuperacao(page);
+    await expect(page.getByTestId('linha-nfce')).toHaveCount(2);
+
+    // Voltas o bastante para passar várias vezes pelo último focável, que é
+    // onde o laço precisa intervir.
+    for (let passo = 0; passo < 25; passo += 1) {
+      await page.keyboard.press('Tab');
+      expect(await focoDentroDe(page, 'modal-recuperacao-nfce')).toBe(true);
+    }
+    for (let passo = 0; passo < 25; passo += 1) {
+      await page.keyboard.press('Shift+Tab');
+      expect(await focoDentroDe(page, 'modal-recuperacao-nfce')).toBe(true);
+    }
+  });
+
+  /**
+   * O seletor abre **sem** `autoFocus`, então o foco começa fora do diálogo, no
+   * atalho da faixa. É o caso que o laço precisa puxar para dentro — e o que
+   * mais se parece com o defeito original.
+   */
+  test('janela sem autoFocus puxa o foco para dentro no primeiro Tab', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await page.getByTestId('botao-menu-importacao').click();
+    await expect(page.getByTestId('modal-menu-importacao')).toBeVisible();
+
+    await page.keyboard.press('Tab');
+    expect(await focoDentroDe(page, 'modal-menu-importacao')).toBe(true);
+
+    for (let passo = 0; passo < 10; passo += 1) {
+      await page.keyboard.press('Tab');
+      expect(await focoDentroDe(page, 'modal-menu-importacao')).toBe(true);
+    }
+  });
+
+  test('ESC devolve o foco ao atalho que abriu a janela', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await page.getByTestId('botao-menu-importacao').focus();
+    await page.getByTestId('botao-menu-importacao').click();
+    await expect(page.getByTestId('modal-menu-importacao')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('modal-menu-importacao')).toBeHidden();
+
+    await expect(page.getByTestId('botao-menu-importacao')).toBeFocused();
+  });
+});
+
+/**
  * A venda retomada já paga: o congelamento e a saída (AD-169, decisão (a)+(c)).
  *
  * É o caminho que só passou a ser exercitável quando o `erp-mock` deixou de
