@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
+import { quitarVendaEmDinheiro } from './support/pagamento';
 
 /**
  * Fluxo dourado da importação de DAV (`quickstart.md`, Cenários 1–5) — cobre
@@ -307,6 +308,11 @@ test.describe('Cenário 3 — a venda importada segue o fluxo normal (FR-008)', 
     await importar(page, DAV_CONVENIADO);
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
 
+    // O DAV chega **sem** forma de pagamento — é um documento pendente de
+    // cobrança —, e desde a feature 008 "Finalizar venda" só libera com
+    // `saldoRestante === 0`. Quitar pela UI é o caminho real do operador.
+    await quitarVendaEmDinheiro(page);
+
     await page.getByTestId('botao-finalizar-venda').click();
 
     await expect.poll(async () => (await contadores(request)).faturarNFCe).toBeGreaterThan(0);
@@ -489,7 +495,9 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await expect(page.getByTestId('modal-importacao-dav')).toHaveCount(0);
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
 
-    // E o faturamento continua levando o número do primeiro documento.
+    // E o faturamento continua levando o número do primeiro documento. Quitar
+    // antes pelo mesmo motivo do cenário 3: o DAV vem sem forma de pagamento.
+    await quitarVendaEmDinheiro(page);
     await page.getByTestId('botao-finalizar-venda').click();
     await expect.poll(async () => (await contadores(request)).faturarNFCe).toBeGreaterThan(0);
 

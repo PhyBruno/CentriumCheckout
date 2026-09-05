@@ -14,8 +14,9 @@ import { formaDisponivel } from '../../domain/pagamento/roteamentoIntegracao';
 import { ZERO_CENTAVOS } from '../../domain/precificacao/dinheiro';
 import { totalVenda } from '../../domain/precificacao/linha';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
+import { AVISO_CONDICAO_COM_PAGAMENTO } from '../../stores/slices/pagamentoSlice';
 import { useVendaStore } from '../../stores/vendaStore';
-import { ICONE_POR_MEIO } from './iconePorMeio';
+import { iconeDaForma } from './iconePorMeio';
 
 /**
  * Comboboxes de **condição** e **forma** de pagamento do cartão "Pagamento e
@@ -40,6 +41,17 @@ import { ICONE_POR_MEIO } from './iconePorMeio';
  * em bloqueio explicativo.
  */
 
+/**
+ * Como a opção foi escolhida — teclado (seta) ou mouse (clique).
+ *
+ * Existe porque as duas formas de escolher não significam a mesma coisa para
+ * quem decide abrir uma janela de confirmação (pedido do usuário, 2026-09-04):
+ * a seta percorre a lista no ritmo do teclado, sem gesto de confirmação; o
+ * clique é único e deliberado. Ver o TSDoc de `escolherForma` em
+ * `PainelPagamentoETotais.tsx`, o único call site que hoje diferencia os dois.
+ */
+export type OrigemSelecao = 'teclado' | 'mouse';
+
 /** Uma linha da lista aberta do combobox. */
 export interface OpcaoCombobox {
   readonly chave: string;
@@ -47,7 +59,7 @@ export interface OpcaoCombobox {
   readonly selecionada: boolean;
   /** `null` = escolhível; texto = frase que o operador lê ao tentar escolher. */
   readonly bloqueio: MotivoBloqueio;
-  readonly aoEscolher: () => void;
+  readonly aoEscolher: (origem: OrigemSelecao) => void;
 }
 
 export interface ComboboxPagamentoProps {
@@ -130,12 +142,12 @@ export function ComboboxPagamento({
 
     if (atual === -1) {
       if (direcao === 1) {
-        escolhiveis[0]?.aoEscolher();
+        escolhiveis[0]?.aoEscolher('teclado');
       }
       return;
     }
 
-    escolhiveis[atual + direcao]?.aoEscolher();
+    escolhiveis[atual + direcao]?.aoEscolher('teclado');
   }
 
   function aoTeclar(evento: KeyboardEvent<HTMLDivElement>): void {
@@ -263,7 +275,7 @@ export function ComboboxPagamento({
                   data-testid={idOpcao(opcao.chave)}
                   {...atributosDeBloqueio(opcao.bloqueio)}
                   onClick={acaoBloqueavel(opcao.bloqueio, () => {
-                    opcao.aoEscolher();
+                    opcao.aoEscolher('mouse');
                     fecharEDevolverFoco();
                   })}
                 >
@@ -309,6 +321,16 @@ export function SeletorCondicaoPagamento(): ReactElement {
    */
   const subtotal = useVendaStore((estado) => totalVenda(estado.linhas));
 
+  /**
+   * Uma condição por venda (regra do usuário, 2026-09-04): com forma já
+   * inserida, o controle inteiro fecha.
+   *
+   * O bloqueio é da mesma frase que o slice usa ao recusar — não uma segunda
+   * redação —, porque quem decide de verdade é `selecionarCondicao`; aqui a
+   * regra só chega ao operador **antes** de ele abrir a lista e escolher.
+   */
+  const temPagamento = useVendaStore((estado) => estado.pagamentos.length > 0);
+
   const condicoes = catalogo.data?.condicoes ?? [];
 
   // Ordem das causas: primeiro o que impede o controle de existir (catálogo em
@@ -322,9 +344,11 @@ export function SeletorCondicaoPagamento(): ReactElement {
       ? 'Catálogo de pagamento indisponível: recarregue a tela de venda.'
       : condicoes.length === 0
         ? 'Nenhuma condição de pagamento cadastrada para este ponto de venda.'
-        : subtotal === ZERO_CENTAVOS
-          ? 'Insira ao menos um produto na venda antes de escolher a condição de pagamento.'
-          : null;
+        : temPagamento
+          ? AVISO_CONDICAO_COM_PAGAMENTO
+          : subtotal === ZERO_CENTAVOS
+            ? 'Insira ao menos um produto na venda antes de escolher a condição de pagamento.'
+            : null;
 
   return (
     <ComboboxPagamento
@@ -350,7 +374,7 @@ export function SeletorCondicaoPagamento(): ReactElement {
 
 export interface SeletorFormaPagamentoProps {
   readonly formaSelecionada: FormaPagamento | null;
-  readonly onSelecionarForma: (forma: FormaPagamento) => void;
+  readonly onSelecionarForma: (forma: FormaPagamento, origem: OrigemSelecao) => void;
 }
 
 /**
@@ -407,8 +431,7 @@ export function SeletorFormaPagamento({
   // estado "PIX escolhido"; manter o cartão com DINHEIRO selecionado mostraria
   // um ícone que contradiz o texto ao lado dele. Sem escolha, volta ao
   // `credit-card` do desenho, que é o placeholder genérico do controle.
-  const Icone =
-    formaSelecionada === null ? CreditCard : ICONE_POR_MEIO[formaSelecionada.meioPagtoNFe];
+  const Icone = formaSelecionada === null ? CreditCard : iconeDaForma(formaSelecionada);
 
   return (
     <ComboboxPagamento
@@ -426,8 +449,8 @@ export function SeletorFormaPagamento({
           capacidades !== null && !formaDisponivel(forma, capacidades)
             ? motivoDeIndisponibilidade(forma)
             : null,
-        aoEscolher: () => {
-          onSelecionarForma(forma);
+        aoEscolher: (origem) => {
+          onSelecionarForma(forma, origem);
         },
       }))}
       bloqueio={bloqueio}

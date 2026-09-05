@@ -11,8 +11,18 @@ import { geraTroco, type FormaPagamento, type MeioPagtoNFe } from './formaPagame
 import { ehFormaDeValeDevolucao } from './valeDevolucao';
 import type { IntegracaoPagamento } from './roteamentoIntegracao';
 
-/** Máquina de estados de `PagamentoAplicado` — `data-model.md` §4. */
-export type StatusPagamento = 'PENDENTE_INTEGRACAO' | 'APROVADO' | 'RECUSADO';
+/**
+ * Máquina de estados de `PagamentoAplicado` — `data-model.md` §4.
+ *
+ * `EXCLUIDO` foi acrescentado ao contrato original (pedido do usuário,
+ * 2026-09-04): a exclusão de uma forma pelo operador deixou de apagar o
+ * registro do array e passou a ser mais um estado terminal, ao lado de
+ * `RECUSADO` — a diferença é só a causa (gesto do operador, não veredito de
+ * integração). `calcularSaldo` e `montarPagamentosParaPayload` já filtram por
+ * `'APROVADO'`, então uma forma `EXCLUIDA` sai do saldo e do envelope ao ERP
+ * sem precisar de um filtro próprio nos dois lugares.
+ */
+export type StatusPagamento = 'PENDENTE_INTEGRACAO' | 'APROVADO' | 'RECUSADO' | 'EXCLUIDO';
 
 /** Preenchido pela feature 010; opaco para o domínio de pagamento geral. */
 export interface DadosTEF {
@@ -121,7 +131,12 @@ export function podeAplicarForma(
   saldoRestante?: Centavos,
   valorInformado?: Centavos,
 ): ResultadoValidacao {
-  const naoRecusados = pagamentosAtuais.filter((pagamento) => pagamento.status !== 'RECUSADO');
+  // `EXCLUIDO` entra na mesma exclusão de `RECUSADO`: uma forma que o operador
+  // riscou da lista não deveria travar uma nova tentativa de dinheiro, pelo
+  // mesmo motivo — ela já saiu do fluxo (pedido do usuário, 2026-09-04).
+  const naoRecusados = pagamentosAtuais.filter(
+    (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
+  );
 
   if (
     forma.meioPagtoNFe === 'Dinheiro' &&

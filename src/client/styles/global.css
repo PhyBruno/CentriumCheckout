@@ -87,6 +87,12 @@
   --cc-color-up-soft: #e6f7ef;
   --cc-color-down-soft: #fdeaec;
   --cc-color-warning-soft: #fef3dd;
+  /* `$success-ink` do Pencil (#04794A) — o **texto** sobre `$success-soft`, no
+     rótulo do componente "Badge" (nó `qrD4E`, usado pelo modal de PIX como
+     "Aguardando confirmação"). Não é `--cc-color-up` (#05B169): aquele é a cor
+     do marcador e do traço, e usá-lo como texto sobre o fundo claro derruba o
+     contraste abaixo do mínimo legível. O desenho separa os dois de propósito. */
+  --cc-color-up-ink: #04794a;
 
   /* --- Tipografia ------------------------------------------------------- */
   /* Inter é o substituto documentado de CoinbaseSans/CoinbaseDisplay

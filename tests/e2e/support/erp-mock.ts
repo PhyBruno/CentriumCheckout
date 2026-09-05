@@ -43,6 +43,42 @@ export interface ConfigMockErp {
    * ao erro devolvido.
    */
   davJaFaturado: boolean;
+  /**
+   * `ConfiguracoesPIX.UtilizaCentriumPAG` (feature 009).
+   *
+   * **Ligado por padrão** desde 2026-09-04 (pedido do usuário): o `GetSessao`
+   * sintético precisa expor PIX para que o fluxo da 009 seja testável à mão na
+   * stack local, sem um `POST /__mock/config` antes de cada sessão.
+   *
+   * Não afeta as demais suítes: só a forma `Pix` roteia para `PIX_DINAMICO`
+   * (`resolverIntegracao`), e nenhum outro cenário a aplica — os que quitam uma
+   * venda usam dinheiro (`quitarVendaEmDinheiro`). Quem precisar do PIX
+   * desligado — o cenário "forma indisponível" — manda `{"pixAtivo": false}`.
+   */
+  pixAtivo: boolean;
+  /** `ConfiguracoesPIX.MinimoPix`, em **reais** (`double`), como o ERP devolve. */
+  minimoPix: number;
+  /**
+   * Literais que `StatusPIX` devolve, um por consulta; o último se repete.
+   *
+   * **Vazio por padrão desde 2026-09-04** (pedido do usuário, item 4): sem
+   * roteiro, o mock passa a decidir pelo **relógio** — devolve `'G'` até
+   * `atrasoPagamentoPixMs` depois da geração e `'P'` a partir dali. É o que faz
+   * a stack local se comportar como o mundo real, em que o cliente leva algum
+   * tempo para abrir o app do banco; antes disto o `['G', 'P']` padrão marcava a
+   * cobrança como paga no segundo tick, e o operador nunca via o estado de
+   * espera.
+   *
+   * Um roteiro explícito continua tendo precedência e é o que os cenários
+   * automatizados usam — `['G', 'R']` para recusa, `['G']` para uma cobrança que
+   * nunca é paga —, porque teste não pode depender de relógio.
+   */
+  statusPixTransicoes: readonly string[];
+  /**
+   * Quanto tempo, em milissegundos, entre `GerarPIX` e o status virar pago
+   * (`'P'`). Só vale quando `statusPixTransicoes` está vazio.
+   */
+  atrasoPagamentoPixMs: number;
 }
 
 export interface ContadoresMockErp {
@@ -58,6 +94,8 @@ export interface ContadoresMockErp {
   postCliente: number;
   listaDavs: number;
   getDav: number;
+  gerarPix: number;
+  statusPix: number;
 }
 
 const CONFIG_PADRAO: ConfigMockErp = {
@@ -70,6 +108,17 @@ const CONFIG_PADRAO: ConfigMockErp = {
   statusFaturarNFCe: 200,
   faturarSemNotaFiscal: false,
   davJaFaturado: false,
+  pixAtivo: true,
+  /**
+   * R$ 5,00 — piso realista e **abaixo** do total de qualquer cenário que
+   * aplique PIX, de modo que o valor mínimo nunca bloqueia por acidente. Quem
+   * quiser exercitar o bloqueio (`FR-009`) sobe este número acima do total da
+   * venda em vez de montar um carrinho menor.
+   */
+  minimoPix: 5,
+  statusPixTransicoes: [],
+  /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
+  atrasoPagamentoPixMs: 20_000,
 };
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
@@ -85,6 +134,8 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   postCliente: 0,
   listaDavs: 0,
   getDav: 0,
+  gerarPix: 0,
+  statusPix: 0,
 };
 
 /**
@@ -95,6 +146,17 @@ const TICKETS_DEVOLUCAO: Record<
   string,
   { ValorTicket: number; Valido: boolean; Mensagem: string }
 > = {
+  /**
+   * Ticket de mesa para uso manual: cobre exatamente o produto `001234` (10,00),
+   * então digitar `VALE10` na janela de vale devolução fecha uma venda de um item
+   * só, sem excedente e sem troco. É o caminho mais curto para ver a forma de
+   * vale funcionando de ponta a ponta na stack local.
+   *
+   * Os `TCK-*` abaixo continuam existindo para os cenários automatizados, que
+   * precisam de valores que **não** casam com o saldo — é assim que exercitam a
+   * confirmação de excedente (`FR-026`).
+   */
+  VALE10: { ValorTicket: 10.0, Valido: true, Mensagem: 'Ticket Válido' },
   'TCK-VALIDO': { ValorTicket: 25.5, Valido: true, Mensagem: 'Ticket Válido' },
   /** Cabe numa venda pequena sem estourar o saldo — exercita `FR-024` pelo outro lado. */
   'TCK-PEQUENO': { ValorTicket: 5.0, Valido: true, Mensagem: 'Ticket Válido' },
@@ -113,6 +175,33 @@ const TICKETS_DEVOLUCAO: Record<
 
 /** Base64 sintético — não é um PDF real, só precisa ser string não-vazia. */
 const PDF_SINTETICO = 'JVBERi0xLjQtc2ludGV0aWNv';
+
+/**
+ * "Copia e cola" e QR Code sintéticos do PIX (feature 009).
+ *
+ * O payload segue a **forma** de um BR Code (EMV) sem ser um: o Checkout não o
+ * interpreta, só o decodifica de base64 e o exibe. O `Trnbase64image` não é um
+ * JPEG válido — basta ser base64 para o navegador aceitar a `data:` URL.
+ */
+const COPIA_E_COLA_PIX =
+  '00020126580014BR.GOV.BCB.PIX0136sintetico-0000-4000-8000-00000000520400005303986540565.505802BR5913CENTRIUM LTDA6009SAO PAULO62070503***6304AB12';
+/**
+ * PNG **de verdade**, 116×116, com padrão de QR sintético — três marcadores de
+ * canto, linhas de temporização e trama determinística.
+ *
+ * Substituiu um `/9j/…` de 32 caracteres que não era imagem nenhuma (correção do
+ * usuário, 2026-09-04, item 5). Aquele valor bastava para o E2E afirmar o
+ * formato da `data:` URL, mas na stack local o operador via um ícone de imagem
+ * quebrada e não tinha como distinguir "o mock é falso" de "a decodificação está
+ * errada" — que era justamente o defeito sendo investigado.
+ *
+ * Não codifica nenhum payload: escanear não leva a lugar nenhum, e não deveria —
+ * é um mock. O que ele prova é o caminho inteiro, do `Trnbase64image` até os
+ * 200×200 na tela, com o tipo MIME detectado a partir dos bytes (`image/png`,
+ * não o `image/jpeg` que a versão anterior do modal declarava para tudo).
+ */
+const QRCODE_PIX_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAAAAABx8Un7AAABX0lEQVR42u3aMZbDMAgEUN//0k6TJg4wA9ZYLkZNiij8vLdEILzHUazzu6r3o33VZ+AyugQ9g3UNmiHXz0T7oj1G9ShKkCypMqyKa3QvmgXODoEoEY2+C2UOgmq/0X0oe+BnyYWKwa0qY7SNMo3X5HXcDRq9hZ5gdQ7yKoF+YhqVotnfFxVvVBSYC5hRLZoFRQ0YkyxlEhmVoEyxrQIxF+O/OEZlaJRAVZPW/Z2Hr0alKLuxU9jZZDSqRVFFQAdAp1k3qkcnw6tqiFFdjI3uQ5mg44cGRqUoKtjshYoB05u4UQmKijWbcFSDZ1SKrhhIMl9g+RTUKD1LQo1ZlVxoIGn0GZR5QMcMG1sNt9FHUOaQZh68UwNmo1J08iABNV7MYNKoFoXN8WRiggq5UTlaBaaGisQF2ug7UObwZy9SRt+Dogvx6J/bjMpRdijRHYyMirjR2yhzcE/wbqEwugT9AFWb2HnFIHy/AAAAAElFTkSuQmCC';
 const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
 
 /**
@@ -174,6 +263,74 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     QtdMinimaPreco5: 0,
     UDM: 'UN',
     ProdutoPesavelEditavel: 'E',
+  },
+  /**
+   * Os três itens do fluxo dourado da feature 008 — 70,00 + 29,00 + 1,00 = 100,00
+   * (`pagamento-geral.spec.ts`).
+   *
+   * **Faltavam.** A 006 e a 008 editaram este arquivo em branches paralelas e o
+   * merge das PRs #50/#51 preservou o catálogo de pagamento da 008 mas não os
+   * produtos que os cenários dela bipam: os três testes de `pagamento-geral`
+   * falhavam em `biparProduto` desde então, antes de qualquer coisa da 009.
+   *
+   * O código de cada um codifica o próprio preço (`070000` → 70,00) para que a
+   * conta do cenário continue legível ao ler o teste. Preço redondo, sem faixa de
+   * quantidade e sem edição: o que esses cenários exercitam é o pagamento, não a
+   * precificação.
+   */
+  '070000': {
+    CodigoProduto: '070000',
+    Descricao: 'PRODUTO 70 REAIS',
+    Referencia: 'REF-070',
+    CodigoBarras: '7890000000070',
+    PrecoVenda: 70.0,
+    PrecoVenda1: 70.0,
+    PrecoVenda2: 0,
+    PrecoVenda3: 0,
+    PrecoVenda4: 0,
+    PrecoVenda5: 0,
+    QtdMinimaPreco2: 0,
+    QtdMinimaPreco3: 0,
+    QtdMinimaPreco4: 0,
+    QtdMinimaPreco5: 0,
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+  },
+  '029000': {
+    CodigoProduto: '029000',
+    Descricao: 'PRODUTO 29 REAIS',
+    Referencia: 'REF-029',
+    CodigoBarras: '7890000000029',
+    PrecoVenda: 29.0,
+    PrecoVenda1: 29.0,
+    PrecoVenda2: 0,
+    PrecoVenda3: 0,
+    PrecoVenda4: 0,
+    PrecoVenda5: 0,
+    QtdMinimaPreco2: 0,
+    QtdMinimaPreco3: 0,
+    QtdMinimaPreco4: 0,
+    QtdMinimaPreco5: 0,
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+  },
+  '001000': {
+    CodigoProduto: '001000',
+    Descricao: 'PRODUTO 1 REAL',
+    Referencia: 'REF-001',
+    CodigoBarras: '7890000000010',
+    PrecoVenda: 1.0,
+    PrecoVenda1: 1.0,
+    PrecoVenda2: 0,
+    PrecoVenda3: 0,
+    PrecoVenda4: 0,
+    PrecoVenda5: 0,
+    QtdMinimaPreco2: 0,
+    QtdMinimaPreco3: 0,
+    QtdMinimaPreco4: 0,
+    QtdMinimaPreco5: 0,
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
   },
 };
 
@@ -352,23 +509,30 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
             ValorTotal: 15.54,
           },
         ],
-        FormasDePagamento: [
-          {
-            FormaCodigo: 1,
-            FormaMeioPagtoNFe: '01',
-            FormaValor: 15.54,
-            FormaIntegracaoCartao: '',
-            FormaFpgUtiCar: '',
-            FormaEntrada: '',
-            TEFidentificacao: 0,
-            TEFCNPJ: '',
-            TEFBandeira: '',
-            TEFNumeroAutorizacao: '',
-            TEFTipoIntegracao: '',
-            FormaPixGUID: '',
-            TicketDevolucao: '',
-          },
-        ],
+        /**
+         * **Sem forma de pagamento** — um DAV é um documento pendente de
+         * cobrança, e é o operador quem escolhe como recebê-lo no Checkout.
+         *
+         * Antes havia aqui uma forma com `FormaMeioPagtoNFe: '01'`, o código
+         * numérico da NFe. O domínio `Nfce_FormaPagto` do ERP usa **nomes**
+         * (AD-023, os mesmos que `GetSessao` devolve no catálogo abaixo), então
+         * `importarFormasDePagamento` a descartava como meio desconhecido, com
+         * aviso no console: a forma nunca chegou à venda em nenhum momento da
+         * história desta suíte.
+         *
+         * Corrigi-la para `'Dinheiro'` teria efeito colateral: um pagamento
+         * importado entra `APROVADO`, e pagamento aprovado **congela a venda**
+         * (I7) — o que contradiz os dois cenários que este DAV existe para
+         * exercitar, "item novo é precificado normalmente" e "segundo documento
+         * é recusado por já ter documento" (que passaria a ser recusado por já
+         * ter pagamento). Remover a forma diz a verdade sobre o documento e
+         * preserva o que cada cenário mede; a importação de formas continua
+         * coberta por `mapearVendaExistente.spec.ts` e pelo `pagamentoSlice`.
+         *
+         * Quem finaliza uma venda importada quita antes pela UI
+         * (`quitarVendaEmDinheiro`), como todo E2E desde a feature 008.
+         */
+        FormasDePagamento: [],
       },
     },
     '004790': {
@@ -448,10 +612,17 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
        * crediário zero e a validação prévia aprova exatamente o que existe para
        * barrar (`FR-022`/AD-111).
        *
-       * `FormaFpgUtiCar = 'VDV'` identifica a **forma de vale devolução**, e
-       * nada mais: as demais formas o trazem vazio, como um cadastro comum. A
-       * leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
-       * 2026-09-04.
+       * **`FormaFpgUtiCar = 'VDV'` identifica a forma de vale devolução, e nada
+       * mais.** Uma única forma do catálogo o traz — `FormaCodigo: 4` — e é ela
+       * que abre a janela do ticket ao ser escolhida; **toda** outra forma,
+       * cartão inclusive, o traz vazio e é uma forma comum, com campo de valor.
+       * A leitura anterior (vazio = "aceita vale", AD-048) foi revogada em
+       * 2026-09-04, e `ehFormaDeValeDevolucao` já compara só contra `'VDV'`.
+       * Se o cartão abrir a janela do vale numa stack local, o build servido
+       * está defasado — não é o cadastro.
+       *
+       * Os códigos 1–4 são estáveis: os cenários E2E os endereçam por
+       * `opcao-forma-<codigo>`. Formas novas entram a partir do 5.
        */
       CondicoesDePagamento: [
         {
@@ -472,6 +643,9 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
               FormaFpgUtiCar: '',
             },
             {
+              // Forma **comum**, não vale: `FpgUtiCar` vazio. Com `TEFAtivo` a
+              // integração roteia para TEF (feature 010); sem ele, vira
+              // pagamento manual — nunca a janela do ticket.
               FormaCodigo: 2,
               FormaDescricao: 'CARTAO CREDITO',
               FormaEntrada: 'N',
@@ -481,9 +655,10 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
               FormaFpgUtiCar: '',
             },
             {
-              // A forma de **vale devolução**: é `FpgUtiCar = 'VDV'` que a
-              // identifica, e escolhê-la abre a janela do ticket em vez do
-              // campo de valor.
+              // A **única** forma de vale devolução do catálogo: é `FpgUtiCar =
+              // 'VDV'` que a identifica, e escolhê-la abre a janela do ticket em
+              // vez do campo de valor. Tickets válidos em `TICKETS_DEVOLUCAO` —
+              // `VALE10` fecha uma venda do produto `001234` sem excedente.
               FormaCodigo: 4,
               FormaDescricao: 'VALE DEVOLUCAO',
               FormaEntrada: 'N',
@@ -501,18 +676,110 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
               FormaTipoTransacaoTEF: '',
               FormaFpgUtiCar: '',
             },
+            {
+              FormaCodigo: 5,
+              FormaDescricao: 'CARTAO DEBITO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'CartaoDebito',
+              FormaIntegracaoCartao: '1',
+              FormaTipoTransacaoTEF: 'DEBITO',
+              FormaFpgUtiCar: '',
+            },
+            {
+              // `PixEstatico` **nunca** roteia para a integração dinâmica
+              // (`FR-006` da 008): existe aqui para que a stack local mostre, no
+              // mesmo combobox, a forma que abre a janela de QR Code e a que não
+              // abre.
+              FormaCodigo: 6,
+              FormaDescricao: 'PIX ESTATICO',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'PixEstatico',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 7,
+              FormaDescricao: 'VALE ALIMENTACAO',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'ValeAlimentacao',
+              FormaIntegracaoCartao: '2',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+          ],
+        },
+        {
+          /**
+           * Segunda condição, a prazo. Existe para que o combobox de condição
+           * tenha de fato o que escolher — com uma única condição, trocar de
+           * condição (I9: a troca esvazia as formas aplicadas) não é exercitável
+           * à mão.
+           *
+           * As formas dela são **outras**, não as mesmas com outro código: é o
+           * que torna visível a regra de que a forma pertence à condição, e que
+           * uma forma de outra condição é recusada (`AVISO_FORMA_FORA_DA_CONDICAO`).
+           *
+           * `CondicaoMinimoEntrada: 20` (R$ 20,00) e `FormaEntrada: 'S'` no
+           * boleto: sem `FpgEnt` o ERP calcula crediário zero e o gate da 014
+           * aprova o que deveria barrar (`FR-022`/AD-111).
+           */
+          CondicaoCodigo: 2,
+          CondicaoDescricao: '30 DIAS',
+          CondicaoPrazo: 30,
+          CondicaoMinimoEntrada: 20,
+          CondicaoDesconto: 0,
+          CondicaoDescontoMaximo: 5,
+          CondicaoFormasDePagamento: [
+            {
+              FormaCodigo: 8,
+              FormaDescricao: 'BOLETO 30 DIAS',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'BoletoBancario',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 9,
+              FormaDescricao: 'CREDIARIO LOJA',
+              FormaEntrada: 'S',
+              FormaMeioPagtoNFe: 'CreditoLoja',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
+            {
+              FormaCodigo: 10,
+              FormaDescricao: 'DUPLICATA MERCANTIL',
+              FormaEntrada: 'N',
+              FormaMeioPagtoNFe: 'DuplicataMercantil',
+              FormaIntegracaoCartao: '',
+              FormaTipoTransacaoTEF: '',
+              FormaFpgUtiCar: '',
+            },
           ],
         },
       ],
       /**
        * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
        * as formas roteando para `NENHUMA` (`resolverIntegracao`), de modo que um
-       * pagamento aplicado já entra `APROVADO` sem depender das features 009/010,
-       * que não existem. É também o cenário do fluxo dourado do quickstart
-       * ("desktop com `tefAtivo: false`").
+       * pagamento aplicado já entra `APROVADO` sem depender das features 009/010.
+       * É também o cenário do fluxo dourado do quickstart da 008 ("desktop com
+       * `tefAtivo: false`").
+       *
+       * O PIX deixou de ser uma constante e passou a vir de `config.pixAtivo`
+       * (feature 009): `pagamento-pix.spec.ts` o liga por `/__mock/config` antes
+       * de abrir a tela. O **padrão continua desligado** de propósito — ligá-lo
+       * aqui faria toda venda quitada por PIX nas demais suítes passar a depender
+       * de um QR Code e de uma sondagem de 10s.
        */
       ConfiguracoesTEF: { TEFAtivo: false },
-      ConfiguracoesPIX: { UtilizaCentriumPAG: false, MinimoPix: 0, TempoEspera: 10 },
+      ConfiguracoesPIX: {
+        UtilizaCentriumPAG: config.pixAtivo,
+        MinimoPix: config.minimoPix,
+        TempoEspera: 10,
+      },
     },
     messages: [],
   };
@@ -531,6 +798,16 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   /** Cadastro criado por `PostCliente` durante o teste — descartado no reset. */
   const documentosCriados: string[] = [];
   let ultimoRetratoFaturado: Record<string, unknown> | null = null;
+  /** Último `SDTCentriumPag_Post` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
+  let ultimoGerarPix: Record<string, unknown> | null = null;
+  /**
+   * Instante de geração de cada `TrnGUID`, para o status por relógio.
+   *
+   * Por GUID, e não um escalar único: uma venda pode gerar mais de uma cobrança
+   * (o operador desiste da primeira e tenta de novo), e um relógio global faria
+   * a segunda nascer já "quase paga", herdando o tempo da primeira.
+   */
+  const geracoesPix = new Map<string, number>();
 
   await app.register(import('@fastify/formbody'));
 
@@ -539,6 +816,8 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     config = { ...CONFIG_PADRAO };
     contadores = { ...CONTADORES_ZERADOS };
     ultimoRetratoFaturado = null;
+    ultimoGerarPix = null;
+    geracoesPix.clear();
     // Cadastro criado por `PostCliente` num teste não pode vazar para o
     // próximo: o cenário "documento inexistente" depende de o CPF continuar
     // ausente.
@@ -557,6 +836,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   /** Último retrato recebido — deixa o E2E afirmar `NumeroNota`, `Log` etc. */
   app.get('/__mock/ultimo-faturamento', async () => ({ retrato: ultimoRetratoFaturado }));
+
+  /** Último corpo de `GerarPIX` — `TrnValor`, `FPgCod` e os dados do pagador. */
+  app.get('/__mock/ultimo-pix', async () => ({ sdt: ultimoGerarPix }));
 
   // --- Contrato do ERP ----------------------------------------------------
   app.post('/oauth/access_token', async (_request, reply) => {
@@ -947,6 +1229,84 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       }
 
       return reply.send({ ...conhecido, messages: [] });
+    },
+  );
+
+  /**
+   * `GerarPIX` (feature 009, `contracts/erp-pix-api.md` §1).
+   *
+   * Devolve o `TrnGUID` que o **cliente** enviou — é assim que o ERP real se
+   * comporta: o GUID é gerado no Checkout e é a chave primária lógica da
+   * transação (`research.md` D3). O mock ecoá-lo é o que deixa o E2E provar que
+   * o mesmo valor volta como `FormaPixGUID` no retrato de `FaturarNFCe`.
+   *
+   * Os dois base64 são sintéticos: `Trnbase64image` não é um JPEG de verdade —
+   * o navegador só precisa aceitar a `data:` URL — e `Trnbase64text` é o "copia
+   * e cola" fictício codificado, para o `atob` do mapper ter o que decodificar.
+   */
+  app.post<{ Body: { SDTCentriumPag_Post?: Record<string, unknown> } }>(
+    '/ApiCentriumOAuth/GerarPIX',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.gerarPix += 1;
+
+      const enviado = request.body.SDTCentriumPag_Post ?? {};
+      ultimoGerarPix = enviado;
+
+      const guid = String(enviado['TrnGUID'] ?? '');
+      // Marca o nascimento da cobrança — é o zero da contagem que `StatusPIX`
+      // usa quando não há roteiro de transições configurado.
+      geracoesPix.set(guid, Date.now());
+
+      return reply.send({
+        TrnGUID: guid,
+        Trnbase64text: Buffer.from(COPIA_E_COLA_PIX, 'utf8').toString('base64'),
+        Trnbase64image: QRCODE_PIX_BASE64,
+        messages: [],
+      });
+    },
+  );
+
+  /**
+   * `StatusPIX` (`contracts/erp-pix-api.md` §2), com **dois modos**.
+   *
+   * 1. **Roteiro** — `config.statusPixTransicoes` não vazio: consome uma posição
+   *    por consulta, repetindo a última. É o modo dos cenários automatizados,
+   *    que precisam desenhar "pendente, pendente, pago" (ou "pendente, recusado")
+   *    sem depender do relógio real.
+   * 2. **Relógio** — roteiro vazio, que é o **padrão** desde 2026-09-04 (pedido
+   *    do usuário, item 4): a cobrança fica `'G'` (Aguardando Pagamento) e só
+   *    vira `'P'` (Pagamento Recebido) `atrasoPagamentoPixMs` depois de ter sido
+   *    gerada. É o que reproduz, na stack local, o intervalo entre o QR Code
+   *    aparecer e o cliente de fato pagar — antes disto o PIX nascia praticamente
+   *    pago e o estado de espera era invisível ao teste manual.
+   *
+   * Um `Trnguid` que este mock nunca gerou responde `'G'`: sem registro de
+   * nascimento não há o que contar, e responder "pago" a uma cobrança
+   * desconhecida seria o pior desfecho possível.
+   */
+  app.get<{ Querystring: { Trnguid?: string } }>(
+    '/ApiCentriumOAuth/StatusPIX',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      const consultasAnteriores = contadores.statusPix;
+      contadores.statusPix += 1;
+
+      if (config.statusPixTransicoes.length > 0) {
+        const indice = Math.min(consultasAnteriores, config.statusPixTransicoes.length - 1);
+        return reply.send({
+          StatusTransacao: config.statusPixTransicoes[indice] ?? 'G',
+          messages: [],
+        });
+      }
+
+      const geradoEm = geracoesPix.get(request.query.Trnguid ?? '');
+      const pago = geradoEm !== undefined && Date.now() - geradoEm >= config.atrasoPagamentoPixMs;
+
+      return reply.send({
+        StatusTransacao: pago ? 'P' : 'G',
+        messages: [],
+      });
     },
   );
 

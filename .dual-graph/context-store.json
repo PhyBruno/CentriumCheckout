@@ -1,862 +1,5 @@
 [
   {
-    "id": "mem:1787257671988",
-    "kind": "blocker",
-    "content": "goey-toast/boneyard embutem SKILL.md p/ agentes de IA — risco de prompt injection na instalação",
-    "tags": [
-      "security",
-      "supply-chain",
-      "ui"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20",
-    "created_epoch": 1787194800,
-    "updated_at": "2026-08-20",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1787248030215",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "atualiza",
-      "architecture",
-      "remove",
-      "persist",
-      "ncia",
-      "venda",
-      "zustand",
-      "sem",
-      "incorpora",
-      "achados"
-    ],
-    "files": [
-      "ARCHITECTURE.md"
-    ],
-    "file_path": "ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T17:47:10.215769+00:00",
-    "created_epoch": 1787248030,
-    "updated_at": "2026-08-20T20:12:05.707417+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787248030214",
-    "kind": "decision",
-    "content": "Atualiza ARCHITECTURE.md: remove persistência de venda em F5 (Zustand sem persist + confirm de beforeunload), adiciona Boneyard/Goey Toast/shadcn-ui à stack, detalha fluxo de busca/inserção de produto (GetListaProdutos vs GetProduto), finalização/suspensão via FaturarNFCe+SuspenderOuFaturar, cancelamento agora confirmado como chamada ao ERP, credenciais em cookie HttpOnly, e resolve vários pontos em aberto da seção 7",
-    "tags": [
-      "atualiza",
-      "architecture",
-      "remove",
-      "persist",
-      "ncia",
-      "venda",
-      "zustand",
-      "sem"
-    ],
-    "files": [
-      "ARCHITECTURE.md"
-    ],
-    "file_path": "ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T17:47:10.214189+00:00",
-    "created_epoch": 1787248030,
-    "updated_at": "2026-08-20T17:47:10.214576+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787248391193",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "atualiza",
-      "state",
-      "com",
-      "006",
-      "010",
-      "refletindo",
-      "mudan",
-      "architecture",
-      "incorpora",
-      "achados"
-    ],
-    "files": [
-      ".specs/project/STATE.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T17:53:11.193520+00:00",
-    "created_epoch": 1787248391,
-    "updated_at": "2026-09-02T21:24:47.318530+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787251813393",
-    "kind": "decision",
-    "content": "Incorpora achados da varredura dos diagramas de sequência do ERP: cadastro de cliente simplificado (resolve item 11), PIX sem SSE, fluxo de importação/faturamento de DAV, produto pai fora de escopo, cancelamento de item mantido riscado no grid, confirmação de que não há tela de login manual; bloqueios pós-pagamento e validação de estoque ficam em aberto",
-    "tags": [
-      "incorpora",
-      "achados",
-      "varredura",
-      "dos",
-      "diagramas",
-      "sequ",
-      "ncia",
-      "erp"
-    ],
-    "files": [
-      "ARCHITECTURE.md",
-      ".specs/project/STATE.md"
-    ],
-    "file_path": "ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T18:50:13.393300+00:00",
-    "created_epoch": 1787251813,
-    "updated_at": "2026-08-20T18:50:13.393309+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787256725872",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/features/importacao-dav/spec.md"
-    ],
-    "file_path": ".specs/features/importacao-dav/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.872471+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T14:18:53.835709+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725842",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/features/pagamento/spec.md"
-    ],
-    "file_path": ".specs/features/pagamento/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.842686+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-24T13:25:58.930133+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725816",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "resolve",
-      "pend"
-    ],
-    "files": [
-      ".specs/features/identificacao-cadastro-cliente/spec.md"
-    ],
-    "file_path": ".specs/features/identificacao-cadastro-cliente/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.816973+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T11:16:33.244660+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725791",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "018",
-      "boneyard"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.791283+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T17:05:28.526394+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [
-        "register_edit"
-      ],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725767",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/codebase/STACK.md"
-    ],
-    "file_path": ".specs/codebase/STACK.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.767088+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.359529+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725744",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "resolve",
-      "pend"
-    ],
-    "files": [
-      ".specs/project/ROADMAP.md"
-    ],
-    "file_path": ".specs/project/ROADMAP.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.744910+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:16:58.303550+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [
-        "register_edit"
-      ],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725704",
-    "kind": "decision",
-    "content": "Reorganiza .specs/ para conformidade com SDD: PROJECT/ROADMAP/codebase/features criados, ARCHITECTURE.md da raiz removido, STATE.md reclassificado",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap"
-    ],
-    "files": [
-      "ARCHITECTURE.md",
-      ".specs/project/STATE.md",
-      ".specs/project/PROJECT.md",
-      ".specs/project/ROADMAP.md",
-      ".specs/codebase/ARCHITECTURE.md",
-      ".specs/codebase/STACK.md",
-      ".specs/codebase/INTEGRATIONS.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/importacao-dav/spec.md",
-      ".specs/features/layout-responsivo-mobile/spec.md"
-    ],
-    "file_path": "ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.704880+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-20T20:12:05.704891+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787256725733",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/project/PROJECT.md"
-    ],
-    "file_path": ".specs/project/PROJECT.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.733016+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:34:58.072761+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725757",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "resolve",
-      "pend"
-    ],
-    "files": [
-      ".specs/codebase/ARCHITECTURE.md"
-    ],
-    "file_path": ".specs/codebase/ARCHITECTURE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.757537+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-25T16:56:00.658155+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725781",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/codebase/INTEGRATIONS.md"
-    ],
-    "file_path": ".specs/codebase/INTEGRATIONS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.781208+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T17:40:07.691333+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725804",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "resolve",
-      "pend"
-    ],
-    "files": [
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
-    ],
-    "file_path": ".specs/features/autenticacao-sessao-bootstrap/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.804897+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-21T12:57:28.391900+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725831",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/features/carrinho-produto-precificacao/spec.md"
-    ],
-    "file_path": ".specs/features/carrinho-produto-precificacao/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.831415+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-09-02T21:24:47.333903+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725855",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/features/finalizacao-suspensao-venda/spec.md"
-    ],
-    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.855121+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:56:24.699417+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787256725886",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "reorganiza",
-      "specs",
-      "para",
-      "conformidade",
-      "com",
-      "sdd",
-      "project",
-      "roadmap",
-      "revis",
-      "cruzada"
-    ],
-    "files": [
-      ".specs/features/layout-responsivo-mobile/spec.md"
-    ],
-    "file_path": ".specs/features/layout-responsivo-mobile/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:12:05.886434+00:00",
-    "created_epoch": 1787256725,
-    "updated_at": "2026-08-26T16:34:58.083668+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787257672011",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "018",
-      "boneyard",
-      "goey",
-      "toast",
-      "shadcn",
-      "instalados",
-      "como",
-      "depend",
-      "023",
-      "novo"
-    ],
-    "files": [
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": ".dual-graph/context-store.json",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-20T20:27:52.011277+00:00",
-    "created_epoch": 1787257672,
-    "updated_at": "2026-09-03T18:00:04.951458+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787314538804",
-    "kind": "decision",
-    "content": "Resolve pendências de CONCERNS.md (codigoEmpresa/Empresa, refresh_token, baseDomain, Docker); corrige AD-002; adiciona AD-019; atualiza AD-005/AD-011; dispara subagente para Specify de Modal vendedor/menu gerencial",
-    "tags": [
-      "resolve",
-      "pend",
-      "ncias",
-      "concerns",
-      "codigoempresa",
-      "empresa",
-      "refresh_token",
-      "basedomain"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md",
-      ".specs/project/STATE.md",
-      ".specs/project/ROADMAP.md",
-      ".specs/codebase/ARCHITECTURE.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:15:38.804922+00:00",
-    "created_epoch": 1787314538,
-    "updated_at": "2026-08-21T12:15:38.804927+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787317048462",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "revis",
-      "cruzada",
-      "toda",
-      "specs",
-      "subagentes",
-      "alinhamento",
-      "rebaixa",
-      "getlistaclientes",
-      "023",
-      "novo"
-    ],
-    "files": [
-      ".specs/features/selecao-vendedor/spec.md"
-    ],
-    "file_path": ".specs/features/selecao-vendedor/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:57:28.462281+00:00",
-    "created_epoch": 1787317048,
-    "updated_at": "2026-08-25T11:16:33.235748+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787317048331",
-    "kind": "decision",
-    "content": "Revisão cruzada de toda .specs/ (15 subagentes) + alinhamento: rebaixa GetListaClientes/StatusPIX/ListaNFCEs a pendente, fecha lacuna vendedorCodigo em FaturarNFCe, corrige inventario CarregarNFCe, confirma menu gerencial desktop-only (AD-021)",
-    "tags": [
-      "revis",
-      "cruzada",
-      "toda",
-      "specs",
-      "subagentes",
-      "alinhamento",
-      "rebaixa",
-      "getlistaclientes"
-    ],
-    "files": [
-      ".specs/project/PROJECT.md",
-      ".specs/project/ROADMAP.md",
-      ".specs/project/STATE.md",
-      ".specs/codebase/STACK.md",
-      ".specs/codebase/ARCHITECTURE.md",
-      ".specs/codebase/INTEGRATIONS.md",
-      ".specs/codebase/CONCERNS.md",
-      ".specs/features/autenticacao-sessao-bootstrap/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/importacao-dav/spec.md",
-      ".specs/features/layout-responsivo-mobile/spec.md",
-      ".specs/features/selecao-vendedor/spec.md"
-    ],
-    "file_path": ".specs/project/PROJECT.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T12:57:28.331235+00:00",
-    "created_epoch": 1787317048,
-    "updated_at": "2026-08-21T12:57:28.331242+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787334007679",
-    "kind": "decision",
-    "content": "AD-023: novo ApiCentriumOAuth.yaml + verificacao KB GenExus resolvem maioria das pendencias de API (GetListaClientes, StatusPIX, GetListaVendedores, GetListaNFCes, DescontoConvenio%, FormaMeioPagtoNFe, NumeroNota, ValidaTicketDevolucao)",
-    "tags": [
-      "023",
-      "novo",
-      "apicentriumoauth",
-      "yaml",
-      "verificacao",
-      "genexus",
-      "resolvem",
-      "maioria"
-    ],
-    "files": [
-      ".specs/codebase/CONCERNS.md",
-      ".specs/codebase/INTEGRATIONS.md",
-      ".specs/project/STATE.md",
-      ".specs/features/selecao-vendedor/spec.md",
-      ".specs/features/pagamento/spec.md",
-      ".specs/features/identificacao-cadastro-cliente/spec.md",
-      ".specs/features/finalizacao-suspensao-venda/spec.md",
-      ".specs/features/carrinho-produto-precificacao/spec.md",
-      ".specs/features/importacao-dav/spec.md",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": ".specs/codebase/CONCERNS.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-21T17:40:07.679069+00:00",
-    "created_epoch": 1787334007,
-    "updated_at": "2026-08-21T17:40:07.679076+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1787334256509",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -880,7 +23,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-21T17:44:16.509506+00:00",
     "created_epoch": 1787334256,
-    "updated_at": "2026-09-02T12:44:22.815176+00:00",
+    "updated_at": "2026-09-04T15:34:00.557992+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -894,7 +37,7 @@
   {
     "id": "mem:1787576773434",
     "kind": "decision",
-    "content": "Correção da regra de negócio TipoPreco/EmpDefPre (1-11): 1-5 índice direto de PrecoVenda1-5, 8 preço por faixa de quantidade (resolve usaPrecoPorQuantidade), 9 preço por lista (cliente ou listaPrecoPadrao, retorna PrecoVendaLista)",
+    "content": "Corre\u00e7\u00e3o da regra de neg\u00f3cio TipoPreco/EmpDefPre (1-11): 1-5 \u00edndice direto de PrecoVenda1-5, 8 pre\u00e7o por faixa de quantidade (resolve usaPrecoPorQuantidade), 9 pre\u00e7o por lista (cliente ou listaPrecoPadrao, retorna PrecoVendaLista)",
     "tags": [
       "corre",
       "regra",
@@ -928,7 +71,7 @@
   {
     "id": "mem:1787577350087",
     "kind": "decision",
-    "content": "Corrige corpo do bullet TipoPreco vs ListaPreco em CONCERNS.md — remove afirmação stale de range 0-5/pendencia irrestrita, reflete resolução 2026-08-24 diretamente no texto",
+    "content": "Corrige corpo do bullet TipoPreco vs ListaPreco em CONCERNS.md \u2014 remove afirma\u00e7\u00e3o stale de range 0-5/pendencia irrestrita, reflete resolu\u00e7\u00e3o 2026-08-24 diretamente no texto",
     "tags": [
       "corrige",
       "corpo",
@@ -1185,7 +328,9 @@
       "funcionalidades",
       "normais",
       "cliente",
-      "itens"
+      "itens",
+      "161",
+      "162"
     ],
     "files": [
       ".specs/features/pagamento-tef/spec.md"
@@ -1195,7 +340,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-26T11:48:32.382935+00:00",
     "created_epoch": 1787744912,
-    "updated_at": "2026-08-26T11:48:32.382949+00:00",
+    "updated_at": "2026-09-04T15:34:00.521876+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1265,7 +410,7 @@
     "symbol_hash": "",
     "created_at": "2026-08-26T14:04:43.596032+00:00",
     "created_epoch": 1787753083,
-    "updated_at": "2026-08-27T10:58:55.566799+00:00",
+    "updated_at": "2026-09-04T15:34:00.509172+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1543,7 +688,7 @@
   {
     "id": "mem:1787767860193",
     "kind": "decision",
-    "content": "Gera Design (speckit-plan) da feature 001-auditoria-acoes-operador: slice auditoria no vendaStore, 17 tipos de evento, serialização para campo Log de FaturarNFCe",
+    "content": "Gera Design (speckit-plan) da feature 001-auditoria-acoes-operador: slice auditoria no vendaStore, 17 tipos de evento, serializa\u00e7\u00e3o para campo Log de FaturarNFCe",
     "tags": [
       "gera",
       "design",
@@ -2021,7 +1166,7 @@
   {
     "id": "mem:1787829633534",
     "kind": "decision",
-    "content": "AD-102 corrige item 33: 10 literais reais de StatusTransacao fornecidos pelo usuário, substituindo achado parcial via KB",
+    "content": "AD-102 corrige item 33: 10 literais reais de StatusTransacao fornecidos pelo usu\u00e1rio, substituindo achado parcial via KB",
     "tags": [
       "102",
       "corrige",
@@ -2279,7 +1424,7 @@
   {
     "id": "mem:1788200445679",
     "kind": "task",
-    "content": "tasks.md da feature 006 (importação de DAV) gerado: 25 tarefas, 5 fases, 2 user stories P1",
+    "content": "tasks.md da feature 006 (importa\u00e7\u00e3o de DAV) gerado: 25 tarefas, 5 fases, 2 user stories P1",
     "tags": [
       "speckit",
       "006"
@@ -2301,7 +1446,7 @@
   {
     "id": "mem:1788200445679",
     "kind": "blocker",
-    "content": "Item 37: build real da KB (AD-115) não confirmado, só Specify; yaml exportado não regenerado",
+    "content": "Item 37: build real da KB (AD-115) n\u00e3o confirmado, s\u00f3 Specify; yaml exportado n\u00e3o regenerado",
     "tags": [
       "genexus",
       "kb-change",
@@ -2351,7 +1496,7 @@
   {
     "id": "mem:1788200445679",
     "kind": "decision",
-    "content": "AD-114: DAV_IMPORTADO vira tipo #20 no catálogo de auditoria da 001, achado do tasks da 006",
+    "content": "AD-114: DAV_IMPORTADO vira tipo #20 no cat\u00e1logo de auditoria da 001, achado do tasks da 006",
     "tags": [
       "speckit",
       "006",
@@ -4240,7 +3385,7 @@
   {
     "id": "mem:1788369539681",
     "kind": "decision",
-    "content": "Barra de entrada rápida reconstruída fiel ao Pencil (AD-123): TAB revisa qualquer produto (prévia com stepper/preço/desconto/total, foco no + quando não editável), Enter insere direto; UsuarioTipoCodigoProduto confirmado na KB GeneXus (domain EnumTipoCodigoProduto) e rótulo do campo agora dinâmico.",
+    "content": "Barra de entrada r\u00e1pida reconstru\u00edda fiel ao Pencil (AD-123): TAB revisa qualquer produto (pr\u00e9via com stepper/pre\u00e7o/desconto/total, foco no + quando n\u00e3o edit\u00e1vel), Enter insere direto; UsuarioTipoCodigoProduto confirmado na KB GeneXus (domain EnumTipoCodigoProduto) e r\u00f3tulo do campo agora din\u00e2mico.",
     "tags": [
       "barra",
       "entrada",
@@ -5050,6 +4195,104 @@
     "evidence": {}
   },
   {
+    "id": "mem:1788536040257",
+    "kind": "decision",
+    "content": "AD-140: ESC, calendario, Enter, atalho disabled e cancelar com item cancelado",
+    "tags": [
+      "dav",
+      "ux",
+      "006"
+    ],
+    "files": [
+      "src/client/components/ui/campo-data.tsx",
+      "src/client/features/dav/ModalImportacaoDav.tsx",
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
+    ],
+    "file_path": "src/client/components/ui/campo-data.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040257",
+    "kind": "decision",
+    "content": "AD-141: recusa de importacao conta linha cancelada (linhasNaVenda)",
+    "tags": [
+      "dav",
+      "006",
+      "regra"
+    ],
+    "files": [
+      "src/client/services/dav/davQueries.ts",
+      "src/client/features/dav/useImportacaoDav.ts"
+    ],
+    "file_path": "src/client/services/dav/davQueries.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-144: TEF liberado no mobile; plataforma sai do roteamento de integracao",
+    "tags": [
+      "tef",
+      "mobile",
+      "008",
+      "010"
+    ],
+    "files": [
+      ".specs/features/pagamento-tef/spec.md",
+      "specs/008-pagamento-geral/research.md"
+    ],
+    "file_path": ".specs/features/pagamento-tef/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-145: filtro de emissao em duas pilulas; calendario em portal no body",
+    "tags": [
+      "dav",
+      "006",
+      "ui"
+    ],
+    "files": [
+      "src/client/components/ui/campo-data.tsx",
+      "src/client/features/dav/ModalImportacaoDav.tsx"
+    ],
+    "file_path": "src/client/components/ui/campo-data.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
     "id": "mem:1788458404928",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -5389,7 +4632,9 @@
       "implementada",
       "corrige",
       "bug",
-      "clientecodigo"
+      "clientecodigo",
+      "161",
+      "162"
     ],
     "files": [
       "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts"
@@ -5399,7 +4644,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-03T18:00:04.916250+00:00",
     "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.916295+00:00",
+    "updated_at": "2026-09-04T15:34:00.391058+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5507,65 +4752,8 @@
     }
   },
   {
-    "type": "decision",
-    "content": "AD-140: ESC, calendario, Enter, atalho disabled e cancelar com item cancelado",
-    "tags": [
-      "dav",
-      "ux",
-      "006"
-    ],
-    "files": [
-      "src/client/components/ui/campo-data.tsx",
-      "src/client/features/dav/ModalImportacaoDav.tsx",
-      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
-    ],
-    "date": "2026-09-03"
-  },
-  {
-    "type": "decision",
-    "content": "AD-141: recusa de importacao conta linha cancelada (linhasNaVenda)",
-    "tags": [
-      "dav",
-      "006",
-      "regra"
-    ],
-    "files": [
-      "src/client/services/dav/davQueries.ts",
-      "src/client/features/dav/useImportacaoDav.ts"
-    ],
-    "date": "2026-09-03"
-  },
-  {
-    "type": "decision",
-    "content": "AD-144: TEF liberado no mobile; plataforma sai do roteamento de integracao",
-    "tags": [
-      "tef",
-      "mobile",
-      "008",
-      "010"
-    ],
-    "files": [
-      ".specs/features/pagamento-tef/spec.md",
-      "specs/008-pagamento-geral/research.md"
-    ],
-    "date": "2026-09-03"
-  },
-  {
-    "type": "decision",
-    "content": "AD-145: filtro de emissao em duas pilulas; calendario em portal no body",
-    "tags": [
-      "dav",
-      "006",
-      "ui"
-    ],
-    "files": [
-      "src/client/components/ui/campo-data.tsx",
-      "src/client/features/dav/ModalImportacaoDav.tsx"
-    ],
-    "date": "2026-09-03"
-  },
-  {
-    "type": "decision",
+    "id": "mem:1788536040258",
+    "kind": "decision",
     "content": "AD-151: desconto nao pode zerar venda nem item; condicao exige subtotal",
     "tags": [
       "008",
@@ -5578,6 +4766,1279 @@
       "src/client/domain/precificacao/linha.ts",
       "src/client/stores/slices/pagamentoSlice.ts"
     ],
-    "date": "2026-09-04"
+    "file_path": "src/client/domain/pagamento/descontoCapa.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-158: modal PIX nasce do estado; iniciarIntegracao segue no-op",
+    "tags": [
+      "009",
+      "pagamento-pix",
+      "ad-158"
+    ],
+    "files": [
+      "src/client/features/pagamento/pix/ModalPix.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      "src/client/stores/vendaStore.ts"
+    ],
+    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "fact",
+    "content": "E2E pagamento-geral e importacao-dav ja falhavam: SKUs ausentes no mock",
+    "tags": [
+      "e2e",
+      "mock",
+      "pre-existente"
+    ],
+    "files": [
+      "tests/e2e/support/erp-mock.ts",
+      "tests/e2e/pagamento-geral.spec.ts"
+    ],
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-161: so TEF bloqueia remocao/suspensao; PIX removivel com confirmacao (nao estorna)",
+    "tags": [
+      "009",
+      "008",
+      "pagamento-pix",
+      "pagamento-tef",
+      "ad-161"
+    ],
+    "files": [
+      "src/client/stores/slices/pagamentoSlice.ts",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
+    ],
+    "file_path": "src/client/stores/slices/pagamentoSlice.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-161: modal PIX trava ESC/X ate aprovar, fecha sozinho 10s depois de aprovado",
+    "tags": [
+      "009",
+      "pagamento-pix",
+      "ad-161"
+    ],
+    "files": [
+      "src/client/features/pagamento/pix/ModalPix.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-161: base64 do PIX so decodifica apos validar formato; imagem detecta MIME pelos bytes",
+    "tags": [
+      "009",
+      "pagamento-pix",
+      "ad-161"
+    ],
+    "files": [
+      "src/client/domain/pix/base64.ts",
+      "src/client/services/pix/pixMapper.ts",
+      "src/client/domain/pix/cobrancaPix.ts"
+    ],
+    "file_path": "src/client/domain/pix/base64.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-161: beforeunload implementado via useAvisoAoSair, cliente default nao conta",
+    "tags": [
+      "ad-006",
+      "ad-161",
+      "app"
+    ],
+    "files": [
+      "src/client/lib/useAvisoAoSair.ts",
+      "src/client/App.tsx"
+    ],
+    "file_path": "src/client/lib/useAvisoAoSair.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "fact",
+    "content": "ERP mock: PIX vira pago por relogio (20s) sem roteiro explicito de statusPixTransicoes",
+    "tags": [
+      "e2e",
+      "mock",
+      "pix",
+      "ad-161"
+    ],
+    "files": [
+      "tests/e2e/support/erp-mock.ts"
+    ],
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-162: TEF ganha cancelamento via endpoint ERP + polling; endpoints ainda sem contrato (item 41)",
+    "tags": [
+      "010",
+      "pagamento-tef",
+      "ad-162"
+    ],
+    "files": [
+      ".specs/features/pagamento-tef/spec.md",
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/features/pagamento-tef/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040534",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      ".specs/features/finalizacao-suspensao-venda/spec.md"
+    ],
+    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.534308+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.534338+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040483",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "163",
+      "origem"
+    ],
+    "files": [
+      "tests/integration/pagamentoSlice.spec.ts"
+    ],
+    "file_path": "tests/integration/pagamentoSlice.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.483263+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.620313+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040457",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "163",
+      "origem"
+    ],
+    "files": [
+      "tests/e2e/pagamento-pix.spec.ts"
+    ],
+    "file_path": "tests/e2e/pagamento-pix.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.457698+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.673152+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040428",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/App.tsx"
+    ],
+    "file_path": "src/client/App.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.428200+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.428215+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040404",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
+    ],
+    "file_path": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.404795+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.404836+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040377",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "163",
+      "origem"
+    ],
+    "files": [
+      "src/client/stores/slices/pagamentoSlice.ts"
+    ],
+    "file_path": "src/client/stores/slices/pagamentoSlice.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.377872+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.512392+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040348",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "163",
+      "origem"
+    ],
+    "files": [
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.348172+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.606461+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040317",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/pix/avisosPix.ts"
+    ],
+    "file_path": "src/client/features/pagamento/pix/avisosPix.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.317602+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.317637+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040289",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/services/pix/pixMapper.ts"
+    ],
+    "file_path": "src/client/services/pix/pixMapper.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.289343+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.289355+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040265",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pix/base64.ts"
+    ],
+    "file_path": "src/client/domain/pix/base64.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.265073+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.265085+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040255",
+    "kind": "decision",
+    "content": "AD-161/AD-162: PIX removivel c/ confirmacao (so TEF bloqueia), modal PIX trava ate aprovar, base64 validado, beforeunload implementado, TEF spec ganha cancelamento via ERP",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pix/base64.ts",
+      "src/client/domain/pix/cobrancaPix.ts",
+      "src/client/services/pix/pixMapper.ts",
+      "src/client/features/pagamento/pix/ModalPix.tsx",
+      "src/client/features/pagamento/pix/avisosPix.ts",
+      "src/client/features/pagamento/pix/DialogoConfirmacaoPix.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+      "src/client/stores/slices/pagamentoSlice.ts",
+      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
+      "src/client/lib/useAvisoAoSair.ts",
+      "src/client/App.tsx",
+      "tests/e2e/support/erp-mock.ts",
+      "tests/e2e/pagamento-pix.spec.ts",
+      "tests/integration/ModalPix.spec.tsx",
+      "tests/integration/pagamentoSlice.spec.ts",
+      "tests/unit/domain/pix/base64.spec.ts",
+      ".specs/features/pagamento-pix/spec.md",
+      ".specs/features/pagamento-tef/spec.md",
+      ".specs/features/finalizacao-suspensao-venda/spec.md",
+      ".specs/project/STATE.md",
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": "src/client/domain/pix/base64.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.255291+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.255302+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1788536040276",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pix/cobrancaPix.ts"
+    ],
+    "file_path": "src/client/domain/pix/cobrancaPix.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.276899+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.276911+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040303",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/pix/ModalPix.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.303948+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.303962+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040331",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/pix/DialogoConfirmacaoPix.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/pix/DialogoConfirmacaoPix.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.331683+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.331704+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040362",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "163",
+      "origem"
+    ],
+    "files": [
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.362757+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.583461+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040416",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/lib/useAvisoAoSair.ts"
+    ],
+    "file_path": "src/client/lib/useAvisoAoSair.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.416030+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.416049+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040442",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "tests/e2e/support/erp-mock.ts"
+    ],
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.441987+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.442000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040469",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "tests/integration/ModalPix.spec.tsx"
+    ],
+    "file_path": "tests/integration/ModalPix.spec.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.469710+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.469724+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040496",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/domain/pix/base64.spec.ts"
+    ],
+    "file_path": "tests/unit/domain/pix/base64.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.496675+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.496688+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040546",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "specs",
+      "010"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.546052+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.688886+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536185192",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "162",
+      "specs",
+      "010",
+      "pagamento",
+      "tef",
+      "spec",
+      "ganha",
+      "user"
+    ],
+    "files": [
+      "specs/010-pagamento-tef/spec.md"
+    ],
+    "file_path": "specs/010-pagamento-tef/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:36:25.192853+00:00",
+    "created_epoch": 1788536185,
+    "updated_at": "2026-09-04T15:36:25.192866+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536185188",
+    "kind": "decision",
+    "content": "AD-162: specs/010-pagamento-tef/spec.md ganha User Story 3 + FR-007..009 (cancelamento TEF via ERP), corrige cenario 2 da US1",
+    "tags": [
+      "162",
+      "specs",
+      "010",
+      "pagamento",
+      "tef",
+      "spec",
+      "ganha",
+      "user"
+    ],
+    "files": [
+      "specs/010-pagamento-tef/spec.md",
+      "specs/010-pagamento-tef/checklists/requirements.md",
+      ".specs/project/STATE.md"
+    ],
+    "file_path": "specs/010-pagamento-tef/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:36:25.188210+00:00",
+    "created_epoch": 1788536185,
+    "updated_at": "2026-09-04T15:36:25.188221+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1788536185206",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "162",
+      "specs",
+      "010",
+      "pagamento",
+      "tef",
+      "spec",
+      "ganha",
+      "user"
+    ],
+    "files": [
+      "specs/010-pagamento-tef/checklists/requirements.md"
+    ],
+    "file_path": "specs/010-pagamento-tef/checklists/requirements.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:36:25.206324+00:00",
+    "created_epoch": 1788536185,
+    "updated_at": "2026-09-04T15:36:25.206343+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537734653",
+    "kind": "decision",
+    "content": "AD-163: origem teclado/mouse decide modal do vale; sem forma nao digita valor; exclusao risca (nao apaga)",
+    "tags": [
+      "163",
+      "pagamento",
+      "vale-devolucao",
+      "exclusao",
+      "ui"
+    ],
+    "files": [
+      "src/client/domain/pagamento/saldoPagamento.ts",
+      "src/client/stores/slices/pagamentoSlice.ts",
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+      "src/client/features/pagamento/EntradaPagamento.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      ".specs/project/STATE.md"
+    ],
+    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:14.603490+00:00",
+    "created_epoch": 1788537734,
+    "updated_at": "2026-09-04T16:02:14.603490+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788537737660",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/client/pagamento/EntradaPagamento.spec.tsx"
+    ],
+    "file_path": "tests/unit/client/pagamento/EntradaPagamento.spec.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.660016+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.660029+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737633",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/domain/pagamento/saldoPagamento.spec.ts"
+    ],
+    "file_path": "tests/unit/domain/pagamento/saldoPagamento.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.633758+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.633772+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737497",
+    "kind": "decision",
+    "content": "AD-163: origem da sele\u00e7\u00e3o (teclado/mouse) decide abertura do modal de vale devolu\u00e7\u00e3o; campo de valor recebido trava sem forma escolhida; exclus\u00e3o de forma de pagamento passa a status EXCLUIDO (riscado, permanece na lista, some do saldo/payload ao ERP)",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pagamento/saldoPagamento.ts",
+      "src/client/stores/slices/pagamentoSlice.ts",
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+      "src/client/features/pagamento/EntradaPagamento.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      "tests/integration/pagamentoSlice.spec.ts",
+      "tests/unit/domain/pagamento/saldoPagamento.spec.ts",
+      "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx",
+      "tests/unit/client/pagamento/EntradaPagamento.spec.tsx",
+      "tests/e2e/pagamento-pix.spec.ts",
+      ".specs/project/STATE.md"
+    ],
+    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.497578+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.497586+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1788537737500",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pagamento/saldoPagamento.ts"
+    ],
+    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.500933+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.500946+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737571",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.571582+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.571593+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737595",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/EntradaPagamento.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/EntradaPagamento.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.595750+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.595765+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737646",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx"
+    ],
+    "file_path": "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.646674+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.646689+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
   }
 ]

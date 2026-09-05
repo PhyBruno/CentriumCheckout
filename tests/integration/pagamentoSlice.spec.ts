@@ -26,6 +26,7 @@ import {
   type IdentidadeVendaDeps,
 } from '../../src/client/stores/slices/identidadeVendaSlice';
 import {
+  AVISO_CONDICAO_COM_PAGAMENTO,
   AVISO_DESCONTO_COM_PAGAMENTO,
   AVISO_DESCONTO_ZERA_A_VENDA,
   AVISO_DESCONTO_ZERA_ITEM,
@@ -33,7 +34,7 @@ import {
   AVISO_VENDA_SEM_VALOR,
   AVISO_DINHEIRO_DUPLICADO,
   AVISO_FORMA_FORA_DA_CONDICAO,
-  AVISO_PAGAMENTO_IRREVERSIVEL,
+  AVISO_TEF_IRREVERSIVEL,
   AVISO_VALE_FORMA_ERRADA,
   AVISO_VALE_INDISPONIVEL,
   AVISO_VALE_JA_APLICADO,
@@ -259,13 +260,46 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
     ).toHaveLength(1);
   });
 
-  it('trocar a condição esvazia os pagamentos aplicados (I9)', async () => {
-    const { store } = montarStore();
+  /**
+   * I9 reescrita pelo usuário em 2026-09-04: **uma condição por venda**.
+   *
+   * Antes esta porta trocava a condição e **apagava** os pagamentos no mesmo
+   * `set` — o operador via a lista sumir sem explicação e sem gesto que a
+   * trouxesse de volta. Agora a troca é recusada com aviso, e nada muta.
+   */
+  it('trocar a condição com forma aplicada é recusado, sem apagar nada (I9)', async () => {
+    const { store, avisar } = montarStore();
     await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
     expect(store.getState().pagamentos).toHaveLength(1);
 
     store.getState().selecionarCondicao(A_PRAZO);
 
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_VISTA.codigo);
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(avisar).toHaveBeenCalledWith(AVISO_CONDICAO_COM_PAGAMENTO);
+    // Nenhum evento de condição além do da montagem: a recusa não é uma
+    // aplicação de condição.
+    expect(
+      tiposDeEvento(store).filter((tipo) => tipo === 'CONDICAO_PAGAMENTO_APLICADA'),
+    ).toHaveLength(1);
+  });
+
+  it('sem pagamento aplicado, trocar a condição continua livre', () => {
+    const { store } = montarStore();
+
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
+  });
+
+  it('"Limpar" é a saída: descartarPagamento libera a troca de condição', async () => {
+    const { store } = montarStore();
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+
+    store.getState().descartarPagamento();
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
     expect(store.getState().pagamentos).toEqual([]);
   });
 
@@ -320,9 +354,11 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     store.getState().removerPagamento('pag-1');
 
-    // A forma saiu, mas a condição continua escolhida — e desde 2026-09-04 é
-    // ela, sozinha, que congela a venda.
-    expect(store.getState().pagamentos).toEqual([]);
+    // A forma fica riscada na lista (AD-16x), não some do array — mas a
+    // condição continua escolhida, e desde 2026-09-04 é ela, sozinha, que
+    // congela a venda.
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
     expect(store.getState().podeMutarCarrinho()).toBe(false);
 
     store.getState().descartarPagamento();
@@ -348,7 +384,7 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     store.getState().removerPagamento('pag-1');
 
-    expect(avisar).toHaveBeenCalledWith(AVISO_PAGAMENTO_IRREVERSIVEL);
+    expect(avisar).toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
     expect(store.getState().pagamentos).toHaveLength(1);
     expect(store.getState().podeMutarCarrinho()).toBe(false);
   });
@@ -361,9 +397,50 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     store.getState().descartarPagamento();
 
-    expect(avisar).toHaveBeenCalledWith(AVISO_PAGAMENTO_IRREVERSIVEL);
+    expect(avisar).toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
     expect(store.getState().condicaoSelecionada).not.toBeNull();
     expect(store.getState().pagamentos).toHaveLength(1);
+  });
+
+  /**
+   * AD-161 (itens 2 e 3 do usuário, 2026-09-04). A regra anterior tratava PIX e
+   * TEF como o mesmo caso; o usuário separou os dois. O que este teste trava é o
+   * recorte: PIX **é riscado** (não desaparece do array — pedido do usuário,
+   * 2026-09-04) e o evento de auditoria continua sendo emitido — a confirmação
+   * que a UI exibe decide se `removerPagamento` é chamada, nunca se o log é
+   * escrito.
+   */
+  it('PIX aprovado fica excluído (riscado) na venda e preserva o log — só o TEF é irreversível (AD-161)', async () => {
+    const { store, avisar } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-exemplo' });
+    expect(store.getState().pagamentos[0]?.status).toBe('APROVADO');
+
+    store.getState().removerPagamento('pag-1');
+
+    expect(avisar).not.toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
+    // Fica na lista, riscado — não sai do array. `calcularSaldo` e
+    // `montarPagamentosParaPayload` já ignoram tudo que não é `APROVADO`.
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    expect(store.getState().saldo().totalAplicado).toBe(0);
+    expect(
+      store.getState().eventos.some((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA'),
+    ).toBe(true);
+  });
+
+  it('descartarPagamento aceita venda com PIX aprovado (AD-161)', async () => {
+    const { store, avisar } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-exemplo' });
+
+    store.getState().descartarPagamento();
+
+    expect(avisar).not.toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().pagamentos).toHaveLength(0);
   });
 
   it('descartarPagamento limpa condição, formas, desconto e vales, e audita cada forma removida', async () => {

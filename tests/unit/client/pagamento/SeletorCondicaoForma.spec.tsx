@@ -372,4 +372,46 @@ describe('Seletores de pagamento — setas ligadas ao catálogo real', () => {
     expect(screen.getByTestId('combobox-forma-pagamento')).toHaveTextContent('DINHEIRO');
     expect(onSelecionarForma).toHaveBeenCalledExactlyOnceWith(DINHEIRO);
   });
+
+  /**
+   * A origem que `escolherForma` (`PainelPagamentoETotais.tsx`) usa para
+   * decidir se abre o modal do vale devolução (pedido do usuário, 2026-09-04):
+   * seta é `'teclado'`, clique é `'mouse'`. Este teste trava o sinal na fonte —
+   * o `SeletorFormaPagamento` real, não o harness sintético da suíte acima.
+   */
+  it('forma: a seta escolhe com origem "teclado" e o clique com origem "mouse"', async () => {
+    const usuario = userEvent.setup();
+    useVendaStore.setState({ condicaoSelecionada: A_VISTA });
+    const onSelecionarForma = vi.fn();
+
+    function Envolvido(): ReactElement {
+      const [forma, setForma] = useState<FormaPagamento | null>(null);
+      return createElement(SeletorFormaPagamento, {
+        formaSelecionada: forma,
+        onSelecionarForma: (escolhida, origem) => {
+          setForma(escolhida);
+          onSelecionarForma(escolhida, origem);
+        },
+      });
+    }
+
+    render(envolverComQueryClient(createElement(Envolvido)));
+
+    const combobox = await waitFor(() => {
+      const elemento = screen.getByTestId('combobox-forma-pagamento');
+      expect(elemento).not.toHaveAttribute('aria-disabled', 'true');
+      return elemento;
+    });
+
+    combobox.focus();
+    await usuario.keyboard('{ArrowDown}');
+    expect(onSelecionarForma).toHaveBeenNthCalledWith(1, DINHEIRO, 'teclado');
+
+    // PIX está indisponível neste catálogo (`UtilizaCentriumPAG: false`), então
+    // o clique repete a mesma forma — o que muda é só a origem, que é o que
+    // este teste verifica.
+    await usuario.click(combobox);
+    await usuario.click(screen.getByTestId('opcao-forma-1'));
+    expect(onSelecionarForma).toHaveBeenNthCalledWith(2, DINHEIRO, 'mouse');
+  });
 });

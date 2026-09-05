@@ -15,11 +15,14 @@ import {
   ShoppingBasket,
   Star,
   Store,
+  Ticket,
   Utensils,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import type { MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
+import type { FormaPagamento, MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
+import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
+import type { PagamentoAplicado } from '../../domain/pagamento/saldoPagamento';
 
 /**
  * Ícone de cada meio de pagamento da NFCe — **um mapa só** para a tela inteira.
@@ -73,3 +76,41 @@ export const ICONE_POR_MEIO: Record<MeioPagtoNFe, LucideIcon> = {
   PagamentoPosterior: CalendarClock,
   Outros: Wallet,
 };
+
+/**
+ * O vale devolução é a exceção ao mapa acima — **e precisa ser** (pedido do
+ * usuário, 2026-09-04).
+ *
+ * `FpgUtiCar = 'VDV'` identifica a forma de vale (AD-149), mas o
+ * `FormaMeioPagtoNFe` dela é livre no cadastro e costuma ser `'Outros'`. Pelo
+ * mapa por meio, o vale herdaria a carteira genérica — o mesmo ícone de
+ * "PagamentoNaoInformado" e de qualquer forma exótica —, e o operador perderia
+ * de vista justamente a forma que tem uma janela própria e um código a digitar.
+ *
+ * `Ticket` é o ícone do cabeçalho de `ModalValeDevolucao`: a lista e o combobox
+ * passam a mostrar o mesmo desenho que a janela do código, então o operador
+ * reconhece o vale antes de abrir e depois de aplicar. Não é `TicketCheck` (o do
+ * campo e do botão "Aplicar vale"), que carrega semântica de "validado" e diria
+ * algo falso numa forma ainda não inserida.
+ */
+export const ICONE_VALE_DEVOLUCAO: LucideIcon = Ticket;
+
+/** Ícone da forma no catálogo — o do vale vence o mapa por meio. */
+export function iconeDaForma(forma: FormaPagamento): LucideIcon {
+  return ehFormaDeValeDevolucao(forma) ? ICONE_VALE_DEVOLUCAO : ICONE_POR_MEIO[forma.meioPagtoNFe];
+}
+
+/**
+ * Ícone de um pagamento já aplicado.
+ *
+ * O marcador aqui é `ticketDevolucao`, não `fpgUtiCar`: `PagamentoAplicado`
+ * congela o **meio** e o ticket, nunca o `FpgUtiCar` da forma (`data-model.md`
+ * §2, "Regra de fronteira") — e resolver a forma no catálogo depois seria
+ * exatamente o que aquela regra proíbe, já que o catálogo pode ter mudado no
+ * meio da venda.
+ */
+export function iconeDoPagamento(pagamento: PagamentoAplicado): LucideIcon {
+  return pagamento.ticketDevolucao !== null
+    ? ICONE_VALE_DEVOLUCAO
+    : ICONE_POR_MEIO[pagamento.meioPagtoNFe];
+}

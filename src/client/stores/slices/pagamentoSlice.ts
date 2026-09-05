@@ -296,8 +296,35 @@ export const AVISO_VENDA_SEM_VALOR =
   'Esta venda não tem valor a cobrar: revise o desconto de capa ou os itens antes de adicionar um pagamento.';
 export const AVISO_FORMA_FORA_DA_CONDICAO =
   'Esta forma de pagamento não pertence à condição selecionada.';
-export const AVISO_PAGAMENTO_IRREVERSIVEL =
-  'Pagamento aprovado por TEF/PIX não pode ser removido: o estorno é operação do ERP.';
+/**
+ * Troca de condição com forma já inserida (regra do usuário, 2026-09-04).
+ *
+ * A frase nomeia a regra ("uma condição por venda") e a saída ("Limpar"), porque
+ * o que o operador tentaria sozinho — escolher outra condição de novo — nunca
+ * vai funcionar, e antes desta guarda o gesto apagava as formas em silêncio.
+ */
+export const AVISO_CONDICAO_COM_PAGAMENTO =
+  'Esta venda já tem forma de pagamento aplicada e cada venda usa uma condição só: use "Limpar" para recomeçar o pagamento.';
+/**
+ * Só o **TEF** aprovado trava a remoção (correção do usuário, 2026-09-04).
+ *
+ * A regra anterior — herdada de AD-030/AD-042 — travava TEF **e** PIX com a
+ * mesma frase. O usuário corrigiu a premissa: os dois casos não são iguais.
+ *
+ * - **TEF** continua irremovível. A transação vive no terminal físico, e
+ *   removê-la da venda sem cancelá-la lá deixa o Checkout e a operadora
+ *   discordando sobre um dinheiro que já saiu do cartão do cliente. O
+ *   cancelamento acontece **antes**, no terminal (e, quando a feature 010
+ *   existir, pelo endpoint de cancelamento do ERP — ver
+ *   `.specs/features/pagamento-tef/spec.md`).
+ * - **PIX** passou a ser removível. Não há terminal a sincronizar: a cobrança
+ *   vive no banco, o Checkout nunca soube cancelá-la (invariante J5, não existe
+ *   endpoint), e travar a forma na venda não desfazia nada — só prendia o
+ *   operador numa venda que ele precisava reorganizar. A remoção agora exige
+ *   confirmação explícita, que é onde o aviso sobre o banco aparece.
+ */
+export const AVISO_TEF_IRREVERSIVEL =
+  'Cartão aprovado no TEF não pode ser removido: cancele a transação no terminal antes.';
 export const AVISO_DESCONTO_COM_PAGAMENTO =
   'Esta venda já tem pagamento aplicado: o desconto não pode mais ser alterado.';
 /**
@@ -569,24 +596,37 @@ export function criarPagamentoSlice(
 
       selecionarCondicao: (condicao) => {
         const atual = get().condicaoSelecionada;
-        // Reselecionar a mesma condição não é troca: não esvazia a lista nem
-        // duplica o evento de auditoria.
+        // Reselecionar a mesma condição não é troca: não avisa nem duplica o
+        // evento de auditoria.
         if (atual !== null && atual.codigo === condicao.codigo) {
           return;
         }
 
-        // I9: trocar a condição esvazia os pagamentos. As formas pertencem à
-        // condição — mantê-las sob outra condição enviaria ao ERP uma
-        // combinação que o catálogo nunca ofereceu (`research.md` D2).
+        // I9, reescrita pelo usuário em 2026-09-04: **cada venda tem uma
+        // condição só**, e com forma já inserida a condição não muda mais.
         //
-        // `valesDevolucao` sai junto, e isso **faltava**: cada vale é vinculado
-        // a um `idPagamento`, e esvaziar só a lista de pagamentos deixava o
-        // ticket órfão, apontando para um pagamento que não existe mais. Como a
-        // guarda de código repetido em `aplicarValeDevolucao` consulta essa
-        // lista, o operador ficava sem conseguir reinformar o mesmo vale na
-        // condição nova. `removerPagamento` já filtrava os dois; esta era a
-        // única porta que esquecia.
-        set({ condicaoSelecionada: condicao, pagamentos: [], valesDevolucao: [] });
+        // Antes esta porta *trocava* a condição e esvaziava `pagamentos` e
+        // `valesDevolucao` no mesmo `set` — as formas eram de fato **apagadas**
+        // do estado (não apenas ocultadas), então nunca chegariam ao ERP; o
+        // operador via a lista sumir sem nenhuma explicação e sem gesto que a
+        // trouxesse de volta. Um esvaziamento silencioso é o pior desfecho
+        // possível para um dado que o caixa acabou de digitar: a alternativa
+        // honesta é recusar a troca e dizer por quê.
+        //
+        // A recusa é no-op com aviso, nunca exceção — mesmo padrão de
+        // `carrinhoBloqueado()`. A saída existe e a frase a nomeia: "Limpar"
+        // (`descartarPagamento`), que zera condição, formas, desconto e vales de
+        // uma vez, com o operador sabendo o que está descartando.
+        if (get().pagamentos.length > 0) {
+          deps.avisar?.(AVISO_CONDICAO_COM_PAGAMENTO);
+          return;
+        }
+
+        // Sem pagamento não há o que esvaziar: `valesDevolucao` só existe
+        // vinculado a um `idPagamento`, então a lista vazia acima implica esta
+        // vazia também. Trocar a condição aqui é só corrigir uma escolha feita
+        // antes de começar a cobrar.
+        set({ condicaoSelecionada: condicao });
 
         get().registrarEventoAuditoria(
           eventoCondicaoPagamentoAplicada({ condicao: condicao.descricao }),
@@ -656,26 +696,45 @@ export function criarPagamentoSlice(
 
       removerPagamento: (idPagamento) => {
         const alvo = get().pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
-        if (alvo === undefined) {
+        // `EXCLUIDO` é terminal: excluir de novo o que já está riscado não tem
+        // efeito, nem gera um segundo evento de auditoria.
+        if (alvo === undefined || alvo.status === 'EXCLUIDO') {
           return;
         }
 
-        // I6 (`research.md` D11): TEF/PIX aprovado já movimentou dinheiro fora
-        // do Checkout — removê-lo daqui criaria divergência com o ERP e com o
-        // adquirente (Constitution III). O estorno é operação do ERP.
-        if (alvo.integracao !== 'NENHUMA' && alvo.status === 'APROVADO') {
-          deps.avisar?.(AVISO_PAGAMENTO_IRREVERSIVEL);
+        // I6, reescrita pelo usuário em 2026-09-04: **só o TEF** aprovado é
+        // irremovível. Ele vive no terminal físico, e tirar a forma da venda sem
+        // cancelar lá deixaria o Checkout e a operadora discordando sobre um
+        // dinheiro já debitado (Constitution III).
+        //
+        // O PIX saiu desta guarda de propósito. Removê-lo **não** estorna nada —
+        // e nunca estornou: o Checkout não tem endpoint de cancelamento de PIX.
+        // Travar a forma aqui não protegia o dinheiro do cliente, só impedia o
+        // operador de reorganizar a venda. Quem avisa que a cobrança segue viva
+        // no banco é a confirmação da UI, antes de chamar esta action.
+        if (alvo.integracao === 'TEF' && alvo.status === 'APROVADO') {
+          deps.avisar?.(AVISO_TEF_IRREVERSIVEL);
           return;
         }
 
+        // A forma **fica na lista**, com o status virando `EXCLUIDO` — mesmo
+        // tratamento do item cancelado do carrinho (pedido do usuário,
+        // 2026-09-04): é rastreabilidade, não apagamento. `calcularSaldo` e
+        // `montarPagamentosParaPayload` já só enxergam `APROVADO`, então a forma
+        // excluída some do saldo e do envelope ao ERP sem precisar de um
+        // segundo filtro aqui — a UI é quem risca a linha.
         aplicarPagamentos(
-          get().pagamentos.filter((pagamento) => pagamento.idPagamento !== idPagamento),
+          get().pagamentos.map((pagamento) =>
+            pagamento.idPagamento === idPagamento
+              ? { ...pagamento, status: 'EXCLUIDO' as const }
+              : pagamento,
+          ),
         );
 
-        // Decisão própria (não está no contrato): o vale acompanha o pagamento
-        // ao qual foi vinculado. Deixá-lo no estado apontando para um
-        // `idPagamento` que não existe mais produziria um `TicketDevolucao`
-        // órfão, que nenhuma forma do payload carregaria.
+        // O vale sai da lista de aplicados: o ticket não chegou a ser
+        // consumido de fato (o ERP só marca `DevTicSit = 3` no faturamento, e a
+        // forma excluída não vai ao payload), então o mesmo código pode ser
+        // informado de novo nesta venda.
         set({
           valesDevolucao: get().valesDevolucao.filter((vale) => vale.idPagamento !== idPagamento),
         });
@@ -836,14 +895,17 @@ export function criarPagamentoSlice(
       descartarPagamento: () => {
         const { condicaoSelecionada, descontoCapa, pagamentos } = get();
 
-        // I6: o mesmo motivo que `removerPagamento` dá para uma forma isolada
-        // vale para o descarte em bloco — o estorno é operação do ERP.
+        // I6: o mesmo recorte de `removerPagamento` vale para o descarte em
+        // bloco — só o TEF aprovado trava, porque só ele tem uma transação viva
+        // num terminal que precisa ser cancelada antes. Um PIX na venda não
+        // impede o descarte; quem avisa que a cobrança segue no banco é a
+        // confirmação que a UI exibe antes de chamar esta action.
         if (
           pagamentos.some(
-            (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+            (pagamento) => pagamento.integracao === 'TEF' && pagamento.status === 'APROVADO',
           )
         ) {
-          deps.avisar?.(AVISO_PAGAMENTO_IRREVERSIVEL);
+          deps.avisar?.(AVISO_TEF_IRREVERSIVEL);
           return;
         }
 

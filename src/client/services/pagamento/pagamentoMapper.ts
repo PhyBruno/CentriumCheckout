@@ -11,6 +11,7 @@
 
 import type { CondicaoPagamento, FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import type { CapacidadesPagamento } from '../../domain/pagamento/roteamentoIntegracao';
+import { ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import type {
   CondicaoPagamentoValidada,
   FormaPagamentoValidada,
@@ -77,4 +78,20 @@ export function paraCapacidadesPagamento(sessao: SessaoPagamento): CapacidadesPa
     tefAtivo: sessao.ConfiguracoesTEF?.TEFAtivo ?? false,
     pixAtivo: sessao.ConfiguracoesPIX?.UtilizaCentriumPAG ?? false,
   };
+}
+
+/**
+ * Piso de valor da cobrança PIX (`ConfiguracoesPIX.MinimoPix`, feature 009).
+ *
+ * Fica **fora** de `CapacidadesPagamento` de propósito: aquele tipo alimenta
+ * `resolverIntegracao`, que decide **para onde** uma forma roteia, e o piso não
+ * participa dessa decisão — misturá-lo ali daria ao roteamento um insumo que
+ * nenhuma das suas regras usa (`roteamentoIntegracao.ts`, nota de AD-144).
+ *
+ * Bloco ausente ou campo ausente ⇒ zero, isto é, **sem piso**. A alternativa —
+ * assumir um mínimo qualquer — recusaria cobranças legítimas num ambiente que
+ * nunca configurou o campo, e o operador não teria como descobrir por quê.
+ */
+export function paraMinimoPix(sessao: SessaoPagamento): Centavos {
+  return sessao.ConfiguracoesPIX?.MinimoPix ?? ZERO_CENTAVOS;
 }

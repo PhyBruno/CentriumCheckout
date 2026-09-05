@@ -132,9 +132,27 @@ test.describe('Cenário 2 — Bootstrap completo antes da tela de venda (AUTH-03
     expect(registros[0]?.['_versionHash']).toEqual(expect.any(String));
 
     // FR-008: no F5 sem mudança, o BFF responde 304 e os ~5MB não voltam.
+    //
+    // A conta é só das requisições **condicionais** — as que levam
+    // `If-None-Match`, isto é, as do cache de bootstrap (Dexie + worker) que
+    // este cenário mede. A tela de venda faz uma **segunda** leitura da mesma
+    // rota, sem `If-None-Match`: é `useCondicoesPagamento` (feature 008), que lê
+    // o catálogo de pagamento de dentro do mesmo payload por não existir
+    // endpoint dedicado (AD-097) — decisão documentada em `pagamentoQueries.ts`.
+    //
+    // Sem este recorte o teste media as duas e o resultado dependia de qual
+    // chegava primeiro: crescer o catálogo do ERP mockado (mais condições e
+    // formas) já bastava para a segunda entrar na janela de observação e o
+    // cenário virar `[304, 200]`. Que essa segunda leitura baixe o payload
+    // inteiro é um custo real, e está registrado como pendência da 008 — não é
+    // o que este cenário afirma.
     const statusBootstrap: number[] = [];
     page.on('response', (resposta) => {
-      if (resposta.url().includes('/api/bootstrap')) {
+      const requisicao = resposta.request();
+      if (
+        resposta.url().includes('/api/bootstrap') &&
+        requisicao.headers()['if-none-match'] !== undefined
+      ) {
         statusBootstrap.push(resposta.status());
       }
     });

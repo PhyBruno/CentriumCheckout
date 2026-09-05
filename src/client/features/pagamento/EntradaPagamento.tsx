@@ -98,11 +98,22 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
    * Os motivos espelham, na mesma ordem, as guardas de `adicionar()`: uma lista
    * que divergisse da função diria uma coisa e o bloqueio responderia outra.
    */
-  /** Único motivo que trava a **digitação** — ver o comentário no `<input>`. */
+  /**
+   * Os dois motivos que travam a **digitação** — ver o comentário no `<input>`.
+   *
+   * `forma === null` passou a bloquear aqui (correção do usuário, 2026-09-04,
+   * revoga a decisão anterior). Antes só a venda sem valor travava o campo, de
+   * propósito: "escolha a forma antes" impedia *adicionar*, não digitar, para
+   * não obrigar uma ordem rígida de gestos. O usuário decidiu o contrário — sem
+   * forma escolhida não há para onde os centavos digitados irem, e o campo não
+   * deveria aceitar um número que a venda ainda não sabe a quem atribuir.
+   */
   const bloqueioDoCampo: MotivoBloqueio =
     totalLiquido === ZERO_CENTAVOS
       ? 'Esta venda não tem valor a cobrar: insira produtos ou revise o desconto antes de informar o valor recebido.'
-      : null;
+      : forma === null
+        ? 'Escolha a forma de pagamento antes de informar o valor recebido.'
+        : null;
 
   const bloqueioDeInsercao: MotivoBloqueio = enviando
     ? 'Aguarde: o pagamento anterior ainda está sendo processado.'
@@ -189,12 +200,10 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
             inputMode="decimal"
             placeholder="0,00"
             value={valorTexto}
-            // Bloqueado **só** por venda sem valor (pedido do usuário,
-            // 2026-09-04) — não pelos demais motivos de `bloqueioDeInsercao`.
-            // "Escolha a forma antes" impede *adicionar*, não digitar: travar o
-            // campo por isso obrigaria o caixa a escolher a forma antes de poder
-            // teclar o valor, invertendo a ordem natural do gesto. Sem valor a
-            // cobrar, porém, não há número que sirva.
+            // Bloqueado por venda sem valor **ou** forma ainda não escolhida
+            // (`bloqueioDoCampo`) — não pelos demais motivos de
+            // `bloqueioDeInsercao` (dinheiro duplicado, vale devolução etc.),
+            // que só impedem *adicionar*, não digitar.
             //
             // `readOnly`, não `disabled` (AD-143): segue alcançável por TAB e o
             // clique explica o motivo, com o mesmo cursor do combobox de

@@ -9,7 +9,17 @@ import { ControleDescontoCapa } from './ControleDescontoCapa';
 import { EntradaPagamento } from './EntradaPagamento';
 import { ListaPagamentosAplicados } from './ListaPagamentosAplicados';
 import { ModalValeDevolucao } from './ModalValeDevolucao';
-import { SeletorCondicaoPagamento, SeletorFormaPagamento } from './SeletorCondicaoForma';
+import {
+  AVISO_DESASSOCIACAO_MANUAL,
+  CHAMADA_PIX_NAO_E_CANCELADO,
+  DESTAQUE_PIX_SEGUE_NO_BANCO,
+} from './pix/avisosPix';
+import { DialogoConfirmacaoPix } from './pix/DialogoConfirmacaoPix';
+import {
+  SeletorCondicaoPagamento,
+  SeletorFormaPagamento,
+  type OrigemSelecao,
+} from './SeletorCondicaoForma';
 import { TotalDaVenda } from './TotalDaVenda';
 
 /**
@@ -52,39 +62,74 @@ import { TotalDaVenda } from './TotalDaVenda';
  * Mora no cabeçalho, e não junto da lista de pagamentos, porque a lista pode
  * estar vazia — o congelamento começa na condição, antes da primeira forma.
  *
- * Bloqueio explicativo em dois casos, nunca `disabled` (AD-143): nada a limpar,
- * e pagamento TEF/PIX aprovado (I6 — o estorno é do ERP). A recusa de verdade
- * mora em `descartarPagamento`; aqui ela é antecipada para o operador ler o
- * motivo antes de tentar.
+ * Bloqueio explicativo, nunca `disabled` (AD-143), em dois casos: nada a limpar,
+ * e **cartão aprovado no TEF** (I6 — a transação vive no terminal físico e o
+ * cancelamento acontece lá, antes). A recusa de verdade mora em
+ * `descartarPagamento`; aqui ela é antecipada para o operador ler o motivo antes
+ * de tentar.
+ *
+ * **PIX não bloqueia mais, pergunta** (AD-161, item 2 do usuário): descartar o
+ * pagamento com uma cobrança PIX na venda passa pela mesma confirmação da
+ * remoção individual. A regra é a de sempre — o Checkout não cancela cobrança
+ * PIX —, e travar o botão nunca desfez nada; só deixava o operador sem saída.
  */
 function BotaoLimparPagamento(): ReactElement {
   const condicaoSelecionada = useVendaStore((estado) => estado.condicaoSelecionada);
   const descontoCapa = useVendaStore((estado) => estado.descontoCapa);
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const descartarPagamento = useVendaStore((estado) => estado.descartarPagamento);
+  const [confirmando, setConfirmando] = useState(false);
 
-  const temIrreversivel = pagamentos.some(
-    (pagamento) => pagamento.integracao !== 'NENHUMA' && pagamento.status === 'APROVADO',
+  const temTefAprovado = pagamentos.some(
+    (pagamento) => pagamento.integracao === 'TEF' && pagamento.status === 'APROVADO',
   );
+  const temPix = pagamentos.some((pagamento) => pagamento.integracao === 'PIX_DINAMICO');
   const vazio = condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null;
 
-  const bloqueio: MotivoBloqueio = temIrreversivel
-    ? 'Pagamento aprovado por TEF/PIX não pode ser removido: o estorno é operação do ERP.'
+  const bloqueio: MotivoBloqueio = temTefAprovado
+    ? 'Cartão aprovado no TEF não pode ser removido: cancele a transação no terminal antes.'
     : vazio
       ? 'Não há condição, desconto ou forma de pagamento nesta venda para limpar.'
       : null;
 
   return (
-    <button
-      type="button"
-      className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-50 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-      data-testid="limpar-pagamento"
-      {...atributosDeBloqueio(bloqueio)}
-      onClick={acaoBloqueavel(bloqueio, descartarPagamento)}
-    >
-      <Eraser className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      Limpar
-    </button>
+    <>
+      <button
+        type="button"
+        className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary-hover aria-disabled:cursor-not-allowed aria-disabled:opacity-50 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        data-testid="limpar-pagamento"
+        {...atributosDeBloqueio(bloqueio)}
+        onClick={acaoBloqueavel(bloqueio, () => {
+          if (temPix) {
+            setConfirmando(true);
+            return;
+          }
+          descartarPagamento();
+        })}
+      >
+        <Eraser className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        Limpar
+      </button>
+
+      {confirmando && (
+        <DialogoConfirmacaoPix
+          testId="confirmar-limpeza-pix"
+          titulo="Limpar o pagamento com PIX gerado?"
+          subtitulo="A cobrança já foi gerada no banco"
+          chamada={CHAMADA_PIX_NAO_E_CANCELADO}
+          explicacao={AVISO_DESASSOCIACAO_MANUAL}
+          destaque={DESTAQUE_PIX_SEGUE_NO_BANCO}
+          rotuloConfirmar="Limpar mesmo assim"
+          onConfirmar={() => {
+            descartarPagamento();
+            setConfirmando(false);
+          }}
+          onCancelar={() => {
+            setConfirmando(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -104,26 +149,56 @@ export function PainelPagamentoETotais(): ReactElement {
    * dois leem o mesmo rascunho, e quem os compõe é quem o segura.
    */
   const [formaSelecionada, setFormaSelecionada] = useState<FormaPagamento | null>(null);
+  const [valeAberto, setValeAberto] = useState(false);
 
   /**
-   * Escolher a forma de vale devolução **abre o modal do ticket**; qualquer
-   * outra forma só vira o rascunho da próxima inserção.
+   * Trocar a condição **limpa a forma escolhida** (pedido do usuário,
+   * 2026-09-04).
    *
-   * O gesto é um só para o operador: ele percorre o combobox e, ao parar na
-   * forma de vale, já é levado a digitar o código — sem um segundo controle
-   * escondido em outro lugar da tela. Um `useEffect` sobre `formaSelecionada`
-   * faria o mesmo, mas reabriria o modal a cada re-render que reescrevesse o
-   * estado, inclusive depois de o operador cancelar; a decisão pertence ao
-   * evento de escolha, não ao valor resultante.
+   * As formas pertencem à condição: mantida a escolha anterior, o combobox
+   * exibiria o nome de uma forma que a condição nova não oferece, e
+   * `EntradaPagamento` aceitaria um valor para ela — `aplicarPagamento` recusaria
+   * só no clique, com a frase de forma fora da condição. Zerar aqui faz o
+   * controle voltar a "Selecione a forma", que é o estado verdadeiro.
+   *
+   * Comparação do valor anterior durante o render, não `useEffect`: o reset
+   * acontece **antes** da pintura, sem um quadro intermediário exibindo a forma
+   * antiga sob a condição nova (padrão de `abertoAnterior` em
+   * `ModalValeDevolucao`).
    */
-  function escolherForma(forma: FormaPagamento): void {
+  const codigoCondicao = useVendaStore((estado) => estado.condicaoSelecionada?.codigo ?? null);
+  const [codigoCondicaoAnterior, setCodigoCondicaoAnterior] = useState(codigoCondicao);
+  if (codigoCondicao !== codigoCondicaoAnterior) {
+    setCodigoCondicaoAnterior(codigoCondicao);
+    setFormaSelecionada(null);
+    setValeAberto(false);
+  }
+
+  /**
+   * Escolher a forma de vale devolução **por clique do mouse** abre o modal do
+   * ticket; qualquer outra forma, ou a mesma escolhida pela seta do teclado, só
+   * vira o rascunho da próxima inserção.
+   *
+   * **A origem decide, não a forma** (correção do usuário, 2026-09-04). Antes o
+   * modal abria sempre que o vale virava `formaSelecionada`, inclusive ao
+   * percorrer o combobox com as setas — e a seta existe justamente para passear
+   * pelas opções no ritmo do teclado, sem confirmar nenhuma. Abrir uma janela a
+   * cada opção sobrevoada obrigaria um Escape por tecla, e o operador que só
+   * queria ver a próxima forma acabava preso numa janela que não pediu. O
+   * clique do mouse é gesto único e deliberado — é o que garante que o operador
+   * quis mesmo aquela forma, não apenas passou por ela.
+   *
+   * Um `useEffect` sobre `formaSelecionada` não distinguiria as duas origens
+   * (o valor resultante é o mesmo nos dois casos); a decisão só existe no
+   * evento de escolha, por isso `aoEscolher` carrega a origem até aqui.
+   */
+  function escolherForma(forma: FormaPagamento, origem: OrigemSelecao): void {
     setFormaSelecionada(forma);
-    if (ehFormaDeValeDevolucao(forma)) {
+    if (origem === 'mouse' && ehFormaDeValeDevolucao(forma)) {
       setValeAberto(true);
     }
   }
 
-  const [valeAberto, setValeAberto] = useState(false);
   const formaDoVale =
     valeAberto && formaSelecionada !== null && ehFormaDeValeDevolucao(formaSelecionada)
       ? formaSelecionada
@@ -150,11 +225,19 @@ export function PainelPagamentoETotais(): ReactElement {
         <BotaoLimparPagamento />
       </header>
 
-      {/* A área central rola: o cartão tem altura fixa (a da tela) e a lista de
-          pagamentos aplicados é a única parte que cresce sem limite. Sem isto,
-          uma venda com muitas formas empurraria o bloco de total e o botão de
-          finalizar para fora do cartão — e o botão de finalizar é justamente o
-          que não pode sumir.
+      {/* Na prática esta coluna **não rola**: quem rola é a lista de pagamentos
+          aplicados, por dentro (pedido do usuário, 2026-09-04). O cartão tem
+          altura fixa (a da tela) e a lista é a única parte que cresce sem
+          limite — e é também o único bloco daqui marcado com `min-h-0`, então é
+          ela que o flex escolhe para absorver a falta de espaço; condição,
+          desconto e campo de valor param no tamanho do próprio conteúdo. Uma
+          venda com muitas formas encolhe a lista e ganha barra dentro dela, em
+          vez de arrastar os controles de cima para fora da vista.
+
+          A rolagem declarada aqui é a **rede de segurança** para o caso em que
+          nem a lista zerada basta (tela baixa demais para os blocos fixos): sem
+          ela, o bloco de total e o botão de finalizar sairiam do cartão — e o
+          botão de finalizar é justamente o que não pode sumir.
 
           `overflow-x-hidden` é obrigatório junto do `overflow-y-auto`, não
           decoração: pelo CSS, `overflow-x: visible` combinado com um
