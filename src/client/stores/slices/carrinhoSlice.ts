@@ -59,6 +59,16 @@ export interface CarrinhoDeps {
   clienteAtual(): ClienteDaVenda | null;
   /** Aviso ao operador. Injetado para o slice não importar a lib de toast. */
   avisar?: (mensagem: string) => void;
+  /**
+   * Há forma aprovada que entrou **com o documento** (feature 006/011), e não
+   * por um gesto do operador — escolhe qual dos dois avisos de bloqueio ele lê
+   * (AD-169).
+   *
+   * Opcional, como `avisar` e `gerarIdLinha`: o default `false` dá o texto
+   * antigo, que é o correto para toda venda montada do zero. Quem não injeta
+   * não perde comportamento nenhum.
+   */
+  pagamentoVeioDeDocumento?: () => boolean;
   /** Injetável para tornar `idLinha` determinístico em teste. */
   gerarIdLinha?: () => string;
 }
@@ -158,6 +168,22 @@ const AVISO_CARRINHO_BLOQUEADO =
   'Esta venda já está em pagamento: use "Limpar" no cartão de pagamento para remover condição, desconto e formas e voltar a editar os itens.';
 
 /**
+ * A mesma trava, causa diferente: a venda **nasceu** congelada porque o
+ * documento retomado já vinha pago (AD-169).
+ *
+ * Um rascunho de NFCe é uma venda que foi cobrada e depois suspensa, então a
+ * forma aprovada entra junto com os itens e a grid trava no último passo da
+ * própria retomada — sem que o operador tenha feito nada. Servir-lhe o texto
+ * acima ("esta venda já está em pagamento") o mandaria procurar um pagamento
+ * que ele não lançou, e a frase soaria como se ele tivesse errado. Aqui o
+ * fato vem primeiro e a saída depois, com o aviso de que a saída **descarta um
+ * valor já recebido** — a mesma advertência que a confirmação do "Limpar"
+ * repete, porque este é o ponto em que o operador decide ir até lá.
+ */
+const AVISO_CARRINHO_BLOQUEADO_POR_DOCUMENTO =
+  'Esta venda foi retomada com o pagamento já registrado no documento, por isso os itens estão travados. Para editá-los, use "Limpar" no cartão de pagamento — isso descarta um valor que já foi recebido.';
+
+/**
  * O desconto **do item** não pode zerar o item (pedido do usuário,
  * 2026-09-04). Mesmo piso do rateio do desconto de capa
  * (`TOTAL_MINIMO_DA_LINHA`), aplicado aqui à linha inteira.
@@ -204,7 +230,11 @@ export function criarCarrinhoSlice(
     if (deps.podeMutarCarrinho()) {
       return false;
     }
-    deps.avisar?.(AVISO_CARRINHO_BLOQUEADO);
+    deps.avisar?.(
+      deps.pagamentoVeioDeDocumento?.() === true
+        ? AVISO_CARRINHO_BLOQUEADO_POR_DOCUMENTO
+        : AVISO_CARRINHO_BLOQUEADO,
+    );
     return true;
   }
 

@@ -108,6 +108,14 @@ export const carrinhoDepsPadrao: CarrinhoDeps = {
       descontoConvenio: cliente.descontoConvenio ?? 0,
     };
   },
+  // Lido do estado a cada checagem, como `podeMutarCarrinho`: a marca vive na
+  // forma de pagamento, e não na identidade da venda, porque uma venda vinda de
+  // DAV pendente de cobrança recebe formas do operador depois — e elas não são
+  // do documento (AD-169).
+  pagamentoVeioDeDocumento: () =>
+    useVendaStore
+      .getState()
+      .pagamentos.some((pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO'),
   avisar: (mensagem) => {
     gooeyToast.warning(mensagem);
   },

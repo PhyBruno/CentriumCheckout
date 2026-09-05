@@ -549,6 +549,9 @@ export function criarPagamentoSlice(
         dadosTEF: null,
         pixGuid: null,
         ticketDevolucao,
+        // Gesto do operador nesta venda: nada foi recebido antes, e "Limpar"
+        // sobre esta forma descarta só o que ele acabou de digitar.
+        veioDeDocumento: false,
       };
 
       aplicarPagamentos([...get().pagamentos, pagamento]);
@@ -969,6 +972,10 @@ export function criarPagamentoSlice(
             // no próprio documento existir, e nenhuma integração é reaberta.
             integracao: 'NENHUMA',
             status: 'APROVADO',
+            // O único ponto da base que marca a forma como vinda do documento.
+            // É o que permite ao aviso da grid e ao "Limpar" falarem do valor
+            // já recebido em vez de tratá-la como cobrança digitada agora.
+            veioDeDocumento: true,
             dadosTEF: forma.tef,
             pixGuid: forma.pixGuid,
             ticketDevolucao: forma.ticketDevolucao,

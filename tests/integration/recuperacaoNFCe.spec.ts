@@ -491,6 +491,31 @@ describe('T026 — quickstart Cenário 2: retomada completa', () => {
     // `valorRecebido = valor` em dinheiro: o troco do documento original não é
     // reconstruído, porque o contrato não o devolve (`research.md` D8).
     expect(pagamentos[0]?.valorRecebido).toBe(9350);
+    // AD-169: marcada como vinda do documento. É o que faz o aviso da grid
+    // travada e o "Limpar" falarem de um valor **já recebido**, em vez de
+    // tratarem a forma como cobrança que o operador acabou de digitar.
+    expect(pagamentos[0]?.veioDeDocumento).toBe(true);
+  });
+
+  /**
+   * A consequência assumida da decisão A+C (AD-169): a forma aprovada que veio
+   * no rascunho congela a venda no **último passo da própria retomada**, e a
+   * grid nasce travada. Não é efeito colateral esquecido — é I7 valendo, e a
+   * saída é o "Limpar" do cartão de pagamento, nomeado pelo aviso que o
+   * operador lê ao tentar mexer nos itens.
+   */
+  it('a venda retomada nasce congelada, e "Limpar" a devolve ao operador', async () => {
+    const { deps } = depsComPagamentoReal();
+
+    await importarVendaExistente(fonte(), deps);
+
+    expect(store.getState().podeMutarCarrinho()).toBe(false);
+
+    store.getState().descartarPagamento();
+
+    // A partir daqui `FR-008` volta a valer: reinserir um SKU dispara o
+    // recálculo normal, como numa venda montada do zero.
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
   });
 
   it('aplica cliente, vendedor e a identidade original da venda', async () => {

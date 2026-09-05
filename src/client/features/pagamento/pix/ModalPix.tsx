@@ -22,7 +22,7 @@ import {
   CHAMADA_PIX_NAO_E_CANCELADO,
   DESTAQUE_PIX_SEGUE_NO_BANCO,
 } from './avisosPix';
-import { DialogoConfirmacaoPix } from './DialogoConfirmacaoPix';
+import { DialogoConfirmacaoDestrutiva } from '../DialogoConfirmacaoDestrutiva';
 
 /**
  * Janela de cobrança PIX (T016–T018, T021–T022) — réplica do frame
@@ -623,7 +623,7 @@ export function ModalPix({
       </div>
 
       {confirmandoDesistencia && (
-        <DialogoConfirmacaoPix
+        <DialogoConfirmacaoDestrutiva
           testId="confirmar-desistencia-pix"
           titulo="Desistir da cobrança PIX?"
           subtitulo="A cobrança já foi gerada no banco"
