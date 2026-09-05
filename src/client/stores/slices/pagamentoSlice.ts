@@ -75,7 +75,8 @@ import type { FormaDePagamentoRetrato } from '../../domain/venda/montarRetratoVe
  * teste não conseguiria afirmar "nada mutou antes do veredito" sem depender de
  * `setTimeout`.
  *
- * Por isso `aplicarPagamento` e `aplicarForma` devolvem `Promise<void>`. A frase
+ * Por isso `aplicarPagamento` devolve `Promise<void>` e `aplicarForma` devolve
+ * `Promise<boolean>` (o desfecho que o atalho da 013 precisa ler). A frase
  * do contrato continua verdadeira no sentido em que foi escrita —
  * `aplicarValeDevolucao` é a única action que faz uma chamada **de rede
  * própria** (`ValidaTicketDevolucao`); as duas de aplicação apenas aguardam uma
@@ -219,11 +220,39 @@ export interface PagamentoSlice {
    * repetir é o **mesmo código** — ver `aplicarValeDevolucao`.
    */
   valesDevolucao: ValeDevolucaoAplicado[];
+  /**
+   * Há um acionamento de venda rápida em curso (feature 013, `data-model.md`
+   * §1.5 daquela feature).
+   *
+   * Mora **aqui**, e não no hook da 013, porque o mesmo comando é disparado de
+   * dois lugares que não compartilham instância de componente: a tecla F6–F9,
+   * registrada no mapa central de atalhos, e o clique na faixa `DicaAtalhos`.
+   * Um `useRef`/`useState` local daria um guard por instância, e dois toques
+   * quase simultâneos produziriam dois lançamentos — exatamente o que I9/
+   * `FR-015` existem para impedir.
+   *
+   * Sem `persist`, como todo o resto do estado de venda (Constitution VI).
+   */
+  acionamentoEmAndamento: boolean;
 
   selecionarCondicao(condicao: CondicaoPagamento): void;
   aplicarPagamento(input: AplicarPagamentoInput): Promise<void>;
-  /** Porta da feature 013 — mesmo núcleo, só muda a `origem` do gate. */
-  aplicarForma(codigo: number, valor: Centavos): Promise<void>;
+  /**
+   * Porta da feature 013 — mesmo núcleo, só muda a `origem` do gate.
+   *
+   * Devolve `true` quando o pagamento **entrou** no estado (ainda que
+   * `PENDENTE_INTEGRACAO`), e `false` em qualquer recusa: forma fora da
+   * condição, validação local, veredito da 014 ou ERP indisponível. O booleano
+   * existe porque o atalho da 013 precisa distinguir "lançou" de "não lançou"
+   * para decidir sobre a finalização automática (`FR-011`, I8) — sem ele, o
+   * único sinal disponível seria comparar o saldo antes e depois, que confunde
+   * recusa com pagamento pendente de integração.
+   *
+   * Mesma escolha já feita em `aplicarValeDevolucao`, e o motivo é o mesmo.
+   */
+  aplicarForma(codigo: number, valor: Centavos): Promise<boolean>;
+  /** Liga/desliga o guard de acionamento único da feature 013 (I9). */
+  marcarAcionamentoEmAndamento(emAndamento: boolean): void;
   confirmarPagamentoIntegrado(idPagamento: string, dados: DadosIntegracao): void;
   recusarPagamentoIntegrado(idPagamento: string, motivo: string): void;
   removerPagamento(idPagamento: string): void;
@@ -596,6 +625,7 @@ export function criarPagamentoSlice(
       pagamentos: [],
       descontoCapa: null,
       valesDevolucao: [],
+      acionamentoEmAndamento: false,
 
       selecionarCondicao: (condicao) => {
         const atual = get().condicaoSelecionada;
@@ -644,9 +674,13 @@ export function criarPagamentoSlice(
         const forma = formaDoCatalogo(codigo);
         if (forma === undefined) {
           deps.avisar?.(AVISO_FORMA_FORA_DA_CONDICAO);
-          return;
+          return false;
         }
-        await aplicarNucleo(forma, valor, 'ATALHO_CENARIO');
+        return aplicarNucleo(forma, valor, 'ATALHO_CENARIO');
+      },
+
+      marcarAcionamentoEmAndamento: (emAndamento) => {
+        set({ acionamentoEmAndamento: emAndamento });
       },
 
       confirmarPagamentoIntegrado: (idPagamento, dados) => {

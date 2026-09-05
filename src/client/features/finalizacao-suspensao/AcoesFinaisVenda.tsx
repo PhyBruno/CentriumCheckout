@@ -173,7 +173,17 @@ function useVendaTemValorAFaturar(): boolean {
   return temItemComValor && saldoRestante === 0;
 }
 
-function useFinalizacaoVenda(): ApiFinalizacaoVenda {
+/**
+ * A máquina de finalização compartilhada pelas superfícies desta tela.
+ *
+ * Exportada desde a feature 013: a venda rápida precisa da **mesma** instância
+ * para o cenário "encerra a operação" finalizar pelo caminho normal, com todas
+ * as validações da 004 (`FR-010`). Chamar `useFinalizarOuSuspenderVenda` por
+ * conta própria criaria uma segunda máquina, e a trava de `falha-rede` de uma
+ * não valeria para a outra — o mesmo defeito que este provider existe para
+ * evitar.
+ */
+export function useFinalizacaoVenda(): ApiFinalizacaoVenda {
   const api = useContext(ContextoFinalizacao);
   if (api === null) {
     throw new Error(

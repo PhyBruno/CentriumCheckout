@@ -2220,3 +2220,35 @@ Quatro achados da revisão da feature 011, todos corrigidos nesta passagem. O qu
 **Um travamento latente veio à tona junto.** No vale devolução, o "Cancelar" tinha um segundo papel: com a pergunta de excedente em tela ele respondia **não**. Fechar pelo "X" ou pelo ESC nunca resolvia a `Promise` pendurada em `resolverExcedente` — `aplicar()` ficava suspensa para sempre com `enviando = true`. Enquanto havia "Cancelar" o operador tinha por onde escapar; removê-lo tornaria o travamento alcançável. A recusa passou para um efeito sobre `aberto`, que cobre "X", ESC e qualquer saída futura — em vez de um botão, que é o que voltaria a esquecer alguma delas.
 
 **Impact:** alterados — `src/client/lib/useFocoDeModal.ts`; os 12 modais de `src/client/features/**` (`ModalBuscaProduto`, `ModalBuscaCliente`, `FormCadastroSimplificado`, `ModalImportacaoDav`, `ModalMenuImportacao`, `ModalRecuperacaoNFCe`, `ModalValeDevolucao`, `ModalPix`, `DialogoConfirmacaoDestrutiva`, `DialogoConfirmarReenvio`, `DialogoErroFaturamento`, `DialogoDocumentoFiscal`); `tests/e2e/recuperacao-nfce.spec.ts`, `tests/integration/ModalRecuperacaoNFCe.spec.tsx`. 805 testes de unidade/integração verdes, 130 E2E verdes, `tsc --noEmit` e ESLint limpos.
+
+### AD-171: A espera pela confirmação de TEF/PIX da venda rápida mora num adaptador da 013, não no slice da 008 (2026-09-05)
+
+**Decision:** a porta `aplicarForma` que `acionarCenario` (feature 013) recebe **não** é a action homônima do `pagamentoSlice`: é `aplicarFormaComIntegracao` (`src/client/features/venda-rapida/aplicarFormaComIntegracao.ts`), que chama a action e, quando o pagamento nasce `PENDENTE_INTEGRACAO`, se inscreve no `vendaStore` e só resolve quando aquele `idPagamento` sai de pendente — `true` para `APROVADO`, `false` para recusado, excluído ou removido da lista.
+
+**Context:** `specs/013-.../contracts/venda-rapida-domain-api.md` §4 (correção C1 de `/speckit-analyze`) exige que a Promise de `aplicarForma` só resolva **depois** de o pagamento estar de fato aplicado, inclusive aguardando TEF/PIX. O slice da 008 não faz isso e não deveria: ele resolve assim que o pagamento entra no estado, e quem confirma a integração é o modal de PIX (009) ou o TEF (010), por outro caminho. A diferença não é cosmética — `calcularSaldo` **não** conta pagamento pendente, então sem a espera o passo P5 leria saldo em aberto positivo logo depois de um PIX lançado e nunca finalizaria a venda que o cenário mandou encerrar (`quickstart.md` C5 da 013).
+
+**Alternatives:** (a) fazer o slice da 008 esperar — daria ao slice conhecimento de quem executa a integração, que é justamente o que `iniciarIntegracao` existe para evitar (Constitution II); (b) `acionarCenario` observar o estado por conta própria — criaria em 013 o mecanismo de retomada que a correção C1 removeu de propósito. O adaptador é o ponto de junção: 013 define a porta, e o adaptador a satisfaz **observando** o ciclo que a 008 já implementa, sem criar um segundo.
+
+**Trade-off:** o pagamento que fica pendente para sempre mantém `acionamentoEmAndamento` ligado, bloqueando novos atalhos. É o desfecho correto — há uma cobrança viva no banco/terminal —, e todas as saídas reais (confirmar, recusar, remover, "Limpar") resolvem a Promise, porque a ausência do `idPagamento` na lista conta como `false`.
+
+**Consequência na 008:** `pagamentoSlice.aplicarForma` passou de `Promise<void>` para `Promise<boolean>`, devolvendo o resultado que `aplicarNucleo` já calculava. Sem ele o único sinal disponível seria comparar o saldo antes e depois, que confunde recusa com pagamento pendente de integração. Mesma escolha já feita em `aplicarValeDevolucao`.
+
+**Impact:** novo — `src/client/features/venda-rapida/aplicarFormaComIntegracao.ts`. Alterado — `src/client/stores/slices/pagamentoSlice.ts`.
+
+### AD-172: Atalhos de teclado do PDV têm mapa central próprio, sem `react-hotkeys-hook` (2026-09-05)
+
+**Decision:** `src/client/hotkeys/mapaAtalhos.ts` expõe `useAtalhosDeTeclado(atalhos, ativo)` sobre um `keydown` de `window`, e é por ele que todo atalho global da tela de venda passa. A biblioteca `react-hotkeys-hook`, prevista em `specs/013-.../plan.md`, **não** entra.
+
+**Context:** a skill de projeto `react-hotkeys-pdv` exige três coisas — mapa central auditável, imunidade a digitação/bipagem e teste automatizado por atalho. Nenhuma delas depende da biblioteca. Ela não está nas dependências do projeto, nenhum outro atalho da base a usa (os modais tratam `Escape` com `keydown` nativo), e o projeto é 100% Docker: toda dependência nova entra na imagem.
+
+**A regra que o módulo protege:** o evento é ignorado quando o foco está em `input`/`textarea`/`select`/`contenteditable`, quando está dentro de um `[role="dialog"]`, quando há modificador, quando é repetição de tecla segurada e quando alguém já chamou `preventDefault`. A defesa contra o leitor de código de barras é o **foco**, não medição de intervalo entre teclas — um operador rápido não pode ser confundido com um leitor. F6–F9 levam `preventDefault` porque têm comportamento nativo no navegador.
+
+**Impact:** novo — `src/client/hotkeys/mapaAtalhos.ts`. A skill `react-hotkeys-pdv` deve ser lida com esta substituição em mente; o que ela exige continua valendo.
+
+### AD-173: `AtalhoVendaRapida` carrega o `meioPagtoNFe`, para a faixa de atalhos não consultar o catálogo (2026-09-05)
+
+**Decision:** a projeção `projetarAtalhos` copia `meioPagtoNFe` da `FormaPagamento` que ela já localiza no catálogo em E4, e o campo entra em `AtalhoVendaRapida` — um campo a mais do que `specs/013-.../data-model.md` §1.2 lista.
+
+**Context:** o nó `I10H4d` do Pencil desenha cada botão da faixa com um ícone do método ao lado do rótulo, e `contracts/venda-rapida-domain-api.md` §6 proíbe o componente de filtrar, ordenar ou reinterpretar cenários. Sem o campo, `DicaAtalhos` teria de resolver a forma no catálogo por conta própria — regra de negócio dentro do componente, exatamente o que o contrato fecha. A projeção já tem a forma em mãos; copiar o meio custa nada e mantém a UI burra. O ícone sai de `ICONE_POR_MEIO`, o mesmo mapa da lista de pagamentos aplicados.
+
+**Impact:** alterado — `src/client/domain/vendaRapida/tipos.ts` (campo novo), `projetarAtalhos.ts`. `data-model.md` §1.2 da 013 fica com uma linha a menos que o código; a divergência é esta entrada.

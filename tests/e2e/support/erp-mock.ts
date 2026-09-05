@@ -697,7 +697,32 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     TipoPreco: config.tipoPreco, // int32 — número nativo
     CadMaqCod: config.cadMaqCod,
     ListaPrecoDefault: String(3), // int64
-    CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',
+    /**
+     * Catálogo de cenários de venda rápida (feature 013, AD-104): array JSON de
+     * strings com sete campos posicionais separados por `;`, exatamente como
+     * `PCheckout_GetSessao` monta.
+     *
+     * A lista reproduz a fixture de `specs/013-.../quickstart.md` sobre o
+     * catálogo deste mock, e é ela que torna C1/C3 exercitáveis de ponta a
+     * ponta:
+     *
+     * 1. **F6** — dinheiro à vista (forma 1), `encerraOperacao` ligado: é o
+     *    fluxo dourado, um toque lança e finaliza.
+     * 2. **`f7 `** — débito à vista (forma 5), sem encerramento e com a tecla
+     *    **mal formatada** de propósito: só vira `F7` se E3 normalizar.
+     * 3. um item com `;` extra no nome (8 campos) — precisa **sumir** sem levar
+     *    junto os válidos (AD-105, I3);
+     * 4. um cenário **sem tecla**, que o ERP devolve porque a consulta não
+     *    filtra por `CPgTeclaAtalho` preenchido.
+     *
+     * Os dois últimos não podem virar atalho: é o que o E2E de recusa afirma.
+     */
+    CenarioPagamento: JSON.stringify([
+      '1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6',
+      '5;CARTAO DEBITO;1;A VISTA;Débito à vista;False;f7 ',
+      '9;VALE;1;A VISTA;Vale;Ops; promo;True;F8',
+      '2;CARTAO CREDITO;1;A VISTA;Crédito à vista;False;',
+    ]),
     QtdMinCharParaConsulta: String(3), // int64
     // Domain `EnumTipoCodigoProduto` da KB GeneXus (`ControlValues`):
     // `''`→Código Reduzido, `'D'`→Código de Barras, `'C'`→Referência,
