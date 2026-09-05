@@ -8,6 +8,7 @@ import {
 import {
   paraLinhaCarrinho,
   type LinhaImportada,
+  type OrigemDocumentoImportado,
 } from '../../domain/importacaoVenda/mapearVendaExistente';
 import { somar, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import {
@@ -116,9 +117,15 @@ export interface CarrinhoSlice {
    * `data-model.md` §6); e o lote inteiro entra numa única gravação, sem
    * reprecificar N vezes no meio do caminho.
    *
-   * Não sabe de onde o documento veio — recebe `LinhaImportada[]` já mapeadas.
+   * Não conhece o documento — recebe `LinhaImportada[]` já mapeadas. `origem`
+   * é a única coisa que ele precisa saber sobre a procedência: distingue a
+   * linha vinda de um DAV (006) da vinda de um rascunho de NFCe (011), que são
+   * idênticas em todo o resto (AD-166).
    */
-  importarLinhasCongeladas(linhas: readonly LinhaImportada[]): void;
+  importarLinhasCongeladas(
+    linhas: readonly LinhaImportada[],
+    origem: OrigemDocumentoImportado,
+  ): void;
 
   /**
    * Preenche a descrição do snapshot de **todas** as linhas de um SKU (feature
@@ -386,7 +393,7 @@ export function criarCarrinhoSlice(
         set({ linhas: [] });
       },
 
-      importarLinhasCongeladas: (linhas) => {
+      importarLinhasCongeladas: (linhas, origem) => {
         if (carrinhoBloqueado()) {
           return;
         }
@@ -401,7 +408,7 @@ export function criarCarrinhoSlice(
         // mesmo SKU para outra faixa (AD-067).
         aplicarLinhas([
           ...get().linhas,
-          ...linhas.map((linha) => paraLinhaCarrinho(linha, gerarIdLinha())),
+          ...linhas.map((linha) => paraLinhaCarrinho(linha, gerarIdLinha(), origem)),
         ]);
       },
 

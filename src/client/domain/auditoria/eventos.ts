@@ -207,11 +207,35 @@ export type EventoDavImportado = EventoAuditoriaBase<
   }
 >;
 
+/**
+ * Retomada de um rascunho de NFCe suspenso (feature 011, AD-166).
+ *
+ * Irmão de `DAV_IMPORTADO`, e **não** o mesmo evento: os dois entram pela mesma
+ * orquestração, mas registram gestos distintos — um traz um orçamento que ainda
+ * não é venda, o outro devolve ao caixa uma venda que já existiu e foi
+ * suspensa. Um evento só, distinguido por um campo, deixaria a leitura da
+ * trilha depender de inspecionar `detalhes`.
+ *
+ * Não há `numeroDav` correspondente: o rascunho **é** identificado pelo próprio
+ * `numeroNota`, que também é o elo reenviado a `FaturarNFCe` (`NFCE-02`).
+ * `serie` acompanha porque `CarregarNFCe` só resolve o par número+série
+ * (`research.md` D4) — sozinho, o número não identifica o documento.
+ */
+export type EventoNFCeRecuperada = EventoAuditoriaBase<
+  'NFCE_RECUPERADA',
+  {
+    readonly numeroNota: number;
+    readonly serie: string;
+    readonly quantidadeLinhas: number;
+    readonly quantidadeFormasDePagamento: number;
+  }
+>;
+
 /* ------------------------------------------------------------------ *
  * União e histórico
  * ------------------------------------------------------------------ */
 
-/** União discriminada por `tipo` dos 20 eventos do catálogo (`data-model.md`). */
+/** União discriminada por `tipo` dos 21 eventos do catálogo (`data-model.md`). */
 export type EventoAuditoria =
   | EventoVendaIniciada
   | EventoClienteSelecionado
@@ -232,7 +256,8 @@ export type EventoAuditoria =
   | EventoVendaSuspensa
   | EventoValidacaoVendaRecusada
   | EventoVendaRapidaAcionada
-  | EventoDavImportado;
+  | EventoDavImportado
+  | EventoNFCeRecuperada;
 
 /** Todo `tipo` do catálogo, para exaustividade em testes e consumidores. */
 export type TipoEventoAuditoria = EventoAuditoria['tipo'];
@@ -408,4 +433,10 @@ export function eventoDavImportado(
   detalhes: EventoDavImportado['detalhes'],
 ): SemTimestamp<EventoDavImportado> {
   return { tipo: 'DAV_IMPORTADO', detalhes };
+}
+
+export function eventoNFCeRecuperada(
+  detalhes: EventoNFCeRecuperada['detalhes'],
+): SemTimestamp<EventoNFCeRecuperada> {
+  return { tipo: 'NFCE_RECUPERADA', detalhes };
 }

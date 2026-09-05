@@ -18,9 +18,16 @@
  * `'DAV'` foi acrescentado em 2026-08-31 (AD-115, `FR-016`) para a importação
  * de DAV (feature 006) — extensão puramente aditiva: não muda a regra
  * `CLIENTE_SELECIONADO` vs. `CLIENTE_TROCADO` (`research.md` D9).
+ *
+ * `'RASCUNHO'` entrou em 2026-09-04 pela feature 011 (recuperação de NFCe),
+ * fechando a extensão que `specs/011-recuperacao-nfce/research.md` D6 tinha
+ * declarado e deixado por aplicar. É aditiva pelo mesmo motivo de `'DAV'`, e
+ * fica **separada** dela de propósito: as duas importam documento do ERP, mas
+ * um DAV é orçamento e um rascunho é venda já suspensa — colapsá-las num
+ * rótulo só apagaria essa distinção da trilha de auditoria.
  */
 export type OrigemCliente =
-  'DEFAULT' | 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'CADASTRO_SIMPLIFICADO' | 'DAV';
+  'DEFAULT' | 'BUSCA_DOCUMENTO' | 'BUSCA_LIVRE' | 'CADASTRO_SIMPLIFICADO' | 'DAV' | 'RASCUNHO';
 
 /** As origens que representam uma escolha explícita do operador (D9). */
 export type OrigemSelecaoCliente = Exclude<OrigemCliente, 'DEFAULT' | 'CADASTRO_SIMPLIFICADO'>;

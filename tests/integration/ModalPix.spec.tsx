@@ -215,6 +215,42 @@ async function esperarAlemDeUmTick(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, INTERVALO_TESTE_MS * 5));
 }
 
+/**
+ * Afirma J3: depois do desfecho, o polling **para**.
+ *
+ * Mede a estabilização, e não um número de consultas, por duas razões. A
+ * primeira é que não existe número certo: `erpFake` repete o último literal da
+ * sequência indefinidamente, então quantos ticks couberam antes de o componente
+ * processar a resposta terminal é temporização, não contrato — 3 e 4 são
+ * igualmente válidos para uma sequência de 3.
+ *
+ * A segunda é que o instantâneo tirado logo após o callback (`const antes =
+ * consultasDeStatus(...)`, como estava aqui até 2026-09-04) é uma corrida: o
+ * tick que já estava em voo quando o desfecho foi processado ainda registra a
+ * sua chamada **depois** da leitura. Sob a suíte cheia isso reprovava um teste
+ * diferente a cada rodada, sempre com "expected N to be N-1", acusando um tick
+ * que nunca existiu (item 44 de PENDENCIES).
+ *
+ * Nada é afrouxado: se o polling de fato não parar, a contagem segue crescendo
+ * em todas as rodadas e a função lança.
+ */
+async function esperarPollingParar(chamadas: readonly ChamadaCapturada[]): Promise<void> {
+  let anterior = consultasDeStatus(chamadas);
+
+  for (let rodada = 0; rodada < 5; rodada += 1) {
+    await esperarAlemDeUmTick();
+    const atual = consultasDeStatus(chamadas);
+    if (atual === anterior) {
+      return;
+    }
+    anterior = atual;
+  }
+
+  throw new Error(
+    `o polling não parou: ${String(consultasDeStatus(chamadas))} consultas de status e ainda crescendo`,
+  );
+}
+
 beforeEach(() => {
   avisos.length = 0;
 });
@@ -244,11 +280,8 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
       expect(desfechos.aprovados[0]).toBe(geracoes(chamadas)[0]?.TrnGUID);
       expect(desfechos.abandonados).toHaveLength(0);
 
-      // J3: o polling para de fato na mesma renderização que processa o
-      // resultado — não fica sondando uma cobrança já resolvida.
-      const consultasAoAprovar = consultasDeStatus(chamadas);
-      await esperarAlemDeUmTick();
-      expect(consultasDeStatus(chamadas)).toBe(consultasAoAprovar);
+      // J3: o polling não fica sondando uma cobrança já resolvida.
+      await esperarPollingParar(chamadas);
     },
   );
 
@@ -384,9 +417,7 @@ describe('US3 — fechar a cobrança pendente e trocar de forma', () => {
 
     // J3: sondar em background depois de o operador fechar deixaria requests
     // órfãos contra uma cobrança que a venda já esqueceu.
-    const consultasAoFechar = consultasDeStatus(chamadas);
-    await esperarAlemDeUmTick();
-    expect(consultasDeStatus(chamadas)).toBe(consultasAoFechar);
+    await esperarPollingParar(chamadas);
   });
 
   // T020 / `data-model.md` §4-§5 (quickstart Cenário 4): mesmo tratamento do
@@ -413,9 +444,7 @@ describe('US3 — fechar a cobrança pendente e trocar de forma', () => {
       expect(avisos.some((aviso) => aviso.includes(AVISO_DESASSOCIACAO_MANUAL))).toBe(true);
       expect(apenasGerarEStatus(chamadas)).toBe(true);
 
-      const consultasAoFalhar = consultasDeStatus(chamadas);
-      await esperarAlemDeUmTick();
-      expect(consultasDeStatus(chamadas)).toBe(consultasAoFalhar);
+      await esperarPollingParar(chamadas);
     },
   );
 

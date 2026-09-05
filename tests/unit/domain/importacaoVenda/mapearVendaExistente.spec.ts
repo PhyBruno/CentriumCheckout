@@ -168,7 +168,7 @@ describe('paraLinhaCarrinho', () => {
       return;
     }
 
-    const linha = paraLinhaCarrinho(importada, 'linha-1');
+    const linha = paraLinhaCarrinho(importada, 'linha-1', 'DAV');
 
     expect(linha.origem).toBe('DAV');
     expect(linha.precoCongelado).toBe(true);
@@ -188,10 +188,32 @@ describe('paraLinhaCarrinho', () => {
       throw new Error('fixture sem linha');
     }
 
-    expect(paraLinhaCarrinho(importada, 'linha-1').snapshot.descricao).toBe(SKU_DAV);
+    expect(paraLinhaCarrinho(importada, 'linha-1', 'DAV').snapshot.descricao).toBe(SKU_DAV);
     expect(
-      paraLinhaCarrinho({ ...importada, descricao: 'ARROZ 5KG' }, 'linha-1').snapshot.descricao,
+      paraLinhaCarrinho({ ...importada, descricao: 'ARROZ 5KG' }, 'linha-1', 'DAV').snapshot
+        .descricao,
     ).toBe('ARROZ 5KG');
+  });
+
+  /**
+   * A origem é o **único** eixo em que a linha de um rascunho de NFCe (011)
+   * difere da linha de um DAV (006) — AD-166. Este teste é o que impede que a
+   * generalização volte a ser um literal fixo: fixar `'DAV'` de novo passaria
+   * despercebido em todos os outros casos deste arquivo.
+   */
+  it('propaga a origem RASCUNHO sem mudar mais nada da linha', () => {
+    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const importada = venda.linhas[0];
+    if (importada === undefined) {
+      throw new Error('fixture sem linha');
+    }
+
+    const comoDav = paraLinhaCarrinho(importada, 'linha-1', 'DAV');
+    const comoRascunho = paraLinhaCarrinho(importada, 'linha-1', 'RASCUNHO');
+
+    expect(comoRascunho.origem).toBe('RASCUNHO');
+    expect(comoRascunho.precoCongelado).toBe(true);
+    expect({ ...comoRascunho, origem: 'DAV' }).toEqual(comoDav);
   });
 
   it('zera as faixas do snapshot — linha congelada nunca as lê', () => {
@@ -201,7 +223,7 @@ describe('paraLinhaCarrinho', () => {
       throw new Error('fixture sem linha');
     }
 
-    const { snapshot } = paraLinhaCarrinho(importada, 'linha-1');
+    const { snapshot } = paraLinhaCarrinho(importada, 'linha-1', 'DAV');
 
     expect(snapshot.precosFaixa).toEqual([0, 0, 0, 0, 0]);
     expect(snapshot.limiaresFaixa).toEqual([0, 0, 0, 0]);
