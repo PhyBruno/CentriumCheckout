@@ -17,7 +17,7 @@ import { LoadingSkeleton } from './features/session-bootstrap/LoadingSkeleton';
 import { ErrorRetry } from './features/session-bootstrap/ErrorRetry';
 import { SessionExpiredWarning } from './features/session-bootstrap/SessionExpiredWarning';
 import { AcessoInvalido } from './features/session-bootstrap/AcessoInvalido';
-import { PARAM_ERRO_ACESSO } from '../shared/erroAcesso';
+import { COOKIE_ENTRADA, PARAM_ERRO_ACESSO, VALOR_COOKIE_ENTRADA } from '../shared/erroAcesso';
 import { CampoClienteVenda } from './features/cliente/CampoClienteVenda';
 import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
 import { GridItens } from './features/carrinho/GridItens';
@@ -44,6 +44,31 @@ function acessoRecusadoNaEntrada(): boolean {
   }
 
   return new URLSearchParams(window.location.search).has(PARAM_ERRO_ACESSO);
+}
+
+/**
+ * Houve uma entrada válida pelo CentriumWEB nesta origem?
+ *
+ * É o que separa as duas falhas (pedido do usuário, 2026-09-08): "Tentar
+ * novamente" só faz sentido quando os dados **foram** mandados e algo falhou
+ * depois — ERP fora, rede caindo, resposta inválida. Quem abriu o Checkout
+ * direto, ou chegou por um redirect sem os parâmetros, não tem o que repetir:
+ * a mesma tentativa daria o mesmo resultado para sempre, e o botão só
+ * convidaria o operador a insistir.
+ *
+ * O marcador é o cookie legível gravado pelo BFF no único ponto em que uma
+ * sessão nasce, e apagado em toda recusa de entrada. Lido do `document.cookie`
+ * a cada avaliação, e não memoizado, porque a sessão pode nascer ou ser
+ * recusada entre uma tentativa e outra.
+ */
+function houveEntradaValida(): boolean {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  return document.cookie
+    .split(';')
+    .some((parte) => parte.trim().startsWith(`${COOKIE_ENTRADA}=${VALOR_COOKIE_ENTRADA}`));
 }
 
 export interface AppProps {
@@ -162,6 +187,14 @@ export function App({
   }
 
   if (estado === 'erro-recuperavel') {
+    // "Recuperável" descreve a **falha** (não foi um 401), não a situação do
+    // operador. Sem entrada válida não há sessão para carregar, então repetir
+    // devolveria o mesmo erro indefinidamente: aqui o desfecho é o mesmo de
+    // quem chegou sem os parâmetros — reabrir pelo CentriumWEB.
+    if (!houveEntradaValida()) {
+      return <AcessoInvalido />;
+    }
+
     return (
       <ErrorRetry
         tentando={carregando}

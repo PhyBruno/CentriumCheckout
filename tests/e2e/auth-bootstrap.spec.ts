@@ -20,6 +20,22 @@ test.beforeEach(async ({ request }) => {
   await resetarMock(request);
 });
 
+/**
+ * Uma entrada recusada não cria sessão — e, desde a correção de 2026-09-08,
+ * também **apaga** a marca de entrada válida, para que a tela seguinte não
+ * ofereça "Tentar novamente" a quem nunca entrou.
+ *
+ * Por isso a asserção deixou de ser "nenhum `Set-Cookie`" e passou a nomear o
+ * que de fato importa: nenhuma sessão emitida e nenhuma marca **criada**. O
+ * cabeçalho de expiração do marcador pode estar presente, e é o comportamento
+ * desejado.
+ */
+function esperarRecusaSemSessao(setCookie: string | undefined): void {
+  const cookies = setCookie ?? '';
+  expect(cookies).not.toContain('cc_session=');
+  expect(cookies).not.toContain('cc_entrada=1');
+}
+
 test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AUTH-02)', () => {
   test('responde 302 com Set-Cookie e redireciona para uma URL sem dados sensíveis', async ({
     request,
@@ -57,7 +73,7 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
     // terminal ("Acesse o Checkout novamente pelo CentriumWEB").
     expect(resposta.status()).toBe(302);
     expect(resposta.headers()['location']).toBe('/?erro=sessao');
-    expect(resposta.headers()['set-cookie']).toBeUndefined();
+    esperarRecusaSemSessao(resposta.headers()['set-cookie']);
 
     // AD-022: a origem é rejeitada antes de gastar uma tentativa de autenticação.
     expect((await contadores(request)).token).toBe(0);
@@ -68,7 +84,7 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
 
     expect(resposta.status()).toBe(302);
     expect(resposta.headers()['location']).toBe('/?erro=sessao');
-    expect(resposta.headers()['set-cookie']).toBeUndefined();
+    esperarRecusaSemSessao(resposta.headers()['set-cookie']);
     expect((await contadores(request)).token).toBe(0);
   });
 
@@ -79,7 +95,7 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
 
     expect(resposta.status()).toBe(302);
     expect(resposta.headers()['location']).toBe('/?erro=sessao');
-    expect(resposta.headers()['set-cookie']).toBeUndefined();
+    esperarRecusaSemSessao(resposta.headers()['set-cookie']);
   });
 
   test('mostra a tela de acesso inválido, sem "Tentar novamente", no navegador', async ({
@@ -234,6 +250,24 @@ test.describe('Cenário 4 — Falha não-401 no bootstrap (AUTH-07)', () => {
     await botao.click();
 
     await expect(page.getByTestId('tela-de-venda')).toBeVisible();
+  });
+
+  // Correção pedida pelo usuário (2026-09-08): "Tentar novamente" é só para
+  // quem **mandou os dados** e algo falhou no caminho. Sem entrada válida não
+  // há sessão para carregar, então repetir devolveria o mesmo erro para sempre.
+  test('sem entrada pelo CentriumWEB, a mesma falha não oferece "Tentar novamente"', async ({
+    page,
+  }) => {
+    // Falha não-401 (a que classifica como "recuperável"), mas numa origem que
+    // nunca passou por `/session/start` — o operador abriu o Checkout direto.
+    await page.route('**/api/bootstrap', (rota) =>
+      rota.fulfill({ status: 500, body: '{"erro":"indisponível"}' }),
+    );
+
+    await page.goto('/');
+
+    await expect(page.getByRole('button', { name: 'Tentar novamente' })).toHaveCount(0);
+    await expect(page.getByText('Acesse o Checkout novamente pelo CentriumWEB.')).toBeVisible();
   });
 });
 

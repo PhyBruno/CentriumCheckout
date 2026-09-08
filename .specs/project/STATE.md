@@ -2474,6 +2474,20 @@ Ou seja: o header é irrelevante para este procedure, e **toda** venda seria rec
 
 **Impact:** alterados — `src/client/domain/venda/montarRetratoVenda.ts` (campo no tipo, no snapshot e na montagem), `src/client/stores/vendaStore.ts`, `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts`; testes — `tests/unit/domain/venda/montarRetratoVenda.spec.ts` (caso novo, as três operações), `tests/e2e/support/erp-mock.ts` (as duas rotas passam a exigir o campo), `tests/integration/validacaoVendaSlice.spec.ts`. Verificação: 1020 testes unit/integração e 159 E2E passando; retrato completo com produto real aceito pelo ERP (`Valido: true`).
 
+### AD-190: "Tentar novamente" só existe para quem entrou — falha sem sessão vira tela terminal (2026-09-08)
+
+**Origem:** validação manual do usuário no ambiente de dev ("Se eu entrar o link do checkout, não deve aparecer tentar novamente, pois nunca vai funcionar uma vez que faltar os parâmetros... O tentar novamente é só para os casos que mandar os dados, mas **algo falhar no caminho**").
+
+**Refina AD-184, não o contradiz.** Aquela decisão já mandava o `/session/start` recusado para o painel terminal, e isso continua valendo — verificado: redirect sem parâmetros, com parâmetro faltando ou com `validationKey` errada leva a `/?erro=sessao` e à tela sem botão. O furo estava **depois**: a SPA classifica como `erro-recuperavel` toda falha de `/api/bootstrap` que não seja `401`, e mostrava "Tentar novamente" **mesmo sem nunca ter havido sessão**. Reproduzido em navegador — origem limpa, BFF fora do ar, `/` direto: botão na tela, e repetir devolveria o mesmo erro para sempre, porque não há sessão a carregar.
+
+**Por que o `401` sozinho não resolvia.** Com o BFF no ar, `/api/bootstrap` sem cookie responde `401` e o caminho já era terminal. O caso ruim é quando o BFF **não responde**: aí a SPA não tem como saber se existia sessão, e o cookie de sessão é `HttpOnly` — ela não pode consultá-lo.
+
+**A marca de entrada.** Nasce um segundo cookie, `cc_entrada=1`, **legível** (`httpOnly: false`) e sem nada dentro: só responde "esta origem já teve uma sessão criada?". Gravado no único ponto em que uma sessão nasce, e **apagado em toda recusa** — limpar é a metade que importa, senão um operador que teve sessão boa e depois chegou com um redirect quebrado carregaria a marca antiga. O cookie de sessão segue sendo a única prova de autenticação; este não autentica coisa alguma. Nome e valor moram em `src/shared/erroAcesso.ts`, lado a lado com o parâmetro de erro, para BFF e SPA não divergirem.
+
+Com isso, `erro-recuperavel` passa a ter dois desfechos: **com** marca, `ErrorRetry` (os dados foram mandados, algo falhou depois — ERP fora, rede caindo); **sem** marca, `AcessoInvalido`. O nome do estado descreve a falha, não a situação do operador.
+
+**Impact:** alterados — `src/server/session/cookie.ts` (`ENTRADA_COOKIE_OPTIONS`), `src/shared/erroAcesso.ts` (`COOKIE_ENTRADA`/`VALOR_COOKIE_ENTRADA`), `src/server/routes/session-start.ts` (grava no sucesso; `recusarEntrada` limpa nas quatro recusas), `src/client/App.tsx` (`houveEntradaValida`); testes — `tests/e2e/auth-bootstrap.spec.ts` (cenário novo: falha não-401 sem entrada não oferece o botão; as três asserções de "não seta cookie" passaram a nomear o que importa — nenhuma sessão emitida, nenhuma marca **criada** —, já que a recusa agora emite o cabeçalho de expiração do marcador). Verificação: `tsc` e `eslint` limpos; 1025 testes unit/integração e 160 E2E passando; comportamento reconferido em navegador antes e depois.
+
 ### AD-189: o veredito da 014 morre com a venda a que pertence — três furos de I7 fechados após revisão (2026-09-08)
 
 **Origem:** revisão da implementação da 014 por agente dedicado (Opus), a pedido do usuário. Todos os achados foram reconferidos por varredura independente antes de virar correção.
