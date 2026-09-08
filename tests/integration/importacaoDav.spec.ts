@@ -311,7 +311,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
 
     const { deps, espioes } = depsDe(store);
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -330,7 +330,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     const { deps } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -344,7 +344,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     const { deps, espioes } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -371,7 +371,7 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
     const { deps } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -391,7 +391,7 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
       respostaGetDav({ produtos: [produtoDoDav({ quantidade: 3, precoUnitario: 7.77 })] }),
     );
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -464,7 +464,7 @@ describe('DAV_IMPORTADO (T021, AD-114)', () => {
     );
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -519,7 +519,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toMatchObject({ name: 'ErroImportacaoRecusada', motivo });
@@ -555,7 +555,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     const store = montarStore();
     const { deps } = depsDe(store);
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
     expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
@@ -567,7 +567,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     const segundo = depsDe(store, {}, respostaGetDav({ NumeroNota: 90211 }));
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: '004790', clienteNome: 'OUTRO CLIENTE' }),
+        fonteDav({ numeroDav: '004790' }),
         segundo.deps,
       ),
     ).rejects.toMatchObject({ motivo: 'ja-importou-documento' });
@@ -597,7 +597,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
@@ -625,7 +625,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
@@ -649,7 +649,7 @@ describe('resolução de descrição best-effort (T022, AD-096)', () => {
     const { deps, espioes } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -678,7 +678,7 @@ describe('resolução de descrição best-effort (T022, AD-096)', () => {
     );
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -709,7 +709,7 @@ describe('erro de importação (D7, FR-010)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toThrow();
@@ -727,7 +727,7 @@ describe('erro de importação (D7, FR-010)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toThrow();

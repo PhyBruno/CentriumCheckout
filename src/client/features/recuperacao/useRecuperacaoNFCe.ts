@@ -49,7 +49,6 @@ export function useRecuperacaoNFCe(
     return importar(
       fonteRascunho({
         numeroNota: rascunho.numeroNota,
-        cliente: rascunho.cliente,
         serie: registro.SessaoUsuario.CadSerieNFCe,
       }),
     );

@@ -176,11 +176,6 @@ export class ErroCondicaoImportadaIndisponivel extends Error {
 export interface FonteDocumento {
   /** Rótulo propagado às linhas, à identidade da venda e ao cliente. */
   readonly origem: OrigemDocumentoImportado;
-  /**
-   * Nome do cliente capturado na linha da listagem — nenhum dos dois endpoints
-   * de documento devolve o nome, só o código (AD-095/AD-115).
-   */
-  readonly clienteNome: string;
   /** Chamada de rede que devolve o documento completo. */
   carregar(erpClient: ErpClient | undefined): Promise<CheckoutFaturarNFCe>;
   /**
@@ -322,7 +317,7 @@ export async function importarVendaExistente(
   }
 
   const documento = await fonte.carregar(deps.erpClient);
-  const venda = mapearVendaExistente(documento, { clienteNome: fonte.clienteNome });
+  const venda = mapearVendaExistente(documento);
   const cliente = await deps.resolverCliente(venda.clienteCodigo);
 
   // Condição do documento, ainda na fase de rede (AD-168).

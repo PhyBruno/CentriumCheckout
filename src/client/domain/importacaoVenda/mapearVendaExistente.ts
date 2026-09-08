@@ -80,8 +80,6 @@ export interface VendaImportada {
   readonly numeroNota: number;
   /** Sempre sobrescreve o cliente atual da venda (`FR-007`). */
   readonly clienteCodigo: number;
-  /** Capturado da linha da listagem (D4) — `GetDav` não devolve o nome. */
-  readonly clienteNome: string;
   /** Sempre sobrescreve o vendedor atual da venda (`FR-007`). */
   readonly vendedorCodigo: number;
   /**
@@ -145,18 +143,20 @@ function paraTef(item: CheckoutFaturarNFCe['FormasDePagamento'][number]): TefImp
 }
 
 /**
- * @param origemLista Linha selecionada na listagem, quando houve uma. `null`
- * quando a origem não veio de uma lista (ponto de entrada da futura feature
- * 011) — nesse caso o nome do cliente sai vazio e quem consome resolve.
- *
  * Nunca lança por dado de negócio ausente (documento sem forma de pagamento,
  * sem produto): devolve arrays vazios. Lança **só** por violação de contrato —
  * `clienteCodigo`, `vendedorCodigo` ou `NumeroNota` ausentes.
+ *
+ * Não recebe o nome do cliente: `clienteCodigo` é o único dado de cliente que
+ * a venda importada carrega, e quem resolve o nome de exibição é
+ * `resolverCliente` (`GetCliente` por `CodCliente`, AD-115) — o mesmo caminho
+ * que já roda para qualquer troca de cliente. Um campo `clienteNome` capturado
+ * da linha da listagem existiu aqui até 2026-09-08: nasceu no design original
+ * da 006, antes de `GetCliente` aceitar `CodCliente` (D4), e sobrou como campo
+ * morto depois — nenhum consumidor lia `VendaImportada.clienteNome`, porque
+ * `deps.selecionarCliente` já usa o nome do `ClienteCheckout` resolvido.
  */
-export function mapearVendaExistente(
-  resposta: CheckoutFaturarNFCe,
-  origemLista: { readonly clienteNome: string } | null,
-): VendaImportada {
+export function mapearVendaExistente(resposta: CheckoutFaturarNFCe): VendaImportada {
   // Reforço em runtime da invariante que o schema Zod já expressa em tipo. A
   // entrada pode chegar de um caller não totalmente tipado (a resposta crua do
   // ERP, um teste, a futura 011): sem esta checagem, um `NumeroNota` ausente
@@ -180,7 +180,6 @@ export function mapearVendaExistente(
       typeof resposta.CondicaoPagamentoCodigo === 'number' ? resposta.CondicaoPagamentoCodigo : 0,
     numeroNota: resposta.NumeroNota,
     clienteCodigo: resposta.clienteCodigo,
-    clienteNome: origemLista?.clienteNome ?? '',
     vendedorCodigo: resposta.vendedorCodigo,
     // Ausente enquanto o deploy do ERP não sai (AD-169): `?? ''` cai em
     // `ouNulo` e vira `null`, exatamente o comportamento anterior. Nada aqui

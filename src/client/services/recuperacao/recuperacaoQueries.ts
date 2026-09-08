@@ -221,18 +221,17 @@ export async function fetchCarregarNFCe(
  * endpoint, rótulo de origem e evento de auditoria. Pré-condição, ordem dos
  * efeitos e atomicidade são o comportamento comum às duas features.
  *
- * @param rascunho Linha selecionada na listagem mais a série da sessão.
- * `cliente` é o nome capturado da lista; o `clienteCodigo` vem sempre da
- * resposta de `CarregarNFCe`, nunca da listagem.
+ * @param rascunho Linha selecionada na listagem mais a série da sessão. O
+ * `clienteCodigo` vem sempre da resposta de `CarregarNFCe`, nunca da
+ * listagem, e o nome do cliente é resolvido por `resolverCliente` (AD-115),
+ * não capturado aqui.
  */
 export function fonteRascunho(rascunho: {
   readonly numeroNota: number;
-  readonly cliente: string;
   readonly serie: string;
 }): FonteDocumento {
   return {
     origem: 'RASCUNHO',
-    clienteNome: rascunho.cliente,
     carregar: (erpClient) =>
       fetchCarregarNFCe(
         rascunho.numeroNota,

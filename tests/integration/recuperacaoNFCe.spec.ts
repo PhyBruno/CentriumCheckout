@@ -159,7 +159,6 @@ function fonte() {
   const linha = rascunhoDaLista();
   return fonteRascunho({
     numeroNota: linha.NumeroNota as number,
-    cliente: linha.Cliente as string,
     serie: SERIE_NFCE,
   });
 }
