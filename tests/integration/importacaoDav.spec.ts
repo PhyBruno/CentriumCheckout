@@ -25,6 +25,7 @@ import {
   NUMERO_DAV,
   NUMERO_NOTA,
   SKU_DAV,
+  davDaLista,
   formaDePagamentoDoDav,
   produtoDoDav,
   respostaGetDav,
@@ -164,6 +165,44 @@ function envolverEmQueryClient(): { wrapper: (props: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children),
   };
 }
+
+/**
+ * AD-169 — o nome do vendedor na listagem de DAVs.
+ *
+ * `ListaDAVs` passou a devolver `VendedorNome`, superando a ausência que AD-095
+ * registrava e que obrigava a janela a exibir "Vendedor #<código>". Enquanto o
+ * deploy do ERP não sai, a resposta chega sem o campo — e é isso que o segundo
+ * caso fixa.
+ */
+describe('useListaDavs — nome do vendedor (AD-169)', () => {
+  async function primeiroDav(resposta: Record<string, unknown>) {
+    const erpClient = erpClientDe({ '/ApiCentriumOAuth/ListaDAVs': resposta }, []);
+    const { result } = renderHook(
+      () => useListaDavs({}, true, { erpClient }),
+      envolverEmQueryClient(),
+    );
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    return result.current.data?.davs[0];
+  }
+
+  it('expõe o nome quando o ERP o devolve', async () => {
+    const dav = await primeiroDav(
+      respostaListaDavs([davDaLista({ VendedorNome: 'MARIANA ALVES' })]),
+    );
+
+    expect(dav?.vendedorNome).toBe('MARIANA ALVES');
+    expect(dav?.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+  });
+
+  it('cai em null — sem quebrar a listagem — quando o campo ainda não vem', async () => {
+    const dav = await primeiroDav(respostaListaDavs([davDaLista()]));
+
+    expect(dav?.vendedorNome).toBeNull();
+    expect(dav?.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+  });
+});
 
 describe('useListaDavs — parâmetros enviados (T009)', () => {
   it('reflete busca e período exatamente como aplicados pelo operador', async () => {

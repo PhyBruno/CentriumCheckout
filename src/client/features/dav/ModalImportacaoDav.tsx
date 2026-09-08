@@ -506,11 +506,16 @@ function TabelaDeDavs({
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col px-[10px]">
                   <span className="truncate text-sm font-bold">{dav.clienteNome}</span>
-                  {/* `ListaDAVs` não devolve o nome do vendedor (AD-095): o
-                      código é o único identificador disponível até o operador
-                      reabrir o modal de vendedor. */}
+                  {/* O nome quando o ERP o devolve (AD-169), o código como
+                      recuo. Não é enfeite: "Vendedor #12" não distingue dois
+                      DAVs para quem opera o caixa, e era o que AD-095 obrigava
+                      a exibir enquanto `ListaDAVs` não tinha o campo. O recuo
+                      permanece porque o deploy do ERP ainda não saiu — e
+                      continua valendo para um DAV sem vendedor cadastrado. */}
                   <span className="truncate text-xs font-medium text-muted-foreground">
-                    Vendedor #{dav.vendedorCodigo}
+                    {dav.vendedorNome === null
+                      ? `Vendedor #${dav.vendedorCodigo}`
+                      : `Vendedor ${dav.vendedorNome}`}
                   </span>
                 </span>
                 <span className="w-[108px] shrink-0 px-[10px] font-mono text-xs font-semibold tabular-nums">

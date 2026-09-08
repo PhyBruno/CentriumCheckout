@@ -393,7 +393,6 @@ describe('condição de pagamento do rascunho (AD-168)', () => {
     // rascunho que tivesse condição.
     expect(useVendaStore.getState().podeMutarCarrinho()).toBe(true);
   });
-
 });
 
 /* ------------------------------------------------------------------ *

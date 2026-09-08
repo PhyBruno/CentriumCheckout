@@ -54,12 +54,35 @@ describe('mapearVendaExistente — documento completo', () => {
     expect(venda).not.toHaveProperty('numeroDav');
   });
 
-  it('nunca resolve o nome do vendedor (AD-095) e tira o do cliente da listagem (D4)', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+  it('tira o nome do vendedor do documento (AD-169) e o do cliente da listagem (D4)', () => {
+    const venda = mapearVendaExistente(
+      documentoValidado({ vendedorNome: 'MARIANA ALVES' }),
+      ORIGEM_LISTA,
+    );
 
     expect(venda.clienteCodigo).toBe(CODIGO_CLIENTE_DAV);
     expect(venda.clienteNome).toBe('CLIENTE TESTE 01');
     expect(venda.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+    expect(venda.vendedorNome).toBe('MARIANA ALVES');
+  });
+
+  /**
+   * O campo existe na KB do ERP desde 2026-09-08, mas o build/deploy ainda não
+   * saiu — até lá a resposta chega sem ele. Tem de degradar para o
+   * comportamento anterior (`null`), nunca derrubar a importação: é dado de
+   * exibição, e o `optional()` do schema existe exatamente por isso.
+   */
+  it('cai em null quando o ERP ainda não devolve o nome do vendedor', () => {
+    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+
+    expect(venda.vendedorNome).toBeNull();
+    expect(venda.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+  });
+
+  /** String vazia é o default do SDT GeneXus, não um vendedor chamado "". */
+  it('trata nome vazio do ERP como não informado', () => {
+    const venda = mapearVendaExistente(documentoValidado({ vendedorNome: '' }), ORIGEM_LISTA);
+
     expect(venda.vendedorNome).toBeNull();
   });
 

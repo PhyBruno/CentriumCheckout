@@ -84,8 +84,19 @@ export interface VendaImportada {
   readonly clienteNome: string;
   /** Sempre sobrescreve o vendedor atual da venda (`FR-007`). */
   readonly vendedorCodigo: number;
-  /** Sempre `null`: nenhuma fonte disponível no contrato (AD-095). */
-  readonly vendedorNome: null;
+  /**
+   * Nome do vendedor do documento, ou `null` quando o ERP não o informou.
+   *
+   * Era o literal `null` até 2026-09-08 (AD-169): `CheckoutFaturarNFCe` não
+   * tinha campo de nome, e o Checkout só dispunha do código (AD-095). Com
+   * `vendedorNome` no SDT, `GetDav` e `CarregarNFCe` passam a devolvê-lo — o
+   * mesmo campo serve às duas features, porque as duas leem o mesmo SDT.
+   *
+   * `null`, e nunca `''`: string vazia é o default do SDT GeneXus para campo
+   * não preenchido, e propagá-la faria a UI exibir um vendedor sem nome em vez
+   * de cair no código.
+   */
+  readonly vendedorNome: string | null;
   readonly linhas: readonly LinhaImportada[];
   readonly formasDePagamento: readonly FormaPagamentoImportada[];
   /**
@@ -171,7 +182,10 @@ export function mapearVendaExistente(
     clienteCodigo: resposta.clienteCodigo,
     clienteNome: origemLista?.clienteNome ?? '',
     vendedorCodigo: resposta.vendedorCodigo,
-    vendedorNome: null,
+    // Ausente enquanto o deploy do ERP não sai (AD-169): `?? ''` cai em
+    // `ouNulo` e vira `null`, exatamente o comportamento anterior. Nada aqui
+    // precisa saber se o campo já existe do outro lado.
+    vendedorNome: ouNulo(resposta.vendedorNome ?? ''),
     linhas: resposta.produtos.map((produto) => ({
       codigoProduto: produto.codigoProduto,
       descricao: null,

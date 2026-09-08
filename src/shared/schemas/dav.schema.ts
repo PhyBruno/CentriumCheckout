@@ -42,10 +42,14 @@ const quantidadeEmMilesimos = numeroErp.transform((valor) => milesimosDeUnidades
 /**
  * `CheckoutListaDAVs.DAV_DAV`.
  *
- * **Sem `VendedorNome`** (AD-095) e **sem `Status`/`Ativo`**: nenhum dos três
- * existe no contrato. Modelá-los exigiria inventar dado que o ERP não fornece —
- * a ausência é o comportamento correto, e é o que faz a coluna "Status" e os
- * filtros de status/vendedor/tipo/origem do Pencil ficarem de fora da UI.
+ * **Sem `Status`/`Ativo`**: nenhum dos dois existe no contrato. Modelá-los
+ * exigiria inventar dado que o ERP não fornece — a ausência é o comportamento
+ * correto, e é o que faz a coluna "Status" e os filtros de status/tipo/origem
+ * do Pencil ficarem de fora da UI.
+ *
+ * **`VendedorNome` passou a existir em 2026-09-08** (AD-169), acrescentado ao
+ * SDT `CheckoutListaDAVs` na KB do ERP — o que supera a ausência que AD-095
+ * registrava e fecha o "Vendedor #<código>" da janela de importação.
  *
  * `Senha` existe no contrato e passa íntegro pelo `looseObject`, mas não é
  * modelado: nenhum requisito do Checkout o consome.
@@ -58,6 +62,14 @@ export const davDaListaSchema = z.looseObject({
   ClienteCodigo: inteiroErp,
   ClienteNome: z.string(),
   VendedorCodigo: inteiroErp,
+  /**
+   * `optional()` **de propósito**, e não porque o contrato o permita: o campo
+   * já existe na KB mas o build/deploy do ERP ainda não saiu, então a resposta
+   * em produção segue sem ele por enquanto. Exigi-lo derrubaria a listagem
+   * inteira na fronteira — uma feature que funciona hoje pararia por causa de
+   * um dado de exibição. Quem lê trata a ausência como "não informado".
+   */
+  VendedorNome: z.string().optional(),
   /** `double` do ERP → centavos; só exibição na lista, nunca entra no cálculo. */
   ValorTotal: valorEmCentavos,
 });
@@ -135,6 +147,24 @@ export const formaDePagamentoDoDocumentoSchema = z.looseObject({
 export const checkoutFaturarNFCeSchema = z.looseObject({
   clienteCodigo: inteiroErp,
   vendedorCodigo: inteiroErp,
+  /**
+   * Nome do vendedor do documento (AD-169, 2026-09-08).
+   *
+   * Acrescentado ao SDT `CheckoutFaturarNFCe` na KB, ao lado de
+   * `vendedorCodigo` — logo vale para `GetDav` **e** `CarregarNFCe`, que
+   * devolvem o mesmo SDT (AD-057/AD-117). Antes disso o Checkout não tinha
+   * nenhuma fonte para o nome e fixava `null` (AD-095).
+   *
+   * `optional()` pelo mesmo motivo de `VendedorNome` na listagem: a KB já tem o
+   * campo, o deploy do ERP ainda não. Exigi-lo transformaria um dado de
+   * exibição em erro de fronteira e derrubaria a importação inteira.
+   *
+   * **Ignorado na entrada.** Este mesmo schema descreve o corpo que
+   * `montarRetratoVenda` envia a `FaturarNFCe`/`ValidarNFCe`, e lá o vendedor de
+   * registro é `vendedorCodigo`: o Checkout nunca devolve este campo ao ERP,
+   * para não criar uma segunda fonte de verdade do mesmo dado.
+   */
+  vendedorNome: z.string().optional(),
   CondicaoPagamentoCodigo: inteiroErp,
   NumeroNota: inteiroErp,
   produtos: z.array(produtoDoDocumentoSchema),

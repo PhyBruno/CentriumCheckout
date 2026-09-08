@@ -1006,9 +1006,7 @@ export function criarPagamentoSlice(
         // duas vezes (AD-168). `RECUSADO` nunca chegou a valer como pagamento,
         // pelo mesmo critério de `pagamentosVivos`.
         const rotulos = pagamentos
-          .filter(
-            (pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO',
-          )
+          .filter((pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO')
           .map(rotuloDoPagamento);
 
         condicaoVeioDeDocumento = false;

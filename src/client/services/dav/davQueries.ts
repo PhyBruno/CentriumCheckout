@@ -62,8 +62,13 @@ export interface DavListado {
   readonly dataEmissao: string;
   readonly clienteCodigo: number;
   readonly clienteNome: string;
-  /** Sem nome correspondente no contrato (AD-095) — a UI exibe só o código. */
   readonly vendedorCodigo: number;
+  /**
+   * `null` enquanto o ERP não devolver o campo (AD-169) — a UI cai no código.
+   *
+   * Supera AD-095, que registrava a ausência definitiva do nome nesta listagem.
+   */
+  readonly vendedorNome: string | null;
   readonly valorTotal: Centavos;
 }
 
@@ -158,6 +163,9 @@ export async function fetchListaDavs(
       clienteCodigo: item.ClienteCodigo,
       clienteNome: item.ClienteNome,
       vendedorCodigo: item.VendedorCodigo,
+      // Campo vazio do ERP é "não informado", não string vazia — mesmo
+      // tratamento que `mapearVendaExistente` dá ao nome do documento.
+      vendedorNome: (item.VendedorNome ?? '') === '' ? null : (item.VendedorNome ?? null),
       valorTotal: item.ValorTotal,
     })),
   };
