@@ -8,6 +8,7 @@ import {
   type CifradorDeSessao,
 } from '../session/cookie';
 import { ErroTrocaDeToken, trocarCredenciaisPorToken } from '../session/tokenExchange';
+import { PARAM_ERRO_ACESSO, VALOR_ERRO_ACESSO } from '../../shared/erroAcesso';
 
 /**
  * Query params do redirect do ERP (`contracts/session-bff-api.md`).
@@ -48,19 +49,25 @@ function chaveConfere(recebida: string, esperada: string): boolean {
  */
 export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionStartDeps): void {
   const destino = deps.destinoAposLogin ?? '/';
+  const separador = destino.includes('?') ? '&' : '?';
+  const destinoComErro = `${destino}${separador}${PARAM_ERRO_ACESSO}=${VALOR_ERRO_ACESSO}`;
 
   app.get('/session/start', async (request, reply) => {
     const query = sessionStartQuerySchema.safeParse(request.query);
 
     if (!query.success) {
-      // Não ecoa os valores recebidos: a query carrega credenciais.
-      return reply.code(400).send({ erro: 'Parâmetros de sessão ausentes ou inválidos' });
+      // Não ecoa os valores recebidos: a query carrega credenciais. Manda para a
+      // SPA, que mostra o painel terminal — quem chega aqui é um **navegador**
+      // vindo de um redirect, não um cliente de API, e um JSON cru na tela não
+      // diz ao operador o que fazer (pedido do usuário, 2026-09-08).
+      return reply.redirect(destinoComErro, 302);
     }
 
     // Valida a origem do redirect ANTES de gastar uma tentativa de autenticação
     // OAuth com uma origem não verificada (AD-022).
     if (!chaveConfere(query.data.validationKey, deps.env.validationKey)) {
-      return reply.code(401).send({ erro: 'Origem do redirect não autorizada' });
+      request.log.warn('redirect com validationKey inválida');
+      return reply.redirect(destinoComErro, 302);
     }
 
     try {
@@ -93,9 +100,13 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
     } catch (erro) {
       if (erro instanceof ErroTrocaDeToken) {
         request.log.warn({ motivo: erro.motivo, status: erro.status }, 'falha ao iniciar sessão');
-        return reply.code(erro.status).send({ erro: 'Não foi possível iniciar a sessão' });
+        return reply.redirect(destinoComErro, 302);
       }
-      throw erro;
+
+      // Qualquer outra falha (rede, bug) também é um navegador na tela: o painel
+      // terminal em vez da página de erro padrão do Fastify.
+      request.log.error({ erro }, 'falha não tratada ao iniciar sessão');
+      return reply.redirect(destinoComErro, 302);
     }
   });
 }

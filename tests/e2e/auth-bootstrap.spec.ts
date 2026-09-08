@@ -48,10 +48,15 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
     expect((await contadores(request)).token).toBe(1);
   });
 
-  test('recusa validationKey inválida com 401 e sem chamar o ERP', async ({ request }) => {
+  test('recusa validationKey inválida mandando para a tela de acesso inválido', async ({
+    request,
+  }) => {
     const resposta = await request.get(urlSessionStart({}, 'chave-errada'), { maxRedirects: 0 });
 
-    expect(resposta.status()).toBe(401);
+    // Quem chega aqui é um navegador: em vez de JSON cru, a SPA com o painel
+    // terminal ("Acesse o Checkout novamente pelo CentriumWEB").
+    expect(resposta.status()).toBe(302);
+    expect(resposta.headers()['location']).toBe('/?erro=sessao');
     expect(resposta.headers()['set-cookie']).toBeUndefined();
 
     // AD-022: a origem é rejeitada antes de gastar uma tentativa de autenticação.
@@ -61,19 +66,32 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
   test('recusa redirect sem os parâmetros obrigatórios, sem chamar o ERP', async ({ request }) => {
     const resposta = await request.get('/session/start?tenant=acme', { maxRedirects: 0 });
 
-    expect(resposta.status()).toBe(400);
+    expect(resposta.status()).toBe(302);
+    expect(resposta.headers()['location']).toBe('/?erro=sessao');
+    expect(resposta.headers()['set-cookie']).toBeUndefined();
     expect((await contadores(request)).token).toBe(0);
   });
 
-  test('repassa o erro do ERP sem setar cookie quando a autenticação é recusada', async ({
-    request,
-  }) => {
+  test('não seta cookie quando o ERP recusa a autenticação', async ({ request }) => {
     await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusToken: 400 } });
 
     const resposta = await request.get(urlSessionStart(), { maxRedirects: 0 });
 
-    expect(resposta.status()).toBe(400);
+    expect(resposta.status()).toBe(302);
+    expect(resposta.headers()['location']).toBe('/?erro=sessao');
     expect(resposta.headers()['set-cookie']).toBeUndefined();
+  });
+
+  test('mostra a tela de acesso inválido, sem "Tentar novamente", no navegador', async ({
+    page,
+  }) => {
+    await page.goto(urlSessionStart({}, 'chave-errada'));
+
+    await expect(
+      page.getByText('Não foi possível carregar o checkout com os dados fornecidos'),
+    ).toBeVisible();
+    await expect(page.getByText('Acesse o Checkout novamente pelo CentriumWEB.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tentar novamente' })).toHaveCount(0);
   });
 });
 
@@ -282,7 +300,9 @@ test.describe('Cenário 5 — Renovação silenciosa de sessão (AUTH-06)', () =
     // O BFF invalidou o cookie: o próximo bootstrap cai na tela de sessão encerrada
     // (carrinho vazio — o aviso de venda em digitação depende das features 001/003).
     await page.reload();
-    await expect(page.getByText('Sessão encerrada')).toBeVisible();
-    await expect(page.getByText('Reabra o Checkout a partir do ERP para continuar.')).toBeVisible();
+    await expect(
+      page.getByText('Não foi possível carregar o checkout com os dados fornecidos'),
+    ).toBeVisible();
+    await expect(page.getByText('Acesse o Checkout novamente pelo CentriumWEB.')).toBeVisible();
   });
 });

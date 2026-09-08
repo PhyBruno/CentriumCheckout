@@ -1,9 +1,11 @@
 import type { ReactElement, ReactNode } from 'react';
+import { ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface PainelMensagemProps {
   readonly titulo: string;
-  readonly texto: string;
+  /** Detalhe abaixo do título. Omitido quando o título já diz tudo. */
+  readonly texto?: string;
   readonly variante?: 'informacao' | 'alerta';
   readonly acoes?: ReactNode;
 }
@@ -25,14 +27,25 @@ export function PainelMensagem({
         role="alert"
         className="flex w-full max-w-[440px] flex-col gap-sm rounded-xl border border-border bg-background p-xl text-center"
       >
+        {/* Mesmo símbolo da marca da barra superior (nó `ZyzZc` do Pencil):
+            círculo `$cb-blue` com o carrinho do Lucide. Antes era um círculo
+            vazio, que na tela de erro parecia um placeholder por carregar. */}
         <div
           className={cn(
-            'size-10 self-center rounded-full bg-primary',
+            'flex size-10 items-center justify-center self-center rounded-full bg-primary',
             variante === 'alerta' && 'bg-[var(--cc-color-accent-yellow)]',
           )}
-        />
+        >
+          <ShoppingCart
+            className={cn(
+              'size-5 text-primary-foreground',
+              variante === 'alerta' && 'text-foreground',
+            )}
+            aria-hidden
+          />
+        </div>
         <h1 className="m-0 text-xl font-semibold text-foreground">{titulo}</h1>
-        <p className="m-0 text-md text-muted-foreground">{texto}</p>
+        {texto !== undefined && <p className="m-0 text-md text-muted-foreground">{texto}</p>}
         {acoes !== undefined && <div className="mt-xs flex justify-center gap-sm">{acoes}</div>}
       </section>
     </div>
