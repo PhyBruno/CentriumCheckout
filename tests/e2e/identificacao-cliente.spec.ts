@@ -504,6 +504,35 @@ test.describe('Correções de 2026-09-03 (segunda rodada)', () => {
     );
     await expect(page.getByTestId('campo-codigo-produto')).not.toBeFocused();
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('999999');
+    // O foco volta para o próprio campo (pedido do usuário, 2026-09-08,
+    // AD-182): sem cliente, o caixa corrige o número ali mesmo.
+    await expect(page.getByTestId('campo-documento-cliente')).toBeFocused();
+  });
+
+  test('o TAB não escapa do campo enquanto o código não existir, e sem repetir a consulta', async ({
+    page,
+    request,
+  }) => {
+    // Pedido do usuário (2026-09-08, AD-182). A segunda metade — não repetir o
+    // `GetCliente` — é o que torna a prisão de foco viável: sem a memória do
+    // termo recusado, cada tentativa de sair custaria uma ida ao ERP.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    const campo = page.getByTestId('campo-documento-cliente');
+    await campo.fill('999999');
+    await campo.press('Tab');
+    await expect(campo).toBeFocused();
+    const consultasAposAPrimeira = (await contadores(request)).getCliente;
+
+    await campo.press('Tab');
+    await expect(campo).toBeFocused();
+    expect((await contadores(request)).getCliente).toBe(consultasAposAPrimeira);
+
+    // Corrigido o número, o campo solta o foco normalmente.
+    await campo.fill('2538');
+    await campo.press('Tab');
+    await expect(campo).not.toBeFocused();
   });
 });
 
@@ -817,8 +846,18 @@ test.describe('Código ou documento no mesmo campo (correções de 2026-09-03)',
     await expect(page.getByText(/só números/i).first()).toBeVisible();
     // Nada foi consultado: a entrada não é código nem CPF.
     expect((await contadores(request)).getCliente).toBe(0);
-    // O valor digitado fica no campo, para o operador apagar a letra.
+    // O valor digitado fica no campo, para o operador apagar a letra — e o
+    // foco fica com ele (pedido do usuário, 2026-09-08, AD-182).
     await expect(campo).toHaveValue(`${codigoDoClienteDefault}a`);
+    await expect(campo).toBeFocused();
+
+    // Apagada a letra, o TAB volta a funcionar: o termo passa a ser o código
+    // do cliente que já está na venda, e a guarda de "mesmo cliente" o deixa
+    // sair sem consultar nada.
+    await campo.fill(codigoDoClienteDefault);
+    await campo.press('Tab');
+    await expect(campo).not.toBeFocused();
+    expect((await contadores(request)).getCliente).toBe(0);
   });
 
   test('código inexistente avisa, sem abrir o cadastro simplificado', async ({ page }) => {

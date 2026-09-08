@@ -111,6 +111,21 @@ export function CampoClienteVenda(): ReactElement {
   const [recusaPessoaJuridica, setRecusaPessoaJuridica] = useState(false);
 
   /**
+   * A entrada que prende o foco no campo, com o motivo já dito ao operador
+   * (pedido do usuário, 2026-09-08, AD-182): letra no campo e código sem
+   * cadastro **não** deixam o foco passar adiante — o caixa corrige ali mesmo.
+   *
+   * Guardar o `termo` recusado, e não só um booleano, é o que evita a ida
+   * repetida ao ERP: cada nova tentativa de sair do campo dispara o `onBlur`
+   * de novo, e sem esta memória o mesmo código inexistente seria consultado a
+   * cada TAB. Zera na primeira tecla digitada — a partir daí o termo é outro.
+   */
+  const [recusaComFocoPreso, setRecusaComFocoPreso] = useState<{
+    readonly termo: string;
+    readonly mensagem: string;
+  } | null>(null);
+
+  /**
    * Contador de pedidos de foco no campo de documento — mesmo motivo do
    * `focoVendaStore`: duas recusas seguidas precisam disparar o efeito duas
    * vezes, e um booleano ficaria `true` na primeira sem mudar na segunda.
@@ -278,9 +293,30 @@ export function CampoClienteVenda(): ReactElement {
       ? 'Digite o CPF do consumidor para identificar.'
       : null;
 
+  /**
+   * Recusa que **mantém o operador no campo** (pedido do usuário,
+   * 2026-09-08): avisa o motivo e devolve o foco pelo mesmo contador que
+   * `zerarIdentificacao` usa. O valor digitado continua em tela — é o que o
+   * caixa precisa corrigir, e apagá-lo obrigaria a redigitar o número inteiro
+   * por causa de um dígito errado.
+   */
+  function recusarMantendoFoco(termo: string, mensagem: string): void {
+    setRecusaComFocoPreso({ termo, mensagem });
+    gooeyToast.warning(mensagem);
+    setPedidosDeFocoNoDocumento((atual) => atual + 1);
+  }
+
   async function identificar(): Promise<void> {
     const termo = documento.trim();
     if (termo === '' || buscando) {
+      return;
+    }
+
+    // Tentativa de sair do campo com a mesma entrada já recusada: repete o
+    // aviso e prende o foco de novo, **sem** reconsultar o ERP. Sem esta
+    // guarda, cada TAB sobre um código inexistente custaria um `GetCliente`.
+    if (recusaComFocoPreso !== null && recusaComFocoPreso.termo === termo) {
+      recusarMantendoFoco(termo, recusaComFocoPreso.mensagem);
       return;
     }
 
@@ -292,9 +328,9 @@ export function CampoClienteVenda(): ReactElement {
     // "mesmo cliente" logo abaixo (correção do usuário, 2026-09-08, AD-181):
     // aquela guarda compara só dígitos, então `1255a` sobre o cliente 1255
     // saía do campo em silêncio, com a letra ainda em tela e sem consulta
-    // nenhuma. O valor digitado permanece para o operador apagar a letra.
+    // nenhuma. O foco fica preso até a letra sair (AD-182).
     if (entrada.tipo === 'NAO_NUMERICO') {
-      gooeyToast.warning('O código do cliente e o CPF são só números: remova as letras.');
+      recusarMantendoFoco(termo, 'O código do cliente e o CPF são só números: remova as letras.');
       return;
     }
 
@@ -342,13 +378,14 @@ export function CampoClienteVenda(): ReactElement {
         // Código sem cadastro não abre o cadastro simplificado: o operador
         // errou o número, não descobriu um cliente novo — criar um cliente
         // aqui inventaria um cadastro que ele não pediu.
-        // Sem recolher nem mexer no foco, como em todo desfecho de erro: o
-        // card só recolhe quando a venda ficou com um cliente. O valor
-        // continua no campo justamente para o operador corrigir o dígito
-        // errado — por isso aqui não se força o foco de volta, que somado ao
-        // `onBlur` faria a mesma consulta sair de novo a cada TAB.
+        //
+        // O card não recolhe **e o foco não passa adiante** (pedido do
+        // usuário, 2026-09-08, AD-182): o caixa corrige o dígito errado ali
+        // mesmo, com o valor ainda em tela. A repetição de consulta que isso
+        // poderia causar — cada TAB refazendo o mesmo `GetCliente` — é barrada
+        // por `recusaComFocoPreso`, no topo desta função.
         if (entrada.tipo === 'CODIGO') {
-          gooeyToast.warning(`Nenhum cliente com o código ${String(entrada.codigo)}.`);
+          recusarMantendoFoco(termo, `Nenhum cliente com o código ${String(entrada.codigo)}.`);
           return;
         }
         abrirCadastroPara(entrada.documento);
@@ -486,6 +523,9 @@ export function CampoClienteVenda(): ReactElement {
                     onChange={(evento) => {
                       setDocumento(evento.target.value);
                       setRecusaPessoaJuridica(false);
+                      // A entrada mudou: o motivo que prendia o foco não vale
+                      // mais para o novo termo (AD-182).
+                      setRecusaComFocoPreso(null);
                     }}
                     // Sair do campo (TAB, clique fora) já dispara a consulta ao
                     // ERP — pedido do usuário, 2026-09-03: no ritmo do caixa, o
