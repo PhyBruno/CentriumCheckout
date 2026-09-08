@@ -133,10 +133,25 @@ describe('classificarEntradaCliente', () => {
     expect(classificarEntradaCliente('520597150001139')).toEqual({ tipo: 'PESSOA_JURIDICA' });
   });
 
-  it('trata entrada sem dígito nenhum como inválida', () => {
+  it('trata entrada sem dígito nem letra como inválida', () => {
     expect(classificarEntradaCliente('')).toEqual({ tipo: 'INVALIDO' });
     expect(classificarEntradaCliente('   ')).toEqual({ tipo: 'INVALIDO' });
-    expect(classificarEntradaCliente('bruno')).toEqual({ tipo: 'INVALIDO' });
+    expect(classificarEntradaCliente('...')).toEqual({ tipo: 'INVALIDO' });
+  });
+
+  it('separa a entrada com letra do resto — nem código nem CPF têm letra (AD-181)', () => {
+    // Correção do usuário (2026-09-08): `1255a` sobre o cliente 1255 saía do
+    // campo em silêncio, porque a guarda de "mesmo cliente" compara só dígitos
+    // e `apenasDigitos` descartava a letra. O caso é próprio para quem chama
+    // poder avisar, em vez de engolir a letra.
+    expect(classificarEntradaCliente('1255a')).toEqual({ tipo: 'NAO_NUMERICO' });
+    expect(classificarEntradaCliente('a1255')).toEqual({ tipo: 'NAO_NUMERICO' });
+    expect(classificarEntradaCliente('bruno')).toEqual({ tipo: 'NAO_NUMERICO' });
+    // Máscara de CPF continua válida: ponto, traço e barra não são letra.
+    expect(classificarEntradaCliente('122.980.239-80')).toEqual({
+      tipo: 'CPF',
+      documento: '12298023980',
+    });
   });
 });
 

@@ -131,6 +131,11 @@ test.describe('User Story 1 — selecionar o vendedor da venda (T015)', () => {
     await selecionarVendedor(page, 'Marta Souza');
     await expect(page.getByTestId('nome-vendedor')).toHaveText('Marta Souza');
 
+    // A pílula do cabeçalho acompanha o campo (correção do usuário,
+    // 2026-09-08, AD-181): ela lia `SessaoUsuario.VendedorNome` e ficava presa
+    // no vendedor default do PDV enquanto o campo já mostrava o novo.
+    await expect(page.getByTestId('pilula-vendedor')).toHaveText('Marta Souza');
+
     // O carrinho não é reprecificado pela troca: a linha continua a mesma
     // (AD-059/AD-060 — vendedor não entra em nenhum `TipoPreco`).
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);

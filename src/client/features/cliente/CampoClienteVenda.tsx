@@ -19,8 +19,8 @@ import {
   MOTIVO_VENDA_PESSOA_JURIDICA,
 } from '../../domain/cliente/documento';
 import { CampoVendedorVenda } from '../vendedor/CampoVendedorVenda';
+import { rotuloDoVendedor, useVendedorAtual } from '../vendedor/useVendedor';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
-import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
 import { ModalBuscaCliente, type CandidatoEscolhido } from './ModalBuscaCliente';
@@ -42,12 +42,22 @@ import { useIdentificacaoCliente } from './useCliente';
  * pedido do usuário 2026-09-04) — recolhido, o campo é `inert` e o gesto não
  * teria para onde levar o foco.
  *
- * **A pílula do Vendedor vem de `SessaoUsuario`, não de `GetCliente`**: o
- * schema `ClienteCheckout` do contrato não tem nenhum campo de vendedor
- * (verificado em `ApiCentriumOAuth.yaml`) — o cadastro do cliente não carrega
- * vendedor associado. `VendedorCodigo`/`VendedorNome` são do PDV; trocar o
- * vendedor durante a venda é a feature 012 (`GetListaVendedores`), e o campo
- * "Vendedor NFCe" do mesmo card do desenho pertence a ela.
+ * **A pílula do Vendedor mostra o vendedor da venda (`vendedorAtual`), não o do
+ * bootstrap** (correção do usuário, 2026-09-08, AD-181). Ela lia
+ * `SessaoUsuario.VendedorNome` direto, e por isso continuava exibindo o
+ * vendedor default do PDV mesmo depois de o operador trocar de vendedor no
+ * campo logo abaixo: cabeçalho e campo mostravam nomes diferentes para o mesmo
+ * dado. A fonte agora é `useVendedorAtual()`, o mesmo estado que
+ * `CampoVendedorVenda` exibe e que `montarRetratoVenda` envia ao ERP — o
+ * default do PDV segue aparecendo porque é ele que `inicializarVendedorPadrao`
+ * põe em `vendedorAtual` quando a venda abre (AD-032).
+ *
+ * **O cadastro do cliente não carrega vendedor associado**: o schema
+ * `ClienteCheckout` de `GetCliente` e o `SDTCheckoutListaClientes` de
+ * `GetListaClientes` não têm nenhum campo de vendedor (verificado em
+ * `ApiCentriumOAuth.yaml`, 2026-09-08) — identificar um cliente nunca troca o
+ * vendedor da venda. Quem troca é a feature 012 (`GetListaVendedores`), pelo
+ * campo "Vendedor NFCe" do mesmo card do desenho.
  *
  * **Sem indicador de origem** (`FR-006`, AD-053): a pílula mostra o nome do
  * cliente atual sem distinguir se veio do padrão da empresa (AD-032) ou de uma
@@ -77,7 +87,7 @@ import { useIdentificacaoCliente } from './useCliente';
  */
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
-  const sessao = useSessionStore((estado) => estado.registro?.SessaoUsuario ?? null);
+  const rotuloVendedor = rotuloDoVendedor(useVendedorAtual());
   const { identificarPorDocumento, identificarPorCodigo, cadastrar } = useIdentificacaoCliente();
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
 
@@ -274,6 +284,20 @@ export function CampoClienteVenda(): ReactElement {
       return;
     }
 
+    // Código ou documento? A contagem de dígitos decide, e o ERP recebe só
+    // dígitos — `GetCliente` tem um parâmetro para cada caso.
+    const entrada = classificarEntradaCliente(termo);
+
+    // Letra no campo é erro do operador, e precisa **vir antes** da guarda de
+    // "mesmo cliente" logo abaixo (correção do usuário, 2026-09-08, AD-181):
+    // aquela guarda compara só dígitos, então `1255a` sobre o cliente 1255
+    // saía do campo em silêncio, com a letra ainda em tela e sem consulta
+    // nenhuma. O valor digitado permanece para o operador apagar a letra.
+    if (entrada.tipo === 'NAO_NUMERICO') {
+      gooeyToast.warning('O código do cliente e o CPF são só números: remova as letras.');
+      return;
+    }
+
     // O documento já associado à venda não precisa de nova consulta: sem esta
     // guarda, sair do campo (TAB, clique fora) rebuscaria o mesmo cliente a
     // cada passagem de foco.
@@ -287,10 +311,6 @@ export function CampoClienteVenda(): ReactElement {
     ) {
       return;
     }
-
-    // Código ou documento? A contagem de dígitos decide, e o ERP recebe só
-    // dígitos — `GetCliente` tem um parâmetro para cada caso.
-    const entrada = classificarEntradaCliente(termo);
 
     // Mais de 11 dígitos é pessoa jurídica: a venda não pode acontecer no
     // Checkout (Ajuste SINIEF 11/2025), então o ERP nem é consultado — buscar
@@ -400,17 +420,17 @@ export function CampoClienteVenda(): ReactElement {
             )}
           </Pilula>
 
-          {/* Vendedor do PDV (`SessaoUsuario`): rótulo, não decisão de venda —
-              sem o dado, a pílula simplesmente não aparece. */}
-          {recusaPessoaJuridica ||
-          sessao?.VendedorNome === undefined ||
-          sessao.VendedorNome === '' ? null : (
+          {/* Vendedor **da venda** (`vendedorAtual`), o mesmo que o campo
+              "Vendedor NFCe" da linha de baixo exibe — sem o dado (empresa sem
+              default e nada escolhido, `FR-006`), a pílula simplesmente não
+              aparece. */}
+          {recusaPessoaJuridica || rotuloVendedor === null ? null : (
             <Pilula
               icone={<UserRound className="size-4.5 text-foreground" />}
               rotulo="Vendedor"
               testId="pilula-vendedor"
             >
-              {sessao.VendedorNome}
+              {rotuloVendedor}
             </Pilula>
           )}
         </div>

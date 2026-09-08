@@ -530,11 +530,15 @@ test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
     );
   });
 
-  test('a pílula do vendedor vem de SessaoUsuario, não de GetCliente', async ({ page }) => {
+  test('a pílula do vendedor mostra o vendedor da venda, não o cadastro do cliente', async ({
+    page,
+  }) => {
     await abrirTelaDeVenda(page);
 
-    // `ClienteCheckout` não tem campo de vendedor no contrato do ERP; o valor
-    // é o `VendedorNome` do PDV, do bootstrap.
+    // Nenhum dos schemas de cliente do ERP (`ClienteCheckout` de `GetCliente`,
+    // `SDTCheckoutListaClientes` de `GetListaClientes`) tem campo de vendedor:
+    // identificar um cliente não troca o vendedor da venda. O que a pílula lê
+    // é `vendedorAtual`, que abre a venda com o default do PDV (AD-032).
     await expect(page.getByTestId('pilula-vendedor')).toHaveText('Mariana Alves');
   });
 
@@ -792,6 +796,29 @@ test.describe('Código ou documento no mesmo campo (correções de 2026-09-03)',
     await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
     await expect(page.getByTestId('campos-cliente-venda')).not.toHaveAttribute('inert', '');
     expect((await contadores(request)).getCliente).toBe(0);
+  });
+
+  test('letra no campo avisa ao sair por TAB, mesmo colada no código já identificado', async ({
+    page,
+    request,
+  }) => {
+    // Correção do usuário (2026-09-08, AD-181): a letra era descartada por
+    // `apenasDigitos`, o resto batia com o cliente que já estava na venda e a
+    // guarda de "mesmo cliente" engolia o TAB — o operador saía do campo com
+    // a letra em tela e nenhum aviso.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    const campo = page.getByTestId('campo-documento-cliente');
+    const codigoDoClienteDefault = await campo.inputValue();
+    await campo.fill(`${codigoDoClienteDefault}a`);
+    await campo.press('Tab');
+
+    await expect(page.getByText(/só números/i).first()).toBeVisible();
+    // Nada foi consultado: a entrada não é código nem CPF.
+    expect((await contadores(request)).getCliente).toBe(0);
+    // O valor digitado fica no campo, para o operador apagar a letra.
+    await expect(campo).toHaveValue(`${codigoDoClienteDefault}a`);
   });
 
   test('código inexistente avisa, sem abrir o cadastro simplificado', async ({ page }) => {
