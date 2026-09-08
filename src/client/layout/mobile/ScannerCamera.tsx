@@ -1,0 +1,228 @@
+import { ScanLine, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { suportaScannerCamera } from '../../domain/layout/suportaScannerCamera';
+
+/**
+ * Leitura de código de barras pela câmera (T023, `US3`).
+ *
+ * **Ausente, não desabilitado** (`FR-011`, AD-090): fora de Chrome/Android o
+ * componente devolve `null` — sem botão apagado, sem mensagem de
+ * indisponibilidade. Quem opera num aparelho sem suporte simplesmente não vê
+ * que a opção existe, que é o pedido literal da spec.
+ *
+ * **Nunca insere nada por conta própria** (`contracts/layout-domain-api.md` §3):
+ * devolve a string decodificada por `onCodigoLido` e é o componente de etapa
+ * que a entrega ao mesmo `EntradaCodigo` do leitor físico/digitação. Resolver o
+ * produto aqui duplicaria a orquestração que `carrinhoSlice`/`produtoQueries`
+ * (003) já fazem.
+ *
+ * `BarcodeDetector` no próprio quadro de vídeo, via `requestAnimationFrame`, sem
+ * Web Worker (AD-086): a decisão de não trazer biblioteca/WASM externo existe
+ * justamente para não precisar dessa complexidade.
+ */
+
+/**
+ * Tipos mínimos da Shape Detection API — o TypeScript ainda não os traz no
+ * `lib.dom`. Declarados aqui, e não num `.d.ts` global, porque este é o único
+ * lugar do projeto que fala com a API: um tipo global anunciaria a existência
+ * de `BarcodeDetector` em toda a base, inclusive nos navegadores em que ele não
+ * existe.
+ */
+interface CodigoDetectado {
+  readonly rawValue: string;
+}
+
+interface DetectorDeCodigo {
+  detect(fonte: CanvasImageSource): Promise<readonly CodigoDetectado[]>;
+}
+
+type ConstrutorDeDetector = new (opcoes?: { formats?: readonly string[] }) => DetectorDeCodigo;
+
+function construtorDeDetector(): ConstrutorDeDetector | null {
+  const candidato = (window as unknown as { BarcodeDetector?: ConstrutorDeDetector })
+    .BarcodeDetector;
+  return candidato ?? null;
+}
+
+export interface ScannerCameraProps {
+  /** Chamado com o texto decodificado; quem insere é o chamador (D5). */
+  onCodigoLido(codigo: string): void;
+}
+
+export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElement | null {
+  const [aberto, setAberto] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const quadroRef = useRef<number | null>(null);
+  /**
+   * O primeiro código vence e encerra a leitura.
+   *
+   * Numa `ref`, não em estado: o laço de `requestAnimationFrame` já está em voo
+   * quando a leitura acontece, e um `setState` só valeria no próximo render —
+   * tempo suficiente para o mesmo código ser detectado duas vezes e inserir o
+   * produto em duplicidade.
+   */
+  const jaLeuRef = useRef(false);
+
+  const encerrar = useCallback((): void => {
+    if (quadroRef.current !== null) {
+      cancelAnimationFrame(quadroRef.current);
+      quadroRef.current = null;
+    }
+    streamRef.current?.getTracks().forEach((trilha) => {
+      trilha.stop();
+    });
+    streamRef.current = null;
+  }, []);
+
+  // A câmera nunca sobrevive ao componente: sair da etapa 1 (ou trocar para o
+  // layout desktop, que desmonta a árvore inteira) desliga a trilha de vídeo.
+  useEffect(() => encerrar, [encerrar]);
+
+  useEffect(() => {
+    if (!aberto) {
+      return;
+    }
+
+    const Detector = construtorDeDetector();
+    if (Detector === null) {
+      return;
+    }
+
+    let cancelado = false;
+    const detector = new Detector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'itf'] });
+
+    async function iniciar(): Promise<void> {
+      try {
+        // `environment`: a câmera traseira é a que o operador aponta para a
+        // etiqueta. Sem isto o Android abre a frontal em boa parte dos casos.
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+        });
+        if (cancelado) {
+          stream.getTracks().forEach((trilha) => {
+            trilha.stop();
+          });
+          return;
+        }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        if (video !== null) {
+          video.srcObject = stream;
+          await video.play();
+        }
+        procurar();
+      } catch {
+        // Permissão negada ou câmera indisponível: a janela se fecha e o
+        // operador segue pelo campo de código, que nunca deixou de existir.
+        setErro('Não foi possível abrir a câmera. Use o campo de código.');
+      }
+    }
+
+    function procurar(): void {
+      quadroRef.current = requestAnimationFrame(() => {
+        const video = videoRef.current;
+        if (cancelado || video === null || jaLeuRef.current) {
+          return;
+        }
+        void detector
+          .detect(video)
+          .then((codigos) => {
+            const primeiro = codigos[0];
+            if (primeiro === undefined || primeiro.rawValue === '') {
+              procurar();
+              return;
+            }
+            jaLeuRef.current = true;
+            encerrar();
+            setAberto(false);
+            onCodigoLido(primeiro.rawValue);
+          })
+          .catch(() => {
+            // Quadro que a API não conseguiu analisar (foco, luz): tenta o
+            // próximo em vez de derrubar a leitura inteira.
+            procurar();
+          });
+      });
+    }
+
+    void iniciar();
+
+    return () => {
+      cancelado = true;
+      encerrar();
+    };
+  }, [aberto, encerrar, onCodigoLido]);
+
+  // Avaliado a cada render, mas estável na prática: nem a UA nem a presença da
+  // API mudam dentro de uma mesma sessão de navegador (`data-model.md` §3).
+  if (!suportaScannerCamera(navigator.userAgent, 'BarcodeDetector' in window)) {
+    return null;
+  }
+
+  return (
+    <>
+      {/* Nó `QIJKL` do Pencil: pílula `$surface-strong` de 30px de altura, folga
+          lateral 10, gap 6, ícone `scan-line` de 14px e rótulo 11/800 na cor da
+          marca. */}
+      <button
+        type="button"
+        className="flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-secondary px-2.5 text-xs font-bold text-primary hover:bg-secondary-hover outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        data-testid="abrir-scanner-camera"
+        onClick={() => {
+          jaLeuRef.current = false;
+          setErro(null);
+          setAberto(true);
+        }}
+      >
+        <ScanLine className="size-3.5 shrink-0" aria-hidden="true" />
+        Scanner
+      </button>
+
+      {aberto && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-[var(--cc-color-surface-dark)]"
+          data-testid="scanner-camera"
+        >
+          <header className="flex shrink-0 items-center justify-between px-base py-sm">
+            <span className="text-base font-semibold text-[var(--cc-color-on-dark)]">
+              Aponte para o código de barras
+            </span>
+            <button
+              type="button"
+              className="flex size-9 items-center justify-center rounded-full bg-[var(--cc-color-surface-dark-elevated)] text-[var(--cc-color-on-dark)]"
+              aria-label="Fechar scanner"
+              data-testid="fechar-scanner-camera"
+              onClick={() => {
+                encerrar();
+                setAberto(false);
+              }}
+            >
+              <X className="size-4.5" aria-hidden="true" />
+            </button>
+          </header>
+
+          {erro === null ? (
+            // `muted` e `playsInline` não são decoração: sem eles o iOS/Android
+            // recusa o autoplay e a leitura nunca começa.
+            <video
+              ref={videoRef}
+              className="min-h-0 flex-1 object-cover"
+              data-testid="video-scanner"
+              muted
+              playsInline
+            />
+          ) : (
+            <p
+              className="flex min-h-0 flex-1 items-center justify-center px-lg text-center text-base text-[var(--cc-color-on-dark-strong)]"
+              data-testid="erro-scanner-camera"
+            >
+              {erro}
+            </p>
+          )}
+        </div>
+      )}
+    </>
+  );
+}

@@ -195,6 +195,37 @@ export function useFinalizacaoVenda(): ApiFinalizacaoVenda {
   return api;
 }
 
+export interface AcaoCancelarVendaProps {
+  /** Só o ícone, sem rótulo — a lixeira do cabeçalho mobile (AD-089). */
+  readonly compacto?: boolean;
+}
+
+/**
+ * "Cancelar venda" **conectado** à máquina de finalização — o botão com o
+ * `onCancelar` e o motivo de bloqueio já resolvidos.
+ *
+ * Extraído na feature 007: as duas superfícies do cancelamento (a faixa de
+ * atalhos do desktop e a lixeira do cabeçalho do wizard mobile) repetiam a
+ * mesma fiação de `suspender` + `motivoDeBloqueioDoCancelar`, e duas cópias
+ * dessa decisão podem divergir — uma superfície liberaria o cancelamento no
+ * instante em que a outra o recusa.
+ */
+export function AcaoCancelarVenda({ compacto = false }: AcaoCancelarVendaProps = {}): ReactElement {
+  const { estado, suspender } = useFinalizacaoVenda();
+  const temItem = useVendaTemItem();
+  const travado = estado.tipo === 'enviando' || estado.tipo === 'falha-rede';
+
+  return (
+    <BotaoCancelarVenda
+      onCancelar={() => {
+        void suspender();
+      }}
+      compacto={compacto}
+      bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
+    />
+  );
+}
+
 /**
  * Faixa "Atalhos da venda" do Pencil (`nyfSI`): linha horizontal de 44px, gap
  * de 10px, logo abaixo do cartão de produtos.
@@ -206,20 +237,11 @@ export function useFinalizacaoVenda(): ApiFinalizacaoVenda {
  * chegar.
  */
 export function BarraAtalhosVenda(): ReactElement {
-  const { estado, suspender } = useFinalizacaoVenda();
-  const temItem = useVendaTemItem();
-  const travado = estado.tipo === 'enviando' || estado.tipo === 'falha-rede';
-
   return (
     <div className="flex h-11 w-full shrink-0 items-center gap-[10px]" data-testid="atalhos-venda">
       {/* Um terço exato da faixa: 3 atalhos com 2 gaps de 10px entre eles. */}
       <div className="flex w-[calc((100%-20px)/3)]">
-        <BotaoCancelarVenda
-          onCancelar={() => {
-            void suspender();
-          }}
-          bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
-        />
+        <AcaoCancelarVenda />
       </div>
       {/* Terceiro terço, encostado à direita: o vão do meio é o lugar que o
           "Menu Gerencial" vai ocupar, e deixá-lo vazio agora evita mexer no
@@ -282,29 +304,13 @@ export function AcoesFinaisVenda(): ReactElement {
   );
 }
 
-/**
- * Superfície mobile: no Pencil o layout compacto põe só a lixeira de suspender
- * na barra superior (AD-089) e leva o botão de finalizar para a etapa 03 do
- * wizard — que pertence à feature 007. Enquanto esse wizard não existe, as duas
- * ações ficam lado a lado no rodapé da tela compacta.
+/*
+ * `AcoesVendaCompactas` foi removida pela feature 007.
+ *
+ * Ela era o paliativo declarado no próprio TSDoc — "enquanto esse wizard não
+ * existe, as duas ações ficam lado a lado no rodapé da tela compacta". O wizard
+ * existe: a lixeira de suspender voltou para o cabeçalho, como AD-089 e o nó
+ * `T9VTw` do Pencil mandam (`MobileWizard.tsx`), e o botão de finalizar foi para
+ * a etapa 3 (`EtapaRevisao.tsx`). Manter o rodapé daria duas superfícies para o
+ * mesmo par de ações na mesma tela.
  */
-export function AcoesVendaCompactas(): ReactElement {
-  const { estado, suspender } = useFinalizacaoVenda();
-  const temItem = useVendaTemItem();
-  const travado = estado.tipo === 'enviando' || estado.tipo === 'falha-rede';
-
-  return (
-    <div className="flex w-full items-end gap-sm" data-testid="acoes-venda-compactas">
-      <div className="flex-1">
-        <AcoesFinaisVenda />
-      </div>
-      <BotaoCancelarVenda
-        onCancelar={() => {
-          void suspender();
-        }}
-        compacto
-        bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
-      />
-    </div>
-  );
-}

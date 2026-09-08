@@ -5,6 +5,7 @@ import {
   useState,
   type KeyboardEvent,
   type ReactElement,
+  type ReactNode,
   type RefObject,
 } from 'react';
 import { gooeyToast } from 'goey-toast';
@@ -220,7 +221,25 @@ function SimboloReal({ testId }: { testId: string }): ReactElement {
  * tipografia só, e o símbolo precisa ficar fora dele para não virar máscara
  * sobre o texto que o operador edita.
  */
-export function EntradaRapidaProduto(): ReactElement {
+export interface EntradaRapidaProdutoProps {
+  /**
+   * Superfície extra no cabeçalho da barra, ao lado da lupa — hoje só o botão
+   * "Scanner" da feature 007 (nó `QIJKL` do Pencil, que o desenho põe
+   * exatamente aí).
+   *
+   * Recebe `aoLerCodigo`, **o mesmo caminho de entrada do leitor físico**: a
+   * string decodificada entra por `inserirPorCodigo`, é classificada por
+   * `EntradaCodigo` (simples/com-quantidade/balança) e vira linha pelo mesmo
+   * `carrinhoSlice.inserirItem` (`FR-007` da 007, D5). É por isso que o slot é
+   * uma função e não um `ReactNode` solto: quem monta o botão não precisa —
+   * nem consegue — inventar um segundo caminho de inserção.
+   */
+  readonly renderizarCaptura?: (aoLerCodigo: (codigo: string) => void) => ReactNode;
+}
+
+export function EntradaRapidaProduto({
+  renderizarCaptura,
+}: EntradaRapidaProdutoProps = {}): ReactElement {
   const { inserirPorCodigo, confirmarEdicao, revisarPorCodigo, confirmarPrevia } =
     useInsercaoDeProduto();
   const { confirmarEdicaoDeLinha } = useEdicaoDeItemExistente();
@@ -414,8 +433,14 @@ export function EntradaRapidaProduto(): ReactElement {
     setQuantidadeTexto(formatarQuantidade(milesimos(Math.max(UMA_UNIDADE, proxima)), 3));
   }
 
-  async function confirmarEntradaRapida(): Promise<void> {
-    const entrada = texto.trim();
+  /**
+   * `codigoExterno` existe para a captura por câmera (007): o código chega
+   * pronto, sem ter passado pelo `setTexto` — e `texto` só valeria no render
+   * seguinte, então ler o estado aqui inseriria o código **anterior**.
+   * Sem o parâmetro, o caminho é exatamente o de sempre.
+   */
+  async function confirmarEntradaRapida(codigoExterno?: string): Promise<void> {
+    const entrada = (codigoExterno ?? texto).trim();
     if (entrada === '' || ocupado || resolvido !== null) {
       return;
     }
@@ -749,7 +774,11 @@ export function EntradaRapidaProduto(): ReactElement {
       data-testid="entrada-rapida-produto"
       onKeyDown={aoTeclarNoCartao}
     >
-      <div className="flex items-end gap-sm" data-testid="previa-insercao-produto">
+      {/* `flex-wrap`: no desktop a linha nunca quebra (sobra largura), mas na
+          etapa 1 do wizard mobile as células caem umas sob as outras em vez de
+          estourar a lateral da tela — é a mesma barra, reflowada, não um
+          segundo componente (`SC-001`). */}
+      <div className="flex flex-wrap items-end gap-sm" data-testid="previa-insercao-produto">
         <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
           <span className="flex items-center gap-xs font-semibold text-muted-foreground">
             <Barcode className="size-4" aria-hidden="true" />
@@ -791,6 +820,15 @@ export function EntradaRapidaProduto(): ReactElement {
         >
           <Search className="size-4.5" aria-hidden="true" />
         </Button>
+
+        {/* Slot da 007: o botão "Scanner" entra aqui, ao lado da lupa, como o
+            Pencil o posiciona no cabeçalho da entrada mobile (`QIJKL`). Vazio
+            no desktop — e vazio também no mobile fora de Chrome/Android, porque
+            quem devolve `null` é o próprio `ScannerCamera` (`FR-011`). */}
+        {renderizarCaptura?.((codigo) => {
+          setTexto(codigo);
+          void confirmarEntradaRapida(codigo);
+        })}
 
         {/* Única célula que **não** é um `<label>` envolvendo o campo: esta
             contém os botões +/- além do input, e o navegador aplica o
