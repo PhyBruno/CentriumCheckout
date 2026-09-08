@@ -102,7 +102,7 @@ export type MotivoRecusa =
   | 'ATALHO_INEXISTENTE'
   /**
    * A venda já tem condição escolhida ou forma aplicada (decisão do usuário,
-   * 2026-09-05, AD-174).
+   * 2026-09-05, AD-178).
    *
    * O atalho carrega **um par** (condição, forma) e cada venda aceita uma
    * condição só. Sobre uma venda que já começou a ser paga por outra condição,

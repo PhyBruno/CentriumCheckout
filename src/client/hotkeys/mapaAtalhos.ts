@@ -19,7 +19,7 @@ import { useHotkeys } from 'react-hotkeys-hook';
  * ouvinte artesanal reimplementaria errado aos poucos: registro por escopo,
  * combinações com modificador, sequências, ativação condicional e — o mais
  * importante aqui — a lista de tags de formulário em que um atalho **não** deve
- * disparar. Ver AD-172 em `.specs/project/STATE.md`.
+ * disparar. Ver AD-176 em `.specs/project/STATE.md`.
  *
  * ### O invariante que este módulo protege (`FR-014`, `SC-005`)
  *

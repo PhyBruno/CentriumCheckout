@@ -27,11 +27,9 @@ function documentoValidado(sobrescritas: Record<string, unknown> = {}) {
   return checkoutFaturarNFCeSchema.parse(documentoDoDav(sobrescritas));
 }
 
-const ORIGEM_LISTA = { clienteNome: 'CLIENTE TESTE 01' } as const;
-
 describe('mapearVendaExistente — documento completo', () => {
   it('traduz produtos em linhas congeladas com o preço do documento', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado());
 
     expect(venda.linhas).toHaveLength(1);
     const linha = venda.linhas[0];
@@ -46,7 +44,7 @@ describe('mapearVendaExistente — documento completo', () => {
   });
 
   it('preserva NumeroNota intacto e não modela nenhum campo de DAV (D8, AD-107)', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado());
 
     expect(venda.numeroNota).toBe(NUMERO_NOTA);
     // `DavNum` saiu do contrato: nem o schema nem a venda importada o conhecem.
@@ -54,24 +52,36 @@ describe('mapearVendaExistente — documento completo', () => {
     expect(venda).not.toHaveProperty('numeroDav');
   });
 
-  it('nunca resolve o nome do vendedor (AD-095) e tira o do cliente da listagem (D4)', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+  it('tira o nome do vendedor do documento (AD-172)', () => {
+    const venda = mapearVendaExistente(documentoValidado({ vendedorNome: 'MARIANA ALVES' }));
 
     expect(venda.clienteCodigo).toBe(CODIGO_CLIENTE_DAV);
-    expect(venda.clienteNome).toBe('CLIENTE TESTE 01');
     expect(venda.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+    expect(venda.vendedorNome).toBe('MARIANA ALVES');
+  });
+
+  /**
+   * O campo existe na KB do ERP desde 2026-09-08, mas o build/deploy ainda não
+   * saiu — até lá a resposta chega sem ele. Tem de degradar para o
+   * comportamento anterior (`null`), nunca derrubar a importação: é dado de
+   * exibição, e o `optional()` do schema existe exatamente por isso.
+   */
+  it('cai em null quando o ERP ainda não devolve o nome do vendedor', () => {
+    const venda = mapearVendaExistente(documentoValidado());
+
+    expect(venda.vendedorNome).toBeNull();
+    expect(venda.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+  });
+
+  /** String vazia é o default do SDT GeneXus, não um vendedor chamado "". */
+  it('trata nome vazio do ERP como não informado', () => {
+    const venda = mapearVendaExistente(documentoValidado({ vendedorNome: '' }));
+
     expect(venda.vendedorNome).toBeNull();
   });
 
-  it('sem origem de listagem, o nome do cliente sai vazio em vez de inventado', () => {
-    const venda = mapearVendaExistente(documentoValidado(), null);
-
-    expect(venda.clienteNome).toBe('');
-    expect(venda.clienteCodigo).toBe(CODIGO_CLIENTE_DAV);
-  });
-
   it('copia as formas de pagamento 1:1, sem reclassificar (D6)', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado());
 
     expect(venda.formasDePagamento).toEqual([
       {
@@ -99,7 +109,7 @@ describe('mapearVendaExistente — documento completo', () => {
       ],
     });
 
-    const venda = mapearVendaExistente(documento, ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documento);
 
     expect(venda.formasDePagamento[0]?.tef).toEqual({
       identificacao: 55,
@@ -113,14 +123,14 @@ describe('mapearVendaExistente — documento completo', () => {
 
 describe('mapearVendaExistente — bordas de dado de negócio', () => {
   it('documento sem forma de pagamento devolve array vazio, nunca lança', () => {
-    const venda = mapearVendaExistente(documentoValidado({ FormasDePagamento: [] }), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado({ FormasDePagamento: [] }));
 
     expect(venda.formasDePagamento).toEqual([]);
     expect(venda.linhas).toHaveLength(1);
   });
 
   it('documento sem produto devolve array vazio, nunca lança', () => {
-    const venda = mapearVendaExistente(documentoValidado({ produtos: [] }), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado({ produtos: [] }));
 
     expect(venda.linhas).toEqual([]);
   });
@@ -130,7 +140,7 @@ describe('mapearVendaExistente — bordas de dado de negócio', () => {
       produtos: [produtoDoDav(), produtoDoDav({ sequencial: 2, quantidade: 5 })],
     });
 
-    const venda = mapearVendaExistente(documento, ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documento);
 
     expect(venda.linhas.map((linha) => linha.quantidade)).toEqual([2000, 5000]);
   });
@@ -146,7 +156,7 @@ describe('mapearVendaExistente — violação de contrato', () => {
       const semCampo = { ...documento, [campo]: undefined };
 
       expect(() =>
-        mapearVendaExistente(semCampo as unknown as typeof documento, ORIGEM_LISTA),
+        mapearVendaExistente(semCampo as unknown as typeof documento),
       ).toThrow(ErroDocumentoImportadoInvalido);
     },
   );
@@ -161,7 +171,7 @@ describe('mapearVendaExistente — violação de contrato', () => {
 
 describe('paraLinhaCarrinho', () => {
   it('produz linha congelada de origem DAV, fora da precificação', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado());
     const importada = venda.linhas[0];
     expect(importada).toBeDefined();
     if (importada === undefined) {
@@ -182,7 +192,7 @@ describe('paraLinhaCarrinho', () => {
   });
 
   it('usa o código do produto como descrição enquanto GetProduto não responde', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado());
     const importada = venda.linhas[0];
     if (importada === undefined) {
       throw new Error('fixture sem linha');
@@ -202,7 +212,7 @@ describe('paraLinhaCarrinho', () => {
    * despercebido em todos os outros casos deste arquivo.
    */
   it('propaga a origem RASCUNHO sem mudar mais nada da linha', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado());
     const importada = venda.linhas[0];
     if (importada === undefined) {
       throw new Error('fixture sem linha');
@@ -217,7 +227,7 @@ describe('paraLinhaCarrinho', () => {
   });
 
   it('zera as faixas do snapshot — linha congelada nunca as lê', () => {
-    const venda = mapearVendaExistente(documentoValidado(), ORIGEM_LISTA);
+    const venda = mapearVendaExistente(documentoValidado());
     const importada = venda.linhas[0];
     if (importada === undefined) {
       throw new Error('fixture sem linha');

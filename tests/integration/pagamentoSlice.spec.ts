@@ -339,6 +339,110 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
 });
 
 /* ------------------------------------------------------------------ *
+ * AD-171 — a forma riscada não conta como pagamento aplicado
+ * ------------------------------------------------------------------ */
+
+/**
+ * Desde AD-163 `removerPagamento` marca `EXCLUIDO` em vez de tirar do array, e
+ * as guardas que perguntavam `pagamentos.length > 0` passaram a responder
+ * "quantas formas esta venda já viu", não "há pagamento aqui". Efeito: excluída
+ * a única forma, condição e desconto de capa ficavam congelados para sempre,
+ * numa venda sem pagamento ativo e sem gesto que os destravasse.
+ */
+describe('pagamentoSlice — guardas ignoram forma excluída (AD-171)', () => {
+  it('libera a troca de condição depois de a única forma ser excluída', async () => {
+    const { store, avisar } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    store.getState().selecionarCondicao(A_PRAZO);
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_VISTA.codigo);
+
+    store.getState().removerPagamento('pag-1');
+    avisar.mockClear();
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
+    expect(avisar).not.toHaveBeenCalled();
+    // A forma riscada permanece, por rastreabilidade — trocar a condição não a
+    // apaga (é isso que AD-163 protege).
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+  });
+
+  it('libera o desconto de capa depois de a única forma ser excluída', async () => {
+    const { store } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    expect(store.getState().aplicarDescontoCapa('VALOR', 5)).toBe(false);
+
+    store.getState().removerPagamento('pag-1');
+
+    expect(store.getState().aplicarDescontoCapa('VALOR', 5)).toBe(true);
+    store.getState().removerDescontoCapa();
+    expect(store.getState().descontoCapa).toBeNull();
+  });
+
+  /**
+   * A condição de um documento importado **não** congela o carrinho: ela é
+   * replay de um DAV/rascunho, não a declaração do operador que I7 descreve.
+   * Congelar por causa dela quebraria o `FR-008` das features 006 e 011.
+   */
+  it('a condição importada não congela o carrinho; a escolhida pelo operador congela', () => {
+    const { store } = montarStore();
+    store.getState().descartarPagamento();
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
+
+    store.getState().importarCondicaoPagamento(A_VISTA);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(A_VISTA.codigo);
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
+
+    // O operador escolhe outra: agora é a declaração de I7, e a venda congela.
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    expect(store.getState().podeMutarCarrinho()).toBe(false);
+  });
+
+  /** A forma aprovada do documento congela, como em qualquer venda cobrada. */
+  it('a forma aprovada do documento congela mesmo com condição importada', () => {
+    const { store } = montarStore();
+    store.getState().descartarPagamento();
+
+    store.getState().importarCondicaoPagamento(A_VISTA);
+    store.getState().importarFormasDePagamento([
+      {
+        formaCodigo: 1,
+        formaMeioPagtoNFe: 'Dinheiro',
+        valor: centavos(10_000),
+        tef: null,
+        pixGuid: null,
+        ticketDevolucao: null,
+      },
+    ]);
+
+    expect(store.getState().pagamentos[0]?.status).toBe('APROVADO');
+    expect(store.getState().podeMutarCarrinho()).toBe(false);
+  });
+
+  /**
+   * A forma excluída já emitiu o seu `FORMA_PAGAMENTO_REMOVIDA` quando foi
+   * riscada. Reemiti-lo no descarte mandaria ao ERP, no `Log` de `FaturarNFCe`,
+   * a mesma forma removida duas vezes.
+   */
+  it('não reemite FORMA_PAGAMENTO_REMOVIDA para a forma já excluída', async () => {
+    const { store } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    store.getState().removerPagamento('pag-1');
+    store.getState().descartarPagamento();
+
+    const removidas = store
+      .getState()
+      .eventos.filter((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA');
+    expect(removidas).toHaveLength(1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
  * T015 — bloqueio do carrinho reversível vs. irreversível
  * ------------------------------------------------------------------ */
 

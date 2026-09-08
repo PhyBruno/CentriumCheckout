@@ -226,23 +226,27 @@ export async function fetchCarregarNFCe(
  * endpoint, rótulo de origem e evento de auditoria. Pré-condição, ordem dos
  * efeitos e atomicidade são o comportamento comum às duas features.
  *
- * @param rascunho Linha selecionada na listagem mais a série da sessão.
- * `cliente` e `vendedor` são os nomes capturados da lista; os **códigos** vêm
- * sempre da resposta de `CarregarNFCe`, nunca da listagem.
+ * @param rascunho Linha selecionada na listagem mais a série da sessão. O
+ * `clienteCodigo` vem sempre da resposta de `CarregarNFCe`, nunca da
+ * listagem, e o nome do cliente é resolvido por `resolverCliente` (AD-115),
+ * não capturado aqui. `vendedor` é o nome capturado da lista — vira
+ * *fallback* de `mapearVendaExistente`, atrás do nome do próprio documento
+ * quando o ERP o devolve (AD-172).
  */
 export function fonteRascunho(rascunho: {
   readonly numeroNota: number;
-  readonly cliente: string;
   readonly vendedor: string;
   readonly serie: string;
 }): FonteDocumento {
   return {
     origem: 'RASCUNHO',
-    clienteNome: rascunho.cliente,
-    // Diferente de `fonteDav`: este contrato devolve o vendedor por extenso, e
-    // descartá-lo faria a venda retomada exibir um vendedor sem nome tendo o
-    // dado em mãos (`FR-009`). O **código** continua vindo do documento.
-    vendedorNome: rascunho.vendedor,
+    // Diferente de `fonteDav`: este contrato sempre devolveu o vendedor por
+    // extenso (`GetListaNFCes`), e descartá-lo faria a venda retomada exibir
+    // um vendedor sem nome tendo o dado em mãos, enquanto o campo do próprio
+    // documento não estiver em produção (`FR-009`, AD-172). O **código**
+    // continua vindo do documento. Nome em branco é "não informado", não
+    // string vazia — mesmo tratamento de `DavListado.vendedorNome`.
+    vendedorNome: rascunho.vendedor === '' ? null : rascunho.vendedor,
     carregar: (erpClient) =>
       fetchCarregarNFCe(
         rascunho.numeroNota,

@@ -25,12 +25,14 @@ import {
   NUMERO_DAV,
   NUMERO_NOTA,
   SKU_DAV,
+  davDaLista,
   formaDePagamentoDoDav,
   produtoDoDav,
   respostaGetDav,
   respostaListaDavs,
 } from '../support/dav';
 import { snapshotDe, unidades } from '../support/precificacao';
+import { condicaoDe } from '../support/pagamento';
 
 /**
  * Orquestração da importação de DAV (T009, T019–T022).
@@ -100,6 +102,9 @@ interface Espioes {
   readonly resolverCliente: ReturnType<typeof vi.fn>;
 }
 
+/** A condição que `documentoDoDav` referencia em `CondicaoPagamentoCodigo: 1`. */
+const CONDICAO_DO_DOCUMENTO = condicaoDe(1, 'A VISTA');
+
 function depsDe(
   store: ReturnType<typeof montarStore>,
   sobrescritas: Partial<ImportacaoVendaDeps> = {},
@@ -128,6 +133,9 @@ function depsDe(
     resolverCliente: espioes.resolverCliente as (codigo: number) => Promise<ClienteCheckout>,
     selecionarCliente: (cliente) => venda.selecionarCliente(cliente, 'DAV'),
     trocarVendedor: espioes.trocarVendedor,
+    resolverCondicao: (codigo) =>
+      Promise.resolve(codigo === CONDICAO_DO_DOCUMENTO.codigo ? CONDICAO_DO_DOCUMENTO : null),
+    importarCondicaoPagamento: venda.importarCondicaoPagamento,
     importarFormasDePagamento: espioes.importarFormasDePagamento,
     registrarEventoAuditoria: venda.registrarEventoAuditoria,
     buscarDescricaoProduto: espioes.buscarDescricaoProduto as (
@@ -157,6 +165,44 @@ function envolverEmQueryClient(): { wrapper: (props: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children),
   };
 }
+
+/**
+ * AD-172 — o nome do vendedor na listagem de DAVs.
+ *
+ * `ListaDAVs` passou a devolver `VendedorNome`, superando a ausência que AD-095
+ * registrava e que obrigava a janela a exibir "Vendedor #<código>". Enquanto o
+ * deploy do ERP não sai, a resposta chega sem o campo — e é isso que o segundo
+ * caso fixa.
+ */
+describe('useListaDavs — nome do vendedor (AD-172)', () => {
+  async function primeiroDav(resposta: Record<string, unknown>) {
+    const erpClient = erpClientDe({ '/ApiCentriumOAuth/ListaDAVs': resposta }, []);
+    const { result } = renderHook(
+      () => useListaDavs({}, true, { erpClient }),
+      envolverEmQueryClient(),
+    );
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    return result.current.data?.davs[0];
+  }
+
+  it('expõe o nome quando o ERP o devolve', async () => {
+    const dav = await primeiroDav(
+      respostaListaDavs([davDaLista({ VendedorNome: 'MARIANA ALVES' })]),
+    );
+
+    expect(dav?.vendedorNome).toBe('MARIANA ALVES');
+    expect(dav?.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+  });
+
+  it('cai em null — sem quebrar a listagem — quando o campo ainda não vem', async () => {
+    const dav = await primeiroDav(respostaListaDavs([davDaLista()]));
+
+    expect(dav?.vendedorNome).toBeNull();
+    expect(dav?.vendedorCodigo).toBe(CODIGO_VENDEDOR_DAV);
+  });
+});
 
 describe('useListaDavs — parâmetros enviados (T009)', () => {
   it('reflete busca e período exatamente como aplicados pelo operador', async () => {
@@ -265,7 +311,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
 
     const { deps, espioes } = depsDe(store);
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -284,7 +330,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     const { deps } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -298,7 +344,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     const { deps, espioes } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -325,7 +371,7 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
     const { deps } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -345,7 +391,7 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
       respostaGetDav({ produtos: [produtoDoDav({ quantidade: 3, precoUnitario: 7.77 })] }),
     );
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -418,7 +464,7 @@ describe('DAV_IMPORTADO (T021, AD-114)', () => {
     );
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -473,7 +519,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toMatchObject({ name: 'ErroImportacaoRecusada', motivo });
@@ -509,7 +555,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     const store = montarStore();
     const { deps } = depsDe(store);
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
     expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
@@ -521,7 +567,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     const segundo = depsDe(store, {}, respostaGetDav({ NumeroNota: 90211 }));
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: '004790', clienteNome: 'OUTRO CLIENTE' }),
+        fonteDav({ numeroDav: '004790' }),
         segundo.deps,
       ),
     ).rejects.toMatchObject({ motivo: 'ja-importou-documento' });
@@ -551,7 +597,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
@@ -579,7 +625,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
@@ -603,7 +649,7 @@ describe('resolução de descrição best-effort (T022, AD-096)', () => {
     const { deps, espioes } = depsDe(store);
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -632,7 +678,7 @@ describe('resolução de descrição best-effort (T022, AD-096)', () => {
     );
 
     await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+      fonteDav({ numeroDav: NUMERO_DAV }),
       deps,
     );
 
@@ -663,7 +709,7 @@ describe('erro de importação (D7, FR-010)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toThrow();
@@ -681,7 +727,7 @@ describe('erro de importação (D7, FR-010)', () => {
 
     await expect(
       importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV, clienteNome: 'CLIENTE DO DAV' }),
+        fonteDav({ numeroDav: NUMERO_DAV }),
         deps,
       ),
     ).rejects.toThrow();
@@ -713,7 +759,10 @@ describe('recusaAtual — cliente da venda, não a flag de escolha (AD-139)', ()
   });
 
   function recusaAtual(): MotivoRecusaImportacao | null {
-    const { result } = renderHook(() => useImportacaoDav());
+    // Sob `QueryClientProvider` desde AD-171: o hook resolve a condição do
+    // documento contra o catálogo de pagamento pelo `queryClient`, e na
+    // aplicação ele sempre roda sob o provider montado em `main.tsx`.
+    const { result } = renderHook(() => useImportacaoDav(), envolverEmQueryClient());
     return result.current.recusaAtual();
   }
 

@@ -154,7 +154,7 @@ export async function acionarCenario(
     return recusar(deps, 'SEM_ITENS');
   }
 
-  // G5 — a venda ainda não começou a ser paga por **outro** par (AD-174,
+  // G5 — a venda ainda não começou a ser paga por **outro** par (AD-178,
   // decisão do usuário em 2026-09-05).
   //
   // O atalho carrega um par (condição, forma) e cada venda aceita uma condição

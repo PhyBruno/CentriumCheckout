@@ -51,15 +51,19 @@ description: "Task list template for feature implementation"
 | Cenário | Onde |
 |---|---|
 | 1. Listar e buscar | `ModalRecuperacaoNFCe.spec.tsx` (esqueleto, listagem, paginação, busca por cliente/vendedor, número da nota sem resultado) + E2E |
-| 2. Retomar para o carrinho | `recuperacaoNFCe.spec.ts` § "quickstart Cenário 2" — 2 itens congelados a preço do documento, forma em dinheiro `APROVADO`, cliente/vendedor/identidade |
+| 2. Retomar para o carrinho | `recuperacaoNFCe.spec.ts` § "quickstart Cenário 2" — 2 itens congelados a preço do documento, forma em dinheiro `APROVADO`, condição de pagamento, cliente e identidade. **O vendedor não**: ver a ressalva de `FR-009` abaixo |
 | 3. Reinserir item já presente | `ModalRecuperacaoNFCe.spec.tsx` (T016) — linha nova a preço de catálogo, congelada intacta |
 | 4. Finalizar a venda retomada | `tests/e2e/recuperacao-nfce.spec.ts` — `NumeroNota` do rascunho no payload de `FaturarNFCe` |
 | 5. Auditoria da retomada | `recuperacaoNFCe.spec.ts` § "quickstart Cenário 5" |
 | 6. Sem lock entre operadores | `recuperacaoNFCe.spec.ts` § "quickstart Cenário 6" — duas retomadas simultâneas, nenhuma chamada de bloqueio |
 
-- **SC-001** (nada é redigitado): itens, pagamento, cliente, vendedor e identidade chegam do documento — Cenário 2.
+- **SC-001** (nada é redigitado): itens, pagamento, condição, cliente e identidade chegam do documento — Cenário 2. **O vendedor não chega**, ver a ressalva abaixo.
 - **SC-002** (o preço não diverge, exceto após reinserção explícita): Cenário 2 (preços exatos) e Cenário 3 (a reinserção cria linha nova, sem tocar na congelada).
 - **SC-003** (venda retomada segue as mesmas regras): o E2E quita pela UI de pagamento e finaliza pelo caminho normal da 004.
+
+**~~⚠️ Ressalva de `FR-009`~~ (registrada em 2026-09-08, AD-171) — resolvida no merge do PR #57.** Aquela nota afirmava que T022 tinha marcado `[X]` por reuso da 006 sem a pré-seleção efetiva do vendedor funcionar, porque a orquestração compartilhada injetava `trocarVendedor: () => {}` — stub até a feature 012. A feature 012 (já mesclada em `master`) trocou o stub pela action real, e o nome do vendedor ganhou fonte própria no documento (AD-172): `FR-009` e o acceptance scenario 5 estão cumpridos, e o item 39 de `.specs/project/PENDENCIES.md` está fechado.
+
+**Correção de 2026-09-08 (AD-171) — a condição de pagamento do documento era descartada.** `mapearVendaExistente` não lia `CondicaoPagamentoCodigo`, embora `dav.schema.ts` já o validasse. Com forma importada, `selecionarCondicao` recusava toda escolha do operador (`pagamentos.length > 0`) e `FaturarNFCe` recebia `CondicaoPagamentoCodigo: 0`, que o ERP real recusa (AD-165). T012/T022 pediam `condicaoPagamentoCodigo` explicitamente e o reuso da 006 o perdeu — nenhum teste das duas features mencionava condição, e o rascunho do E2E chega sem forma, então nenhuma suíte tocava o caminho. Fechado com as portas `resolverCondicao`/`importarCondicaoPagamento` e testes nas duas features.
 
 **Dois achados do T026, ambos registrados:**
 

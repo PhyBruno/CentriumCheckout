@@ -289,6 +289,23 @@ export interface PagamentoSlice {
    * movimentou dinheiro fora do Checkout e não desaparece por um clique.
    */
   descartarPagamento(): void;
+  /**
+   * Condição de pagamento vinda de um documento do ERP (006/011), nunca gesto
+   * do operador — por isso **não** passa por `selecionarCondicao` (AD-171).
+   *
+   * Duas diferenças em relação àquela, e as duas são o ponto: aqui não há a
+   * guarda de `pagamentos.length`, porque a condição chega **junto** das formas
+   * do documento e a guarda a recusaria sempre; e não há evento de auditoria,
+   * porque `DAV_IMPORTADO`/`NFCE_RECUPERADA` já cobre a importação inteira —
+   * mesmo par de razões de `importarFormasDePagamento`.
+   *
+   * MUST ser chamada **antes** de `importarFormasDePagamento`: `formaDoCatalogo`
+   * resolve `entrada`/`integracaoCartao` de cada forma importada olhando para
+   * `condicaoSelecionada.formas`, e com a condição ainda `null` as duas saem
+   * vazias. `entrada` (`FpgEnt`) vazia faz o ERP calcular crediário zero na
+   * validação prévia da 014 (AD-111).
+   */
+  importarCondicaoPagamento(condicao: CondicaoPagamento): void;
   /** Feature 006 — importação de DAV/rascunho, nunca gesto do operador. */
   importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;
 
@@ -449,6 +466,53 @@ export function criarPagamentoSlice(
     function aplicarPagamentos(pagamentos: readonly PagamentoAplicado[]): void {
       set({ pagamentos: [...pagamentos] });
     }
+
+    /**
+     * Pagamentos que ainda participam da venda — o que "há pagamento aqui?"
+     * significa para toda guarda de congelamento.
+     *
+     * `EXCLUIDO` e `RECUSADO` ficam de fora pela mesma razão: os dois já saíram
+     * do fluxo. Desde AD-163 `removerPagamento` **não** tira a forma do array —
+     * ela permanece riscada, por rastreabilidade —, então `pagamentos.length`
+     * deixou de responder a essa pergunta e virou "quantas formas esta venda já
+     * viu". Com ele, excluir a única forma da venda deixava condição e desconto
+     * de capa congelados para sempre, sem nenhum pagamento ativo e sem gesto
+     * que os destravasse (AD-171).
+     *
+     * `podeMutarCarrinho` não usa este recorte de propósito: lá a pergunta é
+     * mais estreita ("há dinheiro **aprovado** atribuído a esta venda?") e o
+     * predicado já era `status === 'APROVADO'`, que é correto.
+     */
+    function pagamentosVivos(): readonly PagamentoAplicado[] {
+      return get().pagamentos.filter(
+        (pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO',
+      );
+    }
+
+    /**
+     * A condição vigente veio de um documento do ERP (006/011), não do operador.
+     *
+     * Fecha a distinção que I7 pressupõe: "a condição é o ponto em que o
+     * operador **declara** que terminou de montar a compra e passou a cobrá-la".
+     * Importar um DAV ou retomar um rascunho não é essa declaração — é o replay
+     * de um documento que o ERP já emitiu, o mesmo argumento que
+     * `importarFormasDePagamento` usa para não passar pelo gate.
+     *
+     * Sem esta distinção, gravar a condição do documento (AD-171) congelava o
+     * carrinho da venda importada e quebrava o `FR-008` **das duas** features —
+     * "item novo é precificado normalmente enquanto o importado fica congelado"
+     * —, que têm cobertura E2E justamente porque é comportamento de produto.
+     *
+     * O que congela uma venda importada é a **forma aprovada** que o documento
+     * traz quando já foi cobrado, e disso `podeMutarCarrinho` já cuidava pelo
+     * `status === 'APROVADO'`.
+     *
+     * Variável de fechamento, e não campo do estado público (mesmo padrão de
+     * `geracaoAplicacao` no `clienteSlice`): é escrituração interna do slice,
+     * não dado da venda, e muda sempre **junto** de `condicaoSelecionada` — quem
+     * observa o store já re-renderiza por causa dela.
+     */
+    let condicaoVeioDeDocumento = false;
 
     /** A forma do catálogo por trás de um pagamento já aplicado, se ainda houver condição. */
     function formaDoCatalogo(formaCodigo: number): FormaPagamento | undefined {
@@ -650,7 +714,11 @@ export function criarPagamentoSlice(
         // `carrinhoBloqueado()`. A saída existe e a frase a nomeia: "Limpar"
         // (`descartarPagamento`), que zera condição, formas, desconto e vales de
         // uma vez, com o operador sabendo o que está descartando.
-        if (get().pagamentos.length > 0) {
+        //
+        // `pagamentosVivos()`, e não `pagamentos.length`: a forma excluída fica
+        // no array desde AD-163, e contá-la travava a condição de uma venda cujo
+        // último pagamento o operador acabou de riscar (AD-171).
+        if (pagamentosVivos().length > 0) {
           deps.avisar?.(AVISO_CONDICAO_COM_PAGAMENTO);
           return;
         }
@@ -659,6 +727,11 @@ export function criarPagamentoSlice(
         // vinculado a um `idPagamento`, então a lista vazia acima implica esta
         // vazia também. Trocar a condição aqui é só corrigir uma escolha feita
         // antes de começar a cobrar.
+        //
+        // A escolha é do operador, então a condição deixa de ser "de documento"
+        // — inclusive quando ele substitui a que veio importada. É a declaração
+        // que I7 descreve, e a partir daqui ela congela o carrinho.
+        condicaoVeioDeDocumento = false;
         set({ condicaoSelecionada: condicao });
 
         get().registrarEventoAuditoria(
@@ -790,7 +863,11 @@ export function criarPagamentoSlice(
         // Guarda 1 — I12/`FR-023`/AD-113: com pagamento aplicado, o desconto
         // congela junto com carrinho, cliente e vendedor. Alterá-lo aqui mudaria
         // o total líquido de uma venda que já tem dinheiro atribuído a ela.
-        if (get().pagamentos.length > 0) {
+        //
+        // "Aplicado" é `pagamentosVivos()`: a forma riscada não tem dinheiro
+        // atribuído — ela já saiu do saldo e do payload —, e contá-la congelava
+        // o desconto de uma venda sem pagamento nenhum (AD-171).
+        if (pagamentosVivos().length > 0) {
           deps.avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
           return false;
         }
@@ -816,7 +893,10 @@ export function criarPagamentoSlice(
       },
 
       removerDescontoCapa: () => {
-        if (get().pagamentos.length > 0) {
+        // Mesmo recorte de `aplicarDescontoCapa` — as duas guardam a mesma
+        // invariante e divergir aqui deixaria o desconto removível mas não
+        // alterável, ou o contrário.
+        if (pagamentosVivos().length > 0) {
           deps.avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
           return;
         }
@@ -921,6 +1001,7 @@ export function criarPagamentoSlice(
       limparPagamentos: () => {
         // Chamada pela feature 004 **depois** da entrega bem-sucedida, junto com
         // `limparCarrinho` e `descartarAuditoria`.
+        condicaoVeioDeDocumento = false;
         set({
           condicaoSelecionada: null,
           pagamentos: [],
@@ -955,8 +1036,17 @@ export function criarPagamentoSlice(
         // cairia no `meioPagtoNFe` técnico. O desconto de capa não gera evento
         // aqui pelo mesmo motivo de `aplicarDescontoCapa` — ele é auditado pela
         // feature 004 na finalização.
-        const rotulos = pagamentos.map(rotuloDoPagamento);
+        //
+        // A forma já `EXCLUIDO` fica **fora**: ela emitiu o seu
+        // `FORMA_PAGAMENTO_REMOVIDA` quando `removerPagamento` a riscou, e
+        // reemiti-lo aqui mandaria ao ERP, no `Log`, a mesma forma removida
+        // duas vezes (AD-171). `RECUSADO` nunca chegou a valer como pagamento,
+        // pelo mesmo critério de `pagamentosVivos`.
+        const rotulos = pagamentos
+          .filter((pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO')
+          .map(rotuloDoPagamento);
 
+        condicaoVeioDeDocumento = false;
         set({
           condicaoSelecionada: null,
           pagamentos: [],
@@ -971,6 +1061,13 @@ export function criarPagamentoSlice(
         // `FR-021`/I11, mesma razão de `removerPagamento`: o veredito da 014
         // valia para a venda daquele instante.
         deps.invalidarVeredito();
+      },
+
+      importarCondicaoPagamento: (condicao) => {
+        // Sem guarda e sem evento — ver o TSDoc da porta. O `set` é direto
+        // porque a condição é escalar: não há lista a reconciliar.
+        condicaoVeioDeDocumento = true;
+        set({ condicaoSelecionada: condicao });
       },
 
       importarFormasDePagamento: (formas) => {
@@ -1063,7 +1160,15 @@ export function criarPagamentoSlice(
         // sido registrado. Congelar o carrinho enquanto há desconto elimina as
         // duas transições — a pré-condição daquela função passa a ser
         // invariante, não coincidência.
-        get().condicaoSelecionada === null &&
+        //
+        // **A condição de um documento importado não congela** (AD-171): ela
+        // não é a declaração do operador que o parágrafo acima descreve, e sim
+        // o replay de um DAV/rascunho. Congelar por causa dela quebraria o
+        // `FR-008` das features 006 e 011 — "item novo é precificado
+        // normalmente enquanto o importado fica congelado". O documento que já
+        // foi cobrado continua congelando a venda, pela forma `APROVADO` que
+        // ele traz.
+        (get().condicaoSelecionada === null || condicaoVeioDeDocumento) &&
         get().descontoCapa === null &&
         !get().pagamentos.some((pagamento) => pagamento.status === 'APROVADO'),
 

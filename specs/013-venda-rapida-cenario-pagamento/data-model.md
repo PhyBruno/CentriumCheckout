@@ -51,7 +51,7 @@ O acionamento nunca devolve "sucesso parcial ambíguo". Modelar como união disc
 
 `MotivoRecusa` = `'SEM_ITENS' \| 'SEM_SALDO_EM_ABERTO' \| 'ACIONAMENTO_EM_ANDAMENTO' \| 'ATALHO_INEXISTENTE' \| 'PLATAFORMA_NAO_SUPORTADA' \| 'LANCAMENTO_FALHOU' \| 'PAGAMENTO_JA_INICIADO'`.
 
-**`PAGAMENTO_JA_INICIADO` (acrescentado em 2026-09-05, decisão direta do usuário — `FR-023`, AD-174):** a venda já tem forma de pagamento viva, ou já tem uma condição selecionada **diferente** da do cenário. É a recusa que impede o atalho de lançar sobre uma venda começada por outro par (condição, forma) — ver G5 em §3.
+**`PAGAMENTO_JA_INICIADO` (acrescentado em 2026-09-05, decisão direta do usuário — `FR-023`, AD-178):** a venda já tem forma de pagamento viva, ou já tem uma condição selecionada **diferente** da do cenário. É a recusa que impede o atalho de lançar sobre uma venda começada por outro par (condição, forma) — ver G5 em §3.
 
 ### 1.5 Estado de venda introduzido
 
@@ -114,7 +114,7 @@ acionarCenario(tecla)
 
 Nenhum passo entre P3 e P5 tem diálogo de confirmação (`FR-010`). Falha em P3/P4 — inclusive TEF/PIX recusado — aborta antes de P5, preserva o estado anterior da venda e devolve o erro ao operador (`FR-011`).
 
-**G5 — venda livre para este par** (acrescentado em 2026-09-05, `FR-023`/AD-174). Recusa quando há **forma de pagamento viva** na venda (qualquer status que não `RECUSADO`/`EXCLUIDO`), ou quando há condição selecionada **diferente** de `atalho.condicaoCodigo`. Duas leituras, e não uma:
+**G5 — venda livre para este par** (acrescentado em 2026-09-05, `FR-023`/AD-178). Recusa quando há **forma de pagamento viva** na venda (qualquer status que não `RECUSADO`/`EXCLUIDO`), ou quando há condição selecionada **diferente** de `atalho.condicaoCodigo`. Duas leituras, e não uma:
 
 - a **forma** bloqueia sempre, mesmo sob a condição certa — é o que impede o atalho de dividir pagamento e de lançar por cima de um documento retomado já pago, que chega com forma aplicada e **sem** condição (`importarFormasDePagamento` não toca em `condicaoSelecionada`);
 - a **condição** só bloqueia quando é outra. Condição igual sem forma viva é o estado que o próprio atalho deixa quando P4 falha depois de P3 (TEF recusado, veredito da 014): ali é o mesmo par, não há ambiguidade, e recusar obrigaria o operador a um "Limpar" para desfazer algo que ele nunca escolheu.

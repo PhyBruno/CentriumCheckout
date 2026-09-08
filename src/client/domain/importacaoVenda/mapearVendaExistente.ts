@@ -80,24 +80,44 @@ export interface VendaImportada {
   readonly numeroNota: number;
   /** Sempre sobrescreve o cliente atual da venda (`FR-007`). */
   readonly clienteCodigo: number;
-  /** Capturado da linha da listagem (D4) — `GetDav` não devolve o nome. */
-  readonly clienteNome: string;
   /** Sempre sobrescreve o vendedor atual da venda (`FR-007`). */
   readonly vendedorCodigo: number;
   /**
-   * Nome do vendedor, quando a listagem de origem o devolve — `null` quando
-   * não.
+   * Nome do vendedor, ou `null` quando nenhuma das duas fontes o tem.
    *
-   * O documento **nunca** o traz, nas duas features: nem `GetDav` nem
-   * `CarregarNFCe` têm campo de nome de vendedor. Quem tem é a listagem, e só
-   * uma das duas: `ListaDAVs` devolve só o código (AD-095), mas
-   * `GetListaNFCes` devolve o nome por extenso. Por isso o campo vem de
-   * `origemLista`, e não da resposta — e é `null` para DAV e preenchido para
-   * rascunho de NFCe.
+   * Duas fontes possíveis, nesta ordem de prioridade (AD-172): o **documento**
+   * (`CheckoutFaturarNFCe.vendedorNome`, campo novo no SDT — `GetDav` e
+   * `CarregarNFCe` devolvem o mesmo SDT, então serve às duas features) e, na
+   * ausência dele, a **listagem de origem** (`origemLista`/`vendedorNomeDaLista`
+   * — `GetListaNFCes` já devolve o nome por extenso; `ListaDAVs` só o código,
+   * AD-095). O documento é preferido por ser a mesma fonte para as duas
+   * features; a listagem cobre o intervalo até o deploy do campo no ERP sair
+   * (`vendedorNome` é `optional()` no Zod de propósito).
+   *
+   * `null`, e nunca `''`: string vazia é o default do SDT GeneXus para campo
+   * não preenchido, e propagá-la faria a UI exibir um vendedor sem nome em vez
+   * de cair no código.
    */
   readonly vendedorNome: string | null;
   readonly linhas: readonly LinhaImportada[];
   readonly formasDePagamento: readonly FormaPagamentoImportada[];
+  /**
+   * `CondicaoPagamentoCodigo` do documento — **uma venda por condição** (I1 da
+   * 008), então o escalar do documento é o escalar da venda retomada.
+   *
+   * `0` significa "o documento não tem condição escolhida": um rascunho pode ter
+   * sido suspenso antes de o operador chegar ao pagamento. Nesse caso a venda
+   * retomada segue sem condição e o operador escolhe normalmente — não é dado
+   * ausente a suprir, é o estado real do documento.
+   *
+   * Era **descartado** até 2026-09-08 (AD-171): o mapeador nunca leu o campo,
+   * embora `dav.schema.ts` já o validasse. Com forma de pagamento importada,
+   * `selecionarCondicao` passava a recusar toda escolha (`pagamentos.length > 0`)
+   * e `montarPagamentosParaPayload` enviava `CondicaoPagamentoCodigo: 0` ao
+   * `FaturarNFCe` — que o ERP real recusa com "Condição de Pagamento 0 não
+   * Localizada" (AD-165).
+   */
+  readonly condicaoPagamentoCodigo: number;
 }
 
 /** Campo de texto vazio no ERP significa "não informado", não string vazia. */
@@ -127,21 +147,27 @@ function paraTef(item: CheckoutFaturarNFCe['FormasDePagamento'][number]): TefImp
 }
 
 /**
- * @param origemLista Linha selecionada na listagem, quando houve uma. `null`
- * quando a origem não veio de uma lista — nesse caso os nomes saem vazios e
- * quem consome resolve. `vendedorNome` é opcional porque só uma das duas
- * listagens o devolve (`GetListaNFCes` sim, `ListaDAVs` não, AD-095).
+ * @param vendedorNomeDaLista Nome do vendedor capturado na linha da listagem de
+ * origem, ou `null` quando a listagem não o devolve (`ListaDAVs`, AD-095) ou a
+ * origem não veio de uma lista. Usado só como *fallback* de `vendedorNome`
+ * (AD-172) — o documento tem prioridade quando o traz.
  *
  * Nunca lança por dado de negócio ausente (documento sem forma de pagamento,
  * sem produto): devolve arrays vazios. Lança **só** por violação de contrato —
  * `clienteCodigo`, `vendedorCodigo` ou `NumeroNota` ausentes.
+ *
+ * Não recebe o nome do cliente: `clienteCodigo` é o único dado de cliente que
+ * a venda importada carrega, e quem resolve o nome de exibição é
+ * `resolverCliente` (`GetCliente` por `CodCliente`, AD-115) — o mesmo caminho
+ * que já roda para qualquer troca de cliente. Um campo `clienteNome` capturado
+ * da linha da listagem existiu aqui até 2026-09-08 (AD-173): nasceu no design
+ * original da 006, antes de `GetCliente` aceitar `CodCliente` (D4), e sobrou
+ * como campo morto depois — nenhum consumidor lia `VendaImportada.clienteNome`,
+ * porque `deps.selecionarCliente` já usa o nome do `ClienteCheckout` resolvido.
  */
 export function mapearVendaExistente(
   resposta: CheckoutFaturarNFCe,
-  origemLista: {
-    readonly clienteNome: string;
-    readonly vendedorNome?: string | null;
-  } | null,
+  vendedorNomeDaLista: string | null = null,
 ): VendaImportada {
   // Reforço em runtime da invariante que o schema Zod já expressa em tipo. A
   // entrada pode chegar de um caller não totalmente tipado (a resposta crua do
@@ -159,14 +185,21 @@ export function mapearVendaExistente(
   }
 
   return {
+    // Ausente vira `0`, e não exceção: ao contrário dos três acima, a condição
+    // tem um "não informado" legítimo (documento suspenso antes do pagamento),
+    // e `0` é exatamente como o próprio ERP o representa.
+    condicaoPagamentoCodigo:
+      typeof resposta.CondicaoPagamentoCodigo === 'number' ? resposta.CondicaoPagamentoCodigo : 0,
     numeroNota: resposta.NumeroNota,
     clienteCodigo: resposta.clienteCodigo,
-    clienteNome: origemLista?.clienteNome ?? '',
     vendedorCodigo: resposta.vendedorCodigo,
-    // `ouNulo` porque nome em branco na listagem é "não informado", não string
-    // vazia: um `''` chegaria ao slice de vendedor e a UI exibiria um vendedor
-    // sem nome em vez de cair no comportamento de "só o código".
-    vendedorNome: ouNulo(origemLista?.vendedorNome ?? ''),
+    // Documento primeiro (AD-172): ausente enquanto o deploy do ERP não sai,
+    // `?? ''` cai em `ouNulo` e vira `null` — e o `??` seguinte cai para o
+    // nome capturado da listagem, quando houver. Nome em branco em qualquer
+    // uma das duas fontes é "não informado", não string vazia: um `''`
+    // chegaria ao slice de vendedor e a UI exibiria um vendedor sem nome em
+    // vez de cair no comportamento de "só o código".
+    vendedorNome: ouNulo(resposta.vendedorNome ?? '') ?? vendedorNomeDaLista,
     linhas: resposta.produtos.map((produto) => ({
       codigoProduto: produto.codigoProduto,
       descricao: null,

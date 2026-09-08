@@ -62,8 +62,13 @@ export interface DavListado {
   readonly dataEmissao: string;
   readonly clienteCodigo: number;
   readonly clienteNome: string;
-  /** Sem nome correspondente no contrato (AD-095) — a UI exibe só o código. */
   readonly vendedorCodigo: number;
+  /**
+   * `null` enquanto o ERP não devolver o campo (AD-172) — a UI cai no código.
+   *
+   * Supera AD-095, que registrava a ausência definitiva do nome nesta listagem.
+   */
+  readonly vendedorNome: string | null;
   readonly valorTotal: Centavos;
 }
 
@@ -158,6 +163,9 @@ export async function fetchListaDavs(
       clienteCodigo: item.ClienteCodigo,
       clienteNome: item.ClienteNome,
       vendedorCodigo: item.VendedorCodigo,
+      // Campo vazio do ERP é "não informado", não string vazia — mesmo
+      // tratamento que `mapearVendaExistente` dá ao nome do documento.
+      vendedorNome: (item.VendedorNome ?? '') === '' ? null : (item.VendedorNome ?? null),
       valorTotal: item.ValorTotal,
     })),
   };
@@ -223,20 +231,22 @@ export async function fetchDav(
  * Todo o resto — pré-condição, ordem dos efeitos, atomicidade, resolução de
  * descrição — é o comportamento comum, que a 011 executa idêntico.
  *
- * @param dav Linha selecionada na listagem. `clienteNome` é o único campo lido
- * dela — `clienteCodigo` vem sempre da resposta de `GetDav`, nunca da lista.
+ * @param dav Linha selecionada na listagem. `clienteCodigo` vem sempre da
+ * resposta de `GetDav`, nunca da lista, e o nome do cliente é resolvido por
+ * `resolverCliente` (AD-115), não capturado aqui. `vendedorNome`, quando
+ * presente na linha, vira *fallback* de `mapearVendaExistente` (AD-172).
  */
 export function fonteDav(dav: {
   readonly numeroDav: string;
-  readonly clienteNome: string;
+  readonly vendedorNome?: string | null;
 }): FonteDocumento {
   return {
     origem: 'DAV',
-    clienteNome: dav.clienteNome,
-    // `ListaDAVs` devolve só `VendedorCodigo` (AD-095) — não há nome a
-    // capturar aqui, ao contrário de `GetListaNFCes`, que traz o do vendedor
-    // por extenso.
-    vendedorNome: null,
+    // `ListaDAVs` ganhou `VendedorNome` em AD-172 (`DavListado.vendedorNome`,
+    // acima) — passado como *fallback* de `mapearVendaExistente` (AD-172),
+    // atrás do campo do próprio documento. `?? null` cobre o call site que só
+    // passa `numeroDav` (nenhuma linha da listagem em mãos).
+    vendedorNome: dav.vendedorNome ?? null,
     carregar: (erpClient) => fetchDav(dav.numeroDav, erpClient === undefined ? {} : { erpClient }),
     // `numeroDav` existe só nesta trilha local: não é reenviado a `FaturarNFCe`
     // (AD-107), onde o vínculo com a origem é o `NumeroNota`.

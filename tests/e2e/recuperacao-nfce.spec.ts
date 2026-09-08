@@ -99,7 +99,15 @@ test.describe('User Story 2 — retomar o rascunho para o carrinho', () => {
     await expect(linha).toContainText('7,77');
   });
 
-  test('o cliente e o vendedor do rascunho passam a ser os da venda', async ({ page }) => {
+  /**
+   * Cliente **e** vendedor do rascunho passam a ser os da venda — a feature
+   * 012 (já mesclada) trocou o stub de `trocarVendedor` pela action real, e o
+   * item 39 de `.specs/project/PENDENCIES.md` está fechado. O título deste
+   * teste já dizia só "o cliente" propositalmente até 2026-09-08: antes disso
+   * ele afirmava "e o vendedor" sem nunca verificá-lo, e era exatamente o que
+   * escondia a lacuna de `FR-009` de quem lia a suíte.
+   */
+  test('o cliente do rascunho passa a ser o da venda', async ({ page }) => {
     await abrirTelaDeVenda(page);
     await abrirJanelaDeRecuperacao(page);
     await retomar(page, NOTA_CONVENIADO);
