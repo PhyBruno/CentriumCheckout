@@ -1,14 +1,20 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { Env } from '../config/env';
 import {
+  ENTRADA_COOKIE_OPTIONS,
   SESSION_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
   type CifradorDeSessao,
 } from '../session/cookie';
 import { ErroTrocaDeToken, trocarCredenciaisPorToken } from '../session/tokenExchange';
-import { PARAM_ERRO_ACESSO, VALOR_ERRO_ACESSO } from '../../shared/erroAcesso';
+import {
+  COOKIE_ENTRADA,
+  PARAM_ERRO_ACESSO,
+  VALOR_COOKIE_ENTRADA,
+  VALOR_ERRO_ACESSO,
+} from '../../shared/erroAcesso';
 
 /**
  * Query params do redirect do ERP (`contracts/session-bff-api.md`).
@@ -52,6 +58,19 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
   const separador = destino.includes('?') ? '&' : '?';
   const destinoComErro = `${destino}${separador}${PARAM_ERRO_ACESSO}=${VALOR_ERRO_ACESSO}`;
 
+  /**
+   * Recusa a entrada: manda o navegador para o painel terminal e **apaga** a
+   * marca de entrada válida.
+   *
+   * Limpar é a metade que importa. Sem isso, um operador que teve uma sessão
+   * boa e depois chegou com um redirect quebrado carregaria a marca antiga, e
+   * uma falha de carregamento seguinte ofereceria "Tentar novamente" para uma
+   * entrada que nunca foi aceita — exatamente o laço que esta correção fecha.
+   */
+  function recusarEntrada(reply: FastifyReply) {
+    return reply.clearCookie(COOKIE_ENTRADA, ENTRADA_COOKIE_OPTIONS).redirect(destinoComErro, 302);
+  }
+
   app.get('/session/start', async (request, reply) => {
     const query = sessionStartQuerySchema.safeParse(request.query);
 
@@ -60,14 +79,14 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
       // SPA, que mostra o painel terminal — quem chega aqui é um **navegador**
       // vindo de um redirect, não um cliente de API, e um JSON cru na tela não
       // diz ao operador o que fazer (pedido do usuário, 2026-09-08).
-      return reply.redirect(destinoComErro, 302);
+      return recusarEntrada(reply);
     }
 
     // Valida a origem do redirect ANTES de gastar uma tentativa de autenticação
     // OAuth com uma origem não verificada (AD-022).
     if (!chaveConfere(query.data.validationKey, deps.env.validationKey)) {
       request.log.warn('redirect com validationKey inválida');
-      return reply.redirect(destinoComErro, 302);
+      return recusarEntrada(reply);
     }
 
     try {
@@ -96,17 +115,22 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
 
       return reply
         .setCookie(SESSION_COOKIE_NAME, cookie, SESSION_COOKIE_OPTIONS)
+        // Marca legível de "houve entrada válida" — é o que decide, mais
+        // tarde, se uma falha de carregamento merece "Tentar novamente" ou a
+        // tela terminal. Gravada **só** aqui, no único ponto em que uma sessão
+        // de fato nasce.
+        .setCookie(COOKIE_ENTRADA, VALOR_COOKIE_ENTRADA, ENTRADA_COOKIE_OPTIONS)
         .redirect(destino, 302);
     } catch (erro) {
       if (erro instanceof ErroTrocaDeToken) {
         request.log.warn({ motivo: erro.motivo, status: erro.status }, 'falha ao iniciar sessão');
-        return reply.redirect(destinoComErro, 302);
+        return recusarEntrada(reply);
       }
 
       // Qualquer outra falha (rede, bug) também é um navegador na tela: o painel
       // terminal em vez da página de erro padrão do Fastify.
       request.log.error({ erro }, 'falha não tratada ao iniciar sessão');
-      return reply.redirect(destinoComErro, 302);
+      return recusarEntrada(reply);
     }
   });
 }

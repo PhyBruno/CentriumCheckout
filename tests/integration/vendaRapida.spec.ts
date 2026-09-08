@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { centavos, ZERO_CENTAVOS, type Centavos } from '../../src/client/domain/precificacao/dinheiro';
+import {
+  centavos,
+  ZERO_CENTAVOS,
+  type Centavos,
+} from '../../src/client/domain/precificacao/dinheiro';
 import type { SnapshotPrecoProduto } from '../../src/client/domain/precificacao/linha';
 import type { CondicaoPagamento } from '../../src/client/domain/pagamento/formaPagamento';
 import type { CapacidadesPagamento } from '../../src/client/domain/pagamento/roteamentoIntegracao';
@@ -19,7 +23,10 @@ import {
   AVISO_PAGAMENTO_JA_INICIADO,
 } from '../../src/client/features/venda-rapida/avisosVendaRapida';
 import { criarAuditoriaSlice } from '../../src/client/stores/slices/auditoriaSlice';
-import { criarCarrinhoSlice, type CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
+import {
+  criarCarrinhoSlice,
+  type CarrinhoDeps,
+} from '../../src/client/stores/slices/carrinhoSlice';
 import { criarClienteSlice, type ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
 import {
   criarIdentidadeVendaSlice,
@@ -35,7 +42,8 @@ import {
   type PagamentoSlice,
 } from '../../src/client/stores/slices/pagamentoSlice';
 import { useVendaStore, type VendaState } from '../../src/client/stores/vendaStore';
-import { formaDe } from '../support/pagamento';
+import { criarValidacaoVendaSlice } from '../../src/client/stores/slices/validacaoVendaSlice';
+import { formaDe, validacaoDepsInertes } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 
 /**
@@ -135,6 +143,9 @@ function montar(opcoes: OpcoesMontagem = {}) {
       ),
       ...criarClienteSlice(depsCliente)(...args),
       ...criarPagamentoSlice(depsPagamento)(...args),
+      // Gate da 014 inerte: o atalho é exercitado pelo duplo injetado em
+      // `PagamentoDeps.validarInsercao`, não pelo slice real.
+      ...criarValidacaoVendaSlice(validacaoDepsInertes)(...args),
       ...criarVendedorSlice({ podeMutarCarrinho: () => true } as VendedorDeps)(...args),
     })),
   );
@@ -399,11 +410,7 @@ describe('acionarCenario — lançamento pelo saldo em aberto integral (T009)', 
   it('seleciona a condição e aplica a forma pelo saldo integral, em Centavos', async () => {
     const { deps, selecionarCondicao, aplicarForma, irParaEtapaPagamento } = montar();
 
-    const resultado = await acionarCenario(
-      'F6',
-      [atalhoDe({ encerraOperacao: false })],
-      deps,
-    );
+    const resultado = await acionarCenario('F6', [atalhoDe({ encerraOperacao: false })], deps);
 
     expect(irParaEtapaPagamento).toHaveBeenCalledTimes(1);
     expect(selecionarCondicao).toHaveBeenCalledWith(A_VISTA.codigo);
@@ -461,7 +468,11 @@ describe('acionarCenario — forma com TEF/PIX só resolve depois da confirmaç�
     const { deps } = montar({ aplicarForma: porta.aplicarForma });
 
     let concluido = false;
-    const emCurso = acionarCenario('F9', [atalhoDe({ tecla: 'F9', formaCodigo: PIX.codigo })], deps);
+    const emCurso = acionarCenario(
+      'F9',
+      [atalhoDe({ tecla: 'F9', formaCodigo: PIX.codigo })],
+      deps,
+    );
     void emCurso.then(() => {
       concluido = true;
     });
@@ -479,7 +490,11 @@ describe('acionarCenario — forma com TEF/PIX só resolve depois da confirmaç�
     const porta = portaComConfirmacao();
     const { store, deps, finalizarVenda } = montar({ aplicarForma: porta.aplicarForma });
 
-    const emCurso = acionarCenario('F9', [atalhoDe({ tecla: 'F9', formaCodigo: PIX.codigo })], deps);
+    const emCurso = acionarCenario(
+      'F9',
+      [atalhoDe({ tecla: 'F9', formaCodigo: PIX.codigo })],
+      deps,
+    );
     await Promise.resolve();
     porta.confirmar(false);
 
@@ -659,12 +674,12 @@ describe('acionarCenario — finalização automática (T015–T018)', () => {
     const semEncerramento = montar();
     await acionarCenario('F6', [atalhoDe({ encerraOperacao: false })], semEncerramento.deps);
 
-    expect(
-      eventosDeVendaRapida(comEncerramento.store)[0]?.detalhes.finalizacaoAutomatica,
-    ).toBe(true);
-    expect(
-      eventosDeVendaRapida(semEncerramento.store)[0]?.detalhes.finalizacaoAutomatica,
-    ).toBe(false);
+    expect(eventosDeVendaRapida(comEncerramento.store)[0]?.detalhes.finalizacaoAutomatica).toBe(
+      true,
+    );
+    expect(eventosDeVendaRapida(semEncerramento.store)[0]?.detalhes.finalizacaoAutomatica).toBe(
+      false,
+    );
   });
 });
 

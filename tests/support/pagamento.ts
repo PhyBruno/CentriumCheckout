@@ -10,6 +10,7 @@ import type {
   PagamentoAplicado,
   StatusPagamento,
 } from '../../src/client/domain/pagamento/saldoPagamento';
+import type { ValidacaoDeps } from '../../src/client/stores/slices/validacaoVendaSlice';
 
 /**
  * Fixtures sintéticas do domínio de pagamento, compartilhadas pelos testes
@@ -111,6 +112,8 @@ export interface OpcoesPagamento {
   readonly meioPagtoNFe?: MeioPagtoNFe;
   readonly integracaoCartao?: '1' | '2' | '';
   readonly entrada?: string;
+  /** `FpgUtiCar` — como o ERP reconhece crediário no gate da 014. Default `''`. */
+  readonly fpgUtiCar?: string;
   readonly valorAplicado?: number;
   readonly valorRecebido?: number | null;
   readonly integracao?: IntegracaoPagamento;
@@ -133,6 +136,7 @@ export function pagamentoDe(opcoes: OpcoesPagamento = {}): PagamentoAplicado {
     meioPagtoNFe: opcoes.meioPagtoNFe ?? 'Dinheiro',
     integracaoCartao: opcoes.integracaoCartao ?? '',
     entrada: opcoes.entrada ?? '',
+    fpgUtiCar: opcoes.fpgUtiCar ?? '',
     valorAplicado: centavos(opcoes.valorAplicado ?? 0),
     valorRecebido: opcoes.valorRecebido == null ? null : centavos(opcoes.valorRecebido),
     integracao: opcoes.integracao ?? 'NENHUMA',
@@ -147,3 +151,24 @@ export function pagamentoDe(opcoes: OpcoesPagamento = {}): PagamentoAplicado {
 export function emCentavos(valor: number): Centavos {
   return centavos(valor);
 }
+
+/**
+ * Gate da feature 014 desligado, para suítes que compõem o `vendaStore` e não
+ * exercitam a validação prévia.
+ *
+ * `validar` devolve `ACEITA` sem consultar nada: essas suítes injetam o seu
+ * próprio duplo em `PagamentoDeps.validarInsercao` e nunca chegam a este slice —
+ * o que elas precisam é apenas que o store combinado esteja **completo**.
+ * Lançar aqui derrubaria uma suíte inteira por causa de um caminho que ela não
+ * pretende testar; devolver recusa esconderia o desfecho que ela pretende.
+ */
+export const validacaoDepsInertes: ValidacaoDeps = {
+  snapshotVenda: () => {
+    throw new Error('snapshotVenda não é exercitado nesta suíte');
+  },
+  pagamentosAplicados: () => [],
+  rateioDescontoCapa: () => new Map(),
+  validar: () => Promise.resolve({ resultado: 'ACEITA', avisos: [] }),
+  registrarEvento: () => undefined,
+  notificar: () => undefined,
+};

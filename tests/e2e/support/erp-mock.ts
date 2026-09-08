@@ -40,6 +40,21 @@ export interface ConfigMockErp {
   /** Status devolvido por `POST /ApiCentriumOAuth/FaturarNFCe` (feature 004). */
   statusFaturarNFCe: number;
   /**
+   * Veredito de `POST /ApiCentriumOAuth/ValidarNFCe` (feature 014).
+   *
+   * `'ACEITA'` por padrão, e não configurável por acidente: o gate roda em
+   * **toda** inserção de pagamento, então qualquer outro default faria todo
+   * cenário E2E das features 008/009/013 parar antes de aplicar a primeira
+   * forma. Quem exercita a recusa muda isto explicitamente.
+   *
+   * `'ACEITA_COM_AVISO'` cobre a armadilha de AD-110 pelo lado feliz
+   * (`EmpLimCre='A'`); `'RECUSADA_WARNING'` cobre o lado oposto — `Valido=false`
+   * com `Type=Warning`, que bloqueia.
+   */
+  vereditoValidarNFCe: 'ACEITA' | 'ACEITA_COM_AVISO' | 'RECUSADA' | 'RECUSADA_WARNING';
+  /** Status HTTP de `ValidarNFCe` — `500` exercita `INDISPONIVEL` (`FR-009`). */
+  statusValidarNFCe: number;
+  /**
    * Devolve `2xx` **sem** `PDFImpressao`/`XMLImpressao` — é como o ERP recusa
    * uma NFCe não autorizada; o Checkout trata como falha de negócio, nunca como
    * sucesso parcial (`contracts/faturamento-api.md`).
@@ -102,6 +117,8 @@ export interface ContadoresMockErp {
   getProduto: number;
   getListaProdutos: number;
   faturarNFCe: number;
+  /** Consultas ao gate da feature 014 — uma por inserção de pagamento (I2a). */
+  validarNFCe: number;
   getStatusSistema: number;
   getCliente: number;
   getListaClientes: number;
@@ -121,6 +138,8 @@ const CONFIG_PADRAO: ConfigMockErp = {
   tipoPreco: 1,
   tipoImpressao: 'E',
   statusFaturarNFCe: 200,
+  vereditoValidarNFCe: 'ACEITA',
+  statusValidarNFCe: 200,
   faturarSemNotaFiscal: false,
   davJaFaturado: false,
   pixAtivo: true,
@@ -137,6 +156,19 @@ const CONFIG_PADRAO: ConfigMockErp = {
   semVendedorDefault: false,
 };
 
+/**
+ * Textos do gate da 014, exportados para o E2E afirmar que a notificação mostra
+ * o `Description` do ERP **íntegro** (`FR-007`, I11) — comparar com uma string
+ * repetida no spec deixaria o teste passar mesmo se o Checkout reescrevesse a
+ * frase.
+ */
+export const MENSAGEM_RECUSA_CREDITO_BLOQUEADO =
+  'Cliente está com crédito bloqueado, não será possivel realizar venda a prazo!';
+export const MENSAGEM_AVISO_LIMITE_CREDITO =
+  'Cliente ultrapassou o limite de crédito; venda liberada por configuração da empresa.';
+/** Texto real do ERP quando o retrato chega sem `Empresa` no corpo (AD-188). */
+export const MENSAGEM_EMPRESA_OBRIGATORIA = 'Empresa é obrigatório';
+
 const CONTADORES_ZERADOS: ContadoresMockErp = {
   token: 0,
   getSessao: 0,
@@ -144,6 +176,7 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getProduto: 0,
   getListaProdutos: 0,
   faturarNFCe: 0,
+  validarNFCe: 0,
   getStatusSistema: 0,
   getCliente: 0,
   getListaClientes: 0,
@@ -946,6 +979,8 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   /** Cadastro criado por `PostCliente` durante o teste — descartado no reset. */
   const documentosCriados: string[] = [];
   let ultimoRetratoFaturado: Record<string, unknown> | null = null;
+  /** Último retrato submetido ao gate da 014 — para o E2E conferir a projeção (I2). */
+  let ultimoRetratoValidado: Record<string, unknown> | null = null;
   /** Último `SDTCentriumPag_Post` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
   let ultimoGerarPix: Record<string, unknown> | null = null;
   /**
@@ -964,6 +999,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     config = { ...CONFIG_PADRAO };
     contadores = { ...CONTADORES_ZERADOS };
     ultimoRetratoFaturado = null;
+    ultimoRetratoValidado = null;
     ultimoGerarPix = null;
     geracoesPix.clear();
     // Cadastro criado por `PostCliente` num teste não pode vazar para o
@@ -984,6 +1020,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   /** Último retrato recebido — deixa o E2E afirmar `NumeroNota`, `Log` etc. */
   app.get('/__mock/ultimo-faturamento', async () => ({ retrato: ultimoRetratoFaturado }));
+
+  /** Último retrato submetido ao gate da 014 — confere a projeção da candidata. */
+  app.get('/__mock/ultima-validacao', async () => ({ retrato: ultimoRetratoValidado }));
 
   /** Último corpo de `GerarPIX` — `TrnValor`, `FPgCod` e os dados do pagador. */
   app.get('/__mock/ultimo-pix', async () => ({ sdt: ultimoGerarPix }));
@@ -1096,6 +1135,67 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     },
   );
 
+  /**
+   * Gate de validação prévia (feature 014).
+   *
+   * Consulta **pura**: não grava nada e não altera o estado do mock, como
+   * `PCheckout_ValidarNFCe` no ERP real. O último retrato recebido fica
+   * disponível para o E2E conferir que a candidata foi projetada junto com as
+   * formas já aplicadas (I2).
+   */
+  app.post<{ Body: EnvelopeFaturarNFCe }>(
+    '/ApiCentriumOAuth/ValidarNFCe',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.validarNFCe += 1;
+      const retratoValidado = request.body.CheckoutFaturarNFCe ?? null;
+      ultimoRetratoValidado = retratoValidado;
+
+      if (config.statusValidarNFCe !== 200) {
+        return reply.code(config.statusValidarNFCe).send({ messages: [] });
+      }
+
+      // `Empresa` **no corpo**, não no header: é a primeira linha da matriz do
+      // ERP real, e o mock precisa reproduzi-la (AD-188, item 42). Sem esta
+      // checagem o E2E ficaria verde com um retrato que o ERP recusaria — foi
+      // exatamente assim que o campo faltante atravessou a implementação
+      // inteira sem ser notado.
+      const empresa = retratoValidado?.['Empresa'];
+      if (typeof empresa !== 'string' || empresa.trim() === '') {
+        return reply.send({
+          Valido: false,
+          messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_EMPRESA_OBRIGATORIA }],
+        });
+      }
+
+      switch (config.vereditoValidarNFCe) {
+        case 'ACEITA':
+          return reply.send({ Valido: true, messages: [] });
+
+        case 'ACEITA_COM_AVISO':
+          // `EmpLimCre='A'`: acima do limite, mas a empresa só avisa. `Warning`
+          // **não** bloqueia aqui — é o par do caso abaixo (AD-110).
+          return reply.send({
+            Valido: true,
+            messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_AVISO_LIMITE_CREDITO }],
+          });
+
+        case 'RECUSADA_WARNING':
+          // `EmpLimCre='B'`: mesma severidade da linha acima e desfecho oposto.
+          return reply.send({
+            Valido: false,
+            messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_RECUSA_CREDITO_BLOQUEADO }],
+          });
+
+        case 'RECUSADA':
+          return reply.send({
+            Valido: false,
+            messages: [{ Id: '9999', Type: 2, Description: MENSAGEM_RECUSA_CREDITO_BLOQUEADO }],
+          });
+      }
+    },
+  );
+
   app.post<{ Body: EnvelopeFaturarNFCe }>(
     '/ApiCentriumOAuth/FaturarNFCe',
     async (request, reply) => {
@@ -1114,6 +1214,17 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply
           .code(config.statusFaturarNFCe)
           .send({ messages: [{ Id: 'ERR', Type: 1, Description: 'Recusa sintética do ERP.' }] });
+      }
+
+      // Mesmo SDT de `ValidarNFCe`, mesma primeira linha da matriz: sem
+      // `Empresa` no corpo o ERP real recusa antes de olhar produto, cliente ou
+      // condição (AD-188).
+      const empresaDoFaturamento = retrato?.['Empresa'];
+      if (typeof empresaDoFaturamento !== 'string' || empresaDoFaturamento.trim() === '') {
+        return reply.send({
+          OutCheckoutFaturarNFCe: { ...(retrato ?? {}) },
+          messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_EMPRESA_OBRIGATORIA }],
+        });
       }
 
       // `SUSPENDER` não emite documento fiscal: a resposta volta sem

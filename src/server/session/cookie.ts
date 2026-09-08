@@ -29,6 +29,28 @@ export const SESSION_COOKIE_OPTIONS: CookieSerializeOptions = {
   path: '/',
 };
 
+/**
+ * Marca de que **houve uma entrada válida** pelo CentriumWEB nesta origem.
+ *
+ * Existe para a SPA distinguir os dois desfechos de falha sem nunca tocar no
+ * cookie de sessão (pedido do usuário, 2026-09-08): repetir só faz sentido
+ * quando os dados foram mandados e algo falhou no caminho. Sem entrada
+ * nenhuma — alguém abriu o Checkout direto, ou o redirect veio sem os
+ * parâmetros — nenhuma repetição vai funcionar, e oferecer "Tentar novamente"
+ * convida o operador a um laço.
+ *
+ * `httpOnly: false` **de propósito**, e é seguro: o valor é a constante `'1'`,
+ * não carrega credencial, token nem identificador. Ele responde uma única
+ * pergunta — "esta origem já teve uma sessão criada?" —, e é o cookie de sessão
+ * (esse sim `HttpOnly`) que continua sendo a única prova de autenticação.
+ */
+export const ENTRADA_COOKIE_OPTIONS: CookieSerializeOptions = {
+  httpOnly: false,
+  secure: true,
+  sameSite: 'lax',
+  path: '/',
+};
+
 const FORMAT_VERSION = 'v1';
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;

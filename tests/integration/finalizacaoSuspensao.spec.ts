@@ -65,6 +65,13 @@ function montarCenario(
     avisar: (mensagem) => {
       avisos.push(mensagem);
     },
+    // Gate da 014 aprovado por padrão. Até a feature 014 existir, o default do
+    // hook era `() => true` e esta suíte não precisava dizer nada; hoje o
+    // default lê `vendaStore.podeFinalizar()`, que é `false` numa venda sem
+    // veredito — e sem esta linha **todo** cenário de finalização pararia no
+    // gate antes de exercitar a máquina de estados, que é o que ela testa.
+    // Os dois cenários que verificam o bloqueio sobrescrevem para `false`.
+    podeFinalizar: () => true,
     ...sobrescritas,
   };
 
@@ -641,11 +648,31 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
   it('habilita "Finalizar venda" com item, subtotal positivo e saldo coberto', () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
     const total = useVendaStore.getState().saldo().totalLiquido;
-    useVendaStore.setState({ pagamentos: [pagamentoDe({ valorAplicado: total })] });
+    // O veredito entra junto com o pagamento porque este cenário injeta a forma
+    // **por baixo** do gate da 014, que na venda real é quem o gravaria. Desde
+    // que o botão passou a refletir `vereditoVigente` (revisão de 2026-09-08),
+    // saldo coberto sozinho não libera a emissão — e é exatamente esse o ponto:
+    // um pagamento que nunca foi validado não autoriza a nota.
+    useVendaStore.setState({
+      pagamentos: [pagamentoDe({ valorAplicado: total })],
+      vereditoVigente: { resultado: 'ACEITA', avisos: [] },
+    });
 
     renderizarAcoes(cenario);
 
     expect(screen.getByTestId('botao-finalizar-venda')).toBeEnabled();
+  });
+
+  it('mantém "Finalizar venda" desabilitado sem veredito, mesmo com o saldo coberto', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    const total = useVendaStore.getState().saldo().totalLiquido;
+    // Mesma venda do caso acima, sem o veredito: é a diferença entre "o dinheiro
+    // fecha" e "o ERP aprovou esta venda" (`FR-014`/I6 da 014).
+    useVendaStore.setState({ pagamentos: [pagamentoDe({ valorAplicado: total })] });
+
+    renderizarAcoes(cenario);
+
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
   });
 
   // `FR-006`/`SC-003` (feature 012): nenhuma venda é finalizada sem vendedor
@@ -656,6 +683,9 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
     const total = useVendaStore.getState().saldo().totalLiquido;
     useVendaStore.setState({
       pagamentos: [pagamentoDe({ valorAplicado: total })],
+      // Veredito favorável de propósito: sem ele o botão ficaria desabilitado
+      // por dois motivos e o teste deixaria de isolar a ausência de vendedor.
+      vereditoVigente: { resultado: 'ACEITA', avisos: [] },
       vendedorAtual: null,
     });
 

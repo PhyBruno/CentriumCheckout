@@ -189,3 +189,22 @@ export function formatarCentavos(valor: Centavos): string {
   const inteiros = String(reais).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return `${sinal}R$ ${inteiros},${String(resto).padStart(2, '0')}`;
 }
+
+/**
+ * Fronteira de **saída**: centavos inteiros → reais decimais, para o corpo das
+ * requisições ao ERP (que recebe `double`, não centavos).
+ *
+ * É o único ponto em que um valor monetário deixa de ser inteiro, e o resultado
+ * nunca volta para dentro de um cálculo — ele só é serializado. `valor / 100`
+ * sobre um inteiro seguro produz o `double` mais próximo do decimal exato, que
+ * é o que `JSON.stringify` imprime de volta como `12.34` (Constitution V).
+ *
+ * Mora aqui, e não em cada montador de payload, porque o retrato validado pelo
+ * gate (feature 014) e o retrato emitido no faturamento (004) precisam produzir
+ * **o mesmo número** para o mesmo valor (invariante I5): duas conversões
+ * separadas poderiam divergir em silêncio, e a divergência só apareceria na
+ * nota.
+ */
+export function reaisDeCentavos(valor: Centavos): number {
+  return valor / CENTAVOS_POR_REAL;
+}

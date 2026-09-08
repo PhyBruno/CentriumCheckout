@@ -65,12 +65,20 @@ export type EstadoEnvio =
  * `import` do slice dono: é isso que permite testar os dois gates sem montar
  * estado de pagamento nem de validação prévia.
  *
- * Os defaults são os stubs de T029, válidos até as features 014, 008 e 012
- * fornecerem as implementações reais — nenhuma delas precisa existir para esta
- * feature ser completa e testável.
+ * Os defaults foram os stubs de T029 até as features 014, 008 e 012 existirem;
+ * hoje todos leem o `vendaStore` combinado. As portas seguem opcionais porque é
+ * por elas que o teste da máquina de estados exercita cada gate sem montar
+ * estado de pagamento nem de validação.
  */
 export interface FinalizacaoDeps {
-  /** Feature 014 — veredito favorável vigente (`FR-014`, AD-113). */
+  /**
+   * Feature 014 — veredito favorável vigente (`FR-014`, AD-113).
+   *
+   * O default deixou de ser `() => true` com a implementação da 014: passou a
+   * ser `vendaStore.podeFinalizar()`, o seletor real do `validacaoVendaSlice`.
+   * Enquanto era stub, **toda** venda podia ser emitida sem o ERP ter aprovado
+   * nada — o gate existia no código e não valia na tela.
+   */
   readonly podeFinalizar?: () => boolean;
   /**
    * Feature 008 — **TEF aprovado** bloqueia suspender (`FR-005`, AD-042,
@@ -267,6 +275,10 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
 
       const retrato = montarRetratoVenda(
         {
+          // No corpo do retrato, não só no header do proxy: os procedures do
+          // ERP leem `&Empresa` do SDT, e sem ele a emissão é recusada antes de
+          // qualquer outra regra (AD-188, confirmado contra o ERP real).
+          empresa: registro.codigoEmpresa,
           linhas: venda.linhas,
           identidade: venda.identidadeVenda,
           cadSerieNFCe: sessao.CadSerieNFCe,
@@ -390,7 +402,10 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       // Gate da validação prévia: só `FATURAR` (`FR-014`); `SUSPENDER` não emite
       // documento fiscal e não passa por ele (`FR-016`). Bloqueado ⇒ nenhuma
       // chamada de rede e nenhuma transição de estado (AD-113).
-      if (operacao === 'FATURAR' && (injetadas.podeFinalizar?.() ?? true) === false) {
+      if (
+        operacao === 'FATURAR' &&
+        (injetadas.podeFinalizar?.() ?? useVendaStore.getState().podeFinalizar()) === false
+      ) {
         avisar(AVISO_VALIDACAO_PENDENTE);
         return;
       }
