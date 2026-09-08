@@ -11,12 +11,17 @@ import { criarIdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import type { IdentidadeVendaDeps, IdentidadeVendaSlice } from './slices/identidadeVendaSlice';
 import { criarPagamentoSlice } from './slices/pagamentoSlice';
 import type { PagamentoDeps, PagamentoSlice } from './slices/pagamentoSlice';
+import { criarValidacaoVendaSlice } from './slices/validacaoVendaSlice';
+import type { ValidacaoDeps, ValidacaoVendaSlice } from './slices/validacaoVendaSlice';
 import { criarVendedorSlice } from './slices/vendedorSlice';
 import type { VendedorDeps, VendedorSlice } from './slices/vendedorSlice';
 import { useSessionStore } from './sessionStore';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
 import type { CapacidadesPagamento } from '../domain/pagamento/roteamentoIntegracao';
 import type { LinhaRateavel } from '../domain/pagamento/descontoCapa';
+import type { SnapshotVenda } from '../domain/venda/montarRetratoVenda';
+import { notificarVeredito } from '../features/validacao/notificarVeredito';
+import { enviarValidarNFCe } from '../services/validacao/validarNFCeMutation';
 import { linhasAtivas, totalLinha, totalVenda } from '../domain/precificacao/linha';
 import { fetchProduto } from '../services/produto/produtoQueries';
 import { validarTicket } from '../services/pagamento/pagamentoQueries';
@@ -44,6 +49,7 @@ export type VendaState = AuditoriaSlice &
   IdentidadeVendaSlice &
   ClienteSlice &
   PagamentoSlice &
+  ValidacaoVendaSlice &
   VendedorSlice;
 
 /** Configuração do PDV ainda não carregada quando o carrinho precisou dela. */
@@ -229,10 +235,10 @@ function linhasRateaveisDoCarrinho(): readonly LinhaRateavel[] {
  * as reais é substituir o corpo aqui, sem tocar no slice nem na UI — mesmo
  * padrão que a 004 e a 006 já usaram para as suas dependências futuras.
  *
- * `validarInsercao` devolver sempre `ACEITA` é o comportamento **correto**
- * enquanto a 014 não existe: o gate é um filtro adicional sobre regras do ERP
- * (limite de crédito, crediário), não a validação local — essa já roda antes
- * dele, em `podeAplicarForma`, e continua valendo (`FR-020`).
+ * `validarInsercao` e `invalidarVeredito` **deixaram de ser stub** com a feature
+ * 014: apontam para as actions reais de `validacaoVendaSlice`, lidas do store
+ * combinado a cada chamada — mesmo mecanismo de `podeMutarCarrinho`, e pelo
+ * mesmo motivo (nenhum slice importa o outro).
  */
 export const pagamentoDepsPadrao: PagamentoDeps = {
   subtotalCarrinho: () => totalVenda(useVendaStore.getState().linhas),
@@ -257,12 +263,91 @@ export const pagamentoDepsPadrao: PagamentoDeps = {
      * a integração (Constitution II).
      */
   },
-  validarInsercao: () => Promise.resolve({ aceita: true as const }),
+  /**
+   * Gate real da feature 014 (T009). O veredito completo é reduzido ao que esta
+   * porta declara — `aceita` sim/não — porque é tudo que o slice de pagamento
+   * precisa decidir (Interface Segregation).
+   *
+   * **Sem `motivo` no ramo de recusa, e isto é deliberado**: o slice de
+   * validação já notificou o operador, uma notificação por mensagem, com o texto
+   * íntegro do ERP (`FR-007`). Devolver um motivo aqui faria `aplicarNucleo`
+   * emitir um segundo toast, resumindo numa frase o que o ERP explicou em
+   * várias.
+   */
+  validarInsercao: async (candidata, origem) => {
+    const veredito = await useVendaStore.getState().validarInsercao(candidata, origem);
+    return veredito.resultado === 'ACEITA' ? { aceita: true } : { aceita: false };
+  },
   invalidarVeredito: () => {
-    /* feature 014 — sem veredito vigente para invalidar enquanto ela não existe. */
+    useVendaStore.getState().invalidarVeredito();
+  },
+  validacaoDispensadaPorDocumento: () => {
+    useVendaStore.getState().dispensarValidacaoPorDocumento();
   },
   avisar: (mensagem) => {
     gooeyToast.warning(mensagem);
+  },
+};
+
+/**
+ * Snapshot da venda para o retrato enviado ao gate (feature 014).
+ *
+ * Lê **o mesmo** que a finalização lê (`useFinalizarOuSuspenderVenda`), campo a
+ * campo e com os mesmos fallbacks, porque a invariante I5 da 014 exige que o
+ * retrato validado e o retrato emitido descrevam a mesma venda: um cliente ou
+ * um vendedor resolvido de forma diferente aqui faria o ERP aprovar uma venda e
+ * emitir outra, e a divergência só apareceria na nota.
+ *
+ * Falha alto sem bootstrap, como `tipoPrecoDoBootstrap`: a tela de venda só é
+ * alcançável depois dele, então a ausência aqui é bug de composição — e validar
+ * com `CadSerieNFCe` inventado consultaria o ERP sobre uma venda que não existe.
+ */
+function snapshotDaVendaCorrente(): SnapshotVenda {
+  const registro = useSessionStore.getState().registro;
+  if (registro === null) {
+    throw new ErroSessaoSemConfiguracao();
+  }
+
+  const venda = useVendaStore.getState();
+  const sessao = registro.SessaoUsuario;
+
+  return {
+    linhas: venda.linhas,
+    identidade: venda.identidadeVenda,
+    cadSerieNFCe: sessao.CadSerieNFCe,
+    // O cliente **da venda**, com o default do PDV só como fallback (AD-032) —
+    // mesma regra da emissão.
+    clienteCodigo: venda.clienteAtual?.codigoCliente ?? sessao.ClienteDefaultCodigo,
+    // O vendedor **selecionado**, nunca o operador logado (`FR-010` da 012).
+    vendedorCodigo: venda.vendedorAtual?.codigo ?? 0,
+    condicaoPagamentoCodigo: venda.condicaoSelecionada?.codigo ?? 0,
+    eventos: venda.eventos,
+  };
+}
+
+/**
+ * Dependências do gate de validação prévia na composição real (T008).
+ *
+ * Nenhuma é stub, ao contrário do padrão que as features 004 e 008 usaram para
+ * consumir esta: a 014 é construída depois que todas as suas dependências já
+ * existem — sessão (002), carrinho (003), pagamento (008), cliente (005),
+ * vendedor (012) e auditoria (001).
+ */
+export const validacaoDepsPadrao: ValidacaoDeps = {
+  snapshotVenda: snapshotDaVendaCorrente,
+  pagamentosAplicados: () => useVendaStore.getState().pagamentos,
+  // Vem de `montarPagamentosParaPayload`, e não de um rateio calculado aqui,
+  // pelo mesmo motivo de `snapshotDaVendaCorrente`: é a função que a emissão
+  // usa, e dois rateios independentes poderiam distribuir centavos diferentes
+  // entre as mesmas linhas (I5).
+  rateioDescontoCapa: () =>
+    useVendaStore.getState().montarPagamentosParaPayload().rateioDescontoCapa,
+  validar: (retrato) => enviarValidarNFCe(retrato),
+  registrarEvento: (evento) => {
+    useVendaStore.getState().registrarEventoAuditoria(evento);
+  },
+  notificar: (veredito) => {
+    notificarVeredito(veredito, gooeyToast);
   },
 };
 
@@ -272,6 +357,7 @@ export function criarVendaStore(
   depsIdentidade: IdentidadeVendaDeps = identidadeVendaDepsPadrao(depsCarrinho),
   depsPagamento: PagamentoDeps = pagamentoDepsPadrao,
   depsVendedor: VendedorDeps = vendedorDepsPadrao(depsCarrinho),
+  depsValidacao: ValidacaoDeps = validacaoDepsPadrao,
 ) {
   return create<VendaState>()(
     immer((...args) => ({
@@ -280,6 +366,7 @@ export function criarVendaStore(
       ...criarIdentidadeVendaSlice(depsIdentidade)(...args),
       ...criarClienteSlice(depsCliente)(...args),
       ...criarPagamentoSlice(depsPagamento)(...args),
+      ...criarValidacaoVendaSlice(depsValidacao)(...args),
       ...criarVendedorSlice(depsVendedor)(...args),
     })),
   );

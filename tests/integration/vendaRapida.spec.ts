@@ -35,7 +35,8 @@ import {
   type PagamentoSlice,
 } from '../../src/client/stores/slices/pagamentoSlice';
 import { useVendaStore, type VendaState } from '../../src/client/stores/vendaStore';
-import { formaDe } from '../support/pagamento';
+import { criarValidacaoVendaSlice } from '../../src/client/stores/slices/validacaoVendaSlice';
+import { formaDe, validacaoDepsInertes } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 
 /**
@@ -135,6 +136,9 @@ function montar(opcoes: OpcoesMontagem = {}) {
       ),
       ...criarClienteSlice(depsCliente)(...args),
       ...criarPagamentoSlice(depsPagamento)(...args),
+      // Gate da 014 inerte: o atalho é exercitado pelo duplo injetado em
+      // `PagamentoDeps.validarInsercao`, não pelo slice real.
+      ...criarValidacaoVendaSlice(validacaoDepsInertes)(...args),
       ...criarVendedorSlice({ podeMutarCarrinho: () => true } as VendedorDeps)(...args),
     })),
   );

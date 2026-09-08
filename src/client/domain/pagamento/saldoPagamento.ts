@@ -46,6 +46,21 @@ export interface PagamentoAplicado {
   readonly integracaoCartao: '1' | '2' | '';
   /** Ecoado no payload (`FR-022`/AD-111). */
   readonly entrada: string;
+  /**
+   * `FpgUtiCar` do catálogo, congelado como `entrada` e pelo mesmo motivo.
+   *
+   * É por ele que `PCheckout_ValidarNFCe` reconhece **crediário** ao somar
+   * `&TotalCrediario` (`specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md`).
+   * Passou a ser guardado ao implementar a 014: sem ele, uma segunda inserção
+   * não conseguiria projetar as formas já aplicadas com o campo preenchido, o
+   * total de crediário chegaria zerado ao ERP e o gate aprovaria a venda que
+   * existe para barrar — mesmo modo de falha de `entrada` (AD-111).
+   *
+   * Resolver pelo catálogo na hora de montar o payload não serviria: um
+   * bootstrap revalidado no meio da venda reclassificaria um pagamento já
+   * aprovado (`data-model.md` §2, "Regra de fronteira").
+   */
+  readonly fpgUtiCar: string;
   readonly valorAplicado: Centavos;
   readonly valorRecebido: Centavos | null;
   readonly integracao: IntegracaoPagamento;

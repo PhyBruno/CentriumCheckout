@@ -37,6 +37,9 @@ import {
 } from '../../domain/pagamento/saldoPagamento';
 import { ehFormaDeValeDevolucao, type ResultadoTicket } from '../../domain/pagamento/valeDevolucao';
 import { subtrair, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
+import { formaParaRetrato } from '../../domain/pagamento/formaParaRetrato';
+import type { FormaCandidata } from '../../domain/validacaoVenda/projetarPagamentos';
+import type { OrigemAcionamento } from './validacaoVendaSlice';
 import type { FormaDePagamentoRetrato } from '../../domain/venda/montarRetratoVenda';
 
 /**
@@ -91,37 +94,38 @@ import type { FormaDePagamentoRetrato } from '../../domain/venda/montarRetratoVe
  * Como o operador chegou à inserção da forma
  * (`specs/014-validacao-previa-nfce/contracts/validacao-domain-api.md` §3).
  *
- * Declarado **aqui** porque a feature 014 ainda não existe no código. Quando
- * existir, estes três tipos migram para `validacaoVendaSlice.ts` e este arquivo
- * passa a importá-los — a assinatura das actions não muda, porque `origem`
- * nunca é parâmetro público: cada ponto de entrada embute o seu literal (achado
- * I1 do `/speckit-analyze` da 014).
+ * Migrou para `validacaoVendaSlice.ts` quando a feature 014 passou a existir,
+ * como o TSDoc anterior previa; o reexport permanece porque a assinatura das
+ * actions não mudou e os call sites já importavam daqui. `origem` continua fora
+ * da superfície pública: cada ponto de entrada embute o seu literal (achado I1
+ * do `/speckit-analyze` da 014).
  */
-export type OrigemAcionamento = 'MANUAL' | 'ATALHO_CENARIO';
+export type { OrigemAcionamento };
 
 /**
  * A forma que o operador está tentando inserir, projetada como o ERP a veria.
  *
- * `fpgUtiCar` e `entrada` são obrigatórios: sem `entrada` (`FpgEnt`) o ERP
- * calcula crediário zero e aprova exatamente o que a validação prévia existe
- * para barrar (`FR-022`/AD-111).
+ * Migrou para `domain/validacaoVenda/projetarPagamentos.ts`, que é o dono da
+ * projeção (`contracts/validacao-domain-api.md` §1); reexportada aqui porque é
+ * esta feature que a **constrói**, em `aplicarNucleo`.
  */
-export interface FormaCandidata {
-  readonly formaCodigo: number;
-  readonly meioPagtoNFe: MeioPagtoNFe;
-  readonly valor: Centavos;
-  readonly fpgUtiCar: string;
-  readonly entrada: string;
-}
+export type { FormaCandidata };
 
 /**
  * Veredito da validação prévia, reduzido ao que **esta** feature precisa
- * decidir: aceitar ou recusar. A 014 modela mais estados (`ACEITA` com avisos,
- * `INDISPONIVEL`); aqui os dois últimos colapsam em `aceita: false`, porque o
- * efeito sobre a inserção é idêntico — nada muta (I11).
+ * decidir: aceitar ou recusar (Interface Segregation). A 014 modela mais
+ * estados (`ACEITA` com avisos, `INDISPONIVEL`); aqui os dois últimos colapsam
+ * em `aceita: false`, porque o efeito sobre a inserção é idêntico — nada muta
+ * (I11).
+ *
+ * `motivo` é **opcional** desde que a 014 existe: quando o gate real recusa, ele
+ * já notificou o operador com uma mensagem por motivo, texto íntegro do ERP
+ * (`FR-007`). Um segundo toast montado aqui repetiria ou, pior, resumiria o que
+ * o ERP disse. O campo continua no tipo para as portas que recusam **sem**
+ * notificar por conta própria — é o caso de qualquer stub e dos testes.
  */
 export type Veredito =
-  { readonly aceita: true } | { readonly aceita: false; readonly motivo: string };
+  { readonly aceita: true } | { readonly aceita: false; readonly motivo?: string };
 
 /* ------------------------------------------------------------------ *
  * Tipos emprestados das features 009/010 (PIX e TEF)
@@ -200,6 +204,14 @@ export interface PagamentoDeps {
   validarInsercao(candidata: FormaCandidata, origem: OrigemAcionamento): Promise<Veredito>;
   /** Invalida o veredito vigente da 014 ao remover pagamento (`FR-021`). */
   invalidarVeredito(): void;
+  /**
+   * A venda veio de um documento que o ERP já aceitou (006/011) — ver o TSDoc
+   * de `dispensarValidacaoPorDocumento` em `validacaoVendaSlice.ts`.
+   *
+   * Opcional: uma suíte que não monta o slice de validação não precisa fornecer
+   * a porta, e um `undefined` aqui só significa "nenhum veredito a dispensar".
+   */
+  validacaoDispensadaPorDocumento?: () => void;
   /** Aviso ao operador. Injetado para o slice não importar a lib de toast. */
   avisar?: (mensagem: string) => void;
   /** Injetável para tornar `idPagamento` determinístico em teste (padrão de `gerarIdLinha`). */
@@ -408,8 +420,6 @@ const AVISO_POR_MOTIVO_LOCAL = {
   VALOR_ACIMA_DO_SALDO: AVISO_VALOR_ACIMA_DO_SALDO,
 } as const;
 
-const CENTAVOS_POR_REAL = 100;
-
 const MEIOS_CONHECIDOS = new Set<string>(MEIOS_PAGTO_NFE);
 
 function ehMeioPagtoNfeConhecido(valor: string): valor is MeioPagtoNFe {
@@ -418,19 +428,6 @@ function ehMeioPagtoNfeConhecido(valor: string): valor is MeioPagtoNFe {
 
 function idAleatorio(): string {
   return crypto.randomUUID();
-}
-
-/**
- * Fronteira de saída: centavos inteiros → reais decimais.
- *
- * É o **único** ponto deste arquivo em que um valor monetário deixa de ser
- * inteiro, e o resultado nunca volta para dentro de um cálculo. Mesma fronteira
- * de `montarRetratoVenda.ts`, repetida aqui porque lá ela é privada do módulo —
- * exportá-la só para este uso ampliaria a superfície pública da 004 sem que
- * nenhum outro call site precisasse dela.
- */
-function reaisDeCentavos(valor: Centavos): number {
-  return valor / CENTAVOS_POR_REAL;
 }
 
 /**
@@ -604,6 +601,8 @@ export function criarPagamentoSlice(
         valor: valorAplicado,
         fpgUtiCar: forma.fpgUtiCar,
         entrada: forma.entrada,
+        integracaoCartao: forma.integracaoCartao,
+        ticketDevolucao,
       };
 
       let veredito: Veredito;
@@ -618,7 +617,13 @@ export function criarPagamentoSlice(
       }
 
       if (!veredito.aceita) {
-        deps.avisar?.(veredito.motivo);
+        // Só avisa quem recusou **sem** dizer nada ao operador. O gate real da
+        // 014 já emitiu uma notificação por motivo, com o texto íntegro do ERP
+        // (`FR-007`); um segundo toast montado aqui repetiria a mensagem ou a
+        // resumiria numa frase que o ERP não escreveu.
+        if (veredito.motivo !== undefined) {
+          deps.avisar?.(veredito.motivo);
+        }
         return false;
       }
 
@@ -635,6 +640,7 @@ export function criarPagamentoSlice(
         meioPagtoNFe: forma.meioPagtoNFe,
         integracaoCartao: forma.integracaoCartao,
         entrada: forma.entrada,
+        fpgUtiCar: forma.fpgUtiCar,
         valorAplicado,
         valorRecebido,
         integracao,
@@ -1094,6 +1100,12 @@ export function criarPagamentoSlice(
             meioPagtoNFe,
             integracaoCartao: doCatalogo?.integracaoCartao ?? '',
             entrada: doCatalogo?.entrada ?? '',
+            // Mesma regra de `entrada`: vem do catálogo, e `''` quando a forma
+            // do documento não está mais nele. Uma forma importada que perdeu o
+            // `FpgUtiCar` é indistinguível de uma forma sem crediário para o
+            // gate — o que é o comportamento correto, porque o documento já foi
+            // aceito pelo ERP com os valores que tinha.
+            fpgUtiCar: doCatalogo?.fpgUtiCar ?? '',
             valorAplicado: forma.valor,
             // I3 (`valorRecebido !== null` ⇔ `Dinheiro`) preservada: o documento
             // registra o que quitou, então recebido e aplicado coincidem e o
@@ -1126,6 +1138,17 @@ export function criarPagamentoSlice(
         // que reproduzir fielmente um documento estranho. A guarda vale para o
         // que o operador digita; o que o ERP já registrou entra como está.
         aplicarPagamentos(importados);
+
+        // Pelo mesmo motivo, a venda montada a partir do documento nasce com o
+        // veredito da 014 dispensado (`FR-013`): estas formas não passaram por
+        // `validarInsercao` — não há candidata a validar, e o ERP já aceitou o
+        // documento ao gravá-lo. Sem esta linha, um rascunho de NFCe retomado
+        // já pago ficaria sem veredito e o botão "Finalizar" nunca liberaria.
+        // Só vale para o que **veio** do documento: qualquer forma que o
+        // operador acrescente depois passa pelo gate normalmente.
+        if (importados.length > 0) {
+          deps.validacaoDispensadaPorDocumento?.();
+        }
       },
 
       podeMutarCarrinho: () =>
@@ -1181,36 +1204,12 @@ export function criarPagamentoSlice(
           // Só `APROVADO` entra: pendente e recusado nunca são registrados
           // (`erp-pagamento-api.md` §3).
           .filter((pagamento) => pagamento.status === 'APROVADO')
-          .map((pagamento): FormaDePagamentoRetrato => {
-            const forma: Record<string, unknown> = {
-              FormaCodigo: pagamento.formaCodigo,
-              FormaMeioPagtoNFe: pagamento.meioPagtoNFe,
-              // Fronteira de saída: o ERP recebe `double` em reais, não
-              // centavos. `Σ FormaValor` é exatamente o total líquido — o troco
-              // não tem campo no contrato e **nunca** aparece aqui
-              // (`research.md` D3).
-              FormaValor: reaisDeCentavos(pagamento.valorAplicado),
-              FormaIntegracaoCartao: pagamento.integracaoCartao,
-              // `FR-022`/AD-111: sem `FormaEntrada` o ERP calcula crediário zero.
-              FormaEntrada: pagamento.entrada,
-              // O campo é por-forma no contrato, não por-venda; string vazia
-              // quando não há vale vinculado a esta forma.
-              TicketDevolucao: pagamento.ticketDevolucao ?? '',
-            };
-
-            if (pagamento.dadosTEF !== null) {
-              forma.TEFidentificacao = pagamento.dadosTEF.identificacao;
-              forma.TEFCNPJ = pagamento.dadosTEF.cnpj;
-              forma.TEFBandeira = pagamento.dadosTEF.bandeira;
-              forma.TEFNumeroAutorizacao = pagamento.dadosTEF.numeroAutorizacao;
-              forma.TEFTipoIntegracao = pagamento.dadosTEF.tipoIntegracao;
-            }
-            if (pagamento.pixGuid !== null) {
-              forma.FormaPixGUID = pagamento.pixGuid;
-            }
-
-            return forma;
-          });
+          // O mapeamento mora em `domain/pagamento/formaParaRetrato.ts` desde a
+          // feature 014, e não inline aqui: é a **mesma** função que projeta as
+          // formas enviadas ao gate `ValidarNFCe`. Duas versões divergiriam no
+          // primeiro campo novo de TEF/PIX, e a divergência apareceria como o
+          // ERP aprovando na validação e recusando na emissão (I5 da 014).
+          .map(formaParaRetrato);
 
         return {
           // `0` quando não há condição: o contrato exige o escalar, e um

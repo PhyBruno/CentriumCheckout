@@ -65,6 +65,13 @@ function montarCenario(
     avisar: (mensagem) => {
       avisos.push(mensagem);
     },
+    // Gate da 014 aprovado por padrão. Até a feature 014 existir, o default do
+    // hook era `() => true` e esta suíte não precisava dizer nada; hoje o
+    // default lê `vendaStore.podeFinalizar()`, que é `false` numa venda sem
+    // veredito — e sem esta linha **todo** cenário de finalização pararia no
+    // gate antes de exercitar a máquina de estados, que é o que ela testa.
+    // Os dois cenários que verificam o bloqueio sobrescrevem para `false`.
+    podeFinalizar: () => true,
     ...sobrescritas,
   };
 

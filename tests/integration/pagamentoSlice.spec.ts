@@ -52,7 +52,8 @@ import {
   type Veredito,
 } from '../../src/client/stores/slices/pagamentoSlice';
 import type { VendaState } from '../../src/client/stores/vendaStore';
-import { formaDe } from '../support/pagamento';
+import { criarValidacaoVendaSlice } from '../../src/client/stores/slices/validacaoVendaSlice';
+import { formaDe, validacaoDepsInertes } from '../support/pagamento';
 
 /**
  * Invariantes de estado do pagamento (`quickstart.md`, Cenários 3, 5, 6 e 8).
@@ -212,6 +213,9 @@ function montarStore(opcoes: Opcoes = {}) {
       ...criarIdentidadeVendaSlice(depsIdentidade)(...args),
       ...criarClienteSlice(depsCliente)(...args),
       ...criarPagamentoSlice(depsPagamento)(...args),
+      // O gate da 014 entra inerte: esta suíte exercita `validarInsercao` pelo
+      // duplo injetado em `PagamentoDeps`, não pelo slice real.
+      ...criarValidacaoVendaSlice(validacaoDepsInertes)(...args),
       ...criarVendedorSlice(depsVendedor)(...args),
     })),
   );
@@ -894,6 +898,11 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
       FormaMeioPagtoNFe: 'CartaoCredito',
       FormaValor: 70,
       FormaIntegracaoCartao: '1',
+      // `FormaFpgUtiCar` entrou no payload com a feature 014: é por ele que o
+      // ERP reconhece crediário ao somar `&TotalCrediario`. Faltava, e sem ele o
+      // gate aprovaria a venda acima do limite de crédito — mesmo modo de falha
+      // já corrigido para `FormaEntrada` (AD-111).
+      FormaFpgUtiCar: '',
       FormaEntrada: 'N',
       TicketDevolucao: '',
     });
@@ -902,6 +911,7 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
       FormaMeioPagtoNFe: 'Dinheiro',
       FormaValor: 30,
       FormaIntegracaoCartao: '',
+      FormaFpgUtiCar: '',
       FormaEntrada: 'S',
       TicketDevolucao: '',
     });
@@ -1183,6 +1193,11 @@ describe('pagamentoSlice — aplicarForma (porta da feature 013)', () => {
         valor: 10_000,
         fpgUtiCar: '',
         entrada: 'S',
+        // Os dois campos entraram na candidata com a feature 014: o retrato
+        // validado precisa descrever a forma exatamente como ela entraria no
+        // payload de emissão (I5).
+        integracaoCartao: '',
+        ticketDevolucao: null,
       },
       'ATALHO_CENARIO',
     );
