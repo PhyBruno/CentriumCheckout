@@ -128,6 +128,12 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     // desde 2026-09-04 o desconto de capa recusa exatamente isso — nenhum item
     // pode ficar valendo menos de 0,01 depois do rateio. 2,00 dá 0,67 / 0,67 /
     // 0,66 e deixa a menor linha em 0,34.
+    // O controle abre em `R$` desde 2026-09-05 (pedido do usuário): este cenário
+    // é sobre **percentual**, então troca o modo antes, como o operador faz.
+    // Sem isto o "2" entraria como R$ 2,00 — que dá o mesmo total, por
+    // coincidência aritmética, mas não exercitaria o rateio percentual nem
+    // renderizaria a linha do equivalente financeiro.
+    await page.getByTestId('toggle-ajuste-percentual').click();
     await page.getByTestId('campo-valor-ajuste').fill('2');
     await page.getByTestId('campo-valor-ajuste').press('Enter');
     await expect(page.getByTestId('equivalente-financeiro-desconto-capa')).toContainText('2,00');

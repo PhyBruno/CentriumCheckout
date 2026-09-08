@@ -5,6 +5,7 @@ import { useVendaStore } from '../../stores/vendaStore';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import { AcoesFinaisVenda } from '../finalizacao-suspensao/AcoesFinaisVenda';
+import { FaixaAtalhosVendaRapida } from '../venda-rapida/DicaAtalhos';
 import { ControleDescontoCapa } from './ControleDescontoCapa';
 import { EntradaPagamento } from './EntradaPagamento';
 import { ListaPagamentosAplicados } from './ListaPagamentosAplicados';
@@ -47,11 +48,10 @@ import { TotalDaVenda } from './TotalDaVenda';
  * por baixo dela. A coluna preserva a **ordem e as folgas** do desenho, que é o
  * que ele de fato fixa.
  *
- * **O que falta de propósito:** a faixa "Métodos de pagamento rápidos"
- * (`I10H4d`, `top: 16`) — os quatro botões PIX/Dinheiro/Débito/Crédito com
- * `F6`–`F9` — é a feature 013 (venda rápida por cenário de pagamento), não
- * esta. O cabeçalho abaixo ocupa hoje o topo do cartão; quando a 013 chegar,
- * ela entra acima dele sem mover mais nada.
+ * **A faixa "Métodos de pagamento rápidos"** (`I10H4d`, `top: 16`) chegou com a
+ * feature 013 e entrou acima do cabeçalho, como o desenho previa, sem mover
+ * mais nada. Ela se omite sozinha quando a sessão não tem cenário de pagamento
+ * configurado (`FR-016`), que é o caso da maioria das empresas hoje.
  */
 /**
  * "Limpar" — descarta condição, formas, desconto de capa e vales da venda
@@ -253,6 +253,12 @@ export function PainelPagamentoETotais(): ReactElement {
       className="flex h-full w-[392px] shrink-0 flex-col gap-xs rounded-3xl border border-border bg-card p-base"
       data-testid="painel-pagamento-totais"
     >
+      {/* Nó `I10H4d` "Métodos de pagamento rápidos" (feature 013): a faixa de
+          atalhos F6–F9 abre o cartão, acima do cabeçalho, exatamente como no
+          desenho. Devolve `null` quando a sessão não publicou nenhum cenário
+          válido — e aí o cabeçalho volta a ser a primeira linha do cartão. */}
+      <FaixaAtalhosVendaRapida />
+
       {/* Nó `y3cr1` "Cabeçalho pagamento": ícone `wallet-cards` de 20px + título
           Inter 18/600.
 

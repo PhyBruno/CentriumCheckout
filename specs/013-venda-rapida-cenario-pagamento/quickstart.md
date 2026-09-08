@@ -62,6 +62,13 @@ Valida também a normalização da tecla `"f7 "` (I1).
 **Quando** a tecla é pressionada (a) com carrinho vazio, (b) com saldo em aberto já zerado.
 **Então** nada é lançado, o operador é informado e o estado da venda permanece idêntico ao anterior (`FR-009`, I8).
 
+### C6a — Venda já iniciada por outro par recusa o atalho
+
+**Quando** (a) o operador escolhe à mão uma condição diferente da do cenário e pressiona a tecla; (b) a venda já tem uma forma aplicada — inclusive a que veio de um DAV/rascunho retomado — e a tecla é pressionada.
+**Então** nada é lançado, a venda permanece idêntica (a condição escolhida à mão continua selecionada) e o operador lê uma frase que nomeia a regra e aponta o "Limpar" do cartão de pagamento (`FR-023`, I13).
+
+**E** pressionar de novo a **mesma** tecla depois de um lançamento recusado em P4 (TEF negado, por exemplo) **funciona**: a condição posta pelo próprio atalho não bloqueia a sua retentativa.
+
 ### C7 — Acionamento concorrente não duplica pagamento
 
 **Quando** F6 é acionada duas vezes em sequência rápida, sem aguardar a primeira concluir.

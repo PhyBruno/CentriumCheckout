@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { rotuloTipoCodigoProduto } from '../../domain/precificacao/codigoProduto';
+import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../hotkeys/mapaAtalhos';
 import {
   ZERO_CENTAVOS,
   calcularTotalLinha,
@@ -758,6 +759,13 @@ export function EntradaRapidaProduto(): ReactElement {
             ref={campoCodigo}
             className="h-11.5 w-full rounded-xl border border-border bg-muted px-3 font-mono"
             data-testid="campo-codigo-produto"
+            /* Única exceção à regra de `FR-014` (decisão do usuário,
+               2026-09-05): os atalhos globais F6–F9 disparam **com o foco
+               aqui**. É onde o caixa passa a venda inteira, e obrigá-lo a sair
+               do campo para fechar a venda transformaria um toque em três
+               gestos. Seguro pelo mesmo motivo que a regra existe: o leitor de
+               código de barras emite dígitos e `Enter`, nunca teclas de função. */
+            {...ATRIBUTO_ATALHOS_PERMITIDOS}
             autoComplete="off"
             autoFocus
             placeholder="Bipe ou digite (use * p/ quantidade)"

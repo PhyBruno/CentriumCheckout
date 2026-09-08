@@ -269,10 +269,12 @@ test.describe('User Story 2 — importar o documento completo (T023, Cenário 2)
     await expect(page.getByTestId('cliente-da-venda')).toContainText('CLIENTE VAREJO');
 
     // O vendedor do documento também entra na venda, por cima do default do PDV
-    // — `trocarVendedor` deixou de ser stub com a feature 012. `ListaDAVs` não
-    // traz nome de vendedor (AD-095), então o campo cai no fallback por código
-    // até o operador reselecionar pela lupa.
-    await expect(page.getByTestId('nome-vendedor')).toHaveText('Vendedor #8');
+    // — `trocarVendedor` deixou de ser stub com a feature 012. O **nome** deixou
+    // de faltar em AD-172: `vendedorNome` entrou no SDT do documento e
+    // `VendedorNome` em `ListaDAVs`, superando o `null` de AD-095. O fallback
+    // "Vendedor #<código>" continua existindo, mas só é alcançado por um DAV
+    // sem vendedor cadastrado ou antes do deploy dos dois campos no ERP.
+    await expect(page.getByTestId('nome-vendedor')).toHaveText('BRUNO SANTOS');
   });
 });
 

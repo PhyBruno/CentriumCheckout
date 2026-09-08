@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -38,6 +38,34 @@ function renderizarPainel(): void {
     </QueryClientProvider>,
   );
 }
+
+/**
+ * jsdom não implementa `matchMedia`. O painel passou a precisar dele com a
+ * feature 013: a faixa de atalhos consulta a plataforma para não existir no
+ * mobile (`FR-020`). `false` = desktop, que é o layout deste teste.
+ */
+function criarMatchMediaStub(query: string): MediaQueryList {
+  const nada = (): void => {
+    /* nada a fazer */
+  };
+
+  return {
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: nada,
+    removeListener: nada,
+    addEventListener: nada,
+    removeEventListener: nada,
+    dispatchEvent: () => false,
+  };
+}
+
+beforeAll(() => {
+  // Atribuição direta no `window`: sob o vitest o `window` do jsdom não é o
+  // mesmo objeto que `globalThis`, então `vi.stubGlobal` não o alcança.
+  window.matchMedia = criarMatchMediaStub;
+});
 
 beforeEach(() => {
   cliente.clear();
