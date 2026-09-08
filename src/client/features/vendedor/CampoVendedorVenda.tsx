@@ -2,8 +2,9 @@ import { Search, UserRound } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
-import { ModalBuscaVendedor } from './ModalBuscaVendedor';
+import { ModalBuscaVendedor, type VendedorEscolhido } from './ModalBuscaVendedor';
 import { rotuloDoVendedor, useVendedorAtual } from './useVendedor';
 
 /**
@@ -30,9 +31,22 @@ import { rotuloDoVendedor, useVendedorAtual } from './useVendedor';
 export function CampoVendedorVenda(): ReactElement {
   const vendedorAtual = useVendedorAtual();
   const selecionarVendedor = useVendaStore((estado) => estado.selecionarVendedor);
+  const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
   const [modalAberto, setModalAberto] = useState(false);
 
   const rotulo = rotuloDoVendedor(vendedorAtual);
+
+  /**
+   * Vendedor escolhido: o modal já fecha sozinho (`ModalBuscaVendedor`,
+   * clique definitivo) e o foco volta ao código de barras do produto (pedido
+   * do usuário, 2026-09-08) — mesmo destino de `concluirIdentificacao` em
+   * `CampoClienteVenda`, porque os dois terminam no mesmo ponto do fluxo do
+   * caixa: o próximo gesto é bipar um item.
+   */
+  function aoSelecionarVendedor(vendedor: VendedorEscolhido): void {
+    selecionarVendedor(vendedor);
+    focarCodigoProduto();
+  }
 
   return (
     /* Campo e lupa a 10px um do outro, como o desenho (`AJhcG` termina em
@@ -79,7 +93,7 @@ export function CampoVendedorVenda(): ReactElement {
         onFechar={() => {
           setModalAberto(false);
         }}
-        onVendedorSelecionado={selecionarVendedor}
+        onVendedorSelecionado={aoSelecionarVendedor}
       />
     </div>
   );

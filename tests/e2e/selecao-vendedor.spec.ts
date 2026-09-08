@@ -123,6 +123,9 @@ test.describe('User Story 1 — selecionar o vendedor da venda (T015)', () => {
     await buscarVendedor(page, 'Marcos');
     await selecionarVendedor(page, 'Marcos Pereira');
     await expect(page.getByTestId('nome-vendedor')).toHaveText('Marcos Pereira');
+    // Vendedor escolhido: o foco volta ao código de barras do produto (pedido
+    // do usuário, 2026-09-08), mesmo destino da identificação de cliente.
+    await expect(page.getByTestId('campo-codigo-produto')).toBeFocused();
 
     await buscarVendedor(page, 'Marta');
     await selecionarVendedor(page, 'Marta Souza');
