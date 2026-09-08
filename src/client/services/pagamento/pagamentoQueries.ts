@@ -36,8 +36,15 @@ import { paraCapacidadesPagamento, paraCondicoesPagamento, paraMinimoPix } from 
 const ROTA_BOOTSTRAP = '/api/bootstrap';
 const CAMINHO_VALIDA_TICKET = '/ApiCentriumOAuth/ValidaTicketDevolucao';
 
-/** `PAY-01`: frescor do catálogo de pagamento. */
-const TRINTA_MINUTOS_EM_MS = 30 * 60 * 1000;
+/**
+ * `PAY-01`: frescor do catálogo de pagamento.
+ *
+ * Exportado desde AD-171 porque a importação de documento (006/011) resolve a
+ * condição do documento contra este mesmo catálogo, por `fetchQuery` imperativo
+ * — e um segundo literal de 30 minutos lá poderia divergir deste sem ninguém
+ * notar.
+ */
+export const FRESCOR_CATALOGO_PAGAMENTO_MS = 30 * 60 * 1000;
 
 export const CHAVE_CONDICOES_PAGAMENTO = ['pagamento', 'condicoes'] as const;
 
@@ -114,7 +121,7 @@ export function useCondicoesPagamento(
   return useQuery({
     queryKey: CHAVE_CONDICOES_PAGAMENTO,
     queryFn: () => fetchCondicoesPagamento(deps),
-    staleTime: TRINTA_MINUTOS_EM_MS,
+    staleTime: FRESCOR_CATALOGO_PAGAMENTO_MS,
   });
 }
 

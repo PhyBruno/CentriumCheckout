@@ -202,6 +202,11 @@ export function ModalRecuperacaoNFCe({
       )}
       data-testid="modal-recuperacao-nfce"
       onKeyDown={(evento) => {
+        // Enter carrega o rascunho já selecionado, de qualquer ponto da janela
+        // — o mesmo que clicar em "Carregar NFCe". A linha da tabela trata a
+        // tecla por conta própria e interrompe a propagação: lá o Enter ainda
+        // pode significar "selecionar esta linha", e carregar a anterior seria
+        // o documento errado.
         if (evento.key !== 'Enter') {
           return;
         }

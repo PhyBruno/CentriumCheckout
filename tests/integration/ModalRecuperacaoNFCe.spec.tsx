@@ -16,6 +16,7 @@ import {
   respostaCarregarNFCe,
   respostaRascunhoSemPagamento,
 } from '../support/recuperacao';
+import { bootstrapPagamentoDe } from '../support/pagamento';
 
 /**
  * Janela de recuperação de NFCe — T005 (listagem e paginação), T006 (busca) e
@@ -36,6 +37,7 @@ import {
 const CAMINHO_LISTA = '/api/erp/ApiCentriumOAuth/GetListaNFCes';
 const CAMINHO_CARREGAR = '/api/erp/ApiCentriumOAuth/CarregarNFCe';
 const CAMINHO_CLIENTE = '/api/erp/ApiCentriumOAuth/GetCliente';
+const CAMINHO_BOOTSTRAP = '/api/bootstrap';
 
 /** Segundo rascunho, para a busca ter o que descartar e a paginação, o que somar. */
 const OUTRA_NOTA = 90211;
@@ -154,6 +156,13 @@ function instalarFetch(
       return Promise.resolve(respostaJson(documento));
     }
 
+    // Catálogo de condições (AD-171): a retomada resolve o
+    // `CondicaoPagamentoCodigo` do documento contra esta rota antes de gravar
+    // qualquer coisa. Sem ela a importação abortaria por condição indisponível.
+    if (url.startsWith(CAMINHO_BOOTSTRAP)) {
+      return Promise.resolve(respostaJson(bootstrapPagamentoDe()));
+    }
+
     if (url.startsWith(CAMINHO_CLIENTE)) {
       return Promise.resolve(
         respostaJson(
@@ -219,6 +228,17 @@ beforeEach(() => {
 
   // Venda "recém-aberta": é a única em que a importação é permitida (o cliente
   // default pré-selecionado não conta como escolha do operador, AD-032).
+  //
+  // `limparPagamentos` + `limparCarrinho` **antes**, e não como zelo:
+  // `abrirSessaoDeVenda` zera auditoria, identidade e cliente, mas não toca em
+  // carrinho nem em pagamento (na aplicação essa limpeza é da 004, depois do
+  // faturamento). Sem as duas, um teste que retoma um rascunho deixa o próximo
+  // nascer com linha e condição da venda anterior — e aí `recusaDeImportacao`
+  // barra a importação com `carrinho-populado`, ou `definirIdentidadeVenda`
+  // vira no-op porque a venda já está congelada. O sintoma é sempre uma
+  // asserção falhando no teste **seguinte** ao culpado.
+  useVendaStore.getState().limparPagamentos();
+  useVendaStore.getState().limparCarrinho();
   abrirSessaoDeVenda('NOVA', 0);
 });
 
@@ -371,10 +391,49 @@ describe('T006 — busca por nome de cliente ou de vendedor', () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * AD-171 — a condição do documento chega à venda
+ * ------------------------------------------------------------------ */
+
+describe('condição de pagamento do rascunho (AD-171)', () => {
+  it('grava a condição do documento sem congelar o carrinho por causa dela (I7)', async () => {
+    const usuario = userEvent.setup();
+    // Sem pagamento, de propósito: um rascunho pago já congela o carrinho pela
+    // forma `APROVADO` (AD-169), o que mascararia se é a condição — e não o
+    // pagamento — quem está (corretamente) deixando de congelar.
+    instalarFetch({ rascunhos: [rascunhoDaLista()], documento: respostaRascunhoSemPagamento() });
+    renderizar();
+
+    await screen.findByTestId('resultados-nfce');
+    await usuario.click(
+      screen.getByTestId('linha-nfce').closest('button') ?? screen.getByTestId('linha-nfce'),
+    );
+    await usuario.click(screen.getByTestId('confirmar-recuperacao-nfce'));
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+
+    // Código `1` do documento, resolvido contra o catálogo de `/api/bootstrap`.
+    expect(useVendaStore.getState().condicaoSelecionada?.codigo).toBe(1);
+    // E o carrinho **continua editável**: a condição do documento é replay, não
+    // a declaração do operador que I7 congela. É o que mantém o `FR-008` desta
+    // feature exercível — sem isso a reinserção manual seria impossível em todo
+    // rascunho que tivesse condição.
+    expect(useVendaStore.getState().podeMutarCarrinho()).toBe(true);
+  });
+});
+
+
+/* ------------------------------------------------------------------ *
  * T016 — a linha retomada fica congelada até a reinserção manual
  * ------------------------------------------------------------------ */
 
 describe('T016 — reinserir manualmente um SKU já presente numa linha congelada', () => {
+  /**
+   * O documento traz `CondicaoPagamentoCodigo: 1`, e desde AD-171 essa condição
+   * **chega** à venda — sem congelar o carrinho, que é o que mantém este teste
+   * possível. Ver `pagamentoSlice.spec.ts` § "a condição importada não congela".
+   */
   async function retomarPrimeiro(): Promise<void> {
     const usuario = userEvent.setup();
     renderizar();

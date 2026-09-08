@@ -1,5 +1,7 @@
 import { gooeyToast } from 'goey-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import {
+  ErroCondicaoImportadaIndisponivel,
   ErroImportacaoRecusada,
   importarVendaExistente,
   recusaDeImportacao,
@@ -13,6 +15,11 @@ import {
   fetchClientePorCodigo,
 } from '../../services/cliente/clienteQueries';
 import { ErroRespostaInvalida, ErroSessaoEncerrada } from '../../services/errosErp';
+import {
+  CHAVE_CONDICOES_PAGAMENTO,
+  FRESCOR_CATALOGO_PAGAMENTO_MS,
+  fetchCondicoesPagamento,
+} from '../../services/pagamento/pagamentoQueries';
 import { fetchProduto, type ContextoPrecificacao } from '../../services/produto/produtoQueries';
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
 import { useSessionStore } from '../../stores/sessionStore';
@@ -111,6 +118,12 @@ function mensagemDeErro(erro: unknown): string {
   if (erro instanceof ErroClienteNaoEncontrado) {
     return 'O cliente deste documento não foi encontrado no ERP. Nada foi importado.';
   }
+  // Nomeia a condição pelo código: é o que o operador leva ao supervisor para
+  // reativá-la no ERP. Sem o número, a mensagem não distingue "condição
+  // inativada" de qualquer outra falha de importação (AD-171).
+  if (erro instanceof ErroCondicaoImportadaIndisponivel) {
+    return `A condição de pagamento ${erro.codigo} deste documento não está disponível nesta sessão. Nada foi importado.`;
+  }
   if (erro instanceof ErroDocumentoImportadoInvalido || erro instanceof ErroRespostaInvalida) {
     return 'O ERP devolveu este documento em formato inesperado. Nada foi importado.';
   }
@@ -180,6 +193,12 @@ export function useImportacaoDocumento(
   sobrescritas: Partial<ImportacaoVendaDeps> = {},
 ): ApiImportacaoDocumento {
   const { recusa, recusaAtual } = useRecusaDeImportacao();
+  // O catálogo de condições é uma query do TanStack (`PAY-01`, 30min de
+  // frescor), não um valor do `sessionStore`: `bootstrap.schema.ts` é
+  // `looseObject` e não declara `CondicoesDePagamento`. `ensureQueryData`
+  // reaproveita o que a tela de pagamento já buscou e só vai à rede quando o
+  // cache está frio — sem uma segunda chamada por importação.
+  const queryClient = useQueryClient();
 
   // Sem `useCallback`: `sobrescritas` é um objeto novo a cada render (é o
   // default de parâmetro, e o call site também passa um literal), então a
@@ -201,6 +220,20 @@ export function useImportacaoDocumento(
       // não uma troca no meio da digitação (`contracts/vendedor-domain-api.md`).
       trocarVendedor: (vendedor) => venda.trocarVendedor(vendedor, origemCliente),
       registrarEventoAuditoria: venda.registrarEventoAuditoria,
+      resolverCondicao: async (codigo) => {
+        // `query()` com o `staleTime` do `PAY-01`: devolve o que a tela de
+        // pagamento já buscou enquanto estiver fresco e só vai à rede com o
+        // cache frio. É a mesma chave e o mesmo frescor da query declarativa,
+        // então as duas leituras nunca divergem. (`fetchQuery` faria o mesmo,
+        // mas está deprecado em favor de `query()` no TanStack v5.102.)
+        const catalogo = await queryClient.query({
+          queryKey: CHAVE_CONDICOES_PAGAMENTO,
+          queryFn: () => fetchCondicoesPagamento(),
+          staleTime: FRESCOR_CATALOGO_PAGAMENTO_MS,
+        });
+        return catalogo.condicoes.find((condicao) => condicao.codigo === codigo) ?? null;
+      },
+      importarCondicaoPagamento: venda.importarCondicaoPagamento,
       importarFormasDePagamento: venda.importarFormasDePagamento,
       buscarDescricaoProduto: async (codigoProduto) => {
         const contexto = contextoPrecificacaoAtual();
