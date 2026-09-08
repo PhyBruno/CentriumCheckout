@@ -126,6 +126,47 @@ describe('carrinhoSlice — desconto que zera a linha (correção da revisão, 2
   });
 });
 
+/**
+ * A trava do carrinho é uma só, mas a **causa** que o operador lê é duas
+ * (AD-169).
+ *
+ * Numa venda montada do zero ele congelou a venda com um gesto próprio —
+ * escolher a condição, aplicar uma forma — e a frase pode falar disso. Numa
+ * venda **retomada já paga** a grid nasce travada, sem que ele tenha feito
+ * nada: mandá-lo procurar um pagamento que não lançou é acusá-lo de um erro que
+ * não cometeu, e a frase precisa nomear o documento e o valor já recebido.
+ */
+describe('carrinhoSlice — o aviso de bloqueio nomeia a causa certa', () => {
+  it('venda congelada pelo operador: fala do pagamento em curso', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar, podeMutarCarrinho: () => false });
+
+    store.getState().inserirItem({ snapshot: produto, quantidade: unidades(1), origem: 'MANUAL' });
+
+    expect(store.getState().linhas).toHaveLength(0);
+    expect(avisar).toHaveBeenCalledWith(expect.stringContaining('já está em pagamento'));
+  });
+
+  it('venda retomada já paga: fala do documento e do valor já recebido', () => {
+    const avisar = vi.fn();
+    const store = montarStore({
+      avisar,
+      podeMutarCarrinho: () => false,
+      pagamentoVeioDeDocumento: () => true,
+    });
+
+    store.getState().inserirItem({ snapshot: produto, quantidade: unidades(1), origem: 'MANUAL' });
+
+    expect(store.getState().linhas).toHaveLength(0);
+    const mensagem = avisar.mock.calls[0]?.[0] as string;
+    expect(mensagem).toContain('retomada com o pagamento já registrado no documento');
+    // A saída vem junto com o preço dela: sem isso o operador ou não acha o
+    // caminho, ou o toma sem saber que descarta um valor já recebido.
+    expect(mensagem).toContain('"Limpar"');
+    expect(mensagem).toContain('já foi recebido');
+  });
+});
+
 describe('carrinhoSlice — item cancelado permanece rastreável (T033, FR-009)', () => {
   it('preserva a linha no array e a exclui da quantidade agregada e dos totais', () => {
     const store = montarStore();

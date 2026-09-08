@@ -10,11 +10,16 @@ import { EntradaPagamento } from './EntradaPagamento';
 import { ListaPagamentosAplicados } from './ListaPagamentosAplicados';
 import { ModalValeDevolucao } from './ModalValeDevolucao';
 import {
+  AVISO_PAGAMENTO_DO_DOCUMENTO,
+  CHAMADA_VALOR_JA_RECEBIDO,
+  DESTAQUE_NFCE_SAI_SEM_O_VALOR,
+} from './avisosPagamentoDoDocumento';
+import {
   AVISO_DESASSOCIACAO_MANUAL,
   CHAMADA_PIX_NAO_E_CANCELADO,
   DESTAQUE_PIX_SEGUE_NO_BANCO,
 } from './pix/avisosPix';
-import { DialogoConfirmacaoPix } from './pix/DialogoConfirmacaoPix';
+import { DialogoConfirmacaoDestrutiva } from './DialogoConfirmacaoDestrutiva';
 import {
   SeletorCondicaoPagamento,
   SeletorFormaPagamento,
@@ -72,18 +77,34 @@ import { TotalDaVenda } from './TotalDaVenda';
  * pagamento com uma cobrança PIX na venda passa pela mesma confirmação da
  * remoção individual. A regra é a de sempre — o Checkout não cancela cobrança
  * PIX —, e travar o botão nunca desfez nada; só deixava o operador sem saída.
+ *
+ * **Pagamento vindo do documento também pergunta** (AD-169). É a saída oficial
+ * de uma venda retomada já paga: a forma aprovada congela a grid, e este botão
+ * é o caminho — nomeado pelo próprio aviso de bloqueio do carrinho — para
+ * voltar a editar os itens. Mas o valor **já foi recebido** e está gravado no
+ * documento dentro do ERP: descartá-lo sem perguntar deixaria a NFCe sair sem
+ * o pagamento que o cliente fez, num gesto que o operador daria só para
+ * corrigir um item. Não bloqueia, pelo mesmo motivo do PIX — travar aqui
+ * fecharia a única saída e não desfaria nada.
  */
 function BotaoLimparPagamento(): ReactElement {
   const condicaoSelecionada = useVendaStore((estado) => estado.condicaoSelecionada);
   const descontoCapa = useVendaStore((estado) => estado.descontoCapa);
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const descartarPagamento = useVendaStore((estado) => estado.descartarPagamento);
-  const [confirmando, setConfirmando] = useState(false);
+  const [confirmando, setConfirmando] = useState<'pix' | 'documento' | null>(null);
 
   const temTefAprovado = pagamentos.some(
     (pagamento) => pagamento.integracao === 'TEF' && pagamento.status === 'APROVADO',
   );
   const temPix = pagamentos.some((pagamento) => pagamento.integracao === 'PIX_DINAMICO');
+  // `importarFormasDePagamento` grava `integracao: 'NENHUMA'` em tudo o que vem
+  // do documento, então nenhuma forma importada é `PIX_DINAMICO` e as duas
+  // confirmações nunca competem pelo mesmo pagamento. A ordem abaixo ainda dá
+  // precedência a esta: o valor já recebido é o aviso mais grave dos dois.
+  const temPagamentoDoDocumento = pagamentos.some(
+    (pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO',
+  );
   const vazio = condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null;
 
   const bloqueio: MotivoBloqueio = temTefAprovado
@@ -100,8 +121,12 @@ function BotaoLimparPagamento(): ReactElement {
         data-testid="limpar-pagamento"
         {...atributosDeBloqueio(bloqueio)}
         onClick={acaoBloqueavel(bloqueio, () => {
+          if (temPagamentoDoDocumento) {
+            setConfirmando('documento');
+            return;
+          }
           if (temPix) {
-            setConfirmando(true);
+            setConfirmando('pix');
             return;
           }
           descartarPagamento();
@@ -111,8 +136,27 @@ function BotaoLimparPagamento(): ReactElement {
         Limpar
       </button>
 
-      {confirmando && (
-        <DialogoConfirmacaoPix
+      {confirmando === 'documento' && (
+        <DialogoConfirmacaoDestrutiva
+          testId="confirmar-limpeza-documento"
+          titulo="Limpar o pagamento vindo do documento?"
+          subtitulo="Esta venda foi retomada já paga"
+          chamada={CHAMADA_VALOR_JA_RECEBIDO}
+          explicacao={AVISO_PAGAMENTO_DO_DOCUMENTO}
+          destaque={DESTAQUE_NFCE_SAI_SEM_O_VALOR}
+          rotuloConfirmar="Limpar mesmo assim"
+          onConfirmar={() => {
+            descartarPagamento();
+            setConfirmando(null);
+          }}
+          onCancelar={() => {
+            setConfirmando(null);
+          }}
+        />
+      )}
+
+      {confirmando === 'pix' && (
+        <DialogoConfirmacaoDestrutiva
           testId="confirmar-limpeza-pix"
           titulo="Limpar o pagamento com PIX gerado?"
           subtitulo="A cobrança já foi gerada no banco"
@@ -122,10 +166,10 @@ function BotaoLimparPagamento(): ReactElement {
           rotuloConfirmar="Limpar mesmo assim"
           onConfirmar={() => {
             descartarPagamento();
-            setConfirmando(false);
+            setConfirmando(null);
           }}
           onCancelar={() => {
-            setConfirmando(false);
+            setConfirmando(null);
           }}
         />
       )}

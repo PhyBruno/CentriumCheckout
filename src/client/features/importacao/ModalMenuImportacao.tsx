@@ -2,6 +2,7 @@ import { ArchiveRestore, ChevronRight, Download, ReceiptText, X } from 'lucide-r
 import { useEffect, type ComponentType, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 
 /**
@@ -35,6 +36,7 @@ export function ModalMenuImportacao({
   onEscolherNFCe,
 }: ModalMenuImportacaoProps): ReactElement | null {
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
   // Mesmo ouvinte de `window` das outras janelas desta base: um `onKeyDown` no
   // backdrop só dispararia com o foco dentro do modal.
@@ -66,6 +68,7 @@ export function ModalMenuImportacao({
       data-testid="modal-menu-importacao"
     >
       <div
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Menu Importação"
@@ -115,18 +118,11 @@ export function ModalMenuImportacao({
           />
         </div>
 
-        <footer className="flex h-[60px] shrink-0 items-center justify-end border-t border-border px-lg">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-            onClick={onFechar}
-          >
-            <X className="size-3.5" aria-hidden="true" />
-            Cancelar
-          </Button>
-        </footer>
+        {/* Sem rodapé (AD-170). O do Pencil tinha um item só, "Cancelar", que
+            fazia exatamente o que o "X" do cabeçalho já faz. Removido o botão,
+            sobrava uma faixa de 60px com hairline e nada dentro — pior do que
+            não existir. Divergência deliberada do frame `yg9zq`, a pedido do
+            usuário (2026-09-04). */}
       </div>
     </div>
   );

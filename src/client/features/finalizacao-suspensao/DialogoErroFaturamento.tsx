@@ -1,6 +1,7 @@
 import { AlertTriangle, XCircle } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 
 /**
  * Erro de transmissão da NFCe (pedido do usuário, 2026-09-02).
@@ -30,12 +31,16 @@ export function DialogoErroFaturamento({
   mensagem,
   onFechar,
 }: DialogoErroFaturamentoProps): ReactElement {
+  // `true`: sem prop de abertura — o pai só renderiza este diálogo aberto.
+  const janelaRef = useFocoDeModal<HTMLDivElement>(true);
+
   return (
     <div
       className="cc-backdrop-entra fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg"
       data-testid="dialogo-erro-faturamento"
     >
       <div
+        ref={janelaRef}
         role="alertdialog"
         aria-modal="true"
         aria-label="Falha ao emitir a NFCe"

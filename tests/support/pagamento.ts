@@ -118,6 +118,8 @@ export interface OpcoesPagamento {
   readonly dadosTEF?: DadosTEF | null;
   readonly pixGuid?: string | null;
   readonly ticketDevolucao?: string | null;
+  /** Forma vinda de um documento importado/retomado — default `false`. */
+  readonly veioDeDocumento?: boolean;
 }
 
 let sequenciaPagamento = 0;
@@ -138,6 +140,7 @@ export function pagamentoDe(opcoes: OpcoesPagamento = {}): PagamentoAplicado {
     dadosTEF: opcoes.dadosTEF ?? null,
     pixGuid: opcoes.pixGuid ?? null,
     ticketDevolucao: opcoes.ticketDevolucao ?? null,
+    veioDeDocumento: opcoes.veioDeDocumento ?? false,
   };
 }
 

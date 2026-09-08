@@ -49,6 +49,10 @@ export function useRecuperacaoNFCe(
     return importar(
       fonteRascunho({
         numeroNota: rascunho.numeroNota,
+        // Nome capturado na listagem — fallback de `mapearVendaExistente`
+        // atrás do campo do próprio documento (AD-172). É o que permite
+        // pré-selecionar o vendedor com nome, e não só com número (`FR-009`).
+        vendedor: rascunho.vendedor,
         serie: registro.SessaoUsuario.CadSerieNFCe,
       }),
     );

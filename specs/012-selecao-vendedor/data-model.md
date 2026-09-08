@@ -13,7 +13,7 @@ Cópia dos dois campos relevantes de `VendedoresItem` (nome TS-facing do schema 
 ```ts
 export interface VendedorVenda {
   readonly codigo: number;           // VendedoresItem.VendedorCodigo / SessaoUsuario.VendedorCodigo
-  readonly nome: string | null;      // VendedoresItem.VendedorNome / SessaoUsuario.VendedorNome — null só para origem 'RASCUNHO'/'DAV' (research.md D4)
+  readonly nome: string | null;      // VendedoresItem.VendedorNome / SessaoUsuario.VendedorNome — null possível em 'RASCUNHO'/'DAV', na prática só em 'DAV' (research.md D4)
   readonly origem: OrigemVendedor;
 }
 
@@ -26,8 +26,10 @@ export type OrigemVendedor = 'DEFAULT' | 'BUSCA' | 'RASCUNHO' | 'DAV';
 |---|---|---|
 | `DEFAULT` (pré-seleção automática, AD-032) | preenchido — `SessaoUsuario.VendedorNome` sempre acompanha `VendedorCodigo` | `inicializarVendedorPadrao`, sem chamada de rede |
 | `BUSCA` (seleção no modal, `GetListaVendedores`) | preenchido — vem direto do item da lista (`research.md` D1) | `selecionarVendedor` |
-| `RASCUNHO` (retomada via `CarregarNFCe`) | `null` — `CheckoutFaturarNFCe` só tem `vendedorCodigo` (`research.md` D4) | `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')`, chamado pela feature 011 (exclusiva — 004 não chama `CarregarNFCe`) |
-| `DAV` (importação, feature 006) | `null` — mesma lacuna de `ListaDAVs`/`GetDav` (AD-095) | `trocarVendedor({ codigo, nome: null })`, já reservado por `specs/006-importacao-dav/contracts/importacao-domain-api.md` |
+| `RASCUNHO` (retomada via `CarregarNFCe`) | **preenchido** — não pelo documento, e sim pela listagem que o precede: `GetListaNFCes` devolve `Vendedor` por extenso (yaml l. 1668) | `trocarVendedor({ codigo, nome }, 'RASCUNHO')`, chamado pela feature 011 (exclusiva — 004 não chama `CarregarNFCe`) |
+| `DAV` (importação, feature 006) | `null` — nem o documento nem a listagem o têm: `ListaDAVs` traz `ClienteNome` mas só `VendedorCodigo` (AD-095) | `trocarVendedor({ codigo, nome: null })`, já reservado por `specs/006-importacao-dav/contracts/importacao-domain-api.md` |
+
+**Correção de 2026-09-05** (verificação direta do yaml durante a implementação): a redação anterior desta tabela dava `nome: null` para **as duas** origens, tratando-as como equivalentes. Elas não são. O que falta é o mesmo nos dois casos — `CheckoutFaturarNFCe`, o schema devolvido tanto por `CarregarNFCe` quanto por `GetDav`, tem `vendedorCodigo` e nenhum campo de nome (yaml l. 1475) —, mas a **listagem** que precede cada documento difere: a de rascunhos traz o nome, a de DAVs não. A feature 011 já repassa o nome da listagem (`recuperacaoQueries.ts`), então uma venda retomada exibe o vendedor por extenso. `nome: null` continua sendo um estado representável nas duas origens (a listagem pode devolver o campo em branco), mas **na prática só a importação de DAV o produz**.
 
 **UI**: quando `nome === null`, o campo de vendedor da venda exibe `"Vendedor #<codigo>"` até o operador reabrir o modal e selecionar explicitamente (mesmo padrão de `AD-095`).
 

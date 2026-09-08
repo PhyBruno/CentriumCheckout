@@ -8,7 +8,8 @@ import {
   AVISO_DESASSOCIACAO_MANUAL,
   CHAMADA_PIX_NAO_E_CANCELADO,
 } from '../pagamento/pix/avisosPix';
-import { DialogoConfirmacaoPix } from '../pagamento/pix/DialogoConfirmacaoPix';
+import { DialogoConfirmacaoDestrutiva } from '../pagamento/DialogoConfirmacaoDestrutiva';
+import { useVendedorAtual } from '../vendedor/useVendedor';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
@@ -71,7 +72,7 @@ export function ProvedorFinalizacaoVenda({
           motivo dos outros diálogos: é modal de tela cheia e as duas superfícies
           de cancelamento (desktop e mobile) compartilham esta máquina. */}
       {estado.tipo === 'confirmar-suspensao-pix' && (
-        <DialogoConfirmacaoPix
+        <DialogoConfirmacaoDestrutiva
           testId="confirmar-suspensao-pix"
           titulo="Cancelar a venda com PIX gerado?"
           subtitulo="A venda vira rascunho no ERP, a cobrança não"
@@ -229,6 +230,11 @@ export function BarraAtalhosVenda(): ReactElement {
 export function AcoesFinaisVenda(): ReactElement {
   const { estado, finalizar } = useFinalizacaoVenda();
   const haValorAFaturar = useVendaTemValorAFaturar();
+  // `FR-006`/`SC-003` (feature 012): nenhuma venda é finalizada sem um
+  // vendedor associado. `vendedorAtual` só chega `null` quando a empresa não
+  // configurou default e o operador ainda não abriu a busca — sem esta trava
+  // o botão liberaria com `vendedorCodigo: 0` (`useFinalizarOuSuspenderVenda.ts`).
+  const vendedorAtual = useVendedorAtual();
 
   return (
     <div className="flex w-full flex-col gap-xs" data-testid="acoes-finais-venda">
@@ -237,7 +243,7 @@ export function AcoesFinaisVenda(): ReactElement {
           void finalizar();
         }}
         enviando={estado.tipo === 'enviando'}
-        bloqueado={!haValorAFaturar || estado.tipo === 'falha-rede'}
+        bloqueado={!haValorAFaturar || estado.tipo === 'falha-rede' || vendedorAtual === null}
       />
     </div>
   );

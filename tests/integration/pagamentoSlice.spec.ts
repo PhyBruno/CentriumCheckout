@@ -26,6 +26,10 @@ import {
   type IdentidadeVendaDeps,
 } from '../../src/client/stores/slices/identidadeVendaSlice';
 import {
+  criarVendedorSlice,
+  type VendedorDeps,
+} from '../../src/client/stores/slices/vendedorSlice';
+import {
   AVISO_CONDICAO_COM_PAGAMENTO,
   AVISO_DESCONTO_COM_PAGAMENTO,
   AVISO_DESCONTO_ZERA_A_VENDA,
@@ -199,6 +203,7 @@ function montarStore(opcoes: Opcoes = {}) {
       Promise.reject(new Error('busca de produto não é exercitada nesta suíte')),
   };
   const depsIdentidade: IdentidadeVendaDeps = { podeMutarCarrinho: () => true };
+  const depsVendedor: VendedorDeps = { podeMutarCarrinho: () => true };
 
   const store = create<VendaState & PagamentoSlice>()(
     immer((...args) => ({
@@ -207,6 +212,7 @@ function montarStore(opcoes: Opcoes = {}) {
       ...criarIdentidadeVendaSlice(depsIdentidade)(...args),
       ...criarClienteSlice(depsCliente)(...args),
       ...criarPagamentoSlice(depsPagamento)(...args),
+      ...criarVendedorSlice(depsVendedor)(...args),
     })),
   );
 

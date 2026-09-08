@@ -38,7 +38,9 @@ Como operador de caixa, ao selecionar um rascunho, quero que os itens, pagamento
 1. **Given** um rascunho selecionado na lista, **When** o operador confirma a retomada, **Then** o carrinho é preenchido com os itens, formas de pagamento, cliente e vendedor já registrados nesse rascunho.
 2. **Given** um rascunho retomado, **When** a venda é finalizada ou suspensa novamente, **Then** ela mantém a identidade original desse rascunho, não uma identidade nova.
 3. **Given** um item vindo do rascunho, **When** ele entra no carrinho, **Then** seu preço é preservado exatamente como estava salvo, sem recálculo automático.
-4. **Given** um item que já veio do rascunho, **When** o operador o reinsere manualmente depois da retomada, **Then** o sistema recalcula o preço normalmente para esse item, como faria para uma inserção comum.
+4. **Given** um rascunho retomado **sem pagamento** (suspenso antes da cobrança), **When** o operador reinsere manualmente um item que já veio dele, **Then** o sistema recalcula o preço normalmente para esse item, como faria para uma inserção comum.
+4a. **Given** um rascunho retomado **com pagamento** (suspenso depois de cobrado, o caso comum), **When** o operador tenta alterar os itens, **Then** o sistema recusa a alteração e explica que a venda veio com o pagamento já registrado, indicando "Limpar" no cartão de pagamento como saída.
+4b. **Given** essa mesma venda, **When** o operador aciona "Limpar" ou remove a forma vinda do documento, **Then** o sistema pede confirmação avisando que o valor já foi recebido e que a NFCe sairá sem ele; confirmado, o pagamento é descartado e os itens voltam a ser editáveis, com recálculo normal de preço.
 5. **Given** um rascunho que já tem um vendedor registrado, **When** ele é retomado, **Then** esse vendedor é pré-selecionado automaticamente.
 
 ---
@@ -49,6 +51,8 @@ Como operador de caixa, ao selecionar um rascunho, quero que os itens, pagamento
 - A lista de rascunhos mostra vendas suspensas de qualquer período? Não — mostra apenas rascunhos ainda em aberto dentro de uma janela recente de tempo, consistente com o que o sistema de origem disponibiliza.
 - O que acontece quando dois operadores tentam retomar o mesmo rascunho ao mesmo tempo? Não há nenhum bloqueio implementado no Checkout para impedir isso — a resolução desse conflito é responsabilidade do sistema de origem dos rascunhos.
 - O que acontece com uma forma de pagamento removível já aplicada a uma venda retomada, se ela for suspensa de novo? Ela permanece associada, disponível na próxima retomada.
+- Um rascunho retomado já pago deixa os itens editáveis? Não. A forma aprovada que vem com ele congela a venda no mesmo instante da retomada, pela mesma regra que vale para qualquer pagamento aprovado. A saída é descartar o pagamento em "Limpar", com confirmação (`FR-008a`–`FR-008c`).
+- Descartar esse pagamento devolve o dinheiro ao cliente? Não. O valor foi recebido na venda original e está registrado no documento dentro do ERP; o Checkout não estorna nada. Descartá-lo apaga só o registro local, e a NFCe passa a sair sem ele — é exatamente isso que a confirmação avisa antes de deixar seguir.
 
 ## Requirements *(mandatory)*
 
@@ -61,7 +65,10 @@ Como operador de caixa, ao selecionar um rascunho, quero que os itens, pagamento
 - **FR-005**: Ao retomar um rascunho, o sistema MUST preencher o carrinho com todos os itens, formas de pagamento, cliente e vendedor já registrados nesse rascunho.
 - **FR-006**: Ao retomar um rascunho, o sistema MUST preservar a identidade original da venda, usando-a novamente quando essa venda retomada for finalizada ou suspensa.
 - **FR-007**: Ao retomar um rascunho, o sistema MUST preservar o preço de cada item exatamente como salvo no rascunho, sem disparar recálculo automático.
-- **FR-008**: O sistema MUST disparar o recálculo normal de preço para um item que o operador reinsere manualmente depois de retomar o rascunho, mesmo que esse item já estivesse presente no rascunho retomado.
+- **FR-008**: Enquanto a venda retomada aceitar alteração de itens, o sistema MUST disparar o recálculo normal de preço para um item que o operador reinsere manualmente, mesmo que esse item já estivesse presente no rascunho retomado.
+- **FR-008a**: O sistema MUST recusar qualquer alteração de itens enquanto houver forma de pagamento aprovada na venda — inclusive a que veio no próprio rascunho retomado. Um rascunho suspenso **depois** de cobrado devolve a venda ao caixa já paga, e a mesma regra que impede mudar o total por baixo de um pagamento em curso vale aqui, sem exceção para a retomada.
+- **FR-008b**: Ao recusar por esse motivo, o sistema MUST explicar que a venda foi retomada com o pagamento já registrado no documento — e não atribuir o bloqueio a um gesto do operador — e MUST indicar "Limpar", no cartão de pagamento, como a saída.
+- **FR-008c**: O sistema MUST pedir confirmação antes de descartar uma forma de pagamento que veio no documento, por qualquer caminho ("Limpar" ou remoção individual), avisando que o valor já foi recebido e que finalizar a venda sem ele emite a NFCe sem esse pagamento. Confirmada, a venda volta a aceitar alteração de itens.
 - **FR-009**: Ao retomar um rascunho que já tem um vendedor registrado, o sistema MUST pré-selecionar esse vendedor automaticamente.
 - **FR-010**: O sistema MUST NOT implementar nenhum mecanismo de bloqueio para impedir que dois operadores retomem o mesmo rascunho concorrentemente.
 
@@ -74,7 +81,7 @@ Como operador de caixa, ao selecionar um rascunho, quero que os itens, pagamento
 ### Measurable Outcomes
 
 - **SC-001**: Nenhum dado de um rascunho retomado é redigitado manualmente pelo operador.
-- **SC-002**: O preço de um item retomado nunca diverge do valor salvo no rascunho, exceto após uma reinserção explícita do operador.
+- **SC-002**: O preço de um item retomado nunca diverge do valor salvo no rascunho, exceto após uma reinserção explícita do operador — que, num rascunho retomado já pago, só é possível depois de ele descartar o pagamento com confirmação.
 - **SC-003**: Uma venda retomada segue exatamente as mesmas regras de pagamento e finalização de uma venda criada do zero.
 
 ## Assumptions

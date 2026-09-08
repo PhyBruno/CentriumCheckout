@@ -250,14 +250,20 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
         return;
       }
 
-      // Stub de T029 até a feature 012 selecionar o vendedor: usa o vendedor do
-      // PDV publicado no bootstrap quando ele existe. `VendedorCodigo` ainda não
-      // está no schema Zod (é campo da 012), então é lido com narrow explícito —
-      // nunca com type assertion.
-      const vendedorDoBootstrap = sessao['VendedorCodigo'];
-      const vendedorCodigo =
-        injetadas.vendedorCodigo?.() ??
-        (typeof vendedorDoBootstrap === 'number' ? vendedorDoBootstrap : 0);
+      // O vendedor **da venda** (feature 012, `FR-007`), nunca o operador
+      // logado (`UsuarioCodigo`) e nunca mais o vendedor do bootstrap por
+      // atalho: `vendedorAtual` já nasce com o default do PDV, aplicado por
+      // `inicializarVendedorPadrao` no mesmo call site que abre a sessão, e
+      // passa a refletir a escolha do operador a partir da primeira seleção no
+      // modal. Ler `SessaoUsuario.VendedorCodigo` aqui — o stub de T029 —
+      // mandaria ao ERP o vendedor do PDV mesmo com outro selecionado na tela,
+      // silenciosamente, visível só na nota.
+      //
+      // `?? 0` é o mesmo "vazio" que o contrato usa para `int64` não anulável:
+      // a empresa sem vendedor default cai nele, e bloquear o botão
+      // "Finalizar" nessa situação (`FR-006`/`SC-003`) é escopo da feature 004,
+      // não deste ponto de montagem.
+      const vendedorCodigo = injetadas.vendedorCodigo?.() ?? venda.vendedorAtual?.codigo ?? 0;
 
       const retrato = montarRetratoVenda(
         {

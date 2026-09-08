@@ -166,10 +166,15 @@ export function useListaNFCes(
   deps: RecuperacaoQueriesDeps = {},
 ): UseQueryResult<PaginaDeRascunhos, Error> {
   return useQuery({
+    // `tamanhoPagina` entra na chave junto com busca e página: ele é público em
+    // `FiltrosRascunho` e altera o corpo da resposta, então omiti-lo faria duas
+    // consultas de tamanhos diferentes compartilharem a mesma entrada de cache
+    // — a segunda receberia a página da primeira sem nem chamar o ERP.
     queryKey: [
       'lista-nfces',
       filtros.txtBusca?.trim() ?? '',
       filtros.pagina ?? PAGINA_INICIAL,
+      Math.min(filtros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO, LIMITE_TAMANHO_PAGINA),
     ] as const,
     queryFn: () => fetchListaNFCes(filtros, deps),
     enabled: habilitado,
@@ -224,14 +229,24 @@ export async function fetchCarregarNFCe(
  * @param rascunho Linha selecionada na listagem mais a série da sessão. O
  * `clienteCodigo` vem sempre da resposta de `CarregarNFCe`, nunca da
  * listagem, e o nome do cliente é resolvido por `resolverCliente` (AD-115),
- * não capturado aqui.
+ * não capturado aqui. `vendedor` é o nome capturado da lista — vira
+ * *fallback* de `mapearVendaExistente`, atrás do nome do próprio documento
+ * quando o ERP o devolve (AD-172).
  */
 export function fonteRascunho(rascunho: {
   readonly numeroNota: number;
+  readonly vendedor: string;
   readonly serie: string;
 }): FonteDocumento {
   return {
     origem: 'RASCUNHO',
+    // Diferente de `fonteDav`: este contrato sempre devolveu o vendedor por
+    // extenso (`GetListaNFCes`), e descartá-lo faria a venda retomada exibir
+    // um vendedor sem nome tendo o dado em mãos, enquanto o campo do próprio
+    // documento não estiver em produção (`FR-009`, AD-172). O **código**
+    // continua vindo do documento. Nome em branco é "não informado", não
+    // string vazia — mesmo tratamento de `DavListado.vendedorNome`.
+    vendedorNome: rascunho.vendedor === '' ? null : rascunho.vendedor,
     carregar: (erpClient) =>
       fetchCarregarNFCe(
         rascunho.numeroNota,

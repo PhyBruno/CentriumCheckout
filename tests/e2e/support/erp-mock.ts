@@ -87,6 +87,12 @@ export interface ConfigMockErp {
    * (`'P'`). Só vale quando `statusPixTransicoes` está vazio.
    */
   atrasoPagamentoPixMs: number;
+  /**
+   * `GetSessao` devolve `VendedorCodigo`/`VendedorNome` vazios — é a empresa que
+   * nunca configurou vendedor default (`FR-006`/`VEND-07`, feature 012). A venda
+   * nasce sem vendedor e exige seleção manual.
+   */
+  semVendedorDefault: boolean;
 }
 
 export interface ContadoresMockErp {
@@ -100,6 +106,7 @@ export interface ContadoresMockErp {
   getCliente: number;
   getListaClientes: number;
   postCliente: number;
+  getListaVendedores: number;
   listaDavs: number;
   getDav: number;
   gerarPix: number;
@@ -127,6 +134,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   statusPixTransicoes: [],
   /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
   atrasoPagamentoPixMs: 20_000,
+  semVendedorDefault: false,
 };
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
@@ -140,6 +148,7 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getCliente: 0,
   getListaClientes: 0,
   postCliente: 0,
+  getListaVendedores: 0,
   listaDavs: 0,
   getDav: 0,
   gerarPix: 0,
@@ -358,6 +367,40 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
  * cliente recém-criado — o ERP real não devolve o registro criado
  * (`contracts/erp-cliente-api.md`).
  */
+/**
+ * Vendedores sintéticos de `GetListaVendedores` (feature 012).
+ *
+ * **Nenhum campo de status/`Ativo` e nenhum campo de função/cargo**, como o
+ * contrato real: `CheckoutListaVendedores.Vendedores_Vendedores` tem só estes
+ * quatro campos (AD-103). O mock não pode oferecer o que o ERP não devolve.
+ *
+ * `21` é o `VendedorCodigo` default do `GetSessao` sintético — deliberadamente
+ * **diferente** do `UsuarioCodigo` (42) do operador, para que "o vendedor da
+ * venda não é o operador logado" (`FR-008`/`SC-001`) seja distinguível no
+ * payload de `FaturarNFCe`. Os demais existem para a busca ter mais de um
+ * candidato e para a sequência seleção → troca do Cenário 2 do `quickstart.md`.
+ */
+const VENDEDORES: readonly Record<string, unknown>[] = [
+  {
+    VendedorCodigo: String(21), // int64
+    VendedorNome: 'Mariana Alves',
+    VendedorCGC: '000.111.222-33',
+    VendedorFone: '55 47 99900-0021',
+  },
+  {
+    VendedorCodigo: String(14), // int64
+    VendedorNome: 'Marcos Pereira',
+    VendedorCGC: '111.222.333-44',
+    VendedorFone: '55 47 99900-0014',
+  },
+  {
+    VendedorCodigo: String(8), // int64
+    VendedorNome: 'Marta Souza',
+    VendedorCGC: '222.333.444-55',
+    VendedorFone: '55 47 99900-0008',
+  },
+];
+
 const CLIENTES: Record<string, Record<string, unknown>> = {
   '12298023980': {
     Empresa: String(1), // int64
@@ -603,6 +646,45 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
   };
 
 /**
+ * A forma que quitou o rascunho antes de ele ser suspenso (AD-169).
+ *
+ * Dinheiro pelo total exato do documento: é a quitação mais simples que existe,
+ * e o que interessa ao E2E é que a venda volte **paga** — o meio em si não muda
+ * nada no caminho de retomada.
+ *
+ * `FormaMeioPagtoNFe: 'Dinheiro'`, e nunca o código numérico `'01'` da NFe: o
+ * domínio `Nfce_FormaPagto` do ERP usa nomes (AD-023), os mesmos do catálogo de
+ * `GetSessao` acima, e com o código numérico `importarFormasDePagamento`
+ * descarta a forma em silêncio — foi assim que a chegada do pagamento à venda
+ * ficou sem verificação até 2026-09-04.
+ *
+ * O valor é **derivado** do documento, não fixo: os dois rascunhos sintéticos
+ * têm totais diferentes, e um literal aqui dessincronizaria do primeiro produto
+ * que alguém ajustasse — deixando um saldo residual que o E2E leria como bug do
+ * Checkout.
+ */
+function quitacaoDoRascunho(documento: Record<string, unknown>): Record<string, unknown> {
+  const produtos = (documento['produtos'] ?? []) as readonly Record<string, unknown>[];
+  const total = produtos.reduce((soma, produto) => soma + Number(produto['ValorTotal']), 0);
+
+  return {
+    FormaCodigo: String(1), // int64 — 'DINHEIRO' do catálogo de `GetSessao`
+    FormaMeioPagtoNFe: 'Dinheiro',
+    FormaValor: String(total), // double
+    FormaIntegracaoCartao: ' ',
+    FormaFpgUtiCar: '',
+    FormaEntrada: 'S',
+    TEFidentificacao: String(0), // int64 — item não-TEF
+    TEFCNPJ: '',
+    TEFBandeira: '',
+    TEFNumeroAutorizacao: '',
+    TEFTipoIntegracao: '',
+    FormaPixGUID: '',
+    TicketDevolucao: '',
+  };
+}
+
+/**
  * `GetSessao` real devolve `SessaoUsuario` **direto na raiz**, sem envelope
  * nem `messages` — confirmado ao vivo em 2026-09-04 contra o ERP real
  * (`c0lj6mvzeh.apps.centrium.inf.br`): a procedure só tem um output de
@@ -631,8 +713,13 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     UsuarioTipoCodigoProduto: 'D',
     ClienteDefaultCodigo: String(1), // int64
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
-    VendedorCodigo: String(42), // int64
-    VendedorNome: 'Mariana Alves',
+    // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
+    // logado são campos genuinamente distintos (AD-056), e valores iguais aqui
+    // tornariam `FR-008`/`SC-001` indistinguível no payload de `FaturarNFCe`.
+    // `semVendedorDefault` reproduz a empresa que nunca configurou vendedor —
+    // `int64` não anulável, então o "vazio" do contrato é `0` (`FR-006`).
+    VendedorCodigo: config.semVendedorDefault ? String(0) : String(21), // int64
+    VendedorNome: config.semVendedorDefault ? '' : 'Mariana Alves',
     CadSerieNFCe: '1',
     // Aponta para o próprio mock do ERP em E2E: o serviço de impressão local
     // real depende da rede do PDV, fora do alcance do CI
@@ -1136,6 +1223,39 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     },
   );
 
+  app.get<{ Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string } }>(
+    '/ApiCentriumOAuth/GetListaVendedores',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.getListaVendedores += 1;
+
+      // Sem nenhum parâmetro de status: `GetListaVendedores` aceita só
+      // `Empresa`, `Txtbusca`, `Pagina` e `Tamanhopagina` (AD-103). Se o
+      // Checkout mandar um filtro de status, ele é ignorado aqui como seria no
+      // ERP — não há dado por trás dele.
+      const termo = (request.query.Txtbusca ?? '').toUpperCase();
+      const todos = VENDEDORES.filter((vendedor) =>
+        String(vendedor['VendedorNome']).toUpperCase().includes(termo),
+      );
+
+      const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
+      const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
+      const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
+      const paginaAtual = Math.min(paginaPedida, totalPaginas);
+      const inicio = (paginaAtual - 1) * registrosPorPagina;
+
+      // Real: flat na raiz, sem envelope `CheckoutListaVendedores` nem
+      // `messages` — `GetListaVendedores` está na lista de AD-165.
+      return reply.send({
+        PaginaAtual: paginaAtual,
+        RegistrosPorPagina: registrosPorPagina,
+        TotalRegistros: todos.length,
+        TotalPaginas: totalPaginas,
+        Vendedores: todos.slice(inicio, inicio + registrosPorPagina),
+      });
+    },
+  );
+
   app.post<{ Body: { Cliente?: Record<string, unknown> } }>(
     '/ApiCentriumOAuth/PostCliente',
     async (request, reply) => {
@@ -1322,6 +1442,15 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * mesma SDT (`CheckoutFaturarNFCe`), padrão de wrapper diferente. Reaproveita
    * os documentos sintéticos de `DAVS` — procurando por `NumeroNota`, que é o
    * mesmo em `ListaNFCes`/`GetListaNFCes` (AD-057).
+   *
+   * **Mas devolve o documento pago**, e é aqui que ele deixa de ser um DAV
+   * (AD-169). Os dois têm o mesmo corpo, e a diferença não é de shape: um DAV é
+   * documento **pendente de cobrança**, e por isso o `documento` compartilhado
+   * nasce com `FormasDePagamento: []`; um rascunho de NFCe é uma venda que foi
+   * **cobrada e depois suspensa**, e volta ao caixa já paga. Até 2026-09-04 o
+   * mock devolvia os dois iguais, e a consequência é que nenhum E2E jamais
+   * exercitou uma retomada de verdade: o carrinho não congelava, e o
+   * congelamento é o comportamento central da venda retomada.
    */
   app.get<{ Querystring: { Numeronota?: string; Serienota?: string } }>(
     '/ApiCentriumOAuth/CarregarNFCe',
@@ -1337,7 +1466,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply.code(404).send({ error: 'NFCe não encontrada' });
       }
 
-      return reply.send(documento);
+      return reply.send({ ...documento, FormasDePagamento: [quitacaoDoRascunho(documento)] });
     },
   );
 

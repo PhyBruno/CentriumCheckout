@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ListaPagamentosAplicados } from '../../../../src/client/features/pagamento/ListaPagamentosAplicados';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
@@ -138,5 +139,66 @@ describe('ListaPagamentosAplicados — a rolagem é da lista e segue a última f
 
     expect(screen.getByTestId('pagamentos-aplicados')).toBeInTheDocument();
     expect(scrollTopsAplicados).toEqual([ALTURA_ROLAVEL]);
+  });
+
+  /**
+   * AD-169. Uma forma que veio no documento retomado carrega um valor **já
+   * recebido**, gravado no rascunho dentro do ERP — removê-la em silêncio
+   * deixaria a NFCe sair sem o pagamento que o cliente fez, num gesto que o
+   * operador daria só para corrigir um item. Mesmo freio do "Limpar" do
+   * cabeçalho: guardar só um dos dois seria um freio contornável sem perceber.
+   */
+  describe('forma vinda do documento retomado pede confirmação para sair', () => {
+    it('remover pede confirmação, e cancelar mantém a forma na venda', async () => {
+      const usuario = userEvent.setup();
+      useVendaStore.setState({
+        pagamentos: [
+          pagamentoDe({ idPagamento: 'pag-doc', valorAplicado: 1_000, veioDeDocumento: true }),
+        ],
+      });
+      renderizarLista();
+
+      await usuario.click(screen.getByTestId('remover-pagamento'));
+
+      const dialogo = screen.getByTestId('confirmar-remocao-documento');
+      expect(dialogo).toHaveTextContent('Este valor já foi recebido');
+      // A consequência fiscal é a frase que precisa sobreviver à leitura rápida.
+      expect(dialogo).toHaveTextContent('a NFCe sai sem o valor que o cliente já pagou');
+
+      await usuario.click(screen.getByTestId('confirmar-remocao-documento-cancelar'));
+
+      expect(screen.queryByTestId('confirmar-remocao-documento')).toBeNull();
+      expect(useVendaStore.getState().pagamentos[0]?.status).toBe('APROVADO');
+    });
+
+    it('confirmar remove — a saída existe, só não é silenciosa', async () => {
+      const usuario = userEvent.setup();
+      useVendaStore.setState({
+        pagamentos: [
+          pagamentoDe({ idPagamento: 'pag-doc', valorAplicado: 1_000, veioDeDocumento: true }),
+        ],
+      });
+      renderizarLista();
+
+      await usuario.click(screen.getByTestId('remover-pagamento'));
+      await usuario.click(screen.getByTestId('confirmar-remocao-documento-confirmar'));
+
+      expect(useVendaStore.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    });
+
+    it('forma lançada pelo operador continua saindo direto, sem diálogo', async () => {
+      const usuario = userEvent.setup();
+      useVendaStore.setState({
+        pagamentos: [
+          pagamentoDe({ idPagamento: 'pag-op', valorAplicado: 1_000, veioDeDocumento: false }),
+        ],
+      });
+      renderizarLista();
+
+      await usuario.click(screen.getByTestId('remover-pagamento'));
+
+      expect(screen.queryByTestId('confirmar-remocao-documento')).toBeNull();
+      expect(useVendaStore.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    });
   });
 });

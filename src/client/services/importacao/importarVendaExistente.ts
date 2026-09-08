@@ -176,6 +176,18 @@ export class ErroCondicaoImportadaIndisponivel extends Error {
 export interface FonteDocumento {
   /** Rótulo propagado às linhas, à identidade da venda e ao cliente. */
   readonly origem: OrigemDocumentoImportado;
+  /**
+   * Nome do vendedor capturado na linha da listagem, ou `null` quando a
+   * listagem não o devolve. Usado só como *fallback* de `VendaImportada.vendedorNome`
+   * — o documento tem prioridade quando o traz (AD-172).
+   *
+   * É **obrigatório** declarar, mesmo sendo `null` para DAV: as duas listagens
+   * divergem justamente aqui — `ListaDAVs` traz o código e, desde AD-169/AD-172,
+   * também o nome quando o ERP o devolve; `GetListaNFCes` sempre trouxe o nome
+   * por extenso —, e um campo opcional deixaria essa diferença passar
+   * despercebida ao escrever uma terceira fonte.
+   */
+  readonly vendedorNome: string | null;
   /** Chamada de rede que devolve o documento completo. */
   carregar(erpClient: ErpClient | undefined): Promise<CheckoutFaturarNFCe>;
   /**
@@ -192,9 +204,6 @@ export interface FonteDocumento {
 /**
  * Portas da orquestração (Dependency Inversion —
  * `specs/006-importacao-dav/contracts/importacao-domain-api.md` §3).
- *
- * `trocarVendedor` ainda chega como stub até a feature 012 existir; ligar a real
- * é trocar o objeto injetado pelo hook, sem tocar neste módulo.
  */
 export interface ImportacaoVendaDeps {
   /**
@@ -236,7 +245,13 @@ export interface ImportacaoVendaDeps {
   resolverCliente(codigo: number): Promise<ClienteCheckout>;
   /** Feature 005 — já ligada à origem correta pelo hook que monta as portas. */
   selecionarCliente(cliente: ClienteCheckout): Promise<unknown>;
-  /** Feature 012 — stub até a seleção de vendedor existir. */
+  /**
+   * Feature 012 — sobrescreve o vendedor da venda pelo do documento.
+   *
+   * A **origem** (`'DAV'`/`'RASCUNHO'`) não entra aqui: quem monta a porta já
+   * sabe a procedência e a fecha na ligação com o slice, pela mesma razão de
+   * `selecionarCliente` acima. Esta orquestração é genérica quanto à fonte.
+   */
   trocarVendedor(vendedor: { readonly codigo: number; readonly nome: string | null }): void;
   /**
    * Feature 008 — resolve `CondicaoPagamentoCodigo` do documento contra o
@@ -317,7 +332,7 @@ export async function importarVendaExistente(
   }
 
   const documento = await fonte.carregar(deps.erpClient);
-  const venda = mapearVendaExistente(documento);
+  const venda = mapearVendaExistente(documento, fonte.vendedorNome);
   const cliente = await deps.resolverCliente(venda.clienteCodigo);
 
   // Condição do documento, ainda na fase de rede (AD-168).

@@ -10,11 +10,16 @@ import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries
 import { useVendaStore } from '../../stores/vendaStore';
 import { iconeDoPagamento } from './iconePorMeio';
 import {
+  AVISO_PAGAMENTO_DO_DOCUMENTO,
+  CHAMADA_VALOR_JA_RECEBIDO,
+  DESTAQUE_NFCE_SAI_SEM_O_VALOR,
+} from './avisosPagamentoDoDocumento';
+import {
   AVISO_DESASSOCIACAO_MANUAL,
   CHAMADA_PIX_NAO_E_CANCELADO,
   DESTAQUE_PIX_SEGUE_NO_BANCO,
 } from './pix/avisosPix';
-import { DialogoConfirmacaoPix } from './pix/DialogoConfirmacaoPix';
+import { DialogoConfirmacaoDestrutiva } from './DialogoConfirmacaoDestrutiva';
 import { ModalPix } from './pix/ModalPix';
 
 /**
@@ -106,7 +111,14 @@ export function ListaPagamentosAplicados(): ReactElement | null {
   }
 
   /**
-   * Remover PIX pede confirmação; qualquer outra forma sai direto.
+   * Remover PIX — ou uma forma vinda do documento — pede confirmação; qualquer
+   * outra sai direto.
+   *
+   * A forma importada entrou aqui pela retomada de um rascunho já pago
+   * (AD-169): o valor foi recebido por outro operador e está gravado no
+   * documento dentro do ERP. Removê-la em silêncio é o mesmo estrago do
+   * "Limpar" do cabeçalho, alcançado por outro botão — guardar só um dos dois
+   * seria um freio que o operador contorna sem perceber.
    *
    * O desvio acontece **aqui**, e não dentro do slice, porque o slice não pode
    * abrir janela nem esperar por uma resposta do operador sem virar assíncrono —
@@ -118,12 +130,20 @@ export function ListaPagamentosAplicados(): ReactElement | null {
    * `FORMA_PAGAMENTO_REMOVIDA` é `removerPagamento`, e a confirmação só decide
    * **se** ela é chamada.
    */
+  // Qual das duas confirmações abrir: a do valor já recebido tem precedência
+  // sobre a do PIX, mas na prática as duas nunca coincidem — o que vem do
+  // documento entra com `integracao: 'NENHUMA'`.
+  const aConfirmarVeioDeDocumento =
+    idAConfirmar !== null &&
+    (pagamentos.find((pagamento) => pagamento.idPagamento === idAConfirmar)?.veioDeDocumento ??
+      false);
+
   function pedirRemocao(idPagamento: string): void {
     const alvo = pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
     if (alvo === undefined) {
       return;
     }
-    if (alvo.integracao === 'PIX_DINAMICO') {
+    if (alvo.veioDeDocumento || alvo.integracao === 'PIX_DINAMICO') {
       setIdAConfirmar(idPagamento);
       return;
     }
@@ -206,24 +226,42 @@ export function ListaPagamentosAplicados(): ReactElement | null {
 
       {cobrancaPix}
 
-      {idAConfirmar !== null && (
-        <DialogoConfirmacaoPix
-          testId="confirmar-remocao-pix"
-          titulo="Remover o PIX da venda?"
-          subtitulo="A cobrança já foi gerada no banco"
-          chamada={CHAMADA_PIX_NAO_E_CANCELADO}
-          explicacao={AVISO_DESASSOCIACAO_MANUAL}
-          destaque={DESTAQUE_PIX_SEGUE_NO_BANCO}
-          rotuloConfirmar="Remover mesmo assim"
-          onConfirmar={() => {
-            removerPagamento(idAConfirmar);
-            setIdAConfirmar(null);
-          }}
-          onCancelar={() => {
-            setIdAConfirmar(null);
-          }}
-        />
-      )}
+      {idAConfirmar !== null &&
+        (aConfirmarVeioDeDocumento ? (
+          <DialogoConfirmacaoDestrutiva
+            testId="confirmar-remocao-documento"
+            titulo="Remover o pagamento vindo do documento?"
+            subtitulo="Esta venda foi retomada já paga"
+            chamada={CHAMADA_VALOR_JA_RECEBIDO}
+            explicacao={AVISO_PAGAMENTO_DO_DOCUMENTO}
+            destaque={DESTAQUE_NFCE_SAI_SEM_O_VALOR}
+            rotuloConfirmar="Remover mesmo assim"
+            onConfirmar={() => {
+              removerPagamento(idAConfirmar);
+              setIdAConfirmar(null);
+            }}
+            onCancelar={() => {
+              setIdAConfirmar(null);
+            }}
+          />
+        ) : (
+          <DialogoConfirmacaoDestrutiva
+            testId="confirmar-remocao-pix"
+            titulo="Remover o PIX da venda?"
+            subtitulo="A cobrança já foi gerada no banco"
+            chamada={CHAMADA_PIX_NAO_E_CANCELADO}
+            explicacao={AVISO_DESASSOCIACAO_MANUAL}
+            destaque={DESTAQUE_PIX_SEGUE_NO_BANCO}
+            rotuloConfirmar="Remover mesmo assim"
+            onConfirmar={() => {
+              removerPagamento(idAConfirmar);
+              setIdAConfirmar(null);
+            }}
+            onCancelar={() => {
+              setIdAConfirmar(null);
+            }}
+          />
+        ))}
     </section>
   );
 }

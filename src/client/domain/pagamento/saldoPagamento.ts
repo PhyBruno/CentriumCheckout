@@ -53,6 +53,26 @@ export interface PagamentoAplicado {
   readonly dadosTEF: DadosTEF | null;
   readonly pixGuid: string | null;
   readonly ticketDevolucao: string | null;
+  /**
+   * A forma entrou **com o documento** (DAV importado ou rascunho de NFCe
+   * retomado), não por um gesto do operador nesta venda.
+   *
+   * Não muda nada no cálculo do saldo nem no payload — é a mesma forma
+   * aprovada, com o mesmo valor. Muda o que o Checkout **diz** ao operador em
+   * dois pontos, e é por isso que o campo existe em vez de ser inferido:
+   *
+   * 1. a grid trava assim que a retomada termina, e a causa não é um gesto
+   *    dele — o aviso precisa nomear o documento, senão a frase acusa o
+   *    operador de algo que ele não fez;
+   * 2. "Limpar" sobre esta forma joga fora o registro de um valor que **já foi
+   *    recebido** e está gravado no documento dentro do ERP, o que é bem mais
+   *    grave do que descartar uma cobrança que ele acabou de digitar.
+   *
+   * Inferir de `identidadeVenda.origem` não serviria: a venda importada de um
+   * DAV pendente de cobrança recebe formas do operador depois, e elas ficariam
+   * marcadas como se tivessem vindo do documento.
+   */
+  readonly veioDeDocumento: boolean;
 }
 
 /** Derivado, nunca armazenado — seletor puro sobre carrinho + pagamentos. */

@@ -12,6 +12,7 @@ import { Skeleton } from 'boneyard-js/react';
 import { gooeyToast } from 'goey-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import {
   documentoEhPessoaJuridica,
@@ -143,6 +144,7 @@ export function ModalBuscaCliente({
   });
 
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
   // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
   // animação de saída (`usePresenca`).
@@ -176,6 +178,7 @@ export function ModalBuscaCliente({
       }}
     >
       <div
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Consultar cliente"
@@ -324,16 +327,6 @@ export function ModalBuscaCliente({
                 <ChevronRight className="size-3.5" aria-hidden="true" />
               </Button>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              onClick={onFechar}
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              Cancelar
-            </Button>
           </footer>
         )}
       </div>

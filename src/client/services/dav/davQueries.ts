@@ -231,13 +231,22 @@ export async function fetchDav(
  * Todo o resto — pré-condição, ordem dos efeitos, atomicidade, resolução de
  * descrição — é o comportamento comum, que a 011 executa idêntico.
  *
- * @param dav Linha selecionada na listagem. Só `numeroDav` é lido dela —
- * `clienteCodigo` vem sempre da resposta de `GetDav`, nunca da lista, e o nome
- * do cliente é resolvido por `resolverCliente` (AD-115), não capturado aqui.
+ * @param dav Linha selecionada na listagem. `clienteCodigo` vem sempre da
+ * resposta de `GetDav`, nunca da lista, e o nome do cliente é resolvido por
+ * `resolverCliente` (AD-115), não capturado aqui. `vendedorNome`, quando
+ * presente na linha, vira *fallback* de `mapearVendaExistente` (AD-172).
  */
-export function fonteDav(dav: { readonly numeroDav: string }): FonteDocumento {
+export function fonteDav(dav: {
+  readonly numeroDav: string;
+  readonly vendedorNome?: string | null;
+}): FonteDocumento {
   return {
     origem: 'DAV',
+    // `ListaDAVs` ganhou `VendedorNome` em AD-169 (`DavListado.vendedorNome`,
+    // acima) — passado como *fallback* de `mapearVendaExistente` (AD-172),
+    // atrás do campo do próprio documento. `?? null` cobre o call site que só
+    // passa `numeroDav` (nenhuma linha da listagem em mãos).
+    vendedorNome: dav.vendedorNome ?? null,
     carregar: (erpClient) => fetchDav(dav.numeroDav, erpClient === undefined ? {} : { erpClient }),
     // `numeroDav` existe só nesta trilha local: não é reenviado a `FaturarNFCe`
     // (AD-107), onde o vínculo com a origem é o `NumeroNota`.

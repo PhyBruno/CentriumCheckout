@@ -1,8 +1,9 @@
 import { Ticket, TicketCheck, TriangleAlert, X } from 'lucide-react';
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
@@ -62,7 +63,6 @@ export function ModalValeDevolucao({
   /** `null` = sem pergunta pendente; preenchido = painel de confirmação em tela. */
   const [excedente, setExcedente] = useState<ExcedenteDeVale | null>(null);
   const resolverExcedente = useRef<((confirmado: boolean) => void) | null>(null);
-  const refDialogo = useRef<HTMLDivElement>(null);
 
   const aplicarValeDevolucao = useVendaStore((estado) => estado.aplicarValeDevolucao);
 
@@ -94,7 +94,40 @@ export function ModalValeDevolucao({
     };
   }, [aberto, onFechar]);
 
+  /**
+   * Fechar a janela **responde não** a uma pergunta de excedente pendente
+   * (AD-170).
+   *
+   * Antes havia dois caminhos: "Cancelar" recusava o excedente, o "X" fechava.
+   * Com o "Cancelar" removido — ele duplicava o "X" no estado normal —, sem
+   * esta recusa a `Promise` pendurada em `resolverExcedente` nunca resolveria:
+   * `aplicar()` ficaria suspensa para sempre com `enviando = true`, e o slice
+   * seguiria esperando um veredito que não viria. Fechar é a recusa natural: o
+   * operador saiu sem responder.
+   *
+   * Fica num efeito sobre `aberto`, e não em cada botão, porque as saídas são
+   * várias — "X", ESC, e o que a feature acrescentar depois — e uma delas
+   * esquecida traria o travamento de volta.
+   */
+  useEffect(() => {
+    if (aberto || resolverExcedente.current === null) {
+      return;
+    }
+    resolverExcedente.current(false);
+    resolverExcedente.current = null;
+    setExcedente(null);
+  }, [aberto]);
+
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
+  /**
+   * Substitui o laço de foco próprio que esta janela mantinha (AD-170): ela era
+   * a **única** da base com trava, escrita à mão sobre `onKeyDown` do diálogo.
+   * O ouvinte local só via a tecla com o foco já dentro — bastava um clique no
+   * backdrop para o Tab escapar —, e não devolvia o foco ao fechar. O hook
+   * compartilhado resolve os dois e ainda cede a vez à confirmação de excedente
+   * que abre por cima.
+   */
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
   if (!montado) {
     return null;
@@ -146,42 +179,10 @@ export function ModalValeDevolucao({
     setExcedente(null);
   }
 
+
   const confirmar = acaoBloqueavel(motivoBloqueio, () => {
     void aplicar();
   });
-
-  /**
-   * Prende o foco no diálogo enquanto ele está aberto (requisito de
-   * acessibilidade desta feature). Tab a partir do último focável volta ao
-   * primeiro, e Shift+Tab do primeiro vai ao último — sem isso o foco escapa
-   * para a tela de venda por baixo, que está inerte para o operador.
-   */
-  function prenderFoco(evento: KeyboardEvent<HTMLDivElement>): void {
-    if (evento.key !== 'Tab') {
-      return;
-    }
-    const raiz = refDialogo.current;
-    if (raiz === null) {
-      return;
-    }
-    const focaveis = raiz.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
-    const primeiro = focaveis[0];
-    const ultimo = focaveis[focaveis.length - 1];
-    if (primeiro === undefined || ultimo === undefined) {
-      return;
-    }
-    if (evento.shiftKey && document.activeElement === primeiro) {
-      evento.preventDefault();
-      ultimo.focus();
-      return;
-    }
-    if (!evento.shiftKey && document.activeElement === ultimo) {
-      evento.preventDefault();
-      primeiro.focus();
-    }
-  }
 
   return (
     <div
@@ -192,7 +193,7 @@ export function ModalValeDevolucao({
       data-testid="modal-vale-devolucao"
     >
       <div
-        ref={refDialogo}
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Vale devolução"
@@ -200,7 +201,6 @@ export function ModalValeDevolucao({
           'flex max-h-full w-full max-w-[480px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
         )}
-        onKeyDown={prenderFoco}
       >
         <header className="flex h-[78px] shrink-0 items-center justify-between gap-sm border-b border-border px-lg">
           <div className="flex items-center gap-sm">
@@ -297,27 +297,9 @@ export function ModalValeDevolucao({
         </div>
 
         <footer className="flex h-[60px] shrink-0 items-center justify-end gap-[10px] border-t border-border px-lg">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-            data-testid="cancelar-vale-devolucao"
-            // Com a pergunta do excedente em tela, "Cancelar" responde **não** e
-            // devolve o operador ao campo, em vez de fechar a janela: ele acabou
-            // de digitar o código e a saída provável é tentar outro, não desistir
-            // do vale.
-            onClick={() => {
-              if (excedente === null) {
-                onFechar();
-              } else {
-                responderExcedente(false);
-              }
-            }}
-          >
-            <X className="size-3.5" aria-hidden="true" />
-            Cancelar
-          </Button>
+          {/* Sem "Cancelar" (AD-170): ele fazia o que o "X" do cabeçalho já
+              faz. A recusa do excedente passou para o próprio fechamento — ver
+              `fechar()`. */}
           {excedente === null ? (
             <Button
               type="button"

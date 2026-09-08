@@ -85,7 +85,8 @@ function renderizar(cenario: Cenario) {
 }
 
 beforeEach(() => {
-  useSessionStore.setState({ estado: 'pronto', registro: registroBootstrapDe() });
+  const registro = registroBootstrapDe({ VendedorCodigo: 7, VendedorNome: 'Fulano' });
+  useSessionStore.setState({ estado: 'pronto', registro });
   const venda = useVendaStore.getState();
   venda.resetarAuditoria('NOVA');
   venda.resetarIdentidadeVenda();
@@ -95,6 +96,11 @@ beforeEach(() => {
   // próximo — e `selecionarCliente`/`editarItem` viram no-op silencioso, que é
   // exatamente o bloqueio de I7 funcionando fora de hora.
   venda.limparPagamentos();
+  // Vendedor default presente (feature 012, `FR-005`): mesmo estado que
+  // `abrirSessaoDeVenda` produz numa venda real. Sem isto, `AcoesFinaisVenda`
+  // bloquearia "Finalizar venda" por falta de vendedor (`FR-006`/`SC-003`) em
+  // testes que não são sobre essa regra.
+  venda.inicializarVendedorPadrao(registro.SessaoUsuario);
   useVendaStore.setState({ linhas: [linhaDe({ quantidadeEmUnidades: 2, precoUnitario: 1000 })] });
 });
 
@@ -640,6 +646,22 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
     renderizarAcoes(cenario);
 
     expect(screen.getByTestId('botao-finalizar-venda')).toBeEnabled();
+  });
+
+  // `FR-006`/`SC-003` (feature 012): nenhuma venda é finalizada sem vendedor
+  // associado — empresa sem default configurado e sem seleção manual do
+  // operador não pode chegar a `FaturarNFCe` com `vendedorCodigo: 0`.
+  it('desabilita "Finalizar venda" sem vendedor associado à venda', () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
+    const total = useVendaStore.getState().saldo().totalLiquido;
+    useVendaStore.setState({
+      pagamentos: [pagamentoDe({ valorAplicado: total })],
+      vendedorAtual: null,
+    });
+
+    renderizarAcoes(cenario);
+
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
   });
 
   it('recusa FATURAR sem valor mesmo quando acionado fora do botão', async () => {

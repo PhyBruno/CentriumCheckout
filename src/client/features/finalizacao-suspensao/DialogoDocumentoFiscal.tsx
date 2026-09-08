@@ -2,6 +2,7 @@ import { AlertTriangle, ExternalLink, FileText, Printer } from 'lucide-react';
 import { gooeyToast } from 'goey-toast';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import {
   decidirMecanismoImpressao,
   type TipoImpressao,
@@ -84,6 +85,8 @@ export function DialogoDocumentoFiscal({
   abrirPdf = abrirPdfNFCe,
 }: DialogoDocumentoFiscalProps): ReactElement | null {
   const mecanismo = decidirMecanismoImpressao(tipoImpressao);
+  // `true`: sem prop de abertura — o pai só renderiza este diálogo aberto.
+  const janelaRef = useFocoDeModal<HTMLDivElement>(true);
 
   const [estado, setEstado] = useState<EstadoEntrega>(
     mecanismo === 'direta' ? { tipo: 'imprimindo' } : { tipo: 'concluida' },
@@ -179,6 +182,7 @@ export function DialogoDocumentoFiscal({
       data-testid="dialogo-documento-fiscal"
     >
       <div
+        ref={janelaRef}
         role="dialog"
         aria-modal="true"
         aria-label="Documento fiscal"

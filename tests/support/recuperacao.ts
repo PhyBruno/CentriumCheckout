@@ -115,9 +115,43 @@ export function respostaListaNFCes(
   };
 }
 
-/** Resposta de `CarregarNFCe` — mesmo envelope nomeado de `GetDav` no YAML. */
+/**
+ * Resposta de `CarregarNFCe` — mesmo envelope nomeado de `GetDav` no YAML.
+ *
+ * A forma de pagamento é **sobrescrita** para `formaDinheiroDoRascunho`, e não
+ * herdada de `documentoDoDav`: aquela fixture usa `FormaMeioPagtoNFe: '01'`, o
+ * código numérico da NFe, num campo que o ERP preenche com nomes (AD-023).
+ * `importarFormasDePagamento` descarta o meio desconhecido em silêncio (só um
+ * `console.warn`), então todo teste que passasse por aqui hidratava uma venda
+ * **sem pagamento nenhum** acreditando ter um — foi o que escondeu o passo 4 do
+ * Cenário 2 até 2026-09-04, e a correção de então só alcançou
+ * `respostaRascunhoCompleto`, não este ponto de entrada.
+ *
+ * `FormaValor` continua 18,50 (o mesmo de `formaDePagamentoDoDav`) para não
+ * mexer no total dos testes de schema, que afirmam a conversão para 1850.
+ */
 export function respostaCarregarNFCe(
   sobrescritas: Record<string, unknown> = {},
 ): Record<string, unknown> {
-  return { OutCheckoutFaturarNFCe: documentoDoDav(sobrescritas) };
+  return {
+    OutCheckoutFaturarNFCe: documentoDoDav({
+      FormasDePagamento: [formaDinheiroDoRascunho({ FormaValor: 18.5 })],
+      ...sobrescritas,
+    }),
+  };
+}
+
+/**
+ * Rascunho suspenso **antes** de ser cobrado — `FormasDePagamento` vazio.
+ *
+ * Existe porque uma forma aprovada congela o carrinho (`podeMutarCarrinho`,
+ * I7): qualquer cenário que precise mexer no carrinho **depois** da retomada
+ * (`FR-008`, reinserção manual) só é alcançável a partir de um rascunho sem
+ * pagamento. Não é artifício de teste — é o rascunho que o operador suspendeu
+ * no meio da digitação, antes da tela de pagamento.
+ */
+export function respostaRascunhoSemPagamento(
+  sobrescritas: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return respostaCarregarNFCe({ FormasDePagamento: [], ...sobrescritas });
 }

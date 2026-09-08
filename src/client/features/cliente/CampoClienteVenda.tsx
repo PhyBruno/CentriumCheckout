@@ -18,6 +18,7 @@ import {
   formatarDocumento,
   MOTIVO_VENDA_PESSOA_JURIDICA,
 } from '../../domain/cliente/documento';
+import { CampoVendedorVenda } from '../vendedor/CampoVendedorVenda';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
@@ -528,25 +529,40 @@ export function CampoClienteVenda(): ReactElement {
               </Button>
             </div>
 
-            <div className="flex h-[42px] w-[243px] items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-              <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
-                <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
-                {/* Sem contato, o campo se comporta como um placeholder — texto
-                    e cor secundária, como o "Bipe ou digite" da barra de produto
-                    (pedido do usuário, 2026-09-03). O traço anterior era ambíguo:
-                    lido rápido, parecia um contato curto ou um campo quebrado, e
-                    não dizia que o cadastro simplesmente não tem telefone. */}
-                <span
-                  className={cn(
-                    'truncate text-base font-medium',
-                    contatoDoCliente === null ? 'text-muted-foreground' : 'text-foreground',
-                  )}
-                  data-testid="contato-cliente"
-                >
-                  {contatoDoCliente ?? 'Não informado'}
+            {/* Segunda linha de campos do card (`p1hDEL`): Contato à esquerda,
+                com 243px fixos, e o par "Campo vendedor NFCe" + lupa ocupando o
+                resto, a 24px de distância — exatamente como o Pencil posiciona
+                (`AJhcG` começa em 267px, logo depois dos 243px do contato).
+
+                O componente de vendedor é da feature 012 e mora em
+                `features/vendedor/`: este card só o **compõe**, sem conhecer o
+                slice dele. É a mesma relação que a linha de cima já tem com o
+                modal de busca de cliente — nenhum estado atravessa daqui para
+                lá. */}
+            <div className="flex items-center gap-lg">
+              <div className="flex h-[42px] w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+                <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
+                  <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
+                  {/* Sem contato, o campo se comporta como um placeholder —
+                      texto e cor secundária, como o "Bipe ou digite" da barra de
+                      produto (pedido do usuário, 2026-09-03). O traço anterior
+                      era ambíguo: lido rápido, parecia um contato curto ou um
+                      campo quebrado, e não dizia que o cadastro simplesmente não
+                      tem telefone. */}
+                  <span
+                    className={cn(
+                      'truncate text-base font-medium',
+                      contatoDoCliente === null ? 'text-muted-foreground' : 'text-foreground',
+                    )}
+                    data-testid="contato-cliente"
+                  >
+                    {contatoDoCliente ?? 'Não informado'}
+                  </span>
                 </span>
-              </span>
+              </div>
+
+              <CampoVendedorVenda />
             </div>
           </div>
         </div>
