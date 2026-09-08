@@ -120,6 +120,10 @@ export interface VendedorSlice extends VendedorState {
    *
    * `origem` é o segundo parâmetro **opcional** para preservar sem alteração a
    * chamada de 2 argumentos que a feature 006 já reservou.
+   *
+   * Um `codigo <= 0` no documento significa "sem vendedor" (o `int64` não
+   * anulável do ERP) e resulta em `vendedorAtual = null`, não num snapshot de
+   * código zero — I1 continua valendo depois de uma retomada.
    */
   trocarVendedor(
     vendedor: { readonly codigo: number; readonly nome: string | null },
@@ -172,7 +176,26 @@ export function criarVendedorSlice(
       // Reescolher quem já está na venda não é troca: registrar
       // `VENDEDOR_TROCADO` com anterior === novo mandaria ao ERP, no `Log` de
       // `FaturarNFCe`, uma troca que não aconteceu.
+      //
+      // Sair sem gravar, porém, é outra coisa — e era um defeito (revisão da
+      // 012, 2026-09-08): o vendedor que entra por importação de DAV chega com
+      // `nome: null` (AD-095) e o campo exibe `"Vendedor #<codigo>"`. Reabrir o
+      // modal e clicar nesse mesmo vendedor é exatamente o gesto que o Cenário
+      // 7 do `quickstart.md` prevê para resolver o rótulo, e o early-return o
+      // tornava um no-op: o "Vendedor #N" ficava na tela até o fim da venda.
+      // O snapshot é regravado com o nome e a origem novos — sem evento e sem
+      // mexer em `houveEscolhaExplicitaDeVendedor`, que continuam valendo só
+      // para troca de vendedor de fato.
       if (anterior?.codigo === vendedor.codigo) {
+        if (anterior.nome !== vendedor.nome || anterior.origem !== 'BUSCA') {
+          set((state) => {
+            state.vendedorAtual = {
+              codigo: vendedor.codigo,
+              nome: vendedor.nome,
+              origem: 'BUSCA',
+            };
+          });
+        }
         return;
       }
 
@@ -203,7 +226,19 @@ export function criarVendedorSlice(
 
     trocarVendedor: (vendedor, origem = 'DAV') => {
       set((state) => {
-        state.vendedorAtual = { codigo: vendedor.codigo, nome: vendedor.nome, origem };
+        // `codigo <= 0` **não** é vendedor: é o mesmo "vazio" que
+        // `semVendedorDefault` lê no bootstrap, porque `vendedorCodigo` é
+        // `int64` não anulável no ERP e um documento sem vendedor volta com
+        // `0`. Gravá-lo como snapshot deixaria `vendedorAtual` não-nulo e
+        // destravaria o botão "Finalizar" da 004 (`AcoesFinaisVenda.tsx`
+        // testa `vendedorAtual === null`), faturando a NFCe com
+        // `vendedorCodigo: 0` e furando `FR-006`/`SC-003` — com o campo
+        // exibindo "Vendedor #0". O caminho é real: empresa sem vendedor
+        // default deixa a venda em `null`, suspender não exige vendedor e
+        // manda `0` ao ERP, e a retomada pela 011 devolve esse `0` aqui
+        // (revisão da 012, 2026-09-08).
+        state.vendedorAtual =
+          vendedor.codigo > 0 ? { codigo: vendedor.codigo, nome: vendedor.nome, origem } : null;
       });
     },
   });

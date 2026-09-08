@@ -87,11 +87,21 @@ export function useBuscaVendedores(
 ): UseQueryResult<CheckoutListaVendedores, Error> {
   const termoLimpo = termo.trim();
   const pagina = parametros.pagina ?? PAGINA_INICIAL;
+  // `tamanhoPagina` entra na chave porque entra na requisição: fora dela, duas
+  // páginas de tamanhos diferentes compartilhariam cache e a segunda leitura
+  // devolveria a lista da primeira (revisão da 012, 2026-09-08).
+  const tamanhoPagina = parametros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO;
 
   return useQuery({
-    queryKey: ['busca-vendedores', termoLimpo, pagina] as const,
+    queryKey: ['busca-vendedores', termoLimpo, pagina, tamanhoPagina] as const,
     queryFn: () => fetchListaVendedores(termoLimpo, parametros, deps),
     enabled: termoLimpo.length >= parametros.qtdMinCharParaConsulta,
     staleTime: 0,
+    // Trocar de página troca a chave, e sem isto `data` voltava a `undefined`
+    // no intervalo: o rodapé de paginação inteiro desaparecia e reaparecia a
+    // cada clique em "Próxima". Mantendo o resultado anterior como
+    // `placeholderData`, o rodapé fica parado enquanto a lista mostra o
+    // esqueleto de carregamento (`isFetching`).
+    placeholderData: (anterior) => anterior,
   });
 }

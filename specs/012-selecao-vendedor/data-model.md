@@ -31,7 +31,9 @@ export type OrigemVendedor = 'DEFAULT' | 'BUSCA' | 'RASCUNHO' | 'DAV';
 
 **Correção de 2026-09-05** (verificação direta do yaml durante a implementação): a redação anterior desta tabela dava `nome: null` para **as duas** origens, tratando-as como equivalentes. Elas não são. O que falta é o mesmo nos dois casos — `CheckoutFaturarNFCe`, o schema devolvido tanto por `CarregarNFCe` quanto por `GetDav`, tem `vendedorCodigo` e nenhum campo de nome (yaml l. 1475) —, mas a **listagem** que precede cada documento difere: a de rascunhos traz o nome, a de DAVs não. A feature 011 já repassa o nome da listagem (`recuperacaoQueries.ts`), então uma venda retomada exibe o vendedor por extenso. `nome: null` continua sendo um estado representável nas duas origens (a listagem pode devolver o campo em branco), mas **na prática só a importação de DAV o produz**.
 
-**UI**: quando `nome === null`, o campo de vendedor da venda exibe `"Vendedor #<codigo>"` até o operador reabrir o modal e selecionar explicitamente (mesmo padrão de `AD-095`).
+**UI**: quando `nome === null`, o campo de vendedor da venda exibe `"Vendedor #<codigo>"` até o operador reabrir o modal e selecionar explicitamente (mesmo padrão de `AD-095`). **Reselecionar o mesmo vendedor resolve o rótulo** — `selecionarVendedor` regrava o snapshot com o nome vindo de `GetListaVendedores` mesmo quando o código não muda, sem evento de auditoria (o vendedor da venda continua sendo o mesmo). A implementação original saía antes de gravar nesse caso e prendia o campo em `"Vendedor #N"` até o fim da venda — corrigido em 2026-09-08 (AD-183, revisão da 012).
+
+**Código `0` não é vendedor**: `vendedorCodigo` é `int64` não anulável no ERP, então "sem vendedor" chega como `0` — tanto no bootstrap (`SessaoUsuario.VendedorCodigo`) quanto num documento retomado/importado. `trocarVendedor` normaliza `codigo <= 0` para `vendedorAtual = null`, pela mesma leitura que `inicializarVendedorPadrao` já fazia; gravar o `0` como snapshot violaria I1 e destravaria a finalização (AD-183).
 
 ---
 
@@ -48,7 +50,7 @@ export interface VendedorState {
 
 | # | Invariante | Requisito |
 |---|---|---|
-| I1 | `vendedorAtual` só é `null` quando `SessaoUsuario.VendedorCodigo` veio vazio **e** o operador ainda não selecionou nenhum vendedor | `FR-006`, `VEND-07`, AD-053 |
+| I1 | `vendedorAtual` só é `null` quando não há vendedor conhecido — `SessaoUsuario.VendedorCodigo` vazio (ou `0`), ou documento retomado/importado com `vendedorCodigo <= 0` — **e** o operador ainda não selecionou nenhum vendedor | `FR-006`, `VEND-07`, AD-053, AD-183 |
 | I2 | `houveEscolhaExplicita` reseta para `false` só no início/retomada de uma venda (mesmo call site de `resetarAuditoria`, feature 001) — nunca no meio de uma venda em andamento | `research.md` D6 |
 | I3 | A pré-seleção automática do default (`inicializarVendedorPadrao`) e a sobrescrita por retomada/importação (`trocarVendedor` chamado por 004/006/011) nunca alteram `houveEscolhaExplicita` nem disparam evento de auditoria | `research.md` D3, D4, D6 |
 | I4 | `selecionarVendedor`/`trocarVendedor` são no-op quando `podeMutarCarrinho()` retorna `false` (pagamento aprovado) — `vendedorAtual` permanece inalterado | `FR-013`, `VEND-09`, AD-043 |
