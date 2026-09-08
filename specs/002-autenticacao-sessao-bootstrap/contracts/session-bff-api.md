@@ -28,7 +28,7 @@ Este contrato cobre só as rotas que o **BFF do Checkout** expõe para a própri
 
 **Resposta ao navegador**: `302 Found` com header `Set-Cookie`; corpo vazio. Nenhum campo sensível no corpo ou na URL de destino.
 
-**Erros**: `validationKey` inválida → `401` sem chamar o ERP. Falha do ERP em `/oauth/access_token` → repassa o status de erro, sem setar cookie.
+**Erros** (revisado em 2026-09-08, AD-184): toda falha responde `302` para `/?erro=sessao`, **sem** `Set-Cookie` e sem ecoar os valores recebidos — quem chega em `/session/start` é um navegador vindo de um redirect, não um cliente de API, e a SPA mostra o painel terminal ("Não foi possível carregar o checkout com os dados fornecidos" / "Acesse o Checkout novamente pelo CentriumWEB.", sem "Tentar novamente"). Vale para: parâmetros ausentes/inválidos, `validationKey` inválida (ainda rejeitada **antes** de chamar o ERP, AD-022), falha do ERP em `/oauth/access_token` e qualquer erro não tratado. O motivo específico fica só no log do servidor; o parâmetro `erro=sessao` é opaco de propósito.
 
 ## `GET /api/bootstrap`
 

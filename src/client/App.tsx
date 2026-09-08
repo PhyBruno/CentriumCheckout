@@ -16,7 +16,8 @@ import { useSessionStore, telaDeVendaLiberada } from './stores/sessionStore';
 import { LoadingSkeleton } from './features/session-bootstrap/LoadingSkeleton';
 import { ErrorRetry } from './features/session-bootstrap/ErrorRetry';
 import { SessionExpiredWarning } from './features/session-bootstrap/SessionExpiredWarning';
-import { PainelMensagem } from './features/session-bootstrap/PainelMensagem';
+import { AcessoInvalido } from './features/session-bootstrap/AcessoInvalido';
+import { PARAM_ERRO_ACESSO } from '../shared/erroAcesso';
 import { CampoClienteVenda } from './features/cliente/CampoClienteVenda';
 import { EntradaRapidaProduto } from './features/carrinho/EntradaRapidaProduto';
 import { GridItens } from './features/carrinho/GridItens';
@@ -31,6 +32,19 @@ import { BarraSuperior } from './layout/BarraSuperior';
 import { useLayoutCompacto } from './layout/usePlataforma';
 import { usePollingStatusSistema } from './services/statusSistema/pollingStatusSistema';
 import { abrirSessaoDeVenda, useVendaStore } from './stores/vendaStore';
+
+/**
+ * O BFF recusou o redirect de entrada e mandou o navegador para `/?erro=sessao`
+ * (ver `src/shared/erroAcesso.ts`). Lido uma única vez, na montagem: é uma
+ * condição da URL de chegada, não um estado que muda durante a venda.
+ */
+function acessoRecusadoNaEntrada(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return new URLSearchParams(window.location.search).has(PARAM_ERRO_ACESSO);
+}
 
 export interface AppProps {
   /** Injetáveis para teste — em produção usam os padrões reais. */
@@ -52,10 +66,11 @@ export function App({
   criarAnalisador = criarAnalisadorViaWorker,
   leitorCarrinho = leitorCarrinhoVazio,
 }: AppProps = {}): ReactElement {
-  const { estado, mensagemErro, itensNaVenda } = useSessionStore(
+  // `mensagemErro` continua no store (é o registro da causa técnica), mas não é
+  // lido aqui: a tela de falha mostra uma única mensagem, sempre a mesma.
+  const { estado, itensNaVenda } = useSessionStore(
     useShallow((s) => ({
       estado: s.estado,
-      mensagemErro: s.mensagemErro,
       itensNaVenda: s.itensNaVenda,
     })),
   );
@@ -75,6 +90,8 @@ export function App({
    * disparar dois carregamentos concorrentes no duplo clique.
    */
   const [carregando, setCarregando] = useState(false);
+
+  const acessoRecusado = useMemo(acessoRecusadoNaEntrada, []);
 
   const carregar = useCallback(async (): Promise<void> => {
     const { iniciarCarregamento, concluir, falhar, encerrarSessao } = useSessionStore.getState();
@@ -109,13 +126,23 @@ export function App({
   }, [criarAnalisador, leitorCarrinho, repositorioEfetivo]);
 
   useEffect(() => {
+    // Sem dados de acesso válidos não há o que carregar: chamar `/api/bootstrap`
+    // aqui só trocaria o painel terminal por um 401 e a mesma tela no fim.
+    if (acessoRecusado) {
+      return;
+    }
+
     void carregar();
 
     return () => {
       analisadorRef.current?.encerrar();
       analisadorRef.current = null;
     };
-  }, [carregar]);
+  }, [acessoRecusado, carregar]);
+
+  if (acessoRecusado) {
+    return <AcessoInvalido />;
+  }
 
   if (estado === 'sessao-encerrada') {
     // Com venda em digitação, avisa antes de encerrar (FR-006); com carrinho
@@ -128,17 +155,15 @@ export function App({
         }}
       />
     ) : (
-      <PainelMensagem
-        titulo="Sessão encerrada"
-        texto="Reabra o Checkout a partir do ERP para continuar."
-      />
+      // Carrinho vazio: nada a perder e nada a repetir daqui — o operador
+      // precisa de um novo redirect do CentriumWEB, e é o que o painel diz.
+      <AcessoInvalido />
     );
   }
 
   if (estado === 'erro-recuperavel') {
     return (
       <ErrorRetry
-        mensagem={mensagemErro ?? 'Falha ao carregar a configuração do ponto de venda.'}
         tentando={carregando}
         onTentarNovamente={() => {
           void carregar();
