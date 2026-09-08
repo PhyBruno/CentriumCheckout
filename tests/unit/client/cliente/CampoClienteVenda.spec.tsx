@@ -97,3 +97,46 @@ describe('CampoClienteVenda — foco pedido de fora (pedido do usuário, 2026-09
     });
   });
 });
+
+/**
+ * Correção do usuário (2026-09-08, AD-181): a pílula do cabeçalho lia
+ * `SessaoUsuario.VendedorNome` — o default do PDV — e ficava presa nele depois
+ * de o operador trocar o vendedor da venda no campo logo abaixo.
+ */
+describe('CampoClienteVenda — a pílula de vendedor segue o vendedor da venda', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [], vendedorAtual: null });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useFocoVendaStore.setState({ pedidosDeFocoNoDocumento: 0 });
+  });
+
+  it('não aparece enquanto a venda não tem vendedor (FR-006)', () => {
+    renderCard();
+
+    expect(screen.queryByTestId('pilula-vendedor')).toBeNull();
+  });
+
+  it('mostra o vendedor da venda, e acompanha a troca', () => {
+    renderCard();
+
+    act(() => {
+      useVendaStore.getState().trocarVendedor({ codigo: 21, nome: 'Mariana Alves' }, 'RASCUNHO');
+    });
+    expect(screen.getByTestId('pilula-vendedor')).toHaveTextContent('Mariana Alves');
+
+    act(() => {
+      useVendaStore.getState().selecionarVendedor({ codigo: 35, nome: 'Marta Souza' });
+    });
+    expect(screen.getByTestId('pilula-vendedor')).toHaveTextContent('Marta Souza');
+  });
+
+  it('cai no código quando o vendedor veio sem nome (AD-095)', () => {
+    renderCard();
+
+    act(() => {
+      useVendaStore.getState().trocarVendedor({ codigo: 12, nome: null }, 'DAV');
+    });
+    expect(screen.getByTestId('pilula-vendedor')).toHaveTextContent('Vendedor #12');
+  });
+});

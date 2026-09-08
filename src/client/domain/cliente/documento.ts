@@ -107,7 +107,25 @@ export type EntradaCliente =
    * consultar — o valor não chega ao ERP.
    */
   | { readonly tipo: 'PESSOA_JURIDICA' }
+  /**
+   * A entrada tem letra (ou qualquer caractere que não seja dígito nem
+   * pontuação de máscara): nem código do cliente nem CPF têm letra
+   * (correção do usuário, 2026-09-08, AD-181).
+   *
+   * É caso próprio, e não `INVALIDO`, porque quem chama precisa **avisar** o
+   * operador. Descartar as letras em silêncio, como `apenasDigitos` faz,
+   * transformava `1255a` em `1255` — o código do cliente que já estava na
+   * venda —, a consulta era engolida pela guarda de "mesmo cliente" e o TAB
+   * saía do campo sem erro nenhum, com a letra ainda em tela.
+   */
+  | { readonly tipo: 'NAO_NUMERICO' }
   | { readonly tipo: 'INVALIDO' };
+
+/**
+ * Dígitos e a pontuação que a máscara de leitura produz (`.`, `-`, `/`) mais
+ * espaço. Tudo o que sobra — letra, `@`, `#` — é entrada não numérica.
+ */
+const SOMENTE_DIGITOS_E_MASCARA = /^[\d.\-/\s]*$/;
 
 /**
  * Faixas do campo "CPF/CNPJ" da venda: até 6 dígitos é código do cliente; de 7
@@ -120,10 +138,19 @@ export type EntradaCliente =
  * segunda recusa. A mensagem única também é a única acionável nos dois casos,
  * porque ela diz o que fazer (NFe pelo ERP) *e* o que digitar (CPF ou código).
  *
- * `INVALIDO` sobra para a entrada sem nenhum dígito — só pontuação ou letras.
- * Vazio cai aí também: quem chama trata como "nada a fazer", não como erro.
+ * Letra em qualquer posição é `NAO_NUMERICO` — inclusive junto de dígitos
+ * (`1255a`), que é o caso real do operador que encosta numa tecla de letra ao
+ * digitar o código e sai do campo com TAB.
+ *
+ * `INVALIDO` sobra para a entrada sem nenhum dígito e sem letra — só
+ * pontuação. Vazio cai aí também: quem chama trata como "nada a fazer", não
+ * como erro.
  */
 export function classificarEntradaCliente(texto: string): EntradaCliente {
+  if (!SOMENTE_DIGITOS_E_MASCARA.test(texto)) {
+    return { tipo: 'NAO_NUMERICO' };
+  }
+
   const digitos = apenasDigitos(texto);
 
   if (digitos.length === 0) {

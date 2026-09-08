@@ -19,8 +19,8 @@ import {
   MOTIVO_VENDA_PESSOA_JURIDICA,
 } from '../../domain/cliente/documento';
 import { CampoVendedorVenda } from '../vendedor/CampoVendedorVenda';
+import { rotuloDoVendedor, useVendedorAtual } from '../vendedor/useVendedor';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
-import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
 import { ModalBuscaCliente, type CandidatoEscolhido } from './ModalBuscaCliente';
@@ -42,12 +42,22 @@ import { useIdentificacaoCliente } from './useCliente';
  * pedido do usuário 2026-09-04) — recolhido, o campo é `inert` e o gesto não
  * teria para onde levar o foco.
  *
- * **A pílula do Vendedor vem de `SessaoUsuario`, não de `GetCliente`**: o
- * schema `ClienteCheckout` do contrato não tem nenhum campo de vendedor
- * (verificado em `ApiCentriumOAuth.yaml`) — o cadastro do cliente não carrega
- * vendedor associado. `VendedorCodigo`/`VendedorNome` são do PDV; trocar o
- * vendedor durante a venda é a feature 012 (`GetListaVendedores`), e o campo
- * "Vendedor NFCe" do mesmo card do desenho pertence a ela.
+ * **A pílula do Vendedor mostra o vendedor da venda (`vendedorAtual`), não o do
+ * bootstrap** (correção do usuário, 2026-09-08, AD-181). Ela lia
+ * `SessaoUsuario.VendedorNome` direto, e por isso continuava exibindo o
+ * vendedor default do PDV mesmo depois de o operador trocar de vendedor no
+ * campo logo abaixo: cabeçalho e campo mostravam nomes diferentes para o mesmo
+ * dado. A fonte agora é `useVendedorAtual()`, o mesmo estado que
+ * `CampoVendedorVenda` exibe e que `montarRetratoVenda` envia ao ERP — o
+ * default do PDV segue aparecendo porque é ele que `inicializarVendedorPadrao`
+ * põe em `vendedorAtual` quando a venda abre (AD-032).
+ *
+ * **O cadastro do cliente não carrega vendedor associado**: o schema
+ * `ClienteCheckout` de `GetCliente` e o `SDTCheckoutListaClientes` de
+ * `GetListaClientes` não têm nenhum campo de vendedor (verificado em
+ * `ApiCentriumOAuth.yaml`, 2026-09-08) — identificar um cliente nunca troca o
+ * vendedor da venda. Quem troca é a feature 012 (`GetListaVendedores`), pelo
+ * campo "Vendedor NFCe" do mesmo card do desenho.
  *
  * **Sem indicador de origem** (`FR-006`, AD-053): a pílula mostra o nome do
  * cliente atual sem distinguir se veio do padrão da empresa (AD-032) ou de uma
@@ -77,7 +87,7 @@ import { useIdentificacaoCliente } from './useCliente';
  */
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
-  const sessao = useSessionStore((estado) => estado.registro?.SessaoUsuario ?? null);
+  const rotuloVendedor = rotuloDoVendedor(useVendedorAtual());
   const { identificarPorDocumento, identificarPorCodigo, cadastrar } = useIdentificacaoCliente();
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
 
@@ -99,6 +109,21 @@ export function CampoClienteVenda(): ReactElement {
    * PDV (`SessaoUsuario`) e não sumiria sozinha.
    */
   const [recusaPessoaJuridica, setRecusaPessoaJuridica] = useState(false);
+
+  /**
+   * A entrada que prende o foco no campo, com o motivo já dito ao operador
+   * (pedido do usuário, 2026-09-08, AD-182): letra no campo e código sem
+   * cadastro **não** deixam o foco passar adiante — o caixa corrige ali mesmo.
+   *
+   * Guardar o `termo` recusado, e não só um booleano, é o que evita a ida
+   * repetida ao ERP: cada nova tentativa de sair do campo dispara o `onBlur`
+   * de novo, e sem esta memória o mesmo código inexistente seria consultado a
+   * cada TAB. Zera na primeira tecla digitada — a partir daí o termo é outro.
+   */
+  const [recusaComFocoPreso, setRecusaComFocoPreso] = useState<{
+    readonly termo: string;
+    readonly mensagem: string;
+  } | null>(null);
 
   /**
    * Contador de pedidos de foco no campo de documento — mesmo motivo do
@@ -268,9 +293,44 @@ export function CampoClienteVenda(): ReactElement {
       ? 'Digite o CPF do consumidor para identificar.'
       : null;
 
+  /**
+   * Recusa que **mantém o operador no campo** (pedido do usuário,
+   * 2026-09-08): avisa o motivo e devolve o foco pelo mesmo contador que
+   * `zerarIdentificacao` usa. O valor digitado continua em tela — é o que o
+   * caixa precisa corrigir, e apagá-lo obrigaria a redigitar o número inteiro
+   * por causa de um dígito errado.
+   */
+  function recusarMantendoFoco(termo: string, mensagem: string): void {
+    setRecusaComFocoPreso({ termo, mensagem });
+    gooeyToast.warning(mensagem);
+    setPedidosDeFocoNoDocumento((atual) => atual + 1);
+  }
+
   async function identificar(): Promise<void> {
     const termo = documento.trim();
     if (termo === '' || buscando) {
+      return;
+    }
+
+    // Tentativa de sair do campo com a mesma entrada já recusada: repete o
+    // aviso e prende o foco de novo, **sem** reconsultar o ERP. Sem esta
+    // guarda, cada TAB sobre um código inexistente custaria um `GetCliente`.
+    if (recusaComFocoPreso !== null && recusaComFocoPreso.termo === termo) {
+      recusarMantendoFoco(termo, recusaComFocoPreso.mensagem);
+      return;
+    }
+
+    // Código ou documento? A contagem de dígitos decide, e o ERP recebe só
+    // dígitos — `GetCliente` tem um parâmetro para cada caso.
+    const entrada = classificarEntradaCliente(termo);
+
+    // Letra no campo é erro do operador, e precisa **vir antes** da guarda de
+    // "mesmo cliente" logo abaixo (correção do usuário, 2026-09-08, AD-181):
+    // aquela guarda compara só dígitos, então `1255a` sobre o cliente 1255
+    // saía do campo em silêncio, com a letra ainda em tela e sem consulta
+    // nenhuma. O foco fica preso até a letra sair (AD-182).
+    if (entrada.tipo === 'NAO_NUMERICO') {
+      recusarMantendoFoco(termo, 'O código do cliente e o CPF são só números: remova as letras.');
       return;
     }
 
@@ -287,10 +347,6 @@ export function CampoClienteVenda(): ReactElement {
     ) {
       return;
     }
-
-    // Código ou documento? A contagem de dígitos decide, e o ERP recebe só
-    // dígitos — `GetCliente` tem um parâmetro para cada caso.
-    const entrada = classificarEntradaCliente(termo);
 
     // Mais de 11 dígitos é pessoa jurídica: a venda não pode acontecer no
     // Checkout (Ajuste SINIEF 11/2025), então o ERP nem é consultado — buscar
@@ -322,13 +378,14 @@ export function CampoClienteVenda(): ReactElement {
         // Código sem cadastro não abre o cadastro simplificado: o operador
         // errou o número, não descobriu um cliente novo — criar um cliente
         // aqui inventaria um cadastro que ele não pediu.
-        // Sem recolher nem mexer no foco, como em todo desfecho de erro: o
-        // card só recolhe quando a venda ficou com um cliente. O valor
-        // continua no campo justamente para o operador corrigir o dígito
-        // errado — por isso aqui não se força o foco de volta, que somado ao
-        // `onBlur` faria a mesma consulta sair de novo a cada TAB.
+        //
+        // O card não recolhe **e o foco não passa adiante** (pedido do
+        // usuário, 2026-09-08, AD-182): o caixa corrige o dígito errado ali
+        // mesmo, com o valor ainda em tela. A repetição de consulta que isso
+        // poderia causar — cada TAB refazendo o mesmo `GetCliente` — é barrada
+        // por `recusaComFocoPreso`, no topo desta função.
         if (entrada.tipo === 'CODIGO') {
-          gooeyToast.warning(`Nenhum cliente com o código ${String(entrada.codigo)}.`);
+          recusarMantendoFoco(termo, `Nenhum cliente com o código ${String(entrada.codigo)}.`);
           return;
         }
         abrirCadastroPara(entrada.documento);
@@ -400,17 +457,17 @@ export function CampoClienteVenda(): ReactElement {
             )}
           </Pilula>
 
-          {/* Vendedor do PDV (`SessaoUsuario`): rótulo, não decisão de venda —
-              sem o dado, a pílula simplesmente não aparece. */}
-          {recusaPessoaJuridica ||
-          sessao?.VendedorNome === undefined ||
-          sessao.VendedorNome === '' ? null : (
+          {/* Vendedor **da venda** (`vendedorAtual`), o mesmo que o campo
+              "Vendedor NFCe" da linha de baixo exibe — sem o dado (empresa sem
+              default e nada escolhido, `FR-006`), a pílula simplesmente não
+              aparece. */}
+          {recusaPessoaJuridica || rotuloVendedor === null ? null : (
             <Pilula
               icone={<UserRound className="size-4.5 text-foreground" />}
               rotulo="Vendedor"
               testId="pilula-vendedor"
             >
-              {sessao.VendedorNome}
+              {rotuloVendedor}
             </Pilula>
           )}
         </div>
@@ -466,6 +523,9 @@ export function CampoClienteVenda(): ReactElement {
                     onChange={(evento) => {
                       setDocumento(evento.target.value);
                       setRecusaPessoaJuridica(false);
+                      // A entrada mudou: o motivo que prendia o foco não vale
+                      // mais para o novo termo (AD-182).
+                      setRecusaComFocoPreso(null);
                     }}
                     // Sair do campo (TAB, clique fora) já dispara a consulta ao
                     // ERP — pedido do usuário, 2026-09-03: no ritmo do caixa, o

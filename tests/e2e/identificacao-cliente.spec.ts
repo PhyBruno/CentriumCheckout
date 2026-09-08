@@ -504,6 +504,35 @@ test.describe('Correções de 2026-09-03 (segunda rodada)', () => {
     );
     await expect(page.getByTestId('campo-codigo-produto')).not.toBeFocused();
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('999999');
+    // O foco volta para o próprio campo (pedido do usuário, 2026-09-08,
+    // AD-182): sem cliente, o caixa corrige o número ali mesmo.
+    await expect(page.getByTestId('campo-documento-cliente')).toBeFocused();
+  });
+
+  test('o TAB não escapa do campo enquanto o código não existir, e sem repetir a consulta', async ({
+    page,
+    request,
+  }) => {
+    // Pedido do usuário (2026-09-08, AD-182). A segunda metade — não repetir o
+    // `GetCliente` — é o que torna a prisão de foco viável: sem a memória do
+    // termo recusado, cada tentativa de sair custaria uma ida ao ERP.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    const campo = page.getByTestId('campo-documento-cliente');
+    await campo.fill('999999');
+    await campo.press('Tab');
+    await expect(campo).toBeFocused();
+    const consultasAposAPrimeira = (await contadores(request)).getCliente;
+
+    await campo.press('Tab');
+    await expect(campo).toBeFocused();
+    expect((await contadores(request)).getCliente).toBe(consultasAposAPrimeira);
+
+    // Corrigido o número, o campo solta o foco normalmente.
+    await campo.fill('2538');
+    await campo.press('Tab');
+    await expect(campo).not.toBeFocused();
   });
 });
 
@@ -530,11 +559,15 @@ test.describe('Ajustes pedidos pelo usuário em 2026-09-03', () => {
     );
   });
 
-  test('a pílula do vendedor vem de SessaoUsuario, não de GetCliente', async ({ page }) => {
+  test('a pílula do vendedor mostra o vendedor da venda, não o cadastro do cliente', async ({
+    page,
+  }) => {
     await abrirTelaDeVenda(page);
 
-    // `ClienteCheckout` não tem campo de vendedor no contrato do ERP; o valor
-    // é o `VendedorNome` do PDV, do bootstrap.
+    // Nenhum dos schemas de cliente do ERP (`ClienteCheckout` de `GetCliente`,
+    // `SDTCheckoutListaClientes` de `GetListaClientes`) tem campo de vendedor:
+    // identificar um cliente não troca o vendedor da venda. O que a pílula lê
+    // é `vendedorAtual`, que abre a venda com o default do PDV (AD-032).
     await expect(page.getByTestId('pilula-vendedor')).toHaveText('Mariana Alves');
   });
 
@@ -791,6 +824,39 @@ test.describe('Código ou documento no mesmo campo (correções de 2026-09-03)',
 
     await expect(page.getByText(TEXTO_RECUSA_PJ).first()).toBeVisible();
     await expect(page.getByTestId('campos-cliente-venda')).not.toHaveAttribute('inert', '');
+    expect((await contadores(request)).getCliente).toBe(0);
+  });
+
+  test('letra no campo avisa ao sair por TAB, mesmo colada no código já identificado', async ({
+    page,
+    request,
+  }) => {
+    // Correção do usuário (2026-09-08, AD-181): a letra era descartada por
+    // `apenasDigitos`, o resto batia com o cliente que já estava na venda e a
+    // guarda de "mesmo cliente" engolia o TAB — o operador saía do campo com
+    // a letra em tela e nenhum aviso.
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    const campo = page.getByTestId('campo-documento-cliente');
+    const codigoDoClienteDefault = await campo.inputValue();
+    await campo.fill(`${codigoDoClienteDefault}a`);
+    await campo.press('Tab');
+
+    await expect(page.getByText(/só números/i).first()).toBeVisible();
+    // Nada foi consultado: a entrada não é código nem CPF.
+    expect((await contadores(request)).getCliente).toBe(0);
+    // O valor digitado fica no campo, para o operador apagar a letra — e o
+    // foco fica com ele (pedido do usuário, 2026-09-08, AD-182).
+    await expect(campo).toHaveValue(`${codigoDoClienteDefault}a`);
+    await expect(campo).toBeFocused();
+
+    // Apagada a letra, o TAB volta a funcionar: o termo passa a ser o código
+    // do cliente que já está na venda, e a guarda de "mesmo cliente" o deixa
+    // sair sem consultar nada.
+    await campo.fill(codigoDoClienteDefault);
+    await campo.press('Tab');
+    await expect(campo).not.toBeFocused();
     expect((await contadores(request)).getCliente).toBe(0);
   });
 

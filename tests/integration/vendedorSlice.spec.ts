@@ -215,6 +215,30 @@ describe('selecionarVendedor (T006, T007)', () => {
     // `Log` de `FaturarNFCe`, uma troca que não aconteceu.
     expect(eventosDeVendedor(store).map((evento) => evento.tipo)).toEqual(['VENDEDOR_SELECIONADO']);
   });
+
+  it('reescolher o mesmo código resolve o "Vendedor #N" da importação (revisão da 012)', () => {
+    const { store } = montarStore();
+
+    // Importação de DAV: o documento tem o código e nenhum nome (AD-095), e o
+    // campo exibe `"Vendedor #33"`.
+    store.getState().trocarVendedor({ codigo: 33, nome: null });
+
+    // `quickstart.md`, Cenário 7: o operador reabre o modal e reseleciona o
+    // mesmo vendedor justamente para o nome aparecer. Antes da correção, o
+    // early-return de "mesmo código" descartava o nome e a tela ficava presa em
+    // `"Vendedor #33"` até o fim da venda.
+    store.getState().selecionarVendedor({ codigo: 33, nome: 'Mariana Alves' });
+
+    expect(store.getState().vendedorAtual).toEqual({
+      codigo: 33,
+      nome: 'Mariana Alves',
+      origem: 'BUSCA',
+    });
+    // Continua não sendo troca: o vendedor da venda é o mesmo, e um
+    // `VENDEDOR_TROCADO` aqui mandaria ao ERP uma troca que não aconteceu.
+    expect(eventosDeVendedor(store)).toEqual([]);
+    expect(store.getState().houveEscolhaExplicitaDeVendedor).toBe(false);
+  });
 });
 
 describe('bloqueio pós-pagamento (T008)', () => {

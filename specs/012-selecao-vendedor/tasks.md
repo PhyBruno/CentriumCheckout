@@ -93,12 +93,17 @@ tests/integration/ | tests/e2e/
 **Purpose**: Gates finais e verificações manuais que o E2E não cobre.
 
 - [X] T016 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
-- [ ] T017 Rodar o Cenário 7 de `quickstart.md` manualmente (mock de `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')`, simulando o call site futuro de `CarregarNFCe`): confirmar que `CampoVendedorVenda.tsx` (T014) exibe `"Vendedor #<codigo>"` até o operador reabrir `ModalBuscaVendedor.tsx` (T013) e reselecionar; confirmar ausência visual do chip/filtro "Ativo" (AD-103); confirmar que F5 no meio da venda descarta `vendedorAtual` (Constitution VI)
+- [X] T017 Rodar o Cenário 7 de `quickstart.md` manualmente (mock de `trocarVendedor({ codigo, nome: null }, 'RASCUNHO')`, simulando o call site futuro de `CarregarNFCe`): confirmar que `CampoVendedorVenda.tsx` (T014) exibe `"Vendedor #<codigo>"` até o operador reabrir `ModalBuscaVendedor.tsx` (T013) e reselecionar; confirmar ausência visual do chip/filtro "Ativo" (AD-103); confirmar que F5 no meio da venda descarta `vendedorAtual` (Constitution VI)
 
   **Estado em 2026-09-05**: continua **pendente como passagem manual**, mas as três checagens já têm cobertura automatizada equivalente — o que resta é a conferência visual do operador, não a verificação do comportamento:
   - `"Vendedor #<codigo>"` com `nome: null`: coberto por `tests/e2e/importacao-dav.spec.ts` ("cliente e vendedor do documento entram na venda"), que exercita o **mesmo** caminho de renderização com `origem: 'DAV'` — o call site de `CarregarNFCe` (origem `'RASCUNHO'`) só difere no segundo argumento, e `tests/integration/vendedorSlice.spec.ts` cobre essa diferença. A retomada real com nome disponível está em `tests/e2e/recuperacao-nfce.spec.ts`.
   - Ausência do chip/filtro "Ativo" e da coluna "Status" (AD-103): asserção explícita em `tests/e2e/selecao-vendedor.spec.ts` ("a busca não expõe filtro nem coluna de status, nem subtítulo de função").
   - F5 descarta `vendedorAtual`: garantido por construção — o slice entra no `vendaStore`, que não tem `persist` (AD-006/Constitution VI); não há caminho de gravação a testar.
+
+  **Fechada em 2026-09-08 (AD-183, revisão da 012)**: a passagem manual encontrou um defeito exatamente no gesto que esta tarefa descreve — o `"Vendedor #<codigo>"` **não** se resolvia ao reselecionar o mesmo vendedor no modal, porque `selecionarVendedor` saía antes de gravar quando o código coincidia. Corrigido no slice e coberto por teste, o que fecha a tarefa sem deixá-la dependendo de nova conferência visual:
+  - `tests/integration/vendedorSlice.spec.ts` — "reescolher o mesmo código resolve o 'Vendedor #N' da importação";
+  - `tests/unit/client/vendedor/CampoVendedorVenda.spec.tsx` — o mesmo gesto pelo componente (`"Vendedor #33"` → `"Mariana Alves"`), mais o caso de documento sem vendedor (`codigo: 0`), que passava a exibir `"Vendedor #0"` e destravava a finalização;
+  - `tests/unit/client/vendedor/ModalBuscaVendedor.spec.tsx` — ausência do chip/coluna de status (AD-103) isolada no componente, ao lado do piso de caracteres, da lista vazia, da paginação e da falha de rede.
 
 ---
 
