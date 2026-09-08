@@ -100,12 +100,12 @@ test.describe('User Story 2 — retomar o rascunho para o carrinho', () => {
   });
 
   /**
-   * **Só o cliente.** O vendedor do rascunho ainda não chega à venda: a porta
-   * `trocarVendedor` é stub vazio até a feature 012, e na finalização o payload
-   * usa `SessaoUsuario.VendedorCodigo` do bootstrap — ver o item 39 de
-   * `.specs/project/PENDENCIES.md`. O título deste teste dizia "e o vendedor"
-   * sem nunca afirmá-lo, e era exatamente o que escondia a lacuna de `FR-009`
-   * de quem lê a suíte (AD-168).
+   * Cliente **e** vendedor do rascunho passam a ser os da venda — a feature
+   * 012 (já mesclada) trocou o stub de `trocarVendedor` pela action real, e o
+   * item 39 de `.specs/project/PENDENCIES.md` está fechado. O título deste
+   * teste já dizia só "o cliente" propositalmente até 2026-09-08: antes disso
+   * ele afirmava "e o vendedor" sem nunca verificá-lo, e era exatamente o que
+   * escondia a lacuna de `FR-009` de quem lia a suíte.
    */
   test('o cliente do rascunho passa a ser o da venda', async ({ page }) => {
     await abrirTelaDeVenda(page);

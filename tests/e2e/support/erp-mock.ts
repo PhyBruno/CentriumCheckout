@@ -544,7 +544,7 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         ClienteCodigo: 2538,
         ClienteNome: 'CLIENTE CONVENIADO',
         VendedorCodigo: 12,
-        // AD-169: `VendedorNome` acrescentado ao SDT `CheckoutListaDAVs`.
+        // AD-172: `VendedorNome` acrescentado ao SDT `CheckoutListaDAVs`.
         VendedorNome: 'MARIANA ALVES',
         ValorTotal: String(15.54), // double
       },
@@ -557,7 +557,7 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         // provável eco do que foi enviado, não recalculo do ERP.
         clienteCodigo: String(2538),
         vendedorCodigo: String(12),
-        // AD-169: mesmo SDT de `GetDav` e `CarregarNFCe`, logo vale para as
+        // AD-172: mesmo SDT de `GetDav` e `CarregarNFCe`, logo vale para as
         // duas importações.
         vendedorNome: 'MARIANA ALVES',
         CondicaoPagamentoCodigo: String(1),
@@ -1403,7 +1403,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       .map((dav) => ({
         NumeroNota: Number(dav.documento['NumeroNota']),
         Cliente: String(dav.lista['ClienteNome']),
-        // O mesmo nome que a linha do DAV e o documento carregam (AD-169), em
+        // O mesmo nome que a linha do DAV e o documento carregam (AD-172), em
         // vez do sintético derivado do código que este mock usava enquanto o
         // nome não existia em contrato nenhum. Um nome só por vendedor mantém
         // as três respostas coerentes entre si.

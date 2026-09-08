@@ -262,7 +262,7 @@ export interface PagamentoSlice {
   descartarPagamento(): void;
   /**
    * Condição de pagamento vinda de um documento do ERP (006/011), nunca gesto
-   * do operador — por isso **não** passa por `selecionarCondicao` (AD-168).
+   * do operador — por isso **não** passa por `selecionarCondicao` (AD-171).
    *
    * Duas diferenças em relação àquela, e as duas são o ponto: aqui não há a
    * guarda de `pagamentos.length`, porque a condição chega **junto** das formas
@@ -448,7 +448,7 @@ export function criarPagamentoSlice(
      * deixou de responder a essa pergunta e virou "quantas formas esta venda já
      * viu". Com ele, excluir a única forma da venda deixava condição e desconto
      * de capa congelados para sempre, sem nenhum pagamento ativo e sem gesto
-     * que os destravasse (AD-168).
+     * que os destravasse (AD-171).
      *
      * `podeMutarCarrinho` não usa este recorte de propósito: lá a pergunta é
      * mais estreita ("há dinheiro **aprovado** atribuído a esta venda?") e o
@@ -469,7 +469,7 @@ export function criarPagamentoSlice(
      * de um documento que o ERP já emitiu, o mesmo argumento que
      * `importarFormasDePagamento` usa para não passar pelo gate.
      *
-     * Sem esta distinção, gravar a condição do documento (AD-168) congelava o
+     * Sem esta distinção, gravar a condição do documento (AD-171) congelava o
      * carrinho da venda importada e quebrava o `FR-008` **das duas** features —
      * "item novo é precificado normalmente enquanto o importado fica congelado"
      * —, que têm cobertura E2E justamente porque é comportamento de produto.
@@ -687,7 +687,7 @@ export function criarPagamentoSlice(
         //
         // `pagamentosVivos()`, e não `pagamentos.length`: a forma excluída fica
         // no array desde AD-163, e contá-la travava a condição de uma venda cujo
-        // último pagamento o operador acabou de riscar (AD-168).
+        // último pagamento o operador acabou de riscar (AD-171).
         if (pagamentosVivos().length > 0) {
           deps.avisar?.(AVISO_CONDICAO_COM_PAGAMENTO);
           return;
@@ -832,7 +832,7 @@ export function criarPagamentoSlice(
         //
         // "Aplicado" é `pagamentosVivos()`: a forma riscada não tem dinheiro
         // atribuído — ela já saiu do saldo e do payload —, e contá-la congelava
-        // o desconto de uma venda sem pagamento nenhum (AD-168).
+        // o desconto de uma venda sem pagamento nenhum (AD-171).
         if (pagamentosVivos().length > 0) {
           deps.avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
           return false;
@@ -1006,7 +1006,7 @@ export function criarPagamentoSlice(
         // A forma já `EXCLUIDO` fica **fora**: ela emitiu o seu
         // `FORMA_PAGAMENTO_REMOVIDA` quando `removerPagamento` a riscou, e
         // reemiti-lo aqui mandaria ao ERP, no `Log`, a mesma forma removida
-        // duas vezes (AD-168). `RECUSADO` nunca chegou a valer como pagamento,
+        // duas vezes (AD-171). `RECUSADO` nunca chegou a valer como pagamento,
         // pelo mesmo critério de `pagamentosVivos`.
         const rotulos = pagamentos
           .filter((pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO')
@@ -1127,7 +1127,7 @@ export function criarPagamentoSlice(
         // duas transições — a pré-condição daquela função passa a ser
         // invariante, não coincidência.
         //
-        // **A condição de um documento importado não congela** (AD-168): ela
+        // **A condição de um documento importado não congela** (AD-171): ela
         // não é a declaração do operador que o parágrafo acima descreve, e sim
         // o replay de um DAV/rascunho. Congelar por causa dela quebraria o
         // `FR-008` das features 006 e 011 — "item novo é precificado

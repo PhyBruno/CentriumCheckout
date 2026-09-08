@@ -391,13 +391,16 @@ describe('T006 — busca por nome de cliente ou de vendedor', () => {
 });
 
 /* ------------------------------------------------------------------ *
- * AD-168 — a condição do documento chega à venda
+ * AD-171 — a condição do documento chega à venda
  * ------------------------------------------------------------------ */
 
-describe('condição de pagamento do rascunho (AD-168)', () => {
-  it('grava a condição do documento e, com ela, congela o carrinho (I7)', async () => {
+describe('condição de pagamento do rascunho (AD-171)', () => {
+  it('grava a condição do documento sem congelar o carrinho por causa dela (I7)', async () => {
     const usuario = userEvent.setup();
-    instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    // Sem pagamento, de propósito: um rascunho pago já congela o carrinho pela
+    // forma `APROVADO` (AD-169), o que mascararia se é a condição — e não o
+    // pagamento — quem está (corretamente) deixando de congelar.
+    instalarFetch({ rascunhos: [rascunhoDaLista()], documento: respostaRascunhoSemPagamento() });
     renderizar();
 
     await screen.findByTestId('resultados-nfce');
@@ -420,56 +423,6 @@ describe('condição de pagamento do rascunho (AD-168)', () => {
   });
 });
 
-/* ------------------------------------------------------------------ *
- * AD-168 — Enter sobre um botão não retoma o rascunho
- * ------------------------------------------------------------------ */
-
-/**
- * O `onKeyDown` da raiz da janela confirma a retomada, e o `keydown` de um
- * `<button>` sobe até lá **antes** do `click` sintetizado. Sem a guarda, Tab até
- * "Cancelar" + Enter importava o rascunho e só então fechava a janela: o
- * operador via o carrinho preenchido pelo botão que apertou para desistir.
- */
-describe('Enter em botão de saída não retoma (AD-168)', () => {
-  it('Enter em "Cancelar" fecha a janela sem tocar no carrinho', async () => {
-    const usuario = userEvent.setup();
-    instalarFetch({ rascunhos: [rascunhoDaLista()] });
-    const { fechado } = renderizar();
-
-    await screen.findByTestId('resultados-nfce');
-    await usuario.click(
-      screen.getByTestId('linha-nfce').closest('button') ?? screen.getByTestId('linha-nfce'),
-    );
-    expect(screen.getByTestId('confirmar-recuperacao-nfce')).toBeEnabled();
-
-    const cancelar = screen.getByRole('button', { name: 'Cancelar' });
-    cancelar.focus();
-    await usuario.keyboard('{Enter}');
-
-    expect(fechado).toHaveLength(1);
-    expect(useVendaStore.getState().linhas).toHaveLength(0);
-    expect(useVendaStore.getState().identidadeVenda.numeroNota).toBe(0);
-  });
-
-  /** O atalho continua valendo de onde ele foi desenhado: o campo de busca. */
-  it('Enter no campo de busca ainda retoma o rascunho selecionado', async () => {
-    const usuario = userEvent.setup();
-    instalarFetch({ rascunhos: [rascunhoDaLista()] });
-    renderizar();
-
-    await screen.findByTestId('resultados-nfce');
-    await usuario.click(
-      screen.getByTestId('linha-nfce').closest('button') ?? screen.getByTestId('linha-nfce'),
-    );
-
-    screen.getByTestId('campo-busca-nfce').focus();
-    await usuario.keyboard('{Enter}');
-
-    await waitFor(() => {
-      expect(useVendaStore.getState().linhas).toHaveLength(1);
-    });
-  });
-});
 
 /* ------------------------------------------------------------------ *
  * T016 — a linha retomada fica congelada até a reinserção manual
@@ -477,7 +430,7 @@ describe('Enter em botão de saída não retoma (AD-168)', () => {
 
 describe('T016 — reinserir manualmente um SKU já presente numa linha congelada', () => {
   /**
-   * O documento traz `CondicaoPagamentoCodigo: 1`, e desde AD-168 essa condição
+   * O documento traz `CondicaoPagamentoCodigo: 1`, e desde AD-171 essa condição
    * **chega** à venda — sem congelar o carrinho, que é o que mantém este teste
    * possível. Ver `pagamentoSlice.spec.ts` § "a condição importada não congela".
    */

@@ -64,7 +64,7 @@ export interface DavListado {
   readonly clienteNome: string;
   readonly vendedorCodigo: number;
   /**
-   * `null` enquanto o ERP não devolver o campo (AD-169) — a UI cai no código.
+   * `null` enquanto o ERP não devolver o campo (AD-172) — a UI cai no código.
    *
    * Supera AD-095, que registrava a ausência definitiva do nome nesta listagem.
    */
@@ -242,7 +242,7 @@ export function fonteDav(dav: {
 }): FonteDocumento {
   return {
     origem: 'DAV',
-    // `ListaDAVs` ganhou `VendedorNome` em AD-169 (`DavListado.vendedorNome`,
+    // `ListaDAVs` ganhou `VendedorNome` em AD-172 (`DavListado.vendedorNome`,
     // acima) — passado como *fallback* de `mapearVendaExistente` (AD-172),
     // atrás do campo do próprio documento. `?? null` cobre o call site que só
     // passa `numeroDav` (nenhuma linha da listagem em mãos).

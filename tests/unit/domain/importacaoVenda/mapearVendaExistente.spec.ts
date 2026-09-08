@@ -52,7 +52,7 @@ describe('mapearVendaExistente — documento completo', () => {
     expect(venda).not.toHaveProperty('numeroDav');
   });
 
-  it('tira o nome do vendedor do documento (AD-169)', () => {
+  it('tira o nome do vendedor do documento (AD-172)', () => {
     const venda = mapearVendaExistente(documentoValidado({ vendedorNome: 'MARIANA ALVES' }));
 
     expect(venda.clienteCodigo).toBe(CODIGO_CLIENTE_DAV);

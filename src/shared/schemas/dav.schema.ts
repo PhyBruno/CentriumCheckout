@@ -47,7 +47,7 @@ const quantidadeEmMilesimos = numeroErp.transform((valor) => milesimosDeUnidades
  * correto, e é o que faz a coluna "Status" e os filtros de status/tipo/origem
  * do Pencil ficarem de fora da UI.
  *
- * **`VendedorNome` passou a existir em 2026-09-08** (AD-169), acrescentado ao
+ * **`VendedorNome` passou a existir em 2026-09-08** (AD-172), acrescentado ao
  * SDT `CheckoutListaDAVs` na KB do ERP — o que supera a ausência que AD-095
  * registrava e fecha o "Vendedor #<código>" da janela de importação.
  *
@@ -148,7 +148,7 @@ export const checkoutFaturarNFCeSchema = z.looseObject({
   clienteCodigo: inteiroErp,
   vendedorCodigo: inteiroErp,
   /**
-   * Nome do vendedor do documento (AD-169, 2026-09-08).
+   * Nome do vendedor do documento (AD-172, 2026-09-08).
    *
    * Acrescentado ao SDT `CheckoutFaturarNFCe` na KB, ao lado de
    * `vendedorCodigo` — logo vale para `GetDav` **e** `CarregarNFCe`, que

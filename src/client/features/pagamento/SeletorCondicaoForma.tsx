@@ -329,7 +329,7 @@ export function SeletorCondicaoPagamento(): ReactElement {
    * redação —, porque quem decide de verdade é `selecionarCondicao`; aqui a
    * regra só chega ao operador **antes** de ele abrir a lista e escolher.
    */
-  // O mesmo recorte de `pagamentosVivos()` no slice (AD-168): a forma riscada
+  // O mesmo recorte de `pagamentosVivos()` no slice (AD-171): a forma riscada
   // continua no array por rastreabilidade, e contá-la aqui deixava o combobox
   // fechado numa venda cujo último pagamento o operador acabou de excluir —
   // com o slice já disposto a aceitar a escolha. O seletor devolve um booleano,

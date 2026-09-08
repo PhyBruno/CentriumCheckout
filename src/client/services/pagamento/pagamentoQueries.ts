@@ -39,7 +39,7 @@ const CAMINHO_VALIDA_TICKET = '/ApiCentriumOAuth/ValidaTicketDevolucao';
 /**
  * `PAY-01`: frescor do catálogo de pagamento.
  *
- * Exportado desde AD-168 porque a importação de documento (006/011) resolve a
+ * Exportado desde AD-171 porque a importação de documento (006/011) resolve a
  * condição do documento contra este mesmo catálogo, por `fetchQuery` imperativo
  * — e um segundo literal de 30 minutos lá poderia divergir deste sem ninguém
  * notar.

@@ -110,7 +110,7 @@ export interface VendaImportada {
    * retomada segue sem condição e o operador escolhe normalmente — não é dado
    * ausente a suprir, é o estado real do documento.
    *
-   * Era **descartado** até 2026-09-08 (AD-168): o mapeador nunca leu o campo,
+   * Era **descartado** até 2026-09-08 (AD-171): o mapeador nunca leu o campo,
    * embora `dav.schema.ts` já o validasse. Com forma de pagamento importada,
    * `selecionarCondicao` passava a recusar toda escolha (`pagamentos.length > 0`)
    * e `montarPagamentosParaPayload` enviava `CondicaoPagamentoCodigo: 0` ao

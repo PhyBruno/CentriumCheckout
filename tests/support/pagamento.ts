@@ -42,7 +42,7 @@ export function formaDe(opcoes: OpcoesForma = {}): FormaPagamento {
 /**
  * Condição do catálogo (`SessaoUsuario.CondicoesDePagamento[]`).
  *
- * Mora aqui desde AD-168 porque deixou de ser fixture só do slice: as suítes de
+ * Mora aqui desde AD-171 porque deixou de ser fixture só do slice: as suítes de
  * importação de DAV e de recuperação de NFCe precisam de uma condição para
  * resolver o `CondicaoPagamentoCodigo` do documento contra o catálogo.
  */
@@ -67,7 +67,7 @@ export function condicaoDe(
  * `bootstrapPagamentoSchema` exige — só `SessaoUsuario.CondicoesDePagamento`.
  *
  * Existe para as suítes que exercitam a importação de documento pela UI real
- * (AD-168): o hook resolve a condição do documento por `queryClient.query`, que
+ * (AD-171): o hook resolve a condição do documento por `queryClient.query`, que
  * bate nesta rota. Sem ela a retomada abortaria com "condição indisponível", e
  * o teste acusaria a rede em vez do comportamento.
  *

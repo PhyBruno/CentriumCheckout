@@ -339,7 +339,7 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
 });
 
 /* ------------------------------------------------------------------ *
- * AD-168 — a forma riscada não conta como pagamento aplicado
+ * AD-171 — a forma riscada não conta como pagamento aplicado
  * ------------------------------------------------------------------ */
 
 /**
@@ -349,7 +349,7 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
  * a única forma, condição e desconto de capa ficavam congelados para sempre,
  * numa venda sem pagamento ativo e sem gesto que os destravasse.
  */
-describe('pagamentoSlice — guardas ignoram forma excluída (AD-168)', () => {
+describe('pagamentoSlice — guardas ignoram forma excluída (AD-171)', () => {
   it('libera a troca de condição depois de a única forma ser excluída', async () => {
     const { store, avisar } = montarStore();
 

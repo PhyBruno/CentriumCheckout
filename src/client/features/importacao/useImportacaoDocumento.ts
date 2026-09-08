@@ -120,7 +120,7 @@ function mensagemDeErro(erro: unknown): string {
   }
   // Nomeia a condição pelo código: é o que o operador leva ao supervisor para
   // reativá-la no ERP. Sem o número, a mensagem não distingue "condição
-  // inativada" de qualquer outra falha de importação (AD-168).
+  // inativada" de qualquer outra falha de importação (AD-171).
   if (erro instanceof ErroCondicaoImportadaIndisponivel) {
     return `A condição de pagamento ${erro.codigo} deste documento não está disponível nesta sessão. Nada foi importado.`;
   }

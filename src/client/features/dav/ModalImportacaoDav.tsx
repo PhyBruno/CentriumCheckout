@@ -507,7 +507,7 @@ function TabelaDeDavs({
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col px-[10px]">
                   <span className="truncate text-sm font-bold">{dav.clienteNome}</span>
-                  {/* O nome quando o ERP o devolve (AD-169), o código como
+                  {/* O nome quando o ERP o devolve (AD-172), o código como
                       recuo. Não é enfeite: "Vendedor #12" não distingue dois
                       DAVs para quem opera o caixa, e era o que AD-095 obrigava
                       a exibir enquanto `ListaDAVs` não tinha o campo. O recuo

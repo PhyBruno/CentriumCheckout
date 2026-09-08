@@ -167,14 +167,14 @@ function envolverEmQueryClient(): { wrapper: (props: { children: ReactNode }) =>
 }
 
 /**
- * AD-169 — o nome do vendedor na listagem de DAVs.
+ * AD-172 — o nome do vendedor na listagem de DAVs.
  *
  * `ListaDAVs` passou a devolver `VendedorNome`, superando a ausência que AD-095
  * registrava e que obrigava a janela a exibir "Vendedor #<código>". Enquanto o
  * deploy do ERP não sai, a resposta chega sem o campo — e é isso que o segundo
  * caso fixa.
  */
-describe('useListaDavs — nome do vendedor (AD-169)', () => {
+describe('useListaDavs — nome do vendedor (AD-172)', () => {
   async function primeiroDav(resposta: Record<string, unknown>) {
     const erpClient = erpClientDe({ '/ApiCentriumOAuth/ListaDAVs': resposta }, []);
     const { result } = renderHook(
@@ -759,7 +759,7 @@ describe('recusaAtual — cliente da venda, não a flag de escolha (AD-139)', ()
   });
 
   function recusaAtual(): MotivoRecusaImportacao | null {
-    // Sob `QueryClientProvider` desde AD-168: o hook resolve a condição do
+    // Sob `QueryClientProvider` desde AD-171: o hook resolve a condição do
     // documento contra o catálogo de pagamento pelo `queryClient`, e na
     // aplicação ele sempre roda sob o provider montado em `main.tsx`.
     const { result } = renderHook(() => useImportacaoDav(), envolverEmQueryClient());

@@ -148,7 +148,7 @@ export class ErroImportacaoRecusada extends Error {
 
 /**
  * O documento aponta para uma condição de pagamento que o catálogo desta sessão
- * não tem (AD-168).
+ * não tem (AD-171).
  *
  * Aborta a importação inteira em vez de seguir sem condição, pelo mesmo motivo
  * de `ErroClienteNaoEncontrado`: o único destino de uma venda importada sem
@@ -182,7 +182,7 @@ export interface FonteDocumento {
    * — o documento tem prioridade quando o traz (AD-172).
    *
    * É **obrigatório** declarar, mesmo sendo `null` para DAV: as duas listagens
-   * divergem justamente aqui — `ListaDAVs` traz o código e, desde AD-169/AD-172,
+   * divergem justamente aqui — `ListaDAVs` traz o código e, desde AD-172,
    * também o nome quando o ERP o devolve; `GetListaNFCes` sempre trouxe o nome
    * por extenso —, e um campo opcional deixaria essa diferença passar
    * despercebida ao escrever uma terceira fonte.
@@ -266,7 +266,7 @@ export interface ImportacaoVendaDeps {
    * isso é a orquestração, não a porta.
    */
   resolverCondicao(codigo: number): Promise<CondicaoPagamento | null>;
-  /** Feature 008 — condição do documento, sem guarda e sem evento (AD-168). */
+  /** Feature 008 — condição do documento, sem guarda e sem evento (AD-171). */
   importarCondicaoPagamento(condicao: CondicaoPagamento): void;
   /** Feature 008 — formas do documento entram já aprovadas, sem passar pelo gate. */
   importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;
@@ -335,7 +335,7 @@ export async function importarVendaExistente(
   const venda = mapearVendaExistente(documento, fonte.vendedorNome);
   const cliente = await deps.resolverCliente(venda.clienteCodigo);
 
-  // Condição do documento, ainda na fase de rede (AD-168).
+  // Condição do documento, ainda na fase de rede (AD-171).
   //
   // `0` é ausência legítima — rascunho suspenso antes de o operador chegar ao
   // pagamento —, e nesse caso a venda retomada segue sem condição, exatamente

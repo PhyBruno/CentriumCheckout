@@ -93,7 +93,7 @@ function montarStore() {
 
 /**
  * A condição que `documentoDoDav` referencia em `CondicaoPagamentoCodigo: 1` —
- * o rascunho retomado precisa reencontrá-la no catálogo da sessão (AD-168).
+ * o rascunho retomado precisa reencontrá-la no catálogo da sessão (AD-171).
  *
  * `entrada: 'S'` não é enfeite: `FormaEntrada` chega **vazia** na fixture do
  * documento, e é o catálogo que a preenche em `importarFormasDePagamento`. É o
@@ -302,7 +302,7 @@ describe('cliente e vendedor', () => {
 });
 
 /**
- * AD-168 — a condição de pagamento do documento é parte do que a retomada traz.
+ * AD-171 — a condição de pagamento do documento é parte do que a retomada traz.
  *
  * Até 2026-09-08 `mapearVendaExistente` descartava `CondicaoPagamentoCodigo`,
  * embora `dav.schema.ts` já o validasse. Com forma importada, a venda retomada
@@ -310,7 +310,7 @@ describe('cliente e vendedor', () => {
  * com pagamento aplicado), e `FaturarNFCe` recebia `CondicaoPagamentoCodigo: 0`
  * — que o ERP real recusa (AD-165).
  */
-describe('condição de pagamento do documento (AD-168)', () => {
+describe('condição de pagamento do documento (AD-171)', () => {
   it('grava a condição do rascunho como a condição da venda', async () => {
     const { deps } = depsDe(store, respostaRascunhoCompleto());
 
