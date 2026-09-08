@@ -149,9 +149,23 @@ tests/unit/domain/validacaoVenda/ | tests/integration/ | tests/e2e/
 
 - [X] T025 [P] Integration test mesmo arquivo `tests/integration/validacaoVendaSlice.spec.ts`: quando a recusa é local (008, `podeAplicarForma` — venda sem itens, saldo zerado, segunda forma dinheiro, desconto acima do subtotal), `validarInsercao` (T007) **não** é chamada — nenhuma requisição de validação — quickstart Cenário 9; `FR-012` — depende de T009
 - [X] T026 Rodar `npx tsc --noEmit` e confirmar zero erros de tipo — gate obrigatório da Constitution (`Development Workflow`)
-- [ ] T027 Rodar os 9 cenários de `quickstart.md` e o Fluxo Dourado (E2E) e confirmar `SC-001` a `SC-007` (a medição de `SC-006` já está automatizada em T015 — esta é a varredura manual completa, não a única fonte de verificação)
-  - **Parcialmente feito (2026-09-08)**: os Cenários 1–6 estão automatizados em `tests/e2e/validacao-previa.spec.ts` e os 7–9 em `tests/integration/validacaoVendaSlice.spec.ts`; `SC-006` é medido em T015. **Falta a varredura manual no navegador** contra o ERP real, que é o que esta tarefa pede e que não foi executada.
-  - **`FR-019` (paridade mobile) não é verificável hoje**: no layout compacto a feature 013 não registra atalho (`FR-020`/C10 daquela feature) e a 007 ainda não monta o cartão "Pagamento e totais" — não existe caminho de inserção de pagamento em mobile para o gate cobrir. A paridade fica garantida por construção (o gate mora no slice, comum às duas plataformas) e volta a ser testável quando a 007 montar o wizard.
+- [X] T027 Rodar os 9 cenários de `quickstart.md` e o Fluxo Dourado (E2E) e confirmar `SC-001` a `SC-007` (a medição de `SC-006` já está automatizada em T015 — esta é a varredura manual completa, não a única fonte de verificação)
+  - **Revisão manual executada em 2026-09-08 contra o ERP real** (tenant `c0lj6mvzeh`, empresa `1`), pela API, com o retrato exatamente como o Checkout o monta. `ValidarNFCe` é consulta pura, então nada foi gravado; `FaturarNFCe` **não** foi chamado (emitiria documento fiscal real).
+
+    | Cenário | Resultado real |
+    |---|---|
+    | aceite: à vista, cliente default, dinheiro | `Valido: true` — 113ms |
+    | a prazo com cliente default | `Valido: false` — *"Não é permitido venda a prazo para cliente não identificado!"* (`Type=1`) |
+    | condição inexistente (fail-fast) | `Valido: false` — *"Condição de Pagamento 99999 não Localizada."* |
+    | cliente inexistente na empresa (fail-fast) | `Valido: false` — *"Cliente 888888 não Localizado."* |
+    | duas formas no mesmo retrato (I2: aplicada + candidata) | `Valido: true` |
+    | retrato completo, com produto real do catálogo | `Valido: true` |
+
+  - **`SC-006` confirmado com folga**: latências reais de **87–225 ms** por consulta, contra o limite de 2s.
+  - **AD-110 confirmado ao vivo, e mais forte do que a spec supunha**: **todas** as recusas do ERP real chegaram com `Type=1` (**Warning**), nenhuma com `Type=2`. Se o Checkout ramificasse em `Type`, nenhuma delas bloquearia. O teste negativo obrigatório (T010) descreve exatamente o comportamento real.
+  - **Achado bloqueante: AD-188** — o retrato ia sem `Empresa` no corpo e o ERP recusava **toda** venda com *"Empresa é obrigatório"*. Isolado campo a campo (header não alimenta o SDT), corrigido e fixado por teste; o `erp-mock` passou a exigir o campo nas duas rotas.
+  - **Não foi possível reproduzir o bloco de limite de crédito/crediário** neste tenant: `FormaFpgUtiCar` vem vazio para **todas** as 32 formas do catálogo (inclusive "15 - CREDIARIO") e os clientes de teste não têm limite configurado — aceitou até R$ 999.999,00. Logo, AD-185 permanece sustentado pela leitura do código-fonte do ERP e pela presença do campo no contrato, **não** por observação ao vivo. Registrado no item 48 de `PENDENCIES.md`.
+  - **`FR-019` (paridade mobile) segue não verificável**: no layout compacto a feature 013 não registra atalho (`FR-020`/C10 daquela feature) e a 007 ainda não monta o cartão "Pagamento e totais" — não existe caminho de inserção de pagamento em mobile para o gate cobrir. A paridade fica garantida por construção (o gate mora no slice, comum às duas plataformas) e volta a ser testável quando a 007 montar o wizard. Item 47 de `PENDENCIES.md`.
 - [X] T028 Revisar manualmente a trilha de auditoria contra `contracts/validacao-domain-api.md` §3 e `data-model.md` §1 (tipo 18 de `specs/001-auditoria-acoes-operador/data-model.md`): `VALIDACAO_VENDA_RECUSADA` disparado em toda `RECUSADA` e `INDISPONIVEL`, **nunca** em `ACEITA` com aviso (`research.md` D9), e com `origem` correto (`'MANUAL'` vindo do botão, `'ATALHO_CENARIO'` vindo do atalho — achado I1)
 
 ---

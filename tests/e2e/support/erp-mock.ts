@@ -166,6 +166,8 @@ export const MENSAGEM_RECUSA_CREDITO_BLOQUEADO =
   'Cliente está com crédito bloqueado, não será possivel realizar venda a prazo!';
 export const MENSAGEM_AVISO_LIMITE_CREDITO =
   'Cliente ultrapassou o limite de crédito; venda liberada por configuração da empresa.';
+/** Texto real do ERP quando o retrato chega sem `Empresa` no corpo (AD-188). */
+export const MENSAGEM_EMPRESA_OBRIGATORIA = 'Empresa é obrigatório';
 
 const CONTADORES_ZERADOS: ContadoresMockErp = {
   token: 0,
@@ -1146,10 +1148,24 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     async (request, reply) => {
       contadores.negocio += 1;
       contadores.validarNFCe += 1;
-      ultimoRetratoValidado = request.body.CheckoutFaturarNFCe ?? null;
+      const retratoValidado = request.body.CheckoutFaturarNFCe ?? null;
+      ultimoRetratoValidado = retratoValidado;
 
       if (config.statusValidarNFCe !== 200) {
         return reply.code(config.statusValidarNFCe).send({ messages: [] });
+      }
+
+      // `Empresa` **no corpo**, não no header: é a primeira linha da matriz do
+      // ERP real, e o mock precisa reproduzi-la (AD-188, item 42). Sem esta
+      // checagem o E2E ficaria verde com um retrato que o ERP recusaria — foi
+      // exatamente assim que o campo faltante atravessou a implementação
+      // inteira sem ser notado.
+      const empresa = retratoValidado?.['Empresa'];
+      if (typeof empresa !== 'string' || empresa.trim() === '') {
+        return reply.send({
+          Valido: false,
+          messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_EMPRESA_OBRIGATORIA }],
+        });
       }
 
       switch (config.vereditoValidarNFCe) {
@@ -1161,26 +1177,20 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
           // **não** bloqueia aqui — é o par do caso abaixo (AD-110).
           return reply.send({
             Valido: true,
-            messages: [
-              { Id: '9999', Type: 1, Description: MENSAGEM_AVISO_LIMITE_CREDITO },
-            ],
+            messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_AVISO_LIMITE_CREDITO }],
           });
 
         case 'RECUSADA_WARNING':
           // `EmpLimCre='B'`: mesma severidade da linha acima e desfecho oposto.
           return reply.send({
             Valido: false,
-            messages: [
-              { Id: '9999', Type: 1, Description: MENSAGEM_RECUSA_CREDITO_BLOQUEADO },
-            ],
+            messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_RECUSA_CREDITO_BLOQUEADO }],
           });
 
         case 'RECUSADA':
           return reply.send({
             Valido: false,
-            messages: [
-              { Id: '9999', Type: 2, Description: MENSAGEM_RECUSA_CREDITO_BLOQUEADO },
-            ],
+            messages: [{ Id: '9999', Type: 2, Description: MENSAGEM_RECUSA_CREDITO_BLOQUEADO }],
           });
       }
     },
@@ -1204,6 +1214,17 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply
           .code(config.statusFaturarNFCe)
           .send({ messages: [{ Id: 'ERR', Type: 1, Description: 'Recusa sintética do ERP.' }] });
+      }
+
+      // Mesmo SDT de `ValidarNFCe`, mesma primeira linha da matriz: sem
+      // `Empresa` no corpo o ERP real recusa antes de olhar produto, cliente ou
+      // condição (AD-188).
+      const empresaDoFaturamento = retrato?.['Empresa'];
+      if (typeof empresaDoFaturamento !== 'string' || empresaDoFaturamento.trim() === '') {
+        return reply.send({
+          OutCheckoutFaturarNFCe: { ...(retrato ?? {}) },
+          messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_EMPRESA_OBRIGATORIA }],
+        });
       }
 
       // `SUSPENDER` não emite documento fiscal: a resposta volta sem

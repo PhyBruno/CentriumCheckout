@@ -100,6 +100,7 @@ const A_VISTA = condicaoDe(1, 'A VISTA');
 const A_PRAZO = condicaoDe(2, 'A PRAZO');
 
 const SNAPSHOT: SnapshotVenda = {
+  empresa: '1',
   linhas: [],
   identidade: { origem: 'NOVA', numeroNota: 0 },
   cadSerieNFCe: 'SER1',

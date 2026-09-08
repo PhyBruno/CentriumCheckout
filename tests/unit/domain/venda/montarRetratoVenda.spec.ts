@@ -27,6 +27,7 @@ function eventosDe(): EventoAuditoria[] {
 
 function snapshotVendaDe(sobrescritas: Partial<SnapshotVenda> = {}): SnapshotVenda {
   return {
+    empresa: '1',
     linhas: [linhaDe({ quantidadeEmUnidades: 3, precoUnitario: 1000 })],
     identidade: { origem: 'NOVA', numeroNota: 0 },
     cadSerieNFCe: '1',
@@ -39,6 +40,18 @@ function snapshotVendaDe(sobrescritas: Partial<SnapshotVenda> = {}): SnapshotVen
 }
 
 describe('montarRetratoVenda — identidade da venda (FR-003)', () => {
+  it('envia Empresa no corpo do retrato, nas tres operacoes (AD-188)', () => {
+    // O header `Empresa` do proxy **não** alimenta este campo: os procedures do
+    // ERP leem `&Empresa` do SDT. Confirmado contra o ERP real — sem ele a
+    // resposta é `Valido: false` com "Empresa é obrigatório", ou seja, toda
+    // venda seria recusada antes de qualquer outra regra.
+    const snapshot = snapshotVendaDe({ empresa: '7' });
+
+    for (const operacao of ['FATURAR', 'SUSPENDER', 'VALIDAR'] as const) {
+      expect(montarRetratoVenda(snapshot, operacao, []).Empresa).toBe('7');
+    }
+  });
+
   it('envia NumeroNota = 0 para venda criada do zero', () => {
     const retrato = montarRetratoVenda(snapshotVendaDe(), 'FATURAR', []);
 

@@ -312,6 +312,9 @@ function snapshotDaVendaCorrente(): SnapshotVenda {
   const sessao = registro.SessaoUsuario;
 
   return {
+    // Vai no corpo do retrato, não só no header do proxy — sem ele o ERP recusa
+    // com "Empresa é obrigatório" antes de olhar qualquer outra regra (AD-188).
+    empresa: registro.codigoEmpresa,
     linhas: venda.linhas,
     identidade: venda.identidadeVenda,
     cadSerieNFCe: sessao.CadSerieNFCe,

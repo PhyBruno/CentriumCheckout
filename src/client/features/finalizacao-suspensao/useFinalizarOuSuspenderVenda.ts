@@ -275,6 +275,10 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
 
       const retrato = montarRetratoVenda(
         {
+          // No corpo do retrato, não só no header do proxy: os procedures do
+          // ERP leem `&Empresa` do SDT, e sem ele a emissão é recusada antes de
+          // qualquer outra regra (AD-188, confirmado contra o ERP real).
+          empresa: registro.codigoEmpresa,
           linhas: venda.linhas,
           identidade: venda.identidadeVenda,
           cadSerieNFCe: sessao.CadSerieNFCe,

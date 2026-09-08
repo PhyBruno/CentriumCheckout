@@ -2450,3 +2450,26 @@ Todas por decisão direta do usuário, olhando a tela rodando. As duas primeiras
 **A decisão.** O gate valida o que o operador **acrescenta**. Um documento que o ERP já aceitou ao gravá-lo não é acréscimo, então `importarFormasDePagamento` chama `dispensarValidacaoPorDocumento()`, que grava um veredito favorável sem avisos e sem consultar a rede. Não é atalho para "aprovar sem perguntar": qualquer forma acrescentada **depois** passa pelo gate normalmente, e `removerPagamento` continua zerando o veredito. A dispensa só ocorre quando o documento de fato trouxe formas — um DAV pendente de cobrança segue exigindo validação da forma que o operador digitar.
 
 **Impact:** alterados — `src/client/stores/slices/validacaoVendaSlice.ts` (action nova), `src/client/stores/slices/pagamentoSlice.ts` (porta opcional `validacaoDispensadaPorDocumento`), `src/client/stores/vendaStore.ts` (ligação); testes — `tests/integration/validacaoVendaSlice.spec.ts` (dois cenários: importação libera sem consultar; forma acrescentada depois ainda passa pelo gate).
+
+### AD-188: `Empresa` vai **no corpo** do retrato, não só no header do proxy — sem isso o ERP recusa toda venda (revisão manual contra o ERP real, 2026-09-08)
+
+**Origem:** revisão manual da T027 da feature 014, executada contra o ERP real (tenant `c0lj6mvzeh`, empresa `1`) a pedido do usuário. Primeira vez que o retrato montado pelo Checkout foi submetido ao `ValidarNFCe` de verdade.
+
+**O defeito.** `montarRetratoVenda.ts` omitia `Empresa` do retrato **de propósito**, com um TSDoc que dizia: "o BFF injeta esse campo em toda chamada `/api/erp/*` (AD-019) — o cliente nunca o monta". A premissa está errada pela metade: o BFF de fato injeta, mas como **header HTTP**, e `PCheckout_ValidarNFCe`/`PCheckout_FaturarNFCe` leem `&Empresa` do **corpo** do SDT (`CheckoutFaturarNFCe.Empresa` existe no contrato, YAML). São dois canais distintos, e o header não alimenta o segundo.
+
+**A prova, isolada campo a campo contra o ERP real.** Quatro variantes do mesmo retrato, mesma venda:
+
+| Variante | Resultado |
+|---|---|
+| só header `Empresa` — **exatamente o que o Checkout fazia** | `Valido: false` — *"Empresa é obrigatório"* |
+| header + `Empresa` no corpo | `Valido: true` |
+| só `Empresa` no corpo, **sem** header | `Valido: true` |
+| corpo + `UsuarioCodigo` | `Valido: true` |
+
+Ou seja: o header é irrelevante para este procedure, e **toda** venda seria recusada na primeira linha da matriz, antes de olhar cliente, condição ou forma. Como o SDT é compartilhado, `FaturarNFCe` (feature 004) tinha o mesmo defeito latente — a emissão seria recusada pelo mesmo motivo.
+
+**Por que atravessou a implementação inteira sem ser notado.** O `erp-mock` das suítes E2E nunca leu `Empresa`, de nenhum lugar: aceitava o retrato como estava. É o **item 42** de `PENDENCIES.md` em ação — E2E verde contra o mock não prova comportamento contra o ERP real. O mock passou a exigir `Empresa` no corpo em `ValidarNFCe` **e** `FaturarNFCe`, com o texto real da recusa, para que a regressão não volte em silêncio.
+
+**Correção.** `SnapshotVenda` ganha `empresa`, `montarRetratoVenda` emite `Empresa` nas três operações, e os dois call sites de composição (`vendaStore.snapshotDaVendaCorrente` da 014 e `useFinalizarOuSuspenderVenda` da 004) o preenchem com `registro.codigoEmpresa`, que o bootstrap já entregava à SPA. O TSDoc que afirmava o contrário foi **reescrito no lugar**, não emendado ao final (`docs/agents/domain.md`).
+
+**Impact:** alterados — `src/client/domain/venda/montarRetratoVenda.ts` (campo no tipo, no snapshot e na montagem), `src/client/stores/vendaStore.ts`, `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts`; testes — `tests/unit/domain/venda/montarRetratoVenda.spec.ts` (caso novo, as três operações), `tests/e2e/support/erp-mock.ts` (as duas rotas passam a exigir o campo), `tests/integration/validacaoVendaSlice.spec.ts`. Verificação: 1020 testes unit/integração e 159 E2E passando; retrato completo com produto real aceito pelo ERP (`Valido: true`).

@@ -58,6 +58,13 @@ export interface ItemRetratoVenda {
 
 /** Corpo de `CheckoutFaturarNFCe` (YAML linha 1462). */
 export interface CheckoutFaturarNFCe {
+  /**
+   * Código da empresa — **primeiro campo que o ERP avalia**, e o único cuja
+   * ausência recusa a venda antes de qualquer outra regra.
+   *
+   * Vai **no corpo**, não só no header. Ver o TSDoc de `SnapshotVenda.empresa`.
+   */
+  readonly Empresa: string;
   readonly SuspenderOuFaturar: SuspenderOuFaturar;
   readonly NumeroNota: number;
   readonly CadSerieNFCe: string;
@@ -71,11 +78,24 @@ export interface CheckoutFaturarNFCe {
 
 /**
  * Tudo que o retrato precisa, já colhido dos slices pelo call site.
- *
- * Não há `Empresa` aqui: o BFF injeta esse campo em toda chamada `/api/erp/*`
- * (feature 002, AD-019) — o cliente nunca o monta.
  */
 export interface SnapshotVenda {
+  /**
+   * `codigoEmpresa` do bootstrap (feature 002), ecoado **dentro** do retrato.
+   *
+   * **O TSDoc anterior dizia o oposto e estava errado** — afirmava que o campo
+   * não existia aqui porque "o BFF injeta esse campo em toda chamada
+   * `/api/erp/*` (AD-019), o cliente nunca o monta". O BFF de fato injeta, mas
+   * como **header**; `PCheckout_ValidarNFCe` e `PCheckout_FaturarNFCe` leem
+   * `&Empresa` do **corpo** do SDT (`CheckoutFaturarNFCe.Empresa`, YAML). São
+   * dois canais distintos, e o header não alimenta o segundo.
+   *
+   * Confirmado contra o ERP real em 2026-09-08 (AD-188): o retrato sem este
+   * campo devolve `Valido: false` com "Empresa é obrigatório" — ou seja, **toda**
+   * venda seria recusada. Com o campo no corpo, a mesma venda volta
+   * `Valido: true`.
+   */
+  readonly empresa: string;
   /** Linhas do carrinho, **incluindo canceladas** (feature 003, invariante I1). */
   readonly linhas: readonly LinhaCarrinho[];
   /** Identidade da venda no ERP (feature 004, `data-model.md` §1). */
@@ -181,6 +201,7 @@ export function montarRetratoVenda(
   rateioDescontoCapa: ReadonlyMap<string, Centavos> = new Map(),
 ): CheckoutFaturarNFCe {
   return {
+    Empresa: snapshot.empresa,
     SuspenderOuFaturar: suspenderOuFaturar(operacao),
     NumeroNota: snapshot.identidade.numeroNota,
     CadSerieNFCe: snapshot.cadSerieNFCe,
