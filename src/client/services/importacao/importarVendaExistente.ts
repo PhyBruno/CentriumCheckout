@@ -26,6 +26,7 @@
 import type { CheckoutFaturarNFCe } from '../../../shared/schemas/dav.schema';
 import type { ClienteCheckout } from '../../../shared/schemas/cliente.schema';
 import type { EventoAuditoriaRegistravel } from '../../domain/auditoria/eventos';
+import type { CondicaoPagamento } from '../../domain/pagamento/formaPagamento';
 import {
   mapearVendaExistente,
   type FormaPagamentoImportada,
@@ -146,6 +147,24 @@ export class ErroImportacaoRecusada extends Error {
 }
 
 /**
+ * O documento aponta para uma condição de pagamento que o catálogo desta sessão
+ * não tem (AD-168).
+ *
+ * Aborta a importação inteira em vez de seguir sem condição, pelo mesmo motivo
+ * de `ErroClienteNaoEncontrado`: o único destino de uma venda importada sem
+ * condição é `CondicaoPagamentoCodigo: 0` no `FaturarNFCe`, que o ERP real
+ * recusa ("Condição de Pagamento 0 não Localizada", AD-165) — e recusa **depois**
+ * de o operador ter conferido a venda inteira na tela. Falhar aqui nomeia a
+ * causa enquanto o carrinho ainda está intacto.
+ */
+export class ErroCondicaoImportadaIndisponivel extends Error {
+  constructor(readonly codigo: number) {
+    super(`Condição de pagamento ${codigo} não está disponível nesta sessão.`);
+    this.name = 'ErroCondicaoImportadaIndisponivel';
+  }
+}
+
+/**
  * De onde o documento vem e como ele se identifica na trilha — o **único** eixo
  * em que a importação de DAV e a recuperação de NFCe diferem.
  *
@@ -224,6 +243,21 @@ export interface ImportacaoVendaDeps {
   selecionarCliente(cliente: ClienteCheckout): Promise<unknown>;
   /** Feature 012 — stub até a seleção de vendedor existir. */
   trocarVendedor(vendedor: { readonly codigo: number; readonly nome: string | null }): void;
+  /**
+   * Feature 008 — resolve `CondicaoPagamentoCodigo` do documento contra o
+   * catálogo da sessão (`SessaoUsuario.CondicoesDePagamento`, AD-097).
+   *
+   * É porta de **rede**, e por isso roda junto de `resolverCliente`, antes de
+   * qualquer mutação: o catálogo vem de `/api/bootstrap` e resolvê-lo no meio
+   * das gravações furaria a atomicidade que este módulo promete.
+   *
+   * `null` significa "não existe no catálogo desta sessão" — condição inativada
+   * no ERP depois de o documento ter sido criado. Quem decide o que fazer com
+   * isso é a orquestração, não a porta.
+   */
+  resolverCondicao(codigo: number): Promise<CondicaoPagamento | null>;
+  /** Feature 008 — condição do documento, sem guarda e sem evento (AD-168). */
+  importarCondicaoPagamento(condicao: CondicaoPagamento): void;
   /** Feature 008 — formas do documento entram já aprovadas, sem passar pelo gate. */
   importarFormasDePagamento(formas: readonly FormaPagamentoImportada[]): void;
   /** Feature 001 — dispatcher tipado do histórico de auditoria. */
@@ -291,6 +325,20 @@ export async function importarVendaExistente(
   const venda = mapearVendaExistente(documento, { clienteNome: fonte.clienteNome });
   const cliente = await deps.resolverCliente(venda.clienteCodigo);
 
+  // Condição do documento, ainda na fase de rede (AD-168).
+  //
+  // `0` é ausência legítima — rascunho suspenso antes de o operador chegar ao
+  // pagamento —, e nesse caso a venda retomada segue sem condição, exatamente
+  // como o documento está. Só o código **preenchido** que o catálogo não conhece
+  // é erro, e aborta antes da primeira gravação.
+  const condicao =
+    venda.condicaoPagamentoCodigo === 0
+      ? null
+      : await deps.resolverCondicao(venda.condicaoPagamentoCodigo);
+  if (venda.condicaoPagamentoCodigo !== 0 && condicao === null) {
+    throw new ErroCondicaoImportadaIndisponivel(venda.condicaoPagamentoCodigo);
+  }
+
   // Reverificação **depois** da rede, colada nas mutações.
   //
   // Entre a pré-condição acima e este ponto há dois `await`, e a venda continua
@@ -313,6 +361,20 @@ export async function importarVendaExistente(
   deps.importarLinhasCongeladas(venda.linhas, fonte.origem);
   await deps.selecionarCliente(cliente);
   deps.trocarVendedor({ codigo: venda.vendedorCodigo, nome: venda.vendedorNome });
+
+  // A condição vem **depois** de linhas/cliente e **antes** das formas, e as
+  // duas metades dessa posição são obrigatórias:
+  //
+  // - depois, porque gravar `condicaoSelecionada` fecha `podeMutarCarrinho`
+  //   (I7), e as guardas de `importarLinhasCongeladas` e `selecionarCliente`
+  //   leem exatamente esse predicado — antecipá-la transformaria as duas em
+  //   no-op silencioso, o carrinho ficaria vazio e a janela fecharia como
+  //   sucesso;
+  // - antes, porque `formaDoCatalogo` resolve `entrada`/`integracaoCartao` de
+  //   cada forma importada olhando `condicaoSelecionada.formas`.
+  if (condicao !== null) {
+    deps.importarCondicaoPagamento(condicao);
+  }
   deps.importarFormasDePagamento(venda.formasDePagamento);
 
   // Um evento por importação, depois que tudo já foi populado (AD-114).

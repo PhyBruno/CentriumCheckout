@@ -88,6 +88,23 @@ export interface VendaImportada {
   readonly vendedorNome: null;
   readonly linhas: readonly LinhaImportada[];
   readonly formasDePagamento: readonly FormaPagamentoImportada[];
+  /**
+   * `CondicaoPagamentoCodigo` do documento — **uma venda por condição** (I1 da
+   * 008), então o escalar do documento é o escalar da venda retomada.
+   *
+   * `0` significa "o documento não tem condição escolhida": um rascunho pode ter
+   * sido suspenso antes de o operador chegar ao pagamento. Nesse caso a venda
+   * retomada segue sem condição e o operador escolhe normalmente — não é dado
+   * ausente a suprir, é o estado real do documento.
+   *
+   * Era **descartado** até 2026-09-08 (AD-168): o mapeador nunca leu o campo,
+   * embora `dav.schema.ts` já o validasse. Com forma de pagamento importada,
+   * `selecionarCondicao` passava a recusar toda escolha (`pagamentos.length > 0`)
+   * e `montarPagamentosParaPayload` enviava `CondicaoPagamentoCodigo: 0` ao
+   * `FaturarNFCe` — que o ERP real recusa com "Condição de Pagamento 0 não
+   * Localizada" (AD-165).
+   */
+  readonly condicaoPagamentoCodigo: number;
 }
 
 /** Campo de texto vazio no ERP significa "não informado", não string vazia. */
@@ -145,6 +162,11 @@ export function mapearVendaExistente(
   }
 
   return {
+    // Ausente vira `0`, e não exceção: ao contrário dos três acima, a condição
+    // tem um "não informado" legítimo (documento suspenso antes do pagamento),
+    // e `0` é exatamente como o próprio ERP o representa.
+    condicaoPagamentoCodigo:
+      typeof resposta.CondicaoPagamentoCodigo === 'number' ? resposta.CondicaoPagamentoCodigo : 0,
     numeroNota: resposta.NumeroNota,
     clienteCodigo: resposta.clienteCodigo,
     clienteNome: origemLista?.clienteNome ?? '',

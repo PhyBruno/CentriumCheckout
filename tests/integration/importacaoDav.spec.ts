@@ -31,6 +31,7 @@ import {
   respostaListaDavs,
 } from '../support/dav';
 import { snapshotDe, unidades } from '../support/precificacao';
+import { condicaoDe } from '../support/pagamento';
 
 /**
  * Orquestração da importação de DAV (T009, T019–T022).
@@ -100,6 +101,9 @@ interface Espioes {
   readonly resolverCliente: ReturnType<typeof vi.fn>;
 }
 
+/** A condição que `documentoDoDav` referencia em `CondicaoPagamentoCodigo: 1`. */
+const CONDICAO_DO_DOCUMENTO = condicaoDe(1, 'A VISTA');
+
 function depsDe(
   store: ReturnType<typeof montarStore>,
   sobrescritas: Partial<ImportacaoVendaDeps> = {},
@@ -128,6 +132,9 @@ function depsDe(
     resolverCliente: espioes.resolverCliente as (codigo: number) => Promise<ClienteCheckout>,
     selecionarCliente: (cliente) => venda.selecionarCliente(cliente, 'DAV'),
     trocarVendedor: espioes.trocarVendedor,
+    resolverCondicao: (codigo) =>
+      Promise.resolve(codigo === CONDICAO_DO_DOCUMENTO.codigo ? CONDICAO_DO_DOCUMENTO : null),
+    importarCondicaoPagamento: venda.importarCondicaoPagamento,
     importarFormasDePagamento: espioes.importarFormasDePagamento,
     registrarEventoAuditoria: venda.registrarEventoAuditoria,
     buscarDescricaoProduto: espioes.buscarDescricaoProduto as (
@@ -713,7 +720,10 @@ describe('recusaAtual — cliente da venda, não a flag de escolha (AD-139)', ()
   });
 
   function recusaAtual(): MotivoRecusaImportacao | null {
-    const { result } = renderHook(() => useImportacaoDav());
+    // Sob `QueryClientProvider` desde AD-168: o hook resolve a condição do
+    // documento contra o catálogo de pagamento pelo `queryClient`, e na
+    // aplicação ele sempre roda sob o provider montado em `main.tsx`.
+    const { result } = renderHook(() => useImportacaoDav(), envolverEmQueryClient());
     return result.current.recusaAtual();
   }
 

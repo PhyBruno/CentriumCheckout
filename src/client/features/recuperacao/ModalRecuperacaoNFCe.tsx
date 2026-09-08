@@ -179,7 +179,14 @@ export function ModalRecuperacaoNFCe({
         // tecla por conta própria e interrompe a propagação: lá o Enter ainda
         // pode significar "selecionar esta linha", e carregar a anterior seria
         // o documento errado.
-        if (evento.key === 'Enter') {
+        //
+        // **Botão nenhum passa por aqui** (AD-168): o Enter sobre um `<button>`
+        // já tem ação própria, e o `keydown` sobe à raiz **antes** do `click`
+        // sintetizado. Sem esta guarda, Tab até "Cancelar" + Enter retomava o
+        // rascunho e só então fechava a janela — o operador via o carrinho
+        // preenchido pelo botão que apertou para desistir. Valia igual para o
+        // "X" do cabeçalho e para "Anterior"/"Próxima".
+        if (evento.key === 'Enter' && !(evento.target instanceof HTMLButtonElement)) {
           void confirmarRecuperacao();
         }
       }}

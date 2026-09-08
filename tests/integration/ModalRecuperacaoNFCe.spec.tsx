@@ -11,6 +11,7 @@ import { snapshotDe, unidades } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 import { CODIGO_CLIENTE_DAV, SKU_DAV } from '../support/dav';
 import { NUMERO_NOTA, rascunhoDaLista, respostaCarregarNFCe } from '../support/recuperacao';
+import { bootstrapPagamentoDe } from '../support/pagamento';
 
 /**
  * Janela de recuperação de NFCe — T005 (listagem e paginação), T006 (busca) e
@@ -31,6 +32,7 @@ import { NUMERO_NOTA, rascunhoDaLista, respostaCarregarNFCe } from '../support/r
 const CAMINHO_LISTA = '/api/erp/ApiCentriumOAuth/GetListaNFCes';
 const CAMINHO_CARREGAR = '/api/erp/ApiCentriumOAuth/CarregarNFCe';
 const CAMINHO_CLIENTE = '/api/erp/ApiCentriumOAuth/GetCliente';
+const CAMINHO_BOOTSTRAP = '/api/bootstrap';
 
 /** Segundo rascunho, para a busca ter o que descartar e a paginação, o que somar. */
 const OUTRA_NOTA = 90211;
@@ -98,11 +100,14 @@ function instalarFetch(
   opcoes: {
     readonly rascunhos?: readonly Record<string, unknown>[];
     readonly tamanhoPagina?: number;
+    /** Corpo de `CarregarNFCe` — trocável para variar o documento retomado. */
+    readonly documento?: Record<string, unknown>;
   } = {},
 ): Rota {
   const rota: Rota = { urls: [] };
   const todos = opcoes.rascunhos ?? [rascunhoDaLista(), rascunhoVarejo()];
   const porPagina = opcoes.tamanhoPagina ?? 20;
+  const documento = opcoes.documento ?? respostaCarregarNFCe();
 
   // Atribuído **nos dois** alvos: sob o vitest o `window` do jsdom não é o
   // mesmo objeto que `globalThis`, e `criarErpClient` captura o `fetch` que
@@ -139,7 +144,14 @@ function instalarFetch(
     }
 
     if (url.startsWith(CAMINHO_CARREGAR)) {
-      return Promise.resolve(respostaJson(respostaCarregarNFCe()));
+      return Promise.resolve(respostaJson(documento));
+    }
+
+    // Catálogo de condições (AD-168): a retomada resolve o
+    // `CondicaoPagamentoCodigo` do documento contra esta rota antes de gravar
+    // qualquer coisa. Sem ela a importação abortaria por condição indisponível.
+    if (url.startsWith(CAMINHO_BOOTSTRAP)) {
+      return Promise.resolve(respostaJson(bootstrapPagamentoDe()));
     }
 
     if (url.startsWith(CAMINHO_CLIENTE)) {
@@ -191,6 +203,17 @@ beforeEach(() => {
   useSessionStore.setState({ registro: registroBootstrapDe() });
   // Venda "recém-aberta": é a única em que a importação é permitida (o cliente
   // default pré-selecionado não conta como escolha do operador, AD-032).
+  //
+  // `limparPagamentos` + `limparCarrinho` **antes**, e não como zelo:
+  // `abrirSessaoDeVenda` zera auditoria, identidade e cliente, mas não toca em
+  // carrinho nem em pagamento (na aplicação essa limpeza é da 004, depois do
+  // faturamento). Sem as duas, um teste que retoma um rascunho deixa o próximo
+  // nascer com linha e condição da venda anterior — e aí `recusaDeImportacao`
+  // barra a importação com `carrinho-populado`, ou `definirIdentidadeVenda`
+  // vira no-op porque a venda já está congelada. O sintoma é sempre uma
+  // asserção falhando no teste **seguinte** ao culpado.
+  useVendaStore.getState().limparPagamentos();
+  useVendaStore.getState().limparCarrinho();
   abrirSessaoDeVenda('NOVA', 0);
 });
 
@@ -343,10 +366,97 @@ describe('T006 — busca por nome de cliente ou de vendedor', () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * AD-168 — a condição do documento chega à venda
+ * ------------------------------------------------------------------ */
+
+describe('condição de pagamento do rascunho (AD-168)', () => {
+  it('grava a condição do documento e, com ela, congela o carrinho (I7)', async () => {
+    const usuario = userEvent.setup();
+    instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    renderizar();
+
+    await screen.findByTestId('resultados-nfce');
+    await usuario.click(
+      screen.getByTestId('linha-nfce').closest('button') ?? screen.getByTestId('linha-nfce'),
+    );
+    await usuario.click(screen.getByTestId('confirmar-recuperacao-nfce'));
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+
+    // Código `1` do documento, resolvido contra o catálogo de `/api/bootstrap`.
+    expect(useVendaStore.getState().condicaoSelecionada?.codigo).toBe(1);
+    // E o carrinho **continua editável**: a condição do documento é replay, não
+    // a declaração do operador que I7 congela. É o que mantém o `FR-008` desta
+    // feature exercível — sem isso a reinserção manual seria impossível em todo
+    // rascunho que tivesse condição.
+    expect(useVendaStore.getState().podeMutarCarrinho()).toBe(true);
+  });
+
+});
+
+/* ------------------------------------------------------------------ *
+ * AD-168 — Enter sobre um botão não retoma o rascunho
+ * ------------------------------------------------------------------ */
+
+/**
+ * O `onKeyDown` da raiz da janela confirma a retomada, e o `keydown` de um
+ * `<button>` sobe até lá **antes** do `click` sintetizado. Sem a guarda, Tab até
+ * "Cancelar" + Enter importava o rascunho e só então fechava a janela: o
+ * operador via o carrinho preenchido pelo botão que apertou para desistir.
+ */
+describe('Enter em botão de saída não retoma (AD-168)', () => {
+  it('Enter em "Cancelar" fecha a janela sem tocar no carrinho', async () => {
+    const usuario = userEvent.setup();
+    instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    const { fechado } = renderizar();
+
+    await screen.findByTestId('resultados-nfce');
+    await usuario.click(
+      screen.getByTestId('linha-nfce').closest('button') ?? screen.getByTestId('linha-nfce'),
+    );
+    expect(screen.getByTestId('confirmar-recuperacao-nfce')).toBeEnabled();
+
+    const cancelar = screen.getByRole('button', { name: 'Cancelar' });
+    cancelar.focus();
+    await usuario.keyboard('{Enter}');
+
+    expect(fechado).toHaveLength(1);
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(useVendaStore.getState().identidadeVenda.numeroNota).toBe(0);
+  });
+
+  /** O atalho continua valendo de onde ele foi desenhado: o campo de busca. */
+  it('Enter no campo de busca ainda retoma o rascunho selecionado', async () => {
+    const usuario = userEvent.setup();
+    instalarFetch({ rascunhos: [rascunhoDaLista()] });
+    renderizar();
+
+    await screen.findByTestId('resultados-nfce');
+    await usuario.click(
+      screen.getByTestId('linha-nfce').closest('button') ?? screen.getByTestId('linha-nfce'),
+    );
+
+    screen.getByTestId('campo-busca-nfce').focus();
+    await usuario.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+  });
+});
+
+/* ------------------------------------------------------------------ *
  * T016 — a linha retomada fica congelada até a reinserção manual
  * ------------------------------------------------------------------ */
 
 describe('T016 — reinserir manualmente um SKU já presente numa linha congelada', () => {
+  /**
+   * O documento traz `CondicaoPagamentoCodigo: 1`, e desde AD-168 essa condição
+   * **chega** à venda — sem congelar o carrinho, que é o que mantém este teste
+   * possível. Ver `pagamentoSlice.spec.ts` § "a condição importada não congela".
+   */
   async function retomarPrimeiro(): Promise<void> {
     const usuario = userEvent.setup();
     renderizar();

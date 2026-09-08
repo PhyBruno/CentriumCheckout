@@ -329,7 +329,16 @@ export function SeletorCondicaoPagamento(): ReactElement {
    * redação —, porque quem decide de verdade é `selecionarCondicao`; aqui a
    * regra só chega ao operador **antes** de ele abrir a lista e escolher.
    */
-  const temPagamento = useVendaStore((estado) => estado.pagamentos.length > 0);
+  // O mesmo recorte de `pagamentosVivos()` no slice (AD-168): a forma riscada
+  // continua no array por rastreabilidade, e contá-la aqui deixava o combobox
+  // fechado numa venda cujo último pagamento o operador acabou de excluir —
+  // com o slice já disposto a aceitar a escolha. O seletor devolve um booleano,
+  // não a lista, então nada re-renderiza à toa.
+  const temPagamento = useVendaStore((estado) =>
+    estado.pagamentos.some(
+      (pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO',
+    ),
+  );
 
   const condicoes = catalogo.data?.condicoes ?? [];
 

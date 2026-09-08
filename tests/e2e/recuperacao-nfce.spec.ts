@@ -100,7 +100,15 @@ test.describe('User Story 2 — retomar o rascunho para o carrinho', () => {
     await expect(linha).toContainText('7,77');
   });
 
-  test('o cliente e o vendedor do rascunho passam a ser os da venda', async ({ page }) => {
+  /**
+   * **Só o cliente.** O vendedor do rascunho ainda não chega à venda: a porta
+   * `trocarVendedor` é stub vazio até a feature 012, e na finalização o payload
+   * usa `SessaoUsuario.VendedorCodigo` do bootstrap — ver o item 39 de
+   * `.specs/project/PENDENCIES.md`. O título deste teste dizia "e o vendedor"
+   * sem nunca afirmá-lo, e era exatamente o que escondia a lacuna de `FR-009`
+   * de quem lê a suíte (AD-168).
+   */
+  test('o cliente do rascunho passa a ser o da venda', async ({ page }) => {
     await abrirTelaDeVenda(page);
     await abrirJanelaDeRecuperacao(page);
     await retomar(page, NOTA_CONVENIADO);

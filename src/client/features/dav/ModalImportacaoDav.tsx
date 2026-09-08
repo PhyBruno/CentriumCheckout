@@ -205,7 +205,12 @@ export function ModalImportacaoDav({
         // ponto da janela. A linha da tabela trata a tecla por conta própria e
         // interrompe a propagação: lá o Enter ainda pode significar "selecionar
         // esta linha", e importar a linha **anterior** seria o documento errado.
-        if (evento.key === 'Enter') {
+        //
+        // **Botão nenhum passa por aqui** (AD-168): o Enter sobre um `<button>`
+        // já tem ação própria, e o `keydown` sobe à raiz **antes** do `click`
+        // sintetizado — Tab até "Cancelar" + Enter importava o DAV e só então
+        // fechava a janela. Mesma correção da janela de recuperação de NFCe.
+        if (evento.key === 'Enter' && !(evento.target instanceof HTMLButtonElement)) {
           void confirmarImportacao();
         }
       }}

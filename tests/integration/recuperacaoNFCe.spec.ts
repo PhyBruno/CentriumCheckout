@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClienteCheckout } from '../../src/shared/schemas/cliente.schema';
 import {
+  ErroCondicaoImportadaIndisponivel,
   importarVendaExistente,
   type ImportacaoVendaDeps,
 } from '../../src/client/services/importacao/importarVendaExistente';
@@ -15,6 +16,7 @@ import { criarVendaStore } from '../../src/client/stores/vendaStore';
 import { clienteCheckoutDe } from '../support/cliente';
 import { snapshotDe } from '../support/precificacao';
 import { CODIGO_CLIENTE_DAV, CODIGO_VENDEDOR_DAV, SKU_DAV } from '../support/dav';
+import { condicaoDe, formaDe } from '../support/pagamento';
 import {
   NUMERO_NOTA,
   SERIE_NFCE,
@@ -89,6 +91,19 @@ function montarStore() {
   return store;
 }
 
+/**
+ * A condição que `documentoDoDav` referencia em `CondicaoPagamentoCodigo: 1` —
+ * o rascunho retomado precisa reencontrá-la no catálogo da sessão (AD-168).
+ *
+ * `entrada: 'S'` não é enfeite: `FormaEntrada` chega **vazia** na fixture do
+ * documento, e é o catálogo que a preenche em `importarFormasDePagamento`. É o
+ * que prova que a condição foi gravada **antes** das formas — sem isso o campo
+ * sairia vazio e o ERP calcularia crediário zero na 014 (AD-111).
+ */
+const CONDICAO_DO_DOCUMENTO = condicaoDe(1, 'A VISTA', [
+  formaDe({ codigo: 1, descricao: 'DINHEIRO', entrada: 'S' }),
+]);
+
 interface Contexto {
   readonly deps: ImportacaoVendaDeps;
   readonly capturadas: string[];
@@ -124,6 +139,12 @@ function depsDe(
     // é reproduzida para o teste exercitar o mesmo caminho da UI.
     selecionarCliente: (cliente) => venda.selecionarCliente(cliente, 'RASCUNHO'),
     trocarVendedor,
+    // Catálogo da sessão: o documento aponta `CondicaoPagamentoCodigo: 1`, e
+    // `A_VISTA` é a entrada correspondente. Devolver `null` aqui é o caminho de
+    // condição inativada no ERP, exercitado no seu próprio teste.
+    resolverCondicao: (codigo) =>
+      Promise.resolve(codigo === CONDICAO_DO_DOCUMENTO.codigo ? CONDICAO_DO_DOCUMENTO : null),
+    importarCondicaoPagamento: venda.importarCondicaoPagamento,
     importarFormasDePagamento,
     registrarEventoAuditoria: venda.registrarEventoAuditoria,
     buscarDescricaoProduto: () => Promise.resolve('ARROZ TIPO 1 5KG'),
@@ -256,6 +277,81 @@ describe('cliente e vendedor', () => {
       // string vazia que a UI exibiria como vendedor sem nome.
       nome: null,
     });
+  });
+});
+
+/**
+ * AD-168 — a condição de pagamento do documento é parte do que a retomada traz.
+ *
+ * Até 2026-09-08 `mapearVendaExistente` descartava `CondicaoPagamentoCodigo`,
+ * embora `dav.schema.ts` já o validasse. Com forma importada, a venda retomada
+ * ficava sem condição **e** sem como escolher uma (`selecionarCondicao` recusa
+ * com pagamento aplicado), e `FaturarNFCe` recebia `CondicaoPagamentoCodigo: 0`
+ * — que o ERP real recusa (AD-165).
+ */
+describe('condição de pagamento do documento (AD-168)', () => {
+  it('grava a condição do rascunho como a condição da venda', async () => {
+    const { deps } = depsDe(store, respostaRascunhoCompleto());
+
+    await importarVendaExistente(fonte(), deps);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(CONDICAO_DO_DOCUMENTO.codigo);
+  });
+
+  /**
+   * A ordem dentro da orquestração, verificada pelo seu efeito observável.
+   *
+   * `importarFormasDePagamento` resolve `entrada`/`integracaoCartao` de cada
+   * forma contra `condicaoSelecionada.formas`. Com a condição gravada depois, a
+   * busca no catálogo falharia e `entrada` sairia vazia — silenciosamente.
+   */
+  it('preenche `entrada` da forma importada a partir do catálogo da condição', async () => {
+    const contexto = depsDe(store, respostaRascunhoCompleto());
+    const deps = {
+      ...contexto.deps,
+      importarFormasDePagamento: store.getState().importarFormasDePagamento,
+    };
+
+    await importarVendaExistente(fonte(), deps);
+
+    expect(store.getState().pagamentos[0]?.entrada).toBe('S');
+  });
+
+  /**
+   * `0` é ausência legítima: rascunho suspenso antes de o operador chegar ao
+   * pagamento. A venda retomada segue sem condição e o operador escolhe — o que
+   * `selecionarCondicao` permite, porque não há forma aplicada.
+   */
+  it('não grava condição quando o documento vem com código 0', async () => {
+    const { deps } = depsDe(
+      store,
+      respostaCarregarNFCe({ CondicaoPagamentoCodigo: 0, FormasDePagamento: [] }),
+    );
+
+    await importarVendaExistente(fonte(), deps);
+
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().linhas).toHaveLength(1);
+  });
+
+  /**
+   * Condição inativada no ERP depois de o rascunho ter sido criado. Aborta a
+   * importação inteira, como faz um cliente não encontrado: o único destino
+   * dessa venda seria `CondicaoPagamentoCodigo: 0`, recusado no faturamento —
+   * depois de o operador ter conferido a venda toda.
+   */
+  it('aborta a importação, sem tocar no carrinho, quando o catálogo não tem a condição', async () => {
+    const { deps } = depsDe(store, respostaRascunhoCompleto(), {
+      resolverCondicao: () => Promise.resolve(null),
+    });
+
+    await expect(importarVendaExistente(fonte(), deps)).rejects.toBeInstanceOf(
+      ErroCondicaoImportadaIndisponivel,
+    );
+
+    expect(store.getState().linhas).toHaveLength(0);
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
   });
 });
 
