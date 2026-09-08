@@ -54,9 +54,11 @@ Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Tr
 
 **Decision**: `resolverIntegracao(forma, capacidades)` é uma função pura que devolve `'TEF' | 'PIX_DINAMICO' | 'NENHUMA'`. As `capacidades` (`tefAtivo`, `pixAtivo`) são **injetadas**, nunca lidas de dentro do domínio. **Revisado em 2026-09-03 (AD-144):** `plataforma` saiu das capacidades — o layout deixou de ser insumo do roteamento quando o usuário revogou a exclusão de TEF no mobile. Tabela de decisão:
 
+**Refinado em 2026-09-08 (AD-180):** o ramo de cartão ganhou uma segunda condição, `forma.integracaoCartao === '1'` — ver D6, cuja decisão foi substituída.
+
 | `FormaMeioPagtoNFe` | Condição | Resultado |
 |---|---|---|
-| `CartaoCredito`, `CartaoDebito` | `tefAtivo` | `TEF` |
+| `CartaoCredito`, `CartaoDebito` | `tefAtivo` **e** `integracaoCartao === '1'` | `TEF` |
 | `CartaoCredito`, `CartaoDebito` | caso contrário | `NENHUMA` |
 | `Pix` | `pixAtivo` | `PIX_DINAMICO` |
 | `Pix` | `!pixAtivo` | forma oculta/desabilitada (`FR-003`) |
@@ -69,13 +71,15 @@ Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Tr
 
 ---
 
-## D6 — `FormaIntegracaoCartao` é ecoado, não interpretado (nesta fase)
+## D6 — `FormaIntegracaoCartao` decide, junto com `tefAtivo`, se o cartão vai ao TEF
 
-**Decision**: O campo `FormaIntegracaoCartao` (`'1'` = TEF/`PagtoIntegrado`, `'2'` = POS/avulso) é lido do cadastro da forma, copiado para o `PagamentoAplicado` e ecoado em `CheckoutFaturarNFCe.FormasDePagamento[].FormaIntegracaoCartao`. Ele **não** participa da decisão de `resolverIntegracao` nesta feature.
+**Decision (vigente desde 2026-09-08, AD-180)**: O campo `FormaIntegracaoCartao` (`FPGNFTEFPO`; `'1'` = TEF/`PagtoIntegrado`, `'2'` **ou vazio** = POS/avulso) é lido do cadastro da forma, copiado para o `PagamentoAplicado`, ecoado em `CheckoutFaturarNFCe.FormasDePagamento[].FormaIntegracaoCartao` **e** usado como segunda condição de `resolverIntegracao` no ramo de cartão: sem `'1'`, cartão nunca roteia para TEF, mesmo com `tefAtivo`.
 
-**Rationale**: AD-078 confirmou que o campo existe e resolve o item 30 de `PENDENCIES.md`, mas AD-073 manteve deliberadamente a regra de `PAY-08` como está — todo cartão com `TEFAtivo=true` roteia para TEF. Antecipar o refinamento seria implementar um requisito que nenhum `FR-xxx` pede. A tabela de D5 é uma função de tabela: refiná-la depois é acrescentar uma linha, sem tocar nos call sites (Open/Closed).
+**Rationale**: informação direta do usuário — uma empresa que usa TEF pode optar por pagar avulso em formas específicas de cartão, e mandá-las ao terminal é erro operacional. `tefAtivo` responde "a empresa tem TEF?"; `integracaoCartao` responde "esta forma passa nele?". As duas perguntas são diferentes e precisam das duas respostas.
 
-**Alternatives considered**: *Já usar `FormaIntegracaoCartao === '1'` como condição adicional para TEF*: rejeitado — mudaria comportamento sem AD que o autorize e quebraria empresas cujo cadastro não preenche o campo.
+**Decisão anterior, substituída**: até 2026-09-08 este item dizia que o campo era "ecoado, não interpretado", apoiado em AD-073 (que aceitava deliberadamente rotear todo cartão com `TEFAtivo=true` para TEF) e em AD-078 (que confirmou o campo na KB mas o deixou só disponível). A alternativa então rejeitada — "já usar `FormaIntegracaoCartao === '1'` como condição adicional" — é exatamente a regra vigente; o receio registrado ali ("quebraria empresas cujo cadastro não preenche o campo") não se aplica, porque campo vazio **significa POS**, não "sem informação".
+
+**Nota de fronteira**: o `GetSessao` real devolve `' '` (espaço) onde o YAML traz `''`; `integracaoCartaoSchema` já normaliza com `.trim()` (AD-165), então o domínio nunca vê o padding do GeneXus.
 
 ---
 

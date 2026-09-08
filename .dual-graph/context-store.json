@@ -6015,5 +6015,12 @@
     "evidence": {
       "source_kind": "edit_observation"
     }
+  },
+  {
+    "type": "decision",
+    "content": "AD-180: cartao so chama TEF com FormaIntegracaoCartao '1'; '2'/vazio e POS",
+    "tags": ["pagamento", "tef", "roteamento"],
+    "files": ["src/client/domain/pagamento/roteamentoIntegracao.ts"],
+    "date": "2026-09-08"
   }
 ]

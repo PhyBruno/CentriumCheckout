@@ -53,14 +53,17 @@ Teste unitário puro sobre `resolverIntegracao`, sem montar componente. Matriz m
 
 A matriz não tem mais eixo de plataforma (AD-144, 2026-09-03): o veredito é o mesmo no desktop e no mobile, inclusive para cartão com TEF ativo — a linha que esperava `NENHUMA` no mobile foi removida.
 
-| `FormaMeioPagtoNFe` | `tefAtivo` | `pixAtivo` | Esperado |
-|---|---|---|---|
-| `CartaoCredito` | `true` | — | `TEF` (em qualquer layout) |
-| `CartaoDebito` | `false` | — | `NENHUMA` |
-| `Pix` | — | `true` | `PIX_DINAMICO` (em qualquer layout) |
-| `Pix` | — | `false` | forma indisponível |
-| `PixEstatico` | — | `true` | `NENHUMA` ← `FR-006` |
-| `Dinheiro` | `true` | `true` | `NENHUMA` |
+A matriz ganhou a coluna `integracaoCartao` em 2026-09-08 (AD-180): no cartão, `'1'` significa TEF e `'2'`/vazio significa POS (pagamento avulso, sem integração). Fora do cartão a coluna é irrelevante.
+
+| `FormaMeioPagtoNFe` | `integracaoCartao` | `tefAtivo` | `pixAtivo` | Esperado |
+|---|---|---|---|---|
+| `CartaoCredito` | `'1'` | `true` | — | `TEF` (em qualquer layout) |
+| `CartaoCredito` | `'2'` ou `''` | `true` | — | `NENHUMA` ← AD-180, forma segue disponível |
+| `CartaoDebito` | `'1'` | `false` | — | `NENHUMA` |
+| `Pix` | — | — | `true` | `PIX_DINAMICO` (em qualquer layout) |
+| `Pix` | — | — | `false` | forma indisponível |
+| `PixEstatico` | — | — | `true` | `NENHUMA` ← `FR-006` |
+| `Dinheiro` | — | `true` | `true` | `NENHUMA` |
 
 **A linha que mais importa**: `PixEstatico` + `pixAtivo: true` → `NENHUMA`. Se essa falhar, `FR-006` está violado — o Checkout tentaria gerar cobrança dinâmica para um QR estático, que não tem ciclo de confirmação.
 

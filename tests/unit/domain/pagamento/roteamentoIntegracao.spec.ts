@@ -6,9 +6,9 @@ import {
 import { formaDe } from '../../../support/pagamento';
 
 describe('resolverIntegracao — tabela de decisão (research.md D5)', () => {
-  it('CartaoCredito com TEF ativo roteia para TEF', () => {
+  it('CartaoCredito com TEF ativo e forma marcada como TEF roteia para TEF', () => {
     expect(
-      resolverIntegracao(formaDe({ meioPagtoNFe: 'CartaoCredito' }), {
+      resolverIntegracao(formaDe({ meioPagtoNFe: 'CartaoCredito', integracaoCartao: '1' }), {
         tefAtivo: true,
         pixAtivo: false,
       }),
@@ -17,7 +17,7 @@ describe('resolverIntegracao — tabela de decisão (research.md D5)', () => {
 
   it('CartaoDebito sem TEF ativo não roteia', () => {
     expect(
-      resolverIntegracao(formaDe({ meioPagtoNFe: 'CartaoDebito' }), {
+      resolverIntegracao(formaDe({ meioPagtoNFe: 'CartaoDebito', integracaoCartao: '1' }), {
         tefAtivo: false,
         pixAtivo: false,
       }),
@@ -49,6 +49,60 @@ describe('resolverIntegracao — tabela de decisão (research.md D5)', () => {
         pixAtivo: true,
       }),
     ).toBe('NENHUMA');
+  });
+});
+
+describe('AD-180 (2026-09-08) — `integracaoCartao` decide TEF junto com `tefAtivo`', () => {
+  const EMPRESA_COM_TEF = { tefAtivo: true, pixAtivo: false };
+
+  it.each(['2', ''] as const)(
+    'cartão cadastrado como POS (integracaoCartao = "%s") não chama TEF, mesmo com tefAtivo',
+    (integracaoCartao) => {
+      // A empresa usa TEF, mas escolheu cobrar esta forma em maquininha avulsa.
+      expect(
+        resolverIntegracao(formaDe({ meioPagtoNFe: 'CartaoCredito', integracaoCartao }), {
+          ...EMPRESA_COM_TEF,
+        }),
+      ).toBe('NENHUMA');
+    },
+  );
+
+  it('débito cadastrado como TEF chama TEF quando a empresa tem TEF', () => {
+    expect(
+      resolverIntegracao(
+        formaDe({ meioPagtoNFe: 'CartaoDebito', integracaoCartao: '1' }),
+        EMPRESA_COM_TEF,
+      ),
+    ).toBe('TEF');
+  });
+
+  it('forma marcada como TEF em empresa sem TEF continua sem integração', () => {
+    // As duas condições são necessárias; nenhuma delas basta sozinha.
+    expect(
+      resolverIntegracao(formaDe({ meioPagtoNFe: 'CartaoCredito', integracaoCartao: '1' }), {
+        tefAtivo: false,
+        pixAtivo: false,
+      }),
+    ).toBe('NENHUMA');
+  });
+
+  it('`integracaoCartao` não influencia forma que não é cartão', () => {
+    // O campo é do cadastro de cartão; num PIX ele é padding do GeneXus.
+    expect(
+      resolverIntegracao(formaDe({ meioPagtoNFe: 'Pix', integracaoCartao: '' }), {
+        tefAtivo: true,
+        pixAtivo: true,
+      }),
+    ).toBe('PIX_DINAMICO');
+  });
+
+  it('cartão POS continua disponível — vira pagamento avulso, não some da tela', () => {
+    expect(
+      formaDisponivel(
+        formaDe({ meioPagtoNFe: 'CartaoCredito', integracaoCartao: '2' }),
+        EMPRESA_COM_TEF,
+      ),
+    ).toBe(true);
   });
 });
 
@@ -91,7 +145,10 @@ describe('AD-144 (2026-09-03) — o veredito não depende de layout', () => {
     // tela roda (a exclusão de TEF no mobile de AD-074 foi revogada).
     const capacidadesSemPlataforma = { tefAtivo: true, pixAtivo: false };
     expect(
-      resolverIntegracao(formaDe({ meioPagtoNFe: 'CartaoCredito' }), capacidadesSemPlataforma),
+      resolverIntegracao(
+        formaDe({ meioPagtoNFe: 'CartaoCredito', integracaoCartao: '1' }),
+        capacidadesSemPlataforma,
+      ),
     ).toBe('TEF');
   });
 });

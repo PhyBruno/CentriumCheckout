@@ -88,7 +88,15 @@ export interface FormaPagamento {
   readonly entrada: string;
   /** Fonte de verdade do roteamento (`PAY-08`). */
   readonly meioPagtoNFe: MeioPagtoNFe;
-  /** `1` = TEF, `2` = POS/avulso (AD-078); ecoado, não interpretado (D6). */
+  /**
+   * `FpgNfTefPos` do ERP: `'1'` = TEF, `'2'` **ou vazio** = POS/avulso (AD-078).
+   *
+   * **Interpretado desde AD-180 (2026-09-08)**, além de ecoado no payload de
+   * faturamento: é a segunda condição de `resolverIntegracao` para cartão —
+   * sem `'1'` aqui, cartão nunca chama TEF, mesmo com `tefAtivo` na empresa.
+   * A redação anterior ("ecoado, não interpretado", `research.md` D6) descrevia
+   * o comportamento até 2026-09-08 e **não vale mais**.
+   */
   readonly integracaoCartao: '1' | '2' | '';
   /** Consumido pela feature 010; transportado como opaco. */
   readonly tipoTransacaoTEF: string;
