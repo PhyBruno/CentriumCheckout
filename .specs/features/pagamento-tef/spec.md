@@ -27,8 +27,9 @@ TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal 
 **Acceptance Criteria**:
 
 1. WHEN `ConfiguracoesTEF.TEFAtivo` é `false` THEN o sistema SHALL ocultar/desabilitar o recurso de TEF.
+2. WHEN `ConfiguracoesTEF.TEFAtivo` é `true` mas a forma de cartão traz `FormaIntegracaoCartao` igual a `'2'` ou vazio THEN o sistema SHALL NOT acionar o TEF para ela: a forma **permanece disponível** na tela e é cobrada como pagamento avulso, em maquininha (POS) fora do Checkout, com o operador confirmando o valor. **Novo (2026-09-08, AD-180 em `.specs/project/STATE.md`):** informação direta do usuário — uma empresa que usa TEF pode optar por pagar avulso em formas específicas, e o campo `FPGNFTEFPO` do cadastro da forma é o que diz qual é qual (`'1'` = TEF). Sem isso, o Checkout mandaria ao terminal uma venda que o lojista decidiu cobrar por fora.
 
-**Independent Test**: Mockar `GetSessao` com `TEFAtivo=false` e confirmar que TEF não aparece na tela de pagamento. Faz parte do mesmo teste combinado descrito em `.specs/features/pagamento-geral/spec.md` (Story P1, `PAY-01`).
+**Independent Test**: Mockar `GetSessao` com `TEFAtivo=false` e confirmar que TEF não aparece na tela de pagamento; repetir com `TEFAtivo=true` e uma forma de cartão com `FormaIntegracaoCartao` vazio, confirmando que a forma aparece mas nenhuma chamada de TEF acontece. Faz parte do mesmo teste combinado descrito em `.specs/features/pagamento-geral/spec.md` (Story P1, `PAY-01`).
 
 ---
 
@@ -65,7 +66,7 @@ TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal 
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| PAY-02 | Ocultar TEF quando `TEFAtivo=false` | - | Verified |
+| PAY-02 | Ocultar TEF quando `TEFAtivo=false`; não acionar TEF quando a forma é POS (`FormaIntegracaoCartao` ≠ `'1'`) | - | Verified (a segunda condição é de 2026-09-08, AD-180) |
 | PAY-12 | Cancelar transação TEF aprovada via endpoint do ERP, com polling de confirmação | - | Design (2026-09-04, AD-162) — bloqueada por dois endpoints ainda não especificados no contrato (item 41 de `.specs/project/PENDENCIES.md`) |
 
 **Coverage:** 2 total, 1 verificado e 1 em Design — 2 bloqueios deliberados do usuário: protocolo/timeout do TEF com o terminal físico (AD-037, item 25 de `.specs/project/PENDENCIES.md`) e os endpoints de cancelamento/confirmação com o ERP (AD-162, item 41 de `.specs/project/PENDENCIES.md`) — os dois distintos entre si, ver Edge Cases.

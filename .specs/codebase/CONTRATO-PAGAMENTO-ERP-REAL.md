@@ -11,10 +11,20 @@ levantou e que vale para toda a 008/009/010:
 > Pelo que o `GetSessao` devolve na parte de pagamentos, dá para saber se uma
 > forma/condição espera **TEF**, **PIX** ou **nenhuma integração**?
 
-**Resposta curta:** para **PIX, sim, com precisão**. Para **TEF, só no nível da
-empresa** — não há, neste cadastro, nenhuma marca por forma. E há um bloqueio
-anterior a essa pergunta: o campo que carrega a resposta chega num formato que
-o Checkout hoje não reconhece.
+**Resposta curta (corrigida em 2026-09-08, AD-180):** para **PIX e TEF, sim, com
+precisão** — os dois têm marca por forma **e** flag de empresa, e as duas
+condições precisam valer juntas. E há um bloqueio anterior a essa pergunta: o
+campo que carrega o **meio** de pagamento chega num formato que o Checkout hoje
+não reconhece (§4).
+
+> **Leia primeiro, se você está voltando a este documento.** A redação original
+> (2026-09-05) respondia "para TEF, só no nível da empresa — não há, neste
+> cadastro, nenhuma marca por forma", e concluía em §1/§3 que ler
+> `FormaIntegracaoCartao` faria o Checkout "decidir errado". **Isso não vale
+> mais.** O usuário confirmou em 2026-09-08 (AD-180) que esse campo é
+> exatamente a marca por forma: `'1'` = TEF, `''`/`'2'` = POS (avulso). O dado
+> observado aqui continua correto — o que estava errado era a conclusão tirada
+> dele. As seções §1 e §3 abaixo já estão reescritas sob a regra vigente.
 
 ---
 
@@ -58,16 +68,29 @@ Chega como o **código numérico da tabela da NFe**, não como nome:
 | `90` | Sem Pagamento | nenhuma |
 | `99` | Outros | nenhuma |
 
-### `FormaIntegracaoCartao` — **sem sinal neste tenant**
+### `FormaIntegracaoCartao` — **a marca de TEF por forma; neste tenant, nenhuma forma é TEF**
 
-O contrato (AD-078) define `'1'` = TEF e `'2'` = POS/avulso. No cadastro real
-ele nunca é preenchido: **só aparecem `""` e `" "` (espaço) nas 1305 linhas**.
+Este é o campo `FPGNFTEFPO` (`FpgNfTefPos`) do cadastro da forma de pagamento, e
+a semântica, confirmada pelo usuário em 2026-09-08 (**AD-180**), é:
 
-Pior: o `" "` **não** correlaciona com cartão. Ele aparece em `01` (dinheiro),
-`05` (crediário, vale devolução) e `17` (PIX) — e **não** aparece nas duas
-formas de cartão (`03`, `04`), que trazem `""`. É padding do GeneXus, não
-informação. Qualquer regra que leia este campo para decidir TEF vai decidir
-errado.
+| Valor | Significado | Roteamento do cartão |
+|---|---|---|
+| `'1'` | TEF | chama TEF **se** `ConfiguracoesTEF.TEFAtivo` |
+| `'2'` | POS | pagamento avulso — nunca chama TEF |
+| `''` (e `' '`, padding do GeneXus) | POS | pagamento avulso — nunca chama TEF |
+
+Neste cadastro real ele **nunca** vem `'1'`: só aparecem `""` e `" "` nas 1305
+linhas. Sob a regra vigente isso não é ausência de sinal — é a resposta "nenhuma
+forma deste tenant passa no TEF", coerente com o `TEFAtivo: false` da empresa
+(§2). Um campo não preenchido significa POS, não "não sei".
+
+**Correção de leitura (2026-09-08).** A redação original desta seção dizia
+"sem sinal neste tenant" e concluía que "qualquer regra que leia este campo para
+decidir TEF vai decidir errado". A conclusão estava errada, e a evidência que a
+sustentava também foi mal lida: o `" "` aparecer em `01`/`05`/`17` e o `""` nas
+formas de cartão não é contradição nenhuma — os dois valores significam a mesma
+coisa (POS), e o campo só tem sentido em cartão. Fora de cartão ele é ignorado
+pelo roteamento, então onde o padding cai é irrelevante.
 
 ### `FormaTipoTransacaoTEF` — **vazio em 100% das linhas**
 
@@ -127,25 +150,32 @@ Neste tenant a forma `36 - PIX` existe em todas as 87 condições, e
 `UtilizaCentriumPAG` está **desligado** — logo, hoje, o PIX aqui é pagamento
 manual (o operador confirma por fora), não integração.
 
-### TEF — só no nível da empresa, nunca da forma
+### TEF — dá para saber, no nível da empresa **e** no da forma
 
-A única informação de TEF é `ConfiguracoesTEF.TEFAtivo`. **Não existe, no
-payload, nada que diga "esta forma vai por TEF"**: os dois campos que existiriam
-para isso (`FormaIntegracaoCartao`, `FormaTipoTransacaoTEF`) estão vazios em
-todas as linhas.
-
-Portanto a única regra possível é a inferência por meio:
+Três campos bastam, e as duas últimas condições precisam valer **juntas**:
 
 ```
-(meio === '03' || meio === '04') && ConfiguracoesTEF.TEFAtivo  →  TEF
+(meio === '03' || meio === '04')          →  esta forma é cartão
+ConfiguracoesTEF.TEFAtivo === true        →  esta empresa tem TEF
+forma.FormaIntegracaoCartao === '1'       →  esta forma passa no TEF (AD-180)
 ```
 
-O que **não** dá para saber, e é uma limitação real do cadastro:
+Sem qualquer uma das duas últimas, o cartão é **pagamento avulso/POS**: cobrado
+na maquininha fora do Checkout, com o operador confirmando o valor. A forma
+continua disponível na tela — o que ela não faz é acionar o terminal.
 
-- distinguir cartão que passa no **TEF** de cartão que passa em **maquininha
-  avulsa (POS)** — os dois são `03`/`04` com os mesmos campos vazios. Numa
-  empresa com `TEFAtivo`, toda forma de cartão será tratada como TEF;
-- se uma forma específica de cartão foi cadastrada para **não** integrar.
+Neste tenant, `TEFAtivo` está desligado e nenhuma forma traz `'1'`; logo, nenhum
+cartão daqui rotearia para TEF, pelas duas razões independentes.
+
+`FormaTipoTransacaoTEF` continua vazio em 100% das linhas, mas isso não impede a
+decisão: ele diria **que tipo** de transação abrir no terminal (crédito/débito),
+não **se** abrir. Quem responde "se" é `FormaIntegracaoCartao`.
+
+**Correção de leitura (2026-09-08, AD-180).** A redação original desta seção
+afirmava que "não existe, no payload, nada que diga 'esta forma vai por TEF'" e
+listava como limitação real do cadastro a impossibilidade de distinguir TEF de
+POS. As duas afirmações caíram: o campo existe, sempre veio no payload, e
+distingue exatamente isso.
 
 ### Nenhuma integração — é o resto
 
@@ -153,10 +183,12 @@ Todo meio fora de `03`/`04`/`17`, e também `03`/`04`/`17` quando a flag da
 empresa correspondente está desligada.
 
 Essa é exatamente a tabela que `resolverIntegracao`
-(`src/client/domain/pagamento/roteamentoIntegracao.ts`) já implementa — ela
-decide **só** por `meioPagtoNFe` + as duas capacidades, e deliberadamente ignora
-`FormaIntegracaoCartao`. O dado real confirma que ignorar foi a escolha certa:
-aquele campo não carrega informação neste cadastro.
+(`src/client/domain/pagamento/roteamentoIntegracao.ts`) implementa desde AD-180
+(2026-09-08): `meioPagtoNFe` + as duas capacidades da empresa + o
+`integracaoCartao` da forma, para o ramo de cartão. Até 2026-09-08 aquela função
+ignorava `FormaIntegracaoCartao` de propósito, e este documento chegou a
+registrar que ignorar tinha sido a escolha certa — **não era**; ver o aviso no
+topo e as seções §1 e §3.
 
 ---
 

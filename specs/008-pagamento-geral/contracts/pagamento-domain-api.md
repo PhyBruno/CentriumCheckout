@@ -60,12 +60,12 @@ export function formaDisponivel(
 
 Função **pura e total** — tabela de decisão completa em `research.md`, D5. Contrato de comportamento:
 
-1. `CartaoCredito`/`CartaoDebito` → `'TEF'` se `tefAtivo`; caso contrário `'NENHUMA'` (AD-144: o layout não entra na conta — cartão com TEF ativo roteia para TEF também no mobile).
+1. `CartaoCredito`/`CartaoDebito` → `'TEF'` se `tefAtivo` **e** `forma.integracaoCartao === '1'`; caso contrário `'NENHUMA'` (AD-180, 2026-09-08: `'2'` ou vazio é POS/avulso — a empresa tem TEF mas escolheu cobrar esta forma na maquininha. AD-144: o layout não entra na conta — cartão com TEF ativo roteia para TEF também no mobile).
 2. `Pix` → `'PIX_DINAMICO'` se `pixAtivo` — igualmente sem consultar o layout.
 3. `PixEstatico` → sempre `'NENHUMA'` (`FR-006`).
 4. Qualquer outro meio → `'NENHUMA'` (`FR-004` AC3).
 
-`formaDisponivel` implementa `FR-002`/`FR-003`: uma forma cuja integração está desligada é ocultada/desabilitada — cartão fica disponível sem TEF (vira pagamento manual), mas `Pix` com `pixAtivo = false` é indisponível, porque não há caminho manual para ele.
+`formaDisponivel` implementa `FR-002`/`FR-003`: uma forma cuja integração está desligada é ocultada/desabilitada — cartão fica disponível sem TEF (vira pagamento manual), inclusive o cartão cadastrado como POS (AD-180), mas `Pix` com `pixAtivo = false` é indisponível, porque não há caminho manual para ele.
 
 `resolverIntegracao` **não conhece** as features 009 e 010: devolve um veredito, não executa integração. É isso que permite testar as 4 combinações de flags sem stub de rede.
 
