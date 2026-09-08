@@ -28,12 +28,19 @@ export type MotivoBloqueio = string | null;
  * Devolve `{}` quando não há bloqueio — e não `{ 'aria-disabled': false }` —
  * porque `exactOptionalPropertyTypes` recusa a propriedade explicitamente
  * indefinida, e um `aria-disabled="false"` no DOM é ruído para o leitor de tela.
+ *
+ * `tabIndex: -1` acompanha o bloqueio (pedido do usuário, 2026-09-08):
+ * `aria-disabled`, ao contrário de `disabled`, não tira o elemento da ordem de
+ * TAB — o botão continua focável e o teclado passaria por ele como se
+ * estivesse ativo. Tirar da ordem de TAB não tira o clique: o mouse ainda
+ * alcança o elemento e `acaoBloqueavel` continua explicando o motivo.
  */
 export function atributosDeBloqueio(motivo: MotivoBloqueio): {
   'aria-disabled'?: true;
+  tabIndex?: -1;
   title?: string;
 } {
-  return motivo === null ? {} : { 'aria-disabled': true, title: motivo };
+  return motivo === null ? {} : { 'aria-disabled': true, tabIndex: -1, title: motivo };
 }
 
 /**
