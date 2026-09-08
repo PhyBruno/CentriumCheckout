@@ -343,6 +343,15 @@ export const AVISO_VALOR_ACIMA_DO_SALDO =
 export const AVISO_VALIDACAO_INDISPONIVEL =
   'Não foi possível validar a venda no ERP: o pagamento não foi aplicado.';
 /**
+ * A venda mudou entre o gesto e a resposta do ERP (revisão da 014, 2026-09-08).
+ *
+ * A frase diz o que aconteceu **e** que basta repetir, porque o operador não
+ * tem como saber que uma confirmação de PIX/TEF caiu no meio — para ele, o
+ * clique simplesmente não fez nada.
+ */
+export const AVISO_VENDA_MUDOU_DURANTE_VALIDACAO =
+  'A venda mudou enquanto o ERP validava este pagamento. Nada foi aplicado: confira o saldo e lance novamente.';
+/**
  * Venda cujo total líquido é zero (pedido do usuário, 2026-09-04).
  *
  * Distinta de `AVISO_SALDO_JA_COBERTO`, que descreve o desfecho **feliz** —
@@ -627,6 +636,23 @@ export function criarPagamentoSlice(
         return false;
       }
 
+      // A venda mudou enquanto o ERP respondia?
+      //
+      // `saldo` e `valorAplicado` foram derivados **antes** do `await`, e a
+      // janela deixou de ser um microtask quando a 014 ligou o gate real: agora
+      // é uma ida à rede, com teto de 8s. Se outra confirmação assíncrona
+      // (PIX/TEF) mexeu no saldo nesse intervalo, gravar `valorAplicado` como
+      // se nada tivesse acontecido somaria uma forma que o ERP nunca viu — e o
+      // veredito recém-obtido descreve uma venda que já não existe.
+      //
+      // Recusa, em vez de re-derivar: re-derivar produziria um valor **diferente
+      // do que foi validado**, que é exatamente o que I1 proíbe. O gesto é
+      // barato de repetir, e a segunda tentativa já sai com o saldo correto.
+      if (saldoAtual().saldoRestante !== saldo.saldoRestante) {
+        deps.avisar?.(AVISO_VENDA_MUDOU_DURANTE_VALIDACAO);
+        return false;
+      }
+
       const integracao = resolverIntegracao(forma, deps.capacidades());
       const idPagamento = gerarIdPagamento();
 
@@ -804,6 +830,14 @@ export function criarPagamentoSlice(
         aplicarPagamentos(
           get().pagamentos.filter((pagamento) => pagamento.idPagamento !== idPagamento),
         );
+
+        // Mesma razão de `removerPagamento`: a forma saiu da venda, então o
+        // veredito obtido com ela dentro não descreve mais o que está na tela.
+        // Sem isto, uma cobrança recusada pelo banco deixaria para trás uma
+        // autorização de emissão que o ERP concedeu a uma venda que já não
+        // existe — furo de I7 que a feature 010 (TEF) exercitaria de verdade,
+        // já que lá a recusa chega de forma assíncrona.
+        deps.invalidarVeredito();
 
         get().registrarEventoAuditoria(
           eventoPagamentoRecusado({ tipo: alvo.meioPagtoNFe, motivo }),
@@ -1014,6 +1048,14 @@ export function criarPagamentoSlice(
           descontoCapa: null,
           valesDevolucao: [],
         });
+
+        // A terceira invalidação de `data-model.md` §3 da 014 — e a que faltava.
+        // Sem ela o veredito da venda encerrada sobrevive à limpeza, e a venda
+        // **seguinte** nasce com `podeFinalizar() === true` antes de ter um
+        // único item: autorizada por uma consulta que descreveu outra venda.
+        // Era o mesmo desfecho do stub `() => true` que a 014 veio substituir,
+        // durante toda a janela até a primeira inserção da venda nova.
+        deps.invalidarVeredito();
       },
 
       descartarPagamento: () => {

@@ -31,6 +31,7 @@ import {
 } from '../../src/client/stores/slices/vendedorSlice';
 import {
   criarPagamentoSlice,
+  AVISO_VENDA_MUDOU_DURANTE_VALIDACAO,
   type ContextoIntegracao,
   type PagamentoDeps,
 } from '../../src/client/stores/slices/pagamentoSlice';
@@ -338,6 +339,15 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
     // mais forte do que "difere só em um campo".
     expect(enviado?.SuspenderOuFaturar).toBe('FATURAR');
     expect({ ...enviado, Log: '' }).toEqual({ ...paraFaturar, Log: '' });
+
+    // A comparação acima alimenta o retrato de `FATURAR` com a **própria** lista
+    // validada, então ela prova os campos de cabeçalho e nada diz sobre as
+    // formas. Esta segunda asserção fecha a lacuna pelo lado que importa: a
+    // forma que o gate validou é, campo a campo, a que a emissão enviaria a
+    // partir do estado — mesma função `formaParaRetrato` nas duas pontas (I5).
+    expect(enviado?.FormasDePagamento).toEqual(
+      store.getState().montarPagamentosParaPayload().FormasDePagamento,
+    );
   });
 });
 
@@ -375,6 +385,28 @@ describe('validacaoVendaSlice — indisponibilidade do ERP (T013, FR-009, I4)', 
       expect(chamar).toHaveBeenCalledTimes(1);
     });
   }
+
+  it('TIMEOUT é distinto de REDE, mesmo o erpClient devolvendo o mesmo estado', async () => {
+    // `criarErpClient` traduz **qualquer** exceção do fetch (o `AbortError`
+    // incluído) para `erro-de-rede`. Sem a flag própria de expiração, um ERP
+    // lento chegaria ao operador com a frase de "sem comunicação" — duas causas
+    // distintas com o mesmo texto, e nenhuma pista de que basta esperar.
+    const chamar = vi.fn(
+      (_caminho: string, init?: RequestInit) =>
+        new Promise<{ estado: 'erro-de-rede' }>((resolve) => {
+          init?.signal?.addEventListener('abort', () => {
+            resolve({ estado: 'erro-de-rede' });
+          });
+        }),
+    );
+
+    const veredito = await enviarValidarNFCe({} as CheckoutFaturarNFCe, {
+      erpClient: { chamar },
+      timeoutMs: 10,
+    });
+
+    expect(veredito).toEqual({ resultado: 'INDISPONIVEL', causa: 'TIMEOUT' });
+  });
 
   it('corpo ilegível também é RESPOSTA_INVALIDA', async () => {
     const chamar = vi.fn().mockResolvedValue({
@@ -583,6 +615,35 @@ describe('US4 — finalização usa o veredito da última inserção aceita (T02
     expect(validar).toHaveBeenCalledTimes(1);
   });
 
+  it('limparPagamentos zera o veredito — a venda seguinte não nasce autorizada', async () => {
+    const { store } = montarStore();
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    expect(store.getState().podeFinalizar()).toBe(true);
+
+    // É o que a feature 004 chama depois da emissão bem-sucedida. Sem esta
+    // invalidação, a venda seguinte começa autorizada por uma consulta que
+    // descreveu **outra** venda — o mesmo desfecho do stub `() => true` que a
+    // 014 veio substituir (`data-model.md` §3, terceira invalidação).
+    store.getState().limparPagamentos();
+
+    expect(store.getState().vereditoVigente).toBeNull();
+    expect(store.getState().podeFinalizar()).toBe(false);
+  });
+
+  it('recusa da integração zera o veredito: a forma saiu, a autorização vai junto (I7)', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: true } });
+    await store
+      .getState()
+      .aplicarPagamento({ forma: CARTAO_TEF, valorInformado: centavos(10_000) });
+    const idPagamento = store.getState().pagamentos[0]?.idPagamento ?? '';
+    expect(store.getState().podeFinalizar()).toBe(true);
+
+    store.getState().recusarPagamentoIntegrado(idPagamento, 'Cartão recusado pela operadora.');
+
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(store.getState().podeFinalizar()).toBe(false);
+  });
+
   it('sem veredito favorável a finalização fica travada mesmo com o total coberto (FR-015)', async () => {
     const { store, validar } = montarStore();
     validar.mockResolvedValue(recusa('Recusado.'));
@@ -653,6 +714,38 @@ describe('venda vinda de documento não fica presa no gate', () => {
     expect(validar).toHaveBeenCalledTimes(1);
     // A forma nova foi recusada; só a do documento continua na venda.
     expect(store.getState().pagamentos).toHaveLength(1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * A venda mudou entre o gesto e a resposta do ERP
+ * ------------------------------------------------------------------ */
+
+describe('venda alterada durante a consulta não é mutada com o valor velho (I1)', () => {
+  it('PIX confirmado no meio do await aborta a inserção em curso, com aviso', async () => {
+    const { store, validar, avisar } = montarStore({
+      capacidades: { tefAtivo: true, pixAtivo: true },
+    });
+
+    // PIX pendente não conta no saldo, então o gesto seguinte é derivado sobre
+    // os R$ 100 cheios.
+    await store.getState().aplicarPagamento({ forma: CARTAO_TEF, valorInformado: centavos(6_000) });
+    const idPix = store.getState().pagamentos[0]?.idPagamento ?? '';
+    expect(store.getState().saldo().saldoRestante).toBe(10_000);
+
+    // A confirmação assíncrona cai **enquanto** o ERP responde: o saldo desaba
+    // para 4.000, mas `valorAplicado` já foi derivado como 10.000.
+    validar.mockImplementation(() => {
+      store.getState().confirmarPagamentoIntegrado(idPix, { dadosTEF: undefined });
+      return Promise.resolve(ACEITA);
+    });
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+
+    // Gravar os 10.000 somaria R$ 160,00 numa nota de R$ 100,00 — e o ERP
+    // validou a venda de antes, não esta.
+    expect(store.getState().pagamentos.map((p) => p.valorAplicado)).toEqual([6_000]);
+    expect(avisar).toHaveBeenCalledWith(AVISO_VENDA_MUDOU_DURANTE_VALIDACAO);
   });
 });
 

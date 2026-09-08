@@ -20,7 +20,6 @@
  * `Authorization` e `Empresa` no servidor.
  */
 
-import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import {
   interpretarRespostaValidacao,
@@ -120,18 +119,18 @@ export async function enviarValidarNFCe(
   }
 }
 
-export type MutationValidacao = UseMutationResult<Veredito, Error, CheckoutFaturarNFCe>;
-
-/**
- * `retry: false` e `networkMode: 'always'` são explícitos e não devem ser
- * removidos "para robustez" — ver o TSDoc do módulo. Sem `networkMode`, um
- * navegador que se declara offline deixaria a consulta pendurada em silêncio, em
- * vez de devolver `INDISPONIVEL` e liberar o operador para tentar de novo.
+/*
+ * **Não existe hook de mutation aqui, e isto é decisão** (revisão da 014,
+ * 2026-09-08). A versão inicial exportava um `useValidarNFCe` que ninguém
+ * chamava: quem consome esta função é o `validacaoVendaSlice`, que é Zustand
+ * puro e não monta React.
+ *
+ * Um hook exportado e não usado seria pior do que código morto comum — seria um
+ * **segundo caminho de consulta** ao gate, e um caminho que não passaria pela
+ * guarda `emValidacao` (`FR-011`/I8) nem gravaria `vereditoVigente`. Alguém o
+ * chamaria por parecer o jeito idiomático, e a venda passaria a ser validada
+ * por fora do slice que existe para ser o ponto único.
+ *
+ * `enviarValidarNFCe` já é a superfície completa: sem cache, sem retry, sem
+ * refetch — exatamente o que `research.md` D10 pede.
  */
-export function useValidarNFCe(deps: ValidacaoDepsRede = {}): MutationValidacao {
-  return useMutation({
-    mutationFn: (retrato: CheckoutFaturarNFCe) => enviarValidarNFCe(retrato, deps),
-    retry: false,
-    networkMode: 'always',
-  });
-}

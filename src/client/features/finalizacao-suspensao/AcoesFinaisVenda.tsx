@@ -3,6 +3,7 @@ import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
+import { autorizaFinalizacao } from '../../domain/validacaoVenda/interpretarVeredito';
 import { BotaoMenuImportacao } from '../importacao/BotaoMenuImportacao';
 import {
   AVISO_DESASSOCIACAO_MANUAL,
@@ -246,6 +247,23 @@ export function AcoesFinaisVenda(): ReactElement {
   // o botão liberaria com `vendedorCodigo: 0` (`useFinalizarOuSuspenderVenda.ts`).
   const vendedorAtual = useVendedorAtual();
 
+  /**
+   * Veredito favorável vigente da validação prévia (feature 014, `FR-014`).
+   *
+   * A prop `bloqueado` **declarava** este significado desde a 004 e não o
+   * entregava: o call site passava só saldo, falha de rede e vendedor, então o
+   * gate da finalização tinha uma camada só — a guarda de `iniciar`, que
+   * responde com um toast **depois** do clique. Um botão azul que recusa ao ser
+   * clicado é o oposto do padrão de `lib/bloqueio.ts` que o resto da base segue.
+   *
+   * Lido do `vereditoVigente`, e não chamando `podeFinalizar()` no seletor,
+   * porque o Zustand precisa de um valor comparável para re-renderizar: uma
+   * chamada de função devolveria referência nova a cada render.
+   */
+  const temVereditoFavoravel = useVendaStore((estadoVenda) =>
+    autorizaFinalizacao(estadoVenda.vereditoVigente),
+  );
+
   return (
     <div className="flex w-full flex-col gap-xs" data-testid="acoes-finais-venda">
       <BotaoFinalizarVenda
@@ -253,7 +271,12 @@ export function AcoesFinaisVenda(): ReactElement {
           void finalizar();
         }}
         enviando={estado.tipo === 'enviando'}
-        bloqueado={!haValorAFaturar || estado.tipo === 'falha-rede' || vendedorAtual === null}
+        bloqueado={
+          !haValorAFaturar ||
+          !temVereditoFavoravel ||
+          estado.tipo === 'falha-rede' ||
+          vendedorAtual === null
+        }
       />
     </div>
   );
