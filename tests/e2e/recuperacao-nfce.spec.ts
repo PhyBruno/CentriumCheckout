@@ -117,9 +117,11 @@ test.describe('User Story 2 — retomar o rascunho para o carrinho', () => {
 
     // O vendedor do rascunho sobrescreve o default do PDV — `trocarVendedor`
     // deixou de ser stub com a feature 012, com `origem: 'RASCUNHO'`. Aqui há
-    // nome: `GetListaNFCes` devolve `Vendedor` por extenso, ao contrário de
-    // `ListaDAVs` (AD-095), então o campo não cai no fallback por código.
-    await expect(page.getByTestId('nome-vendedor')).toHaveText('VENDEDOR 12');
+    // nome, e desde AD-172 ele vem do **documento** (`vendedorNome` no SDT
+    // `CheckoutFaturarNFCe`), com o `Vendedor` de `GetListaNFCes` como fallback
+    // — as duas fontes do mock dão o mesmo nome para o vendedor 12, então o
+    // campo nunca cai no fallback por código.
+    await expect(page.getByTestId('nome-vendedor')).toHaveText('MARIANA ALVES');
   });
 
   /**
