@@ -300,9 +300,6 @@ const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
  */
 const classeRotuloSempre = 'font-semibold text-foreground md:font-normal md:text-muted-foreground';
 
-/** Barra entre as duas colunas do compacto — decorativa, some no desktop. */
-const classeSeparadorCompacto = 'text-muted-foreground/60 md:hidden';
-
 /**
  * Tabela no desktop, cartão de três linhas no compacto — mesma grade de duas
  * colunas de `ModalBuscaCliente`/`ModalBuscaVendedor`.
@@ -344,7 +341,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               type="button"
               data-testid="candidato-produto"
               data-codigo-produto={produto.CodigoProduto}
-              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-xs gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:gap-0 md:px-0 md:py-sm"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:gap-0 md:px-0 md:py-sm"
               onClick={() => {
                 onSelecionar(produto.CodigoProduto);
               }}
@@ -369,9 +366,11 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
                     <span className="font-mono">{produto.Referencia}</span>
                   </span>
                   <span className="order-1 min-w-0 truncate text-sm text-muted-foreground md:order-none md:text-xs">
-                    <span className={classeSeparadorCompacto} aria-hidden="true">
-                      |{' '}
-                    </span>
+                    {/* O ponto separa "Referência" de "EAN" só no desktop, onde
+                        os dois dividem a mesma sub-linha da descrição. No
+                        compacto eles estão em faixas diferentes da grade e o
+                        espaçamento já os separa (correção do usuário,
+                        2026-09-09). */}
                     <span className="hidden md:inline" aria-hidden="true">
                       ·{' '}
                     </span>

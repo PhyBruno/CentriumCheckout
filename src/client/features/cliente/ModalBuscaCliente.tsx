@@ -387,9 +387,6 @@ const classeCelulaCabecalho =
  */
 const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
 
-/** Barra entre as duas colunas do compacto — decorativa, some no desktop. */
-const classeSeparadorCompacto = 'text-muted-foreground/60 md:hidden';
-
 /**
  * A lista de candidatos — **tabela no desktop, cartão de três linhas no
  * compacto** (pedido do usuário, 2026-09-09: "as colunas sobrepondo uma a
@@ -433,7 +430,7 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
               type="button"
               data-testid="candidato-cliente"
               data-codigo-cliente={cliente.ClienteCodigo}
-              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-xs gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar({ codigo: cliente.ClienteCodigo, cpf: cliente.CPF });
               }}
@@ -451,9 +448,6 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
                 {cliente.ClienteNome}
               </span>
               <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
-                <span className={classeSeparadorCompacto} aria-hidden="true">
-                  |{' '}
-                </span>
                 <span className={classeRotuloCompacto}>CPF: </span>
                 <span className="font-mono font-medium tabular-nums">{cliente.CPF}</span>
               </span>
@@ -464,9 +458,6 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
                 </span>
               </span>
               <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[120px] md:shrink-0 md:px-sm md:text-foreground">
-                <span className={classeSeparadorCompacto} aria-hidden="true">
-                  |{' '}
-                </span>
                 <span className={classeRotuloCompacto}>Localização: </span>
                 <span className="font-semibold">
                   {cliente.Endereco.cidade}

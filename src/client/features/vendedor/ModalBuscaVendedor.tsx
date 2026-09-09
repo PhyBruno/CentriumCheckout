@@ -287,9 +287,6 @@ const classeCelulaCabecalho =
 /** Rótulo que nomeia o campo só no compacto — ver `ModalBuscaCliente`. */
 const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
 
-/** Barra entre as duas colunas do compacto — decorativa, some no desktop. */
-const classeSeparadorCompacto = 'text-muted-foreground/60 md:hidden';
-
 /**
  * Tabela no desktop, cartão de duas linhas no compacto — mesma estrutura e
  * mesmo motivo de `ResultadosDaBusca` em `ModalBuscaCliente` (pedido do
@@ -319,7 +316,7 @@ function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps)
               type="button"
               data-testid="candidato-vendedor"
               data-codigo-vendedor={vendedor.VendedorCodigo}
-              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-xs gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar({ codigo: vendedor.VendedorCodigo, nome: vendedor.VendedorNome });
               }}
@@ -337,9 +334,6 @@ function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps)
                 {vendedor.VendedorNome}
               </span>
               <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
-                <span className={classeSeparadorCompacto} aria-hidden="true">
-                  |{' '}
-                </span>
                 <span className={classeRotuloCompacto}>CPF: </span>
                 <span className="font-mono font-medium tabular-nums">{vendedor.VendedorCGC}</span>
               </span>
