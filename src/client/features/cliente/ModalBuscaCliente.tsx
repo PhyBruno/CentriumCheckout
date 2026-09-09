@@ -382,20 +382,37 @@ const classeCelulaCabecalho =
   'flex h-full items-center px-sm text-xs font-bold text-muted-foreground';
 
 /**
- * A lista de candidatos — **tabela no desktop, cartão de duas linhas no
+ * Rótulo que nomeia o campo **só no compacto**: no desktop quem nomeia é o
+ * cabeçalho da tabela, e repetir "CPF:" dentro da célula seria ruído.
+ */
+const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
+
+/** Barra entre as duas colunas do compacto — decorativa, some no desktop. */
+const classeSeparadorCompacto = 'text-muted-foreground/60 md:hidden';
+
+/**
+ * A lista de candidatos — **tabela no desktop, cartão de três linhas no
  * compacto** (pedido do usuário, 2026-09-09: "as colunas sobrepondo uma a
  * outra, sem tamanho para exibição").
  *
  * Seis colunas de largura fixa somam 640px; em 390px elas não cabiam de jeito
  * nenhum e o `truncate` de cada uma apagava justamente o dado que identifica o
- * cadastro. No compacto a linha vira `flex-wrap`: o **nome** ganha a primeira
- * faixa inteira (`basis-full`, e `order-first` porque no DOM ele vem depois do
- * código, que é a ordem da tabela) e código, documento, telefone e cidade
- * dividem a segunda como texto secundário.
+ * cadastro. No compacto a linha vira uma **grade de duas colunas**: o nome
+ * ocupa a primeira faixa inteira (`col-span-2`, e `order-first` porque no DOM
+ * ele vem depois do código, que é a ordem da tabela), código/CPF dividem a
+ * segunda e contato/localização a terceira.
+ *
+ * Grade, e não `flex-wrap` (correção do usuário, 2026-09-09): com quebra livre
+ * o número de campos por faixa dependia do comprimento do dado — um telefone
+ * curto subia para a linha do CPF e a leitura mudava de cadastro para cadastro.
+ * A grade fixa quem cai onde, e cada célula ganha o rótulo em negrito que o
+ * cabeçalho de coluna dá no desktop.
  *
  * **Uma marcação só, com utilitários responsivos**, e não dois blocos de JSX:
  * duplicar as células duplicaria a leitura de cada campo de `ClienteDaLista`, e
- * a próxima mudança de contrato teria dois lugares para acertar.
+ * a próxima mudança de contrato teria dois lugares para acertar. É por isso que
+ * a mesma célula troca de `grid` para `flex` no `md:` em vez de existir duas
+ * vezes.
  */
 function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): ReactElement {
   return (
@@ -416,7 +433,7 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
               type="button"
               data-testid="candidato-cliente"
               data-codigo-cliente={cliente.ClienteCodigo}
-              className="flex w-full flex-wrap items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:h-[50px] md:flex-nowrap md:gap-0 md:px-0 md:py-0"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-xs gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar({ codigo: cliente.ClienteCodigo, cpf: cliente.CPF });
               }}
@@ -424,21 +441,37 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
               <span className="hidden w-[42px] shrink-0 items-center justify-center md:flex">
                 <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
-              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-muted-foreground md:w-[76px] md:px-sm md:text-base md:text-foreground">
-                {cliente.ClienteCodigo}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[76px] md:shrink-0 md:px-sm md:text-base md:text-foreground">
+                <span className={classeRotuloCompacto}>Cód. Cliente: </span>
+                <span className="font-mono font-semibold tabular-nums">
+                  {cliente.ClienteCodigo}
+                </span>
               </span>
-              <span className="order-first min-w-0 basis-full truncate text-base font-bold md:order-none md:flex-1 md:basis-auto md:px-sm">
+              <span className="order-first col-span-2 min-w-0 truncate text-base font-bold md:order-none md:flex-1 md:px-sm">
                 {cliente.ClienteNome}
               </span>
-              <span className="min-w-0 shrink truncate font-mono text-sm font-medium tabular-nums text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
-                {cliente.CPF}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeSeparadorCompacto} aria-hidden="true">
+                  |{' '}
+                </span>
+                <span className={classeRotuloCompacto}>CPF: </span>
+                <span className="font-mono font-medium tabular-nums">{cliente.CPF}</span>
               </span>
-              <span className="min-w-0 shrink truncate font-mono text-sm font-medium tabular-nums text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
-                {cliente.Celular === '' ? cliente.Telefone : cliente.Celular}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>Contato: </span>
+                <span className="font-mono font-medium tabular-nums">
+                  {cliente.Celular === '' ? cliente.Telefone : cliente.Celular}
+                </span>
               </span>
-              <span className="min-w-0 shrink truncate text-sm font-semibold text-muted-foreground md:w-[120px] md:shrink-0 md:px-sm md:text-foreground">
-                {cliente.Endereco.cidade}
-                {cliente.Endereco.uf === '' ? '' : `-${cliente.Endereco.uf}`}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[120px] md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeSeparadorCompacto} aria-hidden="true">
+                  |{' '}
+                </span>
+                <span className={classeRotuloCompacto}>Localização: </span>
+                <span className="font-semibold">
+                  {cliente.Endereco.cidade}
+                  {cliente.Endereco.uf === '' ? '' : `-${cliente.Endereco.uf}`}
+                </span>
               </span>
             </button>
           </li>

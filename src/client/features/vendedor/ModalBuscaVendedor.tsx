@@ -284,12 +284,24 @@ interface ResultadosDaBuscaProps {
 const classeCelulaCabecalho =
   'flex h-full items-center px-sm text-xs font-bold text-muted-foreground';
 
+/** Rótulo que nomeia o campo só no compacto — ver `ModalBuscaCliente`. */
+const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
+
+/** Barra entre as duas colunas do compacto — decorativa, some no desktop. */
+const classeSeparadorCompacto = 'text-muted-foreground/60 md:hidden';
+
 /**
  * Tabela no desktop, cartão de duas linhas no compacto — mesma estrutura e
  * mesmo motivo de `ResultadosDaBusca` em `ModalBuscaCliente` (pedido do
  * usuário, 2026-09-09): o nome ocupa a primeira faixa inteira (`order-first`
  * porque no DOM ele vem depois do código, que é a ordem da tabela) e código e
- * CPF dividem a segunda como texto secundário.
+ * CPF dividem a segunda, cada um com o rótulo em negrito que no desktop vem do
+ * cabeçalho de coluna.
+ *
+ * **Duas faixas, não três**: o vendedor só tem código, nome e CPF (`FR-015` —
+ * o Checkout não cadastra vendedor), então a segunda linha comporta os dois
+ * campos sem apertar. A grade é a mesma do cliente para as duas consultas não
+ * virarem gramáticas diferentes.
  */
 function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps): ReactElement {
   return (
@@ -307,7 +319,7 @@ function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps)
               type="button"
               data-testid="candidato-vendedor"
               data-codigo-vendedor={vendedor.VendedorCodigo}
-              className="flex w-full flex-wrap items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:h-[50px] md:flex-nowrap md:gap-0 md:px-0 md:py-0"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-xs gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar({ codigo: vendedor.VendedorCodigo, nome: vendedor.VendedorNome });
               }}
@@ -315,14 +327,21 @@ function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps)
               <span className="hidden w-[42px] shrink-0 items-center justify-center md:flex">
                 <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
-              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-muted-foreground md:w-[76px] md:px-sm md:text-base md:text-foreground">
-                {vendedor.VendedorCodigo}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[76px] md:shrink-0 md:px-sm md:text-base md:text-foreground">
+                <span className={classeRotuloCompacto}>Cód. Vendedor: </span>
+                <span className="font-mono font-semibold tabular-nums">
+                  {vendedor.VendedorCodigo}
+                </span>
               </span>
-              <span className="order-first min-w-0 basis-full truncate text-base font-bold md:order-none md:flex-1 md:basis-auto md:px-sm">
+              <span className="order-first col-span-2 min-w-0 truncate text-base font-bold md:order-none md:flex-1 md:px-sm">
                 {vendedor.VendedorNome}
               </span>
-              <span className="min-w-0 shrink truncate font-mono text-sm font-medium tabular-nums text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
-                {vendedor.VendedorCGC}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeSeparadorCompacto} aria-hidden="true">
+                  |{' '}
+                </span>
+                <span className={classeRotuloCompacto}>CPF: </span>
+                <span className="font-mono font-medium tabular-nums">{vendedor.VendedorCGC}</span>
               </span>
             </button>
           </li>

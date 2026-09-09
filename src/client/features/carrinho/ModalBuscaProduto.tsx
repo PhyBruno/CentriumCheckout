@@ -289,6 +289,36 @@ interface ResultadosDaBuscaProps {
 const classeCelulaCabecalho =
   'flex h-full items-center px-sm text-xs font-bold text-muted-foreground';
 
+/** Rótulo que nomeia o campo só no compacto — ver `ModalBuscaCliente`. */
+const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
+
+/**
+ * Rótulo que existe nas duas larguras: "Referência" e "EAN" não têm coluna
+ * própria na tabela do desktop (moram na sub-linha da descrição), então lá o
+ * nome do campo também é a única pista do que é aquele número — só o peso muda,
+ * negrito no compacto e normal na sub-linha.
+ */
+const classeRotuloSempre = 'font-semibold text-foreground md:font-normal md:text-muted-foreground';
+
+/** Barra entre as duas colunas do compacto — decorativa, some no desktop. */
+const classeSeparadorCompacto = 'text-muted-foreground/60 md:hidden';
+
+/**
+ * Tabela no desktop, cartão de três linhas no compacto — mesma grade de duas
+ * colunas de `ModalBuscaCliente`/`ModalBuscaVendedor`.
+ *
+ * A ordem do compacto é a pedida pelo usuário (2026-09-09): descrição na faixa
+ * inteira, depois `Cód. Produto | Referência` e `Unidade | EAN`. Ela **não** é a
+ * ordem do DOM, que continua sendo a da tabela do desktop (código, descrição,
+ * referência, EAN, unidade) — quem reordena é `order` no compacto, zerado no
+ * `md:`. É por isso que o EAN leva `order-1`: sem ele a unidade cairia depois do
+ * EAN, invertendo a última faixa.
+ *
+ * Os dois invólucros da coluna "Produto" viram `display: contents` no compacto:
+ * assim descrição, referência e EAN participam da grade da linha como células
+ * próprias, e no `md:` voltam a ser a caixa em coluna com a sub-linha embaixo da
+ * descrição. Sem isso a alternativa seria escrever a linha duas vezes.
+ */
 function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): ReactElement {
   if (produtos.length === 0) {
     return (
@@ -314,7 +344,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               type="button"
               data-testid="candidato-produto"
               data-codigo-produto={produto.CodigoProduto}
-              className="flex w-full flex-wrap items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex-nowrap md:gap-0 md:px-0 md:py-sm"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-xs gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:gap-0 md:px-0 md:py-sm"
               onClick={() => {
                 onSelecionar(produto.CodigoProduto);
               }}
@@ -325,22 +355,34 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               <span className="hidden w-11 shrink-0 items-center justify-center md:flex">
                 <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
-              <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-muted-foreground md:w-32 md:px-sm md:text-foreground">
-                {produto.CodigoProduto}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-32 md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>Cód. Produto: </span>
+                <span className="font-mono font-bold tabular-nums">{produto.CodigoProduto}</span>
               </span>
-              {/* A descrição ganha a primeira faixa inteira no compacto
-                  (`basis-full` + `order-first`, porque no DOM ela vem depois do
-                  código — a ordem da tabela do desktop). A linha de
-                  referência/EAN viaja junto porque já é subordinada a ela;
-                  código e unidade dividem a faixa de baixo. */}
-              <span className="order-first flex min-w-0 basis-full flex-col gap-xxs md:order-none md:flex-1 md:basis-auto md:px-sm">
-                <span className="truncate font-medium">{produto.Descricao}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  Referência: {produto.Referencia} · EAN: {produto.CodigoBarras}
+              <span className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:gap-xxs md:px-sm">
+                <span className="order-first col-span-2 min-w-0 truncate font-medium md:order-none">
+                  {produto.Descricao}
+                </span>
+                <span className="contents md:flex md:min-w-0 md:gap-xs">
+                  <span className="min-w-0 truncate text-sm text-muted-foreground md:text-xs">
+                    <span className={classeRotuloSempre}>Referência: </span>
+                    <span className="font-mono">{produto.Referencia}</span>
+                  </span>
+                  <span className="order-1 min-w-0 truncate text-sm text-muted-foreground md:order-none md:text-xs">
+                    <span className={classeSeparadorCompacto} aria-hidden="true">
+                      |{' '}
+                    </span>
+                    <span className="hidden md:inline" aria-hidden="true">
+                      ·{' '}
+                    </span>
+                    <span className={classeRotuloSempre}>EAN: </span>
+                    <span className="font-mono">{produto.CodigoBarras}</span>
+                  </span>
                 </span>
               </span>
-              <span className="shrink-0 text-sm font-medium text-muted-foreground md:w-24 md:px-sm md:text-foreground">
-                {produto.UDM}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-24 md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>Unidade: </span>
+                <span className="font-medium">{produto.UDM}</span>
               </span>
             </button>
           </li>
