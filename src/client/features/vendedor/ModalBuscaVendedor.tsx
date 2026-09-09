@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import type { VendedorDaLista } from '../../../shared/schemas/vendedor.schema';
+import { ITENS_POR_PAGINA } from '../../services/paginacao';
 import { useBuscaVendedores } from '../../services/vendedor/vendedorQueries';
 import { useQtdMinCharParaConsulta } from './useVendedor';
 
@@ -316,7 +317,7 @@ function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps)
               type="button"
               data-testid="candidato-vendedor"
               data-codigo-vendedor={vendedor.VendedorCodigo}
-              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-10 md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar({ codigo: vendedor.VendedorCodigo, nome: vendedor.VendedorNome });
               }}
@@ -345,14 +346,22 @@ function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps)
   );
 }
 
-/** Estrutura de layout que o Boneyard fotografa para gerar o shimmer da lista. */
+/**
+ * Estrutura de layout que o Boneyard fotografa para gerar o shimmer da lista.
+ *
+ * **Uma linha por item da página, na altura da linha carregada** — não mais seis
+ * cartões soltos: assim a área de resultados tem a mesma altura antes e depois
+ * de o resultado chegar, e a janela não salta de tamanho no meio da consulta.
+ */
 function EstruturaResultados(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
-    <ul className="flex flex-col gap-xs p-base" aria-hidden={props['aria-hidden']}>
-      {Array.from({ length: 6 }, (_, indice) => (
-        <li key={indice} className="flex flex-col gap-xxs rounded-lg border border-border p-sm">
-          <div className="h-4.5 rounded-sm bg-secondary" style={{ width: `${80 - indice * 5}%` }} />
-          <div className="h-3.5 rounded-sm bg-secondary" style={{ width: '45%' }} />
+    <ul aria-hidden={props['aria-hidden']}>
+      {Array.from({ length: ITENS_POR_PAGINA }, (_, indice) => (
+        <li
+          key={indice}
+          className="flex h-[70px] items-center border-b border-border px-base last:border-b-0 md:h-10"
+        >
+          <div className="h-3.5 rounded-sm bg-secondary" style={{ width: `${80 - indice * 5}%` }} />
         </li>
       ))}
     </ul>

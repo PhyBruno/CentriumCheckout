@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
+import { ITENS_POR_PAGINA } from '../../services/paginacao';
 import { useBuscaProdutos } from '../../services/produto/produtoQueries';
 import { useQtdMinCharParaConsulta } from './useCarrinho';
 
@@ -341,7 +342,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               type="button"
               data-testid="candidato-produto"
               data-codigo-produto={produto.CodigoProduto}
-              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:gap-0 md:px-0 md:py-sm"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-10 md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar(produto.CodigoProduto);
               }}
@@ -356,7 +357,10 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
                 <span className={classeRotuloCompacto}>Cód. Produto: </span>
                 <span className="font-mono font-bold tabular-nums">{produto.CodigoProduto}</span>
               </span>
-              <span className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:gap-xxs md:px-sm">
+              {/* Sem vão entre a descrição e a sub-linha no desktop: a linha
+                  tem 40px de altura (dez por página, sem rolagem) e as duas
+                  linhas de texto já vêm com o respiro do `line-height`. */}
+              <span className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:px-sm">
                 <span className="order-first col-span-2 min-w-0 truncate font-medium md:order-none">
                   {produto.Descricao}
                 </span>
@@ -391,14 +395,22 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
   );
 }
 
-/** Estrutura de layout que o Boneyard fotografa para gerar o shimmer da lista. */
+/**
+ * Estrutura de layout que o Boneyard fotografa para gerar o shimmer da lista.
+ *
+ * **Uma linha por item da página, na altura da linha carregada** — não mais seis
+ * cartões soltos: assim a área de resultados tem a mesma altura antes e depois
+ * de o resultado chegar, e a janela não salta de tamanho no meio da consulta.
+ */
 function EstruturaResultados(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
-    <ul className="flex flex-col gap-xs p-base" aria-hidden={props['aria-hidden']}>
-      {Array.from({ length: 6 }, (_, indice) => (
-        <li key={indice} className="flex flex-col gap-xxs rounded-lg border border-border p-sm">
-          <div className="h-4.5 rounded-sm bg-secondary" style={{ width: `${80 - indice * 5}%` }} />
-          <div className="h-3.5 rounded-sm bg-secondary" style={{ width: '45%' }} />
+    <ul aria-hidden={props['aria-hidden']}>
+      {Array.from({ length: ITENS_POR_PAGINA }, (_, indice) => (
+        <li
+          key={indice}
+          className="flex h-[70px] items-center border-b border-border px-base last:border-b-0 md:h-10"
+        >
+          <div className="h-3.5 rounded-sm bg-secondary" style={{ width: `${80 - indice * 5}%` }} />
         </li>
       ))}
     </ul>

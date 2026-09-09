@@ -17,11 +17,11 @@ import {
 } from '../../../shared/schemas/vendedor.schema';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
+import { ITENS_POR_PAGINA } from '../paginacao';
 
 const CAMINHO_GET_LISTA_VENDEDORES = '/ApiCentriumOAuth/GetListaVendedores';
 
 const PAGINA_INICIAL = 1;
-const TAMANHO_PAGINA_PADRAO = 20;
 
 export interface VendedorQueriesDeps {
   readonly erpClient?: ErpClient;
@@ -43,7 +43,7 @@ export async function fetchListaVendedores(
   const query = new URLSearchParams({
     Txtbusca: termo,
     Pagina: String(parametros.pagina ?? PAGINA_INICIAL),
-    Tamanhopagina: String(parametros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO),
+    Tamanhopagina: String(parametros.tamanhoPagina ?? ITENS_POR_PAGINA),
   });
 
   const resultado = await erpClient.chamar(`${CAMINHO_GET_LISTA_VENDEDORES}?${query.toString()}`, {
@@ -90,7 +90,7 @@ export function useBuscaVendedores(
   // `tamanhoPagina` entra na chave porque entra na requisição: fora dela, duas
   // páginas de tamanhos diferentes compartilhariam cache e a segunda leitura
   // devolveria a lista da primeira (revisão da 012, 2026-09-08).
-  const tamanhoPagina = parametros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO;
+  const tamanhoPagina = parametros.tamanhoPagina ?? ITENS_POR_PAGINA;
 
   return useQuery({
     queryKey: ['busca-vendedores', termoLimpo, pagina, tamanhoPagina] as const,

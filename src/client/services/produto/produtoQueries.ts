@@ -15,6 +15,7 @@ import {
 import type { SnapshotPrecoProduto } from '../../domain/precificacao/linha';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
+import { ITENS_POR_PAGINA } from '../paginacao';
 import { paraSnapshotPrecoProduto } from './produtoMapper';
 
 const CAMINHO_GET_PRODUTO = '/ApiCentriumOAuth/GetProduto';
@@ -184,7 +185,6 @@ export interface ParametrosBusca {
 }
 
 const PAGINA_INICIAL = 1;
-const TAMANHO_PAGINA_PADRAO = 20;
 
 export async function fetchListaProdutos(
   termo: string,
@@ -195,7 +195,7 @@ export async function fetchListaProdutos(
   const query = new URLSearchParams({
     Txtbusca: termo,
     Pagina: String(parametros.pagina ?? PAGINA_INICIAL),
-    Tamanhopagina: String(parametros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO),
+    Tamanhopagina: String(parametros.tamanhoPagina ?? ITENS_POR_PAGINA),
   });
 
   const resposta = await chamarErp(cliente, CAMINHO_GET_LISTA_PRODUTOS, query);

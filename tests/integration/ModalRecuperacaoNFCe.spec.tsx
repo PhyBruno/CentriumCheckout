@@ -312,7 +312,7 @@ describe('T005 — a janela lista os rascunhos suspensos', () => {
     await screen.findByTestId('resultados-nfce');
 
     const consulta = rota.urls.find((url) => url.startsWith(CAMINHO_LISTA));
-    expect(consulta).toContain('Tamanhopagina=20');
+    expect(consulta).toContain('Tamanhopagina=10');
     expect(rota.urls.some((url) => /Tamanhopagina=(5[1-9]|[6-9]\d|\d{3,})/.test(url))).toBe(false);
   });
 });

@@ -19,6 +19,7 @@ import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useListaDavs, type DavListado } from '../../services/dav/davQueries';
 import type { ImportacaoVendaDeps } from '../../services/importacao/importarVendaExistente';
+import { ITENS_POR_PAGINA } from '../../services/paginacao';
 import { useImportacaoDav } from './useImportacaoDav';
 
 /**
@@ -469,7 +470,7 @@ function TabelaDeDavs({
                 data-numero-dav={dav.numeroDav}
                 aria-pressed={ativo}
                 className={cn(
-                  'flex h-[52px] w-full items-center text-left hover:bg-accent',
+                  'flex h-10 w-full items-center text-left hover:bg-accent',
                   ativo ? 'bg-secondary' : 'bg-card',
                 )}
                 onClick={() => {
@@ -534,14 +535,22 @@ function TabelaDeDavs({
   );
 }
 
-/** Estrutura de layout que o Boneyard fotografa para gerar o shimmer da lista. */
+/**
+ * Estrutura de layout que o Boneyard fotografa para gerar o shimmer da lista.
+ *
+ * **Uma linha por item da página, na altura da linha carregada** — não mais seis
+ * cartões soltos: assim a área de resultados tem a mesma altura antes e depois
+ * de o resultado chegar, e a janela não salta de tamanho no meio da consulta.
+ */
 function EstruturaResultados(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
-    <ul className="flex flex-col gap-xs p-base" aria-hidden={props['aria-hidden']}>
-      {Array.from({ length: 6 }, (_, indice) => (
-        <li key={indice} className="flex flex-col gap-xxs rounded-lg border border-border p-sm">
-          <div className="h-4.5 rounded-sm bg-secondary" style={{ width: `${80 - indice * 5}%` }} />
-          <div className="h-3.5 rounded-sm bg-secondary" style={{ width: '45%' }} />
+    <ul aria-hidden={props['aria-hidden']}>
+      {Array.from({ length: ITENS_POR_PAGINA }, (_, indice) => (
+        <li
+          key={indice}
+          className="flex h-10 items-center border-b border-border px-base last:border-b-0"
+        >
+          <div className="h-3.5 rounded-sm bg-secondary" style={{ width: `${80 - indice * 5}%` }} />
         </li>
       ))}
     </ul>
