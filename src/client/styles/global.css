@@ -646,8 +646,27 @@ button:not(:disabled):not([aria-disabled='true']),
  * não é o caso. O `line-height` sobe para 1.35 (o título usava 1) porque agora
  * o texto quebra em linhas de verdade.
  * ------------------------------------------------------------------------- */
+/*
+ * O `margin-top` **volta aos 16px do pacote** (pedido do usuário, 2026-09-09:
+ * *"coloca mais alguns pixels de espaço em cima da escrita, ela ta muito colada
+ * com a borda superior"*).
+ *
+ * Os 6px vieram de AD-194, ao mudar a frase de campo, e encostaram o texto na
+ * borda: a bolha do goey é um SVG onde a pílula do título ocupa os primeiros
+ * 34px e o corpo branco começa exatamente aí. Medido no navegador em 390px —
+ * com 6px sobravam **1,8px** entre a borda superior do corpo e o topo do texto,
+ * contra os 16px de folga embaixo (o `padding-bottom` de `.gooey-contentExpanded`).
+ * Com 16px a folga sobe para 11,8px, e a diferença que resta para o rodapé é
+ * compensada visualmente pela curva: do lado esquerdo a borda do corpo sobe em
+ * direção à pílula, em vez de correr reta.
+ *
+ * Aumentar aqui é seguro — ao contrário de mexer no `padding` do
+ * `.gooey-content`, que empurraria o título para fora da pílula de 34px, que é
+ * fixa. A altura do corpo é **medida** (`getBoundingClientRect`), então ele
+ * cresce junto e nada é recortado: é a diferença que AD-194 aprendeu.
+ */
 .gooey-content .gooey-description.cc-toast-frase {
-  margin-top: 6px;
+  margin-top: 16px;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
