@@ -22,12 +22,12 @@ import type { Centavos } from '../../domain/precificacao/dinheiro';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
 import type { FonteDocumento } from '../importacao/importarVendaExistente';
+import { ITENS_POR_PAGINA } from '../paginacao';
 
 const CAMINHO_LISTA_NFCES = '/ApiCentriumOAuth/GetListaNFCes';
 const CAMINHO_CARREGAR_NFCE = '/ApiCentriumOAuth/CarregarNFCe';
 
 const PAGINA_INICIAL = 1;
-const TAMANHO_PAGINA_PADRAO = 20;
 
 /**
  * Teto absoluto de `Tamanhopagina` (AD-024, `research.md` D2).
@@ -102,7 +102,7 @@ function parametrosDaLista(filtros: FiltrosRascunho): URLSearchParams {
   const parametros = new URLSearchParams({
     Pagina: String(filtros.pagina ?? PAGINA_INICIAL),
     Tamanhopagina: String(
-      Math.min(filtros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO, LIMITE_TAMANHO_PAGINA),
+      Math.min(filtros.tamanhoPagina ?? ITENS_POR_PAGINA, LIMITE_TAMANHO_PAGINA),
     ),
   });
 
@@ -174,7 +174,7 @@ export function useListaNFCes(
       'lista-nfces',
       filtros.txtBusca?.trim() ?? '',
       filtros.pagina ?? PAGINA_INICIAL,
-      Math.min(filtros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO, LIMITE_TAMANHO_PAGINA),
+      Math.min(filtros.tamanhoPagina ?? ITENS_POR_PAGINA, LIMITE_TAMANHO_PAGINA),
     ] as const,
     queryFn: () => fetchListaNFCes(filtros, deps),
     enabled: habilitado,

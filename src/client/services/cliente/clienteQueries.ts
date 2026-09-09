@@ -22,6 +22,7 @@ import type { CadastroSimplificadoInput } from '../../domain/cliente/clienteVend
 import { apenasDigitos } from '../../domain/cliente/documento';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
+import { ITENS_POR_PAGINA } from '../paginacao';
 
 const CAMINHO_GET_CLIENTE = '/ApiCentriumOAuth/GetCliente';
 const CAMINHO_GET_LISTA_CLIENTES = '/ApiCentriumOAuth/GetListaClientes';
@@ -29,7 +30,6 @@ const CAMINHO_POST_CLIENTE = '/ApiCentriumOAuth/PostCliente';
 
 const HTTP_NAO_ENCONTRADO = 404;
 const PAGINA_INICIAL = 1;
-const TAMANHO_PAGINA_PADRAO = 20;
 
 export interface ClienteQueriesDeps {
   readonly erpClient?: ErpClient;
@@ -173,7 +173,7 @@ export async function fetchListaClientes(
   const query = new URLSearchParams({
     Txtbusca: termo,
     Pagina: String(parametros.pagina ?? PAGINA_INICIAL),
-    Tamanhopagina: String(parametros.tamanhoPagina ?? TAMANHO_PAGINA_PADRAO),
+    Tamanhopagina: String(parametros.tamanhoPagina ?? ITENS_POR_PAGINA),
   });
 
   const resposta = await chamarErp(erpClient, `${CAMINHO_GET_LISTA_CLIENTES}?${query.toString()}`, {
