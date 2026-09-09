@@ -2520,6 +2520,16 @@ Com isso, `erro-recuperavel` passa a ter dois desfechos: **com** marca, `ErrorRe
 
 **`FR-005` (sem atalhos no mobile) já estava cumprido pela 013**, e por ausência estrutural: `projetarAtalhos` recebe a plataforma e devolve lista vazia no compacto, então `DicaAtalhos` não registra tecla alguma no mapa central. A 007 acrescentou a verificação automatizada disso (`appShell.spec.tsx`), que antes não existia.
 
+### AD-197: o resumo de itens anteriores do mobile é interruptor, não gatilho de mão única (2026-09-09)
+
+**Origem:** o usuário operou a etapa 1 do wizard: "hoje exibe os 3 últimos itens, o resto é colapsado, isso está ok. Mas depois de expandir, não tem como colapsar novamente."
+
+**A causa era uma variável servindo a duas perguntas.** `colapsadas` respondia ao mesmo tempo "quais linhas são as antigas?" e "quais estão escondidas agora?" — e a segunda pergunta era a que decidia se o botão de resumo existia (`colapsadas.length > 0`). Expandir zerava a lista, o botão sumia com ela e não restava superfície para fechar: a gaveta abria e ficava aberta até a venda terminar. Quem são as linhas antigas é fato do carrinho (`linhas.length - LINHAS_VISIVEIS`), não do estado da gaveta; agora só `visiveis` olha para `expandida`, e o resumo continua montado enquanto **existir** linha anterior.
+
+**O botão alterna nos dois sentidos, e diz em qual estado está**: `aria-expanded` acompanha o estado real (antes era `false` fixo, o que já era mentira para o leitor de tela no instante em que a lista abria), o texto vira "Ocultar N produtos anteriores" e o `chevron-down` vira `chevron-up`. **O valor das anteriores fica no lugar nos dois estados**: escondê-lo ao expandir mudaria largura e altura da faixa exatamente no quadro do toque, e o operador perderia a referência do que aquele botão controla.
+
+**Impact:** alterado — `src/client/features/carrinho/ListaItensMobile.tsx` (`colapsadas` → `anteriores`, `visiveis` derivada de `expandida`, botão com `onClick` de alternância e rótulo/ícone/`aria-expanded` por estado); teste — `tests/unit/client/carrinho/ListaItensMobile.spec.tsx`, onde o caso "expandir traz todas as linhas de volta" **assertava o próprio defeito** (`queryByTestId(...)).toBeNull()` depois de expandir) e foi reescrito, mais um caso novo para o segundo clique. Verificação: `tsc --noEmit` e Prettier limpos; 14 testes do spec passando.
+
 ### AD-196: as três listas de consulta viram uma grade rotulada no compacto, e o `flex-wrap` é abandonado (2026-09-09)
 
 **Origem:** o usuário operou as três consultas no mobile e pediu, campo a campo, o que cada linha deve mostrar: em cliente, "quebrar as informações do cliente em duas linhas" com "em negrito o que indica cada coisa" (`Cód. Cliente: 1255 | CPF: … // Contato: … | Localização: …`); em vendedor, "não precisa quebrar em duas linhas, tem pouca informação" (`Cód. Vendedor: 21 | CPF: …`); em produto, "corrigir os negritos e colocar o que indica cada coisa", nesta ordem: `Cód. Produto | Referência // Unidade | EAN`.

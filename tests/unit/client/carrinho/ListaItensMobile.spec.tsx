@@ -246,7 +246,7 @@ describe('ListaItensMobile — conferência e colapso', () => {
     expect(screen.queryByText('PRODUTO 1')).toBeNull();
   });
 
-  it('expandir traz todas as linhas de volta', async () => {
+  it('expandir traz todas as linhas de volta e mantém o resumo como interruptor', async () => {
     const usuario = userEvent.setup();
     comLinhas(7);
     render(<ListaItensMobile />);
@@ -254,8 +254,31 @@ describe('ListaItensMobile — conferência e colapso', () => {
     await usuario.click(screen.getByTestId('expandir-itens-anteriores'));
 
     expect(screen.getAllByTestId('linha-carrinho')).toHaveLength(7);
-    expect(screen.queryByTestId('expandir-itens-anteriores')).toBeNull();
     expect(screen.getByText('PRODUTO 1')).toBeInTheDocument();
+
+    // O botão **continua lá** (correção do usuário, 2026-09-09: "depois de
+    // expandir, não tem como colapsar novamente"): some-lo ao expandir deixava
+    // a gaveta aberta até o fim da venda.
+    const resumo = screen.getByTestId('expandir-itens-anteriores');
+    expect(resumo).toHaveAttribute('aria-expanded', 'true');
+    expect(resumo).toHaveTextContent('Ocultar 4 produtos anteriores');
+  });
+
+  it('clicar de novo colapsa: volta a mostrar só as 3 últimas', async () => {
+    const usuario = userEvent.setup();
+    comLinhas(7);
+    render(<ListaItensMobile />);
+
+    await usuario.click(screen.getByTestId('expandir-itens-anteriores'));
+    await usuario.click(screen.getByTestId('expandir-itens-anteriores'));
+
+    expect(screen.getAllByTestId('linha-carrinho')).toHaveLength(3);
+    expect(screen.queryByText('PRODUTO 1')).toBeNull();
+    expect(screen.getByText('PRODUTO 7')).toBeInTheDocument();
+
+    const resumo = screen.getByTestId('expandir-itens-anteriores');
+    expect(resumo).toHaveAttribute('aria-expanded', 'false');
+    expect(resumo).toHaveTextContent('+4 produtos anteriores');
   });
 
   it('o total da venda continua somando tudo, colapsado ou não', () => {

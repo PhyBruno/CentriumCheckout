@@ -1,4 +1,4 @@
-import { ChevronDown, Package, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Package, Pencil, Trash2 } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
@@ -71,9 +71,17 @@ export function ListaItensMobile({
    * única pergunta que o caixa faz depois de bipar ("entrou?"); ver as últimas
    * responde. O resumo vai para cima porque é o que ficou para trás, e a leitura
    * continua na ordem de inserção.
+   *
+   * `anteriores` **não** depende de `expandida` (correção do usuário,
+   * 2026-09-09): quem são as linhas antigas é fato do carrinho, não do estado da
+   * gaveta. Enquanto as duas coisas eram a mesma variável, expandir esvaziava a
+   * lista de anteriores, o resumo sumia junto e não sobrava superfície para
+   * fechar de volta — a gaveta abria e ficava aberta até a venda acabar. Agora
+   * só `visiveis` olha para `expandida`, e o resumo continua no lugar como
+   * interruptor dos dois sentidos.
    */
-  const colapsadas = expandida ? [] : linhas.slice(0, Math.max(0, linhas.length - LINHAS_VISIVEIS));
-  const visiveis = linhas.slice(colapsadas.length);
+  const anteriores = linhas.slice(0, Math.max(0, linhas.length - LINHAS_VISIVEIS));
+  const visiveis = expandida ? linhas : linhas.slice(anteriores.length);
 
   return (
     <section className="flex flex-1 flex-col gap-xs" data-testid="lista-itens-mobile">
@@ -88,27 +96,38 @@ export function ListaItensMobile({
         </p>
       ) : (
         <>
-          {colapsadas.length > 0 && (
+          {/* Um interruptor, não um gatilho de mão única: o mesmo botão abre e
+              fecha a gaveta, e continua visível **enquanto houver linha
+              anterior** — não enquanto ela estiver escondida. O valor das
+              anteriores fica no lugar nos dois estados de propósito: some-lo ao
+              expandir mexeria na largura e na altura da faixa no instante do
+              toque, e o operador perderia a referência do que aquele botão
+              controla. */}
+          {anteriores.length > 0 && (
             <button
               type="button"
               className="flex items-center justify-between gap-sm rounded-xl border border-border bg-secondary px-base py-2.5 text-sm font-semibold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               data-testid="expandir-itens-anteriores"
-              aria-expanded={false}
+              aria-expanded={expandida}
               onClick={() => {
-                setExpandida(true);
+                setExpandida((atual) => !atual);
               }}
             >
               <span className="flex min-w-0 items-center gap-xs">
                 <Package className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="truncate">
-                  {`+${String(colapsadas.length)} ${colapsadas.length === 1 ? 'produto anterior' : 'produtos anteriores'}`}
+                  {`${expandida ? 'Ocultar ' : '+'}${String(anteriores.length)} ${anteriores.length === 1 ? 'produto anterior' : 'produtos anteriores'}`}
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-xs">
                 <span className="font-mono tabular-nums">
-                  {formatarCentavos(totalVenda(colapsadas))}
+                  {formatarCentavos(totalVenda(anteriores))}
                 </span>
-                <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+                {expandida ? (
+                  <ChevronUp className="size-4 text-muted-foreground" aria-hidden="true" />
+                ) : (
+                  <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+                )}
               </span>
             </button>
           )}
