@@ -1,10 +1,17 @@
 import { Equal } from 'lucide-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { resolverDescontoCapa } from '../../domain/pagamento/descontoCapa';
-import { ZERO_CENTAVOS, formatarCentavos, type Centavos } from '../../domain/precificacao/dinheiro';
+import {
+  ZERO_CENTAVOS,
+  centavos,
+  formatarCentavos,
+  reaisDeCentavos,
+  type Centavos,
+} from '../../domain/precificacao/dinheiro';
+import type { DescontoCapa } from '../../domain/pagamento/descontoCapa';
 import { totalVenda } from '../../domain/precificacao/linha';
 import { useVendaStore } from '../../stores/vendaStore';
 import { lerCentavosDigitados } from './EntradaPagamento';
@@ -20,6 +27,35 @@ type ModoAjuste = 'PERCENTUAL' | 'VALOR';
  * `10,25%` e `10,3%` de R$ 40,00 dão o mesmo valor — e prometia uma precisão
  * que o resultado nunca teve.
  */
+/**
+ * O texto que representa um desconto **já aplicado** — o que o campo mostra
+ * quando reabre sobre uma venda que já tem ajuste.
+ *
+ * Existe porque a feature 007 criou caminhos de remonte que não existiam quando
+ * este controle nasceu: no wizard mobile ele só vive na etapa 2, então ir à
+ * revisão e voltar o desmonta e remonta, e o mesmo vale para a travessia do
+ * breakpoint. Sem isto o campo reabria **vazio** com um desconto de 10% valendo
+ * na venda — e, como o `onBlur` trata campo vazio como "desisti do ajuste",
+ * bastava o operador tabular por ele para o desconto sumir sem que ninguém o
+ * tivesse removido. O TSDoc do `modo` logo abaixo já dizia a regra ("um desconto
+ * já aplicado continua mandando"); faltava o número obedecê-la.
+ *
+ * **A conversão monetária continua fora daqui**: `reaisDeCentavos` é do domínio,
+ * o mesmo que o resto da base usa para sair de centavos. O que o componente
+ * escolhe é só a vírgula decimal do português, que é apresentação.
+ */
+function textoDoDescontoAplicado(desconto: DescontoCapa | null): string {
+  if (desconto === null) {
+    return '';
+  }
+  if (desconto.modo === 'PERCENTUAL') {
+    // `entrada` já é o percentual como o operador o digitou (uma casa, no
+    // máximo): devolvê-lo é reexibi-lo, não reformatá-lo.
+    return String(desconto.entrada);
+  }
+  return reaisDeCentavos(centavos(desconto.entrada)).toFixed(2).replace('.', ',');
+}
+
 function lerPercentualDigitado(texto: string): number | null {
   const normalizado = texto.trim().replace(',', '.');
   if (normalizado === '' || !/^\d+(\.\d)?$/.test(normalizado)) {
@@ -100,7 +136,13 @@ export function ControleDescontoCapa(): ReactElement {
    * valendo.
    */
   const [modo, setModo] = useState<ModoAjuste>(descontoCapa?.modo ?? 'VALOR');
-  const [entradaTexto, setEntradaTexto] = useState('');
+  /**
+   * Inicializado a partir do desconto vigente, pela mesma razão do `modo` acima:
+   * o campo tem de reabrir coerente com o número que está valendo na venda. Só
+   * na **montagem** — o texto que o operador digita depois nunca é reescrito por
+   * este componente (ver o TSDoc do espelho, adiante).
+   */
+  const [entradaTexto, setEntradaTexto] = useState(() => textoDoDescontoAplicado(descontoCapa));
 
   /**
    * Espelho do desconto aplicado, para o campo acompanhar quem o zerou de fora
@@ -199,7 +241,7 @@ export function ControleDescontoCapa(): ReactElement {
     if (modoAlvo === 'VALOR') {
       const valor = lerCentavosDigitados(bruto);
       if (valor === null) {
-        gooeyToast.warning('Valor inválido: use apenas números, com até duas casas decimais.');
+        notificar.aviso('Valor inválido: use apenas números, com até duas casas decimais.');
         return;
       }
       if (valor === ZERO_CENTAVOS) {
@@ -212,7 +254,7 @@ export function ControleDescontoCapa(): ReactElement {
 
     const percentual = lerPercentualDigitado(bruto);
     if (percentual === null) {
-      gooeyToast.warning('Percentual inválido: use apenas números, com até uma casa decimal.');
+      notificar.aviso('Percentual inválido: use apenas números, com até uma casa decimal.');
       return;
     }
     if (percentual === 0) {

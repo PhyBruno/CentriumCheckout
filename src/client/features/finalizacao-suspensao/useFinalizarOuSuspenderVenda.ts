@@ -1,5 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { gooeyToast } from 'goey-toast';
+// Sob alias: este módulo já tem uma dependência injetável chamada `notificar`
+// (`FinalizacaoDeps.notificar`), e o nome importado a sombrearia dentro do
+// bloco que a lê.
+import { notificar as toast } from '@/lib/notificar';
 import {
   eventoFaturamentoFalhou,
   eventoVendaFinalizada,
@@ -335,7 +338,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           if (operacao === 'SUSPENDER') {
             const notificar = injetadas.notificar;
             if (notificar === undefined) {
-              gooeyToast.success(MENSAGEM_VENDA_SUSPENSA);
+              toast.sucesso(MENSAGEM_VENDA_SUSPENSA);
             } else {
               notificar(MENSAGEM_VENDA_SUSPENSA);
             }
@@ -375,7 +378,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       const avisar = (mensagem: string): void => {
         const aviso = injetadas.avisar;
         if (aviso === undefined) {
-          gooeyToast.warning(mensagem);
+          toast.aviso(mensagem);
           return;
         }
         aviso(mensagem);

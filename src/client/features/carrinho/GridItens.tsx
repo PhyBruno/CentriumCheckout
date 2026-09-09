@@ -2,6 +2,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { formatarCentavos, somar } from '../../domain/precificacao/dinheiro';
 import {
@@ -13,6 +14,7 @@ import {
 import { formatarQuantidade } from '../../domain/precificacao/quantidade';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useVendaStore } from '../../stores/vendaStore';
+import { useMotivoCarrinhoBloqueado } from './useCarrinho';
 
 /**
  * Grid de itens da venda no desktop (T016, estendida em T035/T036).
@@ -38,6 +40,10 @@ export function GridItens(): ReactElement {
       idLinhaEmEdicao: estado.linhaEmEdicao?.idLinha ?? null,
     })),
   );
+
+  // Lido uma vez, aqui, e repassado a cada linha: o motivo é da **venda**, e um
+  // hook por linha assinaria o store N vezes para responder sempre o mesmo.
+  const bloqueioDoCarrinho = useMotivoCarrinhoBloqueado();
 
   // Derivados usados pela faixa de resumo — calculados uma vez, não por célula.
   const ativas = linhasAtivas(linhas);
@@ -101,6 +107,7 @@ export function GridItens(): ReactElement {
                   onCancelar={cancelarItem}
                   onEditar={carregarParaEdicao}
                   emEdicaoNaBarra={linha.idLinha === idLinhaEmEdicao}
+                  bloqueioDoCarrinho={bloqueioDoCarrinho}
                 />
               ))
             )}
@@ -162,6 +169,14 @@ interface LinhaDaGridProps {
    * ações da linha até o operador confirmar ou cancelar (Escape) lá, evitando
    * disparar um segundo carregamento por cima do primeiro. */
   readonly emEdicaoNaBarra: boolean;
+  /**
+   * Recusa vigente do carrinho, já traduzida em frase (`useCarrinho.ts`).
+   *
+   * Vem de cima, e não de um `useMotivoCarrinhoBloqueado()` por linha: o motivo
+   * é da **venda**, não da linha, e consultá-lo N vezes assinaria o store N
+   * vezes para responder sempre o mesmo.
+   */
+  readonly bloqueioDoCarrinho: MotivoBloqueio;
 }
 
 function LinhaDaGrid({
@@ -171,6 +186,7 @@ function LinhaDaGrid({
   onCancelar,
   onEditar,
   emEdicaoNaBarra,
+  bloqueioDoCarrinho,
 }: LinhaDaGridProps): ReactElement {
   // `''` é o único valor de `ProdutoPesavelEditavel` sem nada ajustável na
   // barra (AD-063/AD-070): nem preço/desconto (só `'E'` tem) nem sequer
@@ -178,6 +194,18 @@ function LinhaDaGrid({
   // liberam o lápis — pesável mantém preço/desconto somente leitura na barra,
   // igual à inserção, mas a quantidade continua ajustável.
   const editavel = linha.snapshot.pesavelEditavel !== '';
+
+  const bloqueioDeCancelamento: MotivoBloqueio =
+    bloqueioDoCarrinho ??
+    (emEdicaoNaBarra
+      ? 'Este item já está carregado na barra de entrada: confirme ou cancele a edição antes.'
+      : null);
+
+  const bloqueioDeEdicao: MotivoBloqueio =
+    bloqueioDoCarrinho ??
+    (!editavel
+      ? 'Este produto não é editável: o cadastro do ERP não permite ajustar preço nem desconto dele.'
+      : bloqueioDeCancelamento);
 
   return (
     <tr
@@ -222,6 +250,15 @@ function LinhaDaGrid({
       <td className="px-base py-sm text-right">
         {linha.cancelada ? null : (
           <div className="flex justify-end gap-xs">
+            {/* **Bloqueio explicativo, nunca `disabled`** (`lib/bloqueio.ts`,
+                AD-143, pedido do usuário 2026-09-09). Com pagamento aplicado os
+                dois ficavam ativos, o operador clicava e só então ouvia o não —
+                e `disabled` sequer dispara o clique, então o motivo não teria
+                como chegar até ele. A frase é a **mesma** que a action mostra
+                (`motivoCarrinhoBloqueado`, `carrinhoSlice.ts`), e a mesma que a
+                lista mobile usa: uma regra, um texto, dois layouts (`SC-001`).
+                A ordem é a da gravidade — o pagamento primeiro, porque é o que
+                exige uma decisão em outra parte da tela. */}
             <Button
               type="button"
               variant="secondary"
@@ -231,10 +268,10 @@ function LinhaDaGrid({
               data-testid="editar-item"
               // Só `''` (não editável, AD-063/AD-070) fica sem nada
               // ajustável na barra — correção do usuário (2026-09-03).
-              disabled={!editavel || emEdicaoNaBarra}
-              onClick={() => {
+              {...atributosDeBloqueio(bloqueioDeEdicao)}
+              onClick={acaoBloqueavel(bloqueioDeEdicao, () => {
                 onEditar(linha);
-              }}
+              })}
             >
               <Pencil className="size-3.5" aria-hidden="true" />
             </Button>
@@ -249,10 +286,10 @@ function LinhaDaGrid({
               // Travado enquanto a linha está carregada na barra: cancelar
               // por baixo do que está em revisão deixaria a barra confirmando
               // uma linha que não existe mais.
-              disabled={emEdicaoNaBarra}
-              onClick={() => {
+              {...atributosDeBloqueio(bloqueioDeCancelamento)}
+              onClick={acaoBloqueavel(bloqueioDeCancelamento, () => {
                 onCancelar(linha.idLinha);
-              }}
+              })}
             >
               <Trash2 className="size-3.5" aria-hidden="true" />
             </Button>

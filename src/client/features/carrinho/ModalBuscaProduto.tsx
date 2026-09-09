@@ -109,7 +109,9 @@ export function ModalBuscaProduto({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-lg',
+        // Sem folga no compacto: a janela ocupa a tela inteira (ver a classe
+        // dela logo abaixo), então o `p-lg` só encolheria a área útil.
+        'fixed inset-0 z-50 flex items-start justify-center bg-black/40 md:p-lg',
         saindo ? 'cc-backdrop-sai' : 'cc-backdrop-entra',
       )}
       data-testid="modal-busca-produto"
@@ -125,18 +127,27 @@ export function ModalBuscaProduto({
         aria-modal="true"
         aria-label="Buscar produto"
         className={cn(
-          'flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-background shadow-lg',
+          // **Tela cheia no compacto, janela a partir de `md:`** — mesmo padrão
+          // dos seletores de cliente e vendedor (pedido do usuário, 2026-09-09).
+          // Os três são a mesma superfície com catálogos diferentes; divergir
+          // aqui criaria três gramáticas de busca no mesmo produto.
+          'flex h-full w-full flex-col overflow-hidden bg-background md:h-auto md:max-h-full md:max-w-3xl md:rounded-3xl md:shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
         )}
       >
-        <header className="flex items-center justify-between gap-sm border-b border-border px-lg py-base">
-          <div className="flex items-center gap-sm">
-            <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
-              <PackageSearch className="size-5 text-primary" aria-hidden="true" />
+        <header className="flex items-center justify-between gap-sm border-b border-border px-base py-2.5 md:px-lg md:py-base">
+          <div className="flex min-w-0 items-center gap-sm">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary md:size-[42px]">
+              <PackageSearch className="size-4.5 text-primary md:size-5" aria-hidden="true" />
             </span>
-            <div className="flex flex-col gap-[2px]">
-              <h2 className="text-xl font-semibold text-foreground">Consultar produto</h2>
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="flex min-w-0 flex-col gap-[2px]">
+              <h2 className="truncate text-lg font-semibold text-foreground md:text-xl">
+                Consultar produto
+              </h2>
+              {/* O subtítulo some no compacto: em 390px ele empurrava o
+                  cabeçalho para duas linhas e repete o placeholder do campo
+                  logo abaixo. */}
+              <p className="hidden text-sm font-medium text-muted-foreground md:block">
                 Busque por código, descrição, SKU ou referência
               </p>
             </div>
@@ -153,7 +164,7 @@ export function ModalBuscaProduto({
           </Button>
         </header>
 
-        <div className="flex flex-col gap-sm border-b border-border px-lg py-base">
+        <div className="flex flex-col gap-sm border-b border-border px-base py-2.5 md:px-lg md:py-base">
           <label className="flex h-11 items-center gap-sm rounded-full bg-secondary px-base text-sm font-medium text-foreground">
             <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="sr-only">Termo de busca</span>
@@ -217,7 +228,7 @@ export function ModalBuscaProduto({
 
         {busca.data === undefined || abaixoDoMinimo ? null : (
           <footer
-            className="flex items-center justify-between gap-sm border-t border-border px-lg py-sm"
+            className="flex items-center justify-between gap-sm border-t border-border px-base py-sm md:px-lg"
             data-testid="paginacao-busca"
           >
             <span className="sr-only">
@@ -278,6 +289,33 @@ interface ResultadosDaBuscaProps {
 const classeCelulaCabecalho =
   'flex h-full items-center px-sm text-xs font-bold text-muted-foreground';
 
+/** Rótulo que nomeia o campo só no compacto — ver `ModalBuscaCliente`. */
+const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
+
+/**
+ * Rótulo que existe nas duas larguras: "Referência" e "EAN" não têm coluna
+ * própria na tabela do desktop (moram na sub-linha da descrição), então lá o
+ * nome do campo também é a única pista do que é aquele número — só o peso muda,
+ * negrito no compacto e normal na sub-linha.
+ */
+const classeRotuloSempre = 'font-semibold text-foreground md:font-normal md:text-muted-foreground';
+
+/**
+ * Tabela no desktop, cartão de três linhas no compacto — mesma grade de duas
+ * colunas de `ModalBuscaCliente`/`ModalBuscaVendedor`.
+ *
+ * A ordem do compacto é a pedida pelo usuário (2026-09-09): descrição na faixa
+ * inteira, depois `Cód. Produto | Referência` e `Unidade | EAN`. Ela **não** é a
+ * ordem do DOM, que continua sendo a da tabela do desktop (código, descrição,
+ * referência, EAN, unidade) — quem reordena é `order` no compacto, zerado no
+ * `md:`. É por isso que o EAN leva `order-1`: sem ele a unidade cairia depois do
+ * EAN, invertendo a última faixa.
+ *
+ * Os dois invólucros da coluna "Produto" viram `display: contents` no compacto:
+ * assim descrição, referência e EAN participam da grade da linha como células
+ * próprias, e no `md:` voltam a ser a caixa em coluna com a sub-linha embaixo da
+ * descrição. Sem isso a alternativa seria escrever a linha duas vezes.
+ */
 function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): ReactElement {
   if (produtos.length === 0) {
     return (
@@ -289,7 +327,8 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
 
   return (
     <div data-testid="resultados-busca">
-      <div className="flex h-9 border-y border-border bg-muted" aria-hidden="true">
+      {/* O cabeçalho de colunas só faz sentido onde há colunas. */}
+      <div className="hidden h-9 border-y border-border bg-muted md:flex" aria-hidden="true">
         <span className={cn(classeCelulaCabecalho, 'w-11')} />
         <span className={cn(classeCelulaCabecalho, 'w-32')}>Código</span>
         <span className={cn(classeCelulaCabecalho, 'flex-1')}>Produto</span>
@@ -302,7 +341,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               type="button"
               data-testid="candidato-produto"
               data-codigo-produto={produto.CodigoProduto}
-              className="flex w-full items-center py-sm text-left hover:bg-accent"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:gap-0 md:px-0 md:py-sm"
               onClick={() => {
                 onSelecionar(produto.CodigoProduto);
               }}
@@ -310,19 +349,40 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               {/* `circle-check` do Pencil (MCP, nó `UM0Ej`, "Resultado produto
                   ... check"): indica que escolher a linha carrega o código no
                   campo — correção do usuário, 2026-09-03 (era `Circle`). */}
-              <span className="flex w-11 shrink-0 items-center justify-center">
+              <span className="hidden w-11 shrink-0 items-center justify-center md:flex">
                 <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
-              <span className="w-32 shrink-0 px-sm font-mono text-sm font-bold tabular-nums">
-                {produto.CodigoProduto}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-32 md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>Cód. Produto: </span>
+                <span className="font-mono font-bold tabular-nums">{produto.CodigoProduto}</span>
               </span>
-              <span className="flex min-w-0 flex-1 flex-col gap-xxs px-sm">
-                <span className="truncate font-medium">{produto.Descricao}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  Referência: {produto.Referencia} · EAN: {produto.CodigoBarras}
+              <span className="contents md:flex md:min-w-0 md:flex-1 md:flex-col md:gap-xxs md:px-sm">
+                <span className="order-first col-span-2 min-w-0 truncate font-medium md:order-none">
+                  {produto.Descricao}
+                </span>
+                <span className="contents md:flex md:min-w-0 md:gap-xs">
+                  <span className="min-w-0 truncate text-sm text-muted-foreground md:text-xs">
+                    <span className={classeRotuloSempre}>Referência: </span>
+                    <span className="font-mono">{produto.Referencia}</span>
+                  </span>
+                  <span className="order-1 min-w-0 truncate text-sm text-muted-foreground md:order-none md:text-xs">
+                    {/* O ponto separa "Referência" de "EAN" só no desktop, onde
+                        os dois dividem a mesma sub-linha da descrição. No
+                        compacto eles estão em faixas diferentes da grade e o
+                        espaçamento já os separa (correção do usuário,
+                        2026-09-09). */}
+                    <span className="hidden md:inline" aria-hidden="true">
+                      ·{' '}
+                    </span>
+                    <span className={classeRotuloSempre}>EAN: </span>
+                    <span className="font-mono">{produto.CodigoBarras}</span>
+                  </span>
                 </span>
               </span>
-              <span className="w-24 shrink-0 px-sm text-sm font-medium">{produto.UDM}</span>
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-24 md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>Unidade: </span>
+                <span className="font-medium">{produto.UDM}</span>
+              </span>
             </button>
           </li>
         ))}

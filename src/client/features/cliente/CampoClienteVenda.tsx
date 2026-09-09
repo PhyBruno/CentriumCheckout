@@ -8,7 +8,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -302,7 +302,7 @@ export function CampoClienteVenda(): ReactElement {
    */
   function recusarMantendoFoco(termo: string, mensagem: string): void {
     setRecusaComFocoPreso({ termo, mensagem });
-    gooeyToast.warning(mensagem);
+    notificar.aviso(mensagem);
     setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }
 
@@ -353,13 +353,13 @@ export function CampoClienteVenda(): ReactElement {
     // um cadastro que não poderia ser usado só gastaria uma ida à rede e
     // sugeriria ao operador que o caminho existe.
     if (entrada.tipo === 'PESSOA_JURIDICA') {
-      gooeyToast.warning(
+      notificar.aviso(
         `${MOTIVO_VENDA_PESSOA_JURIDICA} Informe um CPF (11 dígitos) ou o código do cliente.`,
       );
       return;
     }
     if (entrada.tipo === 'INVALIDO') {
-      gooeyToast.warning('Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).');
+      notificar.aviso('Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).');
       return;
     }
 
@@ -437,12 +437,34 @@ export function CampoClienteVenda(): ReactElement {
        mesmo espaço é comprimido pela animação de altura e some junto com o
        conteúdo. */
     <section
-      className="flex flex-col rounded-xl border border-border bg-background p-[14px]"
+      className="flex flex-col rounded-xl border border-border bg-background p-2.5 md:p-[14px]"
       data-testid="cliente-da-venda"
       aria-label="Cliente da venda"
     >
-      <header className="flex h-[26px] items-center justify-between gap-[9px]">
-        <div className="flex min-w-0 items-center gap-md">
+      {/* O cabeçalho quebra em linhas no compacto (`flex-wrap`, altura livre) e
+          volta a ser a faixa única de 26px a partir de `md:`. Em 390px as duas
+          pílulas mais o botão de expandir somam bem mais que a largura do card:
+          como só o bloco da esquerda encolhia, "CONSUMIDOR FINAL" virava "CO" e
+          o nome do vendedor sumia por baixo da palavra "Recolhido" (achado em
+          2026-09-08). Deixar a linha quebrar preserva os dois nomes — que são a
+          resposta à pergunta "quem é o cliente desta venda" — em vez de
+          preservar a altura de 26px. */}
+      {/* `gap-y-xxs` (4px) no compacto, não `gap-y-xs`: o cabeçalho quebra em
+          duas linhas em 390px e cada pixel de folga entre elas é altura que a
+          etapa 1 não tem de sobra (pedido do usuário, 2026-09-09 — "sem
+          produtos as telas não precisam de scroll"). */}
+      {/* **A quebra vale nos dois layouts desde 2026-09-09** (AD-198), e a
+          altura de 26px virou piso em vez de trava. O `md:flex-nowrap` supunha
+          que no desktop sempre haveria largura para a faixa única do desenho —
+          o que era verdade enquanto "desktop" começava em 768px por engano e
+          ninguém olhava a faixa entre 768 e 1330. Num monitor de 1024px as duas
+          pílulas mais o botão transbordavam 11px cada e "Mariana Alves" voltava
+          a encostar em "Recolhido": exatamente o mesmo defeito de 390px, uma
+          largura acima. Com a quebra liberada a faixa única continua sendo o
+          que se vê em qualquer monitor largo, e o card ganha uma segunda linha
+          só quando a alternativa seria sobrepor nome com nome. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-[9px] gap-y-xxs md:min-h-[26px]">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-sm gap-y-xxs md:gap-md">
           <Pilula icone={<UserRound className="size-4.5 text-foreground" />} rotulo="Cliente">
             {clienteAtual === null ? (
               <>
@@ -505,8 +527,27 @@ export function CampoClienteVenda(): ReactElement {
             `pt` aqui viraria 12px de altura residual com o bloco recolhido. */}
         <div>
           <div className="flex flex-col gap-sm pt-sm">
-            <div className="flex h-[42px] items-center gap-[10px]">
-              <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+            {/* Linha de identificação: uma faixa só de 42px no desktop, empilhada
+                no compacto. As larguras fixas do desenho desktop (243px do
+                documento, 126px do "Identificar") somavam 655px sobre um card de
+                330px, e o excedente — justamente a lupa e o botão "Identificar" —
+                ficava **fora** da área visível, inalcançável ao toque, além de
+                transformar a coluna do wizard numa barra de rolagem lateral
+                (achado em 2026-09-08). No compacto o campo de documento ocupa a
+                largura toda, como o "Campo CPF mobile" do Pencil (nó `twVty`), e
+                a lupa divide a faixa seguinte com o "Identificar" — o par
+                `viWeS` do mesmo desenho. */}
+            {/* Sem `md:flex-nowrap` desde AD-199: as três larguras fixas desta
+                fila (243 do documento, 42 da lupa, 126 do "Identificar") não
+                encolhem, então proibir a quebra no desktop só empurrava o
+                excedente para fora do card — visível a partir de ~1100px, com o
+                bloco aberto. Quebrando, a fila vira duas linhas no monitor
+                apertado e continua sendo a faixa única do Pencil onde há
+                largura. A altura de 42px vira piso pelo mesmo motivo que a do
+                cabeçalho em AD-198: com duas linhas, `h-[42px]` cortaria a
+                segunda. */}
+            <div className="flex flex-wrap items-center gap-[10px] md:min-h-[42px]">
+              <label className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
                 <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
@@ -544,7 +585,19 @@ export function CampoClienteVenda(): ReactElement {
                 </span>
               </label>
 
-              <div className="flex h-full min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+              {/* Piso próprio no desktop (AD-199) em vez de `md:min-w-0`: sem
+                  ele este é o único item que cede da fila — os outros três são
+                  largura fixa —, e num monitor de 1050px o nome do cliente
+                  virava "CONSU…" enquanto o botão "Identificar" ficava inteiro.
+                  Com o piso a fila quebra em duas linhas antes de espremer o
+                  nome, que é a informação que o operador precisa ler. 11rem é
+                  medido, não arredondado: é o que "CONSUMIDOR FINAL" ocupa
+                  (174px) mais folga. Em 10rem o comportamento saía
+                  não-monótono — nome inteiro em 1050px, onde a fila quebrava, e
+                  cortado em 1100px, onde ela cabia espremida. Continua menor
+                  que os 12rem do compacto, para a faixa única do Pencil valer
+                  onde há largura. */}
+              <div className="flex h-[42px] min-w-[12rem] flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:min-w-[11rem]">
                 <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
@@ -575,9 +628,21 @@ export function CampoClienteVenda(): ReactElement {
                 <Search className="size-4" aria-hidden="true" />
               </Button>
 
+              {/* **Fora do compacto** (pedido do usuário, 2026-09-09): no
+                  mobile o botão ocupava uma faixa inteira de 42px para repetir
+                  um gesto que o campo já faz sozinho — a consulta ao ERP dispara
+                  no `onBlur` e no Enter (as duas saídas naturais do teclado
+                  virtual). Não há caminho perdido: quem digita e toca em
+                  qualquer outro ponto da tela já identificou. No desktop ele
+                  fica, porque lá é o botão do desenho e a faixa de 42px não
+                  disputa altura com nada.
+
+                  `hidden md:flex`, não `md:block`: o `Button` é um flex
+                  container (ícone + rótulo), e `block` desalinharia os dois no
+                  desktop. */}
               <Button
                 type="button"
-                className="h-[42px] w-[126px] shrink-0 gap-[7px] rounded-full text-base font-bold"
+                className="hidden h-[42px] flex-1 gap-[7px] rounded-full text-base font-bold md:flex md:w-[126px] md:flex-none"
                 data-testid="identificar-cliente"
                 {...atributosDeBloqueio(bloqueioDeIdentificacao)}
                 onClick={acaoBloqueavel(bloqueioDeIdentificacao, () => {
@@ -609,8 +674,10 @@ export function CampoClienteVenda(): ReactElement {
                 slice dele. É a mesma relação que a linha de cima já tem com o
                 modal de busca de cliente — nenhum estado atravessa daqui para
                 lá. */}
-            <div className="flex items-center gap-[10px]">
-              <div className="flex h-[42px] w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+            {/* Mesma razão da fila acima (AD-199): o contato tem `md:w-[243px]`
+                sem encolher, e o vendedor ao lado tem piso próprio. */}
+            <div className="flex flex-wrap items-center gap-[10px]">
+              <div className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
                 <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
@@ -693,12 +760,17 @@ function Pilula({ icone, rotulo, children, testId }: PilulaProps): ReactElement 
       <span className="shrink-0" aria-hidden="true">
         {icone}
       </span>
-      <span className="shrink-0 text-lg font-semibold text-foreground">{rotulo}</span>
+      {/* Um degrau menor no compacto (`text-base`/`py-[3px]`), o tamanho do
+          Pencil a partir de `md:`: são duas pílulas em duas linhas numa etapa
+          que precisa caber sem rolagem (pedido do usuário, 2026-09-09), e o
+          rótulo "Cliente"/"Vendedor" é a parte que menos perde ao encolher —
+          quem responde à pergunta é o nome dentro da pílula. */}
+      <span className="shrink-0 text-base font-semibold text-foreground md:text-lg">{rotulo}</span>
       {/* `truncate` fica no wrapper de texto de cada caller, não aqui: o estado
           "não identificado" traz um ponto colorido ao lado do texto, e cortar o
           conteúdo inteiro esconderia o ponto junto. */}
       <span
-        className="flex min-w-0 items-center gap-[6px] truncate rounded-full bg-secondary px-[10px] py-[5px] text-sm font-semibold whitespace-nowrap text-foreground"
+        className="flex min-w-0 items-center gap-[6px] truncate rounded-full bg-secondary px-[10px] py-[3px] text-sm font-semibold whitespace-nowrap text-foreground md:py-[5px]"
         data-testid={testId ?? 'status-cliente'}
       >
         {children}

@@ -5,9 +5,10 @@ import {
   useState,
   type KeyboardEvent,
   type ReactElement,
+  type ReactNode,
   type RefObject,
 } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -117,7 +118,7 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
  * operador escreveu tiraria dele a chance de só corrigir um dígito.
  */
 function exigirCampo(campo: RefObject<HTMLInputElement | null>, aviso: string): void {
-  gooeyToast.error(aviso);
+  notificar.erro(aviso);
   window.setTimeout(() => {
     campo.current?.focus();
     campo.current?.select();
@@ -220,7 +221,25 @@ function SimboloReal({ testId }: { testId: string }): ReactElement {
  * tipografia só, e o símbolo precisa ficar fora dele para não virar máscara
  * sobre o texto que o operador edita.
  */
-export function EntradaRapidaProduto(): ReactElement {
+export interface EntradaRapidaProdutoProps {
+  /**
+   * Superfície extra no cabeçalho da barra, ao lado da lupa — hoje só o botão
+   * "Scanner" da feature 007 (nó `QIJKL` do Pencil, que o desenho põe
+   * exatamente aí).
+   *
+   * Recebe `aoLerCodigo`, **o mesmo caminho de entrada do leitor físico**: a
+   * string decodificada entra por `inserirPorCodigo`, é classificada por
+   * `EntradaCodigo` (simples/com-quantidade/balança) e vira linha pelo mesmo
+   * `carrinhoSlice.inserirItem` (`FR-007` da 007, D5). É por isso que o slot é
+   * uma função e não um `ReactNode` solto: quem monta o botão não precisa —
+   * nem consegue — inventar um segundo caminho de inserção.
+   */
+  readonly renderizarCaptura?: (aoLerCodigo: (codigo: string) => void) => ReactNode;
+}
+
+export function EntradaRapidaProduto({
+  renderizarCaptura,
+}: EntradaRapidaProdutoProps = {}): ReactElement {
   const { inserirPorCodigo, confirmarEdicao, revisarPorCodigo, confirmarPrevia } =
     useInsercaoDeProduto();
   const { confirmarEdicaoDeLinha } = useEdicaoDeItemExistente();
@@ -414,8 +433,14 @@ export function EntradaRapidaProduto(): ReactElement {
     setQuantidadeTexto(formatarQuantidade(milesimos(Math.max(UMA_UNIDADE, proxima)), 3));
   }
 
-  async function confirmarEntradaRapida(): Promise<void> {
-    const entrada = texto.trim();
+  /**
+   * `codigoExterno` existe para a captura por câmera (007): o código chega
+   * pronto, sem ter passado pelo `setTexto` — e `texto` só valeria no render
+   * seguinte, então ler o estado aqui inseriria o código **anterior**.
+   * Sem o parâmetro, o caminho é exatamente o de sempre.
+   */
+  async function confirmarEntradaRapida(codigoExterno?: string): Promise<void> {
+    const entrada = (codigoExterno ?? texto).trim();
     if (entrada === '' || ocupado || resolvido !== null) {
       return;
     }
@@ -712,13 +737,17 @@ export function EntradaRapidaProduto(): ReactElement {
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
   // produz alinhamento inconsistente entre navegadores. A altura fixa
   // (`h-11.5`) já centraliza o texto verticalmente sozinha.
+  // `h-10` no compacto, os 46px do desenho a partir de `md:`: a barra quebra em
+  // cinco faixas no wizard mobile, e 6px por faixa é o que faz a etapa 1 caber
+  // sem rolagem (pedido do usuário, 2026-09-09). 40px continua acima do alvo
+  // mínimo de toque.
   const classeCampoValor =
-    'h-11.5 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default disabled:cursor-not-allowed disabled:opacity-70';
+    'h-10 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default disabled:cursor-not-allowed disabled:opacity-70 md:h-11.5';
   // Preço e desconto não usam `classeCampoValor`: a moldura vai para um
   // wrapper e o `<input>` fica transparente dentro dele, para o "R$" caber ao
   // lado do valor sem entrar no `value` (ver `SimboloReal`).
   const classeMolduraValor =
-    'flex h-11.5 w-full min-w-0 items-center gap-xs rounded-xl border border-border bg-muted px-sm';
+    'flex h-10 w-full min-w-0 items-center gap-xs rounded-xl border border-border bg-muted px-sm md:h-11.5';
   const classeValorDigitavel =
     'w-full min-w-0 bg-transparent font-mono text-md tabular-nums outline-none read-only:cursor-default';
 
@@ -741,7 +770,7 @@ export function EntradaRapidaProduto(): ReactElement {
   return (
     <div
       className={cn(
-        'flex flex-col gap-xs rounded-3xl border border-border bg-background p-base',
+        'flex flex-col gap-xs rounded-3xl border border-border bg-background p-2.5 md:p-base',
         // Contorno amarelo pulsante enquanto um item já inserido está
         // carregado aqui para edição (pedido do usuário, 2026-09-03).
         linhaEmEdicao !== null && 'cc-pulso-edicao',
@@ -749,15 +778,48 @@ export function EntradaRapidaProduto(): ReactElement {
       data-testid="entrada-rapida-produto"
       onKeyDown={aoTeclarNoCartao}
     >
-      <div className="flex items-end gap-sm" data-testid="previa-insercao-produto">
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+      {/* `flex-wrap`: no desktop a linha nunca quebra (sobra largura), mas na
+          etapa 1 do wizard mobile as células caem umas sob as outras em vez de
+          estourar a lateral da tela — é a mesma barra, reflowada, não um
+          segundo componente (`SC-001`).
+
+          **O `flex-wrap` sozinho não quebrava nada** (achado em 2026-09-08):
+          toda célula era `flex-1 min-w-0`, e um item que pode encolher até zero
+          nunca chega a "não caber" — as sete se espremiam na mesma linha de
+          326px, o campo de código ficava com 39px e os rótulos "Quantidade",
+          "Unidade", "Preço unitário" e "Desconto do item" se sobrepunham em
+          três linhas ilegíveis. O piso por célula (`min-w-*`) é o que faz a
+          quebra acontecer de verdade, e reproduz o empilhamento do
+          desenho mobile: código na primeira faixa com a lupa e o Scanner
+          (`dfZEs`/`kU6Z5`), depois os pares de valores (`J5G7EE`/`aRe5V`) e o
+          botão de inserir ocupando a largura toda (`q2NBVJ`).
+
+          **O piso vale nos dois layouts desde 2026-09-09** (AD-198), só que com
+          valores próprios em `md:`. Ele era **revogado** no desktop
+          (`md:min-w-0`), e era isso que quebrava a tela: a partir do limiar as
+          células voltavam a poder encolher até zero, então entre 768px e
+          ~1330px o desktop reproduzia exatamente o empilhamento ilegível
+          descrito acima — só que sem nunca quebrar linha.
+
+          Os pisos do compacto são largos demais para reaproveitar aqui: somados
+          aos intervalos e ao botão passam de 980px, e a barra quebrava em duas
+          faixas até em 1440px, perdendo a linha única do Pencil. Os valores de
+          `md:` são o rótulo mais largo de cada célula com folga, e somam ~862px:
+          a faixa única aparece a partir de ~1330px — que é onde o usuário
+          observou o estouro parar — e vira duas ou três faixas no monitor
+          apertado, em vez de sobrepor rótulo com valor. */}
+      <div
+        className="flex flex-wrap items-end gap-xs md:gap-sm"
+        data-testid="previa-insercao-produto"
+      >
+        <label className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm">
           <span className="flex items-center gap-xs font-semibold text-muted-foreground">
-            <Barcode className="size-4" aria-hidden="true" />
-            {rotuloCampoCodigo}
+            <Barcode className="size-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">{rotuloCampoCodigo}</span>
           </span>
           <input
             ref={campoCodigo}
-            className="h-11.5 w-full rounded-xl border border-border bg-muted px-3 font-mono"
+            className="h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono md:h-11.5"
             data-testid="campo-codigo-produto"
             /* Única exceção à regra de `FR-014` (decisão do usuário,
                2026-09-05): os atalhos globais F6–F9 disparam **com o foco
@@ -782,7 +844,7 @@ export function EntradaRapidaProduto(): ReactElement {
           type="button"
           variant="secondary"
           size="icon-sm"
-          className="size-11.5 shrink-0 rounded-full"
+          className="size-10 shrink-0 rounded-full md:size-11.5"
           aria-label="Buscar produto"
           data-testid="abrir-busca-produto"
           onClick={() => {
@@ -792,6 +854,15 @@ export function EntradaRapidaProduto(): ReactElement {
           <Search className="size-4.5" aria-hidden="true" />
         </Button>
 
+        {/* Slot da 007: o botão "Scanner" entra aqui, ao lado da lupa, como o
+            Pencil o posiciona no cabeçalho da entrada mobile (`QIJKL`). Vazio
+            no desktop — e vazio também no mobile fora de Chrome/Android, porque
+            quem devolve `null` é o próprio `ScannerCamera` (`FR-011`). */}
+        {renderizarCaptura?.((codigo) => {
+          setTexto(codigo);
+          void confirmarEntradaRapida(codigo);
+        })}
+
         {/* Única célula que **não** é um `<label>` envolvendo o campo: esta
             contém os botões +/- além do input, e o navegador aplica o
             `:hover` do label ao *labeled control* — o primeiro form control
@@ -799,11 +870,15 @@ export function EntradaRapidaProduto(): ReactElement {
             ponto do campo acendia o "−" (achado do usuário, 2026-09-03).
             Com o rótulo apontando para o input por `htmlFor`, a associação
             acessível continua de pé e o hover do "−" volta a ser só o dele. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        {/* Sem piso próprio em `md:`, ao contrário das células de valor: os
+            9.5rem são o mínimo para o par de botões −/+ ladear as três casas
+            decimais da quantidade. Em 8.5rem o campo passava a mostrar "1,00"
+            no lugar de "1,000" (medido em 1440px). */}
+        <div className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm">
           <label className={classeRotulo} htmlFor={ID_CAMPO_QUANTIDADE}>
             Quantidade
           </label>
-          <div className="flex h-11.5 items-center justify-between gap-xs rounded-xl border border-border bg-muted px-xs">
+          <div className="flex h-10 items-center justify-between gap-xs rounded-xl border border-border bg-muted px-xs md:h-11.5">
             <Button
               type="button"
               variant="secondary"
@@ -856,7 +931,7 @@ export function EntradaRapidaProduto(): ReactElement {
           </div>
         </div>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[6rem] flex-1 flex-col gap-xxs text-sm">
           <span className={classeRotulo}>Unidade</span>
           <input
             className={cn(classeCampoValor, semResolucao && 'text-muted-foreground')}
@@ -869,7 +944,7 @@ export function EntradaRapidaProduto(): ReactElement {
           />
         </label>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-[7rem]">
           <span className={classeRotulo}>Preço unitário</span>
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-preco-unitario-simbolo" />
@@ -897,7 +972,7 @@ export function EntradaRapidaProduto(): ReactElement {
           </span>
         </label>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-[7.5rem]">
           <span className={classeRotulo}>Desconto do item</span>
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-desconto-item-simbolo" />
@@ -932,18 +1007,18 @@ export function EntradaRapidaProduto(): ReactElement {
                   return;
                 }
                 if (descontoZeraItem) {
-                  gooeyToast.warning(AVISO_DESCONTO_ZERA_ITEM);
+                  notificar.aviso(AVISO_DESCONTO_ZERA_ITEM);
                 }
               }}
             />
           </span>
         </label>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-[6.5rem]">
           <span className={classeRotulo}>Total item</span>
           <strong
             className={cn(
-              'flex h-11.5 items-center rounded-xl bg-secondary px-sm font-mono text-lg tabular-nums',
+              'flex h-10 items-center rounded-xl bg-secondary px-sm font-mono text-lg tabular-nums md:h-11.5',
               semResolucao ? 'text-muted-foreground' : 'text-primary',
             )}
             data-testid="previa-total-item"
@@ -952,10 +1027,27 @@ export function EntradaRapidaProduto(): ReactElement {
           </strong>
         </label>
 
+        {/* Largura cheia no compacto, os 70px do desenho desktop a partir de
+            `md:`. É o botão "Adicionar ao carrinho" do Pencil mobile (nó
+            `q2NBVJ`): pílula de largura total ao pé do cartão, ícone mais
+            rótulo. Um alvo de 70px perdido no fim de uma linha quebrada seria
+            o gesto mais difícil da etapa justamente para a ação que o caixa
+            repete a cada item.
+
+            **Um desvio declarado**: `q2NBVJ` é preto (`$surface-dark`) e este
+            botão continua na cor da marca. O cartão escuro de total já ocupa o
+            topo das três etapas, e um segundo preto — este, clicável — abriria
+            uma terceira cor de ação na mesma tela, ao lado do azul do "Ver
+            produtos e pagamento" logo abaixo.
+
+            O rótulo só aparece no compacto: no desktop a barra é uma linha só e
+            o `aria-label` já nomeia o botão para quem usa leitor de tela. Como
+            o `aria-label` vence o conteúdo no cálculo do nome acessível, o
+            texto visível não muda o nome anunciado em nenhum dos dois layouts. */}
         <Button
           ref={botaoConfirmar}
           type="button"
-          className="h-11.5 w-[70px] shrink-0 rounded-full"
+          className="h-10 w-full shrink-0 gap-xs rounded-full md:h-11.5 md:w-[70px]"
           aria-label={
             linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'
           }
@@ -963,11 +1055,26 @@ export function EntradaRapidaProduto(): ReactElement {
           {...atributosDeBloqueio(bloqueioDeInsercao)}
           onClick={acaoBloqueavel(bloqueioDeInsercao, confirmar)}
         >
-          <Plus className="size-5" aria-hidden="true" />
+          <Plus className="size-5 shrink-0" aria-hidden="true" />
+          <span className="text-md font-bold md:hidden">
+            {linhaEmEdicao === null ? 'Adicionar ao carrinho' : 'Confirmar edição'}
+          </span>
         </Button>
       </div>
 
-      <p className="text-sm font-medium text-foreground" data-testid="previa-descricao-produto">
+      {/* `hidden md:block` quando não há produto resolvido: no desktop a linha
+          continua reservando a própria altura (o espaço em branco evita que o
+          cartão pule ao resolver um código), mas no wizard mobile essa reserva
+          custava ~24px numa tela que precisa caber sem rolagem sem nenhum item
+          (pedido do usuário, 2026-09-09). O elemento permanece no DOM nos dois
+          casos — quem lê por `data-testid` continua achando. */}
+      <p
+        className={cn(
+          'text-sm font-medium text-foreground',
+          snapshotAtivo === null && 'hidden md:block',
+        )}
+        data-testid="previa-descricao-produto"
+      >
         {snapshotAtivo?.descricao ?? ' '}
       </p>
 

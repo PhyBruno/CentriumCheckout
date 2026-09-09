@@ -211,6 +211,34 @@ function descontoZeraALinha(linha: LinhaCarrinho): boolean {
   return desconto > ZERO_CENTAVOS && totalLinha(linha) < TOTAL_MINIMO_DA_LINHA;
 }
 
+/**
+ * Por que o carrinho recusa alteração — `null` significa "pode alterar".
+ *
+ * **A mesma frase que a action mostra e que o botão antecipa.** Antes destas
+ * duas mensagens saírem daqui, a UI não tinha como saber que a edição seria
+ * recusada: o lápis e a lixeira ficavam ativos, o operador clicava e só então
+ * ouvia o não. É o oposto do padrão desta base (`lib/bloqueio.ts`, AD-143), em
+ * que o controle já nasce bloqueado e o clique **ensina a saída**. Duplicar o
+ * texto no componente resolveria a tela e criaria o problema pior: duas cópias
+ * de uma regra que pode divergir, uma dizendo "use Limpar" enquanto a outra
+ * fala de pagamento aprovado.
+ *
+ * Pura de propósito — recebe os dois predicados e não lê store nenhum —, então
+ * serve tanto ao slice (que já os tem em `deps`) quanto ao hook de React que a
+ * grid do desktop e a lista mobile consultam.
+ */
+export function motivoCarrinhoBloqueado(
+  podeMutarCarrinho: boolean,
+  pagamentoVeioDeDocumento: boolean,
+): string | null {
+  if (podeMutarCarrinho) {
+    return null;
+  }
+  return pagamentoVeioDeDocumento
+    ? AVISO_CARRINHO_BLOQUEADO_POR_DOCUMENTO
+    : AVISO_CARRINHO_BLOQUEADO;
+}
+
 function idAleatorio(): string {
   return crypto.randomUUID();
 }
@@ -227,14 +255,14 @@ export function criarCarrinhoSlice(
 
   /** Bloqueio pós-pagamento: no-op com aviso, nunca exceção (`FR-010`). */
   function carrinhoBloqueado(): boolean {
-    if (deps.podeMutarCarrinho()) {
+    const motivo = motivoCarrinhoBloqueado(
+      deps.podeMutarCarrinho(),
+      deps.pagamentoVeioDeDocumento?.() === true,
+    );
+    if (motivo === null) {
       return false;
     }
-    deps.avisar?.(
-      deps.pagamentoVeioDeDocumento?.() === true
-        ? AVISO_CARRINHO_BLOQUEADO_POR_DOCUMENTO
-        : AVISO_CARRINHO_BLOQUEADO,
-    );
+    deps.avisar?.(motivo);
     return true;
   }
 

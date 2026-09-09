@@ -48,7 +48,12 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
     });
     render(<GridItens />);
 
-    expect(screen.getByRole('button', { name: 'Editar item' })).toBeDisabled();
+    // `aria-disabled`, não `disabled` (AD-143): o botão precisa continuar
+    // recebendo o clique para poder **explicar** o motivo.
+    expect(screen.getByRole('button', { name: 'Editar item' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it.each(['E', 'S', 'B'] as const)(
@@ -87,8 +92,14 @@ describe('GridItens — lápis carrega o item na barra de entrada rápida', () =
     });
     render(<GridItens />);
 
-    expect(screen.getByRole('button', { name: 'Editar item' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Editar item' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
     // Sinaliza visualmente que a linha "sumiu" pra revisão, não que foi
     // cancelada (correção do usuário, 2026-09-03).
     expect(screen.getByTestId('linha-carrinho')).toHaveClass('cc-pulso-edicao');

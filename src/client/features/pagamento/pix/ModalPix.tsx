@@ -1,6 +1,6 @@
 import { CircleCheck, Copy, QrCode, RefreshCw, TriangleAlert, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
@@ -228,7 +228,7 @@ export function ModalPix({
         // O motivo já está em `erro` e vira painel + toast abaixo. Engolir aqui
         // é o que impede a rejeição de virar `unhandledrejection` — o desfecho
         // dela é uma tela, não uma exceção.
-        gooeyToast.error('Não foi possível gerar a cobrança PIX. Tente novamente.');
+        notificar.erro('Não foi possível gerar a cobrança PIX. Tente novamente.');
       });
   }, [gerar, formaCodigo, valor, clienteAtual]);
 
@@ -240,7 +240,7 @@ export function ModalPix({
       }
       desfechoEmitido.current = true;
       setResolvido(true);
-      gooeyToast.warning(mensagem);
+      notificar.aviso(mensagem);
       onAbandonado(motivo);
       onFechar();
     },
@@ -256,7 +256,7 @@ export function ModalPix({
       return;
     }
     desfechoEmitido.current = true;
-    gooeyToast.warning(
+    notificar.aviso(
       `O valor mínimo para cobrança PIX é ${formatarCentavos(minimoPix)}. Escolha outra forma de pagamento.`,
     );
     onAbandonado(MOTIVO_ABAIXO_DO_MINIMO);
@@ -373,7 +373,7 @@ export function ModalPix({
       // Área de transferência negada pelo navegador (contexto inseguro, permissão
       // recusada). O código continua visível e selecionável na tela — dizer o que
       // aconteceu é melhor do que um botão que não responde.
-      gooeyToast.error('Não foi possível copiar o código. Selecione e copie manualmente.');
+      notificar.erro('Não foi possível copiar o código. Selecione e copie manualmente.');
     }
   }
 

@@ -1,6 +1,38 @@
 @import 'tailwindcss';
 
 /**
+ * `md:` = "estou no layout desktop" — e quem decide isso é o TypeScript
+ * (AD-198).
+ *
+ * O `md` nativo do Tailwind é `min-width: 48rem`, um número que este projeto
+ * nunca escolheu: ele coincidia com o limiar de `classificarLayout` (768px) por
+ * acidente histórico, e a coincidência acabou quando o limiar virou 1366px e
+ * ganhou um segundo critério (`any-pointer: fine`, para o tablet sem mouse).
+ * Uma consulta de mídia aqui teria de repetir os dois critérios e ficaria livre
+ * para divergir do domínio na primeira mudança — e divergir aqui significa o
+ * `MobileWizard` montado com o estilo do desktop por cima, em todas as ~200
+ * ocorrências de `md:` do projeto.
+ *
+ * Por isso `md:` deixa de ser mídia e passa a ser seletor: `main.tsx` chama
+ * `sincronizarLayoutNoDocumento()` antes do primeiro render e mantém
+ * `<html data-layout="DESKTOP|MOBILE">` em dia via `matchMedia`. Existe um
+ * decisor só.
+ *
+ * `:where()` mantém a especificidade em 0, exatamente como uma media query:
+ * `md:h-11.5` continua vencendo `h-10` por ordem de origem (o Tailwind emite as
+ * variantes depois das utilidades cruas), e não por peso de seletor — trocar
+ * isso reordenaria silenciosamente regras que hoje funcionam.
+ *
+ * **`sm:` e `lg:` continuam sendo largura pura** (40rem e 64rem, o padrão do
+ * Tailwind) e não formam mais escada com `md:` — não existe "menor que `md`"
+ * neste projeto, porque `md:` deixou de ser um número. Quem precisa de largura
+ * real *dentro* do layout compacto usa `sm:`: é o caso do nome do operador no
+ * cabeçalho do wizard, cujo teto de 5rem foi medido em 390px e não faz sentido
+ * num tablet de 820px.
+ */
+@custom-variant md (&:where([data-layout='DESKTOP'] *));
+
+/**
  * Self-hospedado (`@fontsource`, sem CDN externo — coerente com "100% Docker",
  * `STACK.md`): Inter para texto geral e Geist Mono para valores numéricos
  * (preço, quantidade, total), os dois exatamente como usados no export do
@@ -384,6 +416,15 @@ body {
 @utility cc-colapsavel {
   display: grid;
   grid-template-rows: 0fr;
+  /* **A coluna precisa ser declarada** (achado em 2026-09-09, AD-199). A coluna
+     implícita de um grid é `auto`, que se dimensiona pelo **conteúdo** e passa
+     por cima da largura do próprio container: com o card de cliente aberto em
+     1050px, a coluna resolveu para 623.6px dentro de uma caixa de 560px e os
+     campos saíam pela direita, para fora do card. `minmax(0, 1fr)` — e não
+     `1fr`, que é `minmax(auto, 1fr)` e traz o mesmo piso de conteúdo de volta —
+     prende a coluna à caixa e devolve o limite que os filhos precisam para
+     encolher ou quebrar. */
+  grid-template-columns: minmax(0, 1fr);
   transition: grid-template-rows var(--cc-motion-base) var(--cc-ease-saida);
 }
 
@@ -514,6 +555,178 @@ button:not(:disabled):not([aria-disabled='true']),
 }
 
 /**
+ * Área de toque de 44px sem mudar o desenho do controle.
+ *
+ * Vários controles do PDV são pequenos **por especificação do Pencil** — a
+ * pílula "Scanner" tem 30px de altura (nó `QIJKL`), as barras do indicador de
+ * etapa têm 5px (`WUzPm`), o lápis/lixeira da lista mobile têm 28px. No mouse
+ * isso é preciso o bastante; no dedo, não: abaixo de ~44px o toque erra o alvo
+ * ou acerta o vizinho.
+ *
+ * O pseudo-elemento resolve os dois lados: o retângulo transparente cresce a
+ * área **sensível** ao redor do controle sem ocupar espaço no layout (é
+ * `position: absolute`) e sem alterar um pixel do que se vê — a régua do
+ * desenho continua valendo. `--cc-alvo-toque` é o mínimo a atingir; cada uso
+ * pode reduzir a folga declarando outro valor.
+ *
+ * Só no layout compacto, o mesmo veredito de `useIsMobile`: no desktop a folga
+ * invisível cobriria o vizinho sem necessidade nenhuma, já que lá o ponteiro é
+ * o mouse. Atributo em vez de `@media (width < 48rem)` pelo motivo do
+ * `@custom-variant md` lá em cima (AD-198) — e aqui a diferença é literal, já
+ * que "tem mouse" passou a fazer parte da definição de desktop.
+ */
+@utility cc-alvo-toque {
+  position: relative;
+
+  [data-layout='MOBILE'] &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    width: max(100%, var(--cc-alvo-toque, 44px));
+    height: max(100%, var(--cc-alvo-toque, 44px));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Notificação (`goey-toast`) que cabe na tela estreita.
+ *
+ * O pacote monta a faixa compacta como `width: fit-content` (`node_modules/
+ * goey-toast/dist/index.css`): a largura é a do conteúdo, e no wizard mobile
+ * uma frase longa nascia com 826px sobre 390px de viewport, saindo pela
+ * direita da tela (achado no layout compacto, 2026-09-08).
+ *
+ * O teto vai na **caixa de conteúdo**, não no wrapper, porque é ela que o
+ * pacote mede para desenhar a bolha (`contentRef.offsetWidth`, com um
+ * `ResizeObserver` por cima): limitando aqui, a medida já sai correta e o SVG
+ * acompanha o novo tamanho em vez de ficar maior que o texto.
+ *
+ * **A quebra de linha do título saiu daqui** (2026-09-09). A versão anterior
+ * desta regra deixava o título quebrar (`white-space: normal` + `flex-wrap` no
+ * header) para o texto não ser cortado por reticências — e produziu o defeito
+ * que o usuário relatou como "notificação em branco": o pacote fixa a altura da
+ * faixa compacta em `PH = 34px` (`dist/index.js`) e recorta o excedente com
+ * `overflow: hidden`, então as linhas quebradas caíam fora do recorte e sobrava
+ * uma bolha branca só com o ícone (título de 448×71px dentro de 34px, medido no
+ * navegador em 390px). A frase longa não é problema de CSS: é campo errado da
+ * API — ela pertence a `description`, que o pacote renderiza no corpo expandido
+ * e mede de verdade. Quem cuida disso agora é `src/client/lib/notificar.ts`, e
+ * o título voltou a ser a linha única que o pacote desenha.
+ * ------------------------------------------------------------------------- */
+[data-layout='MOBILE'] .gooey-content {
+  max-width: calc(100vw - 2 * var(--cc-space-base));
+}
+
+/* ---------------------------------------------------------------------------
+ * A frase do toast, com a aparência que ela tinha enquanto era o título.
+ *
+ * `src/client/lib/notificar.ts` manda a frase em `description` (o campo que o
+ * pacote mede e anima); o corpo expandido dele, porém, nasce como texto de
+ * leitura — `.gooey-description` é 13px/400 em `#444`, com 16px de respiro
+ * acima. Aplicado a um aviso de PDV, isso deixava a frase "padrão e preta",
+ * destoando do ícone colorido que a anuncia (correção do usuário, 2026-09-09).
+ *
+ * Os valores abaixo são os do **título** do próprio pacote (12px/700 e as cores
+ * de `.gooey-titleError`/`Warning`/`Success`, com as variantes de tema escuro):
+ * são deliberadamente os mesmos para que frase, ícone e rótulo sejam uma coisa
+ * só. Ficam aqui em vez de virarem token do produto porque descrevem o
+ * componente de terceiro, não a paleta do Checkout — trocá-los por `--destructive`
+ * faria a frase divergir do ícone que o pacote pinta sozinho.
+ *
+ * A especificidade é (0,3,0) por necessidade, não por gosto: o pacote declara
+ * `.gooey-description` (0,1,0) **depois** das classes de cor na mesma folha, e a
+ * folha dele carrega depois da nossa — um seletor de classe única perderia as
+ * duas disputas. `!important` se reservaria a uma briga contra `!important`, e
+ * não é o caso. O `line-height` sobe para 1.35 (o título usava 1) porque agora
+ * o texto quebra em linhas de verdade.
+ * ------------------------------------------------------------------------- */
+.gooey-content .gooey-description.cc-toast-frase {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.gooey-content .gooey-description.cc-toast-frase-erro {
+  color: #e53935;
+}
+
+.gooey-content .gooey-description.cc-toast-frase-aviso {
+  color: #c49000;
+}
+
+.gooey-content .gooey-description.cc-toast-frase-sucesso {
+  color: #4caf50;
+}
+
+.gooey-wrapper[data-theme='dark'] .gooey-description.cc-toast-frase-erro {
+  color: #ef5350;
+}
+
+.gooey-wrapper[data-theme='dark'] .gooey-description.cc-toast-frase-aviso {
+  color: #ffb300;
+}
+
+.gooey-wrapper[data-theme='dark'] .gooey-description.cc-toast-frase-sucesso {
+  color: #66bb6a;
+}
+
+/* ---------------------------------------------------------------------------
+ * A tremida do toast de recusa/alerta no mobile (pedido do usuário, 2026-09-09).
+ *
+ * Existe porque no wizard o olhar do operador está no campo de produto, não no
+ * topo da tela: o toast nasce fora do ponto que ele fixa, e um aviso que não é
+ * visto é um aviso que não existe. Sacudir é o gesto universal de "não" — a
+ * mesma linguagem do campo que recusa o valor —, e por isso `notificar.ts`
+ * aplica esta classe só em `erro` e `aviso`; `sucesso` não treme.
+ *
+ * **O atraso é o ponto todo, e é medido, não estimado.** O pacote monta o toast
+ * compacto e só depois revela o corpo: `dist/index.js` agenda
+ * `setTimeout(() => setShowBody(true), 330)` e o `.gooey-content` cresce com uma
+ * transição de `0.35s`. Tremer antes disso sacudiria uma pílula ainda sem a
+ * frase — chamaria o olhar para algo que ainda não dá o que ler. Os `700ms`
+ * abaixo são `330 + 350` arredondados: a sacudida começa no quadro em que a
+ * frase acabou de assentar, que é literalmente o "logo após exibir a mensagem"
+ * do pedido.
+ *
+ * Vai só abaixo de `md` porque é resposta a um problema do mobile: no desktop a
+ * notificação voltou ao formato antigo (frase no título) e o toast aparece numa
+ * tela em que o operador já o enxerga sem ser sacudido.
+ *
+ * A amplitude decai (6→5→4→3→2px) em vez de oscilar constante: o movimento
+ * amortecido lê como um objeto físico parando, e não como um alarme piscando —
+ * cabe num PDV, onde a recusa é rotina e não emergência. `translate`, e não
+ * `transform`, para não disputar com nenhuma transformação que o pacote venha a
+ * pôr no mesmo elemento.
+ * ------------------------------------------------------------------------- */
+@keyframes cc-toast-tremida {
+  0%,
+  100% {
+    translate: 0;
+  }
+  15% {
+    translate: -6px;
+  }
+  30% {
+    translate: 5px;
+  }
+  45% {
+    translate: -4px;
+  }
+  60% {
+    translate: 3px;
+  }
+  75% {
+    translate: -2px;
+  }
+}
+
+[data-layout='MOBILE'] .gooey-wrapper.cc-toast-tremida {
+  animation: cc-toast-tremida 400ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 700ms 1;
+}
+
+/**
  * Sem movimento para quem pediu sem movimento.
  *
  * As animações são zeradas, não removidas: o `forwards` da saída precisa
@@ -540,5 +753,20 @@ button:not(:disabled):not([aria-disabled='true']),
   button,
   [role='button'] {
     transition-duration: 1ms;
+  }
+
+  /*
+   * A tremida é a exceção que some inteira, em vez de encolher para 1ms.
+   *
+   * Não há nada a preservar nela: as outras animações são zeradas porque o
+   * `forwards` do estado final ainda precisa valer, enquanto esta começa e
+   * termina no mesmo lugar (`translate: 0`). E movimento oscilante é
+   * exatamente o que a preferência pede para não acontecer — quem depende
+   * dela pode ter sensibilidade vestibular, para quem "1ms de sacudida"
+   * continua sendo sacudida. A frase e a cor do toast seguem inteiras: o
+   * aviso não se perde, só para de balançar.
+   */
+  .gooey-wrapper.cc-toast-tremida {
+    animation: none;
   }
 }

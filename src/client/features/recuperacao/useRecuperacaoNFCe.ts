@@ -1,4 +1,4 @@
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import type { ImportacaoVendaDeps } from '../../services/importacao/importarVendaExistente';
 import { fonteRascunho, type RascunhoListado } from '../../services/recuperacao/recuperacaoQueries';
 import { useSessionStore } from '../../stores/sessionStore';
@@ -42,7 +42,7 @@ export function useRecuperacaoNFCe(
       // devolveria "não encontrado" para um rascunho que existe — erro que o
       // operador leria como documento perdido. Recusar aqui nomeia a causa
       // real.
-      gooeyToast.error('A sessão do operador não está carregada. Reabra o Checkout pelo ERP.');
+      notificar.erro('A sessão do operador não está carregada. Reabra o Checkout pelo ERP.');
       return false;
     }
 

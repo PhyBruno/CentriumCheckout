@@ -53,23 +53,34 @@ export function TotalDaVenda(): ReactElement {
 
   return (
     <section
-      className="flex w-full flex-col gap-xs rounded-[20px] bg-[var(--cc-color-surface-dark)] p-[14px]"
+      className="flex w-full flex-col gap-xs rounded-[20px] bg-[var(--cc-color-surface-dark)] p-2.5 md:p-[14px]"
       data-testid="total-da-venda"
     >
-      {/* A etiqueta de moeda "BRL" (nó `X227y`, à direita do rótulo) foi
-          **removida** a pedido do usuário (2026-09-04): o valor logo abaixo já
-          é formatado com "R$" por `formatarCentavos`, e o Checkout não opera em
-          outra moeda — a etiqueta só repetia, em inglês, o que o número diz. */}
-      <span className="text-base font-semibold text-[var(--cc-color-on-dark-strong)]">
-        Total a pagar
-      </span>
+      {/* Rótulo e valor na **mesma linha** no compacto, empilhados a partir de
+          `md:` como o Pencil desenha (pedido do usuário, 2026-09-09: sem
+          produtos, a etapa 1 não deve precisar de rolagem). Uma linha só devolve
+          os ~34px que o rótulo ocupava sozinho, e não custa legibilidade: o
+          valor continua sendo o maior texto da tela.
 
-      <p
-        className="font-mono text-2xl leading-[34px] font-semibold tabular-nums text-[var(--cc-color-on-dark)]"
-        data-testid="total-a-pagar"
-      >
-        {formatarCentavos(totalLiquido)}
-      </p>
+          `md:contents` faz este wrapper **sumir do layout** no desktop, em vez
+          de virar um bloco: assim os dois voltam a ser filhos diretos da coluna
+          e o `gap-xs` entre eles continua valendo, exatamente como antes. */}
+      <div className="flex items-baseline justify-between gap-xs md:contents">
+        {/* A etiqueta de moeda "BRL" (nó `X227y`, à direita do rótulo) foi
+            **removida** a pedido do usuário (2026-09-04): o valor logo abaixo já
+            é formatado com "R$" por `formatarCentavos`, e o Checkout não opera em
+            outra moeda — a etiqueta só repetia, em inglês, o que o número diz. */}
+        <span className="text-base font-semibold text-[var(--cc-color-on-dark-strong)]">
+          Total a pagar
+        </span>
+
+        <p
+          className="font-mono text-xl leading-8 font-semibold tabular-nums text-[var(--cc-color-on-dark)] md:text-2xl md:leading-[34px]"
+          data-testid="total-a-pagar"
+        >
+          {formatarCentavos(totalLiquido)}
+        </p>
+      </div>
 
       <div className="flex w-full items-start gap-xs">
         <MetricaPagamento rotulo="Recebido" valor={totalAplicado} testId="metrica-recebido" />
@@ -128,13 +139,18 @@ function MetricaPagamento({
 }: MetricaPagamentoProps): ReactElement {
   return (
     <div
-      className="flex flex-1 flex-col items-start gap-xxs rounded-[14px] bg-[var(--cc-color-surface-dark-elevated)] p-[9px]"
+      // Rótulo e valor lado a lado no compacto, empilhados a partir de `md:`
+      // como o Pencil desenha (`C4iSu`/`pysG9`) — mesma economia de altura da
+      // linha "Total a pagar" acima, pelo mesmo pedido (2026-09-09).
+      className="flex flex-1 items-baseline justify-between gap-xs rounded-[14px] bg-[var(--cc-color-surface-dark-elevated)] p-2 md:flex-col md:items-start md:gap-xxs md:p-[9px]"
       data-testid={testId}
     >
       {/* Peso 400, não 600: os rótulos das métricas são o único texto leve do
           bloco (nós `Hk9A7`/`I8ZFCW`) — é o que faz o valor logo abaixo
           dominar a leitura. */}
-      <span className="text-sm font-normal text-[var(--cc-color-on-dark-muted)]">{rotulo}</span>
+      <span className="shrink-0 text-sm font-normal text-[var(--cc-color-on-dark-muted)]">
+        {rotulo}
+      </span>
       <span className={cn('font-mono text-[15px] font-semibold tabular-nums', CLASSE_POR_TOM[tom])}>
         {formatarCentavos(valor)}
       </span>

@@ -1,6 +1,6 @@
 import { FileText } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { cn } from '@/lib/utils';
 import { atributosDeBloqueio } from '@/lib/bloqueio';
 import {
@@ -66,7 +66,7 @@ export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): Re
   function abrir(): void {
     const motivo = recusaAtual();
     if (motivo !== null) {
-      gooeyToast.error(mensagemDeRecusa(motivo));
+      notificar.erro(mensagemDeRecusa(motivo));
       return;
     }
     setJanela('seletor');

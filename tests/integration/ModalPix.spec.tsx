@@ -34,13 +34,17 @@ import { formaDe } from '../support/pagamento';
 
 const { avisos } = vi.hoisted(() => ({ avisos: [] as string[] }));
 
-vi.mock('goey-toast', () => ({
-  gooeyToast: {
-    warning: (mensagem: string) => avisos.push(mensagem),
-    error: (mensagem: string) => avisos.push(mensagem),
-    success: (mensagem: string) => avisos.push(mensagem),
-  },
-}));
+// A frase que o operador lê chega em `description`, não no título: o título é
+// o rótulo curto do tipo ("Atenção"/"Erro"), como `src/client/lib/notificar.ts`
+// explica. O mock captura a frase, que é o que os cenários abaixo conferem.
+vi.mock('goey-toast', () => {
+  // Definido dentro da fábrica porque `vi.mock` é içado acima de qualquer
+  // `const` do módulo.
+  const capturar = (titulo: string, opcoes?: { readonly description?: unknown }): number =>
+    avisos.push(typeof opcoes?.description === 'string' ? opcoes.description : titulo);
+
+  return { gooeyToast: { warning: capturar, error: capturar, success: capturar } };
+});
 
 const CAMINHO_GERAR = '/ApiCentriumOAuth/GerarPIX';
 const CAMINHO_STATUS = '/ApiCentriumOAuth/StatusPIX';

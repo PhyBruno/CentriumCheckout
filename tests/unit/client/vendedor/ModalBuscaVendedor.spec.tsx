@@ -72,10 +72,12 @@ function resultadoDaBusca(opcoes: {
     >;
   }
   if (opcoes.erro === true) {
-    return { isPending: false, isFetching: false, isError: true, data: undefined } as UseQueryResult<
-      CheckoutListaVendedores,
-      Error
-    >;
+    return {
+      isPending: false,
+      isFetching: false,
+      isError: true,
+      data: undefined,
+    } as UseQueryResult<CheckoutListaVendedores, Error>;
   }
   const vendedores = (opcoes.vendedores ?? []).map(vendedorDe);
   return {

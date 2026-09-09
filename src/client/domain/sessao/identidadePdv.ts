@@ -23,8 +23,17 @@ export interface IdentidadePdvBruta {
   readonly CadMaqCod?: string | undefined;
 }
 
-/** Como no Pencil: "Centrium Checkout - Organizações Tabajara" (nó `HSvSJ`). */
-const NOME_DO_PRODUTO = 'Centrium Checkout';
+/**
+ * O nome do produto, sozinho — sem a empresa.
+ *
+ * Exportado porque o cabeçalho compacto o usa **assim**, cru: o Pencil escreve
+ * "Centrium Checkout" no nó `YXaRZ` da tela mobile e deixa a empresa de fora,
+ * ao contrário da barra do desktop (`HSvSJ`), que traz os dois. Não é economia
+ * de espaço arbitrária — em 390px o título completo não cabe de jeito nenhum, e
+ * truncá-lo custa as duas informações de uma vez ("Centrium ..."), em vez de
+ * apenas a menos importante.
+ */
+export const NOME_DO_PRODUTO = 'Centrium Checkout';
 
 /**
  * Nome fantasia na frente da razão social: é o nome pelo qual o operador

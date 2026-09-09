@@ -30,7 +30,7 @@ Nenhuma implementação começou ainda (repositório sem código-fonte). As feat
 
 | # | Feature | Status | Spec |
 |---|---|---|---|
-| 7 | Layout responsivo (wizard mobile) | Specify e Design (visual + técnico) concluídos — artefatos em `specs/007-layout-responsivo-mobile/` (`plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`). Próximo passo: `/speckit-tasks` | `.specs/features/layout-responsivo-mobile/spec.md`, `specs/007-layout-responsivo-mobile/plan.md` |
+| 7 | Layout responsivo (wizard mobile) | **Implementada (2026-09-08, AD-191)** — `AppShell` decide entre `DesktopLayout` e o wizard mobile de 3 etapas; scanner por câmera restrito a Chrome/Android (AD-086/AD-090); as 31 tarefas de `tasks.md` concluídas | `.specs/features/layout-responsivo-mobile/spec.md`, `specs/007-layout-responsivo-mobile/`, `src/client/layout/` |
 
 ## Infraestrutura (não é feature de usuário — tratado em `.specs/codebase/`)
 

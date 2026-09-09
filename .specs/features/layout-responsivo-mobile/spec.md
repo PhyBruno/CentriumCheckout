@@ -29,7 +29,7 @@ O design mobile já modela o gatilho de seleção de vendedor: `Campo Vendedor m
 
 | Feature | Reason |
 |---|---|
-| Detecção de capacidade touch | Critério de troca de layout é só largura de viewport, não capacidade do dispositivo |
+| ~~Detecção de capacidade touch~~ — **deixou de ser exclusão em 2026-09-09 (AD-198)** | A detecção de toque **está** em escopo e é o critério **principal**: o layout compacto é escolhido quando não há ponteiro preciso disponível (`any-pointer: fine`), e a largura ficou como piso (1024px), não como critério. A redação anterior ("critério é só largura de viewport") valia até o usuário revogar a premissa ao operar em tablet — um iPad Pro deitado dá 1366px e caía na tela única, sem F6/F7 e com alvos de 5px. Esta linha permanece na tabela só para quem procurar a exclusão antiga. |
 | App nativo ou PWA dedicado | Fora de escopo — é responsividade web, não outra plataforma |
 | Modal menu gerencial no mobile | Confirmado (2026-08-21): é uma tela só de desktop — não existe equivalente no design mobile (nenhum dos 3 frames do wizard o referencia) e não há necessidade de operação de retaguarda (sangria, suprimento, fechamento de caixa) durante o fluxo de venda em tablet/celular. Ver `.specs/codebase/ARCHITECTURE.md` |
 | Modal de importação de DAV no mobile | Confirmado (2026-08-25, AD-046): decisão direta do usuário — desktop-only, ver `.specs/features/importacao-dav/spec.md` |

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
@@ -126,7 +126,7 @@ export function ModalBuscaCliente({
 
   useEffect(() => {
     if (termoEhCnpj) {
-      gooeyToast.warning(AVISO_CNPJ);
+      notificar.aviso(AVISO_CNPJ);
     }
   }, [termoEhCnpj]);
 
@@ -158,7 +158,7 @@ export function ModalBuscaCliente({
 
   function cadastrarNovo(): void {
     if (termoEhCnpj) {
-      gooeyToast.warning(AVISO_CNPJ);
+      notificar.aviso(AVISO_CNPJ);
       return;
     }
     onCadastrarNovo(termoLimpo);
@@ -167,7 +167,9 @@ export function ModalBuscaCliente({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-lg',
+        // Sem folga no compacto: a janela ocupa a tela inteira (ver a classe
+        // dela logo abaixo), então o `p-lg` só encolheria a área útil.
+        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] md:p-lg',
         saindo ? 'cc-backdrop-sai' : 'cc-backdrop-entra',
       )}
       data-testid="modal-busca-cliente"
@@ -183,18 +185,29 @@ export function ModalBuscaCliente({
         aria-modal="true"
         aria-label="Consultar cliente"
         className={cn(
-          'flex max-h-full w-full max-w-[960px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
+          // **Tela cheia no compacto, janela a partir de `md:`** (pedido do
+          // usuário, 2026-09-09). Espremida em 390px, a janela flutuante
+          // desperdiçava as bordas justamente onde a lista precisa de largura,
+          // e a tabela de dentro se sobrepunha. Em tela cheia o seletor tem a
+          // largura toda e vira o que ele é no mobile: uma etapa de escolha, não
+          // um pop-up. No desktop nada muda — os 960px e o raio 24 do Pencil
+          // continuam valendo.
+          'flex h-full w-full flex-col overflow-hidden bg-background md:h-auto md:max-h-full md:max-w-[960px] md:rounded-xl md:border md:border-border md:shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
         )}
       >
-        <header className="flex h-[78px] shrink-0 items-center justify-between gap-sm border-b border-border px-lg">
-          <div className="flex items-center gap-sm">
-            <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
-              <UserRound className="size-5 text-primary" aria-hidden="true" />
+        <header className="flex shrink-0 items-center justify-between gap-sm border-b border-border px-base py-2.5 md:h-[78px] md:px-lg md:py-0">
+          <div className="flex min-w-0 items-center gap-sm">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary md:size-[42px]">
+              <UserRound className="size-4.5 text-primary md:size-5" aria-hidden="true" />
             </span>
-            <div className="flex flex-col gap-[2px]">
-              <h2 className="text-xl font-semibold text-foreground">Consultar cliente</h2>
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="flex min-w-0 flex-col gap-[2px]">
+              <h2 className="truncate text-lg font-semibold text-foreground md:text-xl">
+                Consultar cliente
+              </h2>
+              {/* O subtítulo some no compacto: em 390px ele empurrava o
+                  cabeçalho para duas linhas e repete o que o título já diz. */}
+              <p className="hidden text-sm font-medium text-muted-foreground md:block">
                 Selecione um cadastro para identificar a venda
               </p>
             </div>
@@ -211,9 +224,12 @@ export function ModalBuscaCliente({
           </Button>
         </header>
 
-        <div className="flex shrink-0 flex-col gap-xs border-b border-border px-lg py-[14px]">
-          <div className="flex items-center gap-xs">
-            <label className="flex h-11 flex-1 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
+        <div className="flex shrink-0 flex-col gap-xs border-b border-border px-base py-2.5 md:px-lg md:py-[14px]">
+          {/* Quebra em duas faixas no compacto: o campo de busca ocupa a
+              largura toda (é o gesto principal do seletor) e o "Novo cliente"
+              cai embaixo, em vez de disputar 390px com ele. */}
+          <div className="flex flex-wrap items-center gap-xs">
+            <label className="flex h-11 w-full flex-1 basis-full items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground md:w-auto md:basis-auto">
               <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span className="sr-only">Termo de busca</span>
               <input
@@ -287,7 +303,7 @@ export function ModalBuscaCliente({
 
         {busca.data === undefined || abaixoDoMinimo ? null : (
           <footer
-            className="flex h-[60px] shrink-0 items-center justify-between gap-sm border-t border-border px-lg"
+            className="flex h-[60px] shrink-0 items-center justify-between gap-sm border-t border-border px-base md:px-lg"
             data-testid="paginacao-busca-cliente"
           >
             <span className="sr-only">
@@ -299,7 +315,7 @@ export function ModalBuscaCliente({
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
+                className="h-9 gap-xs rounded-full px-sm text-sm font-semibold md:w-28 md:px-0"
                 data-testid="cliente-pagina-anterior"
                 disabled={pagina <= 1}
                 onClick={() => {
@@ -316,7 +332,7 @@ export function ModalBuscaCliente({
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
+                className="h-9 gap-xs rounded-full px-sm text-sm font-semibold md:w-28 md:px-0"
                 data-testid="cliente-pagina-proxima"
                 disabled={busca.data.PaginaAtual >= busca.data.TotalPaginas}
                 onClick={() => {
@@ -365,10 +381,41 @@ interface ResultadosDaBuscaProps {
 const classeCelulaCabecalho =
   'flex h-full items-center px-sm text-xs font-bold text-muted-foreground';
 
+/**
+ * Rótulo que nomeia o campo **só no compacto**: no desktop quem nomeia é o
+ * cabeçalho da tabela, e repetir "CPF:" dentro da célula seria ruído.
+ */
+const classeRotuloCompacto = 'font-semibold text-foreground md:hidden';
+
+/**
+ * A lista de candidatos — **tabela no desktop, cartão de três linhas no
+ * compacto** (pedido do usuário, 2026-09-09: "as colunas sobrepondo uma a
+ * outra, sem tamanho para exibição").
+ *
+ * Seis colunas de largura fixa somam 640px; em 390px elas não cabiam de jeito
+ * nenhum e o `truncate` de cada uma apagava justamente o dado que identifica o
+ * cadastro. No compacto a linha vira uma **grade de duas colunas**: o nome
+ * ocupa a primeira faixa inteira (`col-span-2`, e `order-first` porque no DOM
+ * ele vem depois do código, que é a ordem da tabela), código/CPF dividem a
+ * segunda e contato/localização a terceira.
+ *
+ * Grade, e não `flex-wrap` (correção do usuário, 2026-09-09): com quebra livre
+ * o número de campos por faixa dependia do comprimento do dado — um telefone
+ * curto subia para a linha do CPF e a leitura mudava de cadastro para cadastro.
+ * A grade fixa quem cai onde, e cada célula ganha o rótulo em negrito que o
+ * cabeçalho de coluna dá no desktop.
+ *
+ * **Uma marcação só, com utilitários responsivos**, e não dois blocos de JSX:
+ * duplicar as células duplicaria a leitura de cada campo de `ClienteDaLista`, e
+ * a próxima mudança de contrato teria dois lugares para acertar. É por isso que
+ * a mesma célula troca de `grid` para `flex` no `md:` em vez de existir duas
+ * vezes.
+ */
 function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): ReactElement {
   return (
     <div data-testid="resultados-busca-cliente">
-      <div className="flex h-[38px] border-y border-border bg-muted" aria-hidden="true">
+      {/* O cabeçalho de colunas só faz sentido onde há colunas. */}
+      <div className="hidden h-[38px] border-y border-border bg-muted md:flex" aria-hidden="true">
         <span className={cn(classeCelulaCabecalho, 'w-[42px]')} />
         <span className={cn(classeCelulaCabecalho, 'w-[76px]')}>Código</span>
         <span className={cn(classeCelulaCabecalho, 'flex-1')}>Cliente</span>
@@ -383,29 +430,39 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
               type="button"
               data-testid="candidato-cliente"
               data-codigo-cliente={cliente.ClienteCodigo}
-              className="flex h-[50px] w-full items-center text-left hover:bg-accent"
+              className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-[50px] md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar({ codigo: cliente.ClienteCodigo, cpf: cliente.CPF });
               }}
             >
-              <span className="flex w-[42px] shrink-0 items-center justify-center">
+              <span className="hidden w-[42px] shrink-0 items-center justify-center md:flex">
                 <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
-              <span className="w-[76px] shrink-0 px-sm font-mono text-base font-semibold tabular-nums">
-                {cliente.ClienteCodigo}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[76px] md:shrink-0 md:px-sm md:text-base md:text-foreground">
+                <span className={classeRotuloCompacto}>Cód. Cliente: </span>
+                <span className="font-mono font-semibold tabular-nums">
+                  {cliente.ClienteCodigo}
+                </span>
               </span>
-              <span className="min-w-0 flex-1 truncate px-sm text-base font-bold">
+              <span className="order-first col-span-2 min-w-0 truncate text-base font-bold md:order-none md:flex-1 md:px-sm">
                 {cliente.ClienteNome}
               </span>
-              <span className="w-[130px] shrink-0 truncate px-sm font-mono text-sm font-medium tabular-nums">
-                {cliente.CPF}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>CPF: </span>
+                <span className="font-mono font-medium tabular-nums">{cliente.CPF}</span>
               </span>
-              <span className="w-[130px] shrink-0 truncate px-sm font-mono text-sm font-medium tabular-nums">
-                {cliente.Celular === '' ? cliente.Telefone : cliente.Celular}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>Contato: </span>
+                <span className="font-mono font-medium tabular-nums">
+                  {cliente.Celular === '' ? cliente.Telefone : cliente.Celular}
+                </span>
               </span>
-              <span className="w-[120px] shrink-0 truncate px-sm text-sm font-semibold">
-                {cliente.Endereco.cidade}
-                {cliente.Endereco.uf === '' ? '' : `-${cliente.Endereco.uf}`}
+              <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[120px] md:shrink-0 md:px-sm md:text-foreground">
+                <span className={classeRotuloCompacto}>Localização: </span>
+                <span className="font-semibold">
+                  {cliente.Endereco.cidade}
+                  {cliente.Endereco.uf === '' ? '' : `-${cliente.Endereco.uf}`}
+                </span>
               </span>
             </button>
           </li>

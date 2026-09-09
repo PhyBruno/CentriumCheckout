@@ -1,4 +1,4 @@
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ErroCondicaoImportadaIndisponivel,
@@ -255,7 +255,7 @@ export function useImportacaoDocumento(
       // Toda a rede acontece antes da primeira mutação
       // (`importarVendaExistente`), então chegar aqui significa que o carrinho
       // está exatamente como estava.
-      gooeyToast.error(mensagemDeErro(erro));
+      notificar.erro(mensagemDeErro(erro));
       return false;
     }
   };

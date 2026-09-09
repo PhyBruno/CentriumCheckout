@@ -89,6 +89,6 @@ Como operador de caixa em mobile, quero apontar a câmera do dispositivo para o 
 
 ## Assumptions
 
-- O critério de alternância entre os dois layouts é exclusivamente o tamanho da tela, não a capacidade de toque do dispositivo.
+- O critério **principal** de alternância entre os dois layouts é a capacidade de toque: sem ponteiro preciso disponível (`any-pointer: fine`), o layout é o compacto em qualquer largura. O tamanho da tela entra só como piso (1024px), abaixo do qual a tela única não cabe nem com mouse. **Corrigido em 2026-09-09 (AD-198):** a redação anterior era "exclusivamente o tamanho da tela, não a capacidade de toque do dispositivo", e o usuário revogou essa premissa — um monitor de desktop de 1280px com mouse tem de continuar desktop, e um tablet de 1366px sem mouse não pode.
 - Não está em escopo um aplicativo nativo ou instalável dedicado — é uma experiência web responsiva, na mesma aplicação.
 - Busca/cadastro de cliente, inserção/edição/exclusão de item, identificação de vendedor e seleção de forma/condição de pagamento funcionam normalmente no mobile, sujeitos apenas à adaptação de apresentação já descrita — não a regras de negócio diferentes das do desktop.

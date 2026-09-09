@@ -113,14 +113,16 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
         codigoEmpresa: query.data.codigoEmpresa,
       });
 
-      return reply
-        .setCookie(SESSION_COOKIE_NAME, cookie, SESSION_COOKIE_OPTIONS)
-        // Marca legível de "houve entrada válida" — é o que decide, mais
-        // tarde, se uma falha de carregamento merece "Tentar novamente" ou a
-        // tela terminal. Gravada **só** aqui, no único ponto em que uma sessão
-        // de fato nasce.
-        .setCookie(COOKIE_ENTRADA, VALOR_COOKIE_ENTRADA, ENTRADA_COOKIE_OPTIONS)
-        .redirect(destino, 302);
+      return (
+        reply
+          .setCookie(SESSION_COOKIE_NAME, cookie, SESSION_COOKIE_OPTIONS)
+          // Marca legível de "houve entrada válida" — é o que decide, mais
+          // tarde, se uma falha de carregamento merece "Tentar novamente" ou a
+          // tela terminal. Gravada **só** aqui, no único ponto em que uma sessão
+          // de fato nasce.
+          .setCookie(COOKIE_ENTRADA, VALOR_COOKIE_ENTRADA, ENTRADA_COOKIE_OPTIONS)
+          .redirect(destino, 302)
+      );
     } catch (erro) {
       if (erro instanceof ErroTrocaDeToken) {
         request.log.warn({ motivo: erro.motivo, status: erro.status }, 'falha ao iniciar sessão');

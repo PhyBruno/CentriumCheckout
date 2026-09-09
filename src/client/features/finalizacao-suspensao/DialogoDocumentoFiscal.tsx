@@ -1,5 +1,5 @@
 import { AlertTriangle, ExternalLink, FileText, Printer } from 'lucide-react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
@@ -106,7 +106,7 @@ export function DialogoDocumentoFiscal({
       return;
     }
     if (resultado.estado === 'pdf-invalido') {
-      gooeyToast.error(MENSAGEM_PDF_INVALIDO);
+      notificar.erro(MENSAGEM_PDF_INVALIDO);
       setEstado({ tipo: 'concluida' });
       onFechar();
       return;
@@ -139,7 +139,7 @@ export function DialogoDocumentoFiscal({
         // fluxo que mereça segurar o operador.
         const aviso = avisoDeHostPadrao(resultado);
         if (aviso !== null) {
-          gooeyToast.warning(aviso);
+          notificar.aviso(aviso);
         }
         setEstado({ tipo: 'concluida' });
         onFechar();

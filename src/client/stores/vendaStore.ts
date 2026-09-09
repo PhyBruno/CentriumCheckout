@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { gooeyToast } from 'goey-toast';
+import { notificadorDeVeredito, notificar } from '@/lib/notificar';
 import { criarAuditoriaSlice } from './slices/auditoriaSlice';
 import type { AuditoriaSlice } from './slices/auditoriaSlice';
 import { criarCarrinhoSlice } from './slices/carrinhoSlice';
@@ -131,7 +131,7 @@ export const carrinhoDepsPadrao: CarrinhoDeps = {
       .getState()
       .pagamentos.some((pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO'),
   avisar: (mensagem) => {
-    gooeyToast.warning(mensagem);
+    notificar.aviso(mensagem);
   },
 };
 
@@ -285,7 +285,7 @@ export const pagamentoDepsPadrao: PagamentoDeps = {
     useVendaStore.getState().dispensarValidacaoPorDocumento();
   },
   avisar: (mensagem) => {
-    gooeyToast.warning(mensagem);
+    notificar.aviso(mensagem);
   },
 };
 
@@ -350,7 +350,7 @@ export const validacaoDepsPadrao: ValidacaoDeps = {
     useVendaStore.getState().registrarEventoAuditoria(evento);
   },
   notificar: (veredito) => {
-    notificarVeredito(veredito, gooeyToast);
+    notificarVeredito(veredito, notificadorDeVeredito);
   },
 };
 
