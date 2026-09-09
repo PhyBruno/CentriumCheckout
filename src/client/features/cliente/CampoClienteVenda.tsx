@@ -537,7 +537,16 @@ export function CampoClienteVenda(): ReactElement {
                 largura toda, como o "Campo CPF mobile" do Pencil (nó `twVty`), e
                 a lupa divide a faixa seguinte com o "Identificar" — o par
                 `viWeS` do mesmo desenho. */}
-            <div className="flex flex-wrap items-center gap-[10px] md:h-[42px] md:flex-nowrap">
+            {/* Sem `md:flex-nowrap` desde AD-199: as três larguras fixas desta
+                fila (243 do documento, 42 da lupa, 126 do "Identificar") não
+                encolhem, então proibir a quebra no desktop só empurrava o
+                excedente para fora do card — visível a partir de ~1100px, com o
+                bloco aberto. Quebrando, a fila vira duas linhas no monitor
+                apertado e continua sendo a faixa única do Pencil onde há
+                largura. A altura de 42px vira piso pelo mesmo motivo que a do
+                cabeçalho em AD-198: com duas linhas, `h-[42px]` cortaria a
+                segunda. */}
+            <div className="flex flex-wrap items-center gap-[10px] md:min-h-[42px]">
               <label className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
                 <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
@@ -576,7 +585,19 @@ export function CampoClienteVenda(): ReactElement {
                 </span>
               </label>
 
-              <div className="flex h-[42px] min-w-[12rem] flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:min-w-0">
+              {/* Piso próprio no desktop (AD-199) em vez de `md:min-w-0`: sem
+                  ele este é o único item que cede da fila — os outros três são
+                  largura fixa —, e num monitor de 1050px o nome do cliente
+                  virava "CONSU…" enquanto o botão "Identificar" ficava inteiro.
+                  Com o piso a fila quebra em duas linhas antes de espremer o
+                  nome, que é a informação que o operador precisa ler. 11rem é
+                  medido, não arredondado: é o que "CONSUMIDOR FINAL" ocupa
+                  (174px) mais folga. Em 10rem o comportamento saía
+                  não-monótono — nome inteiro em 1050px, onde a fila quebrava, e
+                  cortado em 1100px, onde ela cabia espremida. Continua menor
+                  que os 12rem do compacto, para a faixa única do Pencil valer
+                  onde há largura. */}
+              <div className="flex h-[42px] min-w-[12rem] flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:min-w-[11rem]">
                 <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
@@ -653,7 +674,9 @@ export function CampoClienteVenda(): ReactElement {
                 slice dele. É a mesma relação que a linha de cima já tem com o
                 modal de busca de cliente — nenhum estado atravessa daqui para
                 lá. */}
-            <div className="flex flex-wrap items-center gap-[10px] md:flex-nowrap">
+            {/* Mesma razão da fila acima (AD-199): o contato tem `md:w-[243px]`
+                sem encolher, e o vendedor ao lado tem piso próprio. */}
+            <div className="flex flex-wrap items-center gap-[10px]">
               <div className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
                 <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">

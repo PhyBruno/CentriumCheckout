@@ -416,6 +416,15 @@ body {
 @utility cc-colapsavel {
   display: grid;
   grid-template-rows: 0fr;
+  /* **A coluna precisa ser declarada** (achado em 2026-09-09, AD-199). A coluna
+     implícita de um grid é `auto`, que se dimensiona pelo **conteúdo** e passa
+     por cima da largura do próprio container: com o card de cliente aberto em
+     1050px, a coluna resolveu para 623.6px dentro de uma caixa de 560px e os
+     campos saíam pela direita, para fora do card. `minmax(0, 1fr)` — e não
+     `1fr`, que é `minmax(auto, 1fr)` e traz o mesmo piso de conteúdo de volta —
+     prende a coluna à caixa e devolve o limite que os filhos precisam para
+     encolher ou quebrar. */
+  grid-template-columns: minmax(0, 1fr);
   transition: grid-template-rows var(--cc-motion-base) var(--cc-ease-saida);
 }
 

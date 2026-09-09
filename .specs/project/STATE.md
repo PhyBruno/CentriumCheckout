@@ -2520,6 +2520,18 @@ Com isso, `erro-recuperavel` passa a ter dois desfechos: **com** marca, `ErrorRe
 
 **`FR-005` (sem atalhos no mobile) já estava cumprido pela 013**, e por ausência estrutural: `projetarAtalhos` recebe a plataforma e devolve lista vazia no compacto, então `DicaAtalhos` não registra tecla alguma no mapa central. A 007 acrescentou a verificação automatizada disso (`appShell.spec.tsx`), que antes não existia.
 
+### AD-199: a coluna do colapsável precisa ser declarada, e as filas do card de cliente quebram no desktop (2026-09-09)
+
+**Origem:** o usuário, já com AD-198 no ar: *"quando esta abaixo de 1100, os campos do box do cliente estao ficando quebrados, pra fora, noto principalmente quando exponho"*.
+
+**A causa raiz não era flex, era a coluna implícita do grid.** `cc-colapsavel` declara `display: grid` e `grid-template-rows`, mas nunca declarou coluna — e a coluna implícita é `auto`, que se dimensiona pelo **conteúdo** e ignora a largura do container. Medido em 1050px com o card aberto: `grid-template-columns` resolveu para **623.6px dentro de uma caixa de 560px**, e os campos saíam 49px pela direita, para fora do card. Sem limite vindo de cima, nenhum filho tinha contra o que encolher ou quebrar. `grid-template-columns: minmax(0, 1fr)` — e não `1fr`, que é `minmax(auto, 1fr)` e reintroduz o mesmo piso de conteúdo — prende a coluna à caixa.
+
+**Prender a coluna sozinho trocaria vazamento por corte**, porque `.cc-colapsavel > *` tem `overflow: clip`: as duas filas internas eram `md:flex-nowrap` com três larguras fixas que não encolhem (243px do documento, 42px da lupa, 126px do "Identificar"), então o excedente passaria a ser cortado em vez de exibido. As duas perdem o `md:flex-nowrap` — mesmo remédio de AD-198 no cabeçalho, uma largura acima — e a primeira troca `md:h-[42px]` por `md:min-h-[42px]`, senão a segunda linha seria cortada pela altura fixa.
+
+**O campo de nome ganhou piso próprio no desktop** (`md:min-w-[11rem]` no lugar de `md:min-w-0`): ele é o único item que cede da fila, então sem piso o nome do cliente virava "CONSU…" enquanto o botão "Identificar" ficava inteiro — a informação errada sendo preservada. `11rem` é medido: "CONSUMIDOR FINAL" ocupa 174px. Em `10rem` o comportamento saía **não-monótono** — nome inteiro em 1050px, onde a fila quebrava, e cortado em 1100px, onde ela cabia espremida.
+
+**Impact:** alterados — `src/client/styles/global.css` (`cc-colapsavel` ganha `grid-template-columns`), `src/client/features/cliente/CampoClienteVenda.tsx` (as duas filas do bloco expandido e o piso do campo de nome). Verificação: `tsc --noEmit` e ESLint limpos; 1124 testes unit/integração passando; medido no navegador com o card **aberto** em 1024, 1050, 1100, 1152 e 1440px — coluna presa à caixa, zero elemento fora do card, zero rolagem lateral, nome do cliente nunca truncado, e a faixa única do Pencil preservada em 1440.
+
 ### AD-198: quem escolhe o layout é o toque, não o pixel — e a árvore desktop passa a caber em 1024px (2026-09-09)
 
 **Origem:** o usuário abriu o Checkout num tablet: *"O Layout mobile está funcionando para celular, mas para tablet não, está puxando o layout do desktop, mas fica tudo quebrada e encavalada as linhas."* Depois acrescentou dois fatos que mudaram o desenho da correção: *"desktop estoura em < 1330"* e *"E se tiver um desktop com tela 1280? Tem que ficar desktop, não mobile, pois a tela mobile é só pra touch"*.
