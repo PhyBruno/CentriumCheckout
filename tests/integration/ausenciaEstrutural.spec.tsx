@@ -12,6 +12,7 @@ import {
   instalarMatchMediaDeLayout,
   renderizarComProvedores,
 } from '../support/layout';
+import { pagamentoDe } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -77,7 +78,11 @@ beforeEach(() => {
     vendedorAtual: null,
     condicaoSelecionada: null,
     descontoCapa: null,
-    pagamentos: [],
+    // Saldo já coberto: a etapa 3 do wizard passou a exigi-lo para ser
+    // alcançada (2026-09-09), e o cenário de ausência estrutural precisa chegar
+    // até ela para conferir o botão de finalizar sem o menu de importação
+    // junto. A regra em si é exercitada em `mobileWizard.spec.tsx`.
+    pagamentos: [pagamentoDe({ valorAplicado: 10_000 })],
   });
   useVendaStore.getState().resetarAuditoria('NOVA');
 });

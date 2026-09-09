@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import type {
   CadastroSimplificadoInput,
   OrigemSelecaoCliente,
@@ -140,7 +140,7 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
         // aqui, e não em cada componente, por ser o único ponto por onde os três
         // caminhos passam — se o filtro do ERP mudar, o Checkout não regride.
         if (documentoEhPessoaJuridica(cliente.cpf)) {
-          gooeyToast.warning(`${MOTIVO_VENDA_PESSOA_JURIDICA} Escolha um cliente pessoa física.`);
+          notificar.aviso(`${MOTIVO_VENDA_PESSOA_JURIDICA} Escolha um cliente pessoa física.`);
           // A venda fica **sem cliente**: manter o anterior no campo daria a
           // impressão de que ela seguiu com ele.
           limparCliente();
@@ -152,7 +152,7 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
         if (erro instanceof ErroClienteNaoEncontrado) {
           return { situacao: 'nao-encontrado' };
         }
-        gooeyToast.error(mensagemDeErro(erro));
+        notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
       }
     },
@@ -173,7 +173,7 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
     cadastrar: useCallback(
       async (dados) => {
         if (codigoEmpresa === null) {
-          gooeyToast.error('Configuração do ponto de venda ainda não carregada.');
+          notificar.erro('Configuração do ponto de venda ainda não carregada.');
           return { situacao: 'recusado' };
         }
 
@@ -187,7 +187,7 @@ export function useIdentificacaoCliente(): ApiIdentificacaoCliente {
           // O slice não muda `clienteAtual` nem registra evento quando
           // `postCliente` falha (`SC-003`): a venda segue com o cliente que
           // tinha, e o operador vê o motivo.
-          gooeyToast.error(mensagemDeErro(erro));
+          notificar.erro(mensagemDeErro(erro));
           return { situacao: 'recusado' };
         }
       },

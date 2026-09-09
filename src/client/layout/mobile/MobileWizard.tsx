@@ -1,5 +1,7 @@
 import { ArrowLeft, ArrowRight, ShoppingCart, UserRound } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
+import { atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { notificar } from '@/lib/notificar';
 import { cn } from '@/lib/utils';
 import { AcaoCancelarVenda } from '../../features/finalizacao-suspensao/AcoesFinaisVenda';
 import { TotalDaVenda } from '../../features/pagamento/TotalDaVenda';
@@ -8,6 +10,8 @@ import {
   descreverSessaoAtiva,
   nomeDoOperador,
 } from '../../domain/sessao/identidadePdv';
+import { linhasAtivas } from '../../domain/precificacao/linha';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { EtapaClienteProdutos } from './EtapaClienteProdutos';
@@ -66,6 +70,17 @@ const ETAPAS: Record<EtapaWizard, DescricaoEtapa> = {
 
 const ORDEM: readonly EtapaWizard[] = [1, 2, 3];
 
+/**
+ * Frases das duas recusas de navegação (pedido do usuário, 2026-09-09).
+ *
+ * São as mesmas em todas as superfícies que navegam — botão "avançar" e as
+ * barrinhas do indicador —, porque a regra é uma só: o texto mora aqui para que
+ * mudar a regra não deixe uma segunda redação para trás.
+ */
+const MOTIVO_SEM_PRODUTO = 'Insira ao menos um produto na venda antes de avançar para o pagamento.';
+const MOTIVO_SALDO_EM_ABERTO =
+  'Adicione formas de pagamento que cubram todo o valor da venda antes de revisar.';
+
 export function MobileWizard(): ReactElement {
   const [etapaAtual, setEtapaAtual] = useState<EtapaWizard>(1);
   /**
@@ -106,17 +121,80 @@ export function MobileWizard(): ReactElement {
   }
 
   /**
-   * Navega para `etapa`, marcando-a como visitada.
+   * Há mercadoria de fato na venda? — `linhasAtivas`, não `linhas`.
    *
-   * **Sem validação de campo obrigatório** (I3): voltar a qualquer etapa já
-   * visitada é sempre permitido, a qualquer momento antes da finalização.
-   * Quem recusa uma operação impossível é o domínio, no gesto em si — o botão
-   * de finalizar já não libera sem saldo coberto e sem vendedor (004/008/014).
-   * Travar a navegação aqui duplicaria essas regras num segundo lugar, e mal:
-   * o operador que precisa **corrigir** o dado que falta é exatamente quem
-   * ficaria preso.
+   * A linha cancelada permanece no array por rastreabilidade (`CART-08`), e é
+   * exatamente o caso que o usuário relatou ("todos deletados"): contá-la aqui
+   * deixaria passar para o pagamento uma venda sem nada a cobrar.
+   */
+  const temProduto = useVendaStore((estado) => linhasAtivas(estado.linhas).length > 0);
+  /**
+   * Primitivo, não o objeto de `saldo()`: o seletor monta um objeto novo a cada
+   * chamada e o Zustand v5 leria a referência nova como mudança, pondo o
+   * componente em laço (mesma razão de `TotalDaVenda` e `useVendaTemValorAFaturar`).
+   *
+   * `saldoRestante === 0` é a **mesma** condição que libera o "Finalizar"
+   * (`AcoesFinaisVenda`), e por isso cobre o troco de graça: `calcularSaldo`
+   * nunca deixa o restante negativo, então pagar a mais fecha a venda igual a
+   * pagar exato.
+   */
+  const saldoRestante = useVendaStore((estado) => estado.saldo().saldoRestante);
+  const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
+
+  /**
+   * Por que entrar em `etapa` está barrado — a frase que o operador lê, ou
+   * `null` quando o caminho está livre (padrão de `lib/bloqueio.ts`).
+   *
+   * **A etapa 1 nunca barra**: ela é o lugar onde se corrige o que falta, e
+   * prender o operador longe dela seria o único desfecho sem saída. Voltar é
+   * sempre permitido (`FR-004`).
+   *
+   * A regra aqui é de **navegação**, não de finalização: quem recusa faturar
+   * continua sendo `AcoesFinaisVenda` (saldo, vendedor, veredito da 014). O que
+   * esta função evita é o passo em falso — abrir o pagamento de uma venda vazia
+   * (item 1 do usuário, 2026-09-09) ou a conferência de uma venda que ainda não
+   * fecha (item 2). Isso revoga a decisão anterior de não validar navegação
+   * (I3): o custo de descobrir o problema uma tela adiante é maior que o de
+   * ouvir o motivo no gesto.
+   */
+  function motivoParaEntrarNaEtapa(etapa: EtapaWizard): MotivoBloqueio {
+    if (etapa === 1) {
+      return null;
+    }
+    if (!temProduto) {
+      return MOTIVO_SEM_PRODUTO;
+    }
+    if (etapa === 3 && saldoRestante > 0) {
+      return MOTIVO_SALDO_EM_ABERTO;
+    }
+    return null;
+  }
+
+  /**
+   * Navega para `etapa`, marcando-a como visitada — ou recusa com o motivo.
+   *
+   * A recusa mora aqui, e não em `acaoBloqueavel` no botão, porque as duas
+   * superfícies de navegação (o botão de avançar e as barrinhas do indicador)
+   * chamam esta função: distribuir a checagem pelos dois `onClick` criaria dois
+   * pontos para manter iguais. A reavaliação no gesto é a mesma política de
+   * `acaoBloqueavel` — o estado pode mudar entre a renderização e o clique.
+   *
+   * **Sem produto, o operador é levado de volta à etapa 1 e o foco vai para o
+   * campo de código** (pedido do usuário, 2026-09-09): a barra de entrada
+   * rápida só existe lá, e mandar "insira um produto" deixando o caixa numa
+   * tela onde não há onde inserir seria um aviso sem saída.
    */
   function irPara(etapa: EtapaWizard): void {
+    const motivo = motivoParaEntrarNaEtapa(etapa);
+    if (motivo !== null) {
+      notificar.erro(motivo);
+      if (motivo === MOTIVO_SEM_PRODUTO) {
+        setEtapaAtual(1);
+        focarCodigoProduto();
+      }
+      return;
+    }
+
     setEtapaAtual(etapa);
     setEtapasVisitadas((visitadas) => {
       if (visitadas.has(etapa)) {
@@ -128,6 +206,7 @@ export function MobileWizard(): ReactElement {
 
   const anterior = etapaAtual > 1 ? ((etapaAtual - 1) as EtapaWizard) : null;
   const proxima = etapaAtual < 3 ? ((etapaAtual + 1) as EtapaWizard) : null;
+  const bloqueioDeAvanco = proxima === null ? null : motivoParaEntrarNaEtapa(proxima);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="mobile-wizard">
@@ -146,10 +225,11 @@ export function MobileWizard(): ReactElement {
           estouro foram corrigidas uma a uma; o corte fica como rede de
           segurança, e não come anel de foco nenhum porque os 16px de `px-base`
           são folga de sobra para os 3px de `focus-visible`. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-sm overflow-x-hidden overflow-y-auto px-base pt-3.5 pb-4.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-xs overflow-x-hidden overflow-y-auto px-base pt-2.5 pb-2.5">
         <IndicadorDeEtapa
           etapaAtual={etapaAtual}
           etapasVisitadas={etapasVisitadas}
+          bloqueioDaEtapa={motivoParaEntrarNaEtapa}
           onIrPara={irPara}
         />
 
@@ -188,10 +268,18 @@ export function MobileWizard(): ReactElement {
           )}
 
           {proxima !== null && (
+            // Apagado e anunciado como desabilitado, **sem `disabled`**
+            // (`lib/bloqueio.ts`, AD-143): o `disabled` nativo não dispara
+            // clique nenhum, e o motivo — que é a informação de que o operador
+            // precisa — nunca chegaria a ele. Aqui o clique passa, `irPara`
+            // recusa e a frase aparece. As classes de opacidade e cursor vêm
+            // escritas à mão porque este é um `<button>` cru, fora do
+            // `components/ui/button.tsx` que as traz no `cva`.
             <button
               type="button"
-              className="flex h-[50px] min-w-0 flex-1 items-center justify-center gap-xs rounded-full bg-primary px-base text-md font-bold text-primary-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="flex h-[50px] min-w-0 flex-1 items-center justify-center gap-xs rounded-full bg-primary px-base text-md font-bold text-primary-foreground outline-none aria-disabled:cursor-not-allowed aria-disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
               data-testid="wizard-avancar"
+              {...atributosDeBloqueio(bloqueioDeAvanco)}
               onClick={() => {
                 irPara(proxima);
               }}
@@ -293,6 +381,13 @@ function CabecalhoMobile(): ReactElement {
 interface IndicadorDeEtapaProps {
   readonly etapaAtual: EtapaWizard;
   readonly etapasVisitadas: ReadonlySet<EtapaWizard>;
+  /**
+   * Por que a etapa está barrada agora — só para **anunciar** (`aria-disabled`,
+   * `title`). Quem recusa de fato continua sendo `onIrPara`, que reavalia no
+   * gesto; uma barrinha visitada pode deixar de ser alcançável entre a
+   * renderização e o toque (o operador apaga o último item, por exemplo).
+   */
+  readonly bloqueioDaEtapa: (etapa: EtapaWizard) => MotivoBloqueio;
   readonly onIrPara: (etapa: EtapaWizard) => void;
 }
 
@@ -308,11 +403,12 @@ interface IndicadorDeEtapaProps {
 function IndicadorDeEtapa({
   etapaAtual,
   etapasVisitadas,
+  bloqueioDaEtapa,
   onIrPara,
 }: IndicadorDeEtapaProps): ReactElement {
   return (
     <section
-      className="flex shrink-0 flex-col gap-xs rounded-[14px] border border-border bg-card px-sm py-2.5"
+      className="flex shrink-0 flex-col gap-1.5 rounded-[14px] border border-border bg-card px-sm py-2"
       data-testid="indicador-etapa"
     >
       <div className="flex items-center justify-between gap-xs">
@@ -348,6 +444,7 @@ function IndicadorDeEtapa({
               )}
               data-testid={`ir-para-etapa-${String(etapa)}`}
               aria-label={`Voltar para ${ETAPAS[etapa].titulo}`}
+              {...atributosDeBloqueio(bloqueioDaEtapa(etapa))}
               onClick={() => {
                 onIrPara(etapa);
               }}

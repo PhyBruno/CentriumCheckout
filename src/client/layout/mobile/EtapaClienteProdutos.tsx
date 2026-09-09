@@ -26,7 +26,7 @@ import { ScannerCamera } from './ScannerCamera';
  */
 export function EtapaClienteProdutos(): ReactElement {
   return (
-    <div className="flex flex-col gap-sm" data-testid="etapa-cliente-produtos">
+    <div className="flex flex-col gap-xs" data-testid="etapa-cliente-produtos">
       <CampoClienteVenda />
 
       {/* O código lido pela câmera entra pelo **mesmo** `inserirPorCodigo` do

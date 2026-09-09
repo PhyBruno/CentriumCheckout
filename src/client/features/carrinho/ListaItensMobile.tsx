@@ -45,7 +45,9 @@ export interface ListaItensMobileProps {
  * rápida via `useEdicaoItemStore`, compartilhado com `GridItens.tsx`, para os
  * dois layouts produzirem exatamente o mesmo efeito.
  */
-export function ListaItensMobile({ somenteLeitura = false }: ListaItensMobileProps = {}): ReactElement {
+export function ListaItensMobile({
+  somenteLeitura = false,
+}: ListaItensMobileProps = {}): ReactElement {
   const { linhas, cancelarItem } = useVendaStore(
     useShallow((estado) => ({
       linhas: estado.linhas,
@@ -74,11 +76,14 @@ export function ListaItensMobile({ somenteLeitura = false }: ListaItensMobilePro
   const visiveis = linhas.slice(colapsadas.length);
 
   return (
-    <section className="flex flex-1 flex-col gap-sm" data-testid="lista-itens-mobile">
+    <section className="flex flex-1 flex-col gap-xs" data-testid="lista-itens-mobile">
       <h2 className="sr-only">Itens da venda em andamento</h2>
 
       {linhas.length === 0 ? (
-        <p className="px-base py-lg text-center text-sm text-muted-foreground">
+        /* `py-sm`, não `py-lg`: a faixa vazia gastava 48px de altura para dizer
+           que não há nada — justamente o estado em que a tela precisa caber sem
+           rolagem (pedido do usuário, 2026-09-09). */
+        <p className="px-base py-2 text-center text-sm text-muted-foreground">
           Nenhum item na venda.
         </p>
       ) : (
@@ -124,16 +129,22 @@ export function ListaItensMobile({ somenteLeitura = false }: ListaItensMobilePro
         </>
       )}
 
-      <footer className="flex items-center justify-between gap-sm rounded-xl border border-border bg-background px-base py-sm">
-        <span className="text-sm text-muted-foreground">Total da venda</span>
-        {/* `font-mono tabular-nums` como todo valor monetário do produto (regra
+      {/* O rodapé só existe **com item na venda** (pedido do usuário,
+          2026-09-09). Vazio, ele repetia em "R$ 0,00" o que o cartão escuro do
+          topo do wizard (`TotalDaVenda`) já diz em corpo maior, e gastava 44px
+          de altura na única tela que precisa caber sem rolagem. */}
+      {linhas.length === 0 ? null : (
+        <footer className="flex items-center justify-between gap-sm rounded-xl border border-border bg-background px-base py-2.5">
+          <span className="text-sm text-muted-foreground">Total da venda</span>
+          {/* `font-mono tabular-nums` como todo valor monetário do produto (regra
             de tipografia do projeto, `CLAUDE.md`): este total saía em Inter e
             desalinhava com o mesmo número exibido em Geist Mono no cartão
             escuro logo acima e na linha de cada item logo abaixo. */}
-        <strong className="shrink-0 font-mono text-lg tabular-nums" data-testid="total-venda">
-          {formatarCentavos(totalVenda(linhas))}
-        </strong>
-      </footer>
+          <strong className="shrink-0 font-mono text-lg tabular-nums" data-testid="total-venda">
+            {formatarCentavos(totalVenda(linhas))}
+          </strong>
+        </footer>
+      )}
     </section>
   );
 }

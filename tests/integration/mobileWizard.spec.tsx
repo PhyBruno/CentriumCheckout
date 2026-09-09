@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { AppShell } from '../../src/client/layout/AppShell';
+import { useFocoVendaStore } from '../../src/client/stores/focoVendaStore';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { abrirSessaoDeVenda, useVendaStore } from '../../src/client/stores/vendaStore';
 import {
@@ -10,6 +11,7 @@ import {
   instalarMatchMediaDeLayout,
   renderizarComProvedores,
 } from '../support/layout';
+import { pagamentoDe } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -29,6 +31,22 @@ function renderizarWizard(): void {
       }}
     />,
   );
+}
+
+/**
+ * Deixa o saldo da venda coberto — pré-condição para **entrar na etapa 3**
+ * desde 2026-09-09 (pedido do usuário: não se revisa uma venda que ainda não
+ * fecha).
+ *
+ * A venda destes cenários vale R$ 100,00 (`beforeEach`); quem acrescenta item
+ * passa o valor maior. Um pagamento `APROVADO` em dinheiro é o mínimo que
+ * `calcularSaldo` aceita como cobertura — pagar a mais também serve, porque o
+ * saldo restante nunca fica negativo.
+ */
+function cobrirSaldo(valorAplicado = 10_000): void {
+  act(() => {
+    useVendaStore.setState({ pagamentos: [pagamentoDe({ valorAplicado })] });
+  });
 }
 
 beforeAll(() => {
@@ -61,6 +79,7 @@ describe('MobileWizard — navegação', () => {
 
   it('avança 1 → 2 → 3 e volta livremente a qualquer etapa já visitada (FR-004)', async () => {
     const usuario = userEvent.setup();
+    cobrirSaldo();
     renderizarWizard();
 
     await usuario.click(screen.getByTestId('wizard-avancar'));
@@ -89,6 +108,11 @@ describe('MobileWizard — navegação', () => {
 
   it('a alteração feita na etapa 1 aparece na revisão (quickstart §3)', async () => {
     const usuario = userEvent.setup();
+    // R$ 125,00 já cobertos: o cenário acrescenta um item de R$ 25,00 no meio
+    // do caminho e volta à etapa 3, que desde 2026-09-09 exige saldo zerado.
+    // Pagar o total final desde o começo mantém as duas entradas na revisão
+    // liberadas sem inventar um segundo gesto de pagamento no meio do teste.
+    cobrirSaldo(12_500);
     renderizarWizard();
 
     await usuario.click(screen.getByTestId('wizard-avancar'));
@@ -135,6 +159,7 @@ describe('MobileWizard — navegação', () => {
 describe('MobileWizard — invariantes de navegação (data-model §2)', () => {
   it('etapasVisitadas só cresce: voltar não apaga o atalho para onde já se esteve (I2)', async () => {
     const usuario = userEvent.setup();
+    cobrirSaldo();
     renderizarWizard();
 
     await usuario.click(screen.getByTestId('wizard-avancar'));
@@ -154,17 +179,21 @@ describe('MobileWizard — invariantes de navegação (data-model §2)', () => {
     expect(screen.queryByTestId('ir-para-etapa-3')).toBeNull();
   });
 
-  it('voltar é permitido com a venda incompleta — nenhum campo obrigatório barra o retorno (I3)', async () => {
+  it('voltar é permitido com a venda incompleta — cliente e vendedor não barram o retorno (I3)', async () => {
     const usuario = userEvent.setup();
-    // Sem cliente, sem vendedor, sem condição e sem pagamento: a venda mais
-    // incompleta que ainda tem um item. É exatamente o operador que **precisa**
+    // Sem cliente, sem vendedor e sem condição: a venda mais incompleta que
+    // ainda tem item e saldo coberto. É exatamente o operador que **precisa**
     // circular entre as etapas para completá-la que uma validação prenderia.
+    //
+    // O pagamento entra porque a etapa 3 passou a exigir saldo zerado
+    // (2026-09-09) — o que I3 continua garantindo é que nenhum **campo de
+    // cadastro** (cliente, vendedor, condição) barra a navegação.
     act(() => {
       useVendaStore.setState({
         clienteAtual: null,
         vendedorAtual: null,
         condicaoSelecionada: null,
-        pagamentos: [],
+        pagamentos: [pagamentoDe({ valorAplicado: 10_000 })],
       });
     });
     renderizarWizard();
@@ -184,6 +213,7 @@ describe('MobileWizard — invariantes de navegação (data-model §2)', () => {
 
   it('a venda seguinte começa na etapa 1, e não onde a anterior terminou (I1)', async () => {
     const usuario = userEvent.setup();
+    cobrirSaldo();
     renderizarWizard();
 
     await usuario.click(screen.getByTestId('wizard-avancar'));
@@ -238,6 +268,76 @@ describe('MobileWizard — invariantes de navegação (data-model §2)', () => {
 
     expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
     expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('2/3');
+  });
+});
+
+/**
+ * As duas recusas de navegação pedidas pelo usuário em 2026-09-09.
+ *
+ * São de **navegação**, não de finalização: o que elas evitam é o passo em
+ * falso — abrir o pagamento de uma venda vazia, ou a conferência de uma venda
+ * que ainda não fecha. Quem recusa faturar continua sendo `AcoesFinaisVenda`.
+ */
+describe('MobileWizard — recusa de avanço', () => {
+  it('sem produto ativo, avançar é recusado e o foco volta ao código (item 1)', async () => {
+    const usuario = userEvent.setup();
+    // Carrinho com a linha **cancelada**: é o caso relatado ("todos deletados").
+    // A linha permanece no array por rastreabilidade (`CART-08`), então contar
+    // `linhas` em vez de `linhasAtivas` deixaria este cenário passar.
+    act(() => {
+      useVendaStore.setState({
+        linhas: [linhaDe({ idLinha: 'linha-1', precoUnitario: 10_000, cancelada: true })],
+      });
+    });
+    renderizarWizard();
+
+    const pedidosAntes = useFocoVendaStore.getState().pedidosDeFocoNoCodigo;
+    const avancar = screen.getByTestId('wizard-avancar');
+    expect(avancar).toHaveAttribute('aria-disabled', 'true');
+    expect(avancar).toHaveAttribute(
+      'title',
+      'Insira ao menos um produto na venda antes de avançar para o pagamento.',
+    );
+
+    await usuario.click(avancar);
+
+    // Continua na etapa 1 — e o foco foi pedido de volta para a barra de
+    // entrada, que é o único lugar onde o operador resolve a recusa.
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+    expect(useFocoVendaStore.getState().pedidosDeFocoNoCodigo).toBe(pedidosAntes + 1);
+  });
+
+  it('com saldo em aberto, revisar é recusado (item 2)', async () => {
+    const usuario = userEvent.setup();
+    renderizarWizard();
+
+    // Etapa 2 está liberada: há produto. É só a revisão que espera o pagamento.
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+
+    const revisar = screen.getByTestId('wizard-avancar');
+    expect(revisar).toHaveAttribute('aria-disabled', 'true');
+    expect(revisar).toHaveAttribute(
+      'title',
+      'Adicione formas de pagamento que cubram todo o valor da venda antes de revisar.',
+    );
+
+    await usuario.click(revisar);
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(screen.queryByTestId('etapa-revisao')).toBeNull();
+  });
+
+  it('pagar a mais libera a revisão: o troco fecha a venda igual ao valor exato', async () => {
+    const usuario = userEvent.setup();
+    // R$ 150,00 recebidos numa venda de R$ 100,00 — `calcularSaldo` nunca deixa
+    // o saldo restante negativo, então a cobertura é a mesma.
+    cobrirSaldo(15_000);
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+
+    expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
 import { motivoCarrinhoBloqueado } from '../../stores/slices/carrinhoSlice';
 import {
@@ -210,7 +210,9 @@ export interface ApiInsercao {
 export function useMotivoCarrinhoBloqueado(): MotivoBloqueio {
   const podeMutar = useVendaStore((estado) => estado.podeMutarCarrinho());
   const veioDeDocumento = useVendaStore((estado) =>
-    estado.pagamentos.some((pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO'),
+    estado.pagamentos.some(
+      (pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO',
+    ),
   );
 
   return motivoCarrinhoBloqueado(podeMutar, veioDeDocumento);
@@ -261,7 +263,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
       try {
         snapshot = await resolverProduto(codigoProduto);
       } catch (erro) {
-        gooeyToast.error(mensagemDeErro(erro));
+        notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
       }
 
@@ -274,7 +276,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
       } catch (erro) {
         // Produto pesável sem `PrecoVenda`: inserção bloqueada com aviso, nenhuma
         // linha criada, foco permanece no campo (`FR-013`, AD-076).
-        gooeyToast.error(mensagemDeErro(erro));
+        notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
       }
 
@@ -310,7 +312,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
       try {
         snapshot = await resolverProduto(codigoProduto);
       } catch (erro) {
-        gooeyToast.error(mensagemDeErro(erro));
+        notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
       }
 
@@ -324,7 +326,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
           editavel: snapshot.pesavelEditavel === 'E',
         };
       } catch (erro) {
-        gooeyToast.error(mensagemDeErro(erro));
+        notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
       }
     },

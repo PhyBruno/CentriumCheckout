@@ -105,7 +105,9 @@ export function ModalBuscaVendedor({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-lg',
+        // Sem folga no compacto: a janela ocupa a tela inteira (ver a classe
+        // dela logo abaixo), então o `p-lg` só encolheria a área útil.
+        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] md:p-lg',
         saindo ? 'cc-backdrop-sai' : 'cc-backdrop-entra',
       )}
       data-testid="modal-busca-vendedor"
@@ -121,18 +123,27 @@ export function ModalBuscaVendedor({
         aria-modal="true"
         aria-label="Consultar vendedor"
         className={cn(
-          'flex max-h-full w-full max-w-[960px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
+          // **Tela cheia no compacto, janela a partir de `md:`** — mesma
+          // decisão e mesmo motivo de `ModalBuscaCliente` (pedido do usuário,
+          // 2026-09-09). Os dois seletores são a mesma superfície com catálogos
+          // diferentes; divergir aqui só criaria duas gramáticas de busca no
+          // mesmo produto.
+          'flex h-full w-full flex-col overflow-hidden bg-background md:h-auto md:max-h-full md:max-w-[960px] md:rounded-xl md:border md:border-border md:shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
         )}
       >
-        <header className="flex h-[78px] shrink-0 items-center justify-between gap-sm border-b border-border px-lg">
-          <div className="flex items-center gap-sm">
-            <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
-              <UserRound className="size-5 text-primary" aria-hidden="true" />
+        <header className="flex shrink-0 items-center justify-between gap-sm border-b border-border px-base py-2.5 md:h-[78px] md:px-lg md:py-0">
+          <div className="flex min-w-0 items-center gap-sm">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary md:size-[42px]">
+              <UserRound className="size-4.5 text-primary md:size-5" aria-hidden="true" />
             </span>
-            <div className="flex flex-col gap-[2px]">
-              <h2 className="text-xl font-semibold text-foreground">Consultar vendedor</h2>
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="flex min-w-0 flex-col gap-[2px]">
+              <h2 className="truncate text-lg font-semibold text-foreground md:text-xl">
+                Consultar vendedor
+              </h2>
+              {/* Sem subtítulo no compacto, como no seletor de cliente: em
+                  390px ele jogava o cabeçalho para duas linhas. */}
+              <p className="hidden text-sm font-medium text-muted-foreground md:block">
                 Selecione o vendedor informado na NFCe
               </p>
             </div>
@@ -149,7 +160,7 @@ export function ModalBuscaVendedor({
           </Button>
         </header>
 
-        <div className="flex shrink-0 flex-col gap-xs border-b border-border px-lg py-[14px]">
+        <div className="flex shrink-0 flex-col gap-xs border-b border-border px-base py-2.5 md:px-lg md:py-[14px]">
           <label className="flex h-11 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
             <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="sr-only">Termo de busca</span>
@@ -218,7 +229,7 @@ export function ModalBuscaVendedor({
 
         {busca.data === undefined || abaixoDoMinimo ? null : (
           <footer
-            className="flex h-[60px] shrink-0 items-center justify-between gap-sm border-t border-border px-lg"
+            className="flex h-[60px] shrink-0 items-center justify-between gap-sm border-t border-border px-base md:px-lg"
             data-testid="paginacao-busca-vendedor"
           >
             <span className="sr-only">
@@ -230,7 +241,7 @@ export function ModalBuscaVendedor({
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
+                className="h-9 gap-xs rounded-full px-sm text-sm font-semibold md:w-28 md:px-0"
                 data-testid="vendedor-pagina-anterior"
                 disabled={pagina <= 1}
                 onClick={() => {
@@ -247,7 +258,7 @@ export function ModalBuscaVendedor({
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
+                className="h-9 gap-xs rounded-full px-sm text-sm font-semibold md:w-28 md:px-0"
                 data-testid="vendedor-pagina-proxima"
                 disabled={busca.data.PaginaAtual >= busca.data.TotalPaginas}
                 onClick={() => {
@@ -273,10 +284,17 @@ interface ResultadosDaBuscaProps {
 const classeCelulaCabecalho =
   'flex h-full items-center px-sm text-xs font-bold text-muted-foreground';
 
+/**
+ * Tabela no desktop, cartão de duas linhas no compacto — mesma estrutura e
+ * mesmo motivo de `ResultadosDaBusca` em `ModalBuscaCliente` (pedido do
+ * usuário, 2026-09-09): o nome ocupa a primeira faixa inteira (`order-first`
+ * porque no DOM ele vem depois do código, que é a ordem da tabela) e código e
+ * CPF dividem a segunda como texto secundário.
+ */
 function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps): ReactElement {
   return (
     <div data-testid="resultados-busca-vendedor">
-      <div className="flex h-[38px] border-y border-border bg-muted" aria-hidden="true">
+      <div className="hidden h-[38px] border-y border-border bg-muted md:flex" aria-hidden="true">
         <span className={cn(classeCelulaCabecalho, 'w-[42px]')} />
         <span className={cn(classeCelulaCabecalho, 'w-[76px]')}>Código</span>
         <span className={cn(classeCelulaCabecalho, 'flex-1')}>Vendedor</span>
@@ -289,21 +307,21 @@ function ResultadosDaBusca({ vendedores, onSelecionar }: ResultadosDaBuscaProps)
               type="button"
               data-testid="candidato-vendedor"
               data-codigo-vendedor={vendedor.VendedorCodigo}
-              className="flex h-[50px] w-full items-center text-left hover:bg-accent"
+              className="flex w-full flex-wrap items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:h-[50px] md:flex-nowrap md:gap-0 md:px-0 md:py-0"
               onClick={() => {
                 onSelecionar({ codigo: vendedor.VendedorCodigo, nome: vendedor.VendedorNome });
               }}
             >
-              <span className="flex w-[42px] shrink-0 items-center justify-center">
+              <span className="hidden w-[42px] shrink-0 items-center justify-center md:flex">
                 <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
-              <span className="w-[76px] shrink-0 px-sm font-mono text-base font-semibold tabular-nums">
+              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-muted-foreground md:w-[76px] md:px-sm md:text-base md:text-foreground">
                 {vendedor.VendedorCodigo}
               </span>
-              <span className="min-w-0 flex-1 truncate px-sm text-base font-bold">
+              <span className="order-first min-w-0 basis-full truncate text-base font-bold md:order-none md:flex-1 md:basis-auto md:px-sm">
                 {vendedor.VendedorNome}
               </span>
-              <span className="w-[130px] shrink-0 truncate px-sm font-mono text-sm font-medium tabular-nums">
+              <span className="min-w-0 shrink truncate font-mono text-sm font-medium tabular-nums text-muted-foreground md:w-[130px] md:shrink-0 md:px-sm md:text-foreground">
                 {vendedor.VendedorCGC}
               </span>
             </button>

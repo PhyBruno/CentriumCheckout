@@ -98,7 +98,9 @@ const CONSULTAS_DE_LAYOUT = [
  */
 const EXCECOES = ['src/client/features/venda-rapida/useAtalhosVendaRapida.ts'] as const;
 
-function arquivosDoCliente(diretorio: string = join(process.cwd(), 'src/client')): readonly string[] {
+function arquivosDoCliente(
+  diretorio: string = join(process.cwd(), 'src/client'),
+): readonly string[] {
   return readdirSync(diretorio, { withFileTypes: true }).flatMap((entrada) => {
     const caminho = join(diretorio, entrada.name);
     if (entrada.isDirectory()) {

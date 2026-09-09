@@ -8,7 +8,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -302,7 +302,7 @@ export function CampoClienteVenda(): ReactElement {
    */
   function recusarMantendoFoco(termo: string, mensagem: string): void {
     setRecusaComFocoPreso({ termo, mensagem });
-    gooeyToast.warning(mensagem);
+    notificar.aviso(mensagem);
     setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }
 
@@ -353,13 +353,13 @@ export function CampoClienteVenda(): ReactElement {
     // um cadastro que não poderia ser usado só gastaria uma ida à rede e
     // sugeriria ao operador que o caminho existe.
     if (entrada.tipo === 'PESSOA_JURIDICA') {
-      gooeyToast.warning(
+      notificar.aviso(
         `${MOTIVO_VENDA_PESSOA_JURIDICA} Informe um CPF (11 dígitos) ou o código do cliente.`,
       );
       return;
     }
     if (entrada.tipo === 'INVALIDO') {
-      gooeyToast.warning('Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).');
+      notificar.aviso('Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).');
       return;
     }
 
@@ -437,7 +437,7 @@ export function CampoClienteVenda(): ReactElement {
        mesmo espaço é comprimido pela animação de altura e some junto com o
        conteúdo. */
     <section
-      className="flex flex-col rounded-xl border border-border bg-background p-[14px]"
+      className="flex flex-col rounded-xl border border-border bg-background p-2.5 md:p-[14px]"
       data-testid="cliente-da-venda"
       aria-label="Cliente da venda"
     >
@@ -449,7 +449,11 @@ export function CampoClienteVenda(): ReactElement {
           2026-09-08). Deixar a linha quebrar preserva os dois nomes — que são a
           resposta à pergunta "quem é o cliente desta venda" — em vez de
           preservar a altura de 26px. */}
-      <header className="flex flex-wrap items-center justify-between gap-x-[9px] gap-y-xs md:h-[26px] md:flex-nowrap">
+      {/* `gap-y-xxs` (4px) no compacto, não `gap-y-xs`: o cabeçalho quebra em
+          duas linhas em 390px e cada pixel de folga entre elas é altura que a
+          etapa 1 não tem de sobra (pedido do usuário, 2026-09-09 — "sem
+          produtos as telas não precisam de scroll"). */}
+      <header className="flex flex-wrap items-center justify-between gap-x-[9px] gap-y-xxs md:h-[26px] md:flex-nowrap">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-sm gap-y-xxs md:flex-nowrap md:gap-md">
           <Pilula icone={<UserRound className="size-4.5 text-foreground" />} rotulo="Cliente">
             {clienteAtual === null ? (
@@ -593,9 +597,21 @@ export function CampoClienteVenda(): ReactElement {
                 <Search className="size-4" aria-hidden="true" />
               </Button>
 
+              {/* **Fora do compacto** (pedido do usuário, 2026-09-09): no
+                  mobile o botão ocupava uma faixa inteira de 42px para repetir
+                  um gesto que o campo já faz sozinho — a consulta ao ERP dispara
+                  no `onBlur` e no Enter (as duas saídas naturais do teclado
+                  virtual). Não há caminho perdido: quem digita e toca em
+                  qualquer outro ponto da tela já identificou. No desktop ele
+                  fica, porque lá é o botão do desenho e a faixa de 42px não
+                  disputa altura com nada.
+
+                  `hidden md:flex`, não `md:block`: o `Button` é um flex
+                  container (ícone + rótulo), e `block` desalinharia os dois no
+                  desktop. */}
               <Button
                 type="button"
-                className="h-[42px] flex-1 gap-[7px] rounded-full text-base font-bold md:w-[126px] md:flex-none"
+                className="hidden h-[42px] flex-1 gap-[7px] rounded-full text-base font-bold md:flex md:w-[126px] md:flex-none"
                 data-testid="identificar-cliente"
                 {...atributosDeBloqueio(bloqueioDeIdentificacao)}
                 onClick={acaoBloqueavel(bloqueioDeIdentificacao, () => {
@@ -711,12 +727,17 @@ function Pilula({ icone, rotulo, children, testId }: PilulaProps): ReactElement 
       <span className="shrink-0" aria-hidden="true">
         {icone}
       </span>
-      <span className="shrink-0 text-lg font-semibold text-foreground">{rotulo}</span>
+      {/* Um degrau menor no compacto (`text-base`/`py-[3px]`), o tamanho do
+          Pencil a partir de `md:`: são duas pílulas em duas linhas numa etapa
+          que precisa caber sem rolagem (pedido do usuário, 2026-09-09), e o
+          rótulo "Cliente"/"Vendedor" é a parte que menos perde ao encolher —
+          quem responde à pergunta é o nome dentro da pílula. */}
+      <span className="shrink-0 text-base font-semibold text-foreground md:text-lg">{rotulo}</span>
       {/* `truncate` fica no wrapper de texto de cada caller, não aqui: o estado
           "não identificado" traz um ponto colorido ao lado do texto, e cortar o
           conteúdo inteiro esconderia o ponto junto. */}
       <span
-        className="flex min-w-0 items-center gap-[6px] truncate rounded-full bg-secondary px-[10px] py-[5px] text-sm font-semibold whitespace-nowrap text-foreground"
+        className="flex min-w-0 items-center gap-[6px] truncate rounded-full bg-secondary px-[10px] py-[3px] text-sm font-semibold whitespace-nowrap text-foreground md:py-[5px]"
         data-testid={testId ?? 'status-cliente'}
       >
         {children}

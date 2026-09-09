@@ -1,6 +1,6 @@
 import { Equal } from 'lucide-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { resolverDescontoCapa } from '../../domain/pagamento/descontoCapa';
@@ -142,9 +142,7 @@ export function ControleDescontoCapa(): ReactElement {
    * na **montagem** — o texto que o operador digita depois nunca é reescrito por
    * este componente (ver o TSDoc do espelho, adiante).
    */
-  const [entradaTexto, setEntradaTexto] = useState(() =>
-    textoDoDescontoAplicado(descontoCapa),
-  );
+  const [entradaTexto, setEntradaTexto] = useState(() => textoDoDescontoAplicado(descontoCapa));
 
   /**
    * Espelho do desconto aplicado, para o campo acompanhar quem o zerou de fora
@@ -243,7 +241,7 @@ export function ControleDescontoCapa(): ReactElement {
     if (modoAlvo === 'VALOR') {
       const valor = lerCentavosDigitados(bruto);
       if (valor === null) {
-        gooeyToast.warning('Valor inválido: use apenas números, com até duas casas decimais.');
+        notificar.aviso('Valor inválido: use apenas números, com até duas casas decimais.');
         return;
       }
       if (valor === ZERO_CENTAVOS) {
@@ -256,7 +254,7 @@ export function ControleDescontoCapa(): ReactElement {
 
     const percentual = lerPercentualDigitado(bruto);
     if (percentual === null) {
-      gooeyToast.warning('Percentual inválido: use apenas números, com até uma casa decimal.');
+      notificar.aviso('Percentual inválido: use apenas números, com até uma casa decimal.');
       return;
     }
     if (percentual === 0) {

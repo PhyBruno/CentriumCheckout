@@ -1,4 +1,4 @@
-import { gooeyToast } from 'goey-toast';
+import { notificar } from './notificar';
 
 /**
  * Botão bloqueado que **explica** por que está bloqueado (pedido do usuário,
@@ -53,7 +53,7 @@ export function atributosDeBloqueio(motivo: MotivoBloqueio): {
 export function acaoBloqueavel(motivo: MotivoBloqueio, acao: () => void): () => void {
   return () => {
     if (motivo !== null) {
-      gooeyToast.error(motivo);
+      notificar.erro(motivo);
       return;
     }
     acao();

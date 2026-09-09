@@ -173,9 +173,11 @@ describe('AppShell — alternância de layout', () => {
 describe('AppShell — responsabilidades transversais (regressão da extração)', () => {
   it('consulta o status do sistema entre vendas, e segue consultando depois da travessia', async () => {
     vi.useFakeTimers();
-    const chamadas = vi.fn().mockResolvedValue(
-      new Response('0', { status: 200, headers: { 'content-type': 'application/json' } }),
-    );
+    const chamadas = vi
+      .fn()
+      .mockResolvedValue(
+        new Response('0', { status: 200, headers: { 'content-type': 'application/json' } }),
+      );
     vi.stubGlobal('fetch', chamadas);
 
     try {
@@ -199,9 +201,11 @@ describe('AppShell — responsabilidades transversais (regressão da extração)
 
   it('não consulta o status durante uma venda em digitação, em nenhum dos dois layouts (FR-013)', async () => {
     vi.useFakeTimers();
-    const chamadas = vi.fn().mockResolvedValue(
-      new Response('0', { status: 200, headers: { 'content-type': 'application/json' } }),
-    );
+    const chamadas = vi
+      .fn()
+      .mockResolvedValue(
+        new Response('0', { status: 200, headers: { 'content-type': 'application/json' } }),
+      );
     vi.stubGlobal('fetch', chamadas);
 
     try {

@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -118,7 +118,7 @@ function lerQuantidadeTexto(texto: string): Milesimos | null {
  * operador escreveu tiraria dele a chance de só corrigir um dígito.
  */
 function exigirCampo(campo: RefObject<HTMLInputElement | null>, aviso: string): void {
-  gooeyToast.error(aviso);
+  notificar.erro(aviso);
   window.setTimeout(() => {
     campo.current?.focus();
     campo.current?.select();
@@ -737,13 +737,17 @@ export function EntradaRapidaProduto({
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
   // produz alinhamento inconsistente entre navegadores. A altura fixa
   // (`h-11.5`) já centraliza o texto verticalmente sozinha.
+  // `h-10` no compacto, os 46px do desenho a partir de `md:`: a barra quebra em
+  // cinco faixas no wizard mobile, e 6px por faixa é o que faz a etapa 1 caber
+  // sem rolagem (pedido do usuário, 2026-09-09). 40px continua acima do alvo
+  // mínimo de toque.
   const classeCampoValor =
-    'h-11.5 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default disabled:cursor-not-allowed disabled:opacity-70';
+    'h-10 w-full min-w-0 rounded-xl border border-border bg-muted px-sm font-mono text-md tabular-nums outline-none read-only:cursor-default disabled:cursor-not-allowed disabled:opacity-70 md:h-11.5';
   // Preço e desconto não usam `classeCampoValor`: a moldura vai para um
   // wrapper e o `<input>` fica transparente dentro dele, para o "R$" caber ao
   // lado do valor sem entrar no `value` (ver `SimboloReal`).
   const classeMolduraValor =
-    'flex h-11.5 w-full min-w-0 items-center gap-xs rounded-xl border border-border bg-muted px-sm';
+    'flex h-10 w-full min-w-0 items-center gap-xs rounded-xl border border-border bg-muted px-sm md:h-11.5';
   const classeValorDigitavel =
     'w-full min-w-0 bg-transparent font-mono text-md tabular-nums outline-none read-only:cursor-default';
 
@@ -766,7 +770,7 @@ export function EntradaRapidaProduto({
   return (
     <div
       className={cn(
-        'flex flex-col gap-xs rounded-3xl border border-border bg-background p-base',
+        'flex flex-col gap-xs rounded-3xl border border-border bg-background p-2.5 md:p-base',
         // Contorno amarelo pulsante enquanto um item já inserido está
         // carregado aqui para edição (pedido do usuário, 2026-09-03).
         linhaEmEdicao !== null && 'cc-pulso-edicao',
@@ -790,7 +794,10 @@ export function EntradaRapidaProduto({
           desenho mobile: código na primeira faixa com a lupa e o Scanner
           (`dfZEs`/`kU6Z5`), depois os pares de valores (`J5G7EE`/`aRe5V`) e o
           botão de inserir ocupando a largura toda (`q2NBVJ`). */}
-      <div className="flex flex-wrap items-end gap-sm" data-testid="previa-insercao-produto">
+      <div
+        className="flex flex-wrap items-end gap-xs md:gap-sm"
+        data-testid="previa-insercao-produto"
+      >
         <label className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
           <span className="flex items-center gap-xs font-semibold text-muted-foreground">
             <Barcode className="size-4 shrink-0" aria-hidden="true" />
@@ -798,7 +805,7 @@ export function EntradaRapidaProduto({
           </span>
           <input
             ref={campoCodigo}
-            className="h-11.5 w-full rounded-xl border border-border bg-muted px-3 font-mono"
+            className="h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono md:h-11.5"
             data-testid="campo-codigo-produto"
             /* Única exceção à regra de `FR-014` (decisão do usuário,
                2026-09-05): os atalhos globais F6–F9 disparam **com o foco
@@ -823,7 +830,7 @@ export function EntradaRapidaProduto({
           type="button"
           variant="secondary"
           size="icon-sm"
-          className="size-11.5 shrink-0 rounded-full"
+          className="size-10 shrink-0 rounded-full md:size-11.5"
           aria-label="Buscar produto"
           data-testid="abrir-busca-produto"
           onClick={() => {
@@ -853,7 +860,7 @@ export function EntradaRapidaProduto({
           <label className={classeRotulo} htmlFor={ID_CAMPO_QUANTIDADE}>
             Quantidade
           </label>
-          <div className="flex h-11.5 items-center justify-between gap-xs rounded-xl border border-border bg-muted px-xs">
+          <div className="flex h-10 items-center justify-between gap-xs rounded-xl border border-border bg-muted px-xs md:h-11.5">
             <Button
               type="button"
               variant="secondary"
@@ -982,7 +989,7 @@ export function EntradaRapidaProduto({
                   return;
                 }
                 if (descontoZeraItem) {
-                  gooeyToast.warning(AVISO_DESCONTO_ZERA_ITEM);
+                  notificar.aviso(AVISO_DESCONTO_ZERA_ITEM);
                 }
               }}
             />
@@ -993,7 +1000,7 @@ export function EntradaRapidaProduto({
           <span className={classeRotulo}>Total item</span>
           <strong
             className={cn(
-              'flex h-11.5 items-center rounded-xl bg-secondary px-sm font-mono text-lg tabular-nums',
+              'flex h-10 items-center rounded-xl bg-secondary px-sm font-mono text-lg tabular-nums md:h-11.5',
               semResolucao ? 'text-muted-foreground' : 'text-primary',
             )}
             data-testid="previa-total-item"
@@ -1022,7 +1029,7 @@ export function EntradaRapidaProduto({
         <Button
           ref={botaoConfirmar}
           type="button"
-          className="h-11.5 w-full shrink-0 gap-xs rounded-full md:w-[70px]"
+          className="h-10 w-full shrink-0 gap-xs rounded-full md:h-11.5 md:w-[70px]"
           aria-label={
             linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'
           }
@@ -1037,7 +1044,19 @@ export function EntradaRapidaProduto({
         </Button>
       </div>
 
-      <p className="text-sm font-medium text-foreground" data-testid="previa-descricao-produto">
+      {/* `hidden md:block` quando não há produto resolvido: no desktop a linha
+          continua reservando a própria altura (o espaço em branco evita que o
+          cartão pule ao resolver um código), mas no wizard mobile essa reserva
+          custava ~24px numa tela que precisa caber sem rolagem sem nenhum item
+          (pedido do usuário, 2026-09-09). O elemento permanece no DOM nos dois
+          casos — quem lê por `data-testid` continua achando. */}
+      <p
+        className={cn(
+          'text-sm font-medium text-foreground',
+          snapshotAtivo === null && 'hidden md:block',
+        )}
+        data-testid="previa-descricao-produto"
+      >
         {snapshotAtivo?.descricao ?? ' '}
       </p>
 

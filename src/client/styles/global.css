@@ -551,49 +551,31 @@ button:not(:disabled):not([aria-disabled='true']),
 /* ---------------------------------------------------------------------------
  * Notificação (`goey-toast`) que cabe na tela estreita.
  *
- * O pacote monta a faixa compacta como `width: fit-content` com o título em
- * `white-space: nowrap` (`node_modules/goey-toast/dist/index.css`): a largura é
- * a do texto, e só o estado **expandido** tem `max-width`. No desktop isso
- * passa despercebido — um aviso de 826px ainda sobra na tela de 1440. No wizard
- * mobile a mesma faixa nasce com 826px sobre 390px de viewport e o operador lê
- * "Esta venda já tem forma de pagamento aplicada e cada ven…", com o resto
- * fora da tela (achado no layout compacto, 2026-09-08).
+ * O pacote monta a faixa compacta como `width: fit-content` (`node_modules/
+ * goey-toast/dist/index.css`): a largura é a do conteúdo, e no wizard mobile
+ * uma frase longa nascia com 826px sobre 390px de viewport, saindo pela
+ * direita da tela (achado no layout compacto, 2026-09-08).
  *
  * O teto vai na **caixa de conteúdo**, não no wrapper, porque é ela que o
  * pacote mede para desenhar a bolha (`contentRef.offsetWidth`, com um
  * `ResizeObserver` por cima): limitando aqui, a medida já sai correta e o SVG
  * acompanha o novo tamanho em vez de ficar maior que o texto.
  *
- * A quebra de linha vem junto e é obrigatória: com o teto e sem ela, o
- * `text-overflow: ellipsis` do pacote apagaria o fim da frase — trocaria um
- * texto cortado pela borda da tela por um texto cortado por reticências, que
- * para o operador é a mesma perda. Vale só abaixo de `md` (o mesmo breakpoint
- * de `useIsMobile`), então a faixa de uma linha do desktop fica intacta.
+ * **A quebra de linha do título saiu daqui** (2026-09-09). A versão anterior
+ * desta regra deixava o título quebrar (`white-space: normal` + `flex-wrap` no
+ * header) para o texto não ser cortado por reticências — e produziu o defeito
+ * que o usuário relatou como "notificação em branco": o pacote fixa a altura da
+ * faixa compacta em `PH = 34px` (`dist/index.js`) e recorta o excedente com
+ * `overflow: hidden`, então as linhas quebradas caíam fora do recorte e sobrava
+ * uma bolha branca só com o ícone (título de 448×71px dentro de 34px, medido no
+ * navegador em 390px). A frase longa não é problema de CSS: é campo errado da
+ * API — ela pertence a `description`, que o pacote renderiza no corpo expandido
+ * e mede de verdade. Quem cuida disso agora é `src/client/lib/notificar.ts`, e
+ * o título voltou a ser a linha única que o pacote desenha.
  * ------------------------------------------------------------------------- */
 @media (width < 48rem) {
   .gooey-content {
     max-width: calc(100vw - 2 * var(--cc-space-base));
-  }
-
-  .gooey-header {
-    flex-wrap: wrap;
-  }
-
-  /*
-   * `.gooey-content` na frente **não é enfeite de seletor**: o pacote declara
-   * exatamente `.gooey-header > .gooey-title` (`index.css`, l. 82), a mesma
-   * especificidade (0,2,0) desta regra, e a folha dele carrega depois da nossa
-   * — num empate, quem vem por último ganha. Sem o ancestral a mais, o
-   * `white-space: nowrap` do pacote continuava valendo e o título media 801px
-   * dentro de uma caixa de 358px: a bolha ficava do tamanho certo e a frase
-   * saía pela direita da tela assim mesmo (medido no navegador em 390px,
-   * 2026-09-09). Subir para (0,3,0) resolve sem `!important`, que é o que se
-   * usaria se a briga fosse contra um `!important` — e não é.
-   */
-  .gooey-content .gooey-header > .gooey-title {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
   }
 }
 

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { gooeyToast } from 'goey-toast';
+import { notificar } from '@/lib/notificar';
 import { eventoVendaRapidaAcionada } from '../../domain/auditoria/eventos';
 import type { CondicaoPagamento } from '../../domain/pagamento/formaPagamento';
 import { ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
@@ -318,7 +318,7 @@ export function criarDepsPadrao(
       useVendaStore.getState().marcarAcionamentoEmAndamento(emAndamento);
     },
     avisar: (mensagem) => {
-      gooeyToast.warning(mensagem);
+      notificar.aviso(mensagem);
     },
   };
 }
