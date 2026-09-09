@@ -42,19 +42,38 @@ const TITULO_POR_TIPO = {
   sucesso: 'Pronto',
 } as const;
 
+/**
+ * Devolve à frase a aparência que ela tinha enquanto era o título (correção do
+ * usuário, 2026-09-09: "está com fonte padrão e preta").
+ *
+ * O corpo expandido do pacote nasce como texto de leitura — `.gooey-description`
+ * é 13px/400 em `#444` —, enquanto o título é 12px/**700** e recebe a **cor do
+ * tipo** (`.gooey-titleError` etc.), a mesma do ícone ao lado. Ao mudar a frase
+ * de campo, ela herdou o tratamento de corpo e passou a destoar do ícone que a
+ * anuncia. As classes abaixo estão em `global.css` e repõem os dois — peso e
+ * cor —, mantendo a família tipográfica que o pacote já aplica no wrapper.
+ */
+const CLASSE_DA_FRASE = {
+  erro: 'cc-toast-frase cc-toast-frase-erro',
+  aviso: 'cc-toast-frase cc-toast-frase-aviso',
+  sucesso: 'cc-toast-frase cc-toast-frase-sucesso',
+} as const;
+
 type TipoNotificacao = keyof typeof TITULO_POR_TIPO;
 
 function emitir(tipo: TipoNotificacao, mensagem: string): void {
   const titulo = TITULO_POR_TIPO[tipo];
+  const opcoes = { description: mensagem, classNames: { description: CLASSE_DA_FRASE[tipo] } };
+
   if (tipo === 'erro') {
-    gooeyToast.error(titulo, { description: mensagem });
+    gooeyToast.error(titulo, opcoes);
     return;
   }
   if (tipo === 'aviso') {
-    gooeyToast.warning(titulo, { description: mensagem });
+    gooeyToast.warning(titulo, opcoes);
     return;
   }
-  gooeyToast.success(titulo, { description: mensagem });
+  gooeyToast.success(titulo, opcoes);
 }
 
 export const notificar = {

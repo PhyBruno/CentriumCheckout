@@ -579,6 +579,60 @@ button:not(:disabled):not([aria-disabled='true']),
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * A frase do toast, com a aparência que ela tinha enquanto era o título.
+ *
+ * `src/client/lib/notificar.ts` manda a frase em `description` (o campo que o
+ * pacote mede e anima); o corpo expandido dele, porém, nasce como texto de
+ * leitura — `.gooey-description` é 13px/400 em `#444`, com 16px de respiro
+ * acima. Aplicado a um aviso de PDV, isso deixava a frase "padrão e preta",
+ * destoando do ícone colorido que a anuncia (correção do usuário, 2026-09-09).
+ *
+ * Os valores abaixo são os do **título** do próprio pacote (12px/700 e as cores
+ * de `.gooey-titleError`/`Warning`/`Success`, com as variantes de tema escuro):
+ * são deliberadamente os mesmos para que frase, ícone e rótulo sejam uma coisa
+ * só. Ficam aqui em vez de virarem token do produto porque descrevem o
+ * componente de terceiro, não a paleta do Checkout — trocá-los por `--destructive`
+ * faria a frase divergir do ícone que o pacote pinta sozinho.
+ *
+ * A especificidade é (0,3,0) por necessidade, não por gosto: o pacote declara
+ * `.gooey-description` (0,1,0) **depois** das classes de cor na mesma folha, e a
+ * folha dele carrega depois da nossa — um seletor de classe única perderia as
+ * duas disputas. `!important` se reservaria a uma briga contra `!important`, e
+ * não é o caso. O `line-height` sobe para 1.35 (o título usava 1) porque agora
+ * o texto quebra em linhas de verdade.
+ * ------------------------------------------------------------------------- */
+.gooey-content .gooey-description.cc-toast-frase {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.gooey-content .gooey-description.cc-toast-frase-erro {
+  color: #e53935;
+}
+
+.gooey-content .gooey-description.cc-toast-frase-aviso {
+  color: #c49000;
+}
+
+.gooey-content .gooey-description.cc-toast-frase-sucesso {
+  color: #4caf50;
+}
+
+.gooey-wrapper[data-theme='dark'] .gooey-description.cc-toast-frase-erro {
+  color: #ef5350;
+}
+
+.gooey-wrapper[data-theme='dark'] .gooey-description.cc-toast-frase-aviso {
+  color: #ffb300;
+}
+
+.gooey-wrapper[data-theme='dark'] .gooey-description.cc-toast-frase-sucesso {
+  color: #66bb6a;
+}
+
 /**
  * Sem movimento para quem pediu sem movimento.
  *
