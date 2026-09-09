@@ -33,8 +33,6 @@ export function suportaScannerCamera(userAgent: string, hasBarcodeDetector: bool
   }
 
   return (
-    /Android/.test(userAgent) &&
-    /Chrome\//.test(userAgent) &&
-    !OUTROS_CHROMIUM.test(userAgent)
+    /Android/.test(userAgent) && /Chrome\//.test(userAgent) && !OUTROS_CHROMIUM.test(userAgent)
   );
 }

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { AppShell } from '../../src/client/layout/AppShell';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
-import { useVendaStore } from '../../src/client/stores/vendaStore';
+import { abrirSessaoDeVenda, useVendaStore } from '../../src/client/stores/vendaStore';
 import {
   definirLayoutInicial,
   instalarMatchMediaDeLayout,
@@ -132,6 +132,115 @@ describe('MobileWizard — navegação', () => {
   });
 });
 
+describe('MobileWizard — invariantes de navegação (data-model §2)', () => {
+  it('etapasVisitadas só cresce: voltar não apaga o atalho para onde já se esteve (I2)', async () => {
+    const usuario = userEvent.setup();
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('ir-para-etapa-1'));
+
+    // De volta à etapa 1, os atalhos para 2 e 3 continuam de pé. Se o conjunto
+    // encolhesse ao sair de uma etapa, a segunda ida ao pagamento viraria
+    // navegação recusada — e `FR-004` deixaria de valer no gesto mais comum de
+    // todos, que é corrigir um item e voltar a cobrar.
+    expect(screen.getByTestId('ir-para-etapa-2')).toBeInTheDocument();
+    expect(screen.getByTestId('ir-para-etapa-3')).toBeInTheDocument();
+
+    await usuario.click(screen.getByTestId('ir-para-etapa-3'));
+    expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+    // E a barra da etapa em que se está nunca é botão: não há para onde ir.
+    expect(screen.queryByTestId('ir-para-etapa-3')).toBeNull();
+  });
+
+  it('voltar é permitido com a venda incompleta — nenhum campo obrigatório barra o retorno (I3)', async () => {
+    const usuario = userEvent.setup();
+    // Sem cliente, sem vendedor, sem condição e sem pagamento: a venda mais
+    // incompleta que ainda tem um item. É exatamente o operador que **precisa**
+    // circular entre as etapas para completá-la que uma validação prenderia.
+    act(() => {
+      useVendaStore.setState({
+        clienteAtual: null,
+        vendedorAtual: null,
+        condicaoSelecionada: null,
+        pagamentos: [],
+      });
+    });
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+    // A revisão admite os vazios em texto, em vez de recusar a etapa.
+    expect(screen.getByTestId('conferencia-cliente')).toHaveTextContent('Não identificado');
+    expect(screen.getByTestId('conferencia-vendedor')).toHaveTextContent('Não selecionado');
+
+    await usuario.click(screen.getByTestId('ir-para-etapa-1'));
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+    await usuario.click(screen.getByTestId('ir-para-etapa-3'));
+    expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+  });
+
+  it('a venda seguinte começa na etapa 1, e não onde a anterior terminou (I1)', async () => {
+    const usuario = userEvent.setup();
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+
+    // O desfecho de `useFinalizarOuSuspenderVenda` no caminho feliz: carrinho
+    // zerado e uma sessão de venda nova aberta **na mesma tela**, sem trocar de
+    // rota e sem desmontar o wizard. `data-model.md` §2 supunha um desmonte que
+    // não acontece — e sem ele o operador ficava parado na "Revisão e
+    // finalização" de uma venda vazia, com o campo de código uma etapa atrás.
+    act(() => {
+      useVendaStore.setState({
+        linhas: [],
+        clienteAtual: null,
+        houveEscolhaExplicita: false,
+        vendedorAtual: null,
+        condicaoSelecionada: null,
+        descontoCapa: null,
+        pagamentos: [],
+      });
+      abrirSessaoDeVenda('NOVA');
+    });
+
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+    expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('1/3');
+    // E as visitas da venda anterior não sobrevivem a ela: não há para onde
+    // "voltar" numa venda que acabou de nascer.
+    expect(screen.queryByTestId('ir-para-etapa-2')).toBeNull();
+    expect(screen.queryByTestId('ir-para-etapa-3')).toBeNull();
+  });
+
+  it('a etapa não se reinicia no meio da venda em andamento', async () => {
+    const usuario = userEvent.setup();
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+
+    // Eventos de auditoria continuam entrando durante a venda (cada item, cada
+    // troca de cliente). Se o reinício se pendurasse no histórico em vez de na
+    // identidade da sessão, o operador seria jogado de volta à etapa 1 a cada
+    // bipagem.
+    act(() => {
+      useVendaStore.setState((estado) => ({
+        linhas: [
+          ...estado.linhas,
+          linhaDe({ idLinha: 'linha-2', precoUnitario: 2_500, quantidadeEmUnidades: 1 }),
+        ],
+      }));
+    });
+
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('2/3');
+  });
+});
+
 describe('MobileWizard — cabeçalho', () => {
   it('põe o cancelamento da venda no cabeçalho, e não no rodapé (AD-089)', () => {
     renderizarWizard();
@@ -146,5 +255,22 @@ describe('MobileWizard — cabeçalho', () => {
     renderizarWizard();
 
     expect(screen.getByTestId('operador-da-sessao')).toHaveTextContent('Bruno');
+  });
+
+  it('traz o nome do produto sozinho, sem a empresa (nó `YXaRZ`)', () => {
+    renderizarWizard();
+
+    const cabecalho = screen.getByTestId('cabecalho-mobile');
+
+    // O desktop mostra "Centrium Checkout - Organizações Tabajara"; aqui a
+    // empresa fica de fora **por desenho**, e não por corte. É o que impede o
+    // título de virar "Centrium …" em 390px, perdendo as duas informações de
+    // uma vez.
+    expect(cabecalho).toHaveTextContent('Centrium Checkout');
+    expect(cabecalho).not.toHaveTextContent('Organizações Tabajara');
+
+    // A segunda linha continua respondendo "qual caixa, qual PDV".
+    // `rotularPdv` normaliza `CadMaqCod: 'PDV01'` para "PDV 01".
+    expect(cabecalho).toHaveTextContent('Caixa 03 • PDV 01');
   });
 });

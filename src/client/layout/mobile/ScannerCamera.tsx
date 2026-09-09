@@ -64,6 +64,21 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
    * produto em duplicidade.
    */
   const jaLeuRef = useRef(false);
+  /**
+   * A callback de entrega, sempre na versão mais recente — mas **fora** das
+   * dependências do efeito que liga a câmera.
+   *
+   * O chamador real a recria a cada render: `EntradaRapidaProduto` monta o slot
+   * como `renderizarCaptura?.((codigo) => ...)`, uma função nova por render seu.
+   * Com ela nas dependências, qualquer re-render do pai enquanto a janela está
+   * aberta — uma query que assenta, um item que entra na lista — derrubava o
+   * efeito e o remontava: a trilha de vídeo era encerrada e `getUserMedia`
+   * chamado de novo, apagando a imagem no meio da mira do operador. Ler pela
+   * `ref` mantém a entrega correta sem amarrar o hardware à identidade da
+   * função.
+   */
+  const aoLerRef = useRef(onCodigoLido);
+  aoLerRef.current = onCodigoLido;
 
   const encerrar = useCallback((): void => {
     if (quadroRef.current !== null) {
@@ -129,6 +144,15 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
         void detector
           .detect(video)
           .then((codigos) => {
+            // A checagem se repete aqui, e não é redundância com a de cima: o
+            // `cancelamento` acontece **enquanto** este quadro está em análise.
+            // Fechar a janela ou desmontar a etapa cancela o próximo
+            // `requestAnimationFrame`, nunca a promessa que a API já devolveu —
+            // sem esta guarda, um código decodificado depois do gesto de sair
+            // virava produto no carrinho de uma tela que não estava mais lá.
+            if (cancelado || jaLeuRef.current) {
+              return;
+            }
             const primeiro = codigos[0];
             if (primeiro === undefined || primeiro.rawValue === '') {
               procurar();
@@ -137,11 +161,16 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
             jaLeuRef.current = true;
             encerrar();
             setAberto(false);
-            onCodigoLido(primeiro.rawValue);
+            aoLerRef.current(primeiro.rawValue);
           })
           .catch(() => {
             // Quadro que a API não conseguiu analisar (foco, luz): tenta o
-            // próximo em vez de derrubar a leitura inteira.
+            // próximo em vez de derrubar a leitura inteira — a menos que a
+            // janela já tenha saído de cena, quando insistir só agendaria um
+            // quadro que ninguém mais cancela.
+            if (cancelado) {
+              return;
+            }
             procurar();
           });
       });
@@ -153,7 +182,10 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
       cancelado = true;
       encerrar();
     };
-  }, [aberto, encerrar, onCodigoLido]);
+    // `onCodigoLido` **não** entra aqui de propósito (lido por `aoLerRef`): quem
+    // liga e desliga a câmera é a abertura da janela, nunca a identidade de uma
+    // função que o pai recria a cada render.
+  }, [aberto, encerrar]);
 
   // Avaliado a cada render, mas estável na prática: nem a UA nem a presença da
   // API mudam dentro de uma mesma sessão de navegador (`data-model.md` §3).

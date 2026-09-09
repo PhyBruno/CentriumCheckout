@@ -777,12 +777,24 @@ export function EntradaRapidaProduto({
       {/* `flex-wrap`: no desktop a linha nunca quebra (sobra largura), mas na
           etapa 1 do wizard mobile as células caem umas sob as outras em vez de
           estourar a lateral da tela — é a mesma barra, reflowada, não um
-          segundo componente (`SC-001`). */}
+          segundo componente (`SC-001`).
+
+          **O `flex-wrap` sozinho não quebrava nada** (achado em 2026-09-08):
+          toda célula era `flex-1 min-w-0`, e um item que pode encolher até zero
+          nunca chega a "não caber" — as sete se espremiam na mesma linha de
+          326px, o campo de código ficava com 39px e os rótulos "Quantidade",
+          "Unidade", "Preço unitário" e "Desconto do item" se sobrepunham em
+          três linhas ilegíveis. O piso por célula (`min-w-*`, revogado em
+          `md:` para o desktop voltar a ser a linha única do Pencil) é o que
+          faz a quebra acontecer de verdade, e reproduz o empilhamento do
+          desenho mobile: código na primeira faixa com a lupa e o Scanner
+          (`dfZEs`/`kU6Z5`), depois os pares de valores (`J5G7EE`/`aRe5V`) e o
+          botão de inserir ocupando a largura toda (`q2NBVJ`). */}
       <div className="flex flex-wrap items-end gap-sm" data-testid="previa-insercao-produto">
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
           <span className="flex items-center gap-xs font-semibold text-muted-foreground">
-            <Barcode className="size-4" aria-hidden="true" />
-            {rotuloCampoCodigo}
+            <Barcode className="size-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">{rotuloCampoCodigo}</span>
           </span>
           <input
             ref={campoCodigo}
@@ -837,7 +849,7 @@ export function EntradaRapidaProduto({
             ponto do campo acendia o "−" (achado do usuário, 2026-09-03).
             Com o rótulo apontando para o input por `htmlFor`, a associação
             acessível continua de pé e o hover do "−" volta a ser só o dele. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <div className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
           <label className={classeRotulo} htmlFor={ID_CAMPO_QUANTIDADE}>
             Quantidade
           </label>
@@ -894,7 +906,7 @@ export function EntradaRapidaProduto({
           </div>
         </div>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[6rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
           <span className={classeRotulo}>Unidade</span>
           <input
             className={cn(classeCampoValor, semResolucao && 'text-muted-foreground')}
@@ -907,7 +919,7 @@ export function EntradaRapidaProduto({
           />
         </label>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
           <span className={classeRotulo}>Preço unitário</span>
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-preco-unitario-simbolo" />
@@ -935,7 +947,7 @@ export function EntradaRapidaProduto({
           </span>
         </label>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
           <span className={classeRotulo}>Desconto do item</span>
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-desconto-item-simbolo" />
@@ -977,7 +989,7 @@ export function EntradaRapidaProduto({
           </span>
         </label>
 
-        <label className="flex min-w-0 flex-1 flex-col gap-xxs text-sm">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
           <span className={classeRotulo}>Total item</span>
           <strong
             className={cn(
@@ -990,10 +1002,27 @@ export function EntradaRapidaProduto({
           </strong>
         </label>
 
+        {/* Largura cheia no compacto, os 70px do desenho desktop a partir de
+            `md:`. É o botão "Adicionar ao carrinho" do Pencil mobile (nó
+            `q2NBVJ`): pílula de largura total ao pé do cartão, ícone mais
+            rótulo. Um alvo de 70px perdido no fim de uma linha quebrada seria
+            o gesto mais difícil da etapa justamente para a ação que o caixa
+            repete a cada item.
+
+            **Um desvio declarado**: `q2NBVJ` é preto (`$surface-dark`) e este
+            botão continua na cor da marca. O cartão escuro de total já ocupa o
+            topo das três etapas, e um segundo preto — este, clicável — abriria
+            uma terceira cor de ação na mesma tela, ao lado do azul do "Ver
+            produtos e pagamento" logo abaixo.
+
+            O rótulo só aparece no compacto: no desktop a barra é uma linha só e
+            o `aria-label` já nomeia o botão para quem usa leitor de tela. Como
+            o `aria-label` vence o conteúdo no cálculo do nome acessível, o
+            texto visível não muda o nome anunciado em nenhum dos dois layouts. */}
         <Button
           ref={botaoConfirmar}
           type="button"
-          className="h-11.5 w-[70px] shrink-0 rounded-full"
+          className="h-11.5 w-full shrink-0 gap-xs rounded-full md:w-[70px]"
           aria-label={
             linhaEmEdicao === null ? 'Adicionar item à venda' : 'Confirmar edição do item'
           }
@@ -1001,7 +1030,10 @@ export function EntradaRapidaProduto({
           {...atributosDeBloqueio(bloqueioDeInsercao)}
           onClick={acaoBloqueavel(bloqueioDeInsercao, confirmar)}
         >
-          <Plus className="size-5" aria-hidden="true" />
+          <Plus className="size-5 shrink-0" aria-hidden="true" />
+          <span className="text-md font-bold md:hidden">
+            {linhaEmEdicao === null ? 'Adicionar ao carrinho' : 'Confirmar edição'}
+          </span>
         </Button>
       </div>
 

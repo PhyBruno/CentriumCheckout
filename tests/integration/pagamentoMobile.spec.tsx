@@ -126,11 +126,7 @@ describe('Pagamento no layout mobile', () => {
     // Quem decide as formas é a condição escolhida — não o layout. O wizard não
     // filtra nada no caminho: o store visto pela etapa 2 é o mesmo de sempre.
     const formas = useVendaStore.getState().condicaoSelecionada?.formas ?? [];
-    expect(formas.map((forma) => forma.descricao)).toEqual([
-      'DINHEIRO',
-      'CARTAO CREDITO',
-      'PIX',
-    ]);
+    expect(formas.map((forma) => forma.descricao)).toEqual(['DINHEIRO', 'CARTAO CREDITO', 'PIX']);
     expect(formas.some((forma) => forma.integracaoCartao === '1')).toBe(true);
   });
 });

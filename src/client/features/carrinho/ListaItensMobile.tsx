@@ -55,9 +55,16 @@ export function ListaItensMobile(): ReactElement {
         </ul>
       )}
 
-      <footer className="flex items-center justify-between rounded-xl border border-border bg-background px-base py-sm">
+      <footer className="flex items-center justify-between gap-sm rounded-xl border border-border bg-background px-base py-sm">
         <span className="text-sm text-muted-foreground">Total da venda</span>
-        <strong className="text-lg" data-testid="total-venda">
+        {/* `font-mono tabular-nums` como todo valor monetário do produto (regra
+            de tipografia do projeto, `CLAUDE.md`): este total saía em Inter e
+            desalinhava com o mesmo número exibido em Geist Mono no cartão
+            escuro logo acima e na linha de cada item logo abaixo. */}
+        <strong
+          className="shrink-0 font-mono text-lg tabular-nums"
+          data-testid="total-venda"
+        >
           {formatarCentavos(totalVenda(linhas))}
         </strong>
       </footer>
@@ -97,26 +104,39 @@ function ItemMobile({
       )}
     >
       <div className="flex items-start justify-between gap-sm">
-        <span className="font-medium">
+        {/* `min-w-0` + `break-words`: a descrição vem do cadastro e pode ser uma
+            sequência sem espaço (código de fabricante colado ao nome). Sem os
+            dois, uma palavra longa empurrava o total para fora do cartão em
+            390px, em vez de quebrar dentro dele. O total nunca cede espaço
+            (`shrink-0`) — é o número que o operador confere. */}
+        <span className="min-w-0 font-medium break-words">
           {linha.snapshot.descricao}
           {linha.cancelada ? <span className="sr-only"> (item cancelado)</span> : null}
         </span>
-        <strong className="font-mono tabular-nums">{formatarCentavos(totalLinha(linha))}</strong>
+        <strong className="shrink-0 font-mono tabular-nums">
+          {formatarCentavos(totalLinha(linha))}
+        </strong>
       </div>
 
       <div className="flex items-center justify-between gap-sm text-sm text-muted-foreground">
-        <span className="font-mono tabular-nums">
+        <span className="min-w-0 font-mono tabular-nums">
           {formatarQuantidade(linha.quantidade, 3)} {linha.snapshot.unidadeMedida} ×{' '}
           <span data-testid="preco-unitario">{formatarCentavos(linha.precoUnitario)}</span>
         </span>
 
+        {/* 40px no compacto, os 28px de antes a partir de `md:`. Esta lista só
+            existe no wizard mobile — onde o ponteiro é o dedo — e 28px é menos
+            que o alvo mínimo de toque: o lápis e a lixeira ficam a 8px um do
+            outro e cancelar um item por engano é irreversível na leitura do
+            operador (a linha some riscada). Crescer o botão, e não só a área
+            sensível, mantém os dois alvos sem sobreposição. */}
         {linha.cancelada ? null : (
-          <div className="flex gap-xs">
+          <div className="flex shrink-0 gap-xs">
             <Button
               type="button"
               variant="secondary"
               size="icon-sm"
-              className="size-7 rounded-full text-primary"
+              className="size-10 rounded-full text-primary md:size-7"
               aria-label="Editar item"
               data-testid="editar-item"
               disabled={!editavel || emEdicaoNaBarra}
@@ -130,7 +150,7 @@ function ItemMobile({
               type="button"
               variant="secondary"
               size="icon-sm"
-              className="size-7 rounded-full text-muted-foreground"
+              className="size-10 rounded-full text-muted-foreground md:size-7"
               aria-label="Cancelar"
               data-testid="cancelar-item"
               disabled={emEdicaoNaBarra}

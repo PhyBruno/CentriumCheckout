@@ -4,11 +4,12 @@ import { cn } from '@/lib/utils';
 import { AcaoCancelarVenda } from '../../features/finalizacao-suspensao/AcoesFinaisVenda';
 import { TotalDaVenda } from '../../features/pagamento/TotalDaVenda';
 import {
+  NOME_DO_PRODUTO,
   descreverSessaoAtiva,
   nomeDoOperador,
-  tituloDoProduto,
 } from '../../domain/sessao/identidadePdv';
 import { useSessionStore } from '../../stores/sessionStore';
+import { useVendaStore } from '../../stores/vendaStore';
 import { EtapaClienteProdutos } from './EtapaClienteProdutos';
 import { EtapaPagamento } from './EtapaPagamento';
 import { EtapaRevisao } from './EtapaRevisao';
@@ -77,6 +78,34 @@ export function MobileWizard(): ReactElement {
   );
 
   /**
+   * A venda seguinte começa na etapa 1 (I1), mesmo sem desmonte.
+   *
+   * `data-model.md` §2 supunha que finalizar trocaria de tela e remontaria o
+   * wizard — não é o que acontece: `useFinalizarOuSuspenderVenda` zera o
+   * carrinho e chama `abrirSessaoDeVenda('NOVA')` **na mesma árvore**, que
+   * segue montada. Sem este reinício o operador terminava a venda e ficava
+   * parado na "Revisão e finalização" de uma venda vazia, com o campo de código
+   * do próximo cliente uma etapa atrás — e com atalhos para etapas visitadas
+   * numa venda que nunca as viu.
+   *
+   * A identidade da sessão é o `VENDA_INICIADA` que abre o histórico: um objeto
+   * novo a cada `resetarAuditoria` e o **mesmo** durante toda a venda, por mais
+   * eventos que entrem depois dele. Pendurar isto no tamanho do histórico
+   * jogaria o operador de volta à etapa 1 a cada bipagem.
+   *
+   * Comparação durante o render, e não `useEffect`, pelo mesmo motivo de
+   * `ConfiguracaoPagamento`: o reinício acontece antes da pintura, sem um quadro
+   * intermediário exibindo a etapa da venda anterior.
+   */
+  const sessaoDeVenda = useVendaStore((estado) => estado.eventos[0] ?? null);
+  const [sessaoAnterior, setSessaoAnterior] = useState(sessaoDeVenda);
+  if (sessaoDeVenda !== sessaoAnterior) {
+    setSessaoAnterior(sessaoDeVenda);
+    setEtapaAtual(1);
+    setEtapasVisitadas(new Set<EtapaWizard>([1]));
+  }
+
+  /**
    * Navega para `etapa`, marcando-a como visitada.
    *
    * **Sem validação de campo obrigatório** (I3): voltar a qualquer etapa já
@@ -106,8 +135,18 @@ export function MobileWizard(): ReactElement {
 
       {/* "Conteúdo operacional mobile" (nós `g2Zz1h`/`wYZ1g`/`JqzlZ`):
           `$surface-soft`, folga 14/16/18/16. Aqui é quem rola — o cabeçalho
-          fica fixo, como no desenho. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-sm overflow-y-auto px-base pt-3.5 pb-4.5">
+          fica fixo, como no desenho.
+
+          `overflow-x-hidden` junto do `overflow-y-auto`, nunca sozinho: pelo
+          CSS, `overflow-x: visible` ao lado de um `overflow-y` não-visível é
+          **computado como `auto`**, e foi exatamente o que aconteceu aqui — o
+          card de cliente expandido media 655px sobre 390px de viewport e esta
+          coluna virou uma barra de rolagem lateral, arrastando a tela inteira
+          para o lado ao abrir um modal (achado em 2026-09-08). As origens do
+          estouro foram corrigidas uma a uma; o corte fica como rede de
+          segurança, e não come anel de foco nenhum porque os 16px de `px-base`
+          são folga de sobra para os 3px de `focus-visible`. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-sm overflow-x-hidden overflow-y-auto px-base pt-3.5 pb-4.5">
         <IndicadorDeEtapa
           etapaAtual={etapaAtual}
           etapasVisitadas={etapasVisitadas}
@@ -125,19 +164,26 @@ export function MobileWizard(): ReactElement {
 
         {/* "Navegação etapa N mobile" (nós `HQkFS`/`pW9hW`): altura 50, gap 8.
             Na etapa 3 só resta o voltar — o avanço de lá é finalizar a venda, e
-            esse botão pertence a `EtapaRevisao` (004). */}
+            esse botão pertence a `EtapaRevisao` (004).
+
+            Os dois botões encolhem (`min-w-0` + `truncate` no rótulo) em vez de
+            estourar a lateral: na etapa 2 eles somam "Cliente e produtos" e
+            "Ver produtos e pagamento" na mesma linha de 358px úteis, e o
+            `shrink-0` que o voltar tinha empurrava o par para fora da tela
+            assim que um rótulo crescesse. Cortar o texto é o desfecho certo
+            aqui — a seta e a posição já dizem para onde o botão leva. */}
         <nav className="flex shrink-0 items-center gap-xs" data-testid="navegacao-wizard">
           {anterior !== null && (
             <button
               type="button"
-              className="flex h-[50px] shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-base text-sm font-bold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="flex h-[50px] min-w-0 shrink items-center justify-center gap-1.5 rounded-full border border-border bg-card px-base text-sm font-bold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               data-testid="wizard-voltar"
               onClick={() => {
                 irPara(anterior);
               }}
             >
               <ArrowLeft className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              {ETAPAS[anterior].rotuloVoltar}
+              <span className="truncate">{ETAPAS[anterior].rotuloVoltar}</span>
             </button>
           )}
 
@@ -151,7 +197,7 @@ export function MobileWizard(): ReactElement {
               }}
             >
               <ArrowRight className="size-4.5 shrink-0" aria-hidden="true" />
-              {ETAPAS[proxima].rotuloAvancar}
+              <span className="truncate">{ETAPAS[proxima].rotuloAvancar}</span>
             </button>
           )}
         </nav>
@@ -180,13 +226,27 @@ function CabecalhoMobile(): ReactElement {
       className="flex shrink-0 items-center justify-between gap-xs border-b border-border bg-background px-base py-2.5"
       data-testid="cabecalho-mobile"
     >
-      <div className="flex min-w-0 items-center gap-2.5">
+      {/* `flex-1` na marca e `shrink` (não `shrink-0`) nas ações: as duas metades
+          do cabeçalho disputam 358px, e enquanto só a marca encolhia sobrava
+          espaço de menos para o título enquanto a pílula do operador não cedia
+          um pixel (achado em 2026-09-08). Agora as duas cortam, cada uma com o
+          seu `truncate`. */}
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <div className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-primary">
           <ShoppingCart className="size-[19px] text-primary-foreground" aria-hidden="true" />
         </div>
         <div className="flex min-w-0 flex-col gap-[1px]">
+          {/* **Só o nome do produto**, e não `tituloDoProduto` — que é o do
+              desktop e acrescenta a empresa. É o que o Pencil escreve no nó
+              `YXaRZ`, e o motivo aparece medindo: com a empresa junto, o título
+              real ("Centrium Checkout - Organizações Tabajara") virava
+              "Centrium …" em 390px, custando **as duas** informações de uma vez.
+              Encolher a pílula do operador não resolveu porque não havia largura
+              a redistribuir. A empresa continua na barra do desktop; aqui ela
+              cede lugar ao que o operador não pode perder — saber em que
+              programa está e, na linha de baixo, em qual caixa/PDV. */}
           <h1 className="truncate text-[17px] leading-[1.15] font-bold text-foreground">
-            {tituloDoProduto(identidade)}
+            {NOME_DO_PRODUTO}
           </h1>
           {sessaoAtiva !== null && (
             <span className="truncate text-sm leading-[1.2] font-semibold text-muted-foreground">
@@ -196,14 +256,28 @@ function CabecalhoMobile(): ReactElement {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-xs">
+      <div className="flex min-w-0 shrink items-center gap-xs">
         {operador !== null && (
           <div
-            className="flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5"
+            className="flex min-w-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5"
             data-testid="operador-da-sessao"
           >
-            <UserRound className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <span className="text-sm font-semibold text-foreground">
+            <UserRound className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {/* Teto de largura só no compacto (`md:max-w-none` devolve o
+                desktop). Sem ele as duas metades do cabeçalho encolhem juntas e
+                o flex tira mais de quem é maior — o título —, então um
+                `UsuarioNome` longo ("Operador de Teste") ficava inteiro
+                enquanto "Centrium Checkout" virava "Centrium …" (medido no
+                navegador em 390px, 2026-09-09). A prioridade correta é a
+                inversa: o operador reconhece o próprio nome pelo começo, e
+                `title` guarda o valor inteiro; já o nome do programa truncado
+                não diz nada a ninguém. O desenho supõe um nome curto no chip
+                (`fdw9t` mostra "Bruno"), o que este teto reproduz para
+                qualquer tamanho de cadastro. */}
+            <span
+              className="max-w-[5rem] truncate text-sm font-semibold text-foreground md:max-w-none"
+              title={operador}
+            >
               <span className="sr-only">Operador: </span>
               {operador}
             </span>
@@ -248,6 +322,10 @@ function IndicadorDeEtapa({
         </span>
       </div>
 
+      {/* As barras têm 5px de altura por desenho (nó `WUzPm`), e 5px é um alvo
+          impossível para o dedo. `cc-alvo-toque` (`global.css`) cresce só a área
+          **sensível** para 44px com um pseudo-elemento transparente, sem mover
+          nem engordar um pixel do traço que o Pencil especifica. */}
       <div className="flex items-center gap-1">
         {ORDEM.map((etapa) => {
           const visitada = etapasVisitadas.has(etapa);
@@ -264,7 +342,10 @@ function IndicadorDeEtapa({
             <button
               key={etapa}
               type="button"
-              className={cn(classe, 'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50')}
+              className={cn(
+                classe,
+                'cc-alvo-toque outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+              )}
               data-testid={`ir-para-etapa-${String(etapa)}`}
               aria-label={`Voltar para ${ETAPAS[etapa].titulo}`}
               onClick={() => {

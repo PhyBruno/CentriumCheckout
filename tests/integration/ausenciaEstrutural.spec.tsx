@@ -7,6 +7,7 @@ import { AppShell } from '../../src/client/layout/AppShell';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
 import {
+  cruzarBreakpointPara,
   definirLayoutInicial,
   instalarMatchMediaDeLayout,
   renderizarComProvedores,
@@ -127,5 +128,66 @@ describe('Ausência estrutural na árvore mobile (FR-008/FR-010)', () => {
 
     expect(screen.getByTestId('botao-menu-importacao')).toBeInTheDocument();
     expect(screen.getByTestId('atalhos-venda')).toBeInTheDocument();
+  });
+
+  it('nem por caminho indireto: o módulo de ações finais entra no mobile sem trazer o menu junto', async () => {
+    const usuario = userEvent.setup();
+    renderizarShell();
+
+    // `AcoesFinaisVenda.tsx` é o caso concreto que a checagem de import não
+    // pega: a árvore mobile o importa duas vezes de propósito (a lixeira do
+    // cabeçalho e o botão de finalizar da etapa 3) e o **mesmo módulo** exporta
+    // `BarraAtalhosVenda`, que hospeda o `BotaoMenuImportacao`. Importar o
+    // módulo é legítimo; montar aquela faixa não é, e só o DOM sabe a
+    // diferença.
+    expect(screen.getByTestId('botao-cancelar-venda')).toBeInTheDocument();
+    expect(screen.queryByTestId('botao-menu-importacao')).toBeNull();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeInTheDocument();
+    expect(screen.queryByTestId('botao-menu-importacao')).toBeNull();
+    expect(screen.queryByTestId('modal-recuperacao-nfce')).toBeNull();
+  });
+
+  it('a travessia do breakpoint não deixa a retaguarda montada do lado compacto', () => {
+    definirLayoutInicial('desktop');
+    renderizarShell();
+
+    expect(screen.getByTestId('botao-menu-importacao')).toBeInTheDocument();
+    // A barra superior é onde vive o botão inerte de menu gerencial (AD-020/
+    // AD-026), a "retaguarda" de `FR-010`.
+    expect(screen.getByTestId('barra-superior')).toBeInTheDocument();
+
+    cruzarBreakpointPara('mobile');
+
+    // Montagem condicional, não `display: none`: as duas superfícies precisam
+    // sumir do DOM, senão continuam alcançáveis por TAB e por leitor de tela —
+    // que é o modo de "estar oculto" que AD-046 recusa.
+    expect(screen.queryByTestId('botao-menu-importacao')).toBeNull();
+    expect(screen.queryByTestId('barra-superior')).toBeNull();
+  });
+});
+
+describe('Nenhum atalho de teclado nasce na árvore mobile (FR-005)', () => {
+  it('nenhum arquivo de layout/mobile importa o mapa de atalhos nem a biblioteca de hotkeys', () => {
+    // O teste de teclado do `appShell.spec.tsx` prova que as teclas de hoje não
+    // fazem nada; este impede que as de amanhã cheguem aqui. `FR-005` é sobre a
+    // árvore não escutar o teclado — e o jeito de garantir isso ao longo do
+    // tempo é a árvore não ter como registrar tecla nenhuma.
+    const proibidos = ['react-hotkeys-hook', 'mapaAtalhos', 'useAtalhosDeTeclado', 'DicaAtalhos'];
+    const violacoes: string[] = [];
+
+    for (const arquivo of arquivosDaArvoreMobile()) {
+      const conteudo = readFileSync(join(RAIZ_MOBILE, arquivo), 'utf8');
+      for (const especificador of importsDe(conteudo)) {
+        const proibido = proibidos.find((nome) => especificador.includes(nome));
+        if (proibido !== undefined) {
+          violacoes.push(`${arquivo} importa ${proibido} (${especificador})`);
+        }
+      }
+    }
+
+    expect(violacoes).toEqual([]);
   });
 });

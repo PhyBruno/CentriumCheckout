@@ -70,7 +70,10 @@ export function definirLayoutInicial(modo: 'mobile' | 'desktop'): void {
  */
 export function cruzarBreakpointPara(modo: 'mobile' | 'desktop'): void {
   layoutCompacto = modo === 'mobile';
-  const evento = { matches: layoutCompacto, media: CONSULTA_LAYOUT_COMPACTO } as MediaQueryListEvent;
+  const evento = {
+    matches: layoutCompacto,
+    media: CONSULTA_LAYOUT_COMPACTO,
+  } as MediaQueryListEvent;
 
   act(() => {
     ouvintesDeLayout.forEach((ouvinte) => {
@@ -92,6 +95,6 @@ export function renderizarComProvedores(arvore: ReactNode): ReturnType<typeof re
   });
 
   return render(
-    <QueryClientProvider client={cliente}>{arvore}</QueryClientProvider> as ReactElement,
+    (<QueryClientProvider client={cliente}>{arvore}</QueryClientProvider>) as ReactElement,
   );
 }

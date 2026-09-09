@@ -13,14 +13,19 @@ import {
  * `ACEITA` por padrão (`support/erp-mock.ts`) e cada cenário aqui muda o
  * veredito explicitamente antes de agir.
  *
- * **Cobertura mobile (`FR-019`) não é exercitada aqui, e isto é achado, não
- * omissão**: `tasks.md` T020 previa repetir o cenário do atalho com viewport
- * compacta, mas no layout mobile a feature 013 não registra atalho nenhum
- * (`FR-020`/C10 daquela feature, `venda-rapida.spec.ts`) e a 007 ainda não monta
- * o cartão "Pagamento e totais" no compacto — não há, hoje, nenhum caminho de
- * inserção de pagamento em mobile para o gate cobrir. A paridade fica verificada
- * por construção (o gate mora no slice, que é o mesmo nas duas plataformas) e
- * volta a ser testável quando a 007 montar o wizard de pagamento.
+ * **Cobertura mobile (`FR-019`), fechada pela feature 007** (item 47 de
+ * `.specs/project/PENDENCIES.md`). A tarefa T020 previa repetir o cenário com
+ * viewport compacta e ficou impossível na época: no mobile a 013 não registra
+ * atalho nenhum (`FR-020`/C10, `venda-rapida.spec.ts`) e a 007 ainda não montava
+ * o painel de pagamento no compacto, então não existia caminho de inserção de
+ * pagamento para o gate cobrir. Com a etapa 2 do wizard montando
+ * `ConfiguracaoPagamento` inteiro, o caminho existe — e o bloco final deste
+ * arquivo o exercita.
+ *
+ * A paridade continua garantida **por construção** (o gate mora em
+ * `validacaoVendaSlice`, comum às duas árvores, e nenhum componente decide se o
+ * consulta); o cenário compacto existe para que uma regressão que a quebrasse
+ * apareça como falha de teste, e não como uma venda recusada que passou.
  */
 
 const SKU = '070000';
@@ -257,5 +262,85 @@ test.describe('O atalho de venda rápida não contorna o gate (Cenários 5 e 6, 
 
     const chamadas = await contadores(request);
     expect(chamadas.validarNFCe).toBe(1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * FR-019 — o gate vale igual no layout compacto (item 47, fechado pela 007)
+ * ------------------------------------------------------------------ */
+
+test.describe('O gate no layout compacto (FR-019)', () => {
+  // 390×844: a largura do frame mobile do Pencil, bem abaixo dos 768px do
+  // limiar. O que decide o layout é a largura, nunca a capacidade de toque.
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  /**
+   * Leva a venda até a etapa 2 do wizard, que é onde o pagamento acontece no
+   * compacto.
+   *
+   * Não reaproveita `abrirTelaDeVenda`: aquele helper espera o cartão
+   * "Pagamento e totais", que é a moldura do desktop e não existe aqui — o
+   * painel vive dentro da etapa 2 (AD-191).
+   */
+  async function abrirEtapaDePagamento(page: Page): Promise<void> {
+    await page.goto(urlSessionStart());
+    await expect(page.getByTestId('etapa-cliente-produtos')).toBeVisible();
+    await biparProduto(page, SKU, 1);
+    await page.getByTestId('wizard-avancar').click();
+    await expect(page.getByTestId('etapa-pagamento')).toBeVisible();
+  }
+
+  test('a recusa do ERP barra a inserção no mobile, com o mesmo texto do desktop', async ({
+    page,
+    request,
+  }) => {
+    await configurarVeredito(request, { vereditoValidarNFCe: 'RECUSADA' });
+    await abrirEtapaDePagamento(page);
+    await escolherCondicao(page);
+
+    await aplicarDinheiro(page, '70,00');
+
+    // Mesma mensagem íntegra do ERP (`FR-007`, I11) — o layout não reescreve
+    // nem resume o motivo da recusa.
+    await expect(page.getByText(MENSAGEM_RECUSA_CREDITO_BLOQUEADO).first()).toBeVisible();
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    await expect(page.getByTestId('total-a-pagar')).toContainText('70,00');
+
+    // O gate foi consultado **uma** vez e nada foi emitido: a paridade que
+    // `FR-019` pede não é "o mobile também recusa", é "é o mesmo gate".
+    const chamadas = await contadores(request);
+    expect(chamadas.validarNFCe).toBe(1);
+    expect(chamadas.faturarNFCe).toBe(0);
+  });
+
+  test('aceito, o pagamento entra no mobile e a etapa 3 libera a finalização', async ({
+    page,
+    request,
+  }) => {
+    await stubarImpressoraLocal(page);
+    // Veredito padrão do mock é `ACEITA`; explicitado aqui porque é o contraste
+    // que dá sentido ao caso acima — sem ele, "nenhum pagamento aplicado"
+    // passaria também se o gate simplesmente não fosse consultado no compacto.
+    await configurarVeredito(request, { vereditoValidarNFCe: 'ACEITA' });
+    await abrirEtapaDePagamento(page);
+    await escolherCondicao(page);
+
+    await aplicarDinheiro(page, '70,00');
+
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
+
+    await page.getByTestId('wizard-avancar').click();
+    await expect(page.getByTestId('etapa-revisao')).toBeVisible();
+
+    const botaoFinalizar = page.getByTestId('botao-finalizar-venda');
+    await botaoFinalizar.click();
+
+    // Caminho feliz não tem modal: o sinal é o carrinho zerado.
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+
+    const chamadas = await contadores(request);
+    expect(chamadas.validarNFCe).toBe(1);
+    expect(chamadas.faturarNFCe).toBe(1);
   });
 });

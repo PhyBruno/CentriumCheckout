@@ -441,8 +441,16 @@ export function CampoClienteVenda(): ReactElement {
       data-testid="cliente-da-venda"
       aria-label="Cliente da venda"
     >
-      <header className="flex h-[26px] items-center justify-between gap-[9px]">
-        <div className="flex min-w-0 items-center gap-md">
+      {/* O cabeçalho quebra em linhas no compacto (`flex-wrap`, altura livre) e
+          volta a ser a faixa única de 26px a partir de `md:`. Em 390px as duas
+          pílulas mais o botão de expandir somam bem mais que a largura do card:
+          como só o bloco da esquerda encolhia, "CONSUMIDOR FINAL" virava "CO" e
+          o nome do vendedor sumia por baixo da palavra "Recolhido" (achado em
+          2026-09-08). Deixar a linha quebrar preserva os dois nomes — que são a
+          resposta à pergunta "quem é o cliente desta venda" — em vez de
+          preservar a altura de 26px. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-[9px] gap-y-xs md:h-[26px] md:flex-nowrap">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-sm gap-y-xxs md:flex-nowrap md:gap-md">
           <Pilula icone={<UserRound className="size-4.5 text-foreground" />} rotulo="Cliente">
             {clienteAtual === null ? (
               <>
@@ -505,8 +513,18 @@ export function CampoClienteVenda(): ReactElement {
             `pt` aqui viraria 12px de altura residual com o bloco recolhido. */}
         <div>
           <div className="flex flex-col gap-sm pt-sm">
-            <div className="flex h-[42px] items-center gap-[10px]">
-              <label className="flex h-full w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+            {/* Linha de identificação: uma faixa só de 42px no desktop, empilhada
+                no compacto. As larguras fixas do desenho desktop (243px do
+                documento, 126px do "Identificar") somavam 655px sobre um card de
+                330px, e o excedente — justamente a lupa e o botão "Identificar" —
+                ficava **fora** da área visível, inalcançável ao toque, além de
+                transformar a coluna do wizard numa barra de rolagem lateral
+                (achado em 2026-09-08). No compacto o campo de documento ocupa a
+                largura toda, como o "Campo CPF mobile" do Pencil (nó `twVty`), e
+                a lupa divide a faixa seguinte com o "Identificar" — o par
+                `viWeS` do mesmo desenho. */}
+            <div className="flex flex-wrap items-center gap-[10px] md:h-[42px] md:flex-nowrap">
+              <label className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
                 <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
@@ -544,7 +562,7 @@ export function CampoClienteVenda(): ReactElement {
                 </span>
               </label>
 
-              <div className="flex h-full min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+              <div className="flex h-[42px] min-w-[12rem] flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:min-w-0">
                 <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
@@ -577,7 +595,7 @@ export function CampoClienteVenda(): ReactElement {
 
               <Button
                 type="button"
-                className="h-[42px] w-[126px] shrink-0 gap-[7px] rounded-full text-base font-bold"
+                className="h-[42px] flex-1 gap-[7px] rounded-full text-base font-bold md:w-[126px] md:flex-none"
                 data-testid="identificar-cliente"
                 {...atributosDeBloqueio(bloqueioDeIdentificacao)}
                 onClick={acaoBloqueavel(bloqueioDeIdentificacao, () => {
@@ -609,8 +627,8 @@ export function CampoClienteVenda(): ReactElement {
                 slice dele. É a mesma relação que a linha de cima já tem com o
                 modal de busca de cliente — nenhum estado atravessa daqui para
                 lá. */}
-            <div className="flex items-center gap-[10px]">
-              <div className="flex h-[42px] w-[243px] shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
+            <div className="flex flex-wrap items-center gap-[10px] md:flex-nowrap">
+              <div className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
                 <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">Contato</span>
