@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { gooeyToast } from 'goey-toast';
+import type { MotivoBloqueio } from '@/lib/bloqueio';
+import { motivoCarrinhoBloqueado } from '../../stores/slices/carrinhoSlice';
 import {
   ErroPrecoIndisponivelParaPesagem,
   interpretarEntradaCodigo,
@@ -190,6 +192,30 @@ export interface ApiInsercao {
  * chamado depois de `FaturarNFCe` retornar sucesso (FR-007 da feature 001), e
  * quem sabe disso é a feature 004.
  */
+/**
+ * Por que o carrinho recusa alteração agora — a frase que o botão bloqueado
+ * mostra ao ser clicado, ou `null` quando a edição está liberada.
+ *
+ * Casca de React sobre `motivoCarrinhoBloqueado` (`carrinhoSlice.ts`): a regra
+ * e o texto moram no slice, junto da action que os aplica; aqui só se lê o
+ * estado. É o que permite ao lápis e à lixeira **antecipar** a recusa em vez de
+ * aceitar o clique e negar depois (`lib/bloqueio.ts`, AD-143) — nos dois
+ * layouts, com a mesma frase.
+ *
+ * Dois seletores primitivos, e não um objeto: `podeMutarCarrinho()` devolve
+ * booleano e a varredura de pagamentos devolve booleano, então cada um é
+ * comparado por valor. Um seletor que montasse `{ pode, doDocumento }` daria
+ * referência nova a cada render e o Zustand v5 leria como mudança.
+ */
+export function useMotivoCarrinhoBloqueado(): MotivoBloqueio {
+  const podeMutar = useVendaStore((estado) => estado.podeMutarCarrinho());
+  const veioDeDocumento = useVendaStore((estado) =>
+    estado.pagamentos.some((pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO'),
+  );
+
+  return motivoCarrinhoBloqueado(podeMutar, veioDeDocumento);
+}
+
 export function useEncerrarVenda(): () => void {
   const queryClient = useQueryClient();
   const limparCarrinho = useVendaStore((estado) => estado.limparCarrinho);

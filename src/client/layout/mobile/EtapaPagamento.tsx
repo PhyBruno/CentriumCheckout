@@ -20,7 +20,12 @@ import { ConfiguracaoPagamento } from '../../features/pagamento/ConfiguracaoPaga
 export function EtapaPagamento(): ReactElement {
   return (
     <div className="flex flex-col gap-sm" data-testid="etapa-pagamento">
-      <ListaItensMobile />
+      {/* **Conferência, não edição** (decisão do usuário, 2026-09-09): sem
+          lápis e sem lixeira. Quem precisa mexer num item volta à etapa 1, onde
+          a barra de entrada rápida está — e onde os dois botões existem, com o
+          bloqueio explicativo quando já há pagamento. Deixá-los aqui abriria a
+          pergunta contrária numa tela cujo assunto é pagar. */}
+      <ListaItensMobile somenteLeitura />
 
       {/* Cartão "Configuração pagamento etapa 2 mobile" (nó `SJvYC`): `$canvas`,
           raio 18, hairline de 1px, folga 14, gap 12. */}
