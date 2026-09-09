@@ -526,8 +526,10 @@ test.describe('Cobertura de escopo', () => {
     await page.setViewportSize({ width: 480, height: 900 });
     await abrirTelaDeVenda(page);
 
-    // `BarraAtalhosVenda` (que hospeda o atalho) só é montada no desktop; o
-    // layout compacto usa `AcoesVendaCompactas`.
+    // `BarraAtalhosVenda` (que hospeda o atalho) só é montada no desktop; no
+    // layout compacto o cancelamento vive na lixeira do cabeçalho do wizard e o
+    // finalizar na etapa 3 (007). `AcoesVendaCompactas`, o paliativo que este
+    // comentário citava, saiu com aquela feature.
     await expect(page.getByTestId('botao-menu-importacao')).toHaveCount(0);
   });
 

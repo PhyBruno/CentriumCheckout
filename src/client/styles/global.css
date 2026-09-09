@@ -6,7 +6,7 @@
  *
  * O `md` nativo do Tailwind é `min-width: 48rem`, um número que este projeto
  * nunca escolheu: ele coincidia com o limiar de `classificarLayout` (768px) por
- * acidente histórico, e a coincidência acabou quando o limiar virou 1366px e
+ * acidente histórico, e a coincidência acabou quando o limiar virou 1024px e
  * ganhou um segundo critério (`any-pointer: fine`, para o tablet sem mouse).
  * Uma consulta de mídia aqui teria de repetir os dois critérios e ficaria livre
  * para divergir do domínio na primeira mudança — e divergir aqui significa o
@@ -557,11 +557,16 @@ button:not(:disabled):not([aria-disabled='true']),
 /**
  * Área de toque de 44px sem mudar o desenho do controle.
  *
- * Vários controles do PDV são pequenos **por especificação do Pencil** — a
- * pílula "Scanner" tem 30px de altura (nó `QIJKL`), as barras do indicador de
- * etapa têm 5px (`WUzPm`), o lápis/lixeira da lista mobile têm 28px. No mouse
- * isso é preciso o bastante; no dedo, não: abaixo de ~44px o toque erra o alvo
- * ou acerta o vizinho.
+ * Vários controles do PDV são pequenos **por especificação do Pencil** — as
+ * barras do indicador de etapa têm 5px (`WUzPm`) e a pílula "Scanner" tem 30px
+ * de altura (`QIJKL`). No mouse isso é preciso o bastante; no dedo, não: abaixo
+ * de ~44px o toque erra o alvo ou acerta o vizinho.
+ *
+ * **Não é o único remédio, e nem sempre é o certo.** O lápis e a lixeira da
+ * lista mobile chegam aos 40px pelo caminho mais simples — crescem de verdade
+ * no compacto e voltam aos 28px do desenho em `md:` (`size-10 md:size-7`,
+ * `ListaItensMobile.tsx`). Este utilitário é para quando o tamanho visível **não
+ * pode** mudar, porque o desenho o fixa: a barra de 5px e a pílula de 30px.
  *
  * O pseudo-elemento resolve os dois lados: o retângulo transparente cresce a
  * área **sensível** ao redor do controle sem ocupar espaço no layout (é
@@ -641,8 +646,27 @@ button:not(:disabled):not([aria-disabled='true']),
  * não é o caso. O `line-height` sobe para 1.35 (o título usava 1) porque agora
  * o texto quebra em linhas de verdade.
  * ------------------------------------------------------------------------- */
+/*
+ * O `margin-top` **volta aos 16px do pacote** (pedido do usuário, 2026-09-09:
+ * *"coloca mais alguns pixels de espaço em cima da escrita, ela ta muito colada
+ * com a borda superior"*).
+ *
+ * Os 6px vieram de AD-194, ao mudar a frase de campo, e encostaram o texto na
+ * borda: a bolha do goey é um SVG onde a pílula do título ocupa os primeiros
+ * 34px e o corpo branco começa exatamente aí. Medido no navegador em 390px —
+ * com 6px sobravam **1,8px** entre a borda superior do corpo e o topo do texto,
+ * contra os 16px de folga embaixo (o `padding-bottom` de `.gooey-contentExpanded`).
+ * Com 16px a folga sobe para 11,8px, e a diferença que resta para o rodapé é
+ * compensada visualmente pela curva: do lado esquerdo a borda do corpo sobe em
+ * direção à pílula, em vez de correr reta.
+ *
+ * Aumentar aqui é seguro — ao contrário de mexer no `padding` do
+ * `.gooey-content`, que empurraria o título para fora da pílula de 34px, que é
+ * fixa. A altura do corpo é **medida** (`getBoundingClientRect`), então ele
+ * cresce junto e nada é recortado: é a diferença que AD-194 aprendeu.
+ */
 .gooey-content .gooey-description.cc-toast-frase {
-  margin-top: 6px;
+  margin-top: 16px;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;

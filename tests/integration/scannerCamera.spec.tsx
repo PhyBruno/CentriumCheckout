@@ -8,7 +8,7 @@ import { useEdicaoItemStore } from '../../src/client/stores/edicaoItemStore';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
 import { instalarMatchMediaDeLayout, renderizarComProvedores } from '../support/layout';
-import { respostaGetProduto } from '../support/precificacao';
+import { linhaDe, respostaGetProduto } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
 /**
@@ -507,5 +507,96 @@ describe('ScannerCamera — permissão negada (FR-006)', () => {
     });
     expect(screen.queryByTestId('erro-scanner-camera')).toBeNull();
     expect(screen.getByTestId('video-scanner')).toBeInTheDocument();
+  });
+});
+
+/**
+ * A câmera é o **único** caminho de entrada que não passa pelo campo de código,
+ * e o campo fica desabilitado justamente nos dois estados abaixo — prévia
+ * resolvida e item carregado pelo lápis. Enquanto ninguém verificou isso, o
+ * botão "Scanner" seguiu ativo por cima dos dois (revisão da 007, 2026-09-09):
+ * a leitura era descartada em silêncio num caso e inseria produto por cima de
+ * uma edição em curso no outro.
+ *
+ * A política verificada aqui é a de `capturarPorCamera`, a mesma de
+ * `selecionarDaBusca`: a leitura nova **vence** o que estava pendente. Recusar
+ * seria pior — a única forma de cancelar uma prévia é `Escape`, e no layout
+ * compacto, o único onde a câmera existe, não há teclado.
+ */
+describe('ScannerCamera — leitura com prévia ou edição pendente (revisão da 007)', () => {
+  /**
+   * `fetch` que devolve um produto diferente a cada chamada: o primeiro abre a
+   * prévia (`ProdutoPesavelEditavel: 'E'`), o segundo entra direto no carrinho.
+   * Com um único produto para as duas chamadas não daria para distinguir "a
+   * leitura substituiu a prévia" de "a leitura foi descartada".
+   */
+  function stubarGetProdutoEmSequencia(respostas: readonly Record<string, unknown>[]): void {
+    let chamada = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => {
+        const produto = respostas[Math.min(chamada, respostas.length - 1)];
+        chamada += 1;
+        return Promise.resolve(
+          new Response(JSON.stringify({ Produto: produto }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }),
+    );
+  }
+
+  it('a leitura substitui a prévia resolvida em vez de ser descartada', async () => {
+    const usuario = userEvent.setup();
+    stubarGetProdutoEmSequencia([
+      respostaGetProduto({ ProdutoPesavelEditavel: 'E', CodigoBarras: '7890000000009' }),
+      respostaGetProduto(),
+    ]);
+    definirUserAgent(UA_CHROME_ANDROID);
+    instalarBarcodeDetector(CODIGO_LIDO);
+
+    renderizarComProvedores(<EtapaClienteProdutos />);
+
+    // Produto `'E'`: não entra no carrinho, abre a revisão na barra e desabilita
+    // o campo de código — o estado em que a câmera não tinha como entrar.
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '7890000000009{Enter}');
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-codigo-produto')).toBeDisabled();
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+
+    await usuario.click(screen.getByTestId('abrir-scanner-camera'));
+
+    // Antes da correção nada acontecia aqui: `confirmarEntradaRapida` voltava
+    // cedo por `resolvido !== null`, e o campo — ainda desabilitado — passava a
+    // exibir um código que não correspondia ao produto na prévia.
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    expect(screen.getByTestId('campo-codigo-produto')).not.toBeDisabled();
+  });
+
+  it('a leitura descarta o item carregado pelo lápis e não o deixa em edição', async () => {
+    const usuario = userEvent.setup();
+    const linhaExistente = linhaDe({ idLinha: 'linha-em-edicao', quantidadeEmUnidades: 2 });
+    useVendaStore.setState({ linhas: [linhaExistente] });
+    useEdicaoItemStore.setState({ linhaEmEdicao: linhaExistente });
+    definirUserAgent(UA_CHROME_ANDROID);
+    instalarBarcodeDetector(CODIGO_LIDO);
+
+    renderizarComProvedores(<EtapaClienteProdutos />);
+    expect(screen.getByTestId('campo-codigo-produto')).toBeDisabled();
+
+    await usuario.click(screen.getByTestId('abrir-scanner-camera'));
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(2);
+    });
+    // O ponto da regressão: antes a linha nova entrava **e** a barra continuava
+    // em modo de edição da outra linha — contorno pulsante, campos da linha
+    // antiga, campo de código travado sobre um carrinho que acabou de mudar.
+    expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
+    expect(screen.getByTestId('campo-codigo-produto')).not.toBeDisabled();
   });
 });

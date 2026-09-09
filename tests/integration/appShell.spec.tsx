@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppShell } from '../../src/client/layout/AppShell';
 import { INTERVALO_STATUS_SISTEMA_MS } from '../../src/client/services/statusSistema/pollingStatusSistema';
@@ -31,6 +31,23 @@ function renderizarShell(): void {
       }}
     />,
   );
+}
+
+/**
+ * Avança o relógio falso até depois do próximo ciclo de polling, **dentro de
+ * `act`**.
+ *
+ * O `act` não é formalidade: o `AppShell` monta a tela inteira, e adiantar o
+ * relógio assenta junto as queries de condição e forma de pagamento que estavam
+ * em voo. Sem o embrulho, esses `setState` acontecem fora do lote do React e o
+ * console enche de "An update to SeletorCondicaoPagamento inside a test was not
+ * wrapped in act(...)" — ruído que esconderia um aviso de verdade no dia em que
+ * aparecesse (revisão da 007, 2026-09-09).
+ */
+async function avancarAteOProximoPoll(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(INTERVALO_STATUS_SISTEMA_MS + 10);
+  });
 }
 
 /**
@@ -185,12 +202,12 @@ describe('AppShell — responsabilidades transversais (regressão da extração)
       // `FR-013` autoriza a consulta.
       renderizarShell();
 
-      await vi.advanceTimersByTimeAsync(INTERVALO_STATUS_SISTEMA_MS + 10);
+      await avancarAteOProximoPoll();
       const antesDaTravessia = caminhosConsultados(chamadas);
       expect(antesDaTravessia.length).toBeGreaterThan(0);
 
       cruzarBreakpointPara('mobile');
-      await vi.advanceTimersByTimeAsync(INTERVALO_STATUS_SISTEMA_MS + 10);
+      await avancarAteOProximoPoll();
 
       // O polling mora **acima** da bifurcação: trocar de árvore não o desliga.
       expect(caminhosConsultados(chamadas).length).toBeGreaterThan(antesDaTravessia.length);
@@ -212,11 +229,11 @@ describe('AppShell — responsabilidades transversais (regressão da extração)
       popularVenda();
       renderizarShell();
 
-      await vi.advanceTimersByTimeAsync(INTERVALO_STATUS_SISTEMA_MS + 10);
+      await avancarAteOProximoPoll();
       expect(caminhosConsultados(chamadas)).toEqual([]);
 
       cruzarBreakpointPara('mobile');
-      await vi.advanceTimersByTimeAsync(INTERVALO_STATUS_SISTEMA_MS + 10);
+      await avancarAteOProximoPoll();
 
       // Recarregar `SessaoUsuario` no meio da venda descartaria a escolha do
       // operador — e a travessia do breakpoint não é uma brecha para isso.

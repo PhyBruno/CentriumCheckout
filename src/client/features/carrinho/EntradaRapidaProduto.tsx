@@ -441,7 +441,26 @@ export function EntradaRapidaProduto({
    */
   async function confirmarEntradaRapida(codigoExterno?: string): Promise<void> {
     const entrada = (codigoExterno ?? texto).trim();
-    if (entrada === '' || ocupado || resolvido !== null) {
+    if (entrada === '' || ocupado) {
+      return;
+    }
+
+    /**
+     * Digitação e leitor físico param aqui quando há prévia resolvida ou item
+     * carregado pelo lápis — os dois estados desabilitam o campo de código
+     * (`disabled` mais abaixo) e `confirmar()` os roteia para outro desfecho,
+     * então chegar aqui com um deles ativo significaria inserir um produto por
+     * cima de uma revisão que o operador ainda não fechou.
+     *
+     * `linhaEmEdicao` entrou nesta guarda junto com a captura por câmera
+     * (revisão da 007, 2026-09-09): antes só `resolvido` era conferido, e o
+     * campo desabilitado era a **única** coisa impedindo o caso do lápis.
+     * Quem chega por fora do campo — a câmera — não passava por ele.
+     *
+     * A captura por câmera é a exceção declarada, e por isso não cai aqui:
+     * quem a trata é `capturarPorCamera`.
+     */
+    if (codigoExterno === undefined && (resolvido !== null || linhaEmEdicao !== null)) {
       return;
     }
 
@@ -482,11 +501,46 @@ export function EntradaRapidaProduto({
   }
 
   /**
+   * Código lido pela câmera (007) — o **único** caminho de entrada que não
+   * passa pelo campo de código.
+   *
+   * **A leitura nova vence a prévia ou a edição pendente.** É a mesma política
+   * de `selecionarDaBusca`, o irmão desta função: quem escolhe outro produto no
+   * modal também descarta a revisão em curso, porque apontar a câmera para
+   * outra etiqueta é um gesto tão deliberado quanto escolher na lista. Antes
+   * desta correção (revisão da 007, 2026-09-09) o botão "Scanner" ficava ativo
+   * enquanto o campo de código estava desabilitado, e a leitura tinha dois
+   * desfechos errados: com prévia resolvida ela era descartada em silêncio,
+   * deixando no campo um código que não correspondia ao produto exibido; com
+   * item carregado pelo lápis, um produto novo entrava no carrinho enquanto a
+   * barra seguia pulsando em modo de edição de outra linha.
+   *
+   * **Recusar não era opção** — seria a saída natural pelo padrão de
+   * `lib/bloqueio.ts`, mas a única forma de cancelar uma prévia é `Escape`
+   * (`aoTeclarNoCartao`), e no layout compacto, que é o único onde a câmera
+   * existe, não há tecla nenhuma: o operador ficaria preso na prévia sem poder
+   * ler nem cancelar.
+   *
+   * `resetar()` antes do `setTexto`, e não depois: ele limpa o campo junto com
+   * o resto, então a ordem inversa apagaria o código recém-lido.
+   */
+  async function capturarPorCamera(codigo: string): Promise<void> {
+    if (ocupado) {
+      return;
+    }
+    if (resolvido !== null || linhaEmEdicao !== null) {
+      resetar();
+    }
+    setTexto(codigo);
+    await confirmarEntradaRapida(codigo);
+  }
+
+  /**
    * Aplica uma revisão resolvida (`GetProduto`) ao estado local — usada tanto
    * por `resolverEExibir` (TAB) quanto por `selecionarDaBusca` (produto
    * editável/pesável escolhido no modal). Uma edição de linha existente
-   * pendente perde para esta revisão nova (mesma guarda de
-   * `confirmarEntradaRapida`): o operador está deliberadamente resolvendo
+   * pendente perde para esta revisão nova (mesma política de
+   * `capturarPorCamera`): o operador está deliberadamente resolvendo
    * outro produto.
    */
   function aplicarRevisao(revisao: RevisaoProduto): void {
@@ -859,8 +913,7 @@ export function EntradaRapidaProduto({
             no desktop — e vazio também no mobile fora de Chrome/Android, porque
             quem devolve `null` é o próprio `ScannerCamera` (`FR-011`). */}
         {renderizarCaptura?.((codigo) => {
-          setTexto(codigo);
-          void confirmarEntradaRapida(codigo);
+          void capturarPorCamera(codigo);
         })}
 
         {/* Única célula que **não** é um `<label>` envolvendo o campo: esta

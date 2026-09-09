@@ -17,12 +17,18 @@ function temPonteiroFino(): boolean {
  * O layout atual, lido **fora de React** (T004, AD-116).
  *
  * Não é um hook: existe para pontos de composição que não são componentes e não
- * podem obedecer às regras de hooks — os casos concretos são
- * `capacidades().plataforma` do `pagamentoSlice`
- * (`specs/008-pagamento-geral/contracts/pagamento-domain-api.md` §2), uma
- * dependência injetada chamada como função plana, e `lib/notificar.ts`, chamado
- * de stores e handlers. O contrato original desta feature só expunha
- * `useIsMobile()`, inutilizável nesses pontos.
+ * podem obedecer às regras de hooks. O contrato original desta feature só
+ * expunha `useIsMobile()`, inutilizável nesses pontos.
+ *
+ * **O único consumidor é `lib/notificar.ts`**, chamado de stores e handlers.
+ * Até 2026-09-09 este bloco também citava `capacidades().plataforma` do
+ * `pagamentoSlice` como caso concreto — e isso estava errado nos dois sentidos:
+ * o slice nunca recebeu esse campo, e AD-144 tornou a plataforma um insumo
+ * **proibido** para o roteamento de pagamento, com teste dedicado em
+ * `tests/integration/semDuplicacaoRegra.spec.ts`. Um novo chamador aqui é
+ * legítimo só enquanto variar a **apresentação** de algo que já aconteceu;
+ * variar disponibilidade de forma de pagamento, integração ou passo da venda é
+ * o que aquele teste existe para barrar.
  *
  * **Não duplica o critério**: reaproveita `classificarLayout`, trocando só a
  * fonte dos dois insumos (`window.innerWidth` e `matchMedia` em vez da consulta
