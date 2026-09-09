@@ -270,8 +270,9 @@ test.describe('O atalho de venda rápida não contorna o gate (Cenários 5 e 6, 
  * ------------------------------------------------------------------ */
 
 test.describe('O gate no layout compacto (FR-019)', () => {
-  // 390×844: a largura do frame mobile do Pencil, bem abaixo dos 768px do
-  // limiar. O que decide o layout é a largura, nunca a capacidade de toque.
+  // 390×844: a largura do frame mobile do Pencil, bem abaixo do piso de 1024px.
+  // Desde AD-198 quem decide o layout é o toque (`any-pointer: fine`); o
+  // navegador do teste anuncia ponteiro preciso, então aqui quem manda é o piso.
   test.use({ viewport: { width: 390, height: 844 } });
 
   /**

@@ -26,7 +26,14 @@ import { ScannerCamera } from './ScannerCamera';
  */
 export function EtapaClienteProdutos(): ReactElement {
   return (
-    <div className="flex flex-col gap-xs" data-testid="etapa-cliente-produtos">
+    // `grow shrink-0`, e nunca `flex-1`: a etapa precisa **crescer** para dentro
+    // da altura que sobra — num tablet de 1100px sobravam ~350px vazios abaixo
+    // do botão de avançar, com a lista de itens espremida no topo (AD-198) —
+    // sem poder encolher abaixo do próprio conteúdo. `flex-1` zera a base e
+    // `shrink` padrão comprime: dentro da coluna rolável do wizard, que é
+    // dimensionada pela janela, qualquer um dos dois faria o celular com muitos
+    // itens espremer a lista em vez de rolar.
+    <div className="flex shrink-0 grow flex-col gap-xs" data-testid="etapa-cliente-produtos">
       <CampoClienteVenda />
 
       {/* O código lido pela câmera entra pelo **mesmo** `inserirPorCodigo` do

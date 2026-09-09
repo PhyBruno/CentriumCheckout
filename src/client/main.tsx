@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { GooeyToaster } from 'goey-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
+import { sincronizarLayoutNoDocumento } from './layout/sincronizarLayoutNoDocumento';
 // Bones gerados por `npm run bones` (CLI do Boneyard). Sem este import,
 // `<Skeleton name="pdv-venda">` não acha a geometria capturada e cai no
 // `fallback` estático — sem shimmer nenhum (AUTH-05).
@@ -16,6 +17,12 @@ const container = document.getElementById('root');
 if (container === null) {
   throw new Error('Elemento #root não encontrado em index.html');
 }
+
+// Antes de qualquer render: o `md:` do `global.css` lê `<html data-layout>`
+// (AD-198), e sem o atributo até a tela de carregamento sairia vestida de
+// mobile num desktop. Síncrono, então nada chega a ser pintado com o veredito
+// errado.
+sincronizarLayoutNoDocumento();
 
 /**
  * Cache do ERP durante a venda (feature 003).

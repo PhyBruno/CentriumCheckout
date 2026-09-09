@@ -1,6 +1,38 @@
 @import 'tailwindcss';
 
 /**
+ * `md:` = "estou no layout desktop" — e quem decide isso é o TypeScript
+ * (AD-198).
+ *
+ * O `md` nativo do Tailwind é `min-width: 48rem`, um número que este projeto
+ * nunca escolheu: ele coincidia com o limiar de `classificarLayout` (768px) por
+ * acidente histórico, e a coincidência acabou quando o limiar virou 1366px e
+ * ganhou um segundo critério (`any-pointer: fine`, para o tablet sem mouse).
+ * Uma consulta de mídia aqui teria de repetir os dois critérios e ficaria livre
+ * para divergir do domínio na primeira mudança — e divergir aqui significa o
+ * `MobileWizard` montado com o estilo do desktop por cima, em todas as ~200
+ * ocorrências de `md:` do projeto.
+ *
+ * Por isso `md:` deixa de ser mídia e passa a ser seletor: `main.tsx` chama
+ * `sincronizarLayoutNoDocumento()` antes do primeiro render e mantém
+ * `<html data-layout="DESKTOP|MOBILE">` em dia via `matchMedia`. Existe um
+ * decisor só.
+ *
+ * `:where()` mantém a especificidade em 0, exatamente como uma media query:
+ * `md:h-11.5` continua vencendo `h-10` por ordem de origem (o Tailwind emite as
+ * variantes depois das utilidades cruas), e não por peso de seletor — trocar
+ * isso reordenaria silenciosamente regras que hoje funcionam.
+ *
+ * **`sm:` e `lg:` continuam sendo largura pura** (40rem e 64rem, o padrão do
+ * Tailwind) e não formam mais escada com `md:` — não existe "menor que `md`"
+ * neste projeto, porque `md:` deixou de ser um número. Quem precisa de largura
+ * real *dentro* do layout compacto usa `sm:`: é o caso do nome do operador no
+ * cabeçalho do wizard, cujo teto de 5rem foi medido em 390px e não faz sentido
+ * num tablet de 820px.
+ */
+@custom-variant md (&:where([data-layout='DESKTOP'] *));
+
+/**
  * Self-hospedado (`@fontsource`, sem CDN externo — coerente com "100% Docker",
  * `STACK.md`): Inter para texto geral e Geist Mono para valores numéricos
  * (preço, quantidade, total), os dois exatamente como usados no export do
@@ -528,23 +560,23 @@ button:not(:disabled):not([aria-disabled='true']),
  * desenho continua valendo. `--cc-alvo-toque` é o mínimo a atingir; cada uso
  * pode reduzir a folga declarando outro valor.
  *
- * Só abaixo de `md`, o mesmo breakpoint de `useIsMobile`: no desktop a folga
+ * Só no layout compacto, o mesmo veredito de `useIsMobile`: no desktop a folga
  * invisível cobriria o vizinho sem necessidade nenhuma, já que lá o ponteiro é
- * o mouse.
+ * o mouse. Atributo em vez de `@media (width < 48rem)` pelo motivo do
+ * `@custom-variant md` lá em cima (AD-198) — e aqui a diferença é literal, já
+ * que "tem mouse" passou a fazer parte da definição de desktop.
  */
 @utility cc-alvo-toque {
   position: relative;
 
-  @media (width < 48rem) {
-    &::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      translate: -50% -50%;
-      width: max(100%, var(--cc-alvo-toque, 44px));
-      height: max(100%, var(--cc-alvo-toque, 44px));
-    }
+  [data-layout='MOBILE'] &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    width: max(100%, var(--cc-alvo-toque, 44px));
+    height: max(100%, var(--cc-alvo-toque, 44px));
   }
 }
 
@@ -573,10 +605,8 @@ button:not(:disabled):not([aria-disabled='true']),
  * e mede de verdade. Quem cuida disso agora é `src/client/lib/notificar.ts`, e
  * o título voltou a ser a linha única que o pacote desenha.
  * ------------------------------------------------------------------------- */
-@media (width < 48rem) {
-  .gooey-content {
-    max-width: calc(100vw - 2 * var(--cc-space-base));
-  }
+[data-layout='MOBILE'] .gooey-content {
+  max-width: calc(100vw - 2 * var(--cc-space-base));
 }
 
 /* ---------------------------------------------------------------------------
@@ -683,10 +713,8 @@ button:not(:disabled):not([aria-disabled='true']),
   }
 }
 
-@media (width < 48rem) {
-  .gooey-wrapper.cc-toast-tremida {
-    animation: cc-toast-tremida 400ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 700ms 1;
-  }
+[data-layout='MOBILE'] .gooey-wrapper.cc-toast-tremida {
+  animation: cc-toast-tremida 400ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 700ms 1;
 }
 
 /**

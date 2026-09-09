@@ -75,9 +75,30 @@ async function esperarCamposRecolhidos(page: Page): Promise<void> {
   await expect.poll(async () => (await campos.boundingBox())?.height ?? -1).toBe(0);
 }
 
-async function identificarPorDocumento(page: Page, documento: string): Promise<void> {
+/**
+ * Identifica pelo documento — pelo botão (desktop) ou pelo Enter (compacto).
+ *
+ * O botão de identificar **não existe no layout compacto** desde 2026-09-09:
+ * ele repetia uma consulta que o campo já dispara sozinho no Enter e no
+ * `onBlur`, e custava uma faixa de 42px de altura que o wizard não tem de sobra
+ * (`CampoClienteVenda`, `hidden md:flex`). O gesto do compacto é o Enter, então
+ * é ele que o teste do compacto usa — clicar num botão ausente só provaria que
+ * ele está ausente.
+ */
+async function identificarPorDocumento(
+  page: Page,
+  documento: string,
+  via: 'botao' | 'enter' = 'botao',
+): Promise<void> {
   await expandirCardCliente(page);
-  await page.getByTestId('campo-documento-cliente').fill(documento);
+  const campo = page.getByTestId('campo-documento-cliente');
+  await campo.fill(documento);
+
+  if (via === 'enter') {
+    await campo.press('Enter');
+    return;
+  }
+
   await page.getByTestId('identificar-cliente').click();
 }
 
@@ -183,7 +204,7 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await abrirTelaDeVenda(page);
 
-    await identificarPorDocumento(page, CPF_VAREJO);
+    await identificarPorDocumento(page, CPF_VAREJO, 'enter');
     await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE VAREJO');
 
     await buscarPorTermo(page, 'CONVENIADO');

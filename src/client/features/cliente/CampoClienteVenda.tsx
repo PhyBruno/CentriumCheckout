@@ -453,8 +453,18 @@ export function CampoClienteVenda(): ReactElement {
           duas linhas em 390px e cada pixel de folga entre elas é altura que a
           etapa 1 não tem de sobra (pedido do usuário, 2026-09-09 — "sem
           produtos as telas não precisam de scroll"). */}
-      <header className="flex flex-wrap items-center justify-between gap-x-[9px] gap-y-xxs md:h-[26px] md:flex-nowrap">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-sm gap-y-xxs md:flex-nowrap md:gap-md">
+      {/* **A quebra vale nos dois layouts desde 2026-09-09** (AD-198), e a
+          altura de 26px virou piso em vez de trava. O `md:flex-nowrap` supunha
+          que no desktop sempre haveria largura para a faixa única do desenho —
+          o que era verdade enquanto "desktop" começava em 768px por engano e
+          ninguém olhava a faixa entre 768 e 1330. Num monitor de 1024px as duas
+          pílulas mais o botão transbordavam 11px cada e "Mariana Alves" voltava
+          a encostar em "Recolhido": exatamente o mesmo defeito de 390px, uma
+          largura acima. Com a quebra liberada a faixa única continua sendo o
+          que se vê em qualquer monitor largo, e o card ganha uma segunda linha
+          só quando a alternativa seria sobrepor nome com nome. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-[9px] gap-y-xxs md:min-h-[26px]">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-sm gap-y-xxs md:gap-md">
           <Pilula icone={<UserRound className="size-4.5 text-foreground" />} rotulo="Cliente">
             {clienteAtual === null ? (
               <>

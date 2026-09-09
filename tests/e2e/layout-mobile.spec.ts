@@ -7,8 +7,10 @@ import { quitarVendaEmDinheiro } from './support/pagamento';
  * finalizar.
  *
  * Viewport de 390×844 (a mesma largura do frame `IQloN` do Pencil), abaixo do
- * limiar de 768px — é a largura que decide o layout, nunca a capacidade de
- * toque do aparelho.
+ * piso de 1024px. O navegador do teste anuncia ponteiro preciso, então quem
+ * manda aqui é a largura — desde AD-198 o critério principal é o toque
+ * (`any-pointer: fine`), e a largura é só o piso abaixo do qual a tela única
+ * não cabe nem com mouse.
  *
  * O pagamento usa o **mesmo** helper do desktop (`quitarVendaEmDinheiro`), sem
  * uma linha de adaptação: é a prova prática de `FR-009`/`SC-001` — os testids
@@ -93,11 +95,16 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await campo.press('Enter');
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
 
+    // A volta acontece **antes** do pagamento, e a ordem é obrigatória por duas
+    // regras que entraram depois deste teste: a revisão exige
+    // `saldoRestante === 0` para ser aberta (AD-197, `MOTIVO_SALDO_EM_ABERTO`)
+    // e a venda já paga não aceita item novo. Quitar primeiro deixaria o teste
+    // sem nenhuma alteração possível para "chegar na revisão", que é o que ele
+    // existe para provar.
     await page.getByTestId('wizard-avancar').click();
-    await page.getByTestId('wizard-avancar').click();
-    await expect(page.getByTestId('conferencia-produtos')).toContainText('1 item');
+    await expect(page.getByTestId('indicador-etapa')).toContainText('2/3');
 
-    // Salto direto da etapa 3 para a 1 pela barra de progresso (`FR-004`).
+    // Salto direto da etapa 2 para a 1 pela barra de progresso (`FR-004`).
     await page.getByTestId('ir-para-etapa-1').click();
     await expect(page.getByTestId('etapa-cliente-produtos')).toBeVisible();
 
@@ -106,7 +113,10 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await campoDeVolta.press('Enter');
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(2);
 
-    await page.getByTestId('ir-para-etapa-3').click();
+    await page.getByTestId('ir-para-etapa-2').click();
+    await quitarVendaEmDinheiro(page);
+
+    await page.getByTestId('wizard-avancar').click();
     await expect(page.getByTestId('conferencia-produtos')).toContainText('2 itens');
   });
 });

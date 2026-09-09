@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
 
 /**
- * T013 — `quickstart.md` §2 / `SC-003`: redimensionar cruzando o limiar de 768px
+ * T013 — `quickstart.md` §2 / `SC-003`: redimensionar cruzando o piso de 1024px
  * com o carrinho populado não perde nem duplica a venda.
  *
  * O critério de aprovação do quickstart é literal: **o total antes e depois da
@@ -19,7 +19,7 @@ const ITENS = [
 ] as const;
 
 const VIEWPORT_DESKTOP = { width: 1440, height: 900 };
-/** 390px: a largura do frame mobile do Pencil, bem abaixo dos 768. */
+/** 390px: a largura do frame mobile do Pencil, bem abaixo do piso de 1024. */
 const VIEWPORT_MOBILE = { width: 390, height: 844 };
 
 test.use({ viewport: VIEWPORT_DESKTOP });

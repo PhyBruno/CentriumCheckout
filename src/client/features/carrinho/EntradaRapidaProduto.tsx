@@ -788,17 +788,31 @@ export function EntradaRapidaProduto({
           nunca chega a "não caber" — as sete se espremiam na mesma linha de
           326px, o campo de código ficava com 39px e os rótulos "Quantidade",
           "Unidade", "Preço unitário" e "Desconto do item" se sobrepunham em
-          três linhas ilegíveis. O piso por célula (`min-w-*`, revogado em
-          `md:` para o desktop voltar a ser a linha única do Pencil) é o que
-          faz a quebra acontecer de verdade, e reproduz o empilhamento do
+          três linhas ilegíveis. O piso por célula (`min-w-*`) é o que faz a
+          quebra acontecer de verdade, e reproduz o empilhamento do
           desenho mobile: código na primeira faixa com a lupa e o Scanner
           (`dfZEs`/`kU6Z5`), depois os pares de valores (`J5G7EE`/`aRe5V`) e o
-          botão de inserir ocupando a largura toda (`q2NBVJ`). */}
+          botão de inserir ocupando a largura toda (`q2NBVJ`).
+
+          **O piso vale nos dois layouts desde 2026-09-09** (AD-198), só que com
+          valores próprios em `md:`. Ele era **revogado** no desktop
+          (`md:min-w-0`), e era isso que quebrava a tela: a partir do limiar as
+          células voltavam a poder encolher até zero, então entre 768px e
+          ~1330px o desktop reproduzia exatamente o empilhamento ilegível
+          descrito acima — só que sem nunca quebrar linha.
+
+          Os pisos do compacto são largos demais para reaproveitar aqui: somados
+          aos intervalos e ao botão passam de 980px, e a barra quebrava em duas
+          faixas até em 1440px, perdendo a linha única do Pencil. Os valores de
+          `md:` são o rótulo mais largo de cada célula com folga, e somam ~862px:
+          a faixa única aparece a partir de ~1330px — que é onde o usuário
+          observou o estouro parar — e vira duas ou três faixas no monitor
+          apertado, em vez de sobrepor rótulo com valor. */}
       <div
         className="flex flex-wrap items-end gap-xs md:gap-sm"
         data-testid="previa-insercao-produto"
       >
-        <label className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
+        <label className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm">
           <span className="flex items-center gap-xs font-semibold text-muted-foreground">
             <Barcode className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate">{rotuloCampoCodigo}</span>
@@ -856,7 +870,11 @@ export function EntradaRapidaProduto({
             ponto do campo acendia o "−" (achado do usuário, 2026-09-03).
             Com o rótulo apontando para o input por `htmlFor`, a associação
             acessível continua de pé e o hover do "−" volta a ser só o dele. */}
-        <div className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
+        {/* Sem piso próprio em `md:`, ao contrário das células de valor: os
+            9.5rem são o mínimo para o par de botões −/+ ladear as três casas
+            decimais da quantidade. Em 8.5rem o campo passava a mostrar "1,00"
+            no lugar de "1,000" (medido em 1440px). */}
+        <div className="flex min-w-[9.5rem] flex-1 flex-col gap-xxs text-sm">
           <label className={classeRotulo} htmlFor={ID_CAMPO_QUANTIDADE}>
             Quantidade
           </label>
@@ -913,7 +931,7 @@ export function EntradaRapidaProduto({
           </div>
         </div>
 
-        <label className="flex min-w-[6rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
+        <label className="flex min-w-[6rem] flex-1 flex-col gap-xxs text-sm">
           <span className={classeRotulo}>Unidade</span>
           <input
             className={cn(classeCampoValor, semResolucao && 'text-muted-foreground')}
@@ -926,7 +944,7 @@ export function EntradaRapidaProduto({
           />
         </label>
 
-        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-[7rem]">
           <span className={classeRotulo}>Preço unitário</span>
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-preco-unitario-simbolo" />
@@ -954,7 +972,7 @@ export function EntradaRapidaProduto({
           </span>
         </label>
 
-        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-[7.5rem]">
           <span className={classeRotulo}>Desconto do item</span>
           <span className={classeMolduraValor}>
             <SimboloReal testId="previa-desconto-item-simbolo" />
@@ -996,7 +1014,7 @@ export function EntradaRapidaProduto({
           </span>
         </label>
 
-        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-0">
+        <label className="flex min-w-[9rem] flex-1 flex-col gap-xxs text-sm md:min-w-[6.5rem]">
           <span className={classeRotulo}>Total item</span>
           <strong
             className={cn(

@@ -351,8 +351,14 @@ function CabecalhoMobile(): ReactElement {
             data-testid="operador-da-sessao"
           >
             <UserRound className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            {/* Teto de largura só no compacto (`md:max-w-none` devolve o
-                desktop). Sem ele as duas metades do cabeçalho encolhem juntas e
+            {/* Teto de largura só na tela **estreita de verdade** — `sm:` são
+                640px de largura real, uma consulta de mídia comum, ao contrário
+                de `md:`, que desde AD-198 significa "estou na árvore desktop" e
+                não uma largura. A distinção importa aqui: o teto foi medido em
+                390px, e prendê-lo a `md:` o manteria ativo até 1366px, deixando
+                "Operador d…" truncado num tablet com folga de sobra.
+
+                Sem ele as duas metades do cabeçalho encolhem juntas e
                 o flex tira mais de quem é maior — o título —, então um
                 `UsuarioNome` longo ("Operador de Teste") ficava inteiro
                 enquanto "Centrium Checkout" virava "Centrium …" (medido no
@@ -363,7 +369,7 @@ function CabecalhoMobile(): ReactElement {
                 (`fdw9t` mostra "Bruno"), o que este teto reproduz para
                 qualquer tamanho de cadastro. */}
             <span
-              className="max-w-[5rem] truncate text-sm font-semibold text-foreground md:max-w-none"
+              className="max-w-[5rem] truncate text-sm font-semibold text-foreground sm:max-w-none"
               title={operador}
             >
               <span className="sr-only">Operador: </span>

@@ -46,9 +46,15 @@ function definirLargura(px: number): void {
   Object.defineProperty(window, 'innerWidth', { value: px, configurable: true, writable: true });
 }
 
-/** 390px é o iPhone de referência do wizard; 1280px, o caixa de balcão. */
+/**
+ * 390px é o iPhone de referência do wizard; 1440px, o caixa de balcão.
+ *
+ * Era 1280px até 2026-09-09. Continuaria valendo como desktop pelo critério
+ * final (AD-198: 1280 com mouse é desktop), mas 1440 deixa a intenção explícita
+ * e sobrevive a qualquer ajuste futuro do piso de 1024px.
+ */
 const LARGURA_MOBILE = 390;
-const LARGURA_DESKTOP = 1280;
+const LARGURA_DESKTOP = 1440;
 
 const FRASE_LONGA =
   'Insira ao menos um produto na venda antes de escolher a condição de pagamento.';
