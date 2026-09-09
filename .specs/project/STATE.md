@@ -2681,3 +2681,47 @@ A saída não é brigar com o recorte por CSS: a bolha continuaria desenhada com
 **Impact:** alterados — `src/client/features/pagamento/ControleDescontoCapa.tsx`, `src/client/layout/mobile/{MobileWizard,ScannerCamera}.tsx`, `src/client/features/carrinho/{EntradaRapidaProduto,ListaItensMobile}.tsx`, `src/client/features/cliente/CampoClienteVenda.tsx`, `src/client/domain/sessao/identidadePdv.ts` (`NOME_DO_PRODUTO` exportado), `src/client/styles/global.css` (`cc-alvo-toque` + as duas regras do toast); testes — `tests/integration/layoutPreservacaoEstado.spec.tsx` (novo, 7 casos, incluindo o TAB que apagava o desconto), acréscimos em `appShell`/`mobileWizard`/`scannerCamera`/`ausenciaEstrutural`/`semDuplicacaoRegra` e o bloco compacto de `tests/e2e/validacao-previa.spec.ts`. Verificação: `tsc --noEmit` e `eslint` limpos; 1097 testes unit/integração e 173 E2E passando; toast e cabeçalho reconferidos no navegador em 390px (título do aviso passou a 338px de largura, borda direita em 364 sobre 390 — dentro da tela), e zero estouro horizontal medido em toda a árvore.
 
 **Impact (AD-191):** criados — `src/client/domain/layout/{classificarLayout,suportaScannerCamera}.ts`, `src/client/layout/{useIsMobile,obterPlataforma,AppShell}.ts(x)`, `src/client/layout/desktop/DesktopLayout.tsx`, `src/client/layout/mobile/{MobileWizard,EtapaClienteProdutos,EtapaPagamento,EtapaRevisao,ScannerCamera}.tsx`, `src/client/features/pagamento/ConfiguracaoPagamento.tsx`; alterados — `src/client/App.tsx` (perde `TelaDeVenda`, renderiza `AppShell`), `src/client/layout/usePlataforma.ts`, `src/client/features/pagamento/PainelPagamentoETotais.tsx`, `src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx`, `src/client/features/carrinho/EntradaRapidaProduto.tsx` (slot `renderizarCaptura` e `flex-wrap` na linha de prévia); testes — 3 unitários de domínio, 6 de integração (`appShell`, `mobileWizard`, `pagamentoMobile`, `scannerCamera`, `ausenciaEstrutural`, `semDuplicacaoRegra`), 4 E2E (`layout-desktop`, `layout-mobile`, `layout-responsivo`, `layout-scanner`) e o helper `tests/support/layout.tsx`. Verificação: `tsc --noEmit` limpo; 1064 testes unit/integração e 171 E2E passando.
+
+### AD-201: a biblioteca de ícones passa a ser o reicon, e o Pencil deixa de ser lido 1:1 (2026-09-09)
+
+**Origem:** pedido explícito do usuário — trocar todos os ícones do produto por ícones do [reicon](https://reicon.dev) (`reicon-react`), por serem "mais modernos e agradáveis". `lucide-react` foi desinstalado; nenhuma importação de `lucide-react` sobrevive em `src/`.
+
+**O que muda para quem for implementar tela nova.** Até aqui valia a regra do `CLAUDE.md`: o nó de ícone do Pencil traz `library: "lucide"` e `icon: "trash-2"`, e o nome batia 1:1 com o export de `lucide-react` (`Trash2`). **Isso deixou de valer.** O `.pen` continua sendo a fonte de verdade do *desenho* — tamanho, cor, posição, e qual conceito de ícone a tela usa — mas o **nome** agora precisa ser traduzido para o catálogo do reicon antes de virar `import`. Consultar o Pencil continua obrigatório; o que mudou é que o resultado da consulta é um conceito, não um identificador pronto.
+
+**42 dos 67 nomes em uso traduziram por identidade** (`Search`, `Trash2`, `ChevronLeft`, `CreditCard`, `X`, `AlertTriangle`…). Os 25 restantes exigiram escolha, e é essa tabela que evita refazer a busca:
+
+| Pencil / lucide | reicon | Nota |
+| --- | --- | --- |
+| `Pencil` | `Pen` | |
+| `CircleCheck` | `CheckCircle` | |
+| `Circle` | `Record` | círculo vazio; é o par não-selecionado de `CheckCircle` nas listas de escolha |
+| `PackageSearch` | `BoxSearch` | |
+| `PanelRightOpen` | `SidebarRight` | |
+| `ScanLine` | `Scan` | moldura com a linha de leitura no meio |
+| `ExternalLink` | `LinkSquare` | |
+| `ArchiveRestore` | `ArchiveUp` | |
+| `ArrowDownToLine` | `Import` | |
+| `WalletCards` | `Cards` | |
+| `CornerDownLeft` | `Reply` | a seta da tecla Enter |
+| `TriangleAlert` | `AlertTriangle` | os dois nomes lucide colapsam num só |
+| `QrCode` | `Qr` | |
+| `RefreshCw` | `Refresh` | |
+| `Percent` | `PercentSquare` | não há `%` solto no catálogo |
+| `UserRound` | `User` | |
+| `UserPlus` / `UserRoundPlus` | `UserAdd` | |
+| `Landmark` | `Bank` | |
+| `ArrowLeftRight` | `ArrowSwapHorizontal` | |
+| `ShoppingBasket` | `BasketShopping` | |
+| `Utensils` | `ForkKnife` | |
+| `ScrollText` | `Bill` | cheque |
+| `CalendarClock` | `Clock` | pagamento posterior; não existe calendário-com-relógio |
+| `CircleDashed` | `HelpCircle` | meio de pagamento não informado |
+| `TicketCheck` | `Verified` | o selo de "validado" do campo/botão "Aplicar vale" |
+
+**Dois desvios conscientes, porque o catálogo não tem equivalente.** (1) `Equal` — o "=" que precede o equivalente em reais do desconto percentual — virou `ArrowRight`: o reicon não publica um sinal de igual isolado (`ElementEqual` traz três quadrados junto, `Math` traz `+`, `×` e `=` num só desenho), e a seta lê exatamente o que o comentário do componente já descrevia (`"2,00" → "R$ 3,29"`). (2) `TicketCheck` virou `Verified`: a família `Ticket*` do reicon não tem variante com check, e das duas metades do conceito — "é um vale" e "está validado" — a que importa naquele campo é a validação, que é o que o TSDoc de `iconePorMeio.ts` diz distinguir do `Ticket` simples da lista.
+
+**Três diferenças de API que vão morder quem assumir que é lucide com outro nome.** (1) O reicon desenha por `fill="currentColor"` em paths já expandidos, não por `stroke` — `text-*` continua funcionando, mas `strokeWidth` passa por uma máscara SVG e não é o mesmo botão de antes (o projeto não usava esse prop em lugar nenhum, e continua não usando). (2) `size` sai como atributo `width`/`height`, então as classes `size-*` do Tailwind seguem vencendo por CSS. (3) **O SVG é injetado por `dangerouslySetInnerHTML`, e o HTML de vários ícones tem espaços literais entre os `<path>`** — esses espaços viram nós de texto dentro do `<svg>` e entram no `textContent` do elemento que contém o ícone. Invisível na tela, mas quebra asserção de teste que compare `textContent` cru: foi o que aconteceu com `DicaAtalhos.spec.tsx`, corrigido normalizando o espaçamento na asserção. Teste novo que leia rótulo com ícone ao lado deve normalizar.
+
+**O tipo mudou junto:** `LucideIcon` não existe mais; a assinatura pública de `iconePorMeio.ts` (`ICONE_POR_MEIO`, `ICONE_VALE_DEVOLUCAO`, `iconeDaForma`, `iconeDoPagamento`) passou a `IconComponent`, exportado por `reicon-react`.
+
+**Impact:** alterados — os 33 arquivos de `src/client/` que importavam `lucide-react` (todo `features/`, `layout/`, `components/ui/campo-data.tsx`), com destaque para `src/client/features/pagamento/iconePorMeio.ts` (mapa por meio de pagamento + troca de `LucideIcon` por `IconComponent`); `package.json` (entra `reicon-react@^1.2.5`, sai `lucide-react`); `.specs/codebase/STACK.md`; os TSDoc de `EntradaPagamento`, `ListaPagamentosAplicados`, `ModalValeDevolucao`, `ModalPix`, `SeletorCondicaoForma` e `DicaAtalhos`, que citavam nomes lucide; testes — `tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx` (normalização de `textContent`). Verificação: `tsc --noEmit` limpo, 1126 testes unit/integração passando, `npm run build` concluído. **Conferência visual no navegador ainda não foi feita** — os 25 ícones traduzidos foram escolhidos lendo o SVG de cada candidato, não vendo a tela montada.

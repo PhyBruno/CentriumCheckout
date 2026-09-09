@@ -1,4 +1,4 @@
-import { CornerDownLeft, Plus } from 'lucide-react';
+import { Plus, Reply } from 'reicon-react';
 import { useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
@@ -45,8 +45,8 @@ export interface EntradaPagamentoProps {
  *
  * 1. **Cabeçalho** (`YxI3T`) — rótulo "Valor recebido" Inter 13/600 à esquerda e,
  *    à direita, a pílula "Enter adiciona" (`DZpJ5`): fundo `$surface-strong`,
- *    raio 100, `padding: 5px 8px`, ícone lucide `corner-down-left` de 14px e
- *    texto 11/600.
+ *    raio 100, `padding: 5px 8px`, ícone `corner-down-left` de 14px (o Pencil
+ *    desenha em lucide; aqui é o `Reply` do reicon — ver AD-201) e texto 11/600.
  * 2. **Campo digitado** (`f9twX8`) — 48px de altura, raio 12, fundo
  *    `$surface-soft`, borda `$hairline`, `padding: 0 14px`, com "R$" Inter 13/700
  *    em `$body` à esquerda e o valor em **Geist Mono 20/600** à direita.
@@ -181,7 +181,7 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
           className="flex shrink-0 items-center gap-[6px] rounded-full bg-secondary px-xs py-[5px] text-xs font-semibold whitespace-nowrap text-foreground"
           data-testid="atalho-adicionar-pagamento"
         >
-          <CornerDownLeft className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <Reply className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           Enter adiciona
         </span>
       </header>

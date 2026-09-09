@@ -1,4 +1,4 @@
-import { Eraser, WalletCards } from 'lucide-react';
+import { Cards, Eraser } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -254,7 +254,7 @@ export function ConfiguracaoPagamento({
           é a saída do congelamento descrito acima. */}
       <header className="flex h-9 shrink-0 items-center justify-between gap-[10px]">
         <div className="flex min-w-0 items-center gap-[10px]">
-          <WalletCards className="size-5 shrink-0 text-foreground" aria-hidden="true" />
+          <Cards className="size-5 shrink-0 text-foreground" aria-hidden="true" />
           <h2 className="text-[18px] font-semibold text-foreground">Pagamento</h2>
         </div>
         <BotaoLimparPagamento />

@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart } from 'reicon-react';
 import { cn } from '@/lib/utils';
 
 export interface PainelMensagemProps {

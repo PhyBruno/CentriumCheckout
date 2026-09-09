@@ -1,4 +1,4 @@
-import { Search, UserRound } from 'lucide-react';
+import { Search, User } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -55,7 +55,7 @@ export function CampoVendedorVenda(): ReactElement {
        com o campo Contato, de 243px fixos. */
     <div className="flex min-w-0 flex-1 items-center gap-[10px]">
       <div className="flex h-[42px] min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm">
-        <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <User className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
           <span className="text-[10px] font-semibold text-muted-foreground">Vendedor NFCe</span>
           {/* Sem vendedor, o campo se comporta como placeholder — texto e cor

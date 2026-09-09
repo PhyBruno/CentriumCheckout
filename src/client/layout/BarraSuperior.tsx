@@ -1,4 +1,4 @@
-import { Monitor, Settings, ShoppingCart, UserRound } from 'lucide-react';
+import { Monitor, Settings, ShoppingCart, User } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -60,7 +60,7 @@ export function BarraSuperior(): ReactElement {
       <div className="flex items-center gap-sm">
         {operador !== null && (
           <div className={cn(PILULA, 'gap-2.5')} data-testid="operador-da-sessao">
-            <UserRound className="size-[18px] text-muted-foreground" aria-hidden />
+            <User className="size-[18px] text-muted-foreground" aria-hidden />
             <span className="text-base font-semibold text-foreground">
               <span className="sr-only">Operador: </span>
               {operador}

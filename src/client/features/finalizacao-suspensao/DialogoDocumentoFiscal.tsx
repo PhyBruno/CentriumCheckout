@@ -1,4 +1,4 @@
-import { AlertTriangle, ExternalLink, FileText, Printer } from 'lucide-react';
+import { AlertTriangle, FileText, LinkSquare, Printer } from 'reicon-react';
 import { notificar } from '@/lib/notificar';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
@@ -264,7 +264,7 @@ export function DialogoDocumentoFiscal({
               data-testid="abrir-pdf-documento-fiscal"
               className="flex h-11 w-full items-center justify-center gap-xs rounded-full bg-primary text-md font-semibold text-primary-foreground"
             >
-              <ExternalLink className="size-4" aria-hidden="true" />
+              <LinkSquare className="size-4" aria-hidden="true" />
               Abrir o PDF em outra aba
             </button>
           )}

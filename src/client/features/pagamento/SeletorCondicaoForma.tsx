@@ -1,4 +1,4 @@
-import { ChevronDown, CreditCard, Layers } from 'lucide-react';
+import { ChevronDown, CreditCard, Layers } from 'reicon-react';
 import {
   useId,
   useRef,
@@ -293,8 +293,8 @@ export function ComboboxPagamento({
 /**
  * Combobox de condição de pagamento (nó `oGiPa`): rótulo Inter 13/600, controle
  * de 44px com raio 12, fundo `$surface-soft` e borda `$hairline` de 1px, ícone
- * lucide `layers` de 16px na cor primária, texto 14/600 e `chevron-down` de
- * 16px em `$body`.
+ * `layers` de 16px na cor primária, texto 14/600 e `chevron-down` de 16px em
+ * `$body` — ambos do reicon (`Layers`, `ChevronDown`), ver AD-201.
  *
  * **A borda em `$cb-blue` do desenho não é permanente.** O nó `IHcIy` traz
  * `stroke: $cb-blue` de 1.5px, e a implementação original a reproduziu fixa,

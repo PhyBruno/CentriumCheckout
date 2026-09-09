@@ -1,4 +1,4 @@
-import { Barcode, Minus, Plus, Search } from 'lucide-react';
+import { Barcode, Minus, Plus, Search } from 'reicon-react';
 import {
   useEffect,
   useRef,

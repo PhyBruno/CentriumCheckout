@@ -1,4 +1,4 @@
-import { PanelRightOpen, Trash2 } from 'lucide-react';
+import { SidebarRight, Trash2 } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -83,7 +83,7 @@ export function BotaoCancelarVenda({
         desabilitado ? 'cursor-not-allowed text-[var(--cc-color-muted-soft)]' : 'text-foreground',
       )}
     >
-      <PanelRightOpen
+      <SidebarRight
         className={cn('size-4', desabilitado ? '' : 'text-[var(--cc-color-body)]')}
         aria-hidden="true"
       />

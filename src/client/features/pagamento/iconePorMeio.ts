@@ -1,25 +1,25 @@
 import {
-  ArrowLeftRight,
+  ArrowSwapHorizontal,
   Ban,
   Banknote,
   Barcode,
-  CalendarClock,
-  CircleDashed,
+  BasketShopping,
+  Bank,
+  Bill,
+  Clock,
   CreditCard,
   FileText,
+  ForkKnife,
   Fuel,
   Gift,
-  Landmark,
-  QrCode,
-  ScrollText,
-  ShoppingBasket,
+  HelpCircle,
+  Qr,
   Star,
   Store,
   Ticket,
-  Utensils,
   Wallet,
-  type LucideIcon,
-} from 'lucide-react';
+  type IconComponent,
+} from 'reicon-react';
 import type { FormaPagamento, MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import type { PagamentoAplicado } from '../../domain/pagamento/saldoPagamento';
@@ -43,37 +43,37 @@ import type { PagamentoAplicado } from '../../domain/pagamento/saldoPagamento';
  * (`formaPagamento.ts`) não passa despercebido.
  *
  * Os ícones inferidos escolhem o **objeto físico** que o caixa reconhece —
- * `fuel` para vale combustível, `utensils` para vale refeição, `barcode` para
+ * `Fuel` para vale combustível, `ForkKnife` para vale refeição, `Barcode` para
  * boleto — e não uma abstração financeira, porque a leitura acontece de relance
  * numa faixa de 34px. Os três do desenho ficam intocados.
  */
-export const ICONE_POR_MEIO: Record<MeioPagtoNFe, LucideIcon> = {
+export const ICONE_POR_MEIO: Record<MeioPagtoNFe, IconComponent> = {
   // --- Do Pencil ---
   Dinheiro: Banknote,
   CartaoCredito: CreditCard,
   CartaoDebito: CreditCard,
-  Pix: QrCode,
+  Pix: Qr,
 
   // --- Inferidos ---
   /** Mesmo `qr-code` do PIX dinâmico: para o operador é o mesmo gesto. */
-  PixEstatico: QrCode,
-  Cheque: ScrollText,
+  PixEstatico: Qr,
+  Cheque: Bill,
   /** Crédito da loja e crédito em loja são a mesma ideia em dois cadastros. */
   CreditoLoja: Store,
   CreditoEmLoja: Store,
-  ValeAlimentacao: ShoppingBasket,
-  ValeRefeicao: Utensils,
+  ValeAlimentacao: BasketShopping,
+  ValeRefeicao: ForkKnife,
   ValePresente: Gift,
   ValeCombustivel: Fuel,
   DuplicataMercantil: FileText,
   BoletoBancario: Barcode,
-  DepositoBancario: Landmark,
-  TransferenciaBancaria: ArrowLeftRight,
+  DepositoBancario: Bank,
+  TransferenciaBancaria: ArrowSwapHorizontal,
   /** Typo reproduzido do domínio do ERP — ver `formaPagamento.ts`. */
   ProgaramaFidelidade: Star,
-  PagamentoNaoInformado: CircleDashed,
+  PagamentoNaoInformado: HelpCircle,
   SemPagamento: Ban,
-  PagamentoPosterior: CalendarClock,
+  PagamentoPosterior: Clock,
   Outros: Wallet,
 };
 
@@ -89,14 +89,14 @@ export const ICONE_POR_MEIO: Record<MeioPagtoNFe, LucideIcon> = {
  *
  * `Ticket` é o ícone do cabeçalho de `ModalValeDevolucao`: a lista e o combobox
  * passam a mostrar o mesmo desenho que a janela do código, então o operador
- * reconhece o vale antes de abrir e depois de aplicar. Não é `TicketCheck` (o do
+ * reconhece o vale antes de abrir e depois de aplicar. Não é `Verified` (o do
  * campo e do botão "Aplicar vale"), que carrega semântica de "validado" e diria
  * algo falso numa forma ainda não inserida.
  */
-export const ICONE_VALE_DEVOLUCAO: LucideIcon = Ticket;
+export const ICONE_VALE_DEVOLUCAO: IconComponent = Ticket;
 
 /** Ícone da forma no catálogo — o do vale vence o mapa por meio. */
-export function iconeDaForma(forma: FormaPagamento): LucideIcon {
+export function iconeDaForma(forma: FormaPagamento): IconComponent {
   return ehFormaDeValeDevolucao(forma) ? ICONE_VALE_DEVOLUCAO : ICONE_POR_MEIO[forma.meioPagtoNFe];
 }
 
@@ -109,7 +109,7 @@ export function iconeDaForma(forma: FormaPagamento): LucideIcon {
  * exatamente o que aquela regra proíbe, já que o catálogo pode ter mudado no
  * meio da venda.
  */
-export function iconeDoPagamento(pagamento: PagamentoAplicado): LucideIcon {
+export function iconeDoPagamento(pagamento: PagamentoAplicado): IconComponent {
   return pagamento.ticketDevolucao !== null
     ? ICONE_VALE_DEVOLUCAO
     : ICONE_POR_MEIO[pagamento.meioPagtoNFe];

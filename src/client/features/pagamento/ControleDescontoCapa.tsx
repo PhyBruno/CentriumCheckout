@@ -1,4 +1,4 @@
-import { Equal } from 'lucide-react';
+import { ArrowRight } from 'reicon-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
 import { notificar } from '@/lib/notificar';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
@@ -392,7 +392,7 @@ export function ControleDescontoCapa(): ReactElement {
           "2,00" → "R$ 3,29"). */}
       {modo === 'PERCENTUAL' ? (
         <div className="flex w-full items-center justify-end gap-[5px] leading-none">
-          <Equal className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <ArrowRight className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
           {/* Resolvido pelo domínio (`resolverDescontoCapa`) e só formatado
               aqui — o componente nunca converte percentual em reais por conta
               própria. Acompanha o texto digitado, inclusive quando a aplicação

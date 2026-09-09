@@ -1,12 +1,4 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  CircleCheck,
-  Search,
-  UserPlus,
-  UserRound,
-  X,
-} from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, Search, User, UserAdd, X } from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { notificar } from '@/lib/notificar';
@@ -199,7 +191,7 @@ export function ModalBuscaCliente({
         <header className="flex shrink-0 items-center justify-between gap-sm border-b border-border px-base py-2.5 md:h-[78px] md:px-lg md:py-0">
           <div className="flex min-w-0 items-center gap-sm">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary md:size-[42px]">
-              <UserRound className="size-4.5 text-primary md:size-5" aria-hidden="true" />
+              <User className="size-4.5 text-primary md:size-5" aria-hidden="true" />
             </span>
             <div className="flex min-w-0 flex-col gap-[2px]">
               <h2 className="truncate text-lg font-semibold text-foreground md:text-xl">
@@ -252,7 +244,7 @@ export function ModalBuscaCliente({
               data-testid="novo-cliente"
               onClick={cadastrarNovo}
             >
-              <UserPlus className="size-3.5" aria-hidden="true" />
+              <UserAdd className="size-3.5" aria-hidden="true" />
               Novo cliente
             </Button>
           </div>
@@ -436,7 +428,7 @@ function ResultadosDaBusca({ clientes, onSelecionar }: ResultadosDaBuscaProps): 
               }}
             >
               <span className="hidden w-[42px] shrink-0 items-center justify-center md:flex">
-                <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
+                <CheckCircle className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
               <span className="min-w-0 truncate text-sm text-muted-foreground md:w-[76px] md:shrink-0 md:px-sm md:text-base md:text-foreground">
                 <span className={classeRotuloCompacto}>Cód. Cliente: </span>

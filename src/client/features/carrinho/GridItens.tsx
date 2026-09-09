@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pen, Trash2 } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
@@ -273,7 +273,7 @@ function LinhaDaGrid({
                 onEditar(linha);
               })}
             >
-              <Pencil className="size-3.5" aria-hidden="true" />
+              <Pen className="size-3.5" aria-hidden="true" />
             </Button>
             <Button
               type="button"

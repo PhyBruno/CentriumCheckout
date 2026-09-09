@@ -1,4 +1,4 @@
-import { CircleCheck, CreditCard, List, Percent, UserRound } from 'lucide-react';
+import { CheckCircle, CreditCard, List, PercentSquare, User } from 'reicon-react';
 import type { ReactElement, ReactNode } from 'react';
 import { AcoesFinaisVenda } from '../../features/finalizacao-suspensao/AcoesFinaisVenda';
 import { ListaPagamentosAplicados } from '../../features/pagamento/ListaPagamentosAplicados';
@@ -38,12 +38,12 @@ export function EtapaRevisao(): ReactElement {
       {/* Cartão "Resumo conferência etapa 3 mobile" (nó `SDwQ6`). */}
       <section className="flex flex-col gap-sm rounded-[18px] border border-border bg-card p-[14px]">
         <header className="flex items-center gap-xs">
-          <CircleCheck className="size-4.5 shrink-0 text-foreground" aria-hidden="true" />
+          <CheckCircle className="size-4.5 shrink-0 text-foreground" aria-hidden="true" />
           <h2 className="text-base font-bold text-foreground">Conferência</h2>
         </header>
 
         <LinhaConferencia
-          icone={<UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+          icone={<User className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
           rotulo="Cliente"
           testId="conferencia-cliente"
         >
@@ -53,7 +53,7 @@ export function EtapaRevisao(): ReactElement {
         </LinhaConferencia>
 
         <LinhaConferencia
-          icone={<UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+          icone={<User className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
           rotulo="Vendedor"
           testId="conferencia-vendedor"
         >
@@ -77,7 +77,7 @@ export function EtapaRevisao(): ReactElement {
             "Ajuste: —" ocuparia espaço de tela dizendo que nada aconteceu. */}
         {descontoCapa !== null && (
           <LinhaConferencia
-            icone={<Percent className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+            icone={<PercentSquare className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
             rotulo="Ajuste"
             testId="conferencia-ajuste"
           >

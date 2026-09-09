@@ -1,4 +1,4 @@
-import { CircleCheck, Copy, QrCode, RefreshCw, TriangleAlert, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Copy, Qr, Refresh, X } from 'reicon-react';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ import { DialogoConfirmacaoDestrutiva } from '../DialogoConfirmacaoDestrutiva';
  *
  * Estrutura do nó, item a item: cartão de 480px, raio 24, `$canvas`, hairline de
  * 1px; cabeçalho (`lSsvw`) de 78px com borda inferior, disco `$success-soft` de
- * 42px com o ícone lucide `qr-code` de 20px em `$success`, título "Pagamento via
+ * 42px com o ícone `qr-code` de 20px em `$success` (o `Qr` do reicon — ver AD-201), título "Pagamento via
  * PIX" (Inter 20/600) e subtítulo "Aguardando pagamento" (Inter 13/500); corpo
  * (`r6UdER`) com 28px de folga vertical, 24px lateral e `gap: 20`, contendo o
  * cartão do QR Code (`DRKJh`, raio 16, hairline, 16px de folga, imagem de
@@ -401,9 +401,9 @@ export function ModalPix({
             data-testid="pix-disco-cabecalho"
           >
             {aprovado ? (
-              <CircleCheck className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+              <CheckCircle className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
             ) : (
-              <QrCode className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+              <Qr className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
             )}
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
@@ -443,7 +443,7 @@ export function ModalPix({
               role="alert"
             >
               <div className="flex items-start gap-xs">
-                <TriangleAlert
+                <AlertTriangle
                   className="mt-[2px] size-4.5 shrink-0 text-[var(--cc-color-accent-yellow)]"
                   aria-hidden="true"
                 />
@@ -560,7 +560,7 @@ export function ModalPix({
                 gerarCobranca();
               }}
             >
-              <RefreshCw className="size-3.5" aria-hidden="true" />
+              <Refresh className="size-3.5" aria-hidden="true" />
               Tentar novamente
             </Button>
           )}
@@ -571,7 +571,7 @@ export function ModalPix({
               data-testid="concluir-pix"
               onClick={onFechar}
             >
-              <CircleCheck className="size-4" aria-hidden="true" />
+              <CheckCircle className="size-4" aria-hidden="true" />
               Concluir
             </Button>
           ) : (
