@@ -39,9 +39,7 @@ describe('DicaAtalhos — renderização (T020)', () => {
   it('mostra uma entrada por atalho, com tecla e nome', () => {
     render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={vi.fn()} />);
 
-    expect(screen.getByTestId('atalho-venda-rapida-F6')).toHaveTextContent(
-      'Dinheiro à vista (F6)',
-    );
+    expect(screen.getByTestId('atalho-venda-rapida-F6')).toHaveTextContent('Dinheiro à vista (F6)');
     expect(screen.getByTestId('atalho-venda-rapida-F8')).toHaveTextContent('Débito à vista (F8)');
     expect(screen.getAllByRole('button')).toHaveLength(2);
   });
@@ -58,7 +56,14 @@ describe('DicaAtalhos — renderização (T020)', () => {
 
     render(<DicaAtalhos atalhos={invertida} onAcionar={vi.fn()} />);
 
-    const rotulos = screen.getAllByRole('button').map((botao) => botao.textContent);
+    /* `textContent` é normalizado porque o ícone entra antes do rótulo e o
+       reicon injeta o SVG com `dangerouslySetInnerHTML`, deixando os espaços
+       literais entre `<path>` como nós de texto dentro do `<svg>` — invisíveis
+       na tela, mas contados aqui. O que a asserção verifica é a lista e a
+       ordem dos rótulos, não o espaçamento do desenho. */
+    const rotulos = screen
+      .getAllByRole('button')
+      .map((botao) => botao.textContent?.replace(/\s+/g, ' ').trim());
     expect(rotulos).toEqual(['Débito à vista (F8)', 'Dinheiro à vista (F6)']);
   });
 });

@@ -1,13 +1,13 @@
 import {
-  ArchiveRestore,
-  ArrowDownToLine,
+  ArchiveUp,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Circle,
-  CircleCheck,
+  Import,
+  Record,
   Search,
   X,
-} from 'lucide-react';
+} from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
@@ -237,7 +237,7 @@ export function ModalRecuperacaoNFCe({
         <header className="flex h-[78px] shrink-0 items-center justify-between gap-sm border-b border-border px-lg">
           <div className="flex items-center gap-sm">
             <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
-              <ArchiveRestore className="size-5 text-primary" aria-hidden="true" />
+              <ArchiveUp className="size-5 text-primary" aria-hidden="true" />
             </span>
             <div className="flex flex-col gap-[2px]">
               <h2 className="text-xl font-semibold text-foreground">Recuperação NFCe</h2>
@@ -366,7 +366,7 @@ export function ModalRecuperacaoNFCe({
                 void confirmarRecuperacao();
               }}
             >
-              <ArrowDownToLine className="size-4.5" aria-hidden="true" />
+              <Import className="size-4.5" aria-hidden="true" />
               Carregar NFCe
             </Button>
           </div>
@@ -442,9 +442,9 @@ function TabelaDeRascunhos({
               >
                 <span className="flex w-[42px] shrink-0 items-center justify-center">
                   {ativo ? (
-                    <CircleCheck className="size-4 text-primary" aria-hidden="true" />
+                    <CheckCircle className="size-4 text-primary" aria-hidden="true" />
                   ) : (
-                    <Circle className="size-4 text-muted-foreground/60" aria-hidden="true" />
+                    <Record className="size-4 text-muted-foreground/60" aria-hidden="true" />
                   )}
                 </span>
                 <span className="w-[90px] shrink-0 px-[10px] font-mono text-xs font-bold tabular-nums">

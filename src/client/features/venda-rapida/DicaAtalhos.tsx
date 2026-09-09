@@ -2,11 +2,7 @@ import type { ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 import { ICONE_POR_MEIO } from '../pagamento/iconePorMeio';
 import { useAtalhosDeTeclado } from '../../hotkeys/mapaAtalhos';
-import type {
-  AtalhoVendaRapida,
-  ListaAtalhos,
-  TeclaAtalho,
-} from '../../domain/vendaRapida/tipos';
+import type { AtalhoVendaRapida, ListaAtalhos, TeclaAtalho } from '../../domain/vendaRapida/tipos';
 import { useAcionarCenario } from './useAcionarCenario';
 
 /**
@@ -23,7 +19,7 @@ import { useAcionarCenario } from './useAcionarCenario';
  * |---|---|
  * | linha 36px, `gap: 8`, botões `flex: 1 1 0` | `h-9`, `gap-[8px]`, `flex-1` |
  * | raio 12, gap interno 6, conteúdo centralizado | `rounded-xl gap-[6px] justify-center` |
- * | ícone lucide de 14px | `size-3.5` |
+ * | ícone de 14px (reicon, ver AD-201) | `size-3.5` |
  * | rótulo Inter 12/600 | `text-xs font-semibold` |
  * | todos `#EEF0F3`/`#0A0B0D`, ícone `#5B616E` | `bg-secondary text-secondary-foreground`, ícone `text-muted-foreground` |
  *

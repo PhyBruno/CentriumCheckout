@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Package, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Package, Pen, Trash2 } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
@@ -258,7 +258,7 @@ function ItemMobile({
                 onEditar(linha);
               }}
             >
-              <Pencil className="size-3.5" aria-hidden="true" />
+              <Pen className="size-3.5" aria-hidden="true" />
             </BotaoDeLinha>
 
             <BotaoDeLinha

@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from 'reicon-react';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
@@ -31,8 +31,8 @@ import { ModalPix } from './pix/ModalPix';
  * (`N2JOw`) com o título à esquerda (Inter 13/600, `uBHDr`) e o "Texto restante"
  * à direita (Inter 12/600 em `$danger`, `s6VSY`, texto literal "Faltante R$ …");
  * cada forma aplicada (`vmqVn`) é uma faixa de 34px, raio 12, fundo `$surface-soft`,
- * `padding: 0 12px`, com nome+ícone à esquerda (`pvAYq`, gap 8, ícone lucide de
- * 16px) e, à direita (`tNCgL`, gap 6), o valor em Geist Mono 13/600 (`AYBpH`) e
+ * `padding: 0 12px`, com nome+ícone à esquerda (`pvAYq`, gap 8, ícone de 16px —
+ * reicon, ver AD-201) e, à direita (`tNCgL`, gap 6), o valor em Geist Mono 13/600 (`AYBpH`) e
  * o botão remover de 26×26 com raio total, fundo `$surface-strong` e ícone
  * `trash-2` de 14px (`EB08g`/`cQBj5`).
  *

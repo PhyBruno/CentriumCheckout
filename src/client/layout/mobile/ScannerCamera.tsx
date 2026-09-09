@@ -1,4 +1,4 @@
-import { ScanLine, X } from 'lucide-react';
+import { Scan, X } from 'reicon-react';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { suportaScannerCamera } from '../../domain/layout/suportaScannerCamera';
 
@@ -217,7 +217,7 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
           setAberto(true);
         }}
       >
-        <ScanLine className="size-3.5 shrink-0" aria-hidden="true" />
+        <Scan className="size-3.5 shrink-0" aria-hidden="true" />
         Scanner
       </button>
 

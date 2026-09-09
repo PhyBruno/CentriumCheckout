@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Centrium Checkout">
+  <!--
+    Mesmo símbolo do logo da barra superior (`BarraSuperior.tsx`) e do painel de
+    mensagem (`PainelMensagem.tsx`): disco `--cc-color-primary` com o carrinho
+    em `--cc-color-on-primary`. Os tokens estão escritos em hex porque um
+    favicon é carregado fora do documento, sem acesso ao `global.css` — se a
+    marca mudar de cor lá, este arquivo precisa mudar junto.
+
+    O glifo é o `CartShopping` do reicon (AD-201), com o `viewBox` de 24 do
+    ícone reposicionado dentro do disco de 32: escala 0.62 e deslocamento de
+    (8.56, 8.56) deixam o carrinho com 14.9px centrado, a mesma proporção
+    glifo/disco do logo em tela (20 sobre 40).
+  -->
+  <circle cx="16" cy="16" r="16" fill="#2563eb" />
+  <g transform="translate(8.56 8.56) scale(0.62)" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 2.3333 2.3333 L 4.1347 2.784 C 4.6587 2.9147 5.052 3.3493 5.1306 3.884 L 6.5697 13.6666" />
+    <path d="M 20.3333 17.6666 H 6.3333 C 5.2288 17.6666 4.3333 16.7712 4.3333 15.6666 C 4.3333 14.5621 5.2288 13.6666 6.3333 13.6666 H 17.3994 C 17.9601 13.6666 18.4609 13.3158 18.6525 12.7889 L 20.349 8.1223 C 20.6651 7.2527 20.0211 6.3333 19.096 6.3333 H 5.4907" />
+    <path d="M 5.3333 22.6666 C 6.0693 22.6666 6.6666 22.0693 6.6666 21.3333 C 6.6666 20.5973 6.0693 19.9999 5.3333 19.9999 C 4.5973 19.9999 4 20.5973 4 21.3333 C 4 22.0693 4.5973 22.6666 5.3333 22.6666 Z" fill="#ffffff" stroke="none" />
+    <path d="M 18.6666 22.6666 C 19.4026 22.6666 19.9999 22.0693 19.9999 21.3333 C 19.9999 20.5973 19.4026 19.9999 18.6666 19.9999 C 17.9306 19.9999 17.3333 20.5973 17.3333 21.3333 C 17.3333 22.0693 17.9306 22.6666 18.6666 22.6666 Z" fill="#ffffff" stroke="none" />
+  </g>
+</svg>

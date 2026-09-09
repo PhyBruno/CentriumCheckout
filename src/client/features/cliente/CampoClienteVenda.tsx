@@ -1,12 +1,4 @@
-import {
-  ChevronDown,
-  ChevronUp,
-  Phone,
-  ScanLine,
-  Search,
-  UserCheck,
-  UserRound,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Phone, Scan, Search, User, UserCheck } from 'reicon-react';
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
@@ -465,7 +457,7 @@ export function CampoClienteVenda(): ReactElement {
           só quando a alternativa seria sobrepor nome com nome. */}
       <header className="flex flex-wrap items-center justify-between gap-x-[9px] gap-y-xxs md:min-h-[26px]">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-sm gap-y-xxs md:gap-md">
-          <Pilula icone={<UserRound className="size-4.5 text-foreground" />} rotulo="Cliente">
+          <Pilula icone={<User className="size-4.5 text-foreground" />} rotulo="Cliente">
             {clienteAtual === null ? (
               <>
                 <span
@@ -485,7 +477,7 @@ export function CampoClienteVenda(): ReactElement {
               aparece. */}
           {recusaPessoaJuridica || rotuloVendedor === null ? null : (
             <Pilula
-              icone={<UserRound className="size-4.5 text-foreground" />}
+              icone={<User className="size-4.5 text-foreground" />}
               rotulo="Vendedor"
               testId="pilula-vendedor"
             >
@@ -548,7 +540,7 @@ export function CampoClienteVenda(): ReactElement {
                 segunda. */}
             <div className="flex flex-wrap items-center gap-[10px] md:min-h-[42px]">
               <label className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
-                <ScanLine className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <Scan className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
                     Código do cliente ou CPF
@@ -598,7 +590,7 @@ export function CampoClienteVenda(): ReactElement {
                   que os 12rem do compacto, para a faixa única do Pencil valer
                   onde há largura. */}
               <div className="flex h-[42px] min-w-[12rem] flex-1 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:min-w-[11rem]">
-                <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <User className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
                     Nome / telefone

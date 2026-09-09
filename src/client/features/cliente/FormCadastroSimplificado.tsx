@@ -1,4 +1,4 @@
-import { Check, UserRoundPlus, X } from 'lucide-react';
+import { Check, UserAdd, X } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -132,7 +132,7 @@ export function FormCadastroSimplificado({
         <header className="flex h-[78px] shrink-0 items-center justify-between gap-sm border-b border-border px-lg">
           <div className="flex items-center gap-sm">
             <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
-              <UserRoundPlus className="size-5 text-primary" aria-hidden="true" />
+              <UserAdd className="size-5 text-primary" aria-hidden="true" />
             </span>
             <div className="flex flex-col gap-[2px]">
               <h2 className="text-xl font-semibold text-foreground">Cadastrar cliente</h2>

@@ -1,14 +1,14 @@
 import {
   CalendarDays,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Circle,
-  CircleCheck,
   FileCheck,
   ReceiptText,
+  Record,
   Search,
   X,
-} from 'lucide-react';
+} from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
@@ -494,9 +494,9 @@ function TabelaDeDavs({
               >
                 <span className="flex w-[42px] shrink-0 items-center justify-center">
                   {ativo ? (
-                    <CircleCheck className="size-4 text-primary" aria-hidden="true" />
+                    <CheckCircle className="size-4 text-primary" aria-hidden="true" />
                   ) : (
-                    <Circle className="size-4 text-muted-foreground/60" aria-hidden="true" />
+                    <Record className="size-4 text-muted-foreground/60" aria-hidden="true" />
                   )}
                 </span>
                 <span className="w-[86px] shrink-0 px-[10px] font-mono text-xs font-bold tabular-nums">

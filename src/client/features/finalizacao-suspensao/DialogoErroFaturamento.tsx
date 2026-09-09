@@ -1,4 +1,4 @@
-import { AlertTriangle, XCircle } from 'lucide-react';
+import { AlertTriangle, XCircle } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';

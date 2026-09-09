@@ -1,4 +1,4 @@
-import { CircleCheck } from 'lucide-react';
+import { CheckCircle } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +52,7 @@ export function BotaoFinalizarVenda({
           : 'bg-primary text-primary-foreground hover:bg-[var(--cc-color-primary-active)]',
       )}
     >
-      <CircleCheck className="size-5" aria-hidden="true" />
+      <CheckCircle className="size-5" aria-hidden="true" />
       {enviando ? 'Finalizando…' : 'Finalizar venda'}
     </button>
   );

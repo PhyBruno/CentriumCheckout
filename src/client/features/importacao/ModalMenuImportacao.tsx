@@ -1,4 +1,4 @@
-import { ArchiveRestore, ChevronRight, Download, ReceiptText, X } from 'lucide-react';
+import { ArchiveUp, ChevronRight, Download, ReceiptText, X } from 'reicon-react';
 import { useEffect, type ComponentType, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -110,7 +110,7 @@ export function ModalMenuImportacao({
             onEscolher={onEscolherDav}
           />
           <OpcaoDeImportacao
-            icone={ArchiveRestore}
+            icone={ArchiveUp}
             titulo="Importar NFCe"
             descricao="Carregue uma NFCe suspensa para a venda atual"
             testId="opcao-importar-nfce"

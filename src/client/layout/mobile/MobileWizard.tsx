@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ShoppingCart, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CartShopping, User } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { notificar } from '@/lib/notificar';
@@ -321,7 +321,7 @@ function CabecalhoMobile(): ReactElement {
           seu `truncate`. */}
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <div className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-primary">
-          <ShoppingCart className="size-[19px] text-primary-foreground" aria-hidden="true" />
+          <CartShopping className="size-[19px] text-primary-foreground" aria-hidden="true" />
         </div>
         <div className="flex min-w-0 flex-col gap-[1px]">
           {/* **Só o nome do produto**, e não `tituloDoProduto` — que é o do
@@ -350,7 +350,7 @@ function CabecalhoMobile(): ReactElement {
             className="flex min-w-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1.5"
             data-testid="operador-da-sessao"
           >
-            <UserRound className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <User className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             {/* Teto de largura só na tela **estreita de verdade** — `sm:` são
                 640px de largura real, uma consulta de mídia comum, ao contrário
                 de `md:`, que desde AD-198 significa "estou na árvore desktop" e

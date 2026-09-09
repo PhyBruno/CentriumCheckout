@@ -13,7 +13,7 @@
 
 - UI Framework: React + Vite
 - Styling/Design system: shadcn/ui, seguindo tokens do design aprovado no Pencil (Ver C:\CentriumCheckout\design)
-- Ícones: Lucide
+- Ícones: **reicon** (`reicon-react`) — desde 2026-09-09 (AD-201). O Pencil nomeia os ícones em lucide; o código traduz cada nome para o equivalente reicon (ver a tabela de correspondência em AD-201, `.specs/project/STATE.md`). `lucide-react` foi removido do `package.json`.
 - Skeletons de carregamento: Boneyard (modais que carregam dados da API, ex.: busca de produto)
 - Notificações (toast): Goey Toast
 - Navegação por teclado: react-hotkeys-hook (desativado no layout mobile — ver `.specs/features/layout-responsivo-mobile/spec.md`)

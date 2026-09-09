@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { CartShopping } from 'reicon-react';
 import { cn } from '@/lib/utils';
 
 export interface PainelMensagemProps {
@@ -36,7 +36,7 @@ export function PainelMensagem({
             variante === 'alerta' && 'bg-[var(--cc-color-accent-yellow)]',
           )}
         >
-          <ShoppingCart
+          <CartShopping
             className={cn(
               'size-5 text-primary-foreground',
               variante === 'alerta' && 'text-foreground',

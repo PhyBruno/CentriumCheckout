@@ -1,4 +1,4 @@
-import { FileText } from 'lucide-react';
+import { FileText } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { notificar } from '@/lib/notificar';
 import { cn } from '@/lib/utils';

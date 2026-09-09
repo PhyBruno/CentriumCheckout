@@ -1,4 +1,4 @@
-import { Ticket, TicketCheck, TriangleAlert, X } from 'lucide-react';
+import { AlertTriangle, Ticket, Verified, X } from 'reicon-react';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
@@ -21,7 +21,7 @@ import { useVendaStore } from '../../stores/vendaStore';
  * estabelecido nesta base**, lido de `features/cliente/ModalBuscaCliente.tsx` e
  * `features/dav/ModalImportacaoDav.tsx`, que por sua vez derivam do nó "Modal
  * consulta de cliente" (linha 12495 do export): overlay `$ink` a 40%, cartão
- * branco de raio 24 com hairline, cabeçalho de 78px com ícone lucide de 20px num
+ * branco de raio 24 com hairline, cabeçalho de 78px com ícone de 20px (reicon, ver AD-201) num
  * disco `$surface-strong` de 42px, corpo com 24px de folga lateral, rodapé de
  * 60px com as ações à direita, e as animações `cc-backdrop-entra`/`cc-modal-entra`
  * via `usePresenca`. Nenhum valor visual aqui foi escolhido por conta própria:
@@ -179,7 +179,6 @@ export function ModalValeDevolucao({
     setExcedente(null);
   }
 
-
   const confirmar = acaoBloqueavel(motivoBloqueio, () => {
     void aplicar();
   });
@@ -226,7 +225,7 @@ export function ModalValeDevolucao({
 
         <div className="flex flex-col gap-sm px-lg py-base">
           <label className="flex h-11 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
-            <TicketCheck className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <Verified className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="sr-only">Código do vale devolução</span>
             <input
               className="h-full w-full bg-transparent font-mono tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
@@ -265,7 +264,7 @@ export function ModalValeDevolucao({
               role="alert"
             >
               <div className="flex items-start gap-xs">
-                <TriangleAlert
+                <AlertTriangle
                   className="mt-[2px] size-4.5 shrink-0 text-[var(--cc-color-accent-yellow)]"
                   aria-hidden="true"
                 />
@@ -308,7 +307,7 @@ export function ModalValeDevolucao({
               {...atributosDeBloqueio(motivoBloqueio)}
               onClick={confirmar}
             >
-              <TicketCheck className="size-4.5" aria-hidden="true" />
+              <Verified className="size-4.5" aria-hidden="true" />
               Aplicar vale
             </Button>
           ) : (
@@ -320,7 +319,7 @@ export function ModalValeDevolucao({
                 responderExcedente(true);
               }}
             >
-              <TicketCheck className="size-4.5" aria-hidden="true" />
+              <Verified className="size-4.5" aria-hidden="true" />
               Aplicar mesmo assim
             </Button>
           )}

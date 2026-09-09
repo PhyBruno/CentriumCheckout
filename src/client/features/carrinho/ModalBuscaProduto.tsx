@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CircleCheck, PackageSearch, Search, X } from 'lucide-react';
+import { BoxSearch, CheckCircle, ChevronLeft, ChevronRight, Search, X } from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
@@ -138,7 +138,7 @@ export function ModalBuscaProduto({
         <header className="flex items-center justify-between gap-sm border-b border-border px-base py-2.5 md:px-lg md:py-base">
           <div className="flex min-w-0 items-center gap-sm">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary md:size-[42px]">
-              <PackageSearch className="size-4.5 text-primary md:size-5" aria-hidden="true" />
+              <BoxSearch className="size-4.5 text-primary md:size-5" aria-hidden="true" />
             </span>
             <div className="flex min-w-0 flex-col gap-[2px]">
               <h2 className="truncate text-lg font-semibold text-foreground md:text-xl">
@@ -350,7 +350,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
                   ... check"): indica que escolher a linha carrega o código no
                   campo — correção do usuário, 2026-09-03 (era `Circle`). */}
               <span className="hidden w-11 shrink-0 items-center justify-center md:flex">
-                <CircleCheck className="size-4 text-muted-foreground/60" aria-hidden="true" />
+                <CheckCircle className="size-4 text-muted-foreground/60" aria-hidden="true" />
               </span>
               <span className="min-w-0 truncate text-sm text-muted-foreground md:w-32 md:shrink-0 md:px-sm md:text-foreground">
                 <span className={classeRotuloCompacto}>Cód. Produto: </span>

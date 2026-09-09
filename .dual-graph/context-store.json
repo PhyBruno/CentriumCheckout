@@ -5960,5 +5960,47 @@
     ],
     "created_at": "2026-09-09T17:21:47.611067+00:00",
     "created_epoch": 1788974507
+  },
+  {
+    "kind": "decision",
+    "content": "AD-201: icones passam de lucide-react para reicon-react em todo o produto",
+    "tags": [
+      "icones",
+      "reicon",
+      "AD-201"
+    ],
+    "files": [
+      "src/client/features/pagamento/iconePorMeio.ts",
+      ".specs/project/STATE.md",
+      "CLAUDE.md"
+    ],
+    "created_at": "2026-09-09T17:59:42.000000+00:00",
+    "created_epoch": 1788976782
+  },
+  {
+    "kind": "fact",
+    "content": "reicon injeta SVG por innerHTML; espacos entre paths entram no textContent",
+    "tags": [
+      "reicon",
+      "testes",
+      "AD-201"
+    ],
+    "files": [
+      "tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx"
+    ],
+    "created_at": "2026-09-09T17:59:42.000000+00:00",
+    "created_epoch": 1788976782
+  },
+  {
+    "kind": "next",
+    "content": "conferir os 25 icones traduzidos no navegador; escolha foi por leitura de SVG",
+    "tags": [
+      "icones",
+      "reicon",
+      "AD-201"
+    ],
+    "files": [],
+    "created_at": "2026-09-09T17:59:42.000000+00:00",
+    "created_epoch": 1788976782
   }
 ]
