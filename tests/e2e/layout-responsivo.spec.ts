@@ -78,3 +78,61 @@ test.describe('Alternância de layout com venda em andamento', () => {
     expect((await page.getByTestId('nome-vendedor').innerText()).trim()).toBe(nomeNoDesktop);
   });
 });
+
+/**
+ * AD-198 no navegador: **quem escolhe o layout é o toque, não o pixel.**
+ *
+ * Os testes acima cruzam o piso de 1024px, então provam só a metade do critério
+ * que já valia antes. A metade nova — largura de sobra e nenhum ponteiro preciso
+ * — não tem como ser verificada em unitário: `classificarLayout.spec.ts` cobre a
+ * função pura, mas ninguém confere que `CONSULTA_LAYOUT_COMPACTO`, a **string**
+ * de media query derivada dela, diz a mesma coisa ao navegador. Essa equivalência
+ * é a costura entre o domínio e o CSS, e é justamente onde um `or`/`and` trocado
+ * passaria despercebido (revisão da 007, 2026-09-09).
+ *
+ * `hasTouch: true` é o que o Chromium expõe como "sem ponteiro fino": medido
+ * neste projeto em 1366×1024 — `any-pointer: fine` deixa de casar, `coarse`
+ * passa a casar, e a consulta do compacto vira verdadeira. É o iPad Pro 12.9
+ * deitado, o aparelho concreto que motivou AD-198.
+ */
+test.describe('Tablet sem mouse: largura de sobra, layout compacto (AD-198)', () => {
+  /** 1366px é maior que o piso de 1024 — só o toque pode decidir aqui. */
+  test.use({ viewport: { width: 1366, height: 1024 }, hasTouch: true });
+
+  test('a tela em etapas monta num tablet largo operado só com o dedo', async ({ page }) => {
+    await page.goto(urlSessionStart());
+
+    await expect(page.getByTestId('mobile-wizard')).toBeVisible();
+    await expect(page.getByTestId('painel-pagamento-totais')).toHaveCount(0);
+    // A barra superior é do desktop; sua ausência prova que não é só o CSS que
+    // mudou — a árvore montada é outra (`FR-008`, montagem condicional).
+    await expect(page.getByTestId('barra-superior')).toHaveCount(0);
+    await expect(page.getByTestId('cabecalho-mobile')).toBeVisible();
+  });
+
+  test('o `data-layout` do documento acompanha, para o CSS não se vestir de desktop', async ({
+    page,
+  }) => {
+    await page.goto(urlSessionStart());
+    await expect(page.getByTestId('mobile-wizard')).toBeVisible();
+
+    // `sincronizarLayoutNoDocumento` é o que faz `md:` valer como "estou no
+    // desktop". Se ele divergisse de `useIsMobile`, o wizard apareceria com o
+    // estilo da tela única por cima — o defeito que AD-198 fecha.
+    await expect(page.locator('html')).toHaveAttribute('data-layout', 'MOBILE');
+  });
+});
+
+test.describe('Desktop largo com mouse continua na tela única (AD-198)', () => {
+  test.use({ viewport: { width: 1366, height: 1024 }, hasTouch: false });
+
+  test('a mesma largura, agora com ponteiro preciso, monta a tela única', async ({ page }) => {
+    await page.goto(urlSessionStart());
+
+    // Mesmo viewport do describe anterior: o que muda é só o ponteiro. É o par
+    // que torna o teste uma afirmação sobre o critério, e não sobre a largura.
+    await expect(page.getByTestId('painel-pagamento-totais')).toBeVisible();
+    await expect(page.getByTestId('mobile-wizard')).toHaveCount(0);
+    await expect(page.locator('html')).toHaveAttribute('data-layout', 'DESKTOP');
+  });
+});

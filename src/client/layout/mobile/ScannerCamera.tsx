@@ -129,8 +129,11 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
         }
         procurar();
       } catch {
-        // Permissão negada ou câmera indisponível: a janela se fecha e o
-        // operador segue pelo campo de código, que nunca deixou de existir.
+        // Permissão negada ou câmera indisponível: a janela **permanece
+        // aberta** e troca o vídeo pela frase — quem a fecha é o operador, pelo
+        // X do cabeçalho. Fechá-la sozinha esconderia o motivo antes de ele ser
+        // lido, e a saída que a frase indica (o campo de código) nunca deixou
+        // de existir atrás dela.
         setErro('Não foi possível abrir a câmera. Use o campo de código.');
       }
     }
@@ -197,10 +200,16 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
     <>
       {/* Nó `QIJKL` do Pencil: pílula `$surface-strong` de 30px de altura, folga
           lateral 10, gap 6, ícone `scan-line` de 14px e rótulo 11/800 na cor da
-          marca. */}
+          marca.
+
+          `cc-alvo-toque` (`global.css`) porque 30px de altura é o alvo mais
+          apertado da etapa 1 — e este botão é o único controle do produto que
+          existe **exclusivamente** no layout do dedo, onde não há mouse para
+          compensar a mira. O pseudo-elemento leva a área sensível a 44px sem
+          mover nem engordar um pixel da pílula que o desenho fixa. */}
       <button
         type="button"
-        className="flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-secondary px-2.5 text-xs font-bold text-primary hover:bg-secondary-hover outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="cc-alvo-toque flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-secondary px-2.5 text-xs font-bold text-primary hover:bg-secondary-hover outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         data-testid="abrir-scanner-camera"
         onClick={() => {
           jaLeuRef.current = false;

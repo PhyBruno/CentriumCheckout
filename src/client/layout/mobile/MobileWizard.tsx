@@ -355,8 +355,9 @@ function CabecalhoMobile(): ReactElement {
                 640px de largura real, uma consulta de mídia comum, ao contrário
                 de `md:`, que desde AD-198 significa "estou na árvore desktop" e
                 não uma largura. A distinção importa aqui: o teto foi medido em
-                390px, e prendê-lo a `md:` o manteria ativo até 1366px, deixando
-                "Operador d…" truncado num tablet com folga de sobra.
+                390px, e prendê-lo a `md:` o manteria ativo em toda a árvore
+                compacta — inclusive num tablet de 820px sem mouse, onde há
+                folga de sobra —, deixando "Operador d…" truncado à toa.
 
                 Sem ele as duas metades do cabeçalho encolhem juntas e
                 o flex tira mais de quem é maior — o título —, então um

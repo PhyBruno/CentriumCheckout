@@ -5,10 +5,13 @@ import { LARGURA_MINIMA_DESKTOP_PX } from '../domain/layout/classificarLayout';
  * Consulta de mídia equivalente a `classificarLayout` (T006, `research.md` D1,
  * AD-198).
  *
- * Derivada do limiar, e não escrita à mão: `1365.98px` é `1366 - 0.02`, a folga
- * que fecha o buraco em telas de largura fracionária (mesmo padrão que
- * frameworks CSS usam para "abaixo de N"). Escrever o número solto aqui criaria
- * a segunda cópia do breakpoint que `classificarLayout` existe para evitar.
+ * Derivada do limiar, e não escrita à mão: com `LARGURA_MINIMA_DESKTOP_PX` em
+ * 1024, a consulta sai como `1023.98px` — os `0.02` de folga que fecham o
+ * buraco em telas de largura fracionária (mesmo padrão que frameworks CSS usam
+ * para "abaixo de N"). Escrever o número solto aqui criaria a segunda cópia do
+ * breakpoint que `classificarLayout` existe para evitar, e é exatamente o que
+ * teria acontecido: até 2026-09-09 este bloco citava `1366`, um valor que a
+ * constante nunca teve.
  *
  * **É a negação da condição de desktop, não uma condição de mobile própria.**
  * O desktop exige as duas coisas — largura suficiente *e* ponteiro preciso —,
@@ -39,11 +42,18 @@ export const CONSULTA_LAYOUT_COMPACTO = `not all and (min-width: ${LARGURA_MINIM
  * a checagem de breakpoint fora de dezenas de componentes (Open/Closed).
  */
 export function useIsMobile(): boolean {
+  // Ambiente sem `matchMedia` (jsdom cru): desktop, o mesmo padrão de
+  // `obterPlataforma` e `sincronizarLayoutNoDocumento` — não saber responder
+  // não pode rebaixar a tela. Antes desta guarda os três pontos de leitura do
+  // layout divergiam, e só este quebrava (revisão da 007, 2026-09-09).
   const [compacto, setCompacto] = useState(
-    () => window.matchMedia(CONSULTA_LAYOUT_COMPACTO).matches,
+    () => window.matchMedia?.(CONSULTA_LAYOUT_COMPACTO).matches ?? false,
   );
 
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') {
+      return;
+    }
     const consulta = window.matchMedia(CONSULTA_LAYOUT_COMPACTO);
     const aoMudar = (evento: MediaQueryListEvent): void => {
       setCompacto(evento.matches);

@@ -65,8 +65,12 @@ export function EtapaRevisao(): ReactElement {
           rotulo="Produtos"
           testId="conferencia-produtos"
         >
-          {quantidadeDeItens === 1 ? '1 item' : `${String(quantidadeDeItens)} itens`} • Subtotal{' '}
-          {formatarCentavos(totalVenda(linhas))}
+          {/* Contagem e subtotal em `font-mono` (Geist Mono), como todo valor
+              tabular do produto; o texto ao redor fica em Inter. Sem o `<span>`
+              a linha inteira herdaria a mono, inclusive "itens" e "Subtotal". */}
+          <span className="font-mono tabular-nums">{String(quantidadeDeItens)}</span>{' '}
+          {quantidadeDeItens === 1 ? 'item' : 'itens'} • Subtotal{' '}
+          <span className="font-mono tabular-nums">{formatarCentavos(totalVenda(linhas))}</span>
         </LinhaConferencia>
 
         {/* A linha de ajuste some quando não há desconto de capa: uma linha
@@ -77,10 +81,18 @@ export function EtapaRevisao(): ReactElement {
             rotulo="Ajuste"
             testId="conferencia-ajuste"
           >
-            {descontoCapa.modo === 'PERCENTUAL'
-              ? `Desconto ${String(descontoCapa.entrada)}%`
-              : 'Desconto'}{' '}
-            • − {formatarCentavos(descontoCapa.valorResolvido)}
+            {descontoCapa.modo === 'PERCENTUAL' ? (
+              <>
+                Desconto{' '}
+                <span className="font-mono tabular-nums">{String(descontoCapa.entrada)}%</span>
+              </>
+            ) : (
+              'Desconto'
+            )}{' '}
+            •{' '}
+            <span className="font-mono tabular-nums">
+              − {formatarCentavos(descontoCapa.valorResolvido)}
+            </span>
           </LinhaConferencia>
         )}
       </section>

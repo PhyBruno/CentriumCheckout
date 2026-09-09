@@ -1,71 +1,5 @@
 [
   {
-    "id": "mem:1787761018318",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "registra",
-      "085",
-      "exig",
-      "ncia",
-      "arquitetura",
-      "solid",
-      "digo",
-      "referenciada"
-    ],
-    "files": [
-      "CLAUDE.md"
-    ],
-    "file_path": "CLAUDE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26T16:16:58.318166+00:00",
-    "created_epoch": 1787761018,
-    "updated_at": "2026-08-26T16:16:58.318182+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787764531062",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "instala",
-      "spec",
-      "kit",
-      "real",
-      "uvx",
-      "specify",
-      "init",
-      "here"
-    ],
-    "files": [
-      ".specify/memory/constitution.md"
-    ],
-    "file_path": ".specify/memory/constitution.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26T17:15:31.062697+00:00",
-    "created_epoch": 1787764531,
-    "updated_at": "2026-08-26T17:15:31.062708+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
     "id": "mem:1787764531060",
     "kind": "decision",
     "content": "Instala Spec Kit real (uvx specify init --here) e ratifica constitution v1.0.0",
@@ -5989,5 +5923,42 @@
     "evidence": {
       "source_kind": "edit_observation"
     }
+  },
+  {
+    "id": "mem:1788974506722",
+    "kind": "decision",
+    "content": "AD-200: leitura da c\u00e2mera vence pr\u00e9via pendente, como o modal de busca",
+    "tags": [
+      "007",
+      "scanner",
+      "carrinho"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+      "src/client/layout/mobile/ScannerCamera.tsx"
+    ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-09T17:21:46.709520+00:00",
+    "created_epoch": 1788974506,
+    "updated_at": "2026-09-09T17:21:46.709520+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "kind": "blocker",
+    "content": "format:check falha em 111 arquivos: prettier pede LF, checkout Windows \u00e9 CRLF",
+    "tags": [
+      "tooling",
+      "prettier"
+    ],
+    "files": [
+      ".prettierrc"
+    ],
+    "created_at": "2026-09-09T17:21:47.611067+00:00",
+    "created_epoch": 1788974507
   }
 ]
