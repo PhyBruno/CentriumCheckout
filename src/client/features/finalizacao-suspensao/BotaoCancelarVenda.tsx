@@ -1,4 +1,4 @@
-import { SidebarRight, Trash2 } from 'reicon-react';
+import { CloseSquare } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
@@ -10,20 +10,28 @@ import { cn } from '@/lib/utils';
  * uma só reaproveitada:
  *
  * - **Desktop** — nó "Atalho Cancelar venda", na faixa "Atalhos da venda":
- *   pílula de 36px, fundo branco com hairline `#DEE1E6` (`--border`), ícone
- *   `panel-right-open` de 16px em `#5B616E` (`--cc-color-body`) e rótulo Inter
- *   12px peso 600, ocupando uma fração da faixa (`flex: 1 1 0`).
+ *   pílula de 36px, fundo branco com hairline `#DEE1E6` (`--border`), ícone de
+ *   16px em `#5B616E` (`--cc-color-body`) e rótulo Inter 12px peso 600,
+ *   ocupando uma fração da faixa (`flex: 1 1 0`).
  * - **Mobile** — nó "Cancelar venda mobile", na barra superior: quadrado de
- *   38px com raio de pílula, fundo `#EEF0F3` (`--secondary`), só o ícone
- *   `trash-2` de 19px em `#CF202F` (`--destructive`), disponível em **todas**
- *   as etapas do wizard (AD-089).
+ *   38px com raio de pílula, fundo `#EEF0F3` (`--secondary`), só o ícone de
+ *   19px em `#CF202F` (`--destructive`), disponível em **todas** as etapas do
+ *   wizard (AD-089).
+ *
+ * **O ícone é o mesmo nas duas superfícies, e isso é um desvio deliberado do
+ * Pencil** (pedido do usuário, 2026-09-09). O desenho dá um ícone diferente a
+ * cada superfície — `panel-right-open` no desktop, `trash-2` no mobile —, o que
+ * fazia a mesma ação parecer duas: uma gaveta que abre e uma exclusão. As duas
+ * passaram a usar `CloseSquare` (reicon, ver AD-201): um só desenho para uma só
+ * operação, em qualquer largura. Só o ícone mudou — medidas, cores e o vermelho
+ * do mobile continuam sendo os do desenho.
  *
  * "Cancelar" é o rótulo do operador; a operação enviada ao ERP é `SUSPENDER`
  * (`FR-002`) — a venda continua existindo como rascunho do lado do servidor.
  */
 export interface BotaoCancelarVendaProps {
   readonly onCancelar: () => void;
-  /** Layout compacto (mobile): só o ícone de lixeira. */
+  /** Layout compacto (mobile): só o ícone, sem rótulo. */
   readonly compacto?: boolean;
   /**
    * Por que a suspensão não está disponível — a **frase que o operador lê** —,
@@ -65,7 +73,7 @@ export function BotaoCancelarVenda({
             : 'text-destructive',
         )}
       >
-        <Trash2 className="size-[19px]" aria-hidden="true" />
+        <CloseSquare className="size-[19px]" aria-hidden="true" />
       </button>
     );
   }
@@ -83,7 +91,7 @@ export function BotaoCancelarVenda({
         desabilitado ? 'cursor-not-allowed text-[var(--cc-color-muted-soft)]' : 'text-foreground',
       )}
     >
-      <SidebarRight
+      <CloseSquare
         className={cn('size-4', desabilitado ? '' : 'text-[var(--cc-color-body)]')}
         aria-hidden="true"
       />

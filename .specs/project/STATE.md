@@ -2696,7 +2696,7 @@ A saída não é brigar com o recorte por CSS: a bolha continuaria desenhada com
 | `CircleCheck` | `CheckCircle` | |
 | `Circle` | `Record` | círculo vazio; é o par não-selecionado de `CheckCircle` nas listas de escolha |
 | `PackageSearch` | `BoxSearch` | |
-| `PanelRightOpen` | `SidebarRight` | |
+| `PanelRightOpen` | ~~`SidebarRight`~~ → `CloseSquare` | traduziu para `SidebarRight`, mas o ícone foi trocado no mesmo dia pelo ajuste abaixo; `SidebarRight` não é mais usado em lugar nenhum |
 | `ScanLine` | `Scan` | moldura com a linha de leitura no meio |
 | `ExternalLink` | `LinkSquare` | |
 | `ArchiveRestore` | `ArchiveUp` | |
@@ -2723,5 +2723,12 @@ A saída não é brigar com o recorte por CSS: a bolha continuaria desenhada com
 **Três diferenças de API que vão morder quem assumir que é lucide com outro nome.** (1) O reicon desenha por `fill="currentColor"` em paths já expandidos, não por `stroke` — `text-*` continua funcionando, mas `strokeWidth` passa por uma máscara SVG e não é o mesmo botão de antes (o projeto não usava esse prop em lugar nenhum, e continua não usando). (2) `size` sai como atributo `width`/`height`, então as classes `size-*` do Tailwind seguem vencendo por CSS. (3) **O SVG é injetado por `dangerouslySetInnerHTML`, e o HTML de vários ícones tem espaços literais entre os `<path>`** — esses espaços viram nós de texto dentro do `<svg>` e entram no `textContent` do elemento que contém o ícone. Invisível na tela, mas quebra asserção de teste que compare `textContent` cru: foi o que aconteceu com `DicaAtalhos.spec.tsx`, corrigido normalizando o espaçamento na asserção. Teste novo que leia rótulo com ícone ao lado deve normalizar.
 
 **O tipo mudou junto:** `LucideIcon` não existe mais; a assinatura pública de `iconePorMeio.ts` (`ICONE_POR_MEIO`, `ICONE_VALE_DEVOLUCAO`, `iconeDaForma`, `iconeDoPagamento`) passou a `IconComponent`, exportado por `reicon-react`.
+
+**Dois ajustes de escolha, no mesmo dia, já com a tela no navegador** (pedido do usuário, 2026-09-09 — valem sobre a tabela acima):
+
+1. **"Cancelar venda" usa `CloseSquare` nas duas superfícies.** O Pencil dá um ícone diferente a cada uma — `panel-right-open` no desktop, `trash-2` no mobile —, e a tradução direta preservou essa divergência (`SidebarRight` e `Trash2`). São a **mesma ação**, e dois desenhos a faziam parecer duas coisas: uma gaveta que abre e uma exclusão. Agora é um só ícone em qualquer largura. É desvio deliberado do desenho, registrado no TSDoc de `BotaoCancelarVenda`; medidas e cores (inclusive o vermelho do mobile) continuam as do Pencil. `SidebarRight` deixou de ser usado no projeto.
+2. **O símbolo do produto é `CartShopping`**, nos três lugares em que aparece: barra superior do desktop (`BarraSuperior`), cabeçalho do wizard mobile (`MobileWizard`) e painel de mensagem/erro (`PainelMensagem`) — antes `ShoppingCart`, que traduzira por identidade e por isso nem constava da tabela.
+
+**O favicon passou a existir** (não havia): `public/favicon.svg`, com o mesmo símbolo — disco `#2563eb` e carrinho branco, a mesma composição do logo em tela — declarado por `<link rel="icon">` no `index.html`. As cores estão em hex, e **não** em token: o favicon é carregado fora do documento e não enxerga o `global.css`, então uma mudança de cor da marca precisa ser repetida ali à mão. O `prettier` não tem parser para SVG; ele ignora o arquivo ao varrer diretório, mas erra se alguém o nomear explicitamente na linha de comando.
 
 **Impact:** alterados — os 33 arquivos de `src/client/` que importavam `lucide-react` (todo `features/`, `layout/`, `components/ui/campo-data.tsx`), com destaque para `src/client/features/pagamento/iconePorMeio.ts` (mapa por meio de pagamento + troca de `LucideIcon` por `IconComponent`); `package.json` (entra `reicon-react@^1.2.5`, sai `lucide-react`); `.specs/codebase/STACK.md`; os TSDoc de `EntradaPagamento`, `ListaPagamentosAplicados`, `ModalValeDevolucao`, `ModalPix`, `SeletorCondicaoForma` e `DicaAtalhos`, que citavam nomes lucide; testes — `tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx` (normalização de `textContent`). Verificação: `tsc --noEmit` limpo, 1126 testes unit/integração passando, `npm run build` concluído. **Conferência visual no navegador ainda não foi feita** — os 25 ícones traduzidos foram escolhidos lendo o SVG de cada candidato, não vendo a tela montada.

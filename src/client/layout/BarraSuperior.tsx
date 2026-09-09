@@ -1,4 +1,4 @@
-import { Monitor, Settings, ShoppingCart, User } from 'reicon-react';
+import { CartShopping, Monitor, Settings, User } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,7 @@ export function BarraSuperior(): ReactElement {
       {/* "Marca e contexto" (nó `ZyzZc`): símbolo + identidade, gap 14. */}
       <div className="flex items-center gap-3.5">
         <div className="flex size-10 items-center justify-center rounded-full bg-primary">
-          <ShoppingCart className="size-5 text-primary-foreground" aria-hidden />
+          <CartShopping className="size-5 text-primary-foreground" aria-hidden />
         </div>
 
         <div className="flex flex-col gap-0.5">
