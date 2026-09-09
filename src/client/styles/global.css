@@ -633,6 +633,62 @@ button:not(:disabled):not([aria-disabled='true']),
   color: #66bb6a;
 }
 
+/* ---------------------------------------------------------------------------
+ * A tremida do toast de recusa/alerta no mobile (pedido do usuário, 2026-09-09).
+ *
+ * Existe porque no wizard o olhar do operador está no campo de produto, não no
+ * topo da tela: o toast nasce fora do ponto que ele fixa, e um aviso que não é
+ * visto é um aviso que não existe. Sacudir é o gesto universal de "não" — a
+ * mesma linguagem do campo que recusa o valor —, e por isso `notificar.ts`
+ * aplica esta classe só em `erro` e `aviso`; `sucesso` não treme.
+ *
+ * **O atraso é o ponto todo, e é medido, não estimado.** O pacote monta o toast
+ * compacto e só depois revela o corpo: `dist/index.js` agenda
+ * `setTimeout(() => setShowBody(true), 330)` e o `.gooey-content` cresce com uma
+ * transição de `0.35s`. Tremer antes disso sacudiria uma pílula ainda sem a
+ * frase — chamaria o olhar para algo que ainda não dá o que ler. Os `700ms`
+ * abaixo são `330 + 350` arredondados: a sacudida começa no quadro em que a
+ * frase acabou de assentar, que é literalmente o "logo após exibir a mensagem"
+ * do pedido.
+ *
+ * Vai só abaixo de `md` porque é resposta a um problema do mobile: no desktop a
+ * notificação voltou ao formato antigo (frase no título) e o toast aparece numa
+ * tela em que o operador já o enxerga sem ser sacudido.
+ *
+ * A amplitude decai (6→5→4→3→2px) em vez de oscilar constante: o movimento
+ * amortecido lê como um objeto físico parando, e não como um alarme piscando —
+ * cabe num PDV, onde a recusa é rotina e não emergência. `translate`, e não
+ * `transform`, para não disputar com nenhuma transformação que o pacote venha a
+ * pôr no mesmo elemento.
+ * ------------------------------------------------------------------------- */
+@keyframes cc-toast-tremida {
+  0%,
+  100% {
+    translate: 0;
+  }
+  15% {
+    translate: -6px;
+  }
+  30% {
+    translate: 5px;
+  }
+  45% {
+    translate: -4px;
+  }
+  60% {
+    translate: 3px;
+  }
+  75% {
+    translate: -2px;
+  }
+}
+
+@media (width < 48rem) {
+  .gooey-wrapper.cc-toast-tremida {
+    animation: cc-toast-tremida 400ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 700ms 1;
+  }
+}
+
 /**
  * Sem movimento para quem pediu sem movimento.
  *
@@ -660,5 +716,20 @@ button:not(:disabled):not([aria-disabled='true']),
   button,
   [role='button'] {
     transition-duration: 1ms;
+  }
+
+  /*
+   * A tremida é a exceção que some inteira, em vez de encolher para 1ms.
+   *
+   * Não há nada a preservar nela: as outras animações são zeradas porque o
+   * `forwards` do estado final ainda precisa valer, enquanto esta começa e
+   * termina no mesmo lugar (`translate: 0`). E movimento oscilante é
+   * exatamente o que a preferência pede para não acontecer — quem depende
+   * dela pode ter sensibilidade vestibular, para quem "1ms de sacudida"
+   * continua sendo sacudida. A frase e a cor do toast seguem inteiras: o
+   * aviso não se perde, só para de balançar.
+   */
+  .gooey-wrapper.cc-toast-tremida {
+    animation: none;
   }
 }

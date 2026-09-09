@@ -90,13 +90,25 @@ const CONSULTAS_DE_LAYOUT = [
 ] as const;
 
 /**
- * A exceção declarada: `projetarAtalhos` da feature 013 recebe a plataforma como
- * capacidade injetada (`FR-020`/D11 daquela feature) e devolve lista vazia no
- * compacto — é exatamente assim que `FR-005` da 007 se cumpre, sem flag nova.
- * A exceção varia a **apresentação** de uma feature, nunca a disponibilidade de
- * uma forma de pagamento ou de uma integração.
+ * As exceções declaradas. Ambas variam a **apresentação** de algo que já
+ * aconteceu, nunca a disponibilidade de uma forma de pagamento, de uma
+ * integração ou de um passo da venda — que é a linha que este teste protege.
+ *
+ * - `useAtalhosVendaRapida.ts` (013): `projetarAtalhos` recebe a plataforma como
+ *   capacidade injetada (`FR-020`/D11 daquela feature) e devolve lista vazia no
+ *   compacto — é exatamente assim que `FR-005` da 007 se cumpre, sem flag nova.
+ * - `lib/notificar.ts` (007/AD-195): escolhe **onde a mesma frase é desenhada** —
+ *   título no desktop, `description` mais tremida no compacto. O operador lê
+ *   palavra por palavra o mesmo texto nos dois layouts; o que muda é o campo da
+ *   API do `goey-toast`, porque o título do pacote é uma pílula de linha única
+ *   que recorta frase longa em 390px. Nenhuma notificação existe num layout e
+ *   falta no outro — se um dia faltasse, seria uma violação de verdade e este
+ *   comentário estaria mentindo.
  */
-const EXCECOES = ['src/client/features/venda-rapida/useAtalhosVendaRapida.ts'] as const;
+const EXCECOES = [
+  'src/client/features/venda-rapida/useAtalhosVendaRapida.ts',
+  'src/client/lib/notificar.ts',
+] as const;
 
 function arquivosDoCliente(
   diretorio: string = join(process.cwd(), 'src/client'),
