@@ -1,262 +1,5 @@
 [
   {
-    "id": "mem:1787828335472",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research",
-      "102",
-      "corrige"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/plan.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/plan.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.472699+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.574329+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335466",
-    "kind": "decision",
-    "content": "Design (speckit-plan) da feature 009-pagamento-pix: research/data-model/contracts/quickstart/plan; AD-100 (dados do pagador) e item 33 (StatusTransacao) abertos",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/plan.md",
-      "specs/009-pagamento-pix/research.md",
-      "specs/009-pagamento-pix/data-model.md",
-      "specs/009-pagamento-pix/contracts/erp-pix-api.md",
-      "specs/009-pagamento-pix/contracts/pix-domain-api.md",
-      "specs/009-pagamento-pix/quickstart.md",
-      ".specs/project/STATE.md",
-      ".specs/project/PENDENCIES.md",
-      ".specs/features/pagamento-pix/spec.md",
-      ".specify/feature.json",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": "specs/009-pagamento-pix/plan.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.466093+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T10:58:55.466102+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787828335485",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research",
-      "102",
-      "corrige"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/research.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/research.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.485762+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.536158+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787828335508",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "design",
-      "speckit",
-      "plan",
-      "feature",
-      "009",
-      "pagamento",
-      "pix",
-      "research",
-      "102",
-      "corrige"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/contracts/erp-pix-api.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/contracts/erp-pix-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T10:58:55.508710+00:00",
-    "created_epoch": 1787828335,
-    "updated_at": "2026-08-27T11:20:33.556782+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1787829633534",
-    "kind": "decision",
-    "content": "AD-102 corrige item 33: 10 literais reais de StatusTransacao fornecidos pelo usu\u00e1rio, substituindo achado parcial via KB",
-    "tags": [
-      "102",
-      "corrige",
-      "item",
-      "literais",
-      "reais",
-      "statustransacao",
-      "fornecidos",
-      "pelo"
-    ],
-    "files": [
-      "specs/009-pagamento-pix/research.md",
-      "specs/009-pagamento-pix/data-model.md",
-      "specs/009-pagamento-pix/contracts/erp-pix-api.md",
-      "specs/009-pagamento-pix/contracts/pix-domain-api.md",
-      "specs/009-pagamento-pix/plan.md",
-      "specs/009-pagamento-pix/quickstart.md",
-      ".specs/features/pagamento-pix/spec.md"
-    ],
-    "file_path": "specs/009-pagamento-pix/research.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-27T11:20:33.534437+00:00",
-    "created_epoch": 1787829633,
-    "updated_at": "2026-08-27T11:20:33.534443+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1787830000000",
-    "kind": "decision",
-    "content": "AD-098: desconto de capa rateado igualmente entre itens, com clamp e redistribuicao",
-    "tags": [
-      "pagamento",
-      "desconto",
-      "rateio",
-      "ad-098"
-    ],
-    "files": [
-      "specs/008-pagamento-geral/data-model.md",
-      ".specs/project/STATE.md"
-    ],
-    "file_path": "specs/008-pagamento-geral/data-model.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26",
-    "created_epoch": 1787830000,
-    "updated_at": "2026-08-26",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1787830000001",
-    "kind": "fact",
-    "content": "AD-099: ValidaTicketDevolucao tem campo Valido no yaml; corrige AD-023, item 32 aberto",
-    "tags": [
-      "pagamento",
-      "ticket-devolucao",
-      "contrato-erp",
-      "ad-099"
-    ],
-    "files": [
-      "specs/008-pagamento-geral/contracts/erp-pagamento-api.md",
-      ".specs/project/PENDENCIES.md"
-    ],
-    "file_path": "specs/008-pagamento-geral/contracts/erp-pagamento-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26",
-    "created_epoch": 1787830000,
-    "updated_at": "2026-08-26",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1787830000002",
-    "kind": "next",
-    "content": "Feature 008 (pagamento geral) pronta para /speckit-tasks apos merge do design",
-    "tags": [
-      "speckit",
-      "feature-008"
-    ],
-    "files": [
-      "specs/008-pagamento-geral/plan.md"
-    ],
-    "file_path": "specs/008-pagamento-geral/plan.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-26",
-    "created_epoch": 1787830000,
-    "updated_at": "2026-08-26",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
     "id": "mem:1787920000000",
     "kind": "decision",
     "content": "Design (speckit-plan) da feature 009: reage so ao veredito PIX_DINAMICO de 008; StatusTransacao tem 5 estados nomeados (KB real)",
@@ -5731,6 +5474,260 @@
     "created_at": "2026-09-10T19:26:03.809886+00:00",
     "created_epoch": 1789068363,
     "updated_at": "2026-09-10T19:26:03.809899+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789068934963",
+    "kind": "task",
+    "content": "Design da 015 gerado: plan, research, data-model, contracts, quickstart",
+    "tags": [
+      "speckit",
+      "015",
+      "plan",
+      "display"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/plan.md",
+      "specs/015-display-cliente-pix/research.md",
+      "specs/015-display-cliente-pix/data-model.md",
+      "specs/015-display-cliente-pix/contracts/canal-display.md",
+      "specs/015-display-cliente-pix/quickstart.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:34.948835+00:00",
+    "created_epoch": 1789068934,
+    "updated_at": "2026-09-10T19:35:34.948835+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068937086",
+    "kind": "decision",
+    "content": "015: repouso usa nomeDaLoja nova, nao tituloDoProduto; o design errava isso",
+    "tags": [
+      "015",
+      "display",
+      "identidadePdv",
+      "research-D1"
+    ],
+    "files": [
+      "src/client/domain/sessao/identidadePdv.ts",
+      "specs/015-display-cliente-pix/research.md"
+    ],
+    "file_path": "src/client/domain/sessao/identidadePdv.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:37.077369+00:00",
+    "created_epoch": 1789068937,
+    "updated_at": "2026-09-10T19:35:37.077369+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068941981",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "speckit",
+      "plan",
+      "015",
+      "com",
+      "gates",
+      "constitution",
+      "aprovados",
+      "research"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/data-model.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:41.981082+00:00",
+    "created_epoch": 1789068941,
+    "updated_at": "2026-09-10T19:35:41.981097+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789068941948",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "speckit",
+      "plan",
+      "015",
+      "com",
+      "gates",
+      "constitution",
+      "aprovados",
+      "research"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/plan.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:41.948087+00:00",
+    "created_epoch": 1789068941,
+    "updated_at": "2026-09-10T19:35:41.948112+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789068941942",
+    "kind": "decision",
+    "content": "/speckit-plan da 015: plan.md com gates da constitution aprovados, research.md com 14 decisoes (D1 e D10 corrigem suposicoes erradas do design.md), data-model.md com a maquina de estados, contrato do canal entre abas e quickstart com 9 cenarios",
+    "tags": [
+      "speckit",
+      "plan",
+      "015",
+      "com",
+      "gates",
+      "constitution",
+      "aprovados",
+      "research"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/plan.md",
+      "specs/015-display-cliente-pix/research.md",
+      "specs/015-display-cliente-pix/data-model.md",
+      "specs/015-display-cliente-pix/contracts/canal-display.md",
+      "specs/015-display-cliente-pix/quickstart.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:41.942866+00:00",
+    "created_epoch": 1789068941,
+    "updated_at": "2026-09-10T19:35:41.942880+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1789068941967",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "speckit",
+      "plan",
+      "015",
+      "com",
+      "gates",
+      "constitution",
+      "aprovados",
+      "research"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/research.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/research.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:41.967931+00:00",
+    "created_epoch": 1789068941,
+    "updated_at": "2026-09-10T19:35:41.967947+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789068941995",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "speckit",
+      "plan",
+      "015",
+      "com",
+      "gates",
+      "constitution",
+      "aprovados",
+      "research"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/contracts/canal-display.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/contracts/canal-display.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:41.995073+00:00",
+    "created_epoch": 1789068941,
+    "updated_at": "2026-09-10T19:35:41.995093+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789068942010",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "speckit",
+      "plan",
+      "015",
+      "com",
+      "gates",
+      "constitution",
+      "aprovados",
+      "research"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/quickstart.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/quickstart.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:42.010038+00:00",
+    "created_epoch": 1789068942,
+    "updated_at": "2026-09-10T19:35:42.010056+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
