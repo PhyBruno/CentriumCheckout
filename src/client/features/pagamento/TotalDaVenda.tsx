@@ -45,7 +45,12 @@ export function TotalDaVenda(): ReactElement {
   // diferente por render — o Zustand v5 leria isso como mudança e o componente
   // entraria em laço. Cada campo é um primitivo, comparado por valor.
   const totalLiquido = useVendaStore((estado) => estado.saldo().totalLiquido);
-  const totalAplicado = useVendaStore((estado) => estado.saldo().totalAplicado);
+  // `totalRecebido`, não `totalAplicado`: a métrica se chama "Recebido" e é o
+  // que o operador entregou, incluindo o excedente que volta como troco
+  // (correção do usuário, 2026-09-10). `totalAplicado` é limitado ao saldo por
+  // `derivarValores`, então quem recebia R$ 100 numa venda de R$ 50 lia
+  // "Recebido R$ 50,00" — o valor da venda, nunca o da cédula.
+  const totalRecebido = useVendaStore((estado) => estado.saldo().totalRecebido);
   const saldoRestante = useVendaStore((estado) => estado.saldo().saldoRestante);
   const troco = useVendaStore((estado) => estado.saldo().troco);
 
@@ -83,7 +88,7 @@ export function TotalDaVenda(): ReactElement {
       </div>
 
       <div className="flex w-full items-start gap-xs">
-        <MetricaPagamento rotulo="Recebido" valor={totalAplicado} testId="metrica-recebido" />
+        <MetricaPagamento rotulo="Recebido" valor={totalRecebido} testId="metrica-recebido" />
         {emAberto ? (
           <MetricaPagamento
             rotulo="Faltante"

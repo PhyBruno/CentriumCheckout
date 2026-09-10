@@ -74,6 +74,52 @@ describe('calcularSaldo — algoritmo de data-model.md §6', () => {
     expect(saldo.totalAplicado).toBe(10000);
     expect(saldo.saldoRestante).toBe(0);
     expect(saldo.troco).toBe(5000);
+    // O que o operador entregou — a cédula, não o valor da venda. A métrica
+    // "Recebido" da tela lê daqui (correção do usuário, 2026-09-10): antes ela
+    // mostrava `totalAplicado`, que o `min` de `derivarValores` prende no
+    // total, e R$ 150 recebidos apareciam como R$ 100.
+    expect(saldo.totalRecebido).toBe(15000);
+  });
+
+  /**
+   * `totalRecebido` só difere de `totalAplicado` onde há troco: nas formas sem
+   * `valorRecebido` (tudo que não é dinheiro, por I3) os dois coincidem, e a
+   * soma tem de misturar os dois casos sem contar nada duas vezes.
+   */
+  it('totalRecebido soma a cédula do dinheiro e o aplicado das demais formas', () => {
+    const cartao = pagamentoDe({
+      meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
+      valorAplicado: 4000,
+      valorRecebido: null,
+      status: 'APROVADO',
+    });
+    const dinheiro = pagamentoDe({
+      meioPagtoNFe: MEIO_PAGTO.Dinheiro,
+      valorAplicado: 6000,
+      valorRecebido: 20000,
+      status: 'APROVADO',
+    });
+
+    const saldo = calcularSaldo(emCentavos(10000), emCentavos(0), [cartao, dinheiro]);
+
+    expect(saldo.totalAplicado).toBe(10000);
+    expect(saldo.totalRecebido).toBe(24000);
+    expect(saldo.saldoRestante).toBe(0);
+    expect(saldo.troco).toBe(14000);
+  });
+
+  it('pagamento não aprovado fica fora de totalRecebido, como já ficava de totalAplicado', () => {
+    const pendente = pagamentoDe({
+      meioPagtoNFe: MEIO_PAGTO.Dinheiro,
+      valorAplicado: 10000,
+      valorRecebido: 15000,
+      status: 'PENDENTE_INTEGRACAO',
+    });
+
+    const saldo = calcularSaldo(emCentavos(10000), emCentavos(0), [pendente]);
+
+    expect(saldo.totalAplicado).toBe(0);
+    expect(saldo.totalRecebido).toBe(0);
   });
 
   it('Pix acima do saldo não gera troco', () => {

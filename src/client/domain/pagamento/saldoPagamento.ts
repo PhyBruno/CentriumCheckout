@@ -93,7 +93,20 @@ export interface PagamentoAplicado {
 /** Derivado, nunca armazenado — seletor puro sobre carrinho + pagamentos. */
 export interface SaldoPagamento {
   readonly totalLiquido: Centavos;
+  /** Σ `valorAplicado` dos aprovados — o que abate a venda e vai ao ERP. */
   readonly totalAplicado: Centavos;
+  /**
+   * Σ do que o operador **entregou**: `valorRecebido` quando existe (dinheiro),
+   * `valorAplicado` nas demais formas (correção do usuário, 2026-09-10).
+   *
+   * Difere de `totalAplicado` exatamente pelo troco. A tela rotula esta métrica
+   * como "Recebido", e antes ela mostrava `totalAplicado` — que é limitado ao
+   * saldo por `derivarValores`: quem entregava R$ 100 numa venda de R$ 50 lia
+   * "Recebido R$ 50,00", o valor da venda em vez do valor da cédula. Os dois
+   * números precisam existir separados porque servem a perguntas diferentes:
+   * `totalAplicado` fecha a nota, `totalRecebido` fecha a gaveta.
+   */
+  readonly totalRecebido: Centavos;
   readonly saldoRestante: Centavos;
   readonly troco: Centavos;
 }
@@ -130,13 +143,20 @@ export function calcularSaldo(
   );
   const saldoRestante = centavos(Math.max(0, totalLiquido - totalAplicado));
 
+  // `valorRecebido ?? valorAplicado`: só dinheiro carrega `valorRecebido` (I3),
+  // e nas demais formas o que entrou é exatamente o que foi aplicado.
+  const totalRecebido = aprovados.reduce<Centavos>(
+    (acumulado, pagamento) => somar(acumulado, pagamento.valorRecebido ?? pagamento.valorAplicado),
+    ZERO_CENTAVOS,
+  );
+
   const dinheiro = aprovados.find((pagamento) => pagamento.meioPagtoNFe === MEIO_PAGTO.Dinheiro);
   const troco =
     dinheiro !== undefined && dinheiro.valorRecebido !== null
       ? centavos(Math.max(0, dinheiro.valorRecebido - dinheiro.valorAplicado))
       : ZERO_CENTAVOS;
 
-  return { totalLiquido, totalAplicado, saldoRestante, troco };
+  return { totalLiquido, totalAplicado, totalRecebido, saldoRestante, troco };
 }
 
 /**

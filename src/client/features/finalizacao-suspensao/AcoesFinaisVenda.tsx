@@ -1,9 +1,11 @@
 import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
+import type { MotivoBloqueio } from '@/lib/bloqueio';
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
 import { autorizaFinalizacao } from '../../domain/validacaoVenda/interpretarVeredito';
+import { BotaoMenuGerencial } from '../gerencial/BotaoMenuGerencial';
 import { BotaoMenuImportacao } from '../importacao/BotaoMenuImportacao';
 import {
   AVISO_DESASSOCIACAO_MANUAL,
@@ -174,6 +176,54 @@ function useVendaTemValorAFaturar(): boolean {
   return temItemComValor && saldoRestante === 0;
 }
 
+/** As quatro travas da finalização, cada uma já resolvida em booleano. */
+export interface CondicoesDeFinalizacao {
+  /** Há linha ativa com valor **e** os pagamentos aprovados cobrem o total. */
+  readonly haValorAFaturar: boolean;
+  /** Veredito `ACEITA` vigente da validação prévia (`FR-014`, feature 014). */
+  readonly temVereditoFavoravel: boolean;
+  /** O envio anterior falhou por rede e a máquina está travada. */
+  readonly falhaDeRede: boolean;
+  /** `FR-006`/`SC-003` da feature 012 — nenhuma venda sem vendedor. */
+  readonly temVendedor: boolean;
+}
+
+/**
+ * Por que "Finalizar venda" está bloqueado — a frase que o operador lê ao
+ * clicar (padrão de `lib/bloqueio.ts`), ou `null` quando a ação está liberada.
+ *
+ * **Existe porque as quatro travas colapsavam num `disabled` mudo** (correção
+ * do usuário, 2026-09-10): o botão apagava e não dizia qual delas pegou, e o
+ * `disabled` nativo nem sequer responde ao clique. O relato foi um botão
+ * apagado com o pagamento cobrindo o total — a trava real era o vendedor, que
+ * a tela em nenhum momento nomeava. Toda trava nova que entrar aqui precisa
+ * trazer a sua frase junto; é o que este tipo força.
+ *
+ * **A ordem é a da precedência**, e não a da declaração: falha de rede primeiro
+ * porque é a mais transitória e a que tem uma saída imediata (tentar de novo);
+ * depois vendedor e pagamento, que são gestos que o operador ainda precisa
+ * fazer; o veredito por último porque só faz sentido perguntar ao ERP quando o
+ * resto da venda já está de pé — anunciá-lo antes mandaria o operador conferir
+ * cliente e condição quando o que falta é lançar o pagamento.
+ *
+ * Função pura e exportada para o teste exercitá-la sem montar componente.
+ */
+export function motivoDeBloqueioDoFinalizar(condicoes: CondicoesDeFinalizacao): MotivoBloqueio {
+  if (condicoes.falhaDeRede) {
+    return 'O envio anterior falhou. Use "Tentar novamente" antes de finalizar.';
+  }
+  if (!condicoes.temVendedor) {
+    return 'Escolha o vendedor da venda: o ERP não aceita NFCe sem vendedor associado.';
+  }
+  if (!condicoes.haValorAFaturar) {
+    return 'A venda ainda não fecha: lance itens e cubra todo o total com as formas de pagamento.';
+  }
+  if (!condicoes.temVereditoFavoravel) {
+    return 'O ERP ainda não aprovou esta venda. Revise cliente, condição e formas de pagamento.';
+  }
+  return null;
+}
+
 /**
  * A máquina de finalização compartilhada pelas superfícies desta tela.
  *
@@ -230,11 +280,14 @@ export function AcaoCancelarVenda({ compacto = false }: AcaoCancelarVendaProps =
  * Faixa "Atalhos da venda" do Pencil (`nyfSI`): linha horizontal de 44px, gap
  * de 10px, logo abaixo do cartão de produtos.
  *
- * "Cancelar venda" é o **primeiro** atalho, à esquerda, e "Menu Importação" é o
- * **terceiro** (feature 006). O segundo do desenho — "Menu Gerencial" —
- * pertence a outra feature e ainda não existe; por isso cada atalho ocupa um
- * terço da faixa em vez de esticar, para que ele entre no lugar certo quando
- * chegar.
+ * Os três atalhos do desenho, na ordem: "Cancelar venda" (feature 004), "Menu
+ * Gerencial" e "Menu Importação" (feature 006). O vão do meio ficou reservado
+ * enquanto o menu gerencial não existia; hoje está ocupado.
+ *
+ * Cada um ocupa um terço **fixo** da faixa em vez de esticar por `flex-1`: os
+ * rótulos têm larguras diferentes e, com `flex-1`, o mais largo ("Menu
+ * Importação") empurraria os outros dois, quebrando as três pílulas iguais que
+ * o desenho mostra.
  */
 export function BarraAtalhosVenda(): ReactElement {
   return (
@@ -243,10 +296,10 @@ export function BarraAtalhosVenda(): ReactElement {
       <div className="flex w-[calc((100%-20px)/3)]">
         <AcaoCancelarVenda />
       </div>
-      {/* Terceiro terço, encostado à direita: o vão do meio é o lugar que o
-          "Menu Gerencial" vai ocupar, e deixá-lo vazio agora evita mexer no
-          posicionamento dos outros dois quando ele chegar. */}
-      <div className="ml-auto flex w-[calc((100%-20px)/3)]">
+      <div className="flex w-[calc((100%-20px)/3)]">
+        <BotaoMenuGerencial />
+      </div>
+      <div className="flex w-[calc((100%-20px)/3)]">
         <BotaoMenuImportacao />
       </div>
     </div>
@@ -293,12 +346,12 @@ export function AcoesFinaisVenda(): ReactElement {
           void finalizar();
         }}
         enviando={estado.tipo === 'enviando'}
-        bloqueado={
-          !haValorAFaturar ||
-          !temVereditoFavoravel ||
-          estado.tipo === 'falha-rede' ||
-          vendedorAtual === null
-        }
+        motivoBloqueio={motivoDeBloqueioDoFinalizar({
+          haValorAFaturar,
+          temVereditoFavoravel,
+          falhaDeRede: estado.tipo === 'falha-rede',
+          temVendedor: vendedorAtual !== null,
+        })}
       />
     </div>
   );

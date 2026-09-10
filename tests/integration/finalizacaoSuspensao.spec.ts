@@ -7,6 +7,7 @@ import type { CheckoutFaturarNFCe } from '../../src/client/domain/venda/montarRe
 import { DialogoDocumentoFiscal } from '../../src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal';
 import {
   AcoesFinaisVenda,
+  motivoDeBloqueioDoFinalizar,
   BarraAtalhosVenda,
   ProvedorFinalizacaoVenda,
 } from '../../src/client/features/finalizacao-suspensao/AcoesFinaisVenda';
@@ -598,7 +599,71 @@ describe('correções do usuário (2026-09-02)', () => {
   });
 });
 
+/**
+ * A frase que cada trava produz, e a ordem entre elas (correção do usuário,
+ * 2026-09-10). Pura, então não precisa de componente montado.
+ */
+describe('motivoDeBloqueioDoFinalizar', () => {
+  const LIBERADO = {
+    haValorAFaturar: true,
+    temVereditoFavoravel: true,
+    falhaDeRede: false,
+    temVendedor: true,
+  };
+
+  it('devolve null quando as quatro condições estão satisfeitas', () => {
+    expect(motivoDeBloqueioDoFinalizar(LIBERADO)).toBeNull();
+  });
+
+  it('nomeia o vendedor — a trava que o tenant real aciona com VendedorCodigo = 0', () => {
+    expect(motivoDeBloqueioDoFinalizar({ ...LIBERADO, temVendedor: false })).toContain(
+      'Escolha o vendedor da venda',
+    );
+  });
+
+  it('nomeia o pagamento quando a venda não fecha', () => {
+    expect(motivoDeBloqueioDoFinalizar({ ...LIBERADO, haValorAFaturar: false })).toContain(
+      'cubra todo o total com as formas de pagamento',
+    );
+  });
+
+  it('nomeia o veredito do ERP quando só ele falta', () => {
+    expect(motivoDeBloqueioDoFinalizar({ ...LIBERADO, temVereditoFavoravel: false })).toContain(
+      'O ERP ainda não aprovou',
+    );
+  });
+
+  /**
+   * A precedência importa: com a rede falhada o operador tem uma saída
+   * imediata ("Tentar novamente"), e mandá-lo escolher vendedor primeiro o
+   * faria consertar o que não está quebrado.
+   */
+  it('falha de rede tem precedência sobre as demais travas', () => {
+    expect(
+      motivoDeBloqueioDoFinalizar({
+        haValorAFaturar: false,
+        temVereditoFavoravel: false,
+        falhaDeRede: true,
+        temVendedor: false,
+      }),
+    ).toContain('Tentar novamente');
+  });
+});
+
 describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () => {
+  /**
+   * Bloqueio é `aria-disabled` + motivo no `title`, nunca o `disabled` nativo
+   * (`lib/bloqueio.ts`; correção do usuário, 2026-09-10). Cada caso afirma
+   * **qual** frase o operador lê: era exatamente a informação que faltava
+   * quando as quatro travas colapsavam num `disabled` mudo, e um teste que só
+   * conferisse "está apagado" não pegaria a volta desse defeito.
+   */
+  function esperarBloqueado(trechoDoMotivo: string) {
+    const botao = screen.getByTestId('botao-finalizar-venda');
+    expect(botao).toHaveAttribute('aria-disabled', 'true');
+    expect(botao.getAttribute('title')).toContain(trechoDoMotivo);
+  }
+
   function renderizarAcoes(cenario: Cenario) {
     return render(
       createElement(
@@ -618,7 +683,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('A venda ainda não fecha');
   });
 
   it('desabilita "Finalizar venda" quando o subtotal é zero', () => {
@@ -629,7 +694,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('A venda ainda não fecha');
   });
 
   // Comportamento **estendido pela feature 008** (2026-09-03): ter item com
@@ -642,7 +707,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
     renderizarAcoes(cenario);
 
     expect(useVendaStore.getState().saldo().saldoRestante).toBeGreaterThan(0);
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('cubra todo o total com as formas de pagamento');
   });
 
   it('habilita "Finalizar venda" com item, subtotal positivo e saldo coberto', () => {
@@ -672,7 +737,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('O ERP ainda não aprovou esta venda');
   });
 
   // `FR-006`/`SC-003` (feature 012): nenhuma venda é finalizada sem vendedor
@@ -691,7 +756,11 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    // A trava que o tenant real acionava sem nunca dizer o nome: `GetSessao`
+    // devolve `VendedorCodigo = 0`, `vendedorAtual` nasce `null` e o operador
+    // via o botão apagado com o pagamento cobrindo o total (relato do usuário,
+    // 2026-09-10). A frase precisa nomear o vendedor e a saída.
+    esperarBloqueado('Escolha o vendedor da venda');
   });
 
   it('recusa FATURAR sem valor mesmo quando acionado fora do botão', async () => {

@@ -427,7 +427,15 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
           className="font-mono text-base font-semibold tabular-nums text-foreground"
           data-testid="pagamento-valor"
         >
-          {formatarCentavos(pagamento.valorAplicado)}
+          {/* O que o operador entregou nesta forma, não o que ela abateu da
+              venda (correção do usuário, 2026-09-10): `valorAplicado` é
+              limitado ao saldo por `derivarValores`, então a linha de um
+              dinheiro de R$ 100 numa venda de R$ 50 exibia R$ 50 — o valor da
+              venda no lugar do que o operador digitou. O excedente continua
+              aparecendo como "Troco" nos totais, e `valorAplicado` segue sendo
+              o que vai ao ERP. `??` porque só dinheiro carrega `valorRecebido`
+              (I3). */}
+          {formatarCentavos(pagamento.valorRecebido ?? pagamento.valorAplicado)}
         </span>
         {/* Não há mais botão de vale aqui. O vale devolução deixou de ser algo
             aplicado **sobre** um pagamento e passou a ser a própria forma de
