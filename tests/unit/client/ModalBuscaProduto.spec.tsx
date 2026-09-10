@@ -7,6 +7,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import type { CheckoutListaProdutos } from '../../../src/shared/schemas/produto.schema';
 import type * as ProdutoQueries from '../../../src/client/services/produto/produtoQueries';
 import { ModalBuscaProduto } from '../../../src/client/features/carrinho/ModalBuscaProduto';
+import type { ConsultaDeProduto } from '../../../src/client/domain/precificacao/codigoProduto';
 import { useSessionStore } from '../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../src/client/stores/vendaStore';
 
@@ -94,10 +95,45 @@ function resultadoDaBusca(opcoes: {
  * teste sincronize manualmente o estado local do componente com o mock a
  * cada clique.
  */
-function configurarMock(totalPaginas: number): void {
-  mockUseBuscaProdutos.mockImplementation((_termo, parametros) =>
-    resultadoDaBusca({ paginaAtual: parametros.pagina ?? 1, totalPaginas }),
-  );
+function configurarMock(
+  totalPaginas: number,
+  sobrescritasDoCandidato: Partial<CheckoutListaProdutos['Produtos'][number]> = {},
+): void {
+  mockUseBuscaProdutos.mockImplementation((_termo, parametros) => {
+    const resultado = resultadoDaBusca({ paginaAtual: parametros.pagina ?? 1, totalPaginas });
+    if (resultado.data === undefined) {
+      return resultado;
+    }
+    return {
+      ...resultado,
+      data: {
+        ...resultado.data,
+        Produtos: resultado.data.Produtos.map((produto) => ({
+          ...produto,
+          ...sobrescritasDoCandidato,
+        })),
+      },
+    } as UseQueryResult<CheckoutListaProdutos, Error>;
+  });
+}
+
+/**
+ * Troca o `UsuarioTipoCodigoProduto` da sessão sem reescrever o registro
+ * inteiro — é a única configuração que decide por qual campo o candidato
+ * escolhido é reconsultado (AD-205).
+ */
+function definirSessao(usuarioTipoCodigoProduto: string): void {
+  const registro = registroDeBootstrap();
+  useSessionStore.setState({
+    estado: 'pronto',
+    registro: {
+      ...registro,
+      SessaoUsuario: {
+        ...registro.SessaoUsuario,
+        UsuarioTipoCodigoProduto: usuarioTipoCodigoProduto,
+      },
+    },
+  });
 }
 
 function registroDeBootstrap() {
@@ -139,7 +175,7 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
 
   function renderModal(
     onFechar: () => void = () => {},
-    onProdutoSelecionado: (codigoProduto: string) => void = () => {},
+    onProdutoSelecionado: (consulta: ConsultaDeProduto) => void = () => {},
   ) {
     const Wrapper = envolverComQueryClient();
     const props = { aberto: true, onFechar, onProdutoSelecionado };
@@ -254,7 +290,7 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
     expect(screen.getByTestId('campo-busca-produto')).toHaveValue('');
   });
 
-  it('selecionar um candidato só devolve o código e fecha — não resolve nem insere nada sozinho', async () => {
+  it('selecionar um candidato só devolve a consulta e fecha — não resolve nem insere nada sozinho', async () => {
     configurarMock(1);
     const onFechar = vi.fn();
     const onProdutoSelecionado = vi.fn();
@@ -268,8 +304,52 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
     await userEvent.click(screen.getByTestId('candidato-produto'));
 
     // O código devolvido é o do candidato sintético (`produtoDe`, página 1).
+    // `UsuarioTipoCodigoProduto: 'I'` não é um dos três tipos que o ERP filtra,
+    // então a consulta cai no reduzido — `'R'`, não o `'I'` da sessão.
     expect(onProdutoSelecionado).toHaveBeenCalledOnce();
-    expect(onProdutoSelecionado).toHaveBeenCalledWith('001');
+    expect(onProdutoSelecionado).toHaveBeenCalledWith({ codigo: '001', tipoCodigo: 'R' });
+    expect(onFechar).toHaveBeenCalledOnce();
+  });
+
+  /**
+   * AD-205, correção do usuário (2026-09-10): antes, um candidato sem o campo
+   * que `UsuarioTipoCodigoProduto` exige era **recusado** com um toast — o
+   * produto aparecia na busca e não entrava por caminho nenhum. Agora a busca
+   * cai para o próximo campo preenchido e leva junto o `Tipocodproduto` que o
+   * casa, porque `GetProduto` recebe o tipo por chamada.
+   */
+  it('empresa em código de barras: devolve o EAN do candidato com o tipo "B"', async () => {
+    definirSessao('B');
+    configurarMock(1);
+    const onProdutoSelecionado = vi.fn();
+    renderModal(() => {}, onProdutoSelecionado);
+
+    await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    await waitFor(() => {
+      expect(screen.getByTestId('candidato-produto')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('candidato-produto'));
+
+    expect(onProdutoSelecionado).toHaveBeenCalledWith({
+      codigo: '789000000001',
+      tipoCodigo: 'B',
+    });
+  });
+
+  it('produto sem código de barras numa empresa em "B" cai no reduzido em vez de ser barrado', async () => {
+    definirSessao('B');
+    configurarMock(1, { CodigoBarras: '' });
+    const onFechar = vi.fn();
+    const onProdutoSelecionado = vi.fn();
+    renderModal(onFechar, onProdutoSelecionado);
+
+    await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    await waitFor(() => {
+      expect(screen.getByTestId('candidato-produto')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('candidato-produto'));
+
+    expect(onProdutoSelecionado).toHaveBeenCalledWith({ codigo: '001', tipoCodigo: 'R' });
     expect(onFechar).toHaveBeenCalledOnce();
   });
 

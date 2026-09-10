@@ -55,7 +55,13 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
         sessao,
         {
           caminho: CAMINHO_GET_SESSAO,
-          query: { Login: sessao.username },
+          // `Empresa` vai na query **além** do cabeçalho, como em toda chamada
+          // ao ERP (AD-205) — e **antes** de `Login`, porque o
+          // `Event GetSessao.Before` recorta o login de `Login=` até o fim da
+          // query string: com `Empresa` depois, `&Login` viria `bruno&Empresa=1`
+          // e a sessão voltaria zerada. `URLSearchParams` preserva a ordem de
+          // inserção, então a ordem deste objeto é a ordem enviada.
+          query: { Empresa: sessao.codigoEmpresa, Login: sessao.username },
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
       ),

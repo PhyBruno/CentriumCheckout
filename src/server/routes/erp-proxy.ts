@@ -24,6 +24,45 @@ function corpoDaRequisicao(body: unknown): BodyInit | undefined {
 }
 
 /**
+ * `Empresa` na query string, **além** do cabeçalho homônimo (AD-205).
+ *
+ * O cabeçalho sozinho não basta: no `APICentriumOAuth` da KB, só oito dos
+ * métodos têm um `Event <Metodo>.Before` que faz
+ * `&Empresa = &HttpRequest.GetHeader('empresa').ToNumeric()`. Os demais —
+ * `GetProduto`, `GetDav`, `CarregarNFCe`, `GetStatusSistema`, `StatusPIX`,
+ * `ValidaTicketDevolucao` — recebem `in:&Empresa` como parâmetro comum e o leem
+ * da query. Sem ele chegam com `&Empresa = 0`, o `For Each` filtra por
+ * `empcod = 0`, não acha nada e devolve `200` com o SDT recém-criado.
+ *
+ * Era essa a causa de "Produto não encontrado" para um produto que existe:
+ * verificado ao vivo contra o ERP real em 2026-09-10 —
+ * `GetProduto?Codigoproduto=0000TESTE7894&Tipocodproduto=B` com `Empresa` só no
+ * cabeçalho devolveu `CodigoProduto: ""`; a mesma chamada com `Empresa=1` na
+ * query devolveu o produto. Mandar nos dois lugares é decisão do usuário
+ * (2026-09-10) e vale para **todos** os endpoints: nos que têm `.Before` o
+ * cabeçalho sobrescreve com o mesmo valor, então o parâmetro é inócuo.
+ *
+ * **A posição importa: `Empresa` entra sempre como primeiro par.** Os
+ * `.Before` de `GetSessao` e `GetCliente` não parseiam a query — recortam de
+ * `Login=`/`CPFCNPJ=` **até o fim da string** com `SubStr`. Com `Empresa` no
+ * fim, `&Login` viraria `bruno&Empresa=1` e a chamada falharia em silêncio
+ * (confirmado ao vivo: `UsuarioCodigo: "0"` e `CodCliente: 0`, contra os
+ * valores corretos com o parâmetro na frente).
+ *
+ * Ocorrências vindas do navegador são descartadas antes: a empresa da sessão
+ * sai do cookie cifrado, e aceitar a do cliente deixaria um operador
+ * autenticado consultar outra empresa do tenant — mesma razão de
+ * `corpoComEmpresaDaSessao`. Os demais pares são repassados crus, sem
+ * reserialização, para preservar codificação original e chaves repetidas.
+ */
+export function queryComEmpresaDaSessao(queryString: string, codigoEmpresa: string): string {
+  const pares = queryString === '' ? [] : queryString.split('&');
+  const semEmpresa = pares.filter((par) => !/^empresa=/i.test(par));
+
+  return [`Empresa=${encodeURIComponent(codigoEmpresa)}`, ...semEmpresa].join('&');
+}
+
+/**
  * Campo de tenant que aparece **dentro** do corpo de alguns endpoints do ERP,
  * além do cabeçalho `Empresa`.
  *
@@ -91,8 +130,9 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
         {
           caminho: caminhoNoErp,
           method: request.method,
-          // Query crua: preserva chaves repetidas e a codificação original.
-          queryString,
+          // Query crua, com `Empresa` da sessão à frente: preserva chaves
+          // repetidas e a codificação original dos demais pares (AD-205).
+          queryString: queryComEmpresaDaSessao(queryString, sessao.codigoEmpresa),
           ...(contentTypeOriginal === undefined
             ? {}
             : { headersExtras: { 'Content-Type': contentTypeOriginal } }),

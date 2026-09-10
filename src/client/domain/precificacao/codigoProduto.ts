@@ -167,34 +167,74 @@ export interface CandidatoDeBusca {
   readonly Referencia: string;
 }
 
+/** Como reconsultar um candidato da busca em `GetProduto` (AD-205). */
+export interface ConsultaDeProduto {
+  /** Vai em `Codigoproduto`. */
+  readonly codigo: string;
+  /** Vai em `Tipocodproduto` — **o do campo escolhido**, não o da sessão. */
+  readonly tipoCodigo: string;
+}
+
 /**
- * Qual campo do candidato pode ser reenviado como `Codigoproduto` na chamada a
- * `GetProduto`, dado o `Tipocodproduto` da sessão (AD-204).
+ * Campos do candidato na ordem em que servem de fallback, cada um com o
+ * `Tipocodproduto` que o ERP exige para filtrar por ele.
+ *
+ * O reduzido vem primeiro entre os alternativos porque é a chave da tabela
+ * (`MatCodRed`, `PCheckout_GetProduto`): é o único que todo produto tem.
+ */
+const CAMPOS_DE_CONSULTA = [
+  { tipo: TIPO_COD_PRODUTO.Reduzido, ler: (c: CandidatoDeBusca) => c.CodigoProduto },
+  { tipo: TIPO_COD_PRODUTO.Barras, ler: (c: CandidatoDeBusca) => c.CodigoBarras },
+  { tipo: TIPO_COD_PRODUTO.Modelo, ler: (c: CandidatoDeBusca) => c.Referencia },
+] as const;
+
+/** O campo que `usuarioTipoCodigoProduto` elege — reduzido para `'R'`/`''`/desconhecido. */
+function campoPreferido(usuarioTipoCodigoProduto: string): (typeof CAMPOS_DE_CONSULTA)[number] {
+  return (
+    CAMPOS_DE_CONSULTA.find((campo) => campo.tipo === usuarioTipoCodigoProduto) ??
+    CAMPOS_DE_CONSULTA[0]
+  );
+}
+
+/**
+ * Com qual código **e qual tipo** reconsultar um candidato escolhido no modal
+ * (AD-205).
  *
  * Existe porque o modal de busca não insere nada sozinho: escolher um candidato
- * devolve **um código**, que a barra de entrada rebusca com o
- * `Tipocodproduto` da sessão (AD-091). Devolver sempre `CodigoProduto`, como se
- * fazia, só funciona quando a empresa está configurada em código reduzido — num
- * tenant com `'B'` o ERP filtra por `MatCodBar`, o reduzido não casa com nada e
- * a resposta é um SDT vazio, que virava linha sem descrição, sem unidade e com
- * preço zero.
+ * devolve uma consulta, que a barra de entrada refaz em `GetProduto` (AD-091).
+ * Devolver sempre `CodigoProduto`, como se fazia antes de AD-204, só funciona
+ * quando a empresa está configurada em código reduzido — num tenant com `'B'` o
+ * ERP filtra por `MatCodBar`, o reduzido não casa com nada e a resposta é um SDT
+ * vazio, que virava linha sem descrição, sem unidade e com preço zero.
  *
- * `null` quando o candidato não tem o campo exigido preenchido (produto sem
- * código de barras cadastrado, com a empresa em `'B'`): não há código que
- * funcione, e inventar um produziria a mesma linha zerada por outro caminho.
+ * **O tipo da sessão é a preferência, não uma trava** (correção do usuário,
+ * 2026-09-10). AD-204 recusava o candidato sem o campo exigido — produto sem
+ * código de barras numa empresa em `'B'` — e o operador via um produto listado
+ * na busca que não conseguia inserir por nenhum caminho. Aqui o campo vazio só
+ * faz cair para o próximo preenchido, e `Tipocodproduto` acompanha o campo
+ * escolhido: `GetProduto` recebe o tipo por chamada, então consultar pelo
+ * reduzido num tenant configurado em `'B'` é uma chamada legítima, não um
+ * contorno. A configuração da empresa continua valendo para o que o operador
+ * **digita** na barra — é só a busca que deixa de ser barrada por ela.
+ *
+ * `null` só quando o candidato não tem nenhum dos três campos preenchido, o que
+ * o ERP não produz (`CodigoProduto` é a chave): inventar um código produziria a
+ * mesma linha zerada por outro caminho.
  */
 export function codigoParaConsulta(
   candidato: CandidatoDeBusca,
   usuarioTipoCodigoProduto: string,
-): string | null {
-  const campo =
-    usuarioTipoCodigoProduto === TIPO_COD_PRODUTO.Barras
-      ? candidato.CodigoBarras
-      : usuarioTipoCodigoProduto === TIPO_COD_PRODUTO.Modelo
-        ? candidato.Referencia
-        : candidato.CodigoProduto;
+): ConsultaDeProduto | null {
+  const preferido = campoPreferido(usuarioTipoCodigoProduto);
 
-  return campo === '' ? null : campo;
+  for (const campo of [preferido, ...CAMPOS_DE_CONSULTA]) {
+    const codigo = campo.ler(candidato);
+    if (codigo !== '') {
+      return { codigo, tipoCodigo: campo.tipo };
+    }
+  }
+
+  return null;
 }
 
 /**

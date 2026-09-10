@@ -118,9 +118,14 @@ describe('rotuloTipoCodigoProduto', () => {
 });
 
 /**
- * `codigoParaConsulta` — qual código do candidato pode ser reenviado ao
- * `GetProduto` (AD-204). É a correção do defeito em que o modal devolvia sempre
- * o código reduzido e o ERP, configurado em `'B'`, respondia SDT vazio.
+ * `codigoParaConsulta` — com qual código **e qual `Tipocodproduto`** o
+ * candidato do modal é reenviado ao `GetProduto` (AD-204, revisto por AD-205).
+ *
+ * Nasceu da correção do defeito em que o modal devolvia sempre o código
+ * reduzido e o ERP, configurado em `'B'`, respondia SDT vazio. AD-205 tirou a
+ * trava: o tipo da sessão é a **preferência**, e o campo vazio cai para o
+ * próximo preenchido levando junto o tipo que o casa — porque `GetProduto`
+ * recebe `Tipocodproduto` por chamada, não por configuração da empresa.
  */
 describe('codigoParaConsulta', () => {
   const CANDIDATO = {
@@ -130,19 +135,43 @@ describe('codigoParaConsulta', () => {
   };
 
   it.each([
-    ['', CANDIDATO.CodigoProduto],
-    ['R', CANDIDATO.CodigoProduto],
-    ['B', CANDIDATO.CodigoBarras],
-    ['M', CANDIDATO.Referencia],
-  ])('com Tipocodproduto=%j devolve %j', (tipo, esperado) => {
-    expect(codigoParaConsulta(CANDIDATO, tipo)).toBe(esperado);
+    ['', CANDIDATO.CodigoProduto, 'R'],
+    ['R', CANDIDATO.CodigoProduto, 'R'],
+    ['B', CANDIDATO.CodigoBarras, 'B'],
+    ['M', CANDIDATO.Referencia, 'M'],
+  ])('com Tipocodproduto=%j devolve %j consultado como %j', (tipo, codigo, tipoCodigo) => {
+    expect(codigoParaConsulta(CANDIDATO, tipo)).toEqual({ codigo, tipoCodigo });
   });
 
   it('tipo desconhecido cai no código reduzido, o filtro default do ERP', () => {
-    expect(codigoParaConsulta(CANDIDATO, 'X')).toBe(CANDIDATO.CodigoProduto);
+    expect(codigoParaConsulta(CANDIDATO, 'X')).toEqual({
+      codigo: CANDIDATO.CodigoProduto,
+      tipoCodigo: 'R',
+    });
   });
 
-  it('devolve null quando o campo exigido está vazio — não há código que funcione', () => {
-    expect(codigoParaConsulta({ ...CANDIDATO, CodigoBarras: '' }, 'B')).toBeNull();
+  /**
+   * O caso que o usuário reportou em 2026-09-10: produto listado na busca, sem
+   * código de barras, empresa configurada em `'B'`. Antes era recusado; agora
+   * entra pelo reduzido, e é o tipo `'R'` que vai na chamada.
+   */
+  it('campo preferido vazio cai no próximo preenchido, com o tipo correspondente', () => {
+    expect(codigoParaConsulta({ ...CANDIDATO, CodigoBarras: '' }, 'B')).toEqual({
+      codigo: CANDIDATO.CodigoProduto,
+      tipoCodigo: 'R',
+    });
+  });
+
+  it('sem reduzido nem barras, uma empresa em "B" ainda alcança o produto pela referência', () => {
+    expect(codigoParaConsulta({ ...CANDIDATO, CodigoProduto: '', CodigoBarras: '' }, 'B')).toEqual({
+      codigo: CANDIDATO.Referencia,
+      tipoCodigo: 'M',
+    });
+  });
+
+  it('devolve null só quando o candidato não tem nenhum dos três campos', () => {
+    expect(
+      codigoParaConsulta({ CodigoProduto: '', CodigoBarras: '', Referencia: '' }, 'B'),
+    ).toBeNull();
   });
 });

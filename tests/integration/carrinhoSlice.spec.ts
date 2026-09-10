@@ -512,13 +512,13 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     vi.stubGlobal('fetch', fetchFalso);
 
     // Caminho real desde a Fase 8 (`EntradaRapidaProduto.selecionarDaBusca`):
-    // o modal só devolve o código, quem resolve é `revisarPorCodigo` (com
-    // `origemForcada: 'BUSCA'`) seguido de `confirmarPrevia` — nunca um
+    // o modal só devolve a consulta, quem resolve é `revisarPorCodigo` (com
+    // `origem: 'BUSCA'`) seguido de `confirmarPrevia` — nunca um
     // atalho de inserção direta a partir do resultado da busca.
     const { result } = renderHook(() => useInsercaoDeProduto(), {
       wrapper: envolverComQueryClient(),
     });
-    const revisao = await result.current.revisarPorCodigo(SKU, 'BUSCA');
+    const revisao = await result.current.revisarPorCodigo(SKU, { origem: 'BUSCA' });
     if (revisao.situacao !== 'revisao') {
       throw new Error('esperava revisão bem-sucedida');
     }
@@ -564,7 +564,7 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     const { result } = renderHook(() => useInsercaoDeProduto(), {
       wrapper: envolverComQueryClient(),
     });
-    const revisao = await result.current.revisarPorCodigo(SKU, 'BUSCA');
+    const revisao = await result.current.revisarPorCodigo(SKU, { origem: 'BUSCA' });
 
     // Mesmo desfecho do `404` — recusa, sem linha na venda. A mensagem exibida
     // é a de `ErroProdutoNaoEncontrado` (`useCarrinho.mensagemDeErro`), a mesma

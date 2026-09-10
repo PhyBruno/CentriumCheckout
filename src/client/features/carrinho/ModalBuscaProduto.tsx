@@ -8,7 +8,7 @@ import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { notificar } from '@/lib/notificar';
 import {
   codigoParaConsulta,
-  rotuloTipoCodigoProduto,
+  type ConsultaDeProduto,
 } from '../../domain/precificacao/codigoProduto';
 import { ITENS_POR_PAGINA } from '../../services/paginacao';
 import { useBuscaProdutos } from '../../services/produto/produtoQueries';
@@ -41,8 +41,8 @@ interface ProdutoDaBusca {
  * inventar dado que o ERP não manda — exatamente o que este projeto proíbe.
  *
  * O modal é **só um seletor de código** — não resolve, não revisa e não
- * insere nada sozinho. Escolher um candidato só devolve o `CodigoProduto`
- * via `onProdutoSelecionado`; quem faz a chamada a `GetProduto`, decide se o
+ * insere nada sozinho. Escolher um candidato só devolve a consulta
+ * (`codigo` + `tipoCodigo`) via `onProdutoSelecionado`; quem faz a chamada a `GetProduto`, decide se o
  * produto é editável/pesável e mostra os campos de revisão é a barra de
  * entrada rápida (`EntradaRapidaProduto`, que também é quem monta este
  * modal) — o mesmo caminho de quando o operador digita o código e aperta TAB.
@@ -52,7 +52,7 @@ interface ProdutoDaBusca {
 export interface ModalBuscaProdutoProps {
   readonly aberto: boolean;
   readonly onFechar: () => void;
-  readonly onProdutoSelecionado: (codigoProduto: string) => void;
+  readonly onProdutoSelecionado: (consulta: ConsultaDeProduto) => void;
 }
 
 /**
@@ -123,27 +123,32 @@ export function ModalBuscaProduto({
   const abaixoDoMinimo = termoLimpo.length < minimo;
 
   /**
-   * O candidato inteiro entra, **um** código sai (AD-204).
+   * O candidato inteiro entra, **uma consulta** sai — código e o
+   * `Tipocodproduto` que o casa (AD-204, revisto por AD-205).
    *
-   * A escolha do campo depende do `Tipocodproduto` da sessão: com `'B'` o ERP
+   * A escolha do campo começa pelo `Tipocodproduto` da sessão: com `'B'` o ERP
    * filtra por código de barras, e devolver o reduzido — como se fazia — casava
-   * com nada e trazia o SDT vazio. Quando o candidato não tem o campo exigido
-   * preenchido, nada é inserido e o modal fica aberto: não há código que
-   * funcione, e fechá-lo em silêncio esconderia do operador por que o produto
-   * não entrou.
+   * com nada e trazia o SDT vazio. Mas o tipo da sessão é preferência, não
+   * trava: quando o candidato não tem aquele campo preenchido (produto sem
+   * código de barras numa empresa em `'B'`), `codigoParaConsulta` cai para o
+   * próximo campo disponível e devolve o tipo correspondente, que a barra
+   * envia nesta chamada. Antes disso o produto aparecia na busca e não entrava
+   * por caminho nenhum (correção do usuário, 2026-09-10).
+   *
+   * `null` só sairia de um candidato com os três campos vazios, o que o ERP não
+   * produz — mas se sair, nada é inserido e o modal fica aberto: fechá-lo em
+   * silêncio esconderia do operador por que o produto não entrou.
    */
   function selecionar(candidato: ProdutoDaBusca): void {
-    const codigo = codigoParaConsulta(candidato, tipoCodigoProduto ?? '');
-    if (codigo === null) {
+    const consulta = codigoParaConsulta(candidato, tipoCodigoProduto ?? '');
+    if (consulta === null) {
       notificar.erro(
-        `"${candidato.Descricao}" não tem ${rotuloTipoCodigoProduto(
-          tipoCodigoProduto ?? '',
-        ).toLowerCase()} cadastrado — não é possível inseri-lo por aqui.`,
+        `"${candidato.Descricao}" não tem código cadastrado no ERP — não é possível inseri-lo.`,
       );
       return;
     }
 
-    onProdutoSelecionado(codigo);
+    onProdutoSelecionado(consulta);
     onFechar();
   }
 
