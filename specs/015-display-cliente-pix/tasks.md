@@ -39,8 +39,8 @@ Projeto único, com a separação já vigente: `src/shared/`, `src/client/`, `sr
 
 **Purpose**: confirmar o ponto de partida. Não há dependência nova a instalar — `BroadcastChannel` é API de plataforma (research D2).
 
-- [ ] T001 Rodar `npm run typecheck`, `npm run lint` e `npm run test` na branch `feat/display-cliente-pix` e registrar o baseline verde antes de tocar em qualquer arquivo
-- [ ] T002 [P] Criar os diretórios `src/client/services/display/` e `src/client/features/display/`
+- [X] T001 Rodar `npm run typecheck`, `npm run lint` e `npm run test` na branch `feat/display-cliente-pix` e registrar o baseline verde antes de tocar em qualquer arquivo — **baseline 2026-09-10: 83 arquivos / 1212 testes verdes**
+- [X] T002 [P] Criar os diretórios `src/client/services/display/` e `src/client/features/display/`
 
 ---
 
@@ -52,20 +52,27 @@ Projeto único, com a separação já vigente: `src/shared/`, `src/client/`, `sr
 
 ### Testes da fundação (escrever primeiro, ver falhar)
 
-- [ ] T003 [P] Teste dos schemas do protocolo em `tests/unit/display-protocolo.spec.ts`: mensagem válida passa; `tela` desconhecida, campo ausente, `valorCentavos` não inteiro e `valorCentavos` negativo são **rejeitados** (contrato §4)
-- [ ] T004 [P] Teste de `nomeDaLoja` em `tests/unit/identidadePdv.spec.ts`: fantasia vence razão social; só razão social; ambos vazios/só espaços → `null`; `tituloDoProduto` mantém a saída atual
-- [ ] T005 [P] Teste de `criarCanalDisplay` (básico) em `tests/unit/canalDisplay.spec.ts` com canal falso injetado: `publicar` emite e memoriza (C1); `encerrar()` é idempotente (C5)
+> **Correção de caminho (implementação, 2026-09-10).** As três tarefas abaixo citavam
+> `tests/unit/*.spec.ts` na **raiz** de `tests/unit/`, mas nenhum dos 83 arquivos de teste
+> da base fica lá — todos espelham a árvore de `src/`. Os caminhos reais são
+> `tests/unit/shared/display.spec.ts`, `tests/unit/domain/sessao/identidadePdv.spec.ts` e
+> `tests/unit/client/services/display/canalDisplay.spec.ts`. O dublê do canal mora em
+> `tests/support/display.ts`, ao lado dos demais `tests/support/*`.
+
+- [X] T003 [P] Teste dos schemas do protocolo em `tests/unit/shared/display.spec.ts`: mensagem válida passa; `tela` desconhecida, campo ausente, `valorCentavos` não inteiro e `valorCentavos` negativo são **rejeitados** (contrato §4)
+- [X] T004 [P] Teste de `nomeDaLoja` em `tests/unit/domain/sessao/identidadePdv.spec.ts`: fantasia vence razão social; só razão social; ambos vazios/só espaços → `null`; `tituloDoProduto` mantém a saída atual
+- [X] T005 [P] Teste de `criarCanalDisplay` (básico) em `tests/unit/client/services/display/canalDisplay.spec.ts` com canal falso injetado: `publicar` emite e memoriza (C1); `encerrar()` é idempotente (C5)
 
 ### Implementação da fundação
 
-- [ ] T006 [P] Criar `src/shared/display.ts` com as constantes (`NOME_CANAL_DISPLAY`, `NOME_JANELA_DISPLAY`, `ROTA_DISPLAY`, `MS_PULSO_DISPLAY`, `MS_SILENCIO_ATE_REPOUSO`), a união `EstadoDisplay`, a união `MensagemDisplay` e os schemas Zod — conforme `contracts/canal-display.md` §1–§4
-- [ ] T007 [P] Adicionar `nomeDaLoja(sessao): string | null` em `src/client/domain/sessao/identidadePdv.ts` e fazer `tituloDoProduto` chamá-la, para a regra de precedência existir uma vez só (research D1)
-- [ ] T008 Implementar `criarCanalDisplay(deps?)` em `src/client/services/display/canalDisplay.ts` com `publicar`/`encerrar` e a fábrica injetável `deps.criarCanal` (Dependency Inversion, Constitution II). **Só C1 e C5 nesta fase** — handshake, pulso e `pagehide` chegam nas fases das suas user stories
-- [ ] T009 Implementar `useCanalDisplay()` em `src/client/services/display/useCanalDisplay.ts`: cria o canal uma vez, lê `nomeLoja` do `sessionStore` via `nomeDaLoja`, devolve função estável e encerra no cleanup
-- [ ] T010 [P] Criar `src/client/features/display/TelaBoasVindas.tsx`: nome da loja (some quando `null`) + saudação, e **nada** da venda ou do cliente (FR-003)
-- [ ] T011 Teste de integração da casca em `tests/integration/DisplayCliente.spec.tsx` com canal falso: nasce em `BOAS_VINDAS`; mensagem inválida é **descartada** sem mudar a tela
-- [ ] T012 Criar `src/client/features/display/DisplayCliente.tsx`: assina o canal, valida cada mensagem com o schema, descarta a inválida em silêncio e escolhe a tela pelo `estado.tela`
-- [ ] T013 Ramificar `src/client/main.tsx` por `window.location.pathname`: `ROTA_DISPLAY` monta `<DisplayCliente/>` **fora** de `App`/`AppShell`, sem `QueryClientProvider` e sem `GooeyToaster` (FR-016, research D9). **Não mover** a chamada de `sincronizarLayoutNoDocumento()` da linha 25 — ela já cobre as duas rotas (research D10)
+- [X] T006 [P] Criar `src/shared/display.ts` com as constantes (`NOME_CANAL_DISPLAY`, `NOME_JANELA_DISPLAY`, `ROTA_DISPLAY`, `MS_PULSO_DISPLAY`, `MS_SILENCIO_ATE_REPOUSO`), a união `EstadoDisplay`, a união `MensagemDisplay` e os schemas Zod — conforme `contracts/canal-display.md` §1–§4
+- [X] T007 [P] Adicionar `nomeDaLoja(sessao): string | null` em `src/client/domain/sessao/identidadePdv.ts` e fazer `tituloDoProduto` chamá-la, para a regra de precedência existir uma vez só (research D1)
+- [X] T008 Implementar `criarCanalDisplay(deps?)` em `src/client/services/display/canalDisplay.ts` com `publicar`/`encerrar` e a fábrica injetável `deps.criarCanal` (Dependency Inversion, Constitution II). **Só C1 e C5 nesta fase** — handshake, pulso e `pagehide` chegam nas fases das suas user stories
+- [X] T009 Implementar `useCanalDisplay()` em `src/client/services/display/useCanalDisplay.ts`: cria o canal uma vez, lê `nomeLoja` do `sessionStore` via `nomeDaLoja`, devolve função estável e encerra no cleanup
+- [X] T010 [P] Criar `src/client/features/display/TelaBoasVindas.tsx`: nome da loja (some quando `null`) + saudação, e **nada** da venda ou do cliente (FR-003)
+- [X] T011 Teste de integração da casca em `tests/integration/DisplayCliente.spec.tsx` com canal falso: nasce em `BOAS_VINDAS`; mensagem inválida é **descartada** sem mudar a tela
+- [X] T012 Criar `src/client/features/display/DisplayCliente.tsx`: assina o canal, valida cada mensagem com o schema, descarta a inválida em silêncio e escolhe a tela pelo `estado.tela`
+- [X] T013 Ramificar `src/client/main.tsx` por `window.location.pathname`: `ROTA_DISPLAY` monta `<DisplayCliente/>` **fora** de `App`/`AppShell`, sem `QueryClientProvider` e sem `GooeyToaster` (FR-016, research D9). **Não mover** a chamada de `sincronizarLayoutNoDocumento()` da linha 25 — ela já cobre as duas rotas (research D10)
 
 **Checkpoint**: `/display` abre, renderiza o repouso e sobrevive a um F5 (FR-023) sem nenhuma mudança de servidor ou de Vite (research D12).
 
@@ -79,16 +86,16 @@ Projeto único, com a separação já vigente: `src/shared/`, `src/client/`, `sr
 
 ### Testes da US1
 
-- [ ] T014 [P] [US1] Estender `tests/integration/ModalPix.spec.tsx`: a janela chama `onEstadoDisplay` com `BOAS_VINDAS` enquanto gera, `PIX_AGUARDANDO` quando a cobrança chega, e `BOAS_VINDAS` no cleanup da desmontagem (contrato §7). Seguir o padrão do arquivo — `erpFake()` por `deps.erpClient`, `intervaloMs: 20`, sem fake timers, com `esperarAlemDeUmTick`/`esperarPollingParar`
-- [ ] T015 [P] [US1] Estender `tests/integration/ModalPix.spec.tsx` com os caminhos de recusa: `abaixoDoMinimo` e `emErro` publicam `BOAS_VINDAS`, nunca uma cobrança (FR-010, FR-011)
-- [ ] T016 [P] [US1] Estender `tests/integration/DisplayCliente.spec.tsx`: `BOAS_VINDAS` → `PIX_AGUARDANDO` renderiza QR, valor formatado e o aviso de espera; e **não** renderiza o "copia e cola" (FR-005)
+- [X] T014 [P] [US1] Estender `tests/integration/ModalPix.spec.tsx`: a janela chama `onEstadoDisplay` com `BOAS_VINDAS` enquanto gera, `PIX_AGUARDANDO` quando a cobrança chega, e `BOAS_VINDAS` no cleanup da desmontagem (contrato §7). Seguir o padrão do arquivo — `erpFake()` por `deps.erpClient`, `intervaloMs: 20`, sem fake timers, com `esperarAlemDeUmTick`/`esperarPollingParar`
+- [X] T015 [P] [US1] Estender `tests/integration/ModalPix.spec.tsx` com os caminhos de recusa: `abaixoDoMinimo` e `emErro` publicam `BOAS_VINDAS`, nunca uma cobrança (FR-010, FR-011)
+- [X] T016 [P] [US1] Estender `tests/integration/DisplayCliente.spec.tsx`: `BOAS_VINDAS` → `PIX_AGUARDANDO` renderiza QR, valor formatado e o aviso de espera; e **não** renderiza o "copia e cola" (FR-005)
 
 ### Implementação da US1
 
-- [ ] T017 [US1] Adicionar a prop opcional `onEstadoDisplay?: (estado: EstadoDisplay) => void` a `ModalPix` em `src/client/features/pagamento/pix/ModalPix.tsx`, com o `useEffect` que a alimenta nos casos `BOAS_VINDAS`/`PIX_AGUARDANDO` e publica `BOAS_VINDAS` no cleanup (contrato §7). O modal continua sem conhecer aba, canal ou display
-- [ ] T018 [US1] Ligar a prop ao canal em `usePixPendente`, `src/client/features/pagamento/ListaPagamentosAplicados.tsx`: chamar `useCanalDisplay()` e passar o resultado como `onEstadoDisplay` do `ModalPix`
-- [ ] T019 [P] [US1] Criar `src/client/features/display/TelaCobrancaPix.tsx`: QR Code grande, valor em Geist Mono e badge "aguardando pagamento", dimensionados para leitura a ~1 m (FR-006), derivados do vocabulário visual do `ModalPix`
-- [ ] T020 [US1] Renderizar `TelaCobrancaPix` no estado `PIX_AGUARDANDO` em `src/client/features/display/DisplayCliente.tsx`, reconvertendo `valorCentavos` com `centavos()` na fronteira antes de formatar (research D5, Constitution V)
+- [X] T017 [US1] Adicionar a prop opcional `onEstadoDisplay?: (estado: EstadoDisplay) => void` a `ModalPix` em `src/client/features/pagamento/pix/ModalPix.tsx`, com o `useEffect` que a alimenta nos casos `BOAS_VINDAS`/`PIX_AGUARDANDO` e publica `BOAS_VINDAS` no cleanup (contrato §7). O modal continua sem conhecer aba, canal ou display
+- [X] T018 [US1] Ligar a prop ao canal em `usePixPendente`, `src/client/features/pagamento/ListaPagamentosAplicados.tsx`: chamar `useCanalDisplay()` e passar o resultado como `onEstadoDisplay` do `ModalPix`
+- [X] T019 [P] [US1] Criar `src/client/features/display/TelaCobrancaPix.tsx`: QR Code grande, valor em Geist Mono e badge "aguardando pagamento", dimensionados para leitura a ~1 m (FR-006), derivados do vocabulário visual do `ModalPix`
+- [X] T020 [US1] Renderizar `TelaCobrancaPix` no estado `PIX_AGUARDANDO` em `src/client/features/display/DisplayCliente.tsx`, reconvertendo `valorCentavos` com `centavos()` na fronteira antes de formatar (research D5, Constitution V)
 
 **Checkpoint**: US1 completa e testável sozinha — o espelho funciona com a tela aberta previamente. **Este é o MVP.**
 
@@ -102,15 +109,15 @@ Projeto único, com a separação já vigente: `src/shared/`, `src/client/`, `sr
 
 ### Testes da US2
 
-- [ ] T021 [P] [US2] Estender `tests/unit/canalDisplay.spec.ts` com o handshake seletivo (C2): com cobrança ativa, `SOLICITAR_ESTADO` recebe resposta; **em repouso, o canal fica calado** (FR-018, research D7)
-- [ ] T022 [P] [US2] Estender `tests/integration/DisplayCliente.spec.tsx`: ao montar, emite `SOLICITAR_ESTADO`; ao receber a resposta com uma cobrança em curso, passa a exibi-la (FR-017)
+- [X] T021 [P] [US2] Estender `tests/unit/canalDisplay.spec.ts` com o handshake seletivo (C2): com cobrança ativa, `SOLICITAR_ESTADO` recebe resposta; **em repouso, o canal fica calado** (FR-018, research D7)
+- [X] T022 [P] [US2] Estender `tests/integration/DisplayCliente.spec.tsx`: ao montar, emite `SOLICITAR_ESTADO`; ao receber a resposta com uma cobrança em curso, passa a exibi-la (FR-017)
 
 ### Implementação da US2
 
-- [ ] T023 [US2] Implementar C2 em `src/client/services/display/canalDisplay.ts`: responder `SOLICITAR_ESTADO` **apenas** quando `ultimoEstado.tela !== 'BOAS_VINDAS'`
-- [ ] T024 [US2] Emitir `SOLICITAR_ESTADO` na montagem em `src/client/features/display/DisplayCliente.tsx`, de forma idempotente sob `StrictMode` (research D9)
-- [ ] T025 [US2] Trocar o `BotaoInerte` do monitor por um botão ativo em `src/client/layout/BarraSuperior.tsx`: `window.open(ROTA_DISPLAY, NOME_JANELA_DISPLAY)` **sem `noopener`** (research D3), e remover "(ainda não disponível)" do rótulo. O `BotaoInerte` continua existindo para a engrenagem
-- [ ] T026 [P] [US2] Teste do botão em `tests/integration/BarraSuperior.spec.tsx`: o botão do monitor não está mais desabilitado, o rótulo não fala em indisponibilidade, e o clique chama `window.open` com a rota e o **nome** da janela — e sem `noopener`
+- [X] T023 [US2] Implementar C2 em `src/client/services/display/canalDisplay.ts`: responder `SOLICITAR_ESTADO` **apenas** quando `ultimoEstado.tela !== 'BOAS_VINDAS'`
+- [X] T024 [US2] Emitir `SOLICITAR_ESTADO` na montagem em `src/client/features/display/DisplayCliente.tsx`, de forma idempotente sob `StrictMode` (research D9)
+- [X] T025 [US2] Trocar o `BotaoInerte` do monitor por um botão ativo em `src/client/layout/BarraSuperior.tsx`: `window.open(ROTA_DISPLAY, NOME_JANELA_DISPLAY)` **sem `noopener`** (research D3), e remover "(ainda não disponível)" do rótulo. O `BotaoInerte` continua existindo para a engrenagem
+- [X] T026 [P] [US2] Teste do botão em `tests/integration/BarraSuperior.spec.tsx`: o botão do monitor não está mais desabilitado, o rótulo não fala em indisponibilidade, e o clique chama `window.open` com a rota e o **nome** da janela — e sem `noopener`
 
 **Checkpoint**: US1 e US2 funcionam independentemente. A tela pode ser aberta a qualquer momento.
 
@@ -124,15 +131,15 @@ Projeto único, com a separação já vigente: `src/shared/`, `src/client/`, `sr
 
 ### Testes da US3
 
-- [ ] T027 [P] [US3] Estender `tests/integration/DisplayCliente.spec.tsx`: `PIX_APROVADO` renderiza a confirmação e o contador; ao fim de `voltaEmMs` volta a `BOAS_VINDAS` sozinho (FR-024)
-- [ ] T028 [P] [US3] Estender `tests/integration/DisplayCliente.spec.tsx`: um `BOAS_VINDAS` que chegue **antes** do fim encerra o contador e vira a tela na hora (FR-025); e a troca de `trnGuid` reinicia a tela descartando o contador em curso, mesmo saindo de `PIX_APROVADO` (FR-026)
-- [ ] T029 [P] [US3] Estender `tests/integration/ModalPix.spec.tsx`: ao aprovar, a janela publica `PIX_APROVADO` com `voltaEmMs` igual ao `atrasoFechamentoMs` daquela instância (contrato §7)
+- [X] T027 [P] [US3] Estender `tests/integration/DisplayCliente.spec.tsx`: `PIX_APROVADO` renderiza a confirmação e o contador; ao fim de `voltaEmMs` volta a `BOAS_VINDAS` sozinho (FR-024)
+- [X] T028 [P] [US3] Estender `tests/integration/DisplayCliente.spec.tsx`: um `BOAS_VINDAS` que chegue **antes** do fim encerra o contador e vira a tela na hora (FR-025); e a troca de `trnGuid` reinicia a tela descartando o contador em curso, mesmo saindo de `PIX_APROVADO` (FR-026)
+- [X] T029 [P] [US3] Estender `tests/integration/ModalPix.spec.tsx`: ao aprovar, a janela publica `PIX_APROVADO` com `voltaEmMs` igual ao `atrasoFechamentoMs` daquela instância (contrato §7)
 
 ### Implementação da US3
 
-- [ ] T030 [P] [US3] Criar `src/client/features/display/TelaPagamentoAprovado.tsx`: confirmação com o ícone `CheckCircle` do reicon, valor confirmado e o contador regressivo visível
-- [ ] T031 [US3] Tratar `PIX_APROVADO` em `src/client/features/display/DisplayCliente.tsx`: contador de `voltaEmMs`, volta automática, aceite de `BOAS_VINDAS` antecipado e reinício por troca de `trnGuid` (data-model §4, D4/D5)
-- [ ] T032 [US3] Estender o `useEffect` de `src/client/features/pagamento/pix/ModalPix.tsx` com o ramo `aprovado === true` → `PIX_APROVADO`, usando `atrasoFechamentoMs` como `voltaEmMs`
+- [X] T030 [P] [US3] Criar `src/client/features/display/TelaPagamentoAprovado.tsx`: confirmação com o ícone `CheckCircle` do reicon, valor confirmado e o contador regressivo visível
+- [X] T031 [US3] Tratar `PIX_APROVADO` em `src/client/features/display/DisplayCliente.tsx`: contador de `voltaEmMs`, volta automática, aceite de `BOAS_VINDAS` antecipado e reinício por troca de `trnGuid` (data-model §4, D4/D5)
+- [X] T032 [US3] Estender o `useEffect` de `src/client/features/pagamento/pix/ModalPix.tsx` com o ramo `aprovado === true` → `PIX_APROVADO`, usando `atrasoFechamentoMs` como `voltaEmMs`
 
 **Checkpoint**: o ciclo completo da venda aparece na tela do cliente, do QR à confirmação.
 
@@ -146,17 +153,17 @@ Projeto único, com a separação já vigente: `src/shared/`, `src/client/`, `sr
 
 ### Testes da US4
 
-- [ ] T033 [P] [US4] Estender `tests/unit/canalDisplay.spec.ts`: o pulso (C3) liga com cobrança ativa, republica a cada `MS_PULSO_DISPLAY` e **desliga** ao voltar ao repouso
-- [ ] T034 [P] [US4] Estender `tests/unit/canalDisplay.spec.ts`: `pagehide` publica `BOAS_VINDAS` antes de a aba morrer (C4, FR-021)
-- [ ] T035 [P] [US4] Estender `tests/integration/DisplayCliente.spec.tsx`: com cobrança na tela, `MS_SILENCIO_ATE_REPOUSO` sem mensagem volta ao repouso (FR-020); e o pulso chegando mantém o QR de pé
-- [ ] T036 [P] [US4] Estender `tests/integration/DisplayCliente.spec.tsx`: mensagem **inválida** é descartada e **não** atualiza `recebidoEm` — uma aba emitindo lixo a cada 5 s não segura um QR morto (contrato §4)
-- [ ] T037 [P] [US4] Teste de privacidade em `tests/integration/DisplayCliente.spec.tsx`: no repouso não há nome, documento, item, preço nem total na árvore renderizada (FR-003, SC-006)
+- [X] T033 [P] [US4] Estender `tests/unit/canalDisplay.spec.ts`: o pulso (C3) liga com cobrança ativa, republica a cada `MS_PULSO_DISPLAY` e **desliga** ao voltar ao repouso
+- [X] T034 [P] [US4] Estender `tests/unit/canalDisplay.spec.ts`: `pagehide` publica `BOAS_VINDAS` antes de a aba morrer (C4, FR-021)
+- [X] T035 [P] [US4] Estender `tests/integration/DisplayCliente.spec.tsx`: com cobrança na tela, `MS_SILENCIO_ATE_REPOUSO` sem mensagem volta ao repouso (FR-020); e o pulso chegando mantém o QR de pé
+- [X] T036 [P] [US4] Estender `tests/integration/DisplayCliente.spec.tsx`: mensagem **inválida** é descartada e **não** atualiza `recebidoEm` — uma aba emitindo lixo a cada 5 s não segura um QR morto (contrato §4)
+- [X] T037 [P] [US4] Teste de privacidade em `tests/integration/DisplayCliente.spec.tsx`: no repouso não há nome, documento, item, preço nem total na árvore renderizada (FR-003, SC-006)
 
 ### Implementação da US4
 
-- [ ] T038 [US4] Implementar o pulso (C3) em `src/client/services/display/canalDisplay.ts`: republica a cada `MS_PULSO_DISPLAY` enquanto há cobrança ativa e encerra o temporizador no repouso e em `encerrar()`
-- [ ] T039 [US4] Registrar o ouvinte de `pagehide` (C4) em `src/client/services/display/canalDisplay.ts`, removido em `encerrar()`
-- [ ] T040 [US4] Implementar o corte por silêncio em `src/client/features/display/DisplayCliente.tsx`: só verifica enquanto o estado ≠ `BOAS_VINDAS`, e `recebidoEm` só avança em mensagem **válida** (data-model §4, D2/D3)
+- [X] T038 [US4] Implementar o pulso (C3) em `src/client/services/display/canalDisplay.ts`: republica a cada `MS_PULSO_DISPLAY` enquanto há cobrança ativa e encerra o temporizador no repouso e em `encerrar()`
+- [X] T039 [US4] Registrar o ouvinte de `pagehide` (C4) em `src/client/services/display/canalDisplay.ts`, removido em `encerrar()`
+- [X] T040 [US4] Implementar o corte por silêncio em `src/client/features/display/DisplayCliente.tsx`: só verifica enquanto o estado ≠ `BOAS_VINDAS`, e `recebidoEm` só avança em mensagem **válida** (data-model §4, D2/D3)
 
 **Checkpoint**: todas as user stories funcionam independentemente e a tela é segura para ficar ligada o dia inteiro.
 
@@ -164,14 +171,14 @@ Projeto único, com a separação já vigente: `src/shared/`, `src/client/`, `sr
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T041 Criar `tests/e2e/display-cliente.spec.ts` (Playwright): duas páginas no **mesmo contexto** de browser — uma insere o PIX no checkout, a outra abre `/display` **depois** que o QR já está na tela e prova que o handshake traz a cobrança correta. Contra a stack do `erp-mock`; **derrubar a porta 3100 antes** de crer em qualquer falha (AD-159)
-- [ ] T042 [P] Registrar os ADs novos em `.specs/project/STATE.md`: canal entre abas (o primeiro do projeto), `noopener` abandonado no botão do monitor, display sem polling próprio, e `nomeDaLoja` separada de `tituloDoProduto`
-- [ ] T043 [P] Fechar o item 28 em `.specs/project/PENDENCIES.md`, apontando para esta feature (AD-066)
-- [ ] T044 [P] Acrescentar a feature 015 à tabela de `.specs/project/ROADMAP.md`
-- [ ] T045 [P] Acrescentar a seção "a segunda aba e o canal" em `.specs/codebase/ARCHITECTURE.md`
-- [ ] T046 [P] Atualizar a nota do fluxograma "Tela do cliente" em `Fluxograma - Diagrama - Alinhamentos/FLUXOS-MERMAID.md`: o gap saiu do estado "não decidido", e a propaganda do passo "Exibe imagem" ficou **fora** desta versão (research D14) — reescrever no ponto do aviso, nunca anexar ao final (Constitution, correção de decisão superada)
-- [ ] T047 Rodar `npm run typecheck`, `npm run lint`, `npm run test` e `npm run test:e2e` — todos verdes
-- [ ] T048 Percorrer os 9 cenários de [quickstart.md](./quickstart.md) manualmente, com as duas telas lado a lado
+- [X] T041 Criar `tests/e2e/display-cliente.spec.ts` (Playwright): duas páginas no **mesmo contexto** de browser — uma insere o PIX no checkout, a outra abre `/display` **depois** que o QR já está na tela e prova que o handshake traz a cobrança correta. Contra a stack do `erp-mock`; **derrubar a porta 3100 antes** de crer em qualquer falha (AD-159)
+- [X] T042 [P] Registrar os ADs novos em `.specs/project/STATE.md`: canal entre abas (o primeiro do projeto), `noopener` abandonado no botão do monitor, display sem polling próprio, e `nomeDaLoja` separada de `tituloDoProduto`
+- [X] T043 [P] Fechar o item 28 em `.specs/project/PENDENCIES.md`, apontando para esta feature (AD-066)
+- [X] T044 [P] Acrescentar a feature 015 à tabela de `.specs/project/ROADMAP.md`
+- [X] T045 [P] Acrescentar a seção "a segunda aba e o canal" em `.specs/codebase/ARCHITECTURE.md`
+- [X] T046 [P] Atualizar a nota do fluxograma "Tela do cliente" em `Fluxograma - Diagrama - Alinhamentos/FLUXOS-MERMAID.md`: o gap saiu do estado "não decidido", e a propaganda do passo "Exibe imagem" ficou **fora** desta versão (research D14) — reescrever no ponto do aviso, nunca anexar ao final (Constitution, correção de decisão superada)
+- [X] T047 Rodar `npm run typecheck`, `npm run lint`, `npm run test` e `npm run test:e2e` — **`typecheck`, `lint` e `test` verdes** (86 arquivos, 1288 testes); `test:e2e` **178 de 180**, com os 3 cenários novos do display passando. **As 2 falhas são pré-existentes e alheias a esta feature**, herdadas de AD-209 (2026-09-10), que revogou a troca de cliente com carrinho populado sem atualizar os dois E2E correspondentes: `identificacao-cliente.spec.ts:180` ("trocar o cliente com carrinho populado reprecifica por SKU") tenta preencher um campo que AD-209 tornou `readOnly` — daí o timeout em "visible, enabled and **editable**" —, e `carrinho-precificacao.spec.ts:269` ("o rótulo do campo de código reflete `UsuarioTipoCodigoProduto`") espera um rótulo que a faixa de bloqueio por vendedor substituiu. `git log` confirma que nenhum dos dois arquivos foi tocado pelo commit de AD-209. **Corrigi-los é decisão sobre a 209, não sobre a 015** — o primeiro precisa ser apagado ou reescrito para afirmar a **recusa**, e essa escolha é do usuário
+- [ ] T048 Percorrer os 9 cenários de [quickstart.md](./quickstart.md) manualmente, com as duas telas lado a lado — **NÃO FEITO: exige dois monitores físicos e um operador humano.** Os cenários 1, 2 e 5a estão cobertos automaticamente pelo E2E (`tests/e2e/display-cliente.spec.ts`, duas páginas no mesmo contexto de browser, canal real). Continuam sem verificação: 3 (reaproveitamento da janela em três cliques), 4 (contador e volta conjunta ao clicar "Concluir"), 5b (matar a aba pelo `Shift+Esc` do Chromium), 6 (duas abas de checkout + handshake calado), 7 (conferir a olho que o repouso mostra `Mercado Aurora` e não `Centrium Checkout - Mercado Aurora`), 8 (segundo PIX com a confirmação na tela) e 9 (F5 na URL direta contra o build). Nada da 015 foi exercitado contra o **ERP real**
 - [ ] T049 Commit + push na branch `feat/display-cliente-pix` e abertura do PR (`rules.md`)
 
 ---

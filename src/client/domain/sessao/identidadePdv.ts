@@ -36,12 +36,34 @@ export interface IdentidadePdvBruta {
 export const NOME_DO_PRODUTO = 'Centrium Checkout';
 
 /**
+ * O nome da **loja**, sozinho — sem o nome do produto (feature 015, research D1).
+ *
+ * Nome fantasia na frente da razão social; `null` quando a empresa não está
+ * cadastrada, e aí quem exibe omite a linha inteira em vez de imprimir um
+ * rótulo órfão.
+ *
+ * Existe separada de `tituloDoProduto` porque a tela **virada ao cliente** pede
+ * um rótulo diferente do da barra do operador. `tituloDoProduto` devolve
+ * `"Centrium Checkout - Mercado Aurora"`, e ali isso está certo: o operador
+ * precisa saber em que sistema está. Na tela do cliente o mesmo rótulo erra duas
+ * vezes — anuncia ao cliente o nome de um software de PDV que não lhe diz nada
+ * e, no caso sem cadastro, apresentaria a loja como se ela se chamasse
+ * "Centrium Checkout".
+ */
+export function nomeDaLoja(sessao: IdentidadePdvBruta): string | null {
+  return primeiroPreenchido(sessao.EmpresaNomeFantasia, sessao.EmpresaRazaoSocial);
+}
+
+/**
  * Nome fantasia na frente da razão social: é o nome pelo qual o operador
  * reconhece a loja onde está. Empresa sem nenhum dos dois cai no nome do
  * produto sozinho, sem o hífen solto.
+ *
+ * Delega a precedência a `nomeDaLoja` para a regra existir **uma** vez só — as
+ * duas superfícies decidem a mesma coisa e não podem divergir com o tempo.
  */
 export function tituloDoProduto(sessao: IdentidadePdvBruta): string {
-  const empresa = primeiroPreenchido(sessao.EmpresaNomeFantasia, sessao.EmpresaRazaoSocial);
+  const empresa = nomeDaLoja(sessao);
   return empresa === null ? NOME_DO_PRODUTO : `${NOME_DO_PRODUTO} - ${empresa}`;
 }
 

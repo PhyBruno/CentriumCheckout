@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { MEIO_PAGTO, type MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
 import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/saldoPagamento';
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
+import { useCanalDisplay } from '../../services/display/useCanalDisplay';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
 import { useVendaStore } from '../../stores/vendaStore';
 import { iconeDoPagamento } from './iconePorMeio';
@@ -319,6 +320,17 @@ function usePixPendente(): ReactElement | null {
   const catalogo = useCondicoesPagamento();
   const minimoPix = catalogo.data?.minimoPix ?? ZERO_CENTAVOS;
 
+  /**
+   * Ponte para a tela do cliente (feature 015). Fica aqui, e não dentro do
+   * `ModalPix`, porque é aqui que já se conhece o React e o store — o modal
+   * recebe uma função e a chama, sem saber que existe uma segunda aba.
+   *
+   * O hook é chamado incondicionalmente, antes de qualquer retorno antecipado:
+   * o canal só nasce na primeira publicação, então uma venda sem PIX não abre
+   * `BroadcastChannel` nenhum.
+   */
+  const publicarNoDisplay = useCanalDisplay();
+
   const pendente = pagamentos.find(
     (pagamento) =>
       pagamento.status === 'PENDENTE_INTEGRACAO' && pagamento.integracao === 'PIX_DINAMICO',
@@ -367,6 +379,7 @@ function usePixPendente(): ReactElement | null {
         // confirmada convergem todos aqui.
         setIdExibido(null);
       }}
+      onEstadoDisplay={publicarNoDisplay}
     />
   );
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   descreverSessaoAtiva,
+  nomeDaLoja,
   nomeDoOperador,
   tituloDoProduto,
 } from '../../../../src/client/domain/sessao/identidadePdv';
@@ -9,6 +10,45 @@ import {
  * Rótulos da barra superior (nós `HSvSJ`/`YNhuO` do Pencil). Todos os valores
  * aqui são sintéticos.
  */
+
+describe('nomeDaLoja', () => {
+  // Feature 015 (T004, research D1). É o rótulo da tela **virada ao cliente**,
+  // e por isso não pode ser `tituloDoProduto`: o cliente não tem nada a ver com
+  // o nome do software de PDV, e a empresa sem cadastro viraria a loja chamada
+  // "Centrium Checkout".
+  it('usa o nome fantasia da empresa', () => {
+    expect(nomeDaLoja({ EmpresaNomeFantasia: 'Mercado Aurora' })).toBe('Mercado Aurora');
+  });
+
+  it('cai na razão social quando não há nome fantasia', () => {
+    expect(
+      nomeDaLoja({ EmpresaNomeFantasia: '  ', EmpresaRazaoSocial: 'Aurora Com. de Alim. Ltda' }),
+    ).toBe('Aurora Com. de Alim. Ltda');
+  });
+
+  it('o nome fantasia vence a razão social quando os dois vêm preenchidos', () => {
+    expect(
+      nomeDaLoja({
+        EmpresaNomeFantasia: 'Mercado Aurora',
+        EmpresaRazaoSocial: 'Aurora Com. de Alim. Ltda',
+      }),
+    ).toBe('Mercado Aurora');
+  });
+
+  it('devolve null quando os dois vêm vazios — a tela de repouso mostra só a saudação', () => {
+    expect(nomeDaLoja({ EmpresaNomeFantasia: '   ', EmpresaRazaoSocial: '' })).toBeNull();
+  });
+
+  it('devolve null quando o ERP não manda empresa nenhuma', () => {
+    expect(nomeDaLoja({})).toBeNull();
+  });
+
+  it('nunca devolve o nome do produto — é o erro que research D1 corrige', () => {
+    expect(nomeDaLoja({ EmpresaNomeFantasia: 'Mercado Aurora' })).not.toContain(
+      'Centrium Checkout',
+    );
+  });
+});
 
 describe('tituloDoProduto', () => {
   it('usa o nome fantasia da empresa', () => {

@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { GooeyToaster } from 'goey-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
+import { ROTA_DISPLAY } from '../shared/display';
+import { DisplayCliente } from './features/display/DisplayCliente';
 import { sincronizarLayoutNoDocumento } from './layout/sincronizarLayoutNoDocumento';
 // Bones gerados por `npm run bones` (CLI do Boneyard). Sem este import,
 // `<Skeleton name="pdv-venda">` não acha a geometria capturada e cai no
@@ -36,17 +38,41 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
 });
 
-createRoot(container).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-    {/* Montado uma única vez perto da raiz — as features de venda, pagamento e
-        finalização disparam toasts por `gooeyToast` sem remontar nada.
+/**
+ * A tela do cliente (feature 015) monta **fora** de `App`, `AppShell` e dos
+ * providers — e isso não é preferência de estilo (research D9).
+ *
+ * O `AppShell` chama `abrirSessaoDeVenda('NOVA')` na montagem, registra o
+ * `beforeunload` de `useAvisoAoSair` e liga o polling de `GetStatusSistema`. Uma
+ * segunda aba dentro dele abriria uma sessão de auditoria e um polling extra
+ * para uma tela que não vende nada, que é exatamente o que FR-016 proíbe. O
+ * `QueryClientProvider` é dispensável porque o display não faz rede (FR-014), e
+ * o `GooeyToaster` porque toast é conversa com o operador, não com o cliente.
+ *
+ * Ramificar por `pathname` basta: `/display` não colide com nenhuma rota do BFF
+ * e sobrevive a um F5 pelo `setNotFoundHandler` do Fastify em produção e pelo
+ * fallback de SPA do Vite em desenvolvimento (research D12, FR-023).
+ */
+if (window.location.pathname === ROTA_DISPLAY) {
+  createRoot(container).render(
+    <StrictMode>
+      <DisplayCliente />
+    </StrictMode>,
+  );
+} else {
+  createRoot(container).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+      {/* Montado uma única vez perto da raiz — as features de venda, pagamento
+          e finalização disparam toasts por `gooeyToast` sem remontar nada.
 
-        Canto superior direito: no rodapé da tela ficam o atalho de cancelar e o
-        botão de finalizar, então um toast embaixo à direita cobria justamente a
-        ação que o operador acabou de tentar (pedido do usuário, 2026-09-02). */}
-    <GooeyToaster position="top-right" />
-  </StrictMode>,
-);
+          Canto superior direito: no rodapé da tela ficam o atalho de cancelar e
+          o botão de finalizar, então um toast embaixo à direita cobria
+          justamente a ação que o operador acabou de tentar (pedido do usuário,
+          2026-09-02). */}
+      <GooeyToaster position="top-right" />
+    </StrictMode>,
+  );
+}

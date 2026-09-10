@@ -50,6 +50,18 @@ Um BFF mínimo (Node, sem banco de dados, sem lógica de negócio — AD-022 em 
 
 Fluxo completo em `.specs/features/autenticacao-sessao-bootstrap/spec.md`.
 
+## A segunda aba e o canal do display
+
+Desde 2026-09-10 (feature 015, AD-210 a AD-213) a aplicação tem **duas** superfícies servidas pelo mesmo bundle: a tela do operador e a tela do cliente, em `/display`, arrastada para o monitor voltado a quem paga.
+
+**Uma rota, sem roteador.** `main.tsx` ramifica por `window.location.pathname`: `/display` monta `<DisplayCliente/>` **fora** de `App`, do `AppShell` e dos providers — sem `QueryClientProvider` e sem `GooeyToaster`. Não é organização de código. O `AppShell` chama `abrirSessaoDeVenda('NOVA')` na montagem, registra o `beforeunload` de `useAvisoAoSair` e liga o polling de `GetStatusSistema`; uma aba de display dentro dele abriria uma segunda sessão de auditoria e um segundo polling para uma tela que não vende nada. Nenhuma mudança foi necessária no servidor nem no Vite: `/display` cai no `setNotFoundHandler` do Fastify, que já devolve `index.html` para todo GET fora de `/api/`, e no fallback de SPA do Vite em desenvolvimento — então a rota sobrevive a um F5 direto na URL nas duas pontas.
+
+**O canal é `BroadcastChannel`, e é o primeiro do projeto.** O protocolo mora em `src/shared/display.ts` (mesmo motivo de `gerencial.ts`: vocabulário comum às duas pontas, e um rename quebra a compilação em vez de virar erro de runtime). Os papéis são fixos e assimétricos: a aba de checkout **publica**; a de display **escuta**. A única mensagem que o display emite é `SOLICITAR_ESTADO`, que não carrega dado nenhum. O display não gera cobrança, não consulta o ERP e não oferece nenhuma ação capaz de alterar a venda — ele desenha o estado que recebe, e nada mais. Toda mensagem passa por Zod na chegada, porque depois de um deploy uma aba aberta há horas continua rodando o bundle antigo.
+
+**O que mantém a tela honesta são três mecanismos, não um.** `pagehide` cobre o fechamento normal da aba do checkout e devolve o display ao repouso na hora. O **pulso** de 5 s reconfirma a cobrança enquanto ela vive. O **corte por silêncio** de 15 s no display cobre o que o `pagehide` não alcança — a aba que trava, é morta pelo gerenciador de tarefas ou perde o processo de renderização, casos em que nenhum código nosso roda. O risco que os três existem para evitar é concreto e específico: um QR obsoleto preso na tela e o **próximo** cliente da fila pagando a cobrança do anterior.
+
+Contrato completo em `specs/015-display-cliente-pix/contracts/canal-display.md`; decisões em `.specs/project/STATE.md` (AD-210 a AD-213).
+
 ## Responsividade
 
 Uma única aplicação atende desktop e mobile via layout condicional sobre o mesmo estado de venda (Zustand) — sem build ou rota separada. Detalhes em `.specs/features/layout-responsivo-mobile/spec.md`.

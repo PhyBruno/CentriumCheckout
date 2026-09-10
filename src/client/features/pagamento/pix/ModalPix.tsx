@@ -4,6 +4,7 @@ import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
+import type { EstadoDisplay } from '../../../../shared/display';
 import type { ClienteVenda } from '../../../domain/cliente/clienteVenda';
 import type { CobrancaPix } from '../../../domain/pix/cobrancaPix';
 import { MENSAGEM_POR_MOTIVO_FALHA } from '../../../domain/pix/interpretarStatusPix';
@@ -147,6 +148,16 @@ export interface ModalPixProps {
    * padrão é o que o usuário pediu.
    */
   readonly atrasoFechamentoMs?: number;
+  /**
+   * Espelho da janela na tela virada ao cliente (feature 015, contrato §7).
+   *
+   * **Uma** prop, opcional, e o modal continua sem saber o que é aba, canal ou
+   * display: recebe uma função e a chama, exatamente como já faz com
+   * `onAprovado`/`onAbandonado` — o que preserva a Interface Segregation que
+   * este TSDoc defende acima. Quem a liga ao canal é `usePixPendente`
+   * (`ListaPagamentosAplicados.tsx`), e sem ela a janela funciona igual.
+   */
+  readonly onEstadoDisplay?: (estado: EstadoDisplay) => void;
 }
 
 export const MOTIVO_FECHADO_PELO_OPERADOR = 'FECHADO_PELO_OPERADOR';
@@ -181,6 +192,7 @@ export function ModalPix({
   onFechar,
   deps = DEPS_VAZIAS,
   atrasoFechamentoMs = MS_FECHAMENTO_APOS_APROVACAO,
+  onEstadoDisplay,
 }: ModalPixProps): ReactElement | null {
   const [cobranca, setCobranca] = useState<CobrancaPix | null>(null);
   /** Desliga o polling na **mesma renderização** que processa o desfecho (J3). */
@@ -220,6 +232,10 @@ export function ModalPix({
   );
 
   const abaixoDoMinimo = !validarValorMinimoPix(valor, minimoPix).ok;
+  // Derivado aqui, e não junto do JSX como antes: o efeito que alimenta a tela
+  // do cliente precisa dele, e todo hook tem de ficar acima do retorno
+  // antecipado de `abaixoDoMinimo`.
+  const emErro = status === 'erro' && cobranca === null;
 
   const gerarCobranca = useCallback((): void => {
     void gerar({ formaCodigo, valor, pagador: montarDadosPagador(clienteAtual) })
@@ -358,6 +374,71 @@ export function ModalPix({
     };
   }, [aprovado, onFechar]);
 
+  /**
+   * Espelho na tela do cliente (feature 015, contrato §7 / research D11).
+   *
+   * "Gerando" e "erro" mapeiam para **repouso** de propósito: não há QR a
+   * mostrar, e um esqueleto na tela virada ao cliente prometeria algo que ainda
+   * pode falhar (FR-010); o erro é conversa com o operador (FR-011).
+   *
+   * `resolvido` sem aprovação é abandono a caminho da desmontagem — a cobrança
+   * já não vale, e deixá-la na tela do cliente é o começo do cenário em que o
+   * **próximo** cliente paga a cobrança do anterior.
+   */
+  useEffect(() => {
+    if (onEstadoDisplay === undefined) {
+      return;
+    }
+    if (abaixoDoMinimo || emErro || cobranca === null) {
+      onEstadoDisplay({ tela: 'BOAS_VINDAS' });
+      return;
+    }
+    if (aprovado) {
+      onEstadoDisplay({
+        tela: 'PIX_APROVADO',
+        trnGuid: cobranca.trnGuid,
+        valorCentavos: cobranca.valor,
+        // Da **instância**, não da constante importada: assim o que o cliente vê
+        // contando acompanha o que esta janela de fato vai esperar antes de
+        // fechar, e as duas telas voltam juntas (research D6, FR-024).
+        voltaEmMs: atrasoFechamentoMs,
+      });
+      return;
+    }
+    if (resolvido) {
+      // Resolvido sem aprovação é abandono a caminho da desmontagem. A cobrança
+      // já não vale, e deixá-la na tela do cliente é o começo do cenário em que
+      // o **próximo** cliente paga a cobrança do anterior.
+      onEstadoDisplay({ tela: 'BOAS_VINDAS' });
+      return;
+    }
+    onEstadoDisplay({
+      tela: 'PIX_AGUARDANDO',
+      trnGuid: cobranca.trnGuid,
+      // Inteiro cru: a marca `Centavos` não sobrevive ao clone do canal, e
+      // fingir que sobrevive seria um `as` não justificado (research D5).
+      valorCentavos: cobranca.valor,
+      qrCodeFonte: cobranca.qrCodeFonte,
+      copiaECola: cobranca.copiaECola,
+    });
+  }, [onEstadoDisplay, abaixoDoMinimo, emErro, cobranca, resolvido, aprovado, atrasoFechamentoMs]);
+
+  /**
+   * Repouso ao desmontar, em efeito **próprio** e com dependências vazias.
+   *
+   * Pendurar este cleanup no efeito acima o faria disparar a cada transição —
+   * `PIX_AGUARDANDO` → `BOAS_VINDAS` → `PIX_APROVADO` —, e a tela do cliente
+   * piscaria o repouso no meio de uma cobrança viva. A referência mantém a
+   * função atual sem reabrir o efeito.
+   */
+  const onEstadoDisplayRef = useRef(onEstadoDisplay);
+  onEstadoDisplayRef.current = onEstadoDisplay;
+  useEffect(() => {
+    return () => {
+      onEstadoDisplayRef.current?.({ tela: 'BOAS_VINDAS' });
+    };
+  }, []);
+
   if (abaixoDoMinimo) {
     return null;
   }
@@ -377,7 +458,6 @@ export function ModalPix({
     }
   }
 
-  const emErro = status === 'erro' && cobranca === null;
   const bloqueioDoFechar: MotivoBloqueio = aprovado ? null : MOTIVO_JANELA_TRAVADA;
 
   return (
