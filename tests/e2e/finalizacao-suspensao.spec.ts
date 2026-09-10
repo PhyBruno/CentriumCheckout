@@ -221,7 +221,13 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     // se perdia quando o schema reprovava a resposta inteira por falta de PDF.
     await expect(page.getByTestId('erro-finalizacao')).toContainText(/Duplicidade de NF-e/i);
     await expect(page.getByTestId('erro-finalizacao')).toContainText('539');
-    await expect(page.getByTestId('documento-rejeitado')).toContainText('NFCe 9001');
+    // **Nenhuma identificação de documento**, e é o comportamento correto: o ERP
+    // real devolve `NumeroNota: "0"`/`SerieNota: ""` na rejeição, mesmo tendo
+    // gravado a nota (item 51 de `PENDENCIES.md`, medido em 2026-09-10). Antes
+    // de medir, este teste exigia "NFCe 9001" — um número que o mock inventava e
+    // o ERP nunca manda. Quando o ERP passar a preencher os campos, a linha
+    // volta sozinha, e é esta asserção que deve mudar junto.
+    await expect(page.getByTestId('documento-rejeitado')).toHaveCount(0);
     // Não é falha de rede: nada a confirmar antes de reenviar, porque não há
     // reenvio nenhum.
     await expect(page.getByTestId('dialogo-confirmar-reenvio')).toHaveCount(0);

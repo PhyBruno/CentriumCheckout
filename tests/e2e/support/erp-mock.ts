@@ -1249,21 +1249,24 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
       // NFCe gravada e **não** autorizada: o bloco vem completo, com o motivo
       // em `ErroMensagem`, e sem nada para imprimir.
+      //
+      // **Sem envelope**, como o ERP real (medido em 2026-09-10, corrigindo o
+      // que AD-165 registrou): `NotaFiscal` na raiz, ao lado do retrato ecoado,
+      // e nenhum `messages`. `Autorizada` vem `'R'`, que é o valor real — não
+      // `'N'`. O caminho de sucesso logo abaixo ainda usa a forma do YAML, de
+      // propósito: é o que mantém o E2E exercitando a tolerância às duas.
       if (!suspendendo && config.faturarNFCeRejeitada) {
         return reply.send({
-          OutCheckoutFaturarNFCe: {
-            ...(retrato ?? {}),
-            NotaFiscal: {
-              NumeroNota: String(9001), // int64
-              SerieNota: '1',
-              Autorizada: 'N',
-              ErroCodigo: 539,
-              ErroMensagem: 'Rejeicao: Duplicidade de NF-e (sintetico)',
-              XMLImpressao: '',
-              PDFImpressao: '',
-            },
+          ...(retrato ?? {}),
+          NotaFiscal: {
+            NumeroNota: String(0), // o ERP real zera este campo na rejeição
+            SerieNota: '',
+            Autorizada: 'R',
+            ErroCodigo: 539,
+            ErroMensagem: 'Rejeicao: Duplicidade de NF-e (sintetico)',
+            XMLImpressao: '',
+            PDFImpressao: '',
           },
-          messages: [],
         });
       }
 

@@ -1,16 +1,27 @@
 import { z } from 'zod';
-import { inteiroErp } from './erpJson';
+import { inteiroErp, semEnvelope } from './erpJson';
 
 /**
  * Validação de fronteira da resposta de `POST /api/erp/FaturarNFCe` (T003,
  * Constitution IV — `contracts/faturamento-api.md`).
  *
- * O envelope real vem do contrato do ERP (`Fluxograma - Diagrama -
- * Alinhamentos/ApiCentriumOAuth.yaml`, `FaturarNFCeOutput` na linha 725):
- * a nota fiscal chega **dentro** de `OutCheckoutFaturarNFCe`, não na raiz da
- * resposta. `contracts/faturamento-api.md` desenha o exemplo achatado
- * (`{ "NotaFiscal": … }`) — o YAML é a fonte autoritativa (AD-024, confirmado
- * campo a campo contra a KB do GenExus), então é ele que este schema segue.
+ * **O ERP real responde `FaturarNFCe` SEM envelope** — `NotaFiscal` chega na
+ * raiz, ao lado de `produtos`/`FormasDePagamento`/`Log`, e não há `messages`.
+ * Medido ao vivo em 2026-09-10 (tenant `c0lj6mvzeh`, emissão fiscal real
+ * rejeitada pela SEFAZ), capturando a resposta crua no navegador.
+ *
+ * Isso **corrige** o que AD-165 registrou. Aquele levantamento classificou
+ * `GetDav` e `FaturarNFCe` como os dois endpoints que "mantêm envelope +
+ * `messages`", e foi por isso que `semEnvelope` foi aplicado a todos os outros
+ * e não a este. A consequência era grave e silenciosa: exigindo
+ * `OutCheckoutFaturarNFCe`, **nenhuma** resposta real casava — nem a rejeição
+ * (que perdia o motivo) nem o sucesso (uma NFCe autorizada seria reportada como
+ * falha de negócio, com a venda presa no caixa). O `ApiCentriumOAuth.yaml`
+ * (linha 725) desenha o envelope, o ERP não o entrega.
+ *
+ * Por isso `semEnvelope`: aceita as duas formas e devolve sempre o conteúdo
+ * interno. Não é indulgência — é o que permite ao `erp-mock` e ao YAML
+ * coexistirem com o ERP de hoje sem uma segunda árvore de schemas.
  *
  * Objetos `loose` de propósito: `CheckoutFaturarNFCe` é ecoado inteiro na
  * resposta (produtos, formas de pagamento, log) e esta feature só precisa
@@ -39,13 +50,17 @@ export const notaFiscalRespostaSchema = z.looseObject({
   XMLImpressao: z.string().min(1),
 });
 
-/** Resposta de `FATURAR`: exige a nota fiscal pronta para apresentação. */
-export const faturarNFCeOutputSchema = z.looseObject({
-  OutCheckoutFaturarNFCe: z.looseObject({
-    NotaFiscal: notaFiscalRespostaSchema,
-  }),
-  messages: z.array(mensagemErpSchema).optional(),
-});
+/**
+ * Resposta de `FATURAR`: exige a nota fiscal pronta para apresentação.
+ *
+ * `messages` não entra aqui: na forma real ele não existe, e na forma do YAML
+ * ele fica **ao lado** do envelope — fora do que `semEnvelope` devolve. Quem o
+ * lê é `suspenderNFCeOutputSchema`, sobre a raiz, no mapper.
+ */
+export const faturarNFCeOutputSchema = semEnvelope(
+  'OutCheckoutFaturarNFCe',
+  z.looseObject({ NotaFiscal: notaFiscalRespostaSchema }),
+);
 
 /**
  * A **mesma** `CheckoutFaturarNFCe.NotaFiscal` (YAML, linha 1604) pelos campos
@@ -69,6 +84,12 @@ export const faturarNFCeOutputSchema = z.looseObject({
 export const notaFiscalRejeitadaSchema = z.looseObject({
   NumeroNota: inteiroErp.optional(),
   SerieNota: z.string().optional(),
+  /**
+   * O ERP real devolve **`'R'`** (de "Rejeitada") — não `'N'`, como o nome
+   * booleano do campo sugere (medido em 2026-09-10). Por isso quem decide é
+   * `foiAutorizada`, comparando com `'S'`: qualquer outro valor é recusa, e o
+   * conjunto de valores possíveis não está documentado em lugar nenhum.
+   */
   Autorizada: z.string().optional(),
   ErroCodigo: inteiroErp.optional(),
   ErroMensagem: z.string().optional(),
@@ -82,12 +103,10 @@ export const notaFiscalRejeitadaSchema = z.looseObject({
  * limpa a tela para a próxima venda, porque só nele reenviar a mesma venda
  * duplicaria o documento já gravado.
  */
-export const faturarNFCeRejeitadaOutputSchema = z.looseObject({
-  OutCheckoutFaturarNFCe: z.looseObject({
-    NotaFiscal: notaFiscalRejeitadaSchema,
-  }),
-  messages: z.array(mensagemErpSchema).optional(),
-});
+export const faturarNFCeRejeitadaOutputSchema = semEnvelope(
+  'OutCheckoutFaturarNFCe',
+  z.looseObject({ NotaFiscal: notaFiscalRejeitadaSchema }),
+);
 
 /**
  * Resposta de `SUSPENDER`: **não** exige `NotaFiscal`.

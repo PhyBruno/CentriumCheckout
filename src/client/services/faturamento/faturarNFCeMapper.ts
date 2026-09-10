@@ -129,9 +129,14 @@ export function mapearRespostaFaturamento(
     return { estado: 'ok', notaFiscal: null };
   }
 
+  // Os dois schemas abaixo passam por `semEnvelope`: o ERP real entrega
+  // `NotaFiscal` na **raiz**, e só o YAML/`erp-mock` a embrulham em
+  // `OutCheckoutFaturarNFCe` (medido ao vivo em 2026-09-10 — ver o TSDoc de
+  // `faturarNFCe.schema.ts`). Por isso o acesso aqui é direto a `.NotaFiscal`,
+  // sem atravessar envelope nenhum.
   const comNotaFiscal = faturarNFCeOutputSchema.safeParse(corpo);
   if (comNotaFiscal.success) {
-    return { estado: 'ok', notaFiscal: comNotaFiscal.data.OutCheckoutFaturarNFCe.NotaFiscal };
+    return { estado: 'ok', notaFiscal: comNotaFiscal.data.NotaFiscal };
   }
 
   // Sem PDF/XML, mas **com** o bloco `NotaFiscal`: o ERP chegou a gravar o
@@ -139,7 +144,7 @@ export function mapearRespostaFaturamento(
   // rejeitada", e é o único em que a venda não pode continuar no caixa.
   const rejeitada = faturarNFCeRejeitadaOutputSchema.safeParse(corpo);
   if (rejeitada.success) {
-    const nota = rejeitada.data.OutCheckoutFaturarNFCe.NotaFiscal;
+    const nota = rejeitada.data.NotaFiscal;
     // `Autorizada = 'S'` sem nota para imprimir é resposta contraditória, não
     // rejeição: o ERP afirma que autorizou e não entrega o documento. Cai no
     // caminho de falha de fronteira abaixo, que preserva a venda no caixa —
@@ -148,7 +153,10 @@ export function mapearRespostaFaturamento(
     if (!foiAutorizada(nota)) {
       return {
         estado: 'rejeitada',
-        mensagem: motivoDaRejeicao(nota, rejeitada.data.messages),
+        // `messages` vem da **raiz** (`envelope`), não do que `semEnvelope`
+        // devolveu: na forma real ele não existe, e na forma do YAML ele é
+        // irmão do envelope, não filho.
+        mensagem: motivoDaRejeicao(nota, envelope.data.messages),
         numeroNota: nota.NumeroNota ?? null,
         serieNota: textoUtil(nota.SerieNota),
       };

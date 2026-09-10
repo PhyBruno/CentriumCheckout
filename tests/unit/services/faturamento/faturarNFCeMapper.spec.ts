@@ -18,6 +18,7 @@ import { mapearRespostaFaturamento } from '../../../../src/client/services/fatur
 const PDF_SINTETICO = 'JVBERi0xLjQK-sintetico';
 const XML_SINTETICO = '<NFe><infNFe>sintetico</infNFe></NFe>';
 
+/** A forma do YAML/`erp-mock`: `NotaFiscal` dentro do envelope. */
 function respostaDe(notaFiscal: unknown, messages?: unknown): unknown {
   return {
     OutCheckoutFaturarNFCe: {
@@ -26,6 +27,23 @@ function respostaDe(notaFiscal: unknown, messages?: unknown): unknown {
       ...(notaFiscal === undefined ? {} : { NotaFiscal: notaFiscal }),
     },
     ...(messages === undefined ? {} : { messages }),
+  };
+}
+
+/**
+ * A forma **real** do ERP: tudo na raiz, sem envelope e sem `messages`.
+ *
+ * Medida ao vivo em 2026-09-10 contra o tenant `c0lj6mvzeh`, numa emissão
+ * fiscal de verdade rejeitada pela SEFAZ. As duas formas convivem porque
+ * `semEnvelope` aceita ambas — e é esta que precisa funcionar em produção.
+ */
+function respostaRealDe(notaFiscal: unknown): unknown {
+  return {
+    Empresa: '1',
+    SuspenderOuFaturar: 'FATURAR',
+    produtos: [],
+    FormasDePagamento: [],
+    ...(notaFiscal === undefined ? {} : { NotaFiscal: notaFiscal }),
   };
 }
 
@@ -134,6 +152,66 @@ describe('falha de fronteira — a venda continua no caixa', () => {
 
   it('reprova corpo que nem é objeto', () => {
     expect(mapearRespostaFaturamento('FATURAR', 'não é JSON de venda')).toMatchObject({
+      estado: 'invalida',
+    });
+  });
+});
+
+/**
+ * Resposta **sem envelope** — a forma que o ERP realmente devolve.
+ *
+ * Este bloco existe porque a suíte anterior só exercitava a forma do YAML e por
+ * isso passava inteira enquanto, contra o ERP de verdade, **nenhum** caminho
+ * funcionava: nem o sucesso (NFCe autorizada virava falha de negócio, com a
+ * venda presa no caixa), nem a rejeição (o motivo era descartado). Achado pelo
+ * usuário, medido ao vivo em 2026-09-10.
+ */
+describe('forma real do ERP — NotaFiscal na raiz, sem envelope', () => {
+  it('reconhece a NFCe autorizada', () => {
+    const resultado = mapearRespostaFaturamento(
+      'FATURAR',
+      respostaRealDe({
+        NumeroNota: '1304',
+        SerieNota: '14',
+        Autorizada: 'S',
+        ErroCodigo: 0,
+        ErroMensagem: '',
+        PDFImpressao: PDF_SINTETICO,
+        XMLImpressao: XML_SINTETICO,
+      }),
+    );
+
+    expect(resultado).toMatchObject({ estado: 'ok' });
+  });
+
+  it("reconhece a rejeição real, com Autorizada = 'R' e NumeroNota zerado", () => {
+    // Valores exatos da resposta capturada: o ERP zera `NumeroNota`/`SerieNota`
+    // na rejeição e usa `'R'`, não `'N'`.
+    const resultado = mapearRespostaFaturamento(
+      'FATURAR',
+      respostaRealDe({
+        NumeroNota: '0',
+        SerieNota: '',
+        Autorizada: 'R',
+        ErroCodigo: 0,
+        ErroMensagem: 'Rejeicao: Total da BC ICMS difere do somatorio dos itens',
+        XMLImpressao: '',
+        PDFImpressao: '',
+      }),
+    );
+
+    expect(resultado).toEqual({
+      estado: 'rejeitada',
+      mensagem: 'Rejeicao: Total da BC ICMS difere do somatorio dos itens',
+      // `0` e `''` são o "sem número" do ERP nesta resposta — o diálogo não
+      // anuncia nenhum documento (item 51 de `PENDENCIES.md`).
+      numeroNota: 0,
+      serieNota: null,
+    });
+  });
+
+  it('continua exigindo o bloco: raiz sem NotaFiscal não é rejeição', () => {
+    expect(mapearRespostaFaturamento('FATURAR', respostaRealDe(undefined))).toMatchObject({
       estado: 'invalida',
     });
   });
