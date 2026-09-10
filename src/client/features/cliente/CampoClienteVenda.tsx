@@ -96,6 +96,8 @@ export function CampoClienteVenda(): ReactElement {
 
   const [expandido, setExpandido] = useState(false);
   const campoDocumento = useRef<HTMLInputElement>(null);
+  /** Da lupa do vendedor, que este card monta — ver o efeito de foco abaixo. */
+  const refLupaVendedor = useRef<HTMLButtonElement>(null);
   const [documento, setDocumento] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
@@ -169,6 +171,41 @@ export function CampoClienteVenda(): ReactElement {
     setExpandido(true);
     setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }, [pedidosExternosDeFocoNoDocumento]);
+
+  /**
+   * O mesmo par de efeitos, agora para a **lupa do vendedor** — pedida pela
+   * barra de entrada rápida ao recusar uma inserção em venda sem vendedor
+   * (AD-209).
+   *
+   * **Mora aqui, e não em `CampoVendedorVenda`, porque o dono do `inert` é este
+   * card.** A primeira versão focava a lupa de dentro do próprio
+   * `CampoVendedorVenda`, e não funcionava com o card recolhido — que é
+   * justamente o estado em que ele nasce: o `focus()` num subtree `inert` é
+   * ignorado pelo navegador, sem erro. Medido contra o ERP real em 2026-09-10:
+   * a bipagem era recusada com o aviso correto e o foco ficava no campo de
+   * código; com o card já aberto à mão, ia para a lupa. Expandir aqui não
+   * bastaria sozinho — o efeito do filho roda **antes** do efeito do pai, então
+   * o foco aconteceria no render em que o `inert` ainda existe. Por isso o ref
+   * vem para cá (`refLupaVendedor`) e o foco é disparado pelo contador local,
+   * um render depois, exatamente como o campo de documento acima.
+   */
+  const pedidosExternosDeFocoNoVendedor = useFocoVendaStore(
+    (estado) => estado.pedidosDeFocoNoVendedor,
+  );
+  const [pedidosDeFocoNaLupaVendedor, setPedidosDeFocoNaLupaVendedor] = useState(0);
+  useEffect(() => {
+    if (pedidosExternosDeFocoNoVendedor === 0) {
+      return;
+    }
+    setExpandido(true);
+    setPedidosDeFocoNaLupaVendedor((atual) => atual + 1);
+  }, [pedidosExternosDeFocoNoVendedor]);
+  useEffect(() => {
+    if (pedidosDeFocoNaLupaVendedor === 0) {
+      return;
+    }
+    refLupaVendedor.current?.focus();
+  }, [pedidosDeFocoNaLupaVendedor]);
 
   /**
    * Qual das duas identidades do cliente o campo mostra depois de identificar:
@@ -738,7 +775,7 @@ export function CampoClienteVenda(): ReactElement {
                 </span>
               </div>
 
-              <CampoVendedorVenda />
+              <CampoVendedorVenda refLupa={refLupaVendedor} />
             </div>
           </div>
         </div>

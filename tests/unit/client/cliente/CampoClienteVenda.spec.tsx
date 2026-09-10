@@ -99,6 +99,65 @@ describe('CampoClienteVenda — foco pedido de fora (pedido do usuário, 2026-09
       expect(screen.getByTestId('campo-documento-cliente')).toHaveFocus();
     });
   });
+
+  /**
+   * Achado ao exercitar contra o ERP real (2026-09-10, AD-209).
+   *
+   * A primeira versão focava a lupa de dentro do próprio `CampoVendedorVenda`,
+   * e o spec daquele componente o montava **solto** — fora do card. Com o card
+   * recolhido, que é o estado em que ele nasce, o `focus()` cai num subtree
+   * `inert` e o navegador o ignora sem erro: a bipagem era recusada com o aviso
+   * certo e o foco ficava parado no campo de código.
+   *
+   * Por isso o caso vive aqui e monta o card de verdade: é o card que possui o
+   * `inert`, e é montando-o recolhido que a regressão volta a aparecer.
+   */
+  it('pedido de foco no vendedor expande o card recolhido e foca a lupa (AD-209)', async () => {
+    useFocoVendaStore.setState({ pedidosDeFocoNoVendedor: 0 });
+    renderCard();
+
+    expect(screen.getByTestId('alternar-cliente-expandido')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+
+    act(() => {
+      useFocoVendaStore.getState().focarVendedor();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('abrir-busca-vendedor')).toHaveFocus();
+    });
+    expect(screen.getByTestId('alternar-cliente-expandido')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByTestId('campos-cliente-venda')).not.toHaveAttribute('inert');
+  });
+
+  it('cada pedido de foco no vendedor volta a focar a lupa', async () => {
+    useFocoVendaStore.setState({ pedidosDeFocoNoVendedor: 0 });
+    renderCard();
+
+    act(() => {
+      useFocoVendaStore.getState().focarVendedor();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('abrir-busca-vendedor')).toHaveFocus();
+    });
+
+    act(() => {
+      screen.getByTestId('campo-documento-cliente').focus();
+    });
+    expect(screen.getByTestId('abrir-busca-vendedor')).not.toHaveFocus();
+
+    act(() => {
+      useFocoVendaStore.getState().focarVendedor();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('abrir-busca-vendedor')).toHaveFocus();
+    });
+  });
 });
 
 /**
