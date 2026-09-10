@@ -6002,5 +6002,73 @@
     "files": [],
     "created_at": "2026-09-09T17:59:42.000000+00:00",
     "created_epoch": 1788976782
+  },
+  {
+    "kind": "decision",
+    "content": "AD-209: vendedor e cliente antes do item; item antes do pagamento rapido",
+    "tags": [
+      "AD-209",
+      "vendedor",
+      "cliente",
+      "venda-rapida",
+      "bloqueio"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+      "src/client/features/venda-rapida/DicaAtalhos.tsx",
+      "src/client/stores/slices/clienteSlice.ts",
+      "src/client/features/cliente/CampoClienteVenda.tsx",
+      "src/client/stores/focoVendaStore.ts"
+    ],
+    "created_at": "2026-09-10T21:00:00.000000+00:00",
+    "created_epoch": 1789074000
+  },
+  {
+    "kind": "fact",
+    "content": "AD-209 revoga a reprecificacao por troca de cliente (FR-012 da 005)",
+    "tags": [
+      "AD-209",
+      "AD-043",
+      "reprecificacao",
+      "cliente"
+    ],
+    "files": [
+      "src/client/stores/slices/clienteSlice.ts",
+      ".specs/features/identificacao-cadastro-cliente/spec.md"
+    ],
+    "created_at": "2026-09-10T21:01:00.000000+00:00",
+    "created_epoch": 1789074060
+  },
+  {
+    "kind": "fact",
+    "content": "focus() em subtree inert e ignorado; quem expande e quem foca, um render depois",
+    "tags": [
+      "AD-209",
+      "inert",
+      "foco",
+      "vendedor"
+    ],
+    "files": [
+      "src/client/features/cliente/CampoClienteVenda.tsx",
+      "src/client/features/vendedor/CampoVendedorVenda.tsx"
+    ],
+    "created_at": "2026-09-10T21:02:00.000000+00:00",
+    "created_epoch": 1789074120
+  },
+  {
+    "kind": "blocker",
+    "content": "fix/contrato-erp-real nao compila: AD-206 importa BotaoMenuGerencial, que so existe em feat/menu-gerencial",
+    "tags": [
+      "AD-206",
+      "AD-203",
+      "branch",
+      "build"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
+      "src/client/features/gerencial/BotaoMenuGerencial.tsx"
+    ],
+    "created_at": "2026-09-10T21:03:00.000000+00:00",
+    "created_epoch": 1789074180
   }
 ]
