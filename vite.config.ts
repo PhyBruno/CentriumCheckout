@@ -28,6 +28,10 @@ export default defineConfig({
     proxy: {
       '/session': { target: BFF_DEV_TARGET, changeOrigin: false },
       '/api': { target: BFF_DEV_TARGET, changeOrigin: false },
+      // O Menu gerencial (AD-203) abre `/gerencial/<destino>` numa aba nova, e
+      // quem responde o `302` é o BFF. Sem esta entrada o Vite serviria o
+      // `index.html` da SPA e a aba nova abriria o Checkout de novo.
+      '/gerencial': { target: BFF_DEV_TARGET, changeOrigin: false },
     },
   },
 });

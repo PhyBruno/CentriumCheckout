@@ -61,7 +61,7 @@ Duas telas existiam em `design/CentriumCheckout.pen` sem requisito formal: `PDV 
 **Pendências reais que permanecem em aberto (rastreadas nos respectivos documentos, não mais nesta seção):**
 
 - ~~Endpoint de listagem de vendedores por empresa~~ — **RESOLVIDO (2026-08-21):** o novo `ApiCentriumOAuth.yaml` traz `GetListaVendedores` (ver seção acima). `VEND-01` promovido a Verified em `.specs/features/selecao-vendedor/spec.md`.
-- ~~URL da opção "Relatório de resumo de caixa" do menu gerencial~~ — **RESOLVIDO (2026-08-24, AD-026):** confirmado pelo usuário — mesmo link da opção "Central de movimentação não fiscal" (`WPMovimentoNaoFiscal_Lancamento.aspx`). Ver `.specs/codebase/ARCHITECTURE.md`, seção "Responsividade".
+- ~~URL da opção "Relatório de resumo de caixa" do menu gerencial~~ — **RESOLVIDO (2026-09-10, AD-203):** as duas opções têm telas distintas — `wwtecfmovnaofisc.aspx` (movimentação não fiscal) e `WWPResumoCaixa.aspx` (resumo de caixa), confirmadas pelo usuário ao implementar. **Isto substitui a resolução anterior de AD-026 (2026-08-24)**, que dava `WPMovimentoNaoFiscal_Lancamento.aspx` para ambas — aquele caminho não é usado por nenhuma das duas. Ver `.specs/codebase/ARCHITECTURE.md`, seção "Responsividade".
 
 ## Pendências de campos/semântica do contrato — atualização 2026-08-21 (verificação cruzada com KB GenExus)
 
