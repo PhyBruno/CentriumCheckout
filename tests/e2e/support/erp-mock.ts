@@ -55,11 +55,22 @@ export interface ConfigMockErp {
   /** Status HTTP de `ValidarNFCe` — `500` exercita `INDISPONIVEL` (`FR-009`). */
   statusValidarNFCe: number;
   /**
-   * Devolve `2xx` **sem** `PDFImpressao`/`XMLImpressao` — é como o ERP recusa
-   * uma NFCe não autorizada; o Checkout trata como falha de negócio, nunca como
-   * sucesso parcial (`contracts/faturamento-api.md`).
+   * Devolve `2xx` **sem** o bloco `NotaFiscal` e com a recusa em `messages[]` —
+   * é como o ERP responde quando a chamada não chegou a virar documento. O
+   * Checkout trata como falha de negócio e a venda continua no caixa
+   * (`contracts/faturamento-api.md`).
    */
   faturarSemNotaFiscal: boolean;
+  /**
+   * Devolve `2xx` **com** o bloco `NotaFiscal` preenchido, `Autorizada = 'N'` e
+   * `PDFImpressao`/`XMLImpressao` vazios — a NFCe rejeitada, já gravada do lado
+   * do ERP (correção do usuário, 2026-09-10).
+   *
+   * Distinto de `faturarSemNotaFiscal` justamente pelo bloco: é ele que separa
+   * "gravou e a SEFAZ recusou" (o caixa é liberado) de "não virou documento"
+   * (a venda continua).
+   */
+  faturarNFCeRejeitada: boolean;
   /**
    * `GetDav` recusa o documento — é como o ERP responde quando outro operador
    * já o faturou. O Checkout não tem lock nenhum (`FR-010`/AD-052): só reage
@@ -141,6 +152,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   vereditoValidarNFCe: 'ACEITA',
   statusValidarNFCe: 200,
   faturarSemNotaFiscal: false,
+  faturarNFCeRejeitada: false,
   davJaFaturado: false,
   pixAtivo: true,
   /**
@@ -1234,6 +1246,27 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // `SUSPENDER` não emite documento fiscal: a resposta volta sem
       // `NotaFiscal`, como o ERP real (`contracts/faturamento-api.md`).
       const suspendendo = retrato?.['SuspenderOuFaturar'] === 'SUSPENDER';
+
+      // NFCe gravada e **não** autorizada: o bloco vem completo, com o motivo
+      // em `ErroMensagem`, e sem nada para imprimir.
+      if (!suspendendo && config.faturarNFCeRejeitada) {
+        return reply.send({
+          OutCheckoutFaturarNFCe: {
+            ...(retrato ?? {}),
+            NotaFiscal: {
+              NumeroNota: String(9001), // int64
+              SerieNota: '1',
+              Autorizada: 'N',
+              ErroCodigo: 539,
+              ErroMensagem: 'Rejeicao: Duplicidade de NF-e (sintetico)',
+              XMLImpressao: '',
+              PDFImpressao: '',
+            },
+          },
+          messages: [],
+        });
+      }
+
       const notaFiscal =
         suspendendo || config.faturarSemNotaFiscal
           ? {}

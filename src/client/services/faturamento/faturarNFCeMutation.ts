@@ -27,6 +27,21 @@ const CAMINHO_FATURAR_NFCE = '/ApiCentriumOAuth/FaturarNFCe';
  */
 export type ResultadoFaturamento =
   | { readonly estado: 'sucesso'; readonly notaFiscal: NotaFiscalResposta | null }
+  /**
+   * O ERP gravou a NFCe e ela **não** foi autorizada (correção do usuário,
+   * 2026-09-10).
+   *
+   * Separado de `falha-negocio` porque a venda no caixa tem destinos opostos
+   * nos dois casos: aqui o documento já existe do outro lado, então o caixa é
+   * liberado para a próxima venda; lá a venda continua para ser corrigida e
+   * reenviada.
+   */
+  | {
+      readonly estado: 'nfce-rejeitada';
+      readonly mensagem: string;
+      readonly numeroNota: number | null;
+      readonly serieNota: string | null;
+    }
   /** O ERP respondeu (ainda que recusando): a primeira tentativa **não** gerou NFCe. */
   | { readonly estado: 'falha-negocio'; readonly mensagem: string }
   /** Nenhuma resposta chegou: pode ter sido processada do outro lado (AD-038). */
@@ -93,11 +108,21 @@ export async function enviarFaturarNFCe(
   }
 
   const mapeado = mapearRespostaFaturamento(retrato.SuspenderOuFaturar, corpo);
-  if (mapeado.estado === 'invalida') {
-    return { estado: 'falha-negocio', mensagem: mapeado.mensagem };
-  }
+  switch (mapeado.estado) {
+    case 'invalida':
+      return { estado: 'falha-negocio', mensagem: mapeado.mensagem };
 
-  return { estado: 'sucesso', notaFiscal: mapeado.notaFiscal };
+    case 'rejeitada':
+      return {
+        estado: 'nfce-rejeitada',
+        mensagem: mapeado.mensagem,
+        numeroNota: mapeado.numeroNota,
+        serieNota: mapeado.serieNota,
+      };
+
+    case 'ok':
+      return { estado: 'sucesso', notaFiscal: mapeado.notaFiscal };
+  }
 }
 
 export type MutationFaturamento = UseMutationResult<

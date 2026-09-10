@@ -2878,3 +2878,38 @@ Nada foi afrouxado: as quatro condições continuam valendo, e a venda sem vende
 `SaldoPagamento` ganha `totalRecebido` = Σ (`valorRecebido ?? valorAplicado`) dos aprovados — `??` porque só dinheiro carrega `valorRecebido` (I3), e nas demais formas o que entrou é o que foi aplicado. Os dois totais coexistem porque respondem a perguntas diferentes: **`totalAplicado` fecha a nota, `totalRecebido` fecha a gaveta**, e a diferença entre eles é exatamente o troco. `valorAplicado` continua sendo o que vai ao ERP em `FormaValor` — nada no payload mudou.
 
 **Impact:** alterados — `src/client/domain/pagamento/saldoPagamento.ts` (`totalRecebido` em `SaldoPagamento`/`calcularSaldo`), `src/client/features/pagamento/{TotalDaVenda.tsx,ListaPagamentosAplicados.tsx}`, `src/client/features/finalizacao-suspensao/{BotaoFinalizarVenda.tsx,AcoesFinaisVenda.tsx}` (`motivoBloqueio`, `motivoDeBloqueioDoFinalizar`, `CondicoesDeFinalizacao`); testes — `tests/unit/domain/pagamento/saldoPagamento.spec.ts` (troco, mistura de formas, não-aprovado), `tests/integration/finalizacaoSuspensao.spec.ts` (a frase de cada trava e a precedência; as asserções deixaram de conferir só "está apagado"). Verificação: `tsc --noEmit` limpo, ESLint limpo, 1170 testes unit/integração passando; `VendedorCodigo = 0` confirmado no `/api/bootstrap` do tenant real. **Não verificado ao vivo:** a leitura das duas telas corrigidas no navegador — a validação foi por teste e pela medição do bootstrap.
+
+### AD-207: NFCe rejeitada é um desfecho próprio — a mensagem do ERP vai à tela e o caixa é liberado ao fechar (2026-09-10)
+
+**Origem:** pedido do usuário — *"Tem que corrigir o comportamento dos casos que a NFCe é rejeitada. Quando ela é rejeitada, devemos transmitir em tela a resposta que o ERP nos retorna, geralmente com o motivo do erro. […] depois de fechar a informacao, limpar a tela para uma nova NFCe, pois nesses casos, só o fato de enviar o ERP o ERP já salva a NFCe lá."*
+
+#### 1. O motivo da rejeição era descartado na fronteira
+
+`CheckoutFaturarNFCe.NotaFiscal` (YAML, linha 1604) tem cinco campos que só existem para este caso: `NumeroNota`, `SerieNota`, `Autorizada`, `ErroCodigo` e `ErroMensagem`. O Checkout **não lia nenhum deles**. `notaFiscalRespostaSchema` exige `PDFImpressao`/`XMLImpressao` com `min(1)` — correto para decidir impressão —, e numa rejeição os dois vêm vazios, então o `safeParse` reprovava o corpo inteiro e o bloco `NotaFiscal` era jogado fora junto com a explicação da SEFAZ. A tela caía em `messages[]` (que nessa resposta vem vazio) e daí no texto genérico *"O ERP respondeu sem a nota fiscal pronta para impressão"* — enquanto o ERP tinha dito, ali no corpo, `ErroCodigo: 539` e a rejeição por extenso.
+
+`notaFiscalRejeitadaSchema` lê os cinco campos, todos opcionais: nenhum deles é o discriminante. Quem discrimina é a **presença do bloco `NotaFiscal`** somada a `Autorizada !== 'S'`. `inteiroErp` em `NumeroNota`/`ErroCodigo` porque `int64` chega como string JSON (AD-165).
+
+#### 2. Rejeitada e recusada são desfechos opostos, não graus da mesma falha
+
+Até aqui todo 2xx sem nota pronta virava `falha-negocio`: um estado só, com a instrução *"a venda continua aberta no caixa, corrija e finalize de novo"*. Essa instrução é **certa** quando a chamada não virou documento e **perigosa** quando virou: o ERP grava a NFCe rejeitada, e reenviar a mesma venda emite uma segunda nota para a mesma compra.
+
+A separação é feita pela presença do bloco `NotaFiscal`, que é a evidência de gravação:
+
+| Resposta do ERP | Estado | Venda no caixa |
+|---|---|---|
+| `NotaFiscal` com PDF/XML | `sucesso` | limpa no envio |
+| `NotaFiscal` sem PDF/XML, `Autorizada ≠ 'S'` | `nfce-rejeitada` | limpa **ao fechar o aviso** |
+| sem `NotaFiscal` (recusa em `messages[]`, HTTP 4xx/5xx, 401, corpo ilegível) | `falha-negocio` | continua aberta |
+| sem resposta | `falha-rede` | continua aberta, reenvio sob confirmação (AD-038) |
+
+`Autorizada = 'S'` **sem** documento é resposta contraditória, não rejeição: cai em `falha-negocio` e preserva a venda — descartá-la apagaria uma compra com base numa resposta que o contrato não sustenta.
+
+#### 3. A limpeza mora no fechamento, não na chegada da resposta
+
+`descartar()` deixa de ser só "volta a ocioso": em `nfce-rejeitada` é ele que chama `encerrarSessaoDeVenda()` (carrinho + cache de produto, pagamentos, auditoria, identidade, e `abrirSessaoDeVenda('NOVA')` — a mesma sequência do sucesso, extraída para uma função só para as duas não divergirem). Limpar na chegada da resposta faria carrinho, cliente e pagamentos sumirem por trás do modal **enquanto o operador ainda lê o motivo** — o que parece uma venda perdida por erro do Checkout, e não o comportamento correto. Pelo mesmo motivo a cópia do diálogo anuncia a limpeza antes de ela acontecer ("Ao fechar, o caixa fica livre para uma nova NFCe").
+
+`nfce-rejeitada` entra na trava de `iniciar` ao lado de `enviando` e `falha-rede`: enquanto o aviso está aberto, nenhum novo `FaturarNFCe` parte — é o único jeito de garantir que a segunda nota não saia. E **nenhum `FATURAMENTO_FALHOU` é registrado**: aquele evento existe para viajar no `Log` do reenvio (`FR-006` da 001), e aqui não há reenvio.
+
+`DialogoErroFaturamento` ganhou a variante em vez de um componente novo: a moldura, o foco e a acessibilidade são os mesmos, e o que muda são quatro frases mais o número/série da nota gravada (em `font-mono`, como todo valor tabular). O Pencil não desenha nó para esta variante — verificado no `.pen` via MCP em 2026-09-10.
+
+**Impact:** alterados — `src/shared/schemas/faturarNFCe.schema.ts` (`notaFiscalRejeitadaSchema`, `faturarNFCeRejeitadaOutputSchema`), `src/client/services/faturamento/faturarNFCeMapper.ts` (estado `rejeitada`, `foiAutorizada`, `motivoDaRejeicao`), `src/client/services/faturamento/faturarNFCeMutation.ts` (`nfce-rejeitada` em `ResultadoFaturamento`), `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts` (estado novo, `encerrarSessaoDeVenda` extraída, `descartar` com efeito, trava em `iniciar`), `src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx` (`Desfecho`, `COPIA`, `identificacaoDaNota`), `src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx`; testes — `tests/unit/services/faturamento/faturarNFCeMapper.spec.ts` (novo: a suíte que faltava ao mapper), `tests/integration/finalizacaoSuspensao.spec.ts` (máquina de estados e a janela), `tests/e2e/support/erp-mock.ts` (`faturarNFCeRejeitada`) e `tests/e2e/finalizacao-suspensao.spec.ts`. Verificação: `tsc --noEmit` limpo, 1188 testes unit/integração passando, E2E de finalização executado contra o mock com o novo cenário. **Não verificado ao vivo:** uma rejeição real da SEFAZ contra o tenant — os valores de `Autorizada`/`ErroCodigo` vêm do contrato e do que o mock reproduz.

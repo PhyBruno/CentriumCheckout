@@ -49,6 +49,23 @@ export type EstadoEnvio =
       readonly notaFiscal: NotaFiscalResposta | null;
     }
   | { readonly tipo: 'falha-negocio'; readonly mensagem: string }
+  /**
+   * O ERP gravou a NFCe e a autorização não saiu (correção do usuário,
+   * 2026-09-10).
+   *
+   * Estado próprio, e não `falha-negocio` com outro texto, porque o que o
+   * operador pode fazer é o oposto: aqui não há o que corrigir e reenviar — o
+   * documento já existe do lado do ERP e a única saída é ler o motivo, fechar e
+   * começar a próxima venda. É `descartar` que executa a limpeza, e não o
+   * recebimento da resposta, para o operador não ver a tela zerar por trás do
+   * aviso antes de ter lido o motivo.
+   */
+  | {
+      readonly tipo: 'nfce-rejeitada';
+      readonly mensagem: string;
+      readonly numeroNota: number | null;
+      readonly serieNota: string | null;
+    }
   /** Aguardando confirmação manual do operador — `FR-004`/AD-038. */
   | { readonly tipo: 'falha-rede'; readonly operacao: SuspenderOuFaturar }
   /**
@@ -124,7 +141,12 @@ export interface ApiFinalizacaoVenda {
    * suspensão sabendo que a cobrança PIX segue viva no banco.
    */
   confirmarSuspensao(): Promise<void>;
-  /** Fecha o desfecho corrente e volta a `ocioso`. */
+  /**
+   * Fecha o desfecho corrente e volta a `ocioso`.
+   *
+   * Em `nfce-rejeitada` faz mais do que fechar: é o gesto que libera o caixa
+   * para a próxima venda, porque o documento já ficou gravado no ERP.
+   */
   descartar(): void;
 }
 
@@ -201,6 +223,31 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
     estadoRef.current = proximo;
     setEstado(proximo);
   }, []);
+
+  /**
+   * Fecha a venda corrente e abre a próxima, na mesma transação de UI
+   * (`FR-012`): carrinho + cache de produto (`useEncerrarVenda`, feature 003),
+   * pagamento (008), auditoria (001) e identidade da venda (004).
+   *
+   * Extraída do caminho de sucesso quando a NFCe rejeitada passou a limpar o
+   * caixa também (correção do usuário, 2026-09-10). Duas cópias desta sequência
+   * divergiriam no primeiro slice novo que entrar na venda — e a divergência é
+   * silenciosa: sobra estado da venda anterior na seguinte, exatamente o defeito
+   * que `limparPagamentos()` ausente já causou aqui em 2026-09-04 (total a pagar
+   * negativo depois de finalizar).
+   */
+  const encerrarSessaoDeVenda = useCallback((): void => {
+    encerrarVenda();
+    useVendaStore.getState().limparPagamentos();
+    useVendaStore.getState().descartarAuditoria();
+    useVendaStore.getState().resetarIdentidadeVenda();
+    // Abre a próxima sessão no mesmo ponto do descarte. Sem isto o operador
+    // digitaria o primeiro item da venda seguinte num histórico vazio, e o `Log`
+    // daquela NFCe chegaria ao ERP sem `VENDA_INICIADA` (`FR-002` da feature
+    // 001) — foi exatamente o que o E2E desta feature flagrou ao fechar o item
+    // 38 de `PENDENCIES.md`.
+    abrirSessaoDeVenda('NOVA');
+  }, [encerrarVenda]);
 
   // As dependências injetadas ficam numa ref, não nos arrays de dependência dos
   // callbacks: o call site normalmente monta o objeto `deps` inline, então cada
@@ -311,27 +358,11 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
 
       switch (resultado.estado) {
         case 'sucesso':
-          // Limpeza na mesma transação de UI, e só aqui (`FR-012`): carrinho +
-          // cache de produto (`useEncerrarVenda`, feature 003), pagamento
-          // (feature 008), auditoria (feature 001) e identidade da venda
-          // (feature 004).
-          //
-          // `limparPagamentos()` **faltava** aqui, e a ausência era visível:
-          // com o carrinho zerado e o desconto de capa ainda de pé, o bloco de
-          // totais passava a calcular `0 − desconto` e exibia "Total a pagar"
-          // **negativo** logo depois de finalizar (correção do usuário,
-          // 2026-09-04). Pior que o sintoma era o silencioso: condição, formas
-          // aplicadas e vales de devolução sobreviviam para a venda seguinte.
-          encerrarVenda();
-          useVendaStore.getState().limparPagamentos();
-          useVendaStore.getState().descartarAuditoria();
-          useVendaStore.getState().resetarIdentidadeVenda();
-          // Abre a próxima sessão no mesmo ponto do descarte. Sem isto o
-          // operador digitaria o primeiro item da venda seguinte num histórico
-          // vazio, e o `Log` daquela NFCe chegaria ao ERP sem `VENDA_INICIADA`
-          // (`FR-002` da feature 001) — foi exatamente o que o E2E desta
-          // feature flagrou ao fechar o item 38 de `PENDENCIES.md`.
-          abrirSessaoDeVenda('NOVA');
+          // Venda concluída: o caixa é limpo **agora**, na mesma transação de
+          // UI (`FR-012`). O desfecho é bom e não há nada que o operador possa
+          // ler tarde demais — diferente da NFCe rejeitada logo abaixo, que
+          // adia a mesma limpeza para o fechamento do aviso.
+          encerrarSessaoDeVenda();
           // Suspender não abre modal nenhum — o desfecho é comunicado por
           // toast (pedido do usuário, 2026-09-02). Texto fixo na tela ficaria
           // preso ao lado do botão até o operador mexer em outra coisa.
@@ -353,6 +384,23 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           aplicarEstado({ tipo: 'falha-rede', operacao });
           return;
 
+        case 'nfce-rejeitada':
+          // A NFCe existe no ERP, rejeitada. A auditoria é descartada junto com
+          // o resto da venda em `descartar` — e **não** aqui: até o operador
+          // fechar o aviso, o histórico ainda pertence à venda que ele está
+          // vendo na tela.
+          //
+          // Nenhum `FATURAMENTO_FALHOU` é registrado: aquele evento existe para
+          // viajar no `Log` do reenvio (`FR-006` da 001), e aqui não há reenvio
+          // — o documento já foi gravado do outro lado.
+          aplicarEstado({
+            tipo: 'nfce-rejeitada',
+            mensagem: resultado.mensagem,
+            numeroNota: resultado.numeroNota,
+            serieNota: resultado.serieNota,
+          });
+          return;
+
         case 'falha-negocio':
           // Sem trava de confirmação: o ERP respondeu recusando, então a
           // primeira tentativa provadamente não gerou NFCe (`research.md`, D2).
@@ -360,7 +408,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           return;
       }
     },
-    [aplicarEstado, encerrarVenda],
+    [aplicarEstado, encerrarSessaoDeVenda],
   );
 
   const iniciar = useCallback(
@@ -387,7 +435,16 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       // Envio em curso, ou falha de rede aguardando confirmação: nenhum novo
       // disparo passa por aqui — o único caminho a partir de `falha-rede` é
       // `confirmarReenvio` (`FR-004`, AD-038).
-      if (atual.tipo === 'enviando' || atual.tipo === 'falha-rede') {
+      //
+      // `nfce-rejeitada` entra na mesma trava: o documento já está gravado no
+      // ERP e o único caminho de saída é `descartar`, que limpa o caixa. Um
+      // segundo `FaturarNFCe` a partir daqui emitiria uma NFCe nova para a
+      // mesma compra — o pior desfecho possível deste fluxo.
+      if (
+        atual.tipo === 'enviando' ||
+        atual.tipo === 'falha-rede' ||
+        atual.tipo === 'nfce-rejeitada'
+      ) {
         return;
       }
 
@@ -482,6 +539,25 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
     await despachar(atual.operacao);
   }, [despachar]);
 
+  /**
+   * Fecha o desfecho corrente — e, na NFCe rejeitada, é aqui que o caixa é
+   * liberado para a próxima venda (correção do usuário, 2026-09-10).
+   *
+   * A limpeza fica **no fechamento**, não na chegada da resposta, porque o
+   * motivo da rejeição é a única coisa que o operador tem para levar adiante:
+   * ver carrinho, cliente e pagamentos sumirem por trás do aviso enquanto ele
+   * ainda lê o texto sugere que a venda foi perdida por um erro do Checkout.
+   *
+   * Nenhum outro desfecho limpa nada por aqui: `falha-negocio` e `falha-rede`
+   * devolvem a venda intacta ao caixa, e `sucesso` já limpou no envio.
+   */
+  const descartar = useCallback((): void => {
+    if (estadoRef.current.tipo === 'nfce-rejeitada') {
+      encerrarSessaoDeVenda();
+    }
+    aplicarEstado(ESTADO_INICIAL);
+  }, [aplicarEstado, encerrarSessaoDeVenda]);
+
   return useMemo(
     () => ({
       estado,
@@ -489,10 +565,8 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       suspender: () => iniciar('SUSPENDER'),
       confirmarReenvio,
       confirmarSuspensao,
-      descartar: () => {
-        aplicarEstado(ESTADO_INICIAL);
-      },
+      descartar,
     }),
-    [aplicarEstado, confirmarReenvio, confirmarSuspensao, estado, iniciar],
+    [confirmarReenvio, confirmarSuspensao, descartar, estado, iniciar],
   );
 }

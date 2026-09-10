@@ -70,6 +70,19 @@ export function ProvedorFinalizacaoVenda({
         <DialogoErroFaturamento mensagem={estado.mensagem} onFechar={descartar} />
       )}
 
+      {/* NFCe gravada no ERP e não autorizada (correção do usuário,
+          2026-09-10). Mesmo diálogo, outra cópia e outro efeito no fechamento:
+          `descartar` aqui **limpa o caixa**, porque o documento já existe do
+          lado do ERP e reenviar esta venda emitiria uma segunda nota. */}
+      {estado.tipo === 'nfce-rejeitada' && (
+        <DialogoErroFaturamento
+          desfecho="REJEITADA"
+          mensagem={estado.mensagem}
+          documento={{ numeroNota: estado.numeroNota, serieNota: estado.serieNota }}
+          onFechar={descartar}
+        />
+      )}
+
       {/* "Cancelar venda" com cobrança PIX na venda (item 1.1 do usuário,
           2026-09-04). Fica aqui, e não dentro de `BarraAtalhosVenda`, pelo mesmo
           motivo dos outros diálogos: é modal de tela cheia e as duas superfícies
