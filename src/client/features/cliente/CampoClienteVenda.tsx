@@ -357,6 +357,26 @@ export function CampoClienteVenda(): ReactElement {
   function recusarMantendoFoco(termo: string, mensagem: string): void {
     setRecusaComFocoPreso({ termo, mensagem });
     notificar.aviso(mensagem);
+    devolverFocoAoDocumento();
+  }
+
+  /**
+   * Só o foco de volta ao campo, **sem avisar de novo** (correção do usuário,
+   * 2026-09-10: "se dá erro de cliente não existe, o foco não está voltando
+   * para a inserção do código do cliente").
+   *
+   * Existe separada de `recusarMantendoFoco` porque nem toda recusa é dona da
+   * própria frase: a de `situacao: 'recusado'` já foi dita por
+   * `useIdentificacaoCliente`, que emite o toast do erro antes de devolver o
+   * desfecho. Chamar `recusarMantendoFoco` ali escreveria a mesma mensagem duas
+   * vezes na tela.
+   *
+   * Também não grava `recusaComFocoPreso`: aquele registro existe para não
+   * repetir consulta ao ERP com um termo que já se sabe recusado, e um
+   * `'recusado'` pode ser falha de rede — prender o termo faria a tentativa
+   * seguinte, com a rede de volta, morrer sem sequer chamar o ERP.
+   */
+  function devolverFocoAoDocumento(): void {
     setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }
 
@@ -417,14 +437,22 @@ export function CampoClienteVenda(): ReactElement {
     // Checkout (Ajuste SINIEF 11/2025), então o ERP nem é consultado — buscar
     // um cadastro que não poderia ser usado só gastaria uma ida à rede e
     // sugeriria ao operador que o caminho existe.
+    //
+    // Prende o foco como a letra no campo (AD-182): o operador tem um número
+    // errado em tela e o próximo gesto dele é corrigi-lo — deixar o foco seguir
+    // adiante o obrigaria a voltar de mouse ao campo que ele acabou de deixar.
     if (entrada.tipo === 'PESSOA_JURIDICA') {
-      notificar.aviso(
+      recusarMantendoFoco(
+        termo,
         `${MOTIVO_VENDA_PESSOA_JURIDICA} Informe um CPF (11 dígitos) ou o código do cliente.`,
       );
       return;
     }
     if (entrada.tipo === 'INVALIDO') {
-      notificar.aviso('Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).');
+      recusarMantendoFoco(
+        termo,
+        'Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).',
+      );
       return;
     }
 
@@ -462,7 +490,23 @@ export function CampoClienteVenda(): ReactElement {
         // reescreveria a entrada dele.
         setFaceDaIdentificacao(entrada.tipo === 'CPF' ? 'documento' : 'codigo');
         concluirIdentificacao();
+        return;
       }
+
+      // `'recusado'` — o que sobra: erro de rede, ERP fora do ar e, na prática
+      // deste ERP, **o cliente que não existe** (correção do usuário,
+      // 2026-09-10).
+      //
+      // O caminho é esse porque `GetCliente` não devolve `404`: devolve `200`
+      // com o cadastro em branco, que `clienteQueries` converte em
+      // `ErroClienteIncompleto` (AD-204) — nunca em `ErroClienteNaoEncontrado`.
+      // Ou seja, o desfecho que o operador lê como "esse cliente não existe"
+      // **não** passa pelo ramo `'nao-encontrado'` acima, e era o único que
+      // deixava o foco cair fora do campo: o aviso aparecia, o número errado
+      // ficava em tela e o caixa tinha que voltar de mouse para corrigi-lo.
+      //
+      // Só o foco: a frase já foi dita por `useIdentificacaoCliente`.
+      devolverFocoAoDocumento();
     } finally {
       setBuscando(false);
     }

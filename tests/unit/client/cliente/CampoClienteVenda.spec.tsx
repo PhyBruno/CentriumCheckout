@@ -304,6 +304,61 @@ describe('CampoClienteVenda — troca de cliente (correção do usuário, 2026-0
     expect(useVendaStore.getState().clienteAtual?.codigoCliente).toBe(2538);
   });
 
+  /**
+   * Correção do usuário (2026-09-10): "se dá erro de cliente não existe, o foco
+   * não está voltando para a inserção do código do cliente".
+   *
+   * O caso é o do ERP real: `GetCliente` não devolve `404` — devolve `200` com
+   * o cadastro em branco, que vira `ErroClienteIncompleto` e chega aqui como
+   * `situacao: 'recusado'` (AD-204). Esse era o único desfecho de recusa que
+   * deixava o foco cair fora do campo, com o número errado ainda em tela.
+   */
+  it('cadastro em branco do ERP devolve o foco ao campo, sem apagar o que foi digitado', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          // O corpo real do ERP: acha o código, devolve tudo vazio.
+          new Response(JSON.stringify({ CodCliente: 1470, nome: '', cpf: '', ListaPreco: 1 }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    renderCard();
+    await abrirCard(usuario);
+
+    const campo = screen.getByTestId('campo-documento-cliente');
+    await usuario.type(campo, '1470');
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-documento-cliente')).toHaveFocus();
+    });
+    // O valor permanece: o caixa corrige o dígito errado, não redigita tudo.
+    expect(screen.getByTestId('campo-documento-cliente')).toHaveValue('1470');
+    expect(useVendaStore.getState().clienteAtual).toBeNull();
+  });
+
+  it('entrada inválida também prende o foco no campo, como a letra (AD-182)', async () => {
+    const chamadas = vi.fn();
+    vi.stubGlobal('fetch', chamadas);
+    const usuario = userEvent.setup();
+    renderCard();
+    await abrirCard(usuario);
+
+    // 12 dígitos: nem código (até 6) nem CPF (11) — recusado antes do ERP.
+    await usuario.type(screen.getByTestId('campo-documento-cliente'), '123456789012');
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-documento-cliente')).toHaveFocus();
+    });
+    expect(chamadas).not.toHaveBeenCalled();
+  });
+
   it('linha cancelada não conta: com o item cancelado o cliente volta a ser trocável', async () => {
     useVendaStore.setState({ linhas: [linhaDe({ cancelada: true })] });
 
