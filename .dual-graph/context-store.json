@@ -5828,5 +5828,24 @@
     ],
     "created_at": "2026-09-10T18:45:00.000000+00:00",
     "created_epoch": 1789065900
+  },
+  {
+    "id": "mem:1789084000000",
+    "kind": "fact",
+    "content": "AD-206 pushado importava BotaoMenuGerencial nunca versionado; AD-203 foi para feat/menu-gerencial",
+    "tags": [
+      "AD-203",
+      "AD-206",
+      "git",
+      "untracked",
+      "gerencial"
+    ],
+    "files": [
+      "src/client/features/gerencial/BotaoMenuGerencial.tsx",
+      "src/server/routes/gerencial.ts",
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
+    ],
+    "created_at": "2026-09-10T19:25:00.000000+00:00",
+    "created_epoch": 1789068300
   }
 ]
