@@ -13,6 +13,7 @@ import {
 import { CampoVendedorVenda } from '../vendedor/CampoVendedorVenda';
 import { rotuloDoVendedor, useVendedorAtual } from '../vendedor/useVendedor';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+import { AVISO_CLIENTE_COM_ITEM } from '../../stores/slices/clienteSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
 import { ModalBuscaCliente, type CandidatoEscolhido } from './ModalBuscaCliente';
@@ -79,6 +80,16 @@ import { useIdentificacaoCliente } from './useCliente';
  */
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
+  /**
+   * Item ativo no carrinho fecha a troca de cliente (decisão do usuário,
+   * 2026-09-10) — o porquê está no TSDoc de `AVISO_CLIENTE_COM_ITEM`.
+   *
+   * Quem recusa de verdade é o `clienteSlice`, para todos os caminhos de uma
+   * vez (campo, lupa, cadastro). Aqui a mesma condição só chega ao operador
+   * **antes** do gesto: linha cancelada não conta, e o seletor devolve um
+   * booleano, então nada re-renderiza à toa.
+   */
+  const vendaTemItem = useVendaStore((estado) => estado.linhas.some((linha) => !linha.cancelada));
   const rotuloVendedor = rotuloDoVendedor(useVendedorAtual());
   const { identificarPorDocumento, identificarPorCodigo, cadastrar } = useIdentificacaoCliente();
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
@@ -279,11 +290,25 @@ export function CampoClienteVenda(): ReactElement {
    * São os dois mesmos termos da guarda de `identificar()`, na mesma ordem:
    * botão e função respondem à mesma condição, escrita uma vez só.
    */
-  const bloqueioDeIdentificacao: MotivoBloqueio = buscando
-    ? 'Aguarde: a consulta ao ERP ainda está em andamento.'
-    : documento.trim() === ''
-      ? 'Digite o CPF do consumidor para identificar.'
-      : null;
+  /**
+   * O campo inteiro fecha quando a venda já tem item (decisão do usuário,
+   * 2026-09-10).
+   *
+   * Separado de `bloqueioDeIdentificacao` porque os dois têm alcances
+   * diferentes: os outros dois motivos impedem *identificar agora* (consulta em
+   * voo, campo vazio) e não têm por que travar a digitação; este impede
+   * **trocar de cliente**, e deixar o operador digitar um código novo que a
+   * venda vai recusar seria oferecer um caminho que não existe.
+   */
+  const bloqueioPorItemNaVenda: MotivoBloqueio = vendaTemItem ? AVISO_CLIENTE_COM_ITEM : null;
+
+  const bloqueioDeIdentificacao: MotivoBloqueio =
+    bloqueioPorItemNaVenda ??
+    (buscando
+      ? 'Aguarde: a consulta ao ERP ainda está em andamento.'
+      : documento.trim() === ''
+        ? 'Digite o CPF do consumidor para identificar.'
+        : null);
 
   /**
    * Recusa que **mantém o operador no campo** (pedido do usuário,
@@ -337,6 +362,17 @@ export function CampoClienteVenda(): ReactElement {
       identificacaoDoCliente !== null &&
       apenasDigitos(termo) === apenasDigitos(identificacaoDoCliente)
     ) {
+      return;
+    }
+
+    // Troca fechada por já haver item na venda (decisão do usuário,
+    // 2026-09-10). **Depois** da guarda de "mesmo cliente", de propósito: o
+    // campo espelha a identificação de quem está na venda, então um foco que
+    // apenas passa por ele sai calado; só um termo de fato diferente — uma
+    // troca — chega aqui e é recusado, sem consultar o ERP por um cadastro que
+    // a venda não pode receber.
+    if (bloqueioPorItemNaVenda !== null) {
+      notificar.aviso(bloqueioPorItemNaVenda);
       return;
     }
 
@@ -553,7 +589,18 @@ export function CampoClienteVenda(): ReactElement {
                     inputMode="numeric"
                     placeholder="Digite"
                     value={documento}
+                    // `readOnly`, não `disabled` (AD-143): o campo continua
+                    // legível e o clique explica o motivo, em vez de virar um
+                    // controle inerte que não responde a nada.
+                    readOnly={bloqueioPorItemNaVenda !== null}
+                    {...atributosDeBloqueio(bloqueioPorItemNaVenda)}
+                    onClick={acaoBloqueavel(bloqueioPorItemNaVenda, () => {
+                      /* campo livre: o clique só posiciona o cursor. */
+                    })}
                     onChange={(evento) => {
+                      if (bloqueioPorItemNaVenda !== null) {
+                        return;
+                      }
                       setDocumento(evento.target.value);
                       setRecusaPessoaJuridica(false);
                       // A entrada mudou: o motivo que prendia o foco não vale

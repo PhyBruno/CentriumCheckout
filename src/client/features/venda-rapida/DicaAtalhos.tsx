@@ -1,8 +1,11 @@
 import type { ReactElement } from 'react';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { ICONE_POR_MEIO } from '../pagamento/iconePorMeio';
 import { useAtalhosDeTeclado } from '../../hotkeys/mapaAtalhos';
 import type { AtalhoVendaRapida, ListaAtalhos, TeclaAtalho } from '../../domain/vendaRapida/tipos';
+import { useVendaStore } from '../../stores/vendaStore';
+import { AVISO_ATALHO_SEM_ITENS } from './avisosVendaRapida';
 import { useAcionarCenario } from './useAcionarCenario';
 
 /**
@@ -42,25 +45,36 @@ import { useAcionarCenario } from './useAcionarCenario';
 interface BotaoAtalhoProps {
   readonly atalho: AtalhoVendaRapida;
   readonly onAcionar: () => void;
+  /** `null` = acionável; texto = frase que o operador lê ao clicar. */
+  readonly bloqueio: MotivoBloqueio;
 }
 
-function BotaoAtalho({ atalho, onAcionar }: BotaoAtalhoProps): ReactElement {
+function BotaoAtalho({ atalho, onAcionar, bloqueio }: BotaoAtalhoProps): ReactElement {
   const Icone = ICONE_POR_MEIO[atalho.meioPagtoNFe];
 
   return (
     <button
       type="button"
       data-testid={`atalho-venda-rapida-${atalho.tecla}`}
-      onClick={onAcionar}
+      {...atributosDeBloqueio(bloqueio)}
+      onClick={acaoBloqueavel(bloqueio, onAcionar)}
       // O rótulo visível já diz "Nome (F6)"; o acessível explicita o gesto, que
       // é o que um leitor de tela não infere de um parêntese.
       aria-label={`${atalho.nome} — atalho ${atalho.tecla}`}
-      title={`${atalho.nome} (${atalho.tecla})`}
+      // Bloqueado, o `title` é o **motivo** — é a informação de que o operador
+      // precisa, e o rótulo do atalho já está escrito no próprio botão. Depois
+      // do spread de propósito: `atributosDeBloqueio` também traz `title`, e a
+      // ordem inversa devolveria o nome do atalho por cima do motivo.
+      title={bloqueio ?? `${atalho.nome} (${atalho.tecla})`}
       className={cn(
         'flex h-9 min-w-0 flex-1 items-center justify-center gap-[6px] rounded-xl px-2',
         'text-xs font-semibold transition-colors outline-none',
         'focus-visible:ring-[3px] focus-visible:ring-ring/50',
         'bg-secondary text-secondary-foreground hover:bg-secondary-hover',
+        // Mesmo tratamento das opções bloqueadas do combobox de pagamento
+        // (`SeletorCondicaoForma`): apagado e com o cursor recusando, sem sumir
+        // da faixa — o operador precisa continuar vendo quais cenários existem.
+        'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-secondary',
       )}
     >
       <Icone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -76,6 +90,17 @@ export interface DicaAtalhosProps {
   readonly atalhos: ListaAtalhos;
   /** O **mesmo** comando da tecla e do clique — não há caminho alternativo. */
   readonly onAcionar: (tecla: TeclaAtalho) => void;
+  /**
+   * Motivo pelo qual a faixa inteira está bloqueada, ou `null`.
+   *
+   * Chega por prop, e não é lido do store aqui, pelo mesmo motivo de `atalhos`:
+   * este componente não decide nada. Quem responde é `FaixaAtalhosVendaRapida`.
+   *
+   * Vale para os quatro botões de uma vez porque a única causa hoje — venda sem
+   * item — é da venda, não de um cenário: não existe atalho que funcione numa
+   * venda vazia.
+   */
+  readonly bloqueio?: MotivoBloqueio;
 }
 
 /**
@@ -84,7 +109,11 @@ export interface DicaAtalhosProps {
  * componente ser exercitável sem o provider de finalização nem a query do
  * catálogo — e para deixar óbvio, na assinatura, que ele não decide nada.
  */
-export function DicaAtalhos({ atalhos, onAcionar }: DicaAtalhosProps): ReactElement | null {
+export function DicaAtalhos({
+  atalhos,
+  onAcionar,
+  bloqueio = null,
+}: DicaAtalhosProps): ReactElement | null {
   // Registro das teclas no mapa central: a **mesma** função do clique, nunca um
   // segundo caminho de lançamento (`US3`, cenário 3). Desligado quando não há
   // atalho — a faixa não escuta o teclado à toa, e um F6 sem cenário volta a ser
@@ -117,6 +146,7 @@ export function DicaAtalhos({ atalhos, onAcionar }: DicaAtalhosProps): ReactElem
           onAcionar={() => {
             onAcionar(atalho.tecla);
           }}
+          bloqueio={bloqueio}
         />
       ))}
     </div>
@@ -130,12 +160,29 @@ export function DicaAtalhos({ atalhos, onAcionar }: DicaAtalhosProps): ReactElem
 export function FaixaAtalhosVendaRapida(): ReactElement | null {
   const { atalhos, acionar } = useAcionarCenario();
 
+  /**
+   * Item **ativo** no grid: linha cancelada não conta (correção do usuário,
+   * 2026-09-10).
+   *
+   * É a mesma leitura de `vendaTemItens` em `criarDepsPadrao` — a guarda G3 de
+   * `acionarCenario`, que já recusava com `AVISO_ATALHO_SEM_ITENS`. O que
+   * faltava era a faixa **parecer** bloqueada antes do gesto: os botões
+   * seguiam com o mesmo azul-cinza dos acionáveis, e o operador só descobria a
+   * regra ao clicar. Aqui a leitura devolve um booleano, então o seletor não
+   * recria referência a cada render.
+   *
+   * A frase é a mesma constante que o comando usa ao recusar: duas redações do
+   * mesmo motivo divergiriam no dia em que só uma fosse revisada.
+   */
+  const semItemAtivo = useVendaStore((estado) => !estado.linhas.some((linha) => !linha.cancelada));
+
   return (
     <DicaAtalhos
       atalhos={atalhos}
       onAcionar={(tecla) => {
         void acionar(tecla);
       }}
+      bloqueio={semItemAtivo ? AVISO_ATALHO_SEM_ITENS : null}
     />
   );
 }

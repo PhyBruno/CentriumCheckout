@@ -221,3 +221,59 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     expect(onAcionar).not.toHaveBeenCalled();
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Faixa bloqueada — venda sem item ativo no grid
+ * ------------------------------------------------------------------ */
+
+/**
+ * Correção do usuário (2026-09-10): a faixa precisa **parecer** bloqueada
+ * quando não há produto ativo no grid, não só recusar depois do clique.
+ *
+ * A recusa em si já existia — `acionarCenario` devolve `SEM_ITENS` e avisa
+ * (G3, `tests/integration/vendaRapida.spec.ts`). O que faltava era o estado
+ * visível antes do gesto: os botões seguiam com a mesma aparência dos
+ * acionáveis, e o operador só descobria a regra ao tentar.
+ *
+ * O motivo chega por prop porque este componente não decide nada — quem lê o
+ * grid é `FaixaAtalhosVendaRapida`.
+ */
+describe('DicaAtalhos — faixa bloqueada (correção do usuário, 2026-09-10)', () => {
+  const MOTIVO = 'Não há itens nesta venda: bipe ao menos um produto antes de usar o atalho.';
+
+  it('marca todos os botões como desabilitados, com o motivo no título', () => {
+    render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={vi.fn()} bloqueio={MOTIVO} />);
+
+    for (const tecla of ['F6', 'F8']) {
+      const botao = screen.getByTestId(`atalho-venda-rapida-${tecla}`);
+      expect(botao).toHaveAttribute('aria-disabled', 'true');
+      expect(botao).toHaveAttribute('title', MOTIVO);
+      // `aria-disabled`, não `disabled`: o clique precisa continuar chegando ao
+      // handler para o motivo ser dito (`lib/bloqueio.ts`).
+      expect(botao).toBeEnabled();
+    }
+  });
+
+  it('o clique não aciona o cenário', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} bloqueio={MOTIVO} />);
+
+    await usuario.click(screen.getByTestId('atalho-venda-rapida-F6'));
+
+    expect(onAcionar).not.toHaveBeenCalled();
+  });
+
+  it('sem bloqueio, os botões seguem acionáveis e sem `aria-disabled`', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} bloqueio={null} />);
+
+    const botao = screen.getByTestId('atalho-venda-rapida-F6');
+    expect(botao).not.toHaveAttribute('aria-disabled');
+    expect(botao).toHaveAttribute('title', 'Dinheiro à vista (F6)');
+
+    await usuario.click(botao);
+    expect(onAcionar).toHaveBeenCalledWith('F6');
+  });
+});

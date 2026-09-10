@@ -1,5 +1,5 @@
 import { Search, User } from 'reicon-react';
-import { useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
@@ -33,8 +33,29 @@ export function CampoVendedorVenda(): ReactElement {
   const selecionarVendedor = useVendaStore((estado) => estado.selecionarVendedor);
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
   const [modalAberto, setModalAberto] = useState(false);
+  const lupa = useRef<HTMLButtonElement>(null);
 
   const rotulo = rotuloDoVendedor(vendedorAtual);
+
+  /**
+   * Foco pedido de fora — hoje só pela barra de entrada rápida, ao recusar uma
+   * inserção numa venda sem vendedor (pedido do usuário, 2026-09-10).
+   *
+   * O destino é a **lupa**, não a caixa do nome: o par que o Pencil desenha tem
+   * um único controle focável, e é ele que abre `ModalBuscaVendedor`. Focar a
+   * caixa exigiria dar `tabindex` a um `<div>` de leitura, que anunciaria ao
+   * leitor de tela um controle que não faz nada.
+   *
+   * Mesmo formato do efeito irmão em `EntradaRapidaProduto`: reage ao contador
+   * do `focoVendaStore`, nunca a estado próprio — um booleano não dispararia na
+   * segunda tentativa seguida de inserção.
+   */
+  const pedidosDeFocoNoVendedor = useFocoVendaStore((estado) => estado.pedidosDeFocoNoVendedor);
+  useEffect(() => {
+    if (pedidosDeFocoNoVendedor > 0) {
+      lupa.current?.focus();
+    }
+  }, [pedidosDeFocoNoVendedor]);
 
   /**
    * Vendedor escolhido: o modal já fecha sozinho (`ModalBuscaVendedor`,
@@ -75,6 +96,7 @@ export function CampoVendedorVenda(): ReactElement {
       </div>
 
       <Button
+        ref={lupa}
         type="button"
         variant="secondary"
         size="icon-lg"

@@ -197,7 +197,19 @@ describe('bloqueio pós-pagamento (T012)', () => {
   });
 });
 
-describe('re-fetch de preço por SKU na troca de cliente (T013)', () => {
+/**
+ * O re-fetch por SKU continua sendo o contrato do slice, mas quem chega até
+ * ele mudou (correção do usuário, 2026-09-10).
+ *
+ * Com item na venda, **a troca pedida pelo operador é recusada** — a lista de
+ * preço já valeu na precificação de cada linha (`AVISO_CLIENTE_COM_ITEM`, e o
+ * describe logo abaixo). O que ainda associa cliente sobre um carrinho
+ * populado é a importação de documento (`'DAV'`/`'RASCUNHO'`), que insere as
+ * linhas antes do cliente: por isso os casos daqui usam essa origem, e não
+ * `'BUSCA_LIVRE'`. A regra exercitada é a mesma — um `GetProduto` por SKU
+ * ativo distinto, nunca pelo congelado.
+ */
+describe('re-fetch de preço por SKU na associação de cliente (T013)', () => {
   function comCarrinhoPopulado(): Montagem {
     const montagem = montarStore();
     const inserir = montagem.store.getState().inserirItem;
@@ -230,7 +242,7 @@ describe('re-fetch de preço por SKU na troca de cliente (T013)', () => {
   it('chama GetProduto uma vez por SKU ativo distinto, nunca pelo congelado', async () => {
     const { store, buscarSnapshotProduto } = comCarrinhoPopulado();
 
-    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'RASCUNHO');
 
     expect(buscarSnapshotProduto).toHaveBeenCalledTimes(2);
     const skusConsultados = buscarSnapshotProduto.mock.calls.map(([sku]) => sku).sort();
@@ -241,7 +253,7 @@ describe('re-fetch de preço por SKU na troca de cliente (T013)', () => {
   it('aplica o preço novo às linhas ativas e preserva o preço congelado', async () => {
     const { store } = comCarrinhoPopulado();
 
-    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'RASCUNHO');
 
     const porSku = (sku: string) =>
       store.getState().linhas.filter((linha) => linha.snapshot.codigoProduto === sku);
@@ -256,7 +268,7 @@ describe('re-fetch de preço por SKU na troca de cliente (T013)', () => {
     const { store } = comCarrinhoPopulado();
 
     // `DescontoConvenio: 10` → 10% sobre o total bruto de cada linha ativa.
-    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'RASCUNHO');
 
     const linhaA = store.getState().linhas[0];
     expect(linhaA?.precoUnitario).toBe(800);
@@ -279,7 +291,7 @@ describe('re-fetch de preço por SKU na troca de cliente (T013)', () => {
 
     await montagem.store
       .getState()
-      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'RASCUNHO');
 
     expect(montagem.store.getState().clienteAtual?.codigoCliente).toBe(77);
     expect(avisar).toHaveBeenCalledOnce();
@@ -301,18 +313,22 @@ describe('re-fetch de preço por SKU na troca de cliente (T013)', () => {
 
     await montagem.store
       .getState()
-      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'RASCUNHO');
 
     expect(montagem.store.getState().linhas[0]?.snapshot.precoBase).toBe(750);
   });
 });
 
-describe('trocas de cliente sobrepostas (achado da revisão)', () => {
-  it('descarta o resultado da troca antiga quando outra já assumiu a venda', async () => {
-    // Duas identificações sobrepostas: a primeira (cliente 10, sem convênio)
+describe('associações de cliente sobrepostas (achado da revisão)', () => {
+  it('descarta o resultado da associação antiga quando outra já assumiu a venda', async () => {
+    // Duas associações sobrepostas: a primeira (cliente 10, sem convênio)
     // termina **depois** da segunda (cliente 20, 10% de convênio). Sem a guarda
     // de geração, os snapshots do cliente 10 seriam gravados e reprecificados
     // com o convênio do 20 — preço errado, sem erro nem log.
+    //
+    // Origem de importação pelo mesmo motivo do describe acima (correção do
+    // usuário, 2026-09-10): com carrinho populado, é a única que ainda associa
+    // cliente. A corrida que a guarda de geração cobre é a mesma.
     const liberar: Array<() => void> = [];
     const buscarSnapshotProduto = vi.fn(
       (codigoProduto: string, cliente: { codigoCliente: number }) =>
@@ -333,16 +349,10 @@ describe('trocas de cliente sobrepostas (achado da revisão)', () => {
 
     const primeira = store
       .getState()
-      .selecionarCliente(
-        clienteCheckoutDe({ CodCliente: 10, DescontoConvenio: 0 }),
-        'BUSCA_DOCUMENTO',
-      );
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 10, DescontoConvenio: 0 }), 'DAV');
     const segunda = store
       .getState()
-      .selecionarCliente(
-        clienteCheckoutDe({ CodCliente: 20, DescontoConvenio: 10 }),
-        'BUSCA_LIVRE',
-      );
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 20, DescontoConvenio: 10 }), 'RASCUNHO');
 
     // A segunda responde primeiro; a primeira, depois — a ordem invertida é
     // exatamente o caso que a guarda existe para cobrir.
@@ -356,7 +366,7 @@ describe('trocas de cliente sobrepostas (achado da revisão)', () => {
     expect(store.getState().linhas[0]?.descontoConvenio).toBe(90);
   });
 
-  it('não avisa falha de re-fetch de uma troca que já foi superada', async () => {
+  it('não avisa falha de re-fetch de uma associação que já foi superada', async () => {
     const avisar = vi.fn();
     const liberar: Array<(erro: Error) => void> = [];
     const { store } = montarStore({
@@ -376,10 +386,10 @@ describe('trocas de cliente sobrepostas (achado da revisão)', () => {
 
     const primeira = store
       .getState()
-      .selecionarCliente(clienteCheckoutDe({ CodCliente: 10 }), 'BUSCA_DOCUMENTO');
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 10 }), 'DAV');
     const segunda = store
       .getState()
-      .selecionarCliente(clienteCheckoutDe({ CodCliente: 20 }), 'BUSCA_LIVRE');
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 20 }), 'RASCUNHO');
 
     liberar[0]?.(new Error('rede'));
     await primeira;
@@ -394,13 +404,17 @@ describe('trocas de cliente sobrepostas (achado da revisão)', () => {
 describe('reescolher o cliente que já está na venda (achado da revisão)', () => {
   it('não registra CLIENTE_TROCADO com anterior === novo nem rebusca preço', async () => {
     const { store, buscarSnapshotProduto } = montarStore();
+
+    // Cliente **antes** do item: é a ordem que a venda passou a ter (correção
+    // do usuário, 2026-09-10). Reescolher quem já está na venda continua sendo
+    // um no-op silencioso mesmo com o carrinho populado — não é troca, então
+    // não cai na recusa por item.
+    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 55 }), 'BUSCA_LIVRE');
     store.getState().inserirItem({
       snapshot: snapshotDe({ codigoProduto: SKU_A }),
       quantidade: unidades(1),
       origem: 'MANUAL',
     });
-
-    await store.getState().selecionarCliente(clienteCheckoutDe({ CodCliente: 55 }), 'BUSCA_LIVRE');
     buscarSnapshotProduto.mockClear();
 
     const resultado = await store
@@ -425,6 +439,94 @@ describe('reescolher o cliente que já está na venda (achado da revisão)', () 
       'CLIENTE_TROCADO',
     ]);
     expect(store.getState().clienteAtual?.codigoCliente).toBe(10);
+  });
+});
+
+/**
+ * **O cliente é escolhido antes do primeiro item** (decisão do usuário,
+ * 2026-09-10, `AVISO_CLIENTE_COM_ITEM`).
+ *
+ * A regra vive no slice, e não em cada superfície, porque são três os caminhos
+ * que associam cliente — campo de código/CPF, lupa e cadastro simplificado — e
+ * eles precisam responder a uma condição só.
+ */
+describe('troca de cliente com item na venda (decisão do usuário, 2026-09-10)', () => {
+  function comUmItem(sobrescritas: Partial<ClienteDeps> = {}): Montagem {
+    const montagem = montarStore(sobrescritas);
+    montagem.store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: SKU_A }),
+      quantidade: unidades(1),
+      origem: 'MANUAL',
+    });
+    return montagem;
+  }
+
+  it('recusa a escolha do operador, avisa o motivo e não toca no cliente nem no preço', async () => {
+    const avisar = vi.fn();
+    const { store, buscarSnapshotProduto } = comUmItem({ avisar });
+    const clienteAntes = store.getState().clienteAtual;
+
+    const resultado = await store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+
+    expect(resultado).toBe('bloqueado');
+    expect(store.getState().clienteAtual).toBe(clienteAntes);
+    expect(buscarSnapshotProduto).not.toHaveBeenCalled();
+    expect(avisar).toHaveBeenCalledOnce();
+    // Nenhum evento de cliente: a venda não mudou, e a trilha não pode afirmar
+    // uma troca que não aconteceu.
+    expect(eventosDeCliente(store)).toHaveLength(0);
+  });
+
+  it('vale também para o cadastro simplificado, e sem criar o cadastro no ERP', async () => {
+    const criar = vi.fn();
+    const { store } = comUmItem();
+
+    const resultado = await store.getState().cadastrarESelecionarCliente(
+      {
+        nome: 'FULANO',
+        cpf: '11122233344',
+        email: 'fulano@example.test',
+        celular: '55 47 90000-0000',
+        cep: '89000000',
+        endereco: 'Rua Exemplo',
+        bairro: 'Centro',
+        numero: '100',
+        cidade: 'SINOP',
+        uf: 'MT',
+      },
+      criar,
+    );
+
+    expect(resultado).toBe('bloqueado');
+    // A recusa vem antes de `criar`: cadastrar no ERP um cliente que a venda
+    // não pode receber deixaria um cadastro órfão a cada tentativa.
+    expect(criar).not.toHaveBeenCalled();
+  });
+
+  it('linha cancelada não conta — cancelado o item, o cliente volta a ser trocável', async () => {
+    const { store } = comUmItem();
+    const idLinha = store.getState().linhas[0]?.idLinha ?? '';
+
+    store.getState().cancelarItem(idLinha);
+    const resultado = await store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'BUSCA_LIVRE');
+
+    expect(resultado).toBe('aplicado');
+    expect(store.getState().clienteAtual?.codigoCliente).toBe(77);
+  });
+
+  it('a importação de documento passa por cima da regra — insere as linhas antes do cliente', async () => {
+    const { store } = comUmItem();
+
+    const resultado = await store
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 77 }), 'DAV');
+
+    expect(resultado).toBe('aplicado');
+    expect(store.getState().clienteAtual?.codigoCliente).toBe(77);
   });
 });
 

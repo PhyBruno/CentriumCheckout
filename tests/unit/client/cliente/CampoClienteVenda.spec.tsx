@@ -1,8 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CampoClienteVenda } from '../../../../src/client/features/cliente/CampoClienteVenda';
+import { clienteCheckoutDe } from '../../../support/cliente';
+import { linhaDe } from '../../../support/precificacao';
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
@@ -138,5 +141,117 @@ describe('CampoClienteVenda — a pílula de vendedor segue o vendedor da venda'
       useVendaStore.getState().trocarVendedor({ codigo: 12, nome: null }, 'DAV');
     });
     expect(screen.getByTestId('pilula-vendedor')).toHaveTextContent('Vendedor #12');
+  });
+});
+
+/**
+ * Correção do usuário (2026-09-10), duas metades da mesma regra:
+ *
+ * 1. **Código digitado + sair do campo carrega o cliente novo.** O `onBlur`
+ *    identifica desde 2026-09-03 — o que este spec acrescenta é a trava: sem um
+ *    caso automatizado, a consulta pelo **código** (e não só pelo CPF) segue
+ *    dependendo de alguém repetir o gesto à mão.
+ * 2. **Com item na venda, o cliente não muda mais.** A lista de preço já valeu
+ *    na precificação de cada linha (`AVISO_CLIENTE_COM_ITEM`).
+ */
+describe('CampoClienteVenda — troca de cliente (correção do usuário, 2026-09-10)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [], clienteAtual: null, houveEscolhaExplicita: false });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubarGetCliente(): ReturnType<typeof vi.fn> {
+    const chamadas = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ Cliente: clienteCheckoutDe({ CodCliente: 2538 }) }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', chamadas);
+    return chamadas;
+  }
+
+  async function abrirCard(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
+    await usuario.click(screen.getByTestId('alternar-cliente-expandido'));
+  }
+
+  it('digitar o código e sair do campo carrega o cliente novo', async () => {
+    const chamadas = stubarGetCliente();
+    const usuario = userEvent.setup();
+    renderCard();
+    await abrirCard(usuario);
+
+    await usuario.type(screen.getByTestId('campo-documento-cliente'), '2538');
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().clienteAtual?.codigoCliente).toBe(2538);
+    });
+    // Pelo **código**, não pelo documento: `GetCliente` tem um parâmetro para
+    // cada caso, e trocá-los buscaria outro cadastro.
+    expect(String(chamadas.mock.calls[0]?.[0])).toContain('CodCliente=2538');
+  });
+
+  it('com item na venda, o campo fica bloqueado e o código digitado não troca o cliente', async () => {
+    const chamadas = stubarGetCliente();
+    const usuario = userEvent.setup();
+    renderCard();
+    await abrirCard(usuario);
+
+    act(() => {
+      useVendaStore.setState({ linhas: [linhaDe({})] });
+    });
+
+    const campo = screen.getByTestId('campo-documento-cliente');
+    expect(campo).toHaveAttribute('aria-disabled', 'true');
+    expect(campo).toHaveAttribute('title', expect.stringContaining('lista de preço'));
+    expect(screen.getByTestId('identificar-cliente')).toHaveAttribute('aria-disabled', 'true');
+
+    // Nem o ERP é consultado: trocar o cliente é o que está fechado, e buscar
+    // o cadastro só para recusá-lo depois seria uma ida de rede desperdiçada.
+    expect(chamadas).not.toHaveBeenCalled();
+    expect(useVendaStore.getState().clienteAtual).toBeNull();
+  });
+
+  it('o slice recusa a troca mesmo por fora do campo — a regra não mora na UI', async () => {
+    useVendaStore.setState({ linhas: [linhaDe({})] });
+
+    const resultado = await useVendaStore
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 2538 }), 'BUSCA_LIVRE');
+
+    expect(resultado).toBe('bloqueado');
+    expect(useVendaStore.getState().clienteAtual).toBeNull();
+  });
+
+  it('a importação de documento continua podendo associar o cliente por cima das linhas', async () => {
+    // `importarVendaExistente` insere as linhas congeladas **antes** de
+    // associar o cliente do documento: bloquear `'DAV'`/`'RASCUNHO'` deixaria
+    // todo DAV importado com o cliente default, em silêncio.
+    useVendaStore.setState({ linhas: [linhaDe({ precoCongelado: true, origem: 'DAV' })] });
+
+    const resultado = await useVendaStore
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 2538 }), 'DAV');
+
+    expect(resultado).toBe('aplicado');
+    expect(useVendaStore.getState().clienteAtual?.codigoCliente).toBe(2538);
+  });
+
+  it('linha cancelada não conta: com o item cancelado o cliente volta a ser trocável', async () => {
+    useVendaStore.setState({ linhas: [linhaDe({ cancelada: true })] });
+
+    const resultado = await useVendaStore
+      .getState()
+      .selecionarCliente(clienteCheckoutDe({ CodCliente: 2538 }), 'BUSCA_LIVRE');
+
+    expect(resultado).toBe('aplicado');
   });
 });

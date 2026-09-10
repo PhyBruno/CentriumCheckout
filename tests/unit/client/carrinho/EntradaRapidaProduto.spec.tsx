@@ -21,6 +21,16 @@ import { linhaDe, respostaGetProduto, snapshotDe } from '../../../support/precif
  *    de busca insere direto no grid, sem exigir confirmação extra.
  */
 
+/**
+ * Vendedor da venda em todos os cenários que **não** são sobre vendedor.
+ *
+ * Desde a correção do usuário de 2026-09-10 nenhuma inserção acontece sem
+ * vendedor: sem isto, cada teste de inserção passaria a exercitar, sem querer,
+ * a recusa por falta de vendedor. O bloqueio em si tem os seus próprios casos,
+ * mais abaixo, que zeram `vendedorAtual` de propósito.
+ */
+const VENDEDOR_DE_TESTE = { codigo: 21, nome: 'Ana Lima', origem: 'DEFAULT' as const };
+
 function registroDeBootstrap() {
   return {
     tenant: 'acme',
@@ -95,7 +105,7 @@ beforeAll(() => {
 describe('EntradaRapidaProduto — editar item já inserido (correção do usuário, 2026-09-03)', () => {
   beforeEach(() => {
     useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
-    useVendaStore.setState({ linhas: [] });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
     useVendaStore.getState().resetarAuditoria('NOVA');
     useEdicaoItemStore.setState({ linhaEmEdicao: null });
   });
@@ -233,7 +243,7 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
 describe('EntradaRapidaProduto — seleção no modal de busca (correção do usuário, 2026-09-03)', () => {
   beforeEach(() => {
     useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
-    useVendaStore.setState({ linhas: [] });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
     useVendaStore.getState().resetarAuditoria('NOVA');
     useEdicaoItemStore.setState({ linhaEmEdicao: null });
   });
@@ -335,7 +345,7 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
 describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do usuário, 2026-09-04)', () => {
   beforeEach(() => {
     useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
-    useVendaStore.setState({ linhas: [] });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
     useVendaStore.getState().resetarAuditoria('NOVA');
     useEdicaoItemStore.setState({ linhaEmEdicao: null });
   });
@@ -437,7 +447,7 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
 describe('EntradaRapidaProduto — TAB no campo de código (pedido do usuário, 2026-09-04)', () => {
   beforeEach(() => {
     useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
-    useVendaStore.setState({ linhas: [] });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
     useVendaStore.getState().resetarAuditoria('NOVA');
     useEdicaoItemStore.setState({ linhaEmEdicao: null });
   });
@@ -503,6 +513,119 @@ describe('EntradaRapidaProduto — TAB no campo de código (pedido do usuário, 
     });
     expect(screen.getByTestId('abrir-busca-produto')).not.toHaveFocus();
     expect(useVendaStore.getState().linhas).toHaveLength(0);
+
+    vi.unstubAllGlobals();
+  });
+});
+
+/**
+ * Venda sem vendedor não recebe produto (correção do usuário, 2026-09-10).
+ *
+ * O que estes casos travam é o **par**: a inserção não acontece **e** o foco
+ * vai para o campo do vendedor. Recusar em silêncio, ou recusar sem apontar
+ * para onde ir, deixaria o operador batendo no mesmo gesto — que é exatamente
+ * o defeito que `lib/bloqueio.ts` existe para evitar.
+ *
+ * `pedidosDeFocoNoVendedor` é o que se observa em vez do foco real: quem foca é
+ * `CampoVendedorVenda`, que não está montado aqui (são irmãos em `TelaDeVenda`,
+ * não pai/filho) — o contrato entre os dois é o contador do `focoVendaStore`.
+ */
+describe('EntradaRapidaProduto — venda sem vendedor (correção do usuário, 2026-09-10)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [], vendedorAtual: null });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+    useFocoVendaStore.setState({ pedidosDeFocoNoVendedor: 0 });
+  });
+
+  it('Enter no código não insere, não consulta o ERP e pede o foco no vendedor', async () => {
+    const chamadas = vi.fn();
+    vi.stubGlobal('fetch', chamadas);
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    // A recusa vem **antes** do `GetProduto`: consultar o ERP por um produto
+    // que não pode entrar seria trabalho jogado fora.
+    expect(chamadas).not.toHaveBeenCalled();
+    expect(useFocoVendaStore.getState().pedidosDeFocoNoVendedor).toBe(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('TAB não chega a resolver o produto e também pede o foco no vendedor', async () => {
+    const chamadas = vi.fn();
+    vi.stubGlobal('fetch', chamadas);
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
+
+    expect(chamadas).not.toHaveBeenCalled();
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(useFocoVendaStore.getState().pedidosDeFocoNoVendedor).toBe(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('o botão de inserir aparece bloqueado, com o motivo no título', () => {
+    renderBarra();
+
+    const inserir = screen.getByTestId('previa-confirmar');
+    expect(inserir).toHaveAttribute('aria-disabled', 'true');
+    expect(inserir).toHaveAttribute('title', expect.stringContaining('vendedor'));
+  });
+
+  it('cada tentativa pede o foco de novo — o contador não para no primeiro', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    await usuario.type(campo, '001234{Enter}');
+    await usuario.clear(campo);
+    await usuario.type(campo, '005678{Enter}');
+
+    // Um booleano no `focoVendaStore` não dispararia o efeito na segunda vez, e
+    // o operador ficaria sem o foco justamente na tentativa em que insistiu.
+    expect(useFocoVendaStore.getState().pedidosDeFocoNoVendedor).toBe(2);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('escolhido o vendedor, a mesma bipagem insere normalmente', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ Produto: respostaGetProduto({ ProdutoPesavelEditavel: '' }) }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    act(() => {
+      useVendaStore.setState({ vendedorAtual: VENDEDOR_DE_TESTE });
+    });
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    // O botão volta a bloquear pelo motivo de sempre — campo vazio depois da
+    // inserção —, e não mais pelo vendedor.
+    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute(
+      'title',
+      expect.not.stringContaining('vendedor'),
+    );
 
     vi.unstubAllGlobals();
   });
