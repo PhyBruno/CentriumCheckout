@@ -79,7 +79,7 @@ describe('montarRetratoVenda — campos obrigatórios (FR-010, AD-034)', () => {
   });
 
   it('repassa as formas de pagamento sem interpretar', () => {
-    const formas = [{ FormaCodigo: 1, FormaMeioPagtoNFe: 'Dinheiro', FormaValor: 30.0 }];
+    const formas = [{ FormaCodigo: 1, FormaMeioPagtoNFe: '01', FormaValor: 30.0 }];
 
     const retrato = montarRetratoVenda(snapshotVendaDe(), 'FATURAR', formas);
 

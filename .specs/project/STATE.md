@@ -200,7 +200,7 @@ Cifrado, não só assinado: `HttpOnly` impede leitura via JavaScript, mas não i
 - Novo endpoint `GetListaVendedores` (mesmo padrão paginado de `GetListaClientes`) — resolve `VEND-01`, pendência bloqueante de `selecao-vendedor/spec.md`. Novo endpoint `GerarPIX` também presente, sem spec associada ainda.
 - Host por tenant: decisão do usuário — ambiente local de dev não tem tenant, o bloco `servers:` do contrato é só a URL de dev do GeneXus; o padrão `TENANT.<domínio-base>` (AD-003/AD-019) permanece correto e não precisa de formalização adicional no contrato.
 - `DescontoConvenio` é percentual — confirmado no KB (`PGeraPedidoVenda`: `&ConvDsc = (1 - CliConvDsc / 100)`).
-- `FormaMeioPagtoNFe` — confirmado domain `NFCe_FormaPagto` no KB, com lista completa de valores (superset da tabela SEFAZ padrão).
+- `FormaMeioPagtoNFe` — **⚠️ leitura parcialmente incorreta, corrigida em 2026-09-10 por AD-204: leia lá antes de implementar.** O domain `NFCe_FormaPagto` foi de fato confirmado no KB, e a lista é mesmo um superset da tabela SEFAZ padrão — mas o que esta linha registrou foram as **descrições** do enum (`Dinheiro`, `CartaoCredito`, …), e o que o ERP publica no campo são os **valores**: os códigos de dois dígitos da `tPag` (`'01'`, `'03'`, `'17'`, `'91'`, `'99'`). O domínio é `Character(2)`. Implementar contra as descrições fez o Checkout descartar 100% do catálogo de pagamento do ERP real.
 - Elegibilidade de `ValidaTicketDevolucao` — **⚠️ superado em 2026-08-27 por AD-101, leia lá antes de implementar.** A afirmação original desta linha ("não há campo booleano; a elegibilidade é indicada comparando `Mensagem` ao literal fixo `'Ticket Válido'`", confirmada no KB em `PCheckout_ValidaTicketDevolucao` → `PValidaTicketNfCe.Call`) **está incorreta quanto à ausência do campo**: `ValidaTicketDevolucaoOutput` tem sim um campo `Valido: boolean` no contrato (`ApiCentriumOAuth.yaml`, linhas 668-676), e a AD-101 confirmou por nova inspeção da mesma procedure que ela **preenche `&Valido` explicitamente** em ambos os ramos (`true`/`false`). A regra vigente é a de AD-101 — usar só `Valido`, sem fallback de `Mensagem`. Item 32 de `.specs/project/PENDENCIES.md` resolvido.
 - Origem do `NumeroNota` em `FaturarNFCe` — confirmado no KB: `= 0` gera nota nova (100% Checkout, via `PNFeSerializaRascunhoNota`), `<> 0` usa nota pré-existente/importada (`AtualizarCapa`).
 - Estorno de TEF — resposta direta do usuário: depois de cobrado, o TEF não pode mais ser removido da venda (não é uma questão de endpoint, é regra de UI/negócio do Checkout).
@@ -2752,3 +2752,193 @@ A saída não é brigar com o recorte por CSS: a bolha continuaria desenhada com
 **O compacto herda os 10 por página.** A rolagem existe lá de qualquer jeito, e manter 20 no mobile faria a mesma consulta ter duas paginações conforme a superfície — duas gramáticas para a mesma lista, que é exatamente o que AD-196 e a decisão de tela cheia dos seletores evitaram.
 
 **Impact:** novo — `src/client/services/paginacao.ts`. Alterados — `src/client/services/{produto/produtoQueries,cliente/clienteQueries,vendedor/vendedorQueries,dav/davQueries,recuperacao/recuperacaoQueries}.ts` (constante local trocada pelo import); `src/client/features/{carrinho/ModalBuscaProduto,cliente/ModalBuscaCliente,vendedor/ModalBuscaVendedor,dav/ModalImportacaoDav,recuperacao/ModalRecuperacaoNFCe}.tsx` (altura da linha e esqueleto); testes — `tests/integration/ModalRecuperacaoNFCe.spec.tsx`, cuja asserção de teto fixava `Tamanhopagina=20`. Verificação: `tsc --noEmit` limpo, 1126 testes unit/integração passando, e conferência no navegador com 10 registros injetados (janela de 690px, `scrollHeight === clientHeight`) em viewport de 900px e de 768px.
+
+---
+
+### AD-203: o Menu gerencial é implementado, e cada opção ganha a sua própria tela — corrige AD-020 e AD-026 (2026-09-10)
+
+**Origem:** pedido explícito do usuário — "Está faltando o 'Menu gerencial' no Checkout, com duas opções que redirecionam para telas especificas do ERP. O Layout do menu pode ser igual ao do Menu Importação".
+
+**Os dois caminhos `.aspx` de AD-020 e AD-026 estão superados.** AD-020 confirmou `WPMovimentoNaoFiscal_Lancamento.aspx` para a "Central de movimentação não fiscal" e deixou a segunda opção em aberto; AD-026 fechou a lacuna decidindo que o "Relatório de resumo de caixa" apontaria para o **mesmo** link, apesar de o desenho descrever conteúdo distinto. Ao implementar, o usuário informou os caminhos reais, e são dois: `wwtecfmovnaofisc.aspx` para a movimentação não fiscal e `WWPResumoCaixa.aspx` para o resumo de caixa. A coincidência que AD-026 registrava não existe — era o sintoma de a segunda URL nunca ter sido levantada de fato. Um teste (`tests/unit/server/routes/gerencial.spec.ts`) trava explicitamente que os dois destinos diferem, para que a regressão não volte silenciosa.
+
+**O redirect mora no BFF, não no React.** `GET /gerencial/:destino` decifra o cookie de sessão, monta o host por `montarBaseUrlErp` (`<protocolo>://<tenant>.<baseDomain>`, AD-019) e responde `302`. A alternativa — expor `baseDomain` no payload de `/api/bootstrap` e deixar a SPA montar a URL — foi descartada por três motivos somados: o payload é validado por Zod, cacheado no Dexie e versionado por hash, então um campo novo invalidaria todo cache existente (AD-045/FR-008); o host do ERP passaria a circular no JS sem necessidade; e a montagem no cliente abriria a porta para o destino vir do navegador. Do jeito escolhido o navegador informa **só um rótulo** de um conjunto fechado (`src/shared/gerencial.ts`), o `tenant` vem do cookie cifrado e o caminho sai de um mapa literal no servidor — não sobra superfície de redirect aberto. A sessão é conferida **antes** do rótulo, para que um chamador anônimo receba `401` tanto para destino válido quanto inválido e não descubra quais telas existem.
+
+**Os rótulos são compartilhados, os caminhos não.** `src/shared/gerencial.ts` publica `DESTINOS_GERENCIAIS`/`urlDaTelaGerencial` para os dois lados; o `.aspx` de cada tela fica só em `src/server/routes/gerencial.ts`. É o que faz um destino renomeado quebrar a compilação em vez de virar `404` em produção, sem que o cliente precise conhecer caminho de ERP.
+
+**A abertura é sempre em nova aba** (`window.open(..., '_blank', 'noopener')`). A venda em andamento não sobrevive a uma navegação — o `vendaStore` é Zustand sem `persist` (AD-011) —, então sair na mesma aba custaria o carrinho do operador para consultar uma sangria. Pelo mesmo motivo o atalho **nunca fica bloqueado**, diferente de "Menu Importação": aquele recusa abrir sobre venda iniciada porque importar documento para dentro dela é inválido (AD-138); aqui nada é importado e o carrinho não é tocado.
+
+**Gatilho: só o atalho da faixa.** Decisão do usuário. O vão do meio de `BarraAtalhosVenda` já vinha reservado para ele desde a feature 006 e agora está ocupado — a faixa volta a ter os três atalhos do desenho (`nyfSI`). A engrenagem da barra superior continua inerte; o seu `aria-label` foi ajustado para não prometer um menu que ela não abre.
+
+**Divergências deliberadas do Pencil**, ambas herdadas do menu de importação: o rodapé de 60px com o botão "Cancelar" não é implementado (AD-170 — faz o que o "X" do cabeçalho já faz, e removido o botão sobraria uma faixa vazia com hairline), e os ícones são traduzidos de lucide para o catálogo do reicon (AD-201): `layout-grid` → `Category`, `arrow-left-right` → `ArrowSwapHorizontal`, `chart-column` → `ChartBar`, `layout-dashboard` → `Element3`.
+
+**Impact:** novos — `src/shared/gerencial.ts`, `src/server/routes/gerencial.ts`, `src/client/features/gerencial/{ModalMenuGerencial,BotaoMenuGerencial}.tsx`, `tests/unit/server/routes/gerencial.spec.ts`, `tests/unit/client/gerencial/MenuGerencial.spec.tsx`. Alterados — `src/server/index.ts` (registro da rota), `src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx` (terceiro terço da faixa deixa de ser `ml-auto`), `src/client/layout/BarraSuperior.tsx` (rótulo da engrenagem), `.specs/codebase/ARCHITECTURE.md` (seção Responsividade reescrita, tabela de destinos corrigida), `.specs/project/PENDENCIES.md` (item 2 da seção da feature 007). Não há spec de feature: AD-020 decidiu que esta tela vive como nota arquitetural, e essa decisão continua valendo. Verificação: `tsc --noEmit` limpo, `eslint` limpo, 1143 testes unit/integração passando (17 novos).
+
+---
+
+### AD-204: o Checkout falava um dialeto que o ERP não fala — `FormaMeioPagtoNFe` é código, `Tipocodproduto` tem outros valores, e `GetCliente` está quebrado no ERP (2026-09-10)
+
+**Origem:** teste manual do usuário contra o ERP real (tenant `c0lj6mvzeh`, empresa `1`), com quatro sintomas: cliente não retorna informação nenhuma; dúvida sobre quais parâmetros o `GetProduto` recebe; cenário de pagamento vazio; condição e forma de pagamento não exibidas. Investigado batendo direto na API e lendo a KB.
+
+#### 1. `FormaMeioPagtoNFe` é o código `tPag`, não o nome do enum — corrige AD-023
+
+`MEIOS_PAGTO_NFE` listava as **descrições** do domínio `NFCe_FormaPagto` (`Dinheiro`, `CartaoCredito`, `Pix`…). O ERP publica os **valores**. Os `ControlValues` do domínio, lidos na KB, são 21 pares `descrição:código` sobre `Character(2)`: `01` Dinheiro, `02` Cheque, `03` Cartão de Crédito, `04` Cartão de Débito, `05` Cartão da Loja/Crediário, `10` Vale Alimentação, `11` Vale Refeição, `12` Vale Presente, `13` Vale Combustível, `14` Duplicata Mercantil, `15` Boleto Bancário, `16` Depósito Bancário, `17` PIX Dinâmico, `18` Transferência/Carteira Digital, `19` Programa de Fidelidade, `20` PIX Estático, `21` Crédito em Loja, `22` Pagamento Eletrônico não Informado, `90` Sem Pagamento, `91` Pagamento Posterior, `99` Outros. `PCheckout_GetSessao` atribui `FormaMeioPagtoNFe = FpgNfFormaPagamento` cru, sem traduzir.
+
+**A cadeia de falha, medida contra o payload real:** `filtrarFormasValidas` descartou **1924 formas de 1924**; as 62 condições ficaram sem forma; `pagamentoMapper` remove condição sem forma; o catálogo chegou vazio à tela. Isso explica os sintomas 3 e 4 de uma vez só — os cenários de venda rápida somem junto porque `projetarAtalhos` (E4) exige o par (condição, forma) no catálogo. Os três cenários do tenant (`F2` Dinheiro, `F9` Duplicata, `F4` Cartão Crédito) resolvem normalmente depois da correção.
+
+**A forma da correção.** A união fechada passa a ser dos códigos, e não uma tradução na fronteira, porque o dialeto é o mesmo **nos dois sentidos**: `formaParaRetrato.ts` devolve `FormaMeioPagtoNFe` ao ERP no retrato que `ValidarNFCe`/`FaturarNFCe` consomem. Traduzir só na entrada consertaria a tela e deixaria a emissão errada — mesmo modo de falha de AD-188. A legibilidade é preservada por `MEIO_PAGTO`, mapa nome→código: o código de comparação lê `MEIO_PAGTO.Dinheiro`, nunca `'01'`. `nomeDoMeioPagto` faz o caminho inverso **só** para texto lido por gente (rótulo de tela, detalhe de evento de auditoria) — sem ele a trilha registraria `"tipo": "99"` onde antes dizia `"tipo": "Outros"`.
+
+**O typo `Progarama` não precisa mais ser reproduzido:** ele está na descrição do enum, não no valor. A chave passou a ser `ProgramaFidelidade`, escrita corretamente.
+
+**O silêncio é que deixou isso passar, e ele foi endereçado.** O descarte por forma continua silencioso de propósito (uma forma nova no ERP não pode derrubar as demais), mas o **colapso total** do catálogo agora emite `console.error`: nenhuma empresa opera um PDV sem forma de pagamento nenhuma, então entrar com condições e sair com zero é sempre defeito de contrato. Duas fixtures (`tests/support/dav.ts`, `erp-mock.ts`) já traziam `'01'` — o valor certo — e duas sessões anteriores o trataram como erro e o contornaram, apoiadas nesta mesma leitura equivocada da AD-023; os comentários que afirmavam "o domínio usa nomes" foram reescritos no lugar.
+
+#### 2. `Tipocodproduto`: o que enviamos estava certo, o valor válido é que não era o documentado
+
+A pergunta do usuário — se `Tipocodproduto`/`Tipopreco` saem do `GetSessao` — tem resposta afirmativa e o código já fazia isso (AD-033). O defeito estava noutro lugar. O fonte de `PCheckout_GetProduto` filtra assim:
+
+```
+where MatCodRed = &CodigoProduto when &TipoCodProduto in ('R', '')
+where MatCodBar = &CodigoProduto when &TipoCodProduto = 'B'
+where MatModelo = &CodigoProduto when &TipoCodProduto = 'M'
+```
+
+Ou seja, os valores são `''`/`'R'`, `'B'` e `'M'` — **não** os `''`/`'D'`/`'C'`/`'P'` do domain `EnumTipoCodigoProduto`, que `rotuloTipoCodigoProduto` tomava como fonte de verdade. O campo não vem daquele domínio: `PCheckout_GetSessao` o lê do parâmetro `PRM0656`. O tenant real devolve `'B'`, que nem existe no domínio documentado.
+
+**Duas consequências, ambas corrigidas.** (a) O modal de busca devolvia sempre `CodigoProduto` (o reduzido) para a rebusca; com a empresa em `'B'` o ERP filtra por `MatCodBar` e nada casa. Agora `codigoParaConsulta` escolhe o campo pelo tipo da sessão — `CodigoProduto`=`MatCodRed`, `CodigoBarras`=`MatCodBar`, `Referencia`=`MatModelo`, correspondência lida no fonte. **A recusa que esta AD instituiu quando o candidato não tem o campo exigido foi removida por AD-205 (2026-09-10): o tipo da sessão é preferência, não trava, e o campo vazio cai para o próximo preenchido.** (b) `PCheckout_GetProduto` **não** responde `404` quando não acha: devolve `200` com o SDT zerado, que atravessava o Zod limpo (`ProdutoPesavelEditavel: ''` é valor válido) e virava linha de carrinho sem descrição, sem unidade e com preço R$ 0,00 — exatamente o "não estamos preenchendo o nome do produto nem a unidade" relatado. `fetchProduto` passa a barrar `CodigoProduto` vazio, como `buscarCliente` já fazia por `CodCliente <= 0`. Um `Tipocodproduto` fora dos três valores não ativa nenhum `when` e o `For Each` devolve o **primeiro produto da empresa** — mais uma razão para a guarda.
+
+#### 3. `GetCliente` está quebrado no ERP — não há correção possível no Checkout
+
+`PCheckout_GetCliente` encontra o registro e devolve o cadastro em branco. Medido no ERP real, por CPF e por `CodCliente`, para os clientes `3`, `10`, `17` e o default `999999`: `CodCliente` correto, `ListaPreco: 1`, `PermiteVendaCredito: true`, e `nome`/`cpf`/`email`/`celular`/`cep`/`endereco`/`bairro`/`numero`/`cidade`/`uf` **todos vazios** (mais `Empresa: 0`). Os mesmos clientes vêm completos no `GetListaClientes` — o dado existe, o procedure é que não o publica. **Isto é defeito do ERP e precisa ser aberto com a equipe dele.**
+
+O que cabia a nós era não fingir sucesso: a guarda `CodCliente <= 0` passava, porque o código volta correto, e a venda seguia com um cliente sem nome no campo. `ErroClienteIncompleto` (novo, distinto de `ErroClienteNaoEncontrado`) recusa a associação e diz que a falha é do ERP — sem convidar a tentar de novo, porque a resposta é idêntica toda vez, e sem mandar cadastrar, porque o cliente já existe.
+
+**Confirmado que o envio estava certo:** só dígitos é o correto (com máscara o ERP devolve `CodCliente: 0`).
+
+**⚠️ `Empresa` no header NÃO basta — leitura corrigida por AD-205 em 2026-09-10, leia lá antes de implementar.** Esta AD concluiu, de um teste feito só contra `GetCliente`, que "`Empresa` no header basta para os `GET`", e generalizou o que era verdade de um endpoint só. `GetCliente` tem um `Event GetCliente.Before` que lê o cabeçalho; **metade dos métodos do `APICentriumOAuth` não tem esse evento** e lê `&Empresa` da query. `GetProduto` é um deles — sem o parâmetro, `&Empresa = 0`, o `For Each` filtra por `empcod = 0` e devolve o SDT vazio que o item 2 acima descreve. Ou seja: a guarda nova de `fetchProduto` estava certa, mas estava mascarando esta causa. Desde AD-205 o BFF manda `Empresa` **no header e na query**, em toda chamada.
+
+**Não verificado ao vivo:** `TrnFormaPagamento` de `GerarPIX` passou a `'17'` pela afirmação que o próprio código já fazia — que o campo compartilha o domínio `NFCe_FormaPagto`. A integração PIX não foi exercitada contra o ERP real (feature 009), então este é o único campo de saída desta correção sem prova direta.
+
+**Impact:** alterados — `src/client/domain/pagamento/formaPagamento.ts` (união vira código, `MEIO_PAGTO`, `nomeDoMeioPagto`), `roteamentoIntegracao.ts`, `saldoPagamento.ts`, `src/shared/schemas/pagamento.schema.ts` (TSDoc), `src/client/services/pagamento/pagamentoMapper.ts` (aviso de colapso), `src/client/stores/slices/pagamentoSlice.ts`, `src/client/features/pagamento/{iconePorMeio.ts,ListaPagamentosAplicados.tsx}`, `src/client/services/pix/pixQueries.ts`, `src/client/services/produto/produtoQueries.ts` (guarda de SDT vazio), `src/client/domain/precificacao/codigoProduto.ts` (`TIPO_COD_PRODUTO`, `codigoParaConsulta`, rótulos corrigidos), `src/client/features/carrinho/{ModalBuscaProduto.tsx,useCarrinho.ts}`, `src/client/services/cliente/clienteQueries.ts` (`ErroClienteIncompleto`), `src/client/features/cliente/useCliente.ts`, `src/client/features/importacao/useImportacaoDocumento.ts`; testes — 21 arquivos migrados para `MEIO_PAGTO`/códigos, incluindo `tests/e2e/support/erp-mock.ts` (o catálogo do mock passa a falar o dialeto real) e os comentários de `tests/support/recuperacao.ts`, com casos novos para as duas guardas, para `codigoParaConsulta` e para o aviso de colapso. Verificação: `tsc --noEmit` limpo, 1154 testes unit/integração passando; catálogo real do tenant reprocessado pelos schemas do projeto (62 condições, 1924 formas, zero descartes) e os 3 cenários de pagamento resolvendo.
+
+### AD-205: `Empresa` vai no cabeçalho **e** na query — metade dos métodos do ERP não lê o cabeçalho; e o tipo de código da sessão vira preferência, não trava (2026-09-10)
+
+**Origem:** dois defeitos críticos relatados pelo usuário depois de AD-204, testando contra o ERP real (tenant `c0lj6mvzeh`, empresa `1`): (1) o produto `0000TESTE7894` dá "produto não encontrado" apesar de existir e ter o código de barras cadastrado — o usuário anexou o print da chamada crua que devolve o produto; (2) um produto encontrado pela busca do modal, mas sem o campo que a empresa configura, era barrado sem alternativa de inserção.
+
+#### 1. O cabeçalho `Empresa` só vale para metade dos métodos — corrige AD-204
+
+`APICentriumOAuth` resolve `&Empresa` de **duas maneiras diferentes**, e a divisão não está documentada em lugar nenhum:
+
+- **Do cabeçalho**, num `Event <Metodo>.Before` que faz `&Empresa = &HttpRequest.GetHeader('empresa').ToNumeric()` — existem exatamente oito: `GetSessao`, `GetCliente`, `PostCliente`, `GetListaProdutos`, `GetListaClientes`, `ListaDAVs`, `GetListaNFCes`, `GetListaVendedores`.
+- **Da query string**, como parâmetro comum `in:&Empresa`, sem evento nenhum: `GetProduto`, `GetDav`, `CarregarNFCe`, `GetStatusSistema`, `StatusPIX`, `ValidaTicketDevolucao`.
+
+O BFF mandava `Empresa` **só no cabeçalho**. Para o segundo grupo isso significa `&Empresa = 0`, e o `For Each` de `PCheckout_GetProduto` — que abre com `where empcod = &Empresa` — não casa com nada e devolve `200` com o SDT recém-criado. Era essa a causa do sintoma (1), e não o `Tipocodproduto`: a guarda de SDT vazio que AD-204 acrescentou a `fetchProduto` estava correta, mas traduzia em "não encontrado" um erro que era nosso.
+
+**Medido ao vivo, lado a lado**, com o mesmo token e o mesmo cabeçalho `Empresa: 1`:
+
+```
+GetProduto?Codigoproduto=0000TESTE7894&Tipocodproduto=B            -> {"CodigoProduto":"", ... todos os preços "0.0000"}
+GetProduto?Empresa=1&Codigoproduto=0000TESTE7894&Tipocodproduto=B  -> {"CodigoProduto":"teste789", "CodigoBarras":"0000TESTE7894", "PrecoVenda":"2978.0000", ...}
+```
+
+**A correção manda nos dois lugares, para todos os endpoints** (decisão explícita do usuário: "Tem que ir no header e na query", "Isso pra todos os endpoints"). Nos oito com `.Before` o cabeçalho sobrescreve `&Empresa` com o mesmo valor logo depois, então o parâmetro extra é inócuo — e não depender de saber de cor em qual grupo cada método está vale mais que a economia de um par na URL. `queryComEmpresaDaSessao` (`erp-proxy.ts`) faz a injeção para tudo que passa por `/api/erp/*`; `bootstrap.ts` faz o mesmo na sua rota própria, que não passa pelo proxy.
+
+**A posição do parâmetro faz parte do contrato, não é estética.** Os `.Before` de `GetSessao` e `GetCliente` **não parseiam** a query: recortam de `Login=`/`CPFCNPJ=` **até o fim da string** com `SubStr`. Com `Empresa` no fim, `&Login` viria `bruno&Empresa=1`. Confirmado ao vivo — `Login=bruno&Empresa=1` devolve `UsuarioCodigo: "0"`, e `CPFCNPJ=…&Empresa=1` devolve `CodCliente: 0`, contra os valores corretos quando o parâmetro vem à frente. Por isso `Empresa` entra **sempre como primeiro par**, e há teste cobrindo essa ordem — um refactor que "organize" a query alfabeticamente quebraria o login em silêncio.
+
+Ocorrências de `Empresa` vindas do navegador são descartadas antes da injeção: a empresa sai do cookie cifrado, e aceitar a do cliente deixaria um operador autenticado consultar outra empresa do tenant — mesma razão de `corpoComEmpresaDaSessao`. Os demais pares são repassados crus, sem reserialização, preservando codificação original e chaves repetidas.
+
+#### 2. O `Tipocodproduto` da sessão é preferência, não trava — revê AD-204
+
+AD-204 fez `codigoParaConsulta` escolher o campo do candidato pelo tipo da sessão e **recusar** quando aquele campo estava vazio. O caso real que isso produz: empresa configurada em `'B'`, produto sem código de barras cadastrado. Ele aparece na busca (`GetListaProdutos` não filtra por tipo de código), o operador clica, e um toast diz que não dá para inserir — sem nenhum caminho alternativo, embora o produto exista e tenha código reduzido.
+
+A trava não tinha fundamento no contrato: **`GetProduto` recebe `Tipocodproduto` por chamada**, não por configuração da empresa. Consultar pelo reduzido num tenant configurado em `'B'` é uma chamada legítima do próprio ERP, não um contorno.
+
+`codigoParaConsulta` passa a devolver uma `ConsultaDeProduto` — `{ codigo, tipoCodigo }` — em vez de só o código: tenta o campo do tipo da sessão e, se vazio, cai para o próximo preenchido (reduzido → barras → referência, o reduzido primeiro entre os alternativos por ser a chave `MatCodRed`, o único campo que todo produto tem), levando junto o tipo que o casa. O tipo viaja do modal até `GetProduto` (`ModalBuscaProduto` → `EntradaRapidaProduto.selecionarDaBusca` → `revisarPorCodigo` → `resolverProduto`), e `null` só sobra para um candidato com os três campos vazios, que o ERP não produz. Como `tipoCodProduto` já compõe `chaveProduto`, o mesmo SKU consultado por campos diferentes ocupa entradas distintas do cache — não há risco de servir o snapshot de uma consulta pela outra.
+
+**O escopo é a busca, de propósito.** O código que o operador **digita** na barra continua sujeito ao tipo da sessão: ali o tipo é a leitura correta do que ele bipou, e adivinhar entre três campos transformaria um erro de digitação em produto errado inserido. É só o candidato escolhido no modal — cujos três códigos o ERP já entregou — que deixa de ser barrado por uma configuração de tela.
+
+**Impact:** alterados — `src/server/routes/erp-proxy.ts` (`queryComEmpresaDaSessao`, injeção na chamada), `src/server/routes/bootstrap.ts` (`Empresa` antes de `Login`), `src/client/domain/precificacao/codigoProduto.ts` (`ConsultaDeProduto`, `CAMPOS_DE_CONSULTA`, `codigoParaConsulta` em cascata), `src/client/features/carrinho/{ModalBuscaProduto.tsx,EntradaRapidaProduto.tsx,useCarrinho.ts}` (`revisarPorCodigo` passa a receber `{ origem, tipoCodigo }`, `resolverProduto` aceita o tipo por chamada); testes — `tests/unit/server/routes/erpProxyEmpresa.spec.ts` (ordem do parâmetro, descarte da empresa do navegador, codificação preservada), `tests/unit/domain/precificacao/codigoProduto.spec.ts` (cascata e o `null` residual), `tests/unit/client/ModalBuscaProduto.spec.tsx` (empresa em `'B'`, com e sem EAN no candidato), `tests/integration/carrinhoSlice.spec.ts`. Verificação: `tsc --noEmit` limpo, ESLint limpo, 1163 testes unit/integração passando, e as duas chamadas do item 1 medidas direto contra o ERP real. **Verificado ao vivo em seguida, na mesma data:** com o dev server apontado ao ERP real, `GET /api/erp/…/GetProduto?Codigoproduto=0000TESTE7894&Tipocodproduto=B` **através do BFF** devolveu o produto completo — o fluxo ponta a ponta que este parágrafo dava como não exercitado.
+
+### AD-206: "Finalizar venda" passa a dizer por que está bloqueado, e "Recebido" volta a ser o que o operador entregou (2026-09-10)
+
+**Origem:** teste manual do usuário contra o ERP real, dois sintomas: (1) o botão de finalizar fica apagado mesmo com os pagamentos aplicados cobrindo o total; (2) o valor que o operador digita aparece "equalizado ao valor total a pagar" na seção de pagamentos aplicados.
+
+#### 1. Quatro travas, um `disabled` mudo
+
+`BotaoFinalizarVenda` recebia `bloqueado: boolean`, e `AcoesFinaisVenda` colapsava nele quatro condições independentes: saldo em aberto, veredito da validação prévia (014), falha de rede e venda sem vendedor (`FR-006` da 012). O botão usava **`disabled` nativo** — que não dispara evento nenhum — então o operador via a pílula apagada, não recebia resposta ao clicar, e não tinha como descobrir qual das quatro pegou. É exatamente o modo de falha que `lib/bloqueio.ts` existe para evitar, e que o resto da base já seguia desde 2026-09-03; este botão ficou de fora.
+
+**A trava real do relato era o vendedor**, medida no tenant: `GetSessao` devolve `VendedorCodigo = 0`, `semVendedorDefault` lê zero como "empresa não configurou default" e `vendedorAtual` nasce `null`. O pagamento estava correto o tempo todo — a leitura do usuário ("o saldo fecha e mesmo assim não libera") era exata, e a tela é que não nomeava a causa.
+
+`motivoDeBloqueioDoFinalizar` (pura, exportada, testada sem montar componente) devolve a **frase** de cada trava, e o botão passa a `aria-disabled` + `acaoBloqueavel`: continua apagado e fora da ordem de TAB, mas o clique notifica o motivo. **A ordem é de precedência, não de declaração:** falha de rede primeiro (é a mais transitória e tem saída imediata), depois vendedor e pagamento (gestos que faltam), e o veredito por último — anunciá-lo antes mandaria o operador conferir cliente e condição quando o que falta é lançar o pagamento. Trocar o `boolean` por um tipo com as quatro condições nomeadas é o que força cada trava nova a trazer a sua frase junto.
+
+Nada foi afrouxado: as quatro condições continuam valendo, e a venda sem vendedor segue recusada — o ERP não aceita NFCe sem ele.
+
+#### 2. "Recebido" mostrava o valor da venda, não o da cédula
+
+`derivarValores` já separava os dois números corretamente — `valorAplicado = min(informado, saldo)` e `valorRecebido = informado` — mas **a tela lia o lado errado nos dois lugares**: a métrica rotulada "Recebido" (`TotalDaVenda.tsx`) exibia `totalAplicado`, e a linha de cada forma exibia `valorAplicado`. Quem entregava R$ 100 numa venda de R$ 50 lia "Recebido R$ 50,00". O saldo e o troco sempre estiveram certos; era só a apresentação.
+
+`SaldoPagamento` ganha `totalRecebido` = Σ (`valorRecebido ?? valorAplicado`) dos aprovados — `??` porque só dinheiro carrega `valorRecebido` (I3), e nas demais formas o que entrou é o que foi aplicado. Os dois totais coexistem porque respondem a perguntas diferentes: **`totalAplicado` fecha a nota, `totalRecebido` fecha a gaveta**, e a diferença entre eles é exatamente o troco. `valorAplicado` continua sendo o que vai ao ERP em `FormaValor` — nada no payload mudou.
+
+**Impact:** alterados — `src/client/domain/pagamento/saldoPagamento.ts` (`totalRecebido` em `SaldoPagamento`/`calcularSaldo`), `src/client/features/pagamento/{TotalDaVenda.tsx,ListaPagamentosAplicados.tsx}`, `src/client/features/finalizacao-suspensao/{BotaoFinalizarVenda.tsx,AcoesFinaisVenda.tsx}` (`motivoBloqueio`, `motivoDeBloqueioDoFinalizar`, `CondicoesDeFinalizacao`); testes — `tests/unit/domain/pagamento/saldoPagamento.spec.ts` (troco, mistura de formas, não-aprovado), `tests/integration/finalizacaoSuspensao.spec.ts` (a frase de cada trava e a precedência; as asserções deixaram de conferir só "está apagado"). Verificação: `tsc --noEmit` limpo, ESLint limpo, 1170 testes unit/integração passando; `VendedorCodigo = 0` confirmado no `/api/bootstrap` do tenant real. **Não verificado ao vivo:** a leitura das duas telas corrigidas no navegador — a validação foi por teste e pela medição do bootstrap.
+
+### AD-207: NFCe rejeitada é um desfecho próprio — a mensagem do ERP vai à tela e o caixa é liberado ao fechar (2026-09-10)
+
+**Origem:** pedido do usuário — *"Tem que corrigir o comportamento dos casos que a NFCe é rejeitada. Quando ela é rejeitada, devemos transmitir em tela a resposta que o ERP nos retorna, geralmente com o motivo do erro. […] depois de fechar a informacao, limpar a tela para uma nova NFCe, pois nesses casos, só o fato de enviar o ERP o ERP já salva a NFCe lá."*
+
+#### 1. O motivo da rejeição era descartado na fronteira
+
+`CheckoutFaturarNFCe.NotaFiscal` (YAML, linha 1604) tem cinco campos que só existem para este caso: `NumeroNota`, `SerieNota`, `Autorizada`, `ErroCodigo` e `ErroMensagem`. O Checkout **não lia nenhum deles**. `notaFiscalRespostaSchema` exige `PDFImpressao`/`XMLImpressao` com `min(1)` — correto para decidir impressão —, e numa rejeição os dois vêm vazios, então o `safeParse` reprovava o corpo inteiro e o bloco `NotaFiscal` era jogado fora junto com a explicação da SEFAZ. A tela caía em `messages[]` (que nessa resposta vem vazio) e daí no texto genérico *"O ERP respondeu sem a nota fiscal pronta para impressão"* — enquanto o ERP tinha dito, ali no corpo, `ErroCodigo: 539` e a rejeição por extenso.
+
+`notaFiscalRejeitadaSchema` lê os cinco campos, todos opcionais: nenhum deles é o discriminante. Quem discrimina é a **presença do bloco `NotaFiscal`** somada a `Autorizada !== 'S'`. `inteiroErp` em `NumeroNota`/`ErroCodigo` porque `int64` chega como string JSON (AD-165).
+
+#### 2. Rejeitada e recusada são desfechos opostos, não graus da mesma falha
+
+Até aqui todo 2xx sem nota pronta virava `falha-negocio`: um estado só, com a instrução *"a venda continua aberta no caixa, corrija e finalize de novo"*. Essa instrução é **certa** quando a chamada não virou documento e **perigosa** quando virou: o ERP grava a NFCe rejeitada, e reenviar a mesma venda emite uma segunda nota para a mesma compra.
+
+A separação é feita pela presença do bloco `NotaFiscal`, que é a evidência de gravação:
+
+| Resposta do ERP | Estado | Venda no caixa |
+|---|---|---|
+| `NotaFiscal` com PDF/XML | `sucesso` | limpa no envio |
+| `NotaFiscal` sem PDF/XML, `Autorizada ≠ 'S'` | `nfce-rejeitada` | limpa **ao fechar o aviso** |
+| sem `NotaFiscal` (recusa em `messages[]`, HTTP 4xx/5xx, 401, corpo ilegível) | `falha-negocio` | continua aberta |
+| sem resposta | `falha-rede` | continua aberta, reenvio sob confirmação (AD-038) |
+
+`Autorizada = 'S'` **sem** documento é resposta contraditória, não rejeição: cai em `falha-negocio` e preserva a venda — descartá-la apagaria uma compra com base numa resposta que o contrato não sustenta.
+
+#### 3. A limpeza mora no fechamento, não na chegada da resposta
+
+`descartar()` deixa de ser só "volta a ocioso": em `nfce-rejeitada` é ele que chama `encerrarSessaoDeVenda()` (carrinho + cache de produto, pagamentos, auditoria, identidade, e `abrirSessaoDeVenda('NOVA')` — a mesma sequência do sucesso, extraída para uma função só para as duas não divergirem). Limpar na chegada da resposta faria carrinho, cliente e pagamentos sumirem por trás do modal **enquanto o operador ainda lê o motivo** — o que parece uma venda perdida por erro do Checkout, e não o comportamento correto. Pelo mesmo motivo a cópia do diálogo anuncia a limpeza antes de ela acontecer ("Ao fechar, o caixa fica livre para uma nova NFCe").
+
+`nfce-rejeitada` entra na trava de `iniciar` ao lado de `enviando` e `falha-rede`: enquanto o aviso está aberto, nenhum novo `FaturarNFCe` parte — é o único jeito de garantir que a segunda nota não saia. E **nenhum `FATURAMENTO_FALHOU` é registrado**: aquele evento existe para viajar no `Log` do reenvio (`FR-006` da 001), e aqui não há reenvio.
+
+`DialogoErroFaturamento` ganhou a variante em vez de um componente novo: a moldura, o foco e a acessibilidade são os mesmos, e o que muda são quatro frases mais o número/série da nota gravada (em `font-mono`, como todo valor tabular). O Pencil não desenha nó para esta variante — verificado no `.pen` via MCP em 2026-09-10.
+
+**Impact:** alterados — `src/shared/schemas/faturarNFCe.schema.ts` (`notaFiscalRejeitadaSchema`, `faturarNFCeRejeitadaOutputSchema`), `src/client/services/faturamento/faturarNFCeMapper.ts` (estado `rejeitada`, `foiAutorizada`, `motivoDaRejeicao`), `src/client/services/faturamento/faturarNFCeMutation.ts` (`nfce-rejeitada` em `ResultadoFaturamento`), `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts` (estado novo, `encerrarSessaoDeVenda` extraída, `descartar` com efeito, trava em `iniciar`), `src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx` (`Desfecho`, `COPIA`, `identificacaoDaNota`), `src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx`; testes — `tests/unit/services/faturamento/faturarNFCeMapper.spec.ts` (novo: a suíte que faltava ao mapper), `tests/integration/finalizacaoSuspensao.spec.ts` (máquina de estados e a janela), `tests/e2e/support/erp-mock.ts` (`faturarNFCeRejeitada`) e `tests/e2e/finalizacao-suspensao.spec.ts`. Verificação: `tsc --noEmit` limpo, 1188 testes unit/integração passando, E2E de finalização executado contra o mock com o novo cenário. **Não verificado ao vivo:** uma rejeição real da SEFAZ contra o tenant — os valores de `Autorizada`/`ErroCodigo` vêm do contrato e do que o mock reproduz. **⚠️ Essa lacuna foi fechada no mesmo dia por AD-208, que descobriu que a resposta real não tem envelope e que nada disto funcionava contra o ERP — leia AD-208 antes de mexer neste código.**
+
+### AD-208: `FaturarNFCe` responde **sem envelope** — corrige AD-165 e conserta AD-207, que não funcionava contra o ERP real (2026-09-10)
+
+**Origem:** o usuário desconfiou da regra recém-escrita em AD-207 — *"Acho que o teste 2 está errado, tenta emitir uma nota ai com cliente default, vendedor 8 e produto 50395 pra ver. Esse ai é recusada no ERP"* — e mandou medir em vez de argumentar. A emissão fiscal real foi feita pela SPA, contra o tenant `c0lj6mvzeh`, com a resposta crua capturada no navegador. Ele estava certo, e o defeito era maior do que o apontado.
+
+#### 1. O envelope `OutCheckoutFaturarNFCe` não existe na resposta real
+
+Chaves da raiz, medidas: `Empresa`, `SuspenderOuFaturar`, `clienteCodigo`, `vendedorCodigo`, `CondicaoPagamentoCodigo`, `NumeroNota`, `CadSerieNFCe`, `UsuarioCodigo`, `Log`, `produtos`, `FormasDePagamento`, **`NotaFiscal`**. Sem envelope e sem `messages` — o `ApiCentriumOAuth.yaml` (linha 725) desenha os dois, o ERP não entrega nenhum.
+
+**Isto corrige AD-165.** Aquele levantamento classificou `GetDav` e `FaturarNFCe` como os dois endpoints que "mantêm envelope + `messages`", e por isso `semEnvelope` foi aplicado a todos os outros e **não** a este. A consequência estava em produção desde então, silenciosa: exigindo `OutCheckoutFaturarNFCe`, **nenhuma** resposta real casava. A rejeição perdia o motivo (o sintoma que AD-207 tentou corrigir), e — pior — **uma NFCe autorizada também seria reportada como falha de negócio**, com o documento emitido no ERP e a venda presa no caixa, convidando o operador a emitir a segunda. O caminho de sucesso nunca foi exercitado contra o ERP real; o `erp-mock` reproduzia a forma do YAML e a suíte inteira passava.
+
+Os dois schemas passam a usar `semEnvelope('OutCheckoutFaturarNFCe', …)`, que aceita as duas formas e devolve sempre o conteúdo interno. `messages` continua lido da **raiz**, por `suspenderNFCeOutputSchema`: na forma real ele não existe, e na do YAML é irmão do envelope, não filho.
+
+#### 2. A regra de AD-207 estava certa; o caminho até ela é que não existia
+
+O discriminante — bloco `NotaFiscal` presente **e** `Autorizada ≠ 'S'` — resistiu à medição: o bloco veio, com `Autorizada: "R"`. Duas correções de detalhe que só o ERP real revelou:
+
+- **`Autorizada` vem `'R'`** (de "Rejeitada"), não `'N'` como o mock supunha. `foiAutorizada` comparava com `'S'` e sobreviveu por construção — o conjunto de valores possíveis não está documentado em lugar nenhum, e é por isso que a comparação é contra o único valor conhecido de sucesso.
+- **`NumeroNota` volta `"0"` e `SerieNota` `""`** numa rejeição, embora o documento exista: o número real (`Nota:1305/14`) aparece só dentro do texto de `ErroMensagem`. `identificacaoDaNota` já omitia o `0`, então a linha simplesmente não aparece — ver item 51 de `PENDENCIES.md`.
+
+**A premissa do usuário ficou provada de forma direta:** duas emissões seguidas da mesma venda geraram `Nota:1304/14` e `Nota:1305/14`. Cada envio grava uma NFCe nova no ERP — que é exatamente o motivo de o caixa ser limpo ao fechar o aviso.
+
+#### 3. O que ficou por conta do ERP
+
+`ErroMensagem` devolve um documento HTML inteiro (CSS do ERP, bloco "Sugestão da IA", link de helpdesk) em vez da mensagem do Fisco. Por decisão do usuário, **o Checkout não garimpa nem sanitiza**: é a origem que deve mudar (itens 50 e 51 de `PENDENCIES.md`). Até lá, o diálogo exibe o HTML como texto. O acento vem correto — não há problema de encoding.
+
+O `erp-mock` passou a reproduzir a forma **real** (flat, `Autorizada: 'R'`, `NumeroNota: '0'`) no cenário de rejeição, e mantém a forma do YAML no de sucesso: é o que faz o E2E exercitar a tolerância às duas.
+
+**Impact:** alterados — `src/shared/schemas/faturarNFCe.schema.ts` (`semEnvelope` nos dois outputs), `src/client/services/faturamento/faturarNFCeMapper.ts` (acesso direto a `.NotaFiscal`, `messages` da raiz); testes — `tests/unit/services/faturamento/faturarNFCeMapper.spec.ts` (bloco novo "forma real do ERP", com sucesso e rejeição sem envelope), `tests/e2e/support/erp-mock.ts`. Verificação: `tsc --noEmit` limpo, 64 testes das duas suítes de faturamento passando, **e o ciclo completo confirmado ao vivo contra o ERP real** — a segunda emissão exibiu "NFCe rejeitada / O documento já ficou registrado no ERP" com o motivo do ERP, e "Fechar e liberar o caixa" zerou carrinho, pagamentos e vendedor. **Não verificado ao vivo:** uma NFCe **autorizada** de verdade — o caminho de sucesso sem envelope está coberto só por teste unitário, porque exigiria um SKU com cenário tributário completo.

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   ErroCadastroRecusado,
+  ErroClienteIncompleto,
   ErroClienteNaoEncontrado,
   fetchClientePorCodigo,
   fetchClientePorDocumento,
@@ -104,6 +105,23 @@ describe('fetchClientePorDocumento', () => {
 
     await expect(fetchClientePorDocumento('99999999999', { erpClient })).rejects.toBeInstanceOf(
       ErroClienteNaoEncontrado,
+    );
+  });
+
+  it('recusa o cliente achado mas devolvido sem nome (AD-204)', async () => {
+    // O ERP real responde assim para **todo** cliente: `CodCliente` e
+    // `ListaPreco` corretos, cadastro em branco. `CodCliente > 0` prova que o
+    // `For Each` achou o registro, não que o SDT foi preenchido — sem esta
+    // guarda a venda seguiria com o campo cliente vazio, e o operador emitiria
+    // a NFCe sem saber para quem vendeu.
+    const { erpClient } = clienteDe([
+      respostaJson({
+        Cliente: { ...clienteCheckoutDe(), CodCliente: 3, nome: '', cpf: '', celular: '' },
+      }),
+    ]);
+
+    await expect(fetchClientePorDocumento('11626135053', { erpClient })).rejects.toBeInstanceOf(
+      ErroClienteIncompleto,
     );
   });
 

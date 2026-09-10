@@ -105,9 +105,16 @@ function ehMeioPagtoNfeConhecido(valor: string): valor is MeioPagtoNFe {
  * Descarta, isoladamente, cada forma cujo `FormaMeioPagtoNFe` não pertence à
  * união fechada conhecida — em vez de reprovar a condição inteira.
  *
+ * **O que a união contém (AD-204):** os **códigos** de dois dígitos do domínio
+ * `NFCe_FormaPagto` (`'01'`, `'17'`, `'99'`…), que é o que `PCheckout_GetSessao`
+ * publica neste campo — não os nomes do enum. Enquanto a união listou nomes,
+ * este filtro descartou **todas** as formas de **todas** as condições do ERP
+ * real, e o descarte silencioso descrito abaixo escondeu o defeito por completo:
+ * o operador via o painel de pagamento vazio, sem erro nenhum. O colapso total
+ * do catálogo agora é gritado por `pagamentoMapper.ts`.
+ *
  * **Por que o descarte silencioso (com `console.warn`) é preferível ao erro
- * duro aqui:** `MeioPagtoNFe` é uma união fechada sobre o domínio
- * `NFCe_FormaPagto` da KB do ERP (AD-023). Um cadastro novo no ERP — uma forma
+ * duro aqui:** um cadastro novo no ERP — uma forma
  * de pagamento criada pelo lojista depois do último deploy do Checkout — pode
  * usar um `FormaMeioPagtoNFe` que a união ainda não conhece. Se o schema
  * falhasse o array inteiro (como faria um `z.enum` comum dentro de

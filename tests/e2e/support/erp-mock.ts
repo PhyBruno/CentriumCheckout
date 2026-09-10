@@ -55,11 +55,22 @@ export interface ConfigMockErp {
   /** Status HTTP de `ValidarNFCe` — `500` exercita `INDISPONIVEL` (`FR-009`). */
   statusValidarNFCe: number;
   /**
-   * Devolve `2xx` **sem** `PDFImpressao`/`XMLImpressao` — é como o ERP recusa
-   * uma NFCe não autorizada; o Checkout trata como falha de negócio, nunca como
-   * sucesso parcial (`contracts/faturamento-api.md`).
+   * Devolve `2xx` **sem** o bloco `NotaFiscal` e com a recusa em `messages[]` —
+   * é como o ERP responde quando a chamada não chegou a virar documento. O
+   * Checkout trata como falha de negócio e a venda continua no caixa
+   * (`contracts/faturamento-api.md`).
    */
   faturarSemNotaFiscal: boolean;
+  /**
+   * Devolve `2xx` **com** o bloco `NotaFiscal` preenchido, `Autorizada = 'N'` e
+   * `PDFImpressao`/`XMLImpressao` vazios — a NFCe rejeitada, já gravada do lado
+   * do ERP (correção do usuário, 2026-09-10).
+   *
+   * Distinto de `faturarSemNotaFiscal` justamente pelo bloco: é ele que separa
+   * "gravou e a SEFAZ recusou" (o caixa é liberado) de "não virou documento"
+   * (a venda continua).
+   */
+  faturarNFCeRejeitada: boolean;
   /**
    * `GetDav` recusa o documento — é como o ERP responde quando outro operador
    * já o faturou. O Checkout não tem lock nenhum (`FR-010`/AD-052): só reage
@@ -141,6 +152,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   vereditoValidarNFCe: 'ACEITA',
   statusValidarNFCe: 200,
   faturarSemNotaFiscal: false,
+  faturarNFCeRejeitada: false,
   davJaFaturado: false,
   pixAtivo: true,
   /**
@@ -615,14 +627,16 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
          * **Sem forma de pagamento** — um DAV é um documento pendente de
          * cobrança, e é o operador quem escolhe como recebê-lo no Checkout.
          *
-         * Antes havia aqui uma forma com `FormaMeioPagtoNFe: '01'`, o código
-         * numérico da NFe. O domínio `Nfce_FormaPagto` do ERP usa **nomes**
-         * (AD-023, os mesmos que `GetSessao` devolve no catálogo abaixo), então
-         * `importarFormasDePagamento` a descartava como meio desconhecido, com
-         * aviso no console: a forma nunca chegou à venda em nenhum momento da
-         * história desta suíte.
+         * Antes havia aqui uma forma com `FormaMeioPagtoNFe: '01'`. Ela foi
+         * removida por ser descartada como "meio desconhecido" — diagnóstico
+         * que **estava errado**: `'01'` é exatamente o que o ERP publica
+         * (AD-204), e quem não o reconhecia era o Checkout. A forma nunca chegou
+         * à venda em nenhum momento da história desta suíte, mas por defeito
+         * nosso, não por defeito da fixture.
          *
-         * Corrigi-la para `'Dinheiro'` teria efeito colateral: um pagamento
+         * A remoção **fica**, agora pelo motivo que já era o bom: um DAV é um
+         * documento pendente de cobrança, e quem escolhe como recebê-lo é o
+         * operador. Restaurá-la teria efeito colateral: um pagamento
          * importado entra `APROVADO`, e pagamento aprovado **congela a venda**
          * (I7) — o que contradiz os dois cenários que este DAV existe para
          * exercitar, "item novo é precificado normalmente" e "segundo documento
@@ -685,11 +699,13 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
  * e o que interessa ao E2E é que a venda volte **paga** — o meio em si não muda
  * nada no caminho de retomada.
  *
- * `FormaMeioPagtoNFe: 'Dinheiro'`, e nunca o código numérico `'01'` da NFe: o
- * domínio `Nfce_FormaPagto` do ERP usa nomes (AD-023), os mesmos do catálogo de
- * `GetSessao` acima, e com o código numérico `importarFormasDePagamento`
- * descarta a forma em silêncio — foi assim que a chegada do pagamento à venda
- * ficou sem verificação até 2026-09-04.
+ * `FormaMeioPagtoNFe: '01'` — o **código** da NFe, como o ERP real publica
+ * (AD-204). A redação anterior deste bloco afirmava o contrário ("nunca o código
+ * numérico; o domínio usa nomes, AD-023") e **estava errada**: os
+ * `ControlValues` de `NFCe_FormaPagto` são `Character(2)`, pares
+ * `descrição:código`, e é o código que trafega. Enquanto o mock falou nomes, ele
+ * concordou com um Checkout que também falava nomes, e a suíte inteira passou
+ * verde contra um ERP imaginário — o item 42 de `PENDENCIES.md` outra vez.
  *
  * O valor é **derivado** do documento, não fixo: os dois rascunhos sintéticos
  * têm totais diferentes, e um literal aqui dessincronizaria do primeiro produto
@@ -702,7 +718,7 @@ function quitacaoDoRascunho(documento: Record<string, unknown>): Record<string, 
 
   return {
     FormaCodigo: String(1), // int64 — 'DINHEIRO' do catálogo de `GetSessao`
-    FormaMeioPagtoNFe: 'Dinheiro',
+    FormaMeioPagtoNFe: '01',
     FormaValor: String(total), // double
     FormaIntegracaoCartao: ' ',
     FormaFpgUtiCar: '',
@@ -818,7 +834,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(1), // int64
             FormaDescricao: 'DINHEIRO',
             FormaEntrada: 'S',
-            FormaMeioPagtoNFe: 'Dinheiro',
+            FormaMeioPagtoNFe: '01',
             // Real: vem `" "` (espaço), nao `""`, pra toda forma deste
             // tenant — confirmado ao vivo contra o ERP real 2026-09-04.
             FormaIntegracaoCartao: ' ',
@@ -832,7 +848,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(2), // int64
             FormaDescricao: 'CARTAO CREDITO',
             FormaEntrada: 'N',
-            FormaMeioPagtoNFe: 'CartaoCredito',
+            FormaMeioPagtoNFe: '03',
             FormaIntegracaoCartao: '1',
             FormaTipoTransacaoTEF: 'CREDITO',
             FormaFpgUtiCar: '',
@@ -845,7 +861,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(4), // int64
             FormaDescricao: 'VALE DEVOLUCAO',
             FormaEntrada: 'N',
-            FormaMeioPagtoNFe: 'Outros',
+            FormaMeioPagtoNFe: '99',
             FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: '',
             FormaFpgUtiCar: 'VDV',
@@ -854,7 +870,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(3), // int64
             FormaDescricao: 'PIX',
             FormaEntrada: 'S',
-            FormaMeioPagtoNFe: 'Pix',
+            FormaMeioPagtoNFe: '17',
             FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: '',
             FormaFpgUtiCar: '',
@@ -863,7 +879,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(5), // int64
             FormaDescricao: 'CARTAO DEBITO',
             FormaEntrada: 'N',
-            FormaMeioPagtoNFe: 'CartaoDebito',
+            FormaMeioPagtoNFe: '04',
             FormaIntegracaoCartao: '1',
             FormaTipoTransacaoTEF: 'DEBITO',
             FormaFpgUtiCar: '',
@@ -876,7 +892,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(6), // int64
             FormaDescricao: 'PIX ESTATICO',
             FormaEntrada: 'S',
-            FormaMeioPagtoNFe: 'PixEstatico',
+            FormaMeioPagtoNFe: '20',
             FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: '',
             FormaFpgUtiCar: '',
@@ -885,7 +901,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(7), // int64
             FormaDescricao: 'VALE ALIMENTACAO',
             FormaEntrada: 'N',
-            FormaMeioPagtoNFe: 'ValeAlimentacao',
+            FormaMeioPagtoNFe: '10',
             FormaIntegracaoCartao: '2',
             FormaTipoTransacaoTEF: '',
             FormaFpgUtiCar: '',
@@ -918,7 +934,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(8), // int64
             FormaDescricao: 'BOLETO 30 DIAS',
             FormaEntrada: 'S',
-            FormaMeioPagtoNFe: 'BoletoBancario',
+            FormaMeioPagtoNFe: '15',
             FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: '',
             FormaFpgUtiCar: '',
@@ -927,7 +943,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(9), // int64
             FormaDescricao: 'CREDIARIO LOJA',
             FormaEntrada: 'S',
-            FormaMeioPagtoNFe: 'CreditoLoja',
+            FormaMeioPagtoNFe: '05',
             FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: '',
             FormaFpgUtiCar: '',
@@ -936,7 +952,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaCodigo: String(10), // int64
             FormaDescricao: 'DUPLICATA MERCANTIL',
             FormaEntrada: 'N',
-            FormaMeioPagtoNFe: 'DuplicataMercantil',
+            FormaMeioPagtoNFe: '14',
             FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: '',
             FormaFpgUtiCar: '',
@@ -1230,6 +1246,30 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // `SUSPENDER` não emite documento fiscal: a resposta volta sem
       // `NotaFiscal`, como o ERP real (`contracts/faturamento-api.md`).
       const suspendendo = retrato?.['SuspenderOuFaturar'] === 'SUSPENDER';
+
+      // NFCe gravada e **não** autorizada: o bloco vem completo, com o motivo
+      // em `ErroMensagem`, e sem nada para imprimir.
+      //
+      // **Sem envelope**, como o ERP real (medido em 2026-09-10, corrigindo o
+      // que AD-165 registrou): `NotaFiscal` na raiz, ao lado do retrato ecoado,
+      // e nenhum `messages`. `Autorizada` vem `'R'`, que é o valor real — não
+      // `'N'`. O caminho de sucesso logo abaixo ainda usa a forma do YAML, de
+      // propósito: é o que mantém o E2E exercitando a tolerância às duas.
+      if (!suspendendo && config.faturarNFCeRejeitada) {
+        return reply.send({
+          ...(retrato ?? {}),
+          NotaFiscal: {
+            NumeroNota: String(0), // o ERP real zera este campo na rejeição
+            SerieNota: '',
+            Autorizada: 'R',
+            ErroCodigo: 539,
+            ErroMensagem: 'Rejeicao: Duplicidade de NF-e (sintetico)',
+            XMLImpressao: '',
+            PDFImpressao: '',
+          },
+        });
+      }
+
       const notaFiscal =
         suspendendo || config.faturarSemNotaFiscal
           ? {}

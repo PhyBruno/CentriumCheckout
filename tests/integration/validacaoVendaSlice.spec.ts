@@ -41,6 +41,7 @@ import {
 } from '../../src/client/stores/slices/validacaoVendaSlice';
 import type { VendaState } from '../../src/client/stores/vendaStore';
 import { enviarValidarNFCe } from '../../src/client/services/validacao/validarNFCeMutation';
+import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import { formaDe } from '../support/pagamento';
 
 /**
@@ -65,7 +66,7 @@ const DINHEIRO = formaDe({
   codigo: 1,
   descricao: 'DINHEIRO',
   entrada: 'S',
-  meioPagtoNFe: 'Dinheiro',
+  meioPagtoNFe: MEIO_PAGTO.Dinheiro,
 });
 
 /** Crediário: é a forma cujo `fpgUtiCar` o ERP soma em `&TotalCrediario`. */
@@ -73,7 +74,7 @@ const CREDIARIO = formaDe({
   codigo: 7,
   descricao: 'CREDIARIO',
   entrada: 'N',
-  meioPagtoNFe: 'Outros',
+  meioPagtoNFe: MEIO_PAGTO.Outros,
   fpgUtiCar: 'CRD',
 });
 
@@ -81,7 +82,7 @@ const CARTAO_TEF = formaDe({
   codigo: 2,
   descricao: 'CARTAO CREDITO',
   entrada: 'N',
-  meioPagtoNFe: 'CartaoCredito',
+  meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
   integracaoCartao: '1',
 });
 
@@ -258,7 +259,7 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
     const primeira = store.getState().validarInsercao(
       {
         formaCodigo: DINHEIRO.codigo,
-        meioPagtoNFe: 'Dinheiro',
+        meioPagtoNFe: MEIO_PAGTO.Dinheiro,
         valor: centavos(5_000),
         fpgUtiCar: '',
         entrada: 'S',
@@ -271,7 +272,7 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
     const segunda = await store.getState().validarInsercao(
       {
         formaCodigo: DINHEIRO.codigo,
-        meioPagtoNFe: 'Dinheiro',
+        meioPagtoNFe: MEIO_PAGTO.Dinheiro,
         valor: centavos(5_000),
         fpgUtiCar: '',
         entrada: 'S',
@@ -680,7 +681,7 @@ describe('venda vinda de documento não fica presa no gate', () => {
     store.getState().importarFormasDePagamento([
       {
         formaCodigo: DINHEIRO.codigo,
-        formaMeioPagtoNFe: 'Dinheiro',
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
         valor: centavos(10_000),
         tef: null,
         pixGuid: null,
@@ -700,7 +701,7 @@ describe('venda vinda de documento não fica presa no gate', () => {
     store.getState().importarFormasDePagamento([
       {
         formaCodigo: DINHEIRO.codigo,
-        formaMeioPagtoNFe: 'Dinheiro',
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
         valor: centavos(4_000),
         tef: null,
         pixGuid: null,

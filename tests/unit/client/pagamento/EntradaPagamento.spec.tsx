@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { EntradaPagamento } from '../../../../src/client/features/pagamento/EntradaPagamento';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
+import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import { formaDe } from '../../../support/pagamento';
 import { linhaDe } from '../../../support/precificacao';
 
@@ -45,7 +46,9 @@ describe('EntradaPagamento — campo trava sem forma escolhida (pedido do usuár
 
   it('com forma escolhida, o campo aceita a digitação normalmente', async () => {
     const usuario = userEvent.setup();
-    render(createElement(EntradaPagamento, { forma: formaDe({ meioPagtoNFe: 'Dinheiro' }) }));
+    render(
+      createElement(EntradaPagamento, { forma: formaDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro }) }),
+    );
 
     const campo = screen.getByTestId('campo-valor-recebido');
     expect(campo).not.toHaveAttribute('aria-disabled', 'true');

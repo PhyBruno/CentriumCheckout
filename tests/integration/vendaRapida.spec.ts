@@ -43,6 +43,7 @@ import {
 } from '../../src/client/stores/slices/pagamentoSlice';
 import { useVendaStore, type VendaState } from '../../src/client/stores/vendaStore';
 import { criarValidacaoVendaSlice } from '../../src/client/stores/slices/validacaoVendaSlice';
+import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import { formaDe, validacaoDepsInertes } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 
@@ -60,8 +61,8 @@ import { linhaDe } from '../support/precificacao';
 
 const TOTAL_PADRAO = 10_000; // R$ 100,00 em centavos
 
-const DINHEIRO = formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: 'Dinheiro' });
-const PIX = formaDe({ codigo: 4, descricao: 'PIX', meioPagtoNFe: 'Pix' });
+const DINHEIRO = formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: MEIO_PAGTO.Dinheiro });
+const PIX = formaDe({ codigo: 4, descricao: 'PIX', meioPagtoNFe: MEIO_PAGTO.Pix });
 
 const A_VISTA: CondicaoPagamento = {
   codigo: 1,
@@ -82,7 +83,7 @@ function atalhoDe(opcoes: Partial<AtalhoVendaRapida> = {}): AtalhoVendaRapida {
     nome: opcoes.nome ?? 'Dinheiro à vista',
     condicaoCodigo: opcoes.condicaoCodigo ?? A_VISTA.codigo,
     formaCodigo: opcoes.formaCodigo ?? DINHEIRO.codigo,
-    meioPagtoNFe: opcoes.meioPagtoNFe ?? 'Dinheiro',
+    meioPagtoNFe: opcoes.meioPagtoNFe ?? MEIO_PAGTO.Dinheiro,
     encerraOperacao: opcoes.encerraOperacao ?? true,
   };
 }
@@ -330,7 +331,7 @@ describe('acionarCenario — guards G1..G4 recusam sem tocar na venda (T008)', (
     store.getState().importarFormasDePagamento([
       {
         formaCodigo: DINHEIRO.codigo,
-        formaMeioPagtoNFe: 'Dinheiro',
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
         valor: centavos(1_000),
         tef: null,
         pixGuid: null,

@@ -118,11 +118,7 @@ describe('parsearCenarios — o item fora do padrão não interrompe os demais (
 
   it('preserva a ordem em que o ERP devolveu — E5 depende dela para o desempate', () => {
     const cenarios = parsearCenarios(
-      JSON.stringify([
-        '1;A;1;A VISTA;Primeiro;True;F6',
-        'lixo',
-        '2;B;1;A VISTA;Segundo;False;F6',
-      ]),
+      JSON.stringify(['1;A;1;A VISTA;Primeiro;True;F6', 'lixo', '2;B;1;A VISTA;Segundo;False;F6']),
     );
 
     expect(cenarios.map((cenario) => cenario.formaCodigo)).toEqual([1, 2]);

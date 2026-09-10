@@ -12,7 +12,10 @@ import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
-import { rotuloTipoCodigoProduto } from '../../domain/precificacao/codigoProduto';
+import {
+  rotuloTipoCodigoProduto,
+  type ConsultaDeProduto,
+} from '../../domain/precificacao/codigoProduto';
 import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../hotkeys/mapaAtalhos';
 import {
   ZERO_CENTAVOS,
@@ -565,10 +568,13 @@ export function EntradaRapidaProduto({
    * (`'S'`/`'B'`), então a prévia só custaria uma confirmação a mais no ritmo
    * do caixa. Os outros três valores continuam abrindo a revisão na barra.
    */
-  async function resolverEExibir(codigo: string, origemForcada?: 'BUSCA'): Promise<void> {
+  async function resolverEExibir(
+    codigo: string,
+    opcoes?: { origem?: 'BUSCA'; tipoCodigo?: string },
+  ): Promise<void> {
     setOcupado(true);
     try {
-      const resultado = await revisarPorCodigo(codigo, origemForcada);
+      const resultado = await revisarPorCodigo(codigo, opcoes);
       if (resultado.situacao === 'recusado') {
         campoCodigo.current?.focus();
         return;
@@ -595,22 +601,27 @@ export function EntradaRapidaProduto({
   }
 
   /**
-   * Candidato escolhido no modal de busca (`CART-01`) — o modal só devolve o
-   * `CodigoProduto`; carregar no campo, resolver via `GetProduto` e decidir
-   * entre inserir direto e mostrar a revisão é responsabilidade desta barra,
-   * não do modal.
+   * Candidato escolhido no modal de busca (`CART-01`) — o modal só devolve a
+   * consulta (código + `Tipocodproduto` que o casa); carregar no campo,
+   * resolver via `GetProduto` e decidir entre inserir direto e mostrar a
+   * revisão é responsabilidade desta barra, não do modal.
+   *
+   * O `tipoCodigo` da consulta acompanha a chamada em vez de valer o da sessão
+   * (AD-205): o campo escolhido pode não ser o que a empresa configura — é o
+   * caso do produto sem código de barras num tenant em `'B'`, que antes a
+   * busca listava e nenhum caminho conseguia inserir.
    *
    * A decisão em si mora em `resolverEExibir`, o mesmo núcleo do TAB: desde a
    * correção do usuário de 2026-09-03 os dois caminhos seguem o critério
    * idêntico, e duplicá-lo aqui deixaria a barra com duas regras que podem
    * divergir.
    */
-  async function selecionarDaBusca(codigoProduto: string): Promise<void> {
+  async function selecionarDaBusca(consulta: ConsultaDeProduto): Promise<void> {
     if (ocupado) {
       return;
     }
-    setTexto(codigoProduto);
-    await resolverEExibir(codigoProduto, 'BUSCA');
+    setTexto(consulta.codigo);
+    await resolverEExibir(consulta.codigo, { origem: 'BUSCA', tipoCodigo: consulta.tipoCodigo });
   }
 
   /**
@@ -1136,8 +1147,8 @@ export function EntradaRapidaProduto({
         onFechar={() => {
           setBuscaAberta(false);
         }}
-        onProdutoSelecionado={(codigoProduto) => {
-          void selecionarDaBusca(codigoProduto);
+        onProdutoSelecionado={(consulta) => {
+          void selecionarDaBusca(consulta);
         }}
       />
     </div>

@@ -7,8 +7,10 @@ import type { CheckoutFaturarNFCe } from '../../src/client/domain/venda/montarRe
 import { DialogoDocumentoFiscal } from '../../src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal';
 import {
   AcoesFinaisVenda,
+  motivoDeBloqueioDoFinalizar,
   BarraAtalhosVenda,
   ProvedorFinalizacaoVenda,
+  useFinalizacaoVenda,
 } from '../../src/client/features/finalizacao-suspensao/AcoesFinaisVenda';
 import {
   useFinalizarOuSuspenderVenda,
@@ -206,6 +208,117 @@ describe('falha de negócio — reenvio livre (T012, research.md D2)', () => {
 
     expect(cenario.enviados).toHaveLength(2);
     expect(result.current.estado.tipo).toBe('sucesso');
+  });
+
+  it('mantém a venda no caixa — nada é limpo numa recusa sem documento gravado', async () => {
+    const cenario = montarCenario([{ estado: 'falha-negocio', mensagem: 'Cliente sem CPF.' }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+    act(() => {
+      result.current.descartar();
+    });
+
+    expect(useVendaStore.getState().linhas).toHaveLength(1);
+  });
+});
+
+/**
+ * NFCe rejeitada — o ERP gravou o documento (correção do usuário, 2026-09-10).
+ *
+ * O que separa este bloco do de cima é o destino da venda: aqui ela **não pode**
+ * continuar no caixa, porque a nota já existe do lado do ERP e um segundo envio
+ * emitiria outra para a mesma compra.
+ */
+describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
+  const REJEICAO = {
+    estado: 'nfce-rejeitada',
+    mensagem: 'Rejeicao: Duplicidade de NF-e (erro 539)',
+    numeroNota: 9001,
+    serieNota: '1',
+  } as const;
+
+  it('leva o motivo do ERP e a identificação da nota até a tela', async () => {
+    const cenario = montarCenario([REJEICAO]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(result.current.estado).toEqual({
+      tipo: 'nfce-rejeitada',
+      mensagem: 'Rejeicao: Duplicidade de NF-e (erro 539)',
+      numeroNota: 9001,
+      serieNota: '1',
+    });
+  });
+
+  it('não limpa nada antes de o operador fechar o aviso', async () => {
+    const cenario = montarCenario([REJEICAO]);
+    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroNota: 4821 });
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    const venda = useVendaStore.getState();
+    expect(venda.linhas).toHaveLength(1);
+    expect(venda.identidadeVenda).toEqual({ origem: 'RASCUNHO', numeroNota: 4821 });
+  });
+
+  it('descarta carrinho, cache de produto, auditoria e identidade ao fechar', async () => {
+    const cenario = montarCenario([REJEICAO]);
+    cenario.queryClient.setQueryData(CHAVE_PRODUTO_EM_CACHE, { codigoProduto: '001234' });
+    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroNota: 4821 });
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+    act(() => {
+      result.current.descartar();
+    });
+
+    const venda = useVendaStore.getState();
+    expect(venda.linhas).toEqual([]);
+    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroNota: 0 });
+    // A próxima venda já nasce com histórico aberto: sem isto o primeiro item
+    // dela cairia num `Log` sem `VENDA_INICIADA` (`FR-002` da feature 001).
+    expect(venda.eventos.map((evento) => evento.tipo)).toEqual(['VENDA_INICIADA']);
+    expect(cenario.queryClient.getQueryData(CHAVE_PRODUTO_EM_CACHE)).toBeUndefined();
+    expect(result.current.estado).toEqual({ tipo: 'ocioso' });
+  });
+
+  it('recusa um segundo envio enquanto o aviso está aberto — nunca duas NFCe para a mesma compra', async () => {
+    const cenario = montarCenario([REJEICAO]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(cenario.enviados).toHaveLength(1);
+    expect(result.current.estado.tipo).toBe('nfce-rejeitada');
+  });
+
+  it('não anexa FATURAMENTO_FALHOU: não há reenvio a carregar o evento', async () => {
+    const cenario = montarCenario([REJEICAO]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    const tipos = useVendaStore.getState().eventos.map((evento) => evento.tipo);
+    expect(tipos).toContain('VENDA_FINALIZADA');
+    expect(tipos).not.toContain('FATURAMENTO_FALHOU');
   });
 });
 
@@ -598,7 +711,71 @@ describe('correções do usuário (2026-09-02)', () => {
   });
 });
 
+/**
+ * A frase que cada trava produz, e a ordem entre elas (correção do usuário,
+ * 2026-09-10). Pura, então não precisa de componente montado.
+ */
+describe('motivoDeBloqueioDoFinalizar', () => {
+  const LIBERADO = {
+    haValorAFaturar: true,
+    temVereditoFavoravel: true,
+    falhaDeRede: false,
+    temVendedor: true,
+  };
+
+  it('devolve null quando as quatro condições estão satisfeitas', () => {
+    expect(motivoDeBloqueioDoFinalizar(LIBERADO)).toBeNull();
+  });
+
+  it('nomeia o vendedor — a trava que o tenant real aciona com VendedorCodigo = 0', () => {
+    expect(motivoDeBloqueioDoFinalizar({ ...LIBERADO, temVendedor: false })).toContain(
+      'Escolha o vendedor da venda',
+    );
+  });
+
+  it('nomeia o pagamento quando a venda não fecha', () => {
+    expect(motivoDeBloqueioDoFinalizar({ ...LIBERADO, haValorAFaturar: false })).toContain(
+      'cubra todo o total com as formas de pagamento',
+    );
+  });
+
+  it('nomeia o veredito do ERP quando só ele falta', () => {
+    expect(motivoDeBloqueioDoFinalizar({ ...LIBERADO, temVereditoFavoravel: false })).toContain(
+      'O ERP ainda não aprovou',
+    );
+  });
+
+  /**
+   * A precedência importa: com a rede falhada o operador tem uma saída
+   * imediata ("Tentar novamente"), e mandá-lo escolher vendedor primeiro o
+   * faria consertar o que não está quebrado.
+   */
+  it('falha de rede tem precedência sobre as demais travas', () => {
+    expect(
+      motivoDeBloqueioDoFinalizar({
+        haValorAFaturar: false,
+        temVereditoFavoravel: false,
+        falhaDeRede: true,
+        temVendedor: false,
+      }),
+    ).toContain('Tentar novamente');
+  });
+});
+
 describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () => {
+  /**
+   * Bloqueio é `aria-disabled` + motivo no `title`, nunca o `disabled` nativo
+   * (`lib/bloqueio.ts`; correção do usuário, 2026-09-10). Cada caso afirma
+   * **qual** frase o operador lê: era exatamente a informação que faltava
+   * quando as quatro travas colapsavam num `disabled` mudo, e um teste que só
+   * conferisse "está apagado" não pegaria a volta desse defeito.
+   */
+  function esperarBloqueado(trechoDoMotivo: string) {
+    const botao = screen.getByTestId('botao-finalizar-venda');
+    expect(botao).toHaveAttribute('aria-disabled', 'true');
+    expect(botao.getAttribute('title')).toContain(trechoDoMotivo);
+  }
+
   function renderizarAcoes(cenario: Cenario) {
     return render(
       createElement(
@@ -618,7 +795,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('A venda ainda não fecha');
   });
 
   it('desabilita "Finalizar venda" quando o subtotal é zero', () => {
@@ -629,7 +806,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('A venda ainda não fecha');
   });
 
   // Comportamento **estendido pela feature 008** (2026-09-03): ter item com
@@ -642,7 +819,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
     renderizarAcoes(cenario);
 
     expect(useVendaStore.getState().saldo().saldoRestante).toBeGreaterThan(0);
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('cubra todo o total com as formas de pagamento');
   });
 
   it('habilita "Finalizar venda" com item, subtotal positivo e saldo coberto', () => {
@@ -672,7 +849,7 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    esperarBloqueado('O ERP ainda não aprovou esta venda');
   });
 
   // `FR-006`/`SC-003` (feature 012): nenhuma venda é finalizada sem vendedor
@@ -691,7 +868,11 @@ describe('guarda de valor a faturar (correção do usuário, 2026-09-02)', () =>
 
     renderizarAcoes(cenario);
 
-    expect(screen.getByTestId('botao-finalizar-venda')).toBeDisabled();
+    // A trava que o tenant real acionava sem nunca dizer o nome: `GetSessao`
+    // devolve `VendedorCodigo = 0`, `vendedorAtual` nasce `null` e o operador
+    // via o botão apagado com o pagamento cobrindo o total (relato do usuário,
+    // 2026-09-10). A frase precisa nomear o vendedor e a saída.
+    esperarBloqueado('Escolha o vendedor da venda');
   });
 
   it('recusa FATURAR sem valor mesmo quando acionado fora do botão', async () => {
@@ -756,5 +937,93 @@ describe('cliente do retrato (regressão achada pela feature 006)', () => {
     });
 
     expect(cenario.enviados[0]?.clienteCodigo).toBe(1);
+  });
+});
+
+/**
+ * A janela que o operador de fato vê na rejeição (correção do usuário,
+ * 2026-09-10) — o provider ligado ao diálogo, não só a máquina de estados.
+ *
+ * O disparo vem de um botão auxiliar, e não de `AcoesFinaisVenda`: aquele passa
+ * pelas quatro travas da finalização (saldo, vendedor, veredito, falha de rede),
+ * que não são o alvo aqui e obrigariam cada teste desta janela a montar uma
+ * venda paga inteira só para chegar ao modal.
+ */
+describe('janela da NFCe rejeitada', () => {
+  function DisparadorDeFinalizacao(): ReactNode {
+    const { finalizar } = useFinalizacaoVenda();
+    return createElement('button', {
+      type: 'button',
+      'data-testid': 'disparar-finalizacao',
+      onClick: () => {
+        void finalizar();
+      },
+    });
+  }
+
+  function renderizarJanela(cenario: Cenario) {
+    return render(
+      createElement(
+        cenario.wrapper,
+        null,
+        createElement(ProvedorFinalizacaoVenda, {
+          deps: cenario.deps,
+          children: createElement(DisparadorDeFinalizacao),
+        }),
+      ),
+    );
+  }
+
+  const CENARIO_REJEICAO = {
+    estado: 'nfce-rejeitada',
+    mensagem: 'Rejeicao: Duplicidade de NF-e (erro 539)',
+    numeroNota: 9001,
+    serieNota: '1',
+  } as const;
+
+  it('mostra o motivo do ERP e diz que o caixa será liberado', async () => {
+    const cenario = montarCenario([CENARIO_REJEICAO]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+
+    expect(await screen.findByTestId('dialogo-erro-faturamento')).toBeInTheDocument();
+    // O texto do ERP chega íntegro à tela — era exatamente o que se perdia
+    // antes desta correção.
+    expect(screen.getByTestId('erro-finalizacao')).toHaveTextContent(
+      'Rejeicao: Duplicidade de NF-e (erro 539)',
+    );
+    expect(screen.getByTestId('documento-rejeitado')).toHaveTextContent('NFCe 9001 · série 1');
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleName('NFCe rejeitada pelo ERP');
+    // A instrução é o oposto da recusa sem documento gravado: não há o que
+    // corrigir e reenviar daqui.
+    expect(screen.getByText(/o caixa fica livre para uma nova NFCe/i)).toBeInTheDocument();
+  });
+
+  it('fecha pelo botão e libera o caixa para a próxima venda', async () => {
+    const cenario = montarCenario([CENARIO_REJEICAO]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+    await screen.findByTestId('dialogo-erro-faturamento');
+    expect(useVendaStore.getState().linhas).toHaveLength(1);
+
+    await userEvent.click(screen.getByTestId('fechar-erro-faturamento'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialogo-erro-faturamento')).not.toBeInTheDocument();
+    });
+    expect(useVendaStore.getState().linhas).toEqual([]);
+  });
+
+  it('a recusa sem documento gravado continua dizendo que a venda segue aberta', async () => {
+    const cenario = montarCenario([{ estado: 'falha-negocio', mensagem: 'Cliente sem CPF.' }]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+
+    await screen.findByTestId('dialogo-erro-faturamento');
+    expect(screen.getByText(/A venda continua aberta no caixa/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('documento-rejeitado')).not.toBeInTheDocument();
   });
 });

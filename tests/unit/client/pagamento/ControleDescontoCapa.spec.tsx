@@ -44,10 +44,7 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
     render(createElement(ControleDescontoCapa));
 
     expect(screen.getByTestId('toggle-ajuste-valor')).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('campo-valor-ajuste')).toHaveAttribute(
       'aria-label',
       'Desconto em reais',
@@ -62,10 +59,7 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
     });
     render(createElement(ControleDescontoCapa));
 
-    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('enquanto 100% está no campo, o equivalente acompanha o que foi digitado', async () => {

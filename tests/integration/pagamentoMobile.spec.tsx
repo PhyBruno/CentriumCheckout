@@ -9,6 +9,7 @@ import {
   instalarMatchMediaDeLayout,
   renderizarComProvedores,
 } from '../support/layout';
+import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import { condicaoDe, formaDe } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
@@ -28,16 +29,16 @@ import { registroBootstrapDe } from '../support/sessao';
  * dia alguém filtrasse uma forma por plataforma, os dois conjuntos divergiriam.
  */
 const CONDICAO_COM_TEF_E_PIX = condicaoDe(1, 'À VISTA', [
-  formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: 'Dinheiro' }),
+  formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: MEIO_PAGTO.Dinheiro }),
   // `integracaoCartao: '1'` é exatamente o que manda o cartão ao TEF (AD-180).
   formaDe({
     codigo: 2,
     descricao: 'CARTAO CREDITO',
-    meioPagtoNFe: 'CartaoCredito',
+    meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
     integracaoCartao: '1',
     tipoTransacaoTEF: 'C',
   }),
-  formaDe({ codigo: 3, descricao: 'PIX', meioPagtoNFe: 'Pix' }),
+  formaDe({ codigo: 3, descricao: 'PIX', meioPagtoNFe: MEIO_PAGTO.Pix }),
 ]);
 
 function renderizarShell(): void {

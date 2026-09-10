@@ -24,6 +24,16 @@ dist/
 .env.*
 !.env.example
 
+# Collection Bruno do ERP: vem com as credenciais preenchidas para funcionar
+# logo no import, então `collection.bru` (bloco PADRAO do script), os
+# environments e o arquivo único de export carregam client_secret e senha em
+# texto plano. Fica tudo de fora do versionamento.
+#
+# O que é versionado é `CentriumERP.openapi.json`, derivado do contrato do ERP
+# e sem segredo nenhum — dele a collection é regerada quando preciso.
+docs/bruno/CentriumERP/
+docs/bruno/*.bruno-collection.json
+
 # saídas de teste
 coverage/
 playwright-report/

@@ -11,6 +11,7 @@ import {
   instalarMatchMediaDeLayout,
   renderizarComProvedores,
 } from '../support/layout';
+import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import { condicaoDe, emCentavos, formaDe, pagamentoDe } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
@@ -31,7 +32,7 @@ import { registroBootstrapDe } from '../support/sessao';
  * auditoria e reabriria decisões já tomadas.
  */
 const CONDICAO = condicaoDe(1, 'À VISTA', [
-  formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: 'Dinheiro' }),
+  formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: MEIO_PAGTO.Dinheiro }),
 ]);
 
 const CLIENTE_IDENTIFICADO = {

@@ -78,6 +78,21 @@ export function useQtdMinCharParaConsulta(): number | null {
   return useSessionStore((estado) => estado.registro?.SessaoUsuario.QtdMinCharParaConsulta ?? null);
 }
 
+/**
+ * `SessaoUsuario.UsuarioTipoCodigoProduto` para a UI (AD-204).
+ *
+ * O modal de busca precisa dele para saber **qual** dos códigos do candidato
+ * devolver à barra de entrada (`codigoParaConsulta`) — mandar o campo errado faz
+ * o ERP responder com o SDT vazio. `null` enquanto o bootstrap não chegou; o
+ * modal só é alcançável com a tela de venda liberada, então na prática isso é a
+ * janela entre montar e hidratar.
+ */
+export function useTipoCodigoProduto(): string | null {
+  return useSessionStore(
+    (estado) => estado.registro?.SessaoUsuario.UsuarioTipoCodigoProduto ?? null,
+  );
+}
+
 /** O produto exige revisão do operador antes de entrar na venda (`FR-014`). */
 export interface PendenteDeEdicao {
   readonly situacao: 'edicao';
@@ -170,12 +185,20 @@ export interface ApiInsercao {
    * unidade, preço, total) antes de confirmar — nunca insere sozinho, ao
    * contrário de `inserirPorCodigo`.
    *
-   * `origemForcada` existe só para o caminho da busca (`CART-01`, AD-091):
-   * o texto resolvido é sempre um código simples digitado pela própria
-   * barra, então `quantidadeEOrigem` classificaria como `'MANUAL'` — sem o
-   * override a proveniência "veio da busca" se perderia da linha inserida.
+   * `origem` existe só para o caminho da busca (`CART-01`, AD-091): o texto
+   * resolvido é sempre um código simples digitado pela própria barra, então
+   * `quantidadeEOrigem` classificaria como `'MANUAL'` — sem o override a
+   * proveniência "veio da busca" se perderia da linha inserida.
+   *
+   * `tipoCodigo` também é exclusivo da busca (AD-205): o candidato escolhido
+   * decide por qual campo é consultável, e esse tipo pode não ser o da sessão
+   * (produto sem código de barras numa empresa em `'B'`). Ausente, vale o da
+   * sessão — que é o certo para o código **digitado** na barra.
    */
-  revisarPorCodigo(texto: string, origemForcada?: 'BUSCA'): Promise<ResultadoRevisao>;
+  revisarPorCodigo(
+    texto: string,
+    opcoes?: { origem?: 'BUSCA'; tipoCodigo?: string },
+  ): Promise<ResultadoRevisao>;
   /** Confirma a prévia de um produto **não editável** — só a quantidade é ajustável. */
   confirmarPrevia(revisao: RevisaoProduto, quantidade: Milesimos): void;
 }
@@ -241,12 +264,20 @@ export function useInsercaoDeProduto(): ApiInsercao {
    * `invalidarCacheDeProduto` descarta tudo (`research.md`, D5).
    */
   const resolverProduto = useCallback(
-    async (codigoProduto: string): Promise<SnapshotPrecoProduto> => {
+    async (codigoProduto: string, tipoCodigo?: string): Promise<SnapshotPrecoProduto> => {
       if (contexto === null) {
         throw new Error('Configuração do ponto de venda ainda não carregada.');
       }
+      // `tipoCodigo` só chega pelo modal de busca, que escolhe o campo
+      // consultável do candidato (AD-205). O tipo faz parte de `chaveProduto`,
+      // então o mesmo SKU consultado por campos diferentes ocupa entradas
+      // distintas do cache — sem risco de servir o snapshot de uma consulta
+      // pelo outro campo.
+      const contextoDaConsulta =
+        tipoCodigo === undefined ? contexto : { ...contexto, tipoCodProduto: tipoCodigo };
+
       return queryClient.query({
-        ...opcoesProduto(codigoProduto, contexto),
+        ...opcoesProduto(codigoProduto, contextoDaConsulta),
         staleTime: 'static',
       });
     },
@@ -306,11 +337,12 @@ export function useInsercaoDeProduto(): ApiInsercao {
     async (
       codigoProduto: string,
       entrada: EntradaCodigo,
-      origemForcada?: 'BUSCA',
+      opcoes: { origem?: 'BUSCA'; tipoCodigo?: string } = {},
     ): Promise<ResultadoRevisao> => {
+      const origemForcada = opcoes.origem;
       let snapshot: SnapshotPrecoProduto;
       try {
-        snapshot = await resolverProduto(codigoProduto);
+        snapshot = await resolverProduto(codigoProduto, opcoes.tipoCodigo);
       } catch (erro) {
         notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
@@ -347,13 +379,13 @@ export function useInsercaoDeProduto(): ApiInsercao {
     ),
 
     revisarPorCodigo: useCallback(
-      async (texto, origemForcada) => {
+      async (texto, opcoes) => {
         const entrada = interpretarEntradaCodigo(texto);
         const codigo = entrada.tipo === 'BALANCA' ? entrada.codigoReduzido : entrada.codigo;
         if (codigo === '') {
           return { situacao: 'recusado' };
         }
-        return revisarResolvido(codigo, entrada, origemForcada);
+        return revisarResolvido(codigo, entrada, opcoes);
       },
       [revisarResolvido],
     ),

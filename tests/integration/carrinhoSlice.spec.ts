@@ -512,13 +512,13 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     vi.stubGlobal('fetch', fetchFalso);
 
     // Caminho real desde a Fase 8 (`EntradaRapidaProduto.selecionarDaBusca`):
-    // o modal só devolve o código, quem resolve é `revisarPorCodigo` (com
-    // `origemForcada: 'BUSCA'`) seguido de `confirmarPrevia` — nunca um
+    // o modal só devolve a consulta, quem resolve é `revisarPorCodigo` (com
+    // `origem: 'BUSCA'`) seguido de `confirmarPrevia` — nunca um
     // atalho de inserção direta a partir do resultado da busca.
     const { result } = renderHook(() => useInsercaoDeProduto(), {
       wrapper: envolverComQueryClient(),
     });
-    const revisao = await result.current.revisarPorCodigo(SKU, 'BUSCA');
+    const revisao = await result.current.revisarPorCodigo(SKU, { origem: 'BUSCA' });
     if (revisao.situacao !== 'revisao') {
       throw new Error('esperava revisão bem-sucedida');
     }
@@ -533,6 +533,44 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     // `Tipocodproduto` é sempre o da sessão, nunca inferido por chamada (AD-033).
     expect(urls[0]).toContain('Tipocodproduto=I');
     expect(useVendaStore.getState().linhas[0]?.origem).toBe('BUSCA');
+  });
+
+  it('SDT vazio (200, CodigoProduto vazio) vira "não encontrado", nunca linha zerada (AD-204)', async () => {
+    // `PCheckout_GetProduto` filtra por `MatCodBar` quando `Tipocodproduto` é
+    // `'B'`; um código de outro tipo não casa com nada e o ERP devolve `200`
+    // com o SDT recém-criado. Sem a guarda isso atravessa o Zod limpo
+    // (`ProdutoPesavelEditavel: ''` é valor válido) e vira linha de carrinho
+    // sem descrição, sem unidade e com preço R$ 0,00 — o sintoma relatado.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              Produto: respostaGetProduto({
+                CodigoProduto: '',
+                Descricao: '',
+                UDM: '',
+                PrecoVenda: 0,
+                ProdutoPesavelEditavel: '',
+              }),
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+
+    const { result } = renderHook(() => useInsercaoDeProduto(), {
+      wrapper: envolverComQueryClient(),
+    });
+    const revisao = await result.current.revisarPorCodigo(SKU, { origem: 'BUSCA' });
+
+    // Mesmo desfecho do `404` — recusa, sem linha na venda. A mensagem exibida
+    // é a de `ErroProdutoNaoEncontrado` (`useCarrinho.mensagemDeErro`), a mesma
+    // que o caminho de `404` já cobre.
+    expect(revisao.situacao).toBe('recusado');
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 
   it('reinserir o mesmo SKU não gera nova chamada a GetProduto (T024, CART-03)', async () => {

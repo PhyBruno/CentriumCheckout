@@ -21,7 +21,7 @@
  * `FR-xxx` pede.
  */
 
-import type { FormaPagamento } from './formaPagamento';
+import { MEIO_PAGTO, type FormaPagamento } from './formaPagamento';
 
 export type IntegracaoPagamento = 'NENHUMA' | 'TEF' | 'PIX_DINAMICO';
 
@@ -55,10 +55,10 @@ export function resolverIntegracao(
   capacidades: CapacidadesPagamento,
 ): IntegracaoPagamento {
   switch (forma.meioPagtoNFe) {
-    case 'CartaoCredito':
-    case 'CartaoDebito':
+    case MEIO_PAGTO.CartaoCredito:
+    case MEIO_PAGTO.CartaoDebito:
       return capacidades.tefAtivo && forma.integracaoCartao === '1' ? 'TEF' : 'NENHUMA';
-    case 'Pix':
+    case MEIO_PAGTO.Pix:
       return capacidades.pixAtivo ? 'PIX_DINAMICO' : 'NENHUMA';
     default:
       return 'NENHUMA';
@@ -78,7 +78,7 @@ export function resolverIntegracao(
  * formas nunca dependem de capacidade, logo estão sempre disponíveis.
  */
 export function formaDisponivel(forma: FormaPagamento, capacidades: CapacidadesPagamento): boolean {
-  if (forma.meioPagtoNFe === 'Pix') {
+  if (forma.meioPagtoNFe === MEIO_PAGTO.Pix) {
     return capacidades.pixAtivo;
   }
   return true;

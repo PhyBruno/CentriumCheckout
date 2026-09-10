@@ -1,8 +1,9 @@
 import { centavos, type Centavos } from '../../src/client/domain/precificacao/dinheiro';
-import type {
-  CondicaoPagamento,
-  FormaPagamento,
-  MeioPagtoNFe,
+import {
+  MEIO_PAGTO,
+  type CondicaoPagamento,
+  type FormaPagamento,
+  type MeioPagtoNFe,
 } from '../../src/client/domain/pagamento/formaPagamento';
 import type { IntegracaoPagamento } from '../../src/client/domain/pagamento/roteamentoIntegracao';
 import type {
@@ -33,7 +34,7 @@ export function formaDe(opcoes: OpcoesForma = {}): FormaPagamento {
     codigo: opcoes.codigo ?? 1,
     descricao: opcoes.descricao ?? 'FORMA EXEMPLO',
     entrada: opcoes.entrada ?? '',
-    meioPagtoNFe: opcoes.meioPagtoNFe ?? 'Dinheiro',
+    meioPagtoNFe: opcoes.meioPagtoNFe ?? MEIO_PAGTO.Dinheiro,
     integracaoCartao: opcoes.integracaoCartao ?? '',
     tipoTransacaoTEF: opcoes.tipoTransacaoTEF ?? '',
     fpgUtiCar: opcoes.fpgUtiCar ?? '',
@@ -94,7 +95,7 @@ export function bootstrapPagamentoDe(): Record<string, unknown> {
               FormaCodigo: 1,
               FormaDescricao: 'DINHEIRO',
               FormaEntrada: 'S',
-              FormaMeioPagtoNFe: 'Dinheiro',
+              FormaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
               FormaIntegracaoCartao: '',
               FormaTipoTransacaoTEF: '',
               FormaFpgUtiCar: '',
@@ -133,7 +134,7 @@ export function pagamentoDe(opcoes: OpcoesPagamento = {}): PagamentoAplicado {
   return {
     idPagamento: opcoes.idPagamento ?? `pagamento-${String(sequenciaPagamento)}`,
     formaCodigo: opcoes.formaCodigo ?? 1,
-    meioPagtoNFe: opcoes.meioPagtoNFe ?? 'Dinheiro',
+    meioPagtoNFe: opcoes.meioPagtoNFe ?? MEIO_PAGTO.Dinheiro,
     integracaoCartao: opcoes.integracaoCartao ?? '',
     entrada: opcoes.entrada ?? '',
     fpgUtiCar: opcoes.fpgUtiCar ?? '',

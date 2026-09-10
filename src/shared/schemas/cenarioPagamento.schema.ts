@@ -53,7 +53,9 @@ export function parsearListaDeCenarios(campo: unknown): readonly string[] {
     conteudo = JSON.parse(bruto.data);
   } catch {
     // Catálogo ilegível degrada para "sem atalhos" — nunca derruba a venda.
-    console.warn('[cenarioPagamento] CenarioPagamento não é JSON válido: nenhum atalho disponível.');
+    console.warn(
+      '[cenarioPagamento] CenarioPagamento não é JSON válido: nenhum atalho disponível.',
+    );
     return [];
   }
 

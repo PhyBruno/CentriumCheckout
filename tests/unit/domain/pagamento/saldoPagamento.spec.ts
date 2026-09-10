@@ -4,12 +4,13 @@ import {
   derivarValores,
   podeAplicarForma,
 } from '../../../../src/client/domain/pagamento/saldoPagamento';
+import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import { emCentavos, formaDe, pagamentoDe } from '../../../support/pagamento';
 
 describe('derivarValores — única fonte de valorAplicado/valorRecebido (data-model.md §6)', () => {
   it('Dinheiro acima do saldo: valorAplicado é limitado, valorRecebido é o que o operador digitou', () => {
     const resultado = derivarValores(
-      formaDe({ meioPagtoNFe: 'Dinheiro' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro }),
       emCentavos(15000),
       emCentavos(10000),
     );
@@ -20,7 +21,7 @@ describe('derivarValores — única fonte de valorAplicado/valorRecebido (data-m
 
   it('qualquer forma diferente de dinheiro: valorRecebido é null e valorAplicado = min(informado, saldo)', () => {
     const resultado = derivarValores(
-      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.CartaoCredito }),
       emCentavos(20000),
       emCentavos(8000),
     );
@@ -31,7 +32,7 @@ describe('derivarValores — única fonte de valorAplicado/valorRecebido (data-m
 
   it('Pix acima do saldo não gera valorRecebido — nenhuma outra forma gera troco (FR-012)', () => {
     const resultado = derivarValores(
-      formaDe({ meioPagtoNFe: 'Pix' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.Pix }),
       emCentavos(20000),
       emCentavos(10000),
     );
@@ -62,7 +63,7 @@ describe('calcularSaldo — algoritmo de data-model.md §6', () => {
 
   it('troco só existe para Dinheiro acima do saldo (FR-012)', () => {
     const pagamento = pagamentoDe({
-      meioPagtoNFe: 'Dinheiro',
+      meioPagtoNFe: MEIO_PAGTO.Dinheiro,
       valorAplicado: 10000,
       valorRecebido: 15000,
       status: 'APROVADO',
@@ -73,11 +74,57 @@ describe('calcularSaldo — algoritmo de data-model.md §6', () => {
     expect(saldo.totalAplicado).toBe(10000);
     expect(saldo.saldoRestante).toBe(0);
     expect(saldo.troco).toBe(5000);
+    // O que o operador entregou — a cédula, não o valor da venda. A métrica
+    // "Recebido" da tela lê daqui (correção do usuário, 2026-09-10): antes ela
+    // mostrava `totalAplicado`, que o `min` de `derivarValores` prende no
+    // total, e R$ 150 recebidos apareciam como R$ 100.
+    expect(saldo.totalRecebido).toBe(15000);
+  });
+
+  /**
+   * `totalRecebido` só difere de `totalAplicado` onde há troco: nas formas sem
+   * `valorRecebido` (tudo que não é dinheiro, por I3) os dois coincidem, e a
+   * soma tem de misturar os dois casos sem contar nada duas vezes.
+   */
+  it('totalRecebido soma a cédula do dinheiro e o aplicado das demais formas', () => {
+    const cartao = pagamentoDe({
+      meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
+      valorAplicado: 4000,
+      valorRecebido: null,
+      status: 'APROVADO',
+    });
+    const dinheiro = pagamentoDe({
+      meioPagtoNFe: MEIO_PAGTO.Dinheiro,
+      valorAplicado: 6000,
+      valorRecebido: 20000,
+      status: 'APROVADO',
+    });
+
+    const saldo = calcularSaldo(emCentavos(10000), emCentavos(0), [cartao, dinheiro]);
+
+    expect(saldo.totalAplicado).toBe(10000);
+    expect(saldo.totalRecebido).toBe(24000);
+    expect(saldo.saldoRestante).toBe(0);
+    expect(saldo.troco).toBe(14000);
+  });
+
+  it('pagamento não aprovado fica fora de totalRecebido, como já ficava de totalAplicado', () => {
+    const pendente = pagamentoDe({
+      meioPagtoNFe: MEIO_PAGTO.Dinheiro,
+      valorAplicado: 10000,
+      valorRecebido: 15000,
+      status: 'PENDENTE_INTEGRACAO',
+    });
+
+    const saldo = calcularSaldo(emCentavos(10000), emCentavos(0), [pendente]);
+
+    expect(saldo.totalAplicado).toBe(0);
+    expect(saldo.totalRecebido).toBe(0);
   });
 
   it('Pix acima do saldo não gera troco', () => {
     const pagamento = pagamentoDe({
-      meioPagtoNFe: 'Pix',
+      meioPagtoNFe: MEIO_PAGTO.Pix,
       valorAplicado: 10000,
       valorRecebido: null,
       status: 'APROVADO',
@@ -90,7 +137,7 @@ describe('calcularSaldo — algoritmo de data-model.md §6', () => {
 
   it('pagamento PENDENTE_INTEGRACAO não conta em totalAplicado nem reduz o saldo restante', () => {
     const pendente = pagamentoDe({
-      meioPagtoNFe: 'CartaoCredito',
+      meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
       valorAplicado: 5000,
       status: 'PENDENTE_INTEGRACAO',
       integracao: 'TEF',
@@ -109,7 +156,7 @@ describe('calcularSaldo — algoritmo de data-model.md §6', () => {
    */
   it('pagamento EXCLUIDO não conta em totalAplicado nem reduz o saldo restante', () => {
     const excluido = pagamentoDe({
-      meioPagtoNFe: 'Dinheiro',
+      meioPagtoNFe: MEIO_PAGTO.Dinheiro,
       valorAplicado: 5000,
       valorRecebido: 5000,
       status: 'EXCLUIDO',
@@ -125,17 +172,19 @@ describe('calcularSaldo — algoritmo de data-model.md §6', () => {
 
 describe('podeAplicarForma — I2/FR-013/AD-036 e SALDO_JA_COBERTO', () => {
   it('recusa uma segunda forma dinheiro', () => {
-    const jaAplicado = pagamentoDe({ meioPagtoNFe: 'Dinheiro', status: 'APROVADO' });
+    const jaAplicado = pagamentoDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro, status: 'APROVADO' });
 
-    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: 'Dinheiro' }), [jaAplicado]);
+    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro }), [
+      jaAplicado,
+    ]);
 
     expect(resultado).toEqual({ ok: false, motivo: 'DINHEIRO_DUPLICADO' });
   });
 
   it('ignora pagamentos RECUSADO ao checar duplicidade de dinheiro', () => {
-    const recusado = pagamentoDe({ meioPagtoNFe: 'Dinheiro', status: 'RECUSADO' });
+    const recusado = pagamentoDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro, status: 'RECUSADO' });
 
-    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: 'Dinheiro' }), [recusado]);
+    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro }), [recusado]);
 
     expect(resultado).toEqual({ ok: true });
   });
@@ -146,22 +195,22 @@ describe('podeAplicarForma — I2/FR-013/AD-036 e SALDO_JA_COBERTO', () => {
    * travar uma nova tentativa de dinheiro.
    */
   it('ignora pagamentos EXCLUIDO ao checar duplicidade de dinheiro', () => {
-    const excluido = pagamentoDe({ meioPagtoNFe: 'Dinheiro', status: 'EXCLUIDO' });
+    const excluido = pagamentoDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro, status: 'EXCLUIDO' });
 
-    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: 'Dinheiro' }), [excluido]);
+    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro }), [excluido]);
 
     expect(resultado).toEqual({ ok: true });
   });
 
   it('sem o terceiro parâmetro, a checagem de saldo é ignorada', () => {
-    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: 'CartaoCredito' }), []);
+    const resultado = podeAplicarForma(formaDe({ meioPagtoNFe: MEIO_PAGTO.CartaoCredito }), []);
 
     expect(resultado).toEqual({ ok: true });
   });
 
   it('com saldoRestante zero, devolve SALDO_JA_COBERTO', () => {
     const resultado = podeAplicarForma(
-      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.CartaoCredito }),
       [],
       emCentavos(0),
     );
@@ -179,7 +228,7 @@ describe('podeAplicarForma — I2/FR-013/AD-036 e SALDO_JA_COBERTO', () => {
 describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
   it('recusa cartão acima do saldo restante', () => {
     const resultado = podeAplicarForma(
-      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.CartaoCredito }),
       [],
       emCentavos(5000),
       emCentavos(5001),
@@ -190,7 +239,7 @@ describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
 
   it('recusa PIX acima do saldo restante', () => {
     const resultado = podeAplicarForma(
-      formaDe({ meioPagtoNFe: 'Pix' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.Pix }),
       [],
       emCentavos(5000),
       emCentavos(9000),
@@ -201,7 +250,7 @@ describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
 
   it('aceita cartão exatamente no saldo restante — o limite é inclusivo', () => {
     const resultado = podeAplicarForma(
-      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.CartaoCredito }),
       [],
       emCentavos(5000),
       emCentavos(5000),
@@ -212,7 +261,7 @@ describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
 
   it('aceita dinheiro acima do saldo: o excedente é troco (FR-012)', () => {
     const resultado = podeAplicarForma(
-      formaDe({ meioPagtoNFe: 'Dinheiro' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro }),
       [],
       emCentavos(5000),
       emCentavos(20000),
@@ -223,7 +272,7 @@ describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
 
   it('a forma de vale devolução é isenta — o excedente dela é decidido por confirmação (FR-026)', () => {
     const resultado = podeAplicarForma(
-      formaDe({ meioPagtoNFe: 'Outros', fpgUtiCar: 'VDV' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.Outros, fpgUtiCar: 'VDV' }),
       [],
       emCentavos(5000),
       emCentavos(15000),
@@ -234,7 +283,7 @@ describe('podeAplicarForma — VALOR_ACIMA_DO_SALDO (FR-024)', () => {
 
   it('sem o valor informado, a checagem de excedente é ignorada', () => {
     const resultado = podeAplicarForma(
-      formaDe({ meioPagtoNFe: 'CartaoCredito' }),
+      formaDe({ meioPagtoNFe: MEIO_PAGTO.CartaoCredito }),
       [],
       emCentavos(5000),
     );

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   paraCapacidadesPagamento,
   paraCondicoesPagamento,
@@ -15,7 +15,7 @@ function formaValida(sobrescritas: Record<string, unknown> = {}): Record<string,
     FormaCodigo: 1,
     FormaDescricao: 'DINHEIRO',
     FormaEntrada: 'S',
-    FormaMeioPagtoNFe: 'Dinheiro',
+    FormaMeioPagtoNFe: '01',
     FormaIntegracaoCartao: '',
     FormaTipoTransacaoTEF: '',
     FormaFpgUtiCar: '',
@@ -49,11 +49,41 @@ describe('paraCondicoesPagamento', () => {
     expect(resultado[0]?.codigo).toBe(2);
   });
 
+  it('grita quando o catálogo inteiro colapsa — divergência de contrato (AD-204)', () => {
+    // O descarte por forma é silencioso de propósito, e foi esse silêncio que
+    // escondeu AD-204: com a união fechada errada, **todas** as formas de
+    // **todas** as condições do ERP real eram descartadas, o painel de
+    // pagamento ficava vazio e não havia um único sinal de erro. Nenhuma empresa
+    // opera um PDV sem forma de pagamento nenhuma: entrar com condições e sair
+    // com zero é sempre defeito, e agora é dito em voz alta.
+    const erro = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const validadas = condicoesDePagamentoSchema.parse([
+      condicaoValida({
+        CondicaoFormasDePagamento: [formaValida({ FormaMeioPagtoNFe: 'NomeQueNaoEhCodigo' })],
+      }),
+    ]);
+
+    expect(paraCondicoesPagamento(validadas)).toHaveLength(0);
+    expect(erro).toHaveBeenCalledOnce();
+    expect(erro.mock.calls[0]?.[0]).toContain('catálogo vazio');
+
+    erro.mockRestore();
+  });
+
+  it('não grita quando o catálogo já chega vazio — não há divergência a relatar', () => {
+    const erro = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(paraCondicoesPagamento([])).toHaveLength(0);
+    expect(erro).not.toHaveBeenCalled();
+
+    erro.mockRestore();
+  });
+
   it('mantém FormaEntrada íntegro ao chegar no domínio (FR-022/AD-111)', () => {
     const validadas = condicoesDePagamentoSchema.parse([
       condicaoValida({
         CondicaoFormasDePagamento: [
-          formaValida({ FormaCodigo: 2, FormaMeioPagtoNFe: 'CartaoCredito', FormaEntrada: 'N' }),
+          formaValida({ FormaCodigo: 2, FormaMeioPagtoNFe: '03', FormaEntrada: 'N' }),
         ],
       }),
     ]);
@@ -88,7 +118,7 @@ describe('paraCondicoesPagamento', () => {
     expect(condicao?.formas[0]).toMatchObject({
       codigo: 1,
       descricao: 'DINHEIRO',
-      meioPagtoNFe: 'Dinheiro',
+      meioPagtoNFe: '01',
       integracaoCartao: '',
       tipoTransacaoTEF: '',
       fpgUtiCar: '',

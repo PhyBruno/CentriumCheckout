@@ -14,60 +14,79 @@
 import type { Centavos } from '../precificacao/dinheiro';
 
 /**
- * União fechada sobre o domínio `NFCe_FormaPagto` da KB do ERP (AD-023,
- * `data-model.md` §1).
+ * Meios de pagamento do domínio `NFCe_FormaPagto` da KB do ERP, **pelo valor
+ * armazenado** — os códigos de dois dígitos da tag `tPag` da NFe (AD-204).
  *
- * O typo `ProgaramaFidelidade` é reproduzido **tal como existe no ERP** — o
- * valor corrigido nunca casaria com o que o `GetSessao` devolve, e a forma
- * seria descartada do catálogo em silêncio.
+ * O nome é a chave, o código é o valor. O ERP nunca publica o nome: tanto o
+ * catálogo de entrada (`SessaoUsuario.CondicoesDePagamento[]
+ * .CondicaoFormasDePagamento[].FormaMeioPagtoNFe`, atribuído em
+ * `PCheckout_GetSessao` direto de `FpgNfFormaPagamento`) quanto o retrato de
+ * saída (`FormasDePagamento[].FormaMeioPagtoNFe`, `formaParaRetrato.ts`) usam
+ * o código. Nomear a chave preserva a legibilidade no ponto de uso
+ * (`MEIO_PAGTO.Dinheiro` em vez de `'01'`) sem inventar um segundo dialeto.
+ *
+ * Os 21 pares vêm dos `ControlValues` do domínio (`Character(2)`, lido na KB em
+ * 2026-09-10), não da tabela SEFAZ padrão — o domínio é um superset dela, e
+ * `91` (`PagamentoPosterior`) não existe na tabela oficial.
+ *
+ * Ao contrário da redação anterior deste bloco, **não** há typo a reproduzir: o
+ * `Progarama` da KB está na *descrição* do enum, não no valor, e o valor é `19`.
  */
-export type MeioPagtoNFe =
-  | 'Dinheiro'
-  | 'Cheque'
-  | 'CartaoCredito'
-  | 'CartaoDebito'
-  | 'CreditoLoja'
-  | 'ValeAlimentacao'
-  | 'ValeRefeicao'
-  | 'ValePresente'
-  | 'ValeCombustivel'
-  | 'DuplicataMercantil'
-  | 'BoletoBancario'
-  | 'DepositoBancario'
-  | 'Pix'
-  | 'TransferenciaBancaria'
-  | 'ProgaramaFidelidade'
-  | 'PixEstatico'
-  | 'CreditoEmLoja'
-  | 'PagamentoNaoInformado'
-  | 'SemPagamento'
-  | 'PagamentoPosterior'
-  | 'Outros';
+export const MEIO_PAGTO = {
+  Dinheiro: '01',
+  Cheque: '02',
+  CartaoCredito: '03',
+  CartaoDebito: '04',
+  CreditoLoja: '05',
+  ValeAlimentacao: '10',
+  ValeRefeicao: '11',
+  ValePresente: '12',
+  ValeCombustivel: '13',
+  DuplicataMercantil: '14',
+  BoletoBancario: '15',
+  DepositoBancario: '16',
+  Pix: '17',
+  TransferenciaBancaria: '18',
+  ProgramaFidelidade: '19',
+  PixEstatico: '20',
+  CreditoEmLoja: '21',
+  PagamentoNaoInformado: '22',
+  SemPagamento: '90',
+  PagamentoPosterior: '91',
+  Outros: '99',
+} as const;
+
+/** Nome legível de cada meio, para rótulo e diagnóstico — nunca para comparação. */
+export type NomeMeioPagtoNFe = keyof typeof MEIO_PAGTO;
+
+export type MeioPagtoNFe = (typeof MEIO_PAGTO)[NomeMeioPagtoNFe];
 
 /** Todo valor de `MeioPagtoNFe`, para o guard da fronteira Zod. */
-export const MEIOS_PAGTO_NFE = [
-  'Dinheiro',
-  'Cheque',
-  'CartaoCredito',
-  'CartaoDebito',
-  'CreditoLoja',
-  'ValeAlimentacao',
-  'ValeRefeicao',
-  'ValePresente',
-  'ValeCombustivel',
-  'DuplicataMercantil',
-  'BoletoBancario',
-  'DepositoBancario',
-  'Pix',
-  'TransferenciaBancaria',
-  'ProgaramaFidelidade',
-  'PixEstatico',
-  'CreditoEmLoja',
-  'PagamentoNaoInformado',
-  'SemPagamento',
-  'PagamentoPosterior',
-  'Outros',
-] as const satisfies readonly MeioPagtoNFe[];
+export const MEIOS_PAGTO_NFE: readonly MeioPagtoNFe[] = Object.values(MEIO_PAGTO);
+
+const NOME_POR_CODIGO = new Map<string, NomeMeioPagtoNFe>(
+  (Object.entries(MEIO_PAGTO) as readonly [NomeMeioPagtoNFe, MeioPagtoNFe][]).map(
+    ([nome, codigo]) => [codigo, nome],
+  ),
+);
+
+/**
+ * Código → nome do meio, para **texto lido por gente**: rótulo de tela e
+ * detalhe de evento de auditoria.
+ *
+ * Existe porque a troca do dialeto (AD-204) tornaria ilegível todo lugar que
+ * caía no `meioPagtoNFe` como último recurso de rótulo — o log de auditoria
+ * passaria a registrar `"tipo": "99"` onde antes dizia `"tipo": "Outros"`, e
+ * quem lê a trilha de uma venda recusada não tem a tabela `tPag` na cabeça.
+ *
+ * **Nunca** para comparação nem para o que sai no payload do ERP: ali vale o
+ * código, sempre.
+ */
+export function nomeDoMeioPagto(meio: MeioPagtoNFe): NomeMeioPagtoNFe {
+  // O `??` não é alcançável por `MeioPagtoNFe` bem tipado — cobre só o valor
+  // que atravessou uma fronteira sem passar pelo guard.
+  return NOME_POR_CODIGO.get(meio) ?? 'Outros';
+}
 
 /**
  * Forma de pagamento do catálogo da condição
@@ -120,16 +139,19 @@ export interface CondicaoPagamento {
 }
 
 export function ehDinheiro(forma: FormaPagamento): boolean {
-  return forma.meioPagtoNFe === 'Dinheiro';
+  return forma.meioPagtoNFe === MEIO_PAGTO.Dinheiro;
 }
 
 export function ehCartao(forma: FormaPagamento): boolean {
-  return forma.meioPagtoNFe === 'CartaoCredito' || forma.meioPagtoNFe === 'CartaoDebito';
+  return (
+    forma.meioPagtoNFe === MEIO_PAGTO.CartaoCredito ||
+    forma.meioPagtoNFe === MEIO_PAGTO.CartaoDebito
+  );
 }
 
 /** PIX **dinâmico** — `PixEstatico` é outra coisa e nunca integra (`FR-006`). */
 export function ehPixDinamico(forma: FormaPagamento): boolean {
-  return forma.meioPagtoNFe === 'Pix';
+  return forma.meioPagtoNFe === MEIO_PAGTO.Pix;
 }
 
 /**

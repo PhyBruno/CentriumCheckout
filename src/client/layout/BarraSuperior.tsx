@@ -69,14 +69,18 @@ export function BarraSuperior(): ReactElement {
         )}
 
         {/* Os dois botões do desenho ficam visíveis, mas inertes: o display do
-            cliente é gap de escopo em aberto (item 28 de `PENDENCIES.md`) e o
-            menu gerencial é um redirect para telas legadas do ERP que ainda não
-            tem tarefa (AD-020/AD-026). Omiti-los mudaria o layout aprovado; dar
-            a eles uma ação inventada é pior. */}
+            cliente é gap de escopo em aberto (item 28 de `PENDENCIES.md`) e a
+            engrenagem não tem destino definido. Omiti-los mudaria o layout
+            aprovado; dar a eles uma ação inventada é pior.
+
+            A engrenagem **não** abre o Menu gerencial: ele existe desde AD-203,
+            mas o usuário escolheu (2026-09-10) mantê-lo só no atalho da faixa
+            "Atalhos da venda". O rótulo aqui deixou de citá-lo justamente para
+            não prometer o que este botão não faz. */}
         <BotaoInerte rotulo="Display do cliente (ainda não disponível)">
           <Monitor className="size-5" aria-hidden />
         </BotaoInerte>
-        <BotaoInerte rotulo="Menu gerencial (ainda não disponível)">
+        <BotaoInerte rotulo="Configurações (ainda não disponível)">
           <Settings className="size-5" aria-hidden />
         </BotaoInerte>
       </div>

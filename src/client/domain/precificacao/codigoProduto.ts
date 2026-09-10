@@ -109,30 +109,132 @@ export function interpretarEntradaCodigo(texto: string): EntradaCodigo {
 }
 
 /**
- * Rótulo do campo de entrada conforme `SessaoUsuario.UsuarioTipoCodigoProduto`
- * (`GetSessao`) — o tipo de código que o operador bipa/digita é configuração da
- * empresa, não um valor fixo (KB GeneXus, domain `EnumTipoCodigoProduto`,
- * `ControlValues`: `''`→Código Reduzido, `'D'`→Código de Barras,
- * `'C'`→Referência, `'P'`→Codigo de Barra Pesavel). Mesmo valor vai em
- * `Tipocodproduto` na chamada a `GetProduto` (AD-033) — este rótulo só troca o
- * texto mostrado ao operador, nunca a lógica de inserção.
+ * Os três tipos de código que `PCheckout_GetProduto` sabe filtrar, e o campo do
+ * produto que cada um casa (AD-204, fonte lido na KB em 2026-09-10):
  *
- * Um valor fora do domínio conhecido não pode travar a tela (mesma postura de
+ * ```
+ * where MatCodRed  = &CodigoProduto when &TipoCodProduto in ('R', '')
+ * where MatCodBar  = &CodigoProduto when &TipoCodProduto = 'B'
+ * where MatModelo  = &CodigoProduto when &TipoCodProduto = 'M'
+ * ```
+ *
+ * **Não confundir com o domínio `EnumTipoCodigoProduto`** (`''`/`'D'`/`'C'`/
+ * `'P'`), que a redação anterior deste módulo tomava como fonte de verdade:
+ * `SessaoUsuario.UsuarioTipoCodigoProduto` **não** sai daquele domínio — sai do
+ * parâmetro `PRM0656` (`PCheckout_GetSessao`, linha 63), cujos valores são
+ * estes. Um tenant real devolve `'B'`, que nem existe naquele domínio.
+ *
+ * Um valor fora destes três não filtra nada no `For Each` do ERP, que então
+ * devolve o **primeiro produto da empresa** — por isso o rótulo genérico e a
+ * guarda de SDT vazio em `fetchProduto` importam.
+ */
+export const TIPO_COD_PRODUTO = {
+  Reduzido: 'R',
+  ReduzidoVazio: '',
+  Barras: 'B',
+  Modelo: 'M',
+} as const;
+
+/**
+ * Rótulo do campo de entrada conforme `SessaoUsuario.UsuarioTipoCodigoProduto`.
+ *
+ * O tipo de código que o operador bipa/digita é configuração da empresa, não um
+ * valor fixo. Mesmo valor vai em `Tipocodproduto` na chamada a `GetProduto`
+ * (AD-033) — este rótulo só troca o texto mostrado ao operador, nunca a lógica
+ * de inserção.
+ *
+ * Um valor desconhecido não pode travar a tela (mesma postura de
  * `interpretarEntradaCodigo`, que também nunca lança): cai num rótulo genérico.
  */
 export function rotuloTipoCodigoProduto(usuarioTipoCodigoProduto: string): string {
   switch (usuarioTipoCodigoProduto) {
-    case '':
+    case TIPO_COD_PRODUTO.ReduzidoVazio:
+    case TIPO_COD_PRODUTO.Reduzido:
       return 'Código reduzido';
-    case 'D':
+    case TIPO_COD_PRODUTO.Barras:
       return 'Código de barras';
-    case 'C':
+    case TIPO_COD_PRODUTO.Modelo:
       return 'Referência';
-    case 'P':
-      return 'Código de barras pesável';
     default:
       return 'Código do produto';
   }
+}
+
+/** Os três campos que um candidato da busca (`GetListaProdutos`) sempre traz. */
+export interface CandidatoDeBusca {
+  readonly CodigoProduto: string;
+  readonly CodigoBarras: string;
+  readonly Referencia: string;
+}
+
+/** Como reconsultar um candidato da busca em `GetProduto` (AD-205). */
+export interface ConsultaDeProduto {
+  /** Vai em `Codigoproduto`. */
+  readonly codigo: string;
+  /** Vai em `Tipocodproduto` — **o do campo escolhido**, não o da sessão. */
+  readonly tipoCodigo: string;
+}
+
+/**
+ * Campos do candidato na ordem em que servem de fallback, cada um com o
+ * `Tipocodproduto` que o ERP exige para filtrar por ele.
+ *
+ * O reduzido vem primeiro entre os alternativos porque é a chave da tabela
+ * (`MatCodRed`, `PCheckout_GetProduto`): é o único que todo produto tem.
+ */
+const CAMPOS_DE_CONSULTA = [
+  { tipo: TIPO_COD_PRODUTO.Reduzido, ler: (c: CandidatoDeBusca) => c.CodigoProduto },
+  { tipo: TIPO_COD_PRODUTO.Barras, ler: (c: CandidatoDeBusca) => c.CodigoBarras },
+  { tipo: TIPO_COD_PRODUTO.Modelo, ler: (c: CandidatoDeBusca) => c.Referencia },
+] as const;
+
+/** O campo que `usuarioTipoCodigoProduto` elege — reduzido para `'R'`/`''`/desconhecido. */
+function campoPreferido(usuarioTipoCodigoProduto: string): (typeof CAMPOS_DE_CONSULTA)[number] {
+  return (
+    CAMPOS_DE_CONSULTA.find((campo) => campo.tipo === usuarioTipoCodigoProduto) ??
+    CAMPOS_DE_CONSULTA[0]
+  );
+}
+
+/**
+ * Com qual código **e qual tipo** reconsultar um candidato escolhido no modal
+ * (AD-205).
+ *
+ * Existe porque o modal de busca não insere nada sozinho: escolher um candidato
+ * devolve uma consulta, que a barra de entrada refaz em `GetProduto` (AD-091).
+ * Devolver sempre `CodigoProduto`, como se fazia antes de AD-204, só funciona
+ * quando a empresa está configurada em código reduzido — num tenant com `'B'` o
+ * ERP filtra por `MatCodBar`, o reduzido não casa com nada e a resposta é um SDT
+ * vazio, que virava linha sem descrição, sem unidade e com preço zero.
+ *
+ * **O tipo da sessão é a preferência, não uma trava** (correção do usuário,
+ * 2026-09-10). AD-204 recusava o candidato sem o campo exigido — produto sem
+ * código de barras numa empresa em `'B'` — e o operador via um produto listado
+ * na busca que não conseguia inserir por nenhum caminho. Aqui o campo vazio só
+ * faz cair para o próximo preenchido, e `Tipocodproduto` acompanha o campo
+ * escolhido: `GetProduto` recebe o tipo por chamada, então consultar pelo
+ * reduzido num tenant configurado em `'B'` é uma chamada legítima, não um
+ * contorno. A configuração da empresa continua valendo para o que o operador
+ * **digita** na barra — é só a busca que deixa de ser barrada por ela.
+ *
+ * `null` só quando o candidato não tem nenhum dos três campos preenchido, o que
+ * o ERP não produz (`CodigoProduto` é a chave): inventar um código produziria a
+ * mesma linha zerada por outro caminho.
+ */
+export function codigoParaConsulta(
+  candidato: CandidatoDeBusca,
+  usuarioTipoCodigoProduto: string,
+): ConsultaDeProduto | null {
+  const preferido = campoPreferido(usuarioTipoCodigoProduto);
+
+  for (const campo of [preferido, ...CAMPOS_DE_CONSULTA]) {
+    const codigo = campo.ler(candidato);
+    if (codigo !== '') {
+      return { codigo, tipoCodigo: campo.tipo };
+    }
+  }
+
+  return null;
 }
 
 /**

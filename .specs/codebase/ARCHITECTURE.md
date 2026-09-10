@@ -56,14 +56,18 @@ Uma única aplicação atende desktop e mobile via layout condicional sobre o me
 
 No design (`design/CentriumCheckout.pen`), a tela principal desktop já está modelada como um único componente reutilizável (`Fundo PDV Online Web`) dividido em duas áreas — "Venda e produtos" e "Pagamento e totais" — confirmando visualmente a divisão de responsabilidades documentada acima.
 
-**Modal menu gerencial:** não é uma tela própria do Checkout — é um menu de navegação com duas opções, ambas apontando para telas do sistema legado do ERP via redirect (`TENANT + baseDomain + <caminho>`, reaproveitando o padrão de montagem de host de AD-002/AD-003, formalizado para este caso em AD-020 em `.specs/project/STATE.md`). Existe só no desktop — confirmado pelo usuário (2026-08-21) que não há equivalente mobile (ver `.specs/features/layout-responsivo-mobile/spec.md`, Out of Scope). Frame `PDV Online Web - Modal menu gerencial` (id `viV0S`) em `design/CentriumCheckout.pen`, sub-frames `Cabeçalho modal menu gerencial`, `Corpo modal menu gerencial` (as duas opções abaixo) e `Rodapé modal menu gerencial` (só botão "Cancelar" — sem tela própria a "salvar/confirmar").
+**Modal menu gerencial:** não é uma tela própria do Checkout — é um menu de navegação com duas opções, cada uma apontando para uma tela distinta do sistema legado do ERP. **Implementado em 2026-09-10 (AD-203).** Existe só no desktop — confirmado pelo usuário (2026-08-21) que não há equivalente mobile (ver `.specs/features/layout-responsivo-mobile/spec.md`, Out of Scope). Frame `PDV Online Web - Modal menu gerencial` (id `viV0S`) em `design/CentriumCheckout.pen`. O atalho que o abre é o **segundo** dos três da faixa "Atalhos da venda" (`kLUB1`); a engrenagem da barra superior segue inerte, por decisão do usuário.
+
+**O redirect é montado no BFF, não na SPA.** `GET /gerencial/:destino` (`src/server/routes/gerencial.ts`) decifra o cookie de sessão, monta `<protocolo>://<tenant>.<baseDomain>` por `montarBaseUrlErp` (o mesmo padrão de host de AD-002/AD-003/AD-019) e responde `302`. O navegador só informa um rótulo de um conjunto fechado (`src/shared/gerencial.ts`): `baseDomain` é variável de ambiente do servidor e nunca chega ao JS, e o `tenant` vem do cookie cifrado — não sobra superfície de redirect aberto. Sem sessão, `401`; rótulo desconhecido, `404`.
 
 | Opção no design | Descrição no design | Destino |
 |---|---|---|
-| "Central de movimentação não fiscal" | "Sangria, suprimento e outras movimentações de caixa" | `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx` (confirmado pelo usuário) |
-| "Relatório de resumo de caixa" | "Totais, formas de pagamento e fechamento do caixa" | `TENANT + baseDomain + /WPMovimentoNaoFiscal_Lancamento.aspx` — **Resolvido (2026-08-24, AD-026):** confirmado pelo usuário que as duas opções apontam para o mesmo link, apesar da descrição de conteúdo distinta no design |
+| "Central de movimentação não fiscal" | "Sangria, suprimento e outras movimentações de caixa" | `<tenant>.<baseDomain>` + `/wwtecfmovnaofisc.aspx` (rótulo `movimento-nao-fiscal`) |
+| "Relatório de resumo de caixa" | "Totais, formas de pagamento e fechamento do caixa" | `<tenant>.<baseDomain>` + `/WWPResumoCaixa.aspx` (rótulo `resumo-caixa`) |
 
-Cada opção é só um link/navegação para fora do Checkout — nenhuma das duas é implementada como funcionalidade dentro da SPA (sem chamada de API própria, sem estado no Zustand). Ver `.specs/codebase/CONCERNS.md`, "Telas desenhadas sem spec de requisito", para o histórico da pendência.
+Os dois caminhos acima foram confirmados pelo usuário em 2026-09-10 e **substituem** os registrados em AD-020 e AD-026, que davam `WPMovimentoNaoFiscal_Lancamento.aspx` para as duas opções — as telas são distintas, cada uma com o seu `.aspx`.
+
+Cada opção é só navegação para fora do Checkout — nenhuma das duas é funcionalidade dentro da SPA (sem chamada de API própria, sem estado no Zustand). A abertura é sempre em **nova aba** (`window.open(..., '_blank', 'noopener')`): a venda em andamento não sobrevive a uma navegação, porque o `vendaStore` é Zustand sem `persist`. Pelo mesmo motivo o atalho **nunca fica bloqueado**, ao contrário do "Menu Importação" (AD-138) — abrir uma tela de retaguarda em outra aba não toca no carrinho. Ver `.specs/codebase/CONCERNS.md`, "Telas desenhadas sem spec de requisito", para o histórico da pendência.
 
 ## Containerização (Docker)
 

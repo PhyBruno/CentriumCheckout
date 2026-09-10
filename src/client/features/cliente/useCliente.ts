@@ -10,6 +10,7 @@ import {
 } from '../../domain/cliente/documento';
 import {
   ErroCadastroRecusado,
+  ErroClienteIncompleto,
   ErroClienteNaoEncontrado,
   fetchClientePorCodigo,
   fetchClientePorDocumento,
@@ -70,6 +71,12 @@ function mensagemDeErro(erro: unknown): string {
   }
   if (erro instanceof ErroRespostaInvalida) {
     return 'O ERP devolveu um cliente em formato inesperado. Nada foi alterado.';
+  }
+  // O texto vem da própria recusa e **não** convida a tentar de novo: o cadastro
+  // volta em branco toda vez (AD-204), e "Tente novamente" — o default abaixo —
+  // colocaria o operador num laço que nunca sai.
+  if (erro instanceof ErroClienteIncompleto) {
+    return erro.message;
   }
   return 'Não foi possível consultar o cliente. Tente novamente.';
 }

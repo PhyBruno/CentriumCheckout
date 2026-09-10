@@ -9,7 +9,9 @@ import {
 } from '../../domain/auditoria/eventos';
 import type { FormaPagamentoImportada } from '../../domain/importacaoVenda/mapearVendaExistente';
 import {
+  MEIO_PAGTO,
   MEIOS_PAGTO_NFE,
+  nomeDoMeioPagto,
   type CondicaoPagamento,
   type FormaPagamento,
   type MeioPagtoNFe,
@@ -531,7 +533,12 @@ export function criarPagamentoSlice(
      * um evento com rótulo vazio seria pior do que um rótulo técnico.
      */
     function rotuloDoPagamento(pagamento: PagamentoAplicado): string {
-      return formaDoCatalogo(pagamento.formaCodigo)?.descricao ?? pagamento.meioPagtoNFe;
+      return (
+        formaDoCatalogo(pagamento.formaCodigo)?.descricao ??
+        // `nomeDoMeioPagto`, e não o código cru: desde AD-204 `meioPagtoNFe` é
+        // `'99'`, não `'Outros'`, e um rótulo técnico ainda precisa ser legível.
+        nomeDoMeioPagto(pagamento.meioPagtoNFe)
+      );
     }
 
     /**
@@ -840,7 +847,7 @@ export function criarPagamentoSlice(
         deps.invalidarVeredito();
 
         get().registrarEventoAuditoria(
-          eventoPagamentoRecusado({ tipo: alvo.meioPagtoNFe, motivo }),
+          eventoPagamentoRecusado({ tipo: nomeDoMeioPagto(alvo.meioPagtoNFe), motivo }),
         );
       },
 
@@ -1007,7 +1014,10 @@ export function criarPagamentoSlice(
           // N" e "inválido" — os quatro desfechos de `PValidaTicketNFCe`.
           deps.avisar?.(resultado.mensagem);
           get().registrarEventoAuditoria(
-            eventoPagamentoRecusado({ tipo: forma.meioPagtoNFe, motivo: resultado.mensagem }),
+            eventoPagamentoRecusado({
+              tipo: nomeDoMeioPagto(forma.meioPagtoNFe),
+              motivo: resultado.mensagem,
+            }),
           );
           return false;
         }
@@ -1152,7 +1162,7 @@ export function criarPagamentoSlice(
             // I3 (`valorRecebido !== null` ⇔ `Dinheiro`) preservada: o documento
             // registra o que quitou, então recebido e aplicado coincidem e o
             // troco derivado é zero — que é o correto para uma venda já fechada.
-            valorRecebido: meioPagtoNFe === 'Dinheiro' ? forma.valor : null,
+            valorRecebido: meioPagtoNFe === MEIO_PAGTO.Dinheiro ? forma.valor : null,
             // Sempre `NENHUMA`/`APROVADO`: o veredito do ERP já está implícito
             // no próprio documento existir, e nenhuma integração é reaberta.
             integracao: 'NENHUMA',

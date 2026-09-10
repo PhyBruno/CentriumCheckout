@@ -28,8 +28,9 @@ import { BarraSuperior } from '../BarraSuperior';
  * eles aparecem aqui e em nenhum arquivo de `mobile/`:
  * - importação de documento pronto (006) e recuperação de NFCe (011), pelo
  *   `BotaoMenuImportacao` dentro de `BarraAtalhosVenda`;
- * - o "menu gerencial", hoje o botão inerte de engrenagem da `BarraSuperior`
- *   (AD-020/AD-026, ainda sem feature numerada).
+ * - o "menu gerencial" (AD-203), pelo `BotaoMenuGerencial` dentro de
+ *   `BarraAtalhosVenda` — redirect para telas legadas do ERP, sem equivalente
+ *   compacto. A engrenagem da `BarraSuperior` segue inerte e não o abre.
  *
  * O campo de vendedor (012) não aparece na lista de filhos porque o desenho o
  * põe **dentro** do card de cliente, e é lá que `CampoClienteVenda` já o monta.

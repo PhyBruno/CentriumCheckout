@@ -61,6 +61,21 @@ export function paraCondicoesPagamento(
     });
   }
 
+  // Catálogo que entra com condições e sai vazio é sempre defeito de contrato,
+  // nunca configuração plausível: nenhuma empresa opera um PDV sem uma única
+  // forma de pagamento. O descarte por forma é deliberadamente silencioso
+  // (`filtrarFormasValidas`), e foi exatamente esse silêncio que deixou AD-204
+  // passar — todas as formas do ERP real eram descartadas, o operador via o
+  // painel de pagamento vazio e não havia um único sinal de erro. O aviso é do
+  // colapso **total**, não do descarte individual, para não voltar a ser ruído.
+  if (condicoes.length > 0 && resultado.length === 0) {
+    console.error(
+      `[pagamento] catálogo vazio: as ${String(condicoes.length)} condições do ERP perderam ` +
+        'todas as formas no filtro de `FormaMeioPagtoNFe`. Provável divergência de contrato ' +
+        '— conferir os valores publicados contra `MEIO_PAGTO` (`formaPagamento.ts`).',
+    );
+  }
+
   return resultado;
 }
 

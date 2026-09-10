@@ -16,7 +16,7 @@ function formaValida(sobrescritas: Record<string, unknown> = {}): Record<string,
     FormaCodigo: 1,
     FormaDescricao: 'DINHEIRO',
     FormaEntrada: 'S',
-    FormaMeioPagtoNFe: 'Dinheiro',
+    FormaMeioPagtoNFe: '01',
     FormaIntegracaoCartao: '',
     FormaTipoTransacaoTEF: '',
     FormaFpgUtiCar: '',
@@ -64,9 +64,9 @@ describe('filtrarFormasValidas / condicoesDePagamentoSchema — FormaMeioPagtoNF
     const [condicao] = condicoesDePagamentoSchema.parse([
       condicaoValida({
         CondicaoFormasDePagamento: [
-          formaValida({ FormaCodigo: 1, FormaMeioPagtoNFe: 'Dinheiro' }),
+          formaValida({ FormaCodigo: 1, FormaMeioPagtoNFe: '01' }),
           formaValida({ FormaCodigo: 2, FormaMeioPagtoNFe: 'MeioNovoDoErpAindaNaoMapeado' }),
-          formaValida({ FormaCodigo: 3, FormaMeioPagtoNFe: 'Pix' }),
+          formaValida({ FormaCodigo: 3, FormaMeioPagtoNFe: '17' }),
         ],
       }),
     ]);
@@ -102,7 +102,7 @@ describe('filtrarFormasValidas / condicoesDePagamentoSchema — FormaMeioPagtoNF
           FormaCodigo: 1,
           FormaDescricao: 'DINHEIRO',
           FormaEntrada: 'S',
-          FormaMeioPagtoNFe: 'Dinheiro',
+          FormaMeioPagtoNFe: '01',
           FormaIntegracaoCartao: '',
           FormaTipoTransacaoTEF: '',
           FormaFpgUtiCar: '',

@@ -62,6 +62,12 @@ describe('BarraSuperior', () => {
     render(<BarraSuperior />);
 
     expect(screen.getByRole('button', { name: /display do cliente/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /menu gerencial/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /configurações/i })).toBeDisabled();
+  });
+
+  it('a engrenagem não promete o Menu gerencial, que vive no atalho da faixa (AD-203)', () => {
+    render(<BarraSuperior />);
+
+    expect(screen.queryByRole('button', { name: /menu gerencial/i })).not.toBeInTheDocument();
   });
 });

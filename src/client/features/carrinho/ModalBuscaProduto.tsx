@@ -5,9 +5,28 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
+import { notificar } from '@/lib/notificar';
+import {
+  codigoParaConsulta,
+  type ConsultaDeProduto,
+} from '../../domain/precificacao/codigoProduto';
 import { ITENS_POR_PAGINA } from '../../services/paginacao';
 import { useBuscaProdutos } from '../../services/produto/produtoQueries';
-import { useQtdMinCharParaConsulta } from './useCarrinho';
+import { useQtdMinCharParaConsulta, useTipoCodigoProduto } from './useCarrinho';
+
+/**
+ * Um candidato da lista de `GetListaProdutos`, como esta tela o consome.
+ *
+ * Declarado aqui (e não importado do schema) pelo mesmo motivo de sempre nesta
+ * base: a tela depende só do que exibe e do que reenvia, não do SDT inteiro.
+ */
+interface ProdutoDaBusca {
+  readonly CodigoProduto: string;
+  readonly Descricao: string;
+  readonly Referencia: string;
+  readonly CodigoBarras: string;
+  readonly UDM: string;
+}
 
 /**
  * Modal de busca de produto por termo livre (T015, `CART-01`) — réplica do
@@ -22,8 +41,8 @@ import { useQtdMinCharParaConsulta } from './useCarrinho';
  * inventar dado que o ERP não manda — exatamente o que este projeto proíbe.
  *
  * O modal é **só um seletor de código** — não resolve, não revisa e não
- * insere nada sozinho. Escolher um candidato só devolve o `CodigoProduto`
- * via `onProdutoSelecionado`; quem faz a chamada a `GetProduto`, decide se o
+ * insere nada sozinho. Escolher um candidato só devolve a consulta
+ * (`codigo` + `tipoCodigo`) via `onProdutoSelecionado`; quem faz a chamada a `GetProduto`, decide se o
  * produto é editável/pesável e mostra os campos de revisão é a barra de
  * entrada rápida (`EntradaRapidaProduto`, que também é quem monta este
  * modal) — o mesmo caminho de quando o operador digita o código e aperta TAB.
@@ -33,7 +52,7 @@ import { useQtdMinCharParaConsulta } from './useCarrinho';
 export interface ModalBuscaProdutoProps {
   readonly aberto: boolean;
   readonly onFechar: () => void;
-  readonly onProdutoSelecionado: (codigoProduto: string) => void;
+  readonly onProdutoSelecionado: (consulta: ConsultaDeProduto) => void;
 }
 
 /**
@@ -54,6 +73,7 @@ export function ModalBuscaProduto({
   const [termoDebounced, setTermoDebounced] = useState('');
   const [pagina, setPagina] = useState(1);
   const qtdMinChar = useQtdMinCharParaConsulta();
+  const tipoCodigoProduto = useTipoCodigoProduto();
 
   // O componente nunca desmonta (`App.tsx` sempre o renderiza, `aberto` só
   // controla se devolve `null`) — sem isto, reabrir o modal reaproveitava o
@@ -102,8 +122,33 @@ export function ModalBuscaProduto({
   const termoLimpo = termo.trim();
   const abaixoDoMinimo = termoLimpo.length < minimo;
 
-  function selecionar(codigoProduto: string): void {
-    onProdutoSelecionado(codigoProduto);
+  /**
+   * O candidato inteiro entra, **uma consulta** sai — código e o
+   * `Tipocodproduto` que o casa (AD-204, revisto por AD-205).
+   *
+   * A escolha do campo começa pelo `Tipocodproduto` da sessão: com `'B'` o ERP
+   * filtra por código de barras, e devolver o reduzido — como se fazia — casava
+   * com nada e trazia o SDT vazio. Mas o tipo da sessão é preferência, não
+   * trava: quando o candidato não tem aquele campo preenchido (produto sem
+   * código de barras numa empresa em `'B'`), `codigoParaConsulta` cai para o
+   * próximo campo disponível e devolve o tipo correspondente, que a barra
+   * envia nesta chamada. Antes disso o produto aparecia na busca e não entrava
+   * por caminho nenhum (correção do usuário, 2026-09-10).
+   *
+   * `null` só sairia de um candidato com os três campos vazios, o que o ERP não
+   * produz — mas se sair, nada é inserido e o modal fica aberto: fechá-lo em
+   * silêncio esconderia do operador por que o produto não entrou.
+   */
+  function selecionar(candidato: ProdutoDaBusca): void {
+    const consulta = codigoParaConsulta(candidato, tipoCodigoProduto ?? '');
+    if (consulta === null) {
+      notificar.erro(
+        `"${candidato.Descricao}" não tem código cadastrado no ERP — não é possível inseri-lo.`,
+      );
+      return;
+    }
+
+    onProdutoSelecionado(consulta);
     onFechar();
   }
 
@@ -220,8 +265,8 @@ export function ModalBuscaProduto({
           ) : (
             <ResultadosDaBusca
               produtos={busca.data?.Produtos ?? []}
-              onSelecionar={(codigo) => {
-                void selecionar(codigo);
+              onSelecionar={(candidato) => {
+                selecionar(candidato);
               }}
             />
           )}
@@ -277,14 +322,13 @@ export function ModalBuscaProduto({
 }
 
 interface ResultadosDaBuscaProps {
-  readonly produtos: readonly {
-    CodigoProduto: string;
-    Descricao: string;
-    Referencia: string;
-    CodigoBarras: string;
-    UDM: string;
-  }[];
-  readonly onSelecionar: (codigoProduto: string) => void;
+  readonly produtos: readonly ProdutoDaBusca[];
+  /**
+   * Recebe o **candidato inteiro**, não um código: qual dos três códigos dele é
+   * o utilizável depende do `Tipocodproduto` da sessão, e essa decisão mora em
+   * quem tem a sessão (`selecionar`), não na lista (AD-204).
+   */
+  readonly onSelecionar: (candidato: ProdutoDaBusca) => void;
 }
 
 const classeCelulaCabecalho =
@@ -344,7 +388,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               data-codigo-produto={produto.CodigoProduto}
               className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-10 md:gap-0 md:px-0 md:py-0"
               onClick={() => {
-                onSelecionar(produto.CodigoProduto);
+                onSelecionar(produto);
               }}
             >
               {/* `circle-check` do Pencil (MCP, nó `UM0Ej`, "Resultado produto

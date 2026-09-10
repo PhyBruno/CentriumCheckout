@@ -13,6 +13,7 @@ import type {
   CondicaoPagamento,
   FormaPagamento,
 } from '../../../../src/client/domain/pagamento/formaPagamento';
+import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 import { linhaDe } from '../../../support/precificacao';
@@ -197,7 +198,7 @@ const DINHEIRO: FormaPagamento = {
   codigo: 1,
   descricao: 'DINHEIRO',
   entrada: 'S',
-  meioPagtoNFe: 'Dinheiro',
+  meioPagtoNFe: MEIO_PAGTO.Dinheiro,
   integracaoCartao: '',
   tipoTransacaoTEF: '',
   fpgUtiCar: '',
@@ -207,7 +208,7 @@ const PIX: FormaPagamento = {
   codigo: 3,
   descricao: 'PIX',
   entrada: 'S',
-  meioPagtoNFe: 'Pix',
+  meioPagtoNFe: MEIO_PAGTO.Pix,
   integracaoCartao: '',
   tipoTransacaoTEF: '',
   fpgUtiCar: '',

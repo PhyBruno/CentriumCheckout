@@ -197,6 +197,50 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
   });
 
+  /**
+   * NFCe rejeitada — correção do usuário, 2026-09-10.
+   *
+   * O oposto do teste acima, e o motivo de os dois existirem lado a lado: aqui o
+   * ERP **gravou** o documento, então a venda não pode continuar no caixa nem
+   * ser reenviada — o operador lê o motivo, fecha, e o caixa nasce limpo.
+   */
+  test('NFCe rejeitada mostra o motivo do ERP e libera o caixa ao fechar', async ({
+    page,
+    request,
+  }) => {
+    await configurar(request, { faturarNFCeRejeitada: true });
+    await stubarImpressoraLocal(page);
+    await abrirTelaDeVenda(page);
+    await biparProduto(page);
+    await quitarVendaEmDinheiro(page);
+
+    await page.getByTestId('botao-finalizar-venda').click();
+
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+    // O `ErroMensagem` do bloco `NotaFiscal` chega íntegro à tela: era ele que
+    // se perdia quando o schema reprovava a resposta inteira por falta de PDF.
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(/Duplicidade de NF-e/i);
+    await expect(page.getByTestId('erro-finalizacao')).toContainText('539');
+    // **Nenhuma identificação de documento**, e é o comportamento correto: o ERP
+    // real devolve `NumeroNota: "0"`/`SerieNota: ""` na rejeição, mesmo tendo
+    // gravado a nota (item 51 de `PENDENCIES.md`, medido em 2026-09-10). Antes
+    // de medir, este teste exigia "NFCe 9001" — um número que o mock inventava e
+    // o ERP nunca manda. Quando o ERP passar a preencher os campos, a linha
+    // volta sozinha, e é esta asserção que deve mudar junto.
+    await expect(page.getByTestId('documento-rejeitado')).toHaveCount(0);
+    // Não é falha de rede: nada a confirmar antes de reenviar, porque não há
+    // reenvio nenhum.
+    await expect(page.getByTestId('dialogo-confirmar-reenvio')).toHaveCount(0);
+
+    await page.getByTestId('fechar-erro-faturamento').click();
+
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toHaveCount(0);
+    // Caixa livre para a próxima NFCe: é o que separa este desfecho da recusa
+    // sem documento gravado, logo acima.
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByTestId('botao-finalizar-venda')).toBeDisabled();
+  });
+
   // Título e passos revisados pela feature 008 (2026-09-03): ter valor no
   // carrinho deixou de bastar para liberar "Finalizar venda" — o botão agora
   // exige `saldoRestante === 0`. "Cancelar venda" continua liberando só com o

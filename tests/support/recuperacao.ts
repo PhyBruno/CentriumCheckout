@@ -22,11 +22,13 @@ export const SKU_SEGUNDO_ITEM = '007777';
 /**
  * Forma de pagamento **válida** de um rascunho retomado.
  *
- * `FormaMeioPagtoNFe: 'Dinheiro'`, e não o `'01'` de `tests/support/dav.ts`: o
- * domínio `Nfce_FormaPagto` do ERP usa **nomes**, os mesmos que `GetSessao`
- * devolve no catálogo (AD-023). Com o código numérico da NFe a forma é
- * descartada como meio desconhecido, com aviso no console — foi o que escondeu
- * o passo 4 do Cenário 2 do `quickstart.md` até 2026-09-04.
+ * `FormaMeioPagtoNFe: '01'` — o mesmo código de `tests/support/dav.ts`, que
+ * sempre esteve certo. A redação anterior deste bloco dizia que o domínio
+ * `NFCe_FormaPagto` usa **nomes** (AD-023) e que `'01'` seria descartado; a
+ * afirmação **não vale**: o domínio é `Character(2)` e o ERP publica o código
+ * (AD-204). O sintoma observado em 2026-09-04 era real — a forma era mesmo
+ * descartada —, mas a causa era o Checkout não reconhecer o próprio dialeto do
+ * ERP, e trocar a fixture para um nome só escondeu o defeito de novo.
  *
  * Ao contrário do DAV, cuja fixture E2E deixa `FormasDePagamento` vazio de
  * propósito (um DAV é documento pendente de cobrança), **um rascunho de NFCe
@@ -37,7 +39,7 @@ export function formaDinheiroDoRascunho(
   sobrescritas: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return formaDePagamentoDoDav({
-    FormaMeioPagtoNFe: 'Dinheiro',
+    FormaMeioPagtoNFe: '01',
     FormaValor: 93.5,
     ...sobrescritas,
   });
@@ -119,13 +121,13 @@ export function respostaListaNFCes(
  * Resposta de `CarregarNFCe` — mesmo envelope nomeado de `GetDav` no YAML.
  *
  * A forma de pagamento é **sobrescrita** para `formaDinheiroDoRascunho`, e não
- * herdada de `documentoDoDav`: aquela fixture usa `FormaMeioPagtoNFe: '01'`, o
- * código numérico da NFe, num campo que o ERP preenche com nomes (AD-023).
- * `importarFormasDePagamento` descarta o meio desconhecido em silêncio (só um
- * `console.warn`), então todo teste que passasse por aqui hidratava uma venda
- * **sem pagamento nenhum** acreditando ter um — foi o que escondeu o passo 4 do
- * Cenário 2 até 2026-09-04, e a correção de então só alcançou
- * `respostaRascunhoCompleto`, não este ponto de entrada.
+ * herdada de `documentoDoDav`, só pelo valor: o rascunho quita 93,50 e o DAV,
+ * 18,50. As duas usam o mesmo `FormaMeioPagtoNFe: '01'`.
+ *
+ * A redação anterior justificava a sobrescrita dizendo que `'01'` era "o código
+ * numérico da NFe num campo que o ERP preenche com nomes (AD-023)" — **isso não
+ * vale**: o campo é o código (AD-204). O pagamento sumido observado em
+ * 2026-09-04 era real, mas por defeito do Checkout, não da fixture.
  *
  * `FormaValor` continua 18,50 (o mesmo de `formaDePagamentoDoDav`) para não
  * mexer no total dos testes de schema, que afirmam a conversão para 1850.

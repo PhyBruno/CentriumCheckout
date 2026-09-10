@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { corpoComEmpresaDaSessao } from '../../../../src/server/routes/erp-proxy';
+import {
+  corpoComEmpresaDaSessao,
+  queryComEmpresaDaSessao,
+} from '../../../../src/server/routes/erp-proxy';
 
 /**
  * O tenant do corpo vem da sessão, nunca do navegador.
@@ -75,5 +78,47 @@ describe('corpoComEmpresaDaSessao', () => {
     const original = { Cliente: 'nao-e-objeto' };
 
     expect(corpoComEmpresaDaSessao(original, '7')).toEqual(original);
+  });
+});
+
+/**
+ * `Empresa` na query string, além do cabeçalho (AD-205).
+ *
+ * Metade dos métodos do `APICentriumOAuth` lê `&Empresa` do cabeçalho num
+ * `Event <Metodo>.Before`; a outra metade — `GetProduto` inclusive — recebe
+ * `in:&Empresa` como parâmetro comum e o lê da query. Sem ele o `For Each`
+ * filtra por `empcod = 0`, não acha nada e devolve `200` com o SDT vazio, que o
+ * Checkout traduz em "produto não encontrado" (verificado contra o ERP real em
+ * 2026-09-10).
+ *
+ * **A posição é parte do contrato, não estética:** os `.Before` de `GetSessao`
+ * e `GetCliente` recortam `Login=`/`CPFCNPJ=` até o **fim** da query string com
+ * `SubStr`, então `Empresa` depois deles entraria no valor recortado e zeraria
+ * a resposta.
+ */
+describe('queryComEmpresaDaSessao', () => {
+  it('põe Empresa como primeiro par, antes dos recortados por SubStr no ERP', () => {
+    expect(queryComEmpresaDaSessao('Login=operador', '7')).toBe('Empresa=7&Login=operador');
+  });
+
+  it('preserva os demais pares crus, na ordem e na codificação originais', () => {
+    expect(queryComEmpresaDaSessao('Txtbusca=caf%C3%A9&Pagina=2', '1')).toBe(
+      'Empresa=1&Txtbusca=caf%C3%A9&Pagina=2',
+    );
+  });
+
+  it('query vazia vira só a empresa', () => {
+    expect(queryComEmpresaDaSessao('', '3')).toBe('Empresa=3');
+  });
+
+  it('descarta a Empresa vinda do navegador — a da sessão é a única confiável', () => {
+    expect(queryComEmpresaDaSessao('Empresa=999&Codigoproduto=ABC', '1')).toBe(
+      'Empresa=1&Codigoproduto=ABC',
+    );
+    expect(queryComEmpresaDaSessao('empresa=999', '1')).toBe('Empresa=1');
+  });
+
+  it('não confunde outro parâmetro que só termina em "empresa"', () => {
+    expect(queryComEmpresaDaSessao('CodEmpresa=5', '1')).toBe('Empresa=1&CodEmpresa=5');
   });
 });

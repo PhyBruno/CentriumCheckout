@@ -3,6 +3,7 @@ import {
   ErroPrecoIndisponivelParaPesagem,
   interpretarEntradaCodigo,
   quantidadePesavel,
+  codigoParaConsulta,
   rotuloTipoCodigoProduto,
 } from '../../../../src/client/domain/precificacao/codigoProduto';
 import { emCentavos } from '../../../support/precificacao';
@@ -95,18 +96,82 @@ describe('quantidadePesavel (AD-076)', () => {
   });
 });
 
-/** Domain `EnumTipoCodigoProduto` da KB GeneXus — `ControlValues` real. */
+/**
+ * Os valores que `PCheckout_GetProduto` sabe filtrar (AD-204) — **não** os do
+ * domínio `EnumTipoCodigoProduto` (`''`/`'D'`/`'C'`/`'P'`), que esta tabela
+ * afirmava antes e que o campo não usa: `UsuarioTipoCodigoProduto` vem do
+ * parâmetro `PRM0656`, e o tenant real devolve `'B'`.
+ */
 describe('rotuloTipoCodigoProduto', () => {
   it.each([
     ['', 'Código reduzido'],
-    ['D', 'Código de barras'],
-    ['C', 'Referência'],
-    ['P', 'Código de barras pesável'],
+    ['R', 'Código reduzido'],
+    ['B', 'Código de barras'],
+    ['M', 'Referência'],
   ])('mapeia UsuarioTipoCodigoProduto=%j para %j', (valor, esperado) => {
     expect(rotuloTipoCodigoProduto(valor)).toBe(esperado);
   });
 
   it('valor fora do domínio conhecido cai num rótulo genérico, sem lançar', () => {
     expect(rotuloTipoCodigoProduto('X')).toBe('Código do produto');
+  });
+});
+
+/**
+ * `codigoParaConsulta` — com qual código **e qual `Tipocodproduto`** o
+ * candidato do modal é reenviado ao `GetProduto` (AD-204, revisto por AD-205).
+ *
+ * Nasceu da correção do defeito em que o modal devolvia sempre o código
+ * reduzido e o ERP, configurado em `'B'`, respondia SDT vazio. AD-205 tirou a
+ * trava: o tipo da sessão é a **preferência**, e o campo vazio cai para o
+ * próximo preenchido levando junto o tipo que o casa — porque `GetProduto`
+ * recebe `Tipocodproduto` por chamada, não por configuração da empresa.
+ */
+describe('codigoParaConsulta', () => {
+  const CANDIDATO = {
+    CodigoProduto: '0001284000101',
+    CodigoBarras: '0012840001017',
+    Referencia: '0001284',
+  };
+
+  it.each([
+    ['', CANDIDATO.CodigoProduto, 'R'],
+    ['R', CANDIDATO.CodigoProduto, 'R'],
+    ['B', CANDIDATO.CodigoBarras, 'B'],
+    ['M', CANDIDATO.Referencia, 'M'],
+  ])('com Tipocodproduto=%j devolve %j consultado como %j', (tipo, codigo, tipoCodigo) => {
+    expect(codigoParaConsulta(CANDIDATO, tipo)).toEqual({ codigo, tipoCodigo });
+  });
+
+  it('tipo desconhecido cai no código reduzido, o filtro default do ERP', () => {
+    expect(codigoParaConsulta(CANDIDATO, 'X')).toEqual({
+      codigo: CANDIDATO.CodigoProduto,
+      tipoCodigo: 'R',
+    });
+  });
+
+  /**
+   * O caso que o usuário reportou em 2026-09-10: produto listado na busca, sem
+   * código de barras, empresa configurada em `'B'`. Antes era recusado; agora
+   * entra pelo reduzido, e é o tipo `'R'` que vai na chamada.
+   */
+  it('campo preferido vazio cai no próximo preenchido, com o tipo correspondente', () => {
+    expect(codigoParaConsulta({ ...CANDIDATO, CodigoBarras: '' }, 'B')).toEqual({
+      codigo: CANDIDATO.CodigoProduto,
+      tipoCodigo: 'R',
+    });
+  });
+
+  it('sem reduzido nem barras, uma empresa em "B" ainda alcança o produto pela referência', () => {
+    expect(codigoParaConsulta({ ...CANDIDATO, CodigoProduto: '', CodigoBarras: '' }, 'B')).toEqual({
+      codigo: CANDIDATO.Referencia,
+      tipoCodigo: 'M',
+    });
+  });
+
+  it('devolve null só quando o candidato não tem nenhum dos três campos', () => {
+    expect(
+      codigoParaConsulta({ CodigoProduto: '', CodigoBarras: '', Referencia: '' }, 'B'),
+    ).toBeNull();
   });
 });

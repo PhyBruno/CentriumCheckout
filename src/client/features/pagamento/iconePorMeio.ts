@@ -20,7 +20,11 @@ import {
   Wallet,
   type IconComponent,
 } from 'reicon-react';
-import type { FormaPagamento, MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
+import {
+  MEIO_PAGTO,
+  type FormaPagamento,
+  type MeioPagtoNFe,
+} from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import type { PagamentoAplicado } from '../../domain/pagamento/saldoPagamento';
 
@@ -49,32 +53,31 @@ import type { PagamentoAplicado } from '../../domain/pagamento/saldoPagamento';
  */
 export const ICONE_POR_MEIO: Record<MeioPagtoNFe, IconComponent> = {
   // --- Do Pencil ---
-  Dinheiro: Banknote,
-  CartaoCredito: CreditCard,
-  CartaoDebito: CreditCard,
-  Pix: Qr,
+  [MEIO_PAGTO.Dinheiro]: Banknote,
+  [MEIO_PAGTO.CartaoCredito]: CreditCard,
+  [MEIO_PAGTO.CartaoDebito]: CreditCard,
+  [MEIO_PAGTO.Pix]: Qr,
 
   // --- Inferidos ---
   /** Mesmo `qr-code` do PIX dinâmico: para o operador é o mesmo gesto. */
-  PixEstatico: Qr,
-  Cheque: Bill,
+  [MEIO_PAGTO.PixEstatico]: Qr,
+  [MEIO_PAGTO.Cheque]: Bill,
   /** Crédito da loja e crédito em loja são a mesma ideia em dois cadastros. */
-  CreditoLoja: Store,
-  CreditoEmLoja: Store,
-  ValeAlimentacao: BasketShopping,
-  ValeRefeicao: ForkKnife,
-  ValePresente: Gift,
-  ValeCombustivel: Fuel,
-  DuplicataMercantil: FileText,
-  BoletoBancario: Barcode,
-  DepositoBancario: Bank,
-  TransferenciaBancaria: ArrowSwapHorizontal,
-  /** Typo reproduzido do domínio do ERP — ver `formaPagamento.ts`. */
-  ProgaramaFidelidade: Star,
-  PagamentoNaoInformado: HelpCircle,
-  SemPagamento: Ban,
-  PagamentoPosterior: Clock,
-  Outros: Wallet,
+  [MEIO_PAGTO.CreditoLoja]: Store,
+  [MEIO_PAGTO.CreditoEmLoja]: Store,
+  [MEIO_PAGTO.ValeAlimentacao]: BasketShopping,
+  [MEIO_PAGTO.ValeRefeicao]: ForkKnife,
+  [MEIO_PAGTO.ValePresente]: Gift,
+  [MEIO_PAGTO.ValeCombustivel]: Fuel,
+  [MEIO_PAGTO.DuplicataMercantil]: FileText,
+  [MEIO_PAGTO.BoletoBancario]: Barcode,
+  [MEIO_PAGTO.DepositoBancario]: Bank,
+  [MEIO_PAGTO.TransferenciaBancaria]: ArrowSwapHorizontal,
+  [MEIO_PAGTO.ProgramaFidelidade]: Star,
+  [MEIO_PAGTO.PagamentoNaoInformado]: HelpCircle,
+  [MEIO_PAGTO.SemPagamento]: Ban,
+  [MEIO_PAGTO.PagamentoPosterior]: Clock,
+  [MEIO_PAGTO.Outros]: Wallet,
 };
 
 /**
