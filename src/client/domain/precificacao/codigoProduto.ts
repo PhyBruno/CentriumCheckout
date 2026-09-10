@@ -109,30 +109,92 @@ export function interpretarEntradaCodigo(texto: string): EntradaCodigo {
 }
 
 /**
- * Rótulo do campo de entrada conforme `SessaoUsuario.UsuarioTipoCodigoProduto`
- * (`GetSessao`) — o tipo de código que o operador bipa/digita é configuração da
- * empresa, não um valor fixo (KB GeneXus, domain `EnumTipoCodigoProduto`,
- * `ControlValues`: `''`→Código Reduzido, `'D'`→Código de Barras,
- * `'C'`→Referência, `'P'`→Codigo de Barra Pesavel). Mesmo valor vai em
- * `Tipocodproduto` na chamada a `GetProduto` (AD-033) — este rótulo só troca o
- * texto mostrado ao operador, nunca a lógica de inserção.
+ * Os três tipos de código que `PCheckout_GetProduto` sabe filtrar, e o campo do
+ * produto que cada um casa (AD-204, fonte lido na KB em 2026-09-10):
  *
- * Um valor fora do domínio conhecido não pode travar a tela (mesma postura de
+ * ```
+ * where MatCodRed  = &CodigoProduto when &TipoCodProduto in ('R', '')
+ * where MatCodBar  = &CodigoProduto when &TipoCodProduto = 'B'
+ * where MatModelo  = &CodigoProduto when &TipoCodProduto = 'M'
+ * ```
+ *
+ * **Não confundir com o domínio `EnumTipoCodigoProduto`** (`''`/`'D'`/`'C'`/
+ * `'P'`), que a redação anterior deste módulo tomava como fonte de verdade:
+ * `SessaoUsuario.UsuarioTipoCodigoProduto` **não** sai daquele domínio — sai do
+ * parâmetro `PRM0656` (`PCheckout_GetSessao`, linha 63), cujos valores são
+ * estes. Um tenant real devolve `'B'`, que nem existe naquele domínio.
+ *
+ * Um valor fora destes três não filtra nada no `For Each` do ERP, que então
+ * devolve o **primeiro produto da empresa** — por isso o rótulo genérico e a
+ * guarda de SDT vazio em `fetchProduto` importam.
+ */
+export const TIPO_COD_PRODUTO = {
+  Reduzido: 'R',
+  ReduzidoVazio: '',
+  Barras: 'B',
+  Modelo: 'M',
+} as const;
+
+/**
+ * Rótulo do campo de entrada conforme `SessaoUsuario.UsuarioTipoCodigoProduto`.
+ *
+ * O tipo de código que o operador bipa/digita é configuração da empresa, não um
+ * valor fixo. Mesmo valor vai em `Tipocodproduto` na chamada a `GetProduto`
+ * (AD-033) — este rótulo só troca o texto mostrado ao operador, nunca a lógica
+ * de inserção.
+ *
+ * Um valor desconhecido não pode travar a tela (mesma postura de
  * `interpretarEntradaCodigo`, que também nunca lança): cai num rótulo genérico.
  */
 export function rotuloTipoCodigoProduto(usuarioTipoCodigoProduto: string): string {
   switch (usuarioTipoCodigoProduto) {
-    case '':
+    case TIPO_COD_PRODUTO.ReduzidoVazio:
+    case TIPO_COD_PRODUTO.Reduzido:
       return 'Código reduzido';
-    case 'D':
+    case TIPO_COD_PRODUTO.Barras:
       return 'Código de barras';
-    case 'C':
+    case TIPO_COD_PRODUTO.Modelo:
       return 'Referência';
-    case 'P':
-      return 'Código de barras pesável';
     default:
       return 'Código do produto';
   }
+}
+
+/** Os três campos que um candidato da busca (`GetListaProdutos`) sempre traz. */
+export interface CandidatoDeBusca {
+  readonly CodigoProduto: string;
+  readonly CodigoBarras: string;
+  readonly Referencia: string;
+}
+
+/**
+ * Qual campo do candidato pode ser reenviado como `Codigoproduto` na chamada a
+ * `GetProduto`, dado o `Tipocodproduto` da sessão (AD-204).
+ *
+ * Existe porque o modal de busca não insere nada sozinho: escolher um candidato
+ * devolve **um código**, que a barra de entrada rebusca com o
+ * `Tipocodproduto` da sessão (AD-091). Devolver sempre `CodigoProduto`, como se
+ * fazia, só funciona quando a empresa está configurada em código reduzido — num
+ * tenant com `'B'` o ERP filtra por `MatCodBar`, o reduzido não casa com nada e
+ * a resposta é um SDT vazio, que virava linha sem descrição, sem unidade e com
+ * preço zero.
+ *
+ * `null` quando o candidato não tem o campo exigido preenchido (produto sem
+ * código de barras cadastrado, com a empresa em `'B'`): não há código que
+ * funcione, e inventar um produziria a mesma linha zerada por outro caminho.
+ */
+export function codigoParaConsulta(
+  candidato: CandidatoDeBusca,
+  usuarioTipoCodigoProduto: string,
+): string | null {
+  const campo =
+    usuarioTipoCodigoProduto === TIPO_COD_PRODUTO.Barras
+      ? candidato.CodigoBarras
+      : usuarioTipoCodigoProduto === TIPO_COD_PRODUTO.Modelo
+        ? candidato.Referencia
+        : candidato.CodigoProduto;
+
+  return campo === '' ? null : campo;
 }
 
 /**

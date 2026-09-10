@@ -310,10 +310,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     expect(store.getState().clienteAtual?.codigoCliente).toBe(CLIENTE_DEFAULT);
 
     const { deps, espioes } = depsDe(store);
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     expect(espioes.resolverCliente).toHaveBeenCalledWith(CODIGO_CLIENTE_DAV);
     expect(store.getState().clienteAtual?.codigoCliente).toBe(CODIGO_CLIENTE_DAV);
@@ -329,10 +326,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     const store = montarStore();
     const { deps } = depsDe(store);
 
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     // É este campo que `montarRetratoVenda` reenvia como `NumeroNota` em
     // `FaturarNFCe` — o único elo com o DAV de origem.
@@ -343,10 +337,7 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     const store = montarStore();
     const { deps, espioes } = depsDe(store);
 
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     expect(espioes.importarFormasDePagamento).toHaveBeenCalledWith([
       {
@@ -370,10 +361,7 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
     const store = montarStore();
     const { deps } = depsDe(store);
 
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     expect(tiposDeEvento(store)).not.toContain('PRODUTO_INSERIDO');
   });
@@ -390,10 +378,7 @@ describe('importarLinhasCongeladas — sem reprecificação nem evento (T020)', 
       {},
       respostaGetDav({ produtos: [produtoDoDav({ quantidade: 3, precoUnitario: 7.77 })] }),
     );
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     // Linha manual do mesmo SKU, 3 unidades. Se a congelada entrasse no agregado
     // por SKU, as duas somariam 6 e cruzariam para a faixa 2 (900).
@@ -463,10 +448,7 @@ describe('DAV_IMPORTADO (T021, AD-114)', () => {
       }),
     );
 
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     const eventos = store.getState().eventos.filter((evento) => evento.tipo === 'DAV_IMPORTADO');
     expect(eventos).toHaveLength(1);
@@ -518,10 +500,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     const antes = store.getState().linhas;
 
     await expect(
-      importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV }),
-        deps,
-      ),
+      importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps),
     ).rejects.toMatchObject({ name: 'ErroImportacaoRecusada', motivo });
 
     // Recusa acontece antes até da rede: nada foi buscado, nada foi mutado.
@@ -554,10 +533,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
   it('recusa a segunda importação — o NumeroNota do primeiro documento não pode ser sobrescrito', async () => {
     const store = montarStore();
     const { deps } = depsDe(store);
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
     expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
 
     // Segundo documento, número de nota diferente. Sem a pré-condição, este
@@ -566,10 +542,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     // para sempre, com os itens dele já faturados sob outro número.
     const segundo = depsDe(store, {}, respostaGetDav({ NumeroNota: 90211 }));
     await expect(
-      importarVendaExistente(
-        fonteDav({ numeroDav: '004790' }),
-        segundo.deps,
-      ),
+      importarVendaExistente(fonteDav({ numeroDav: '004790' }), segundo.deps),
     ).rejects.toMatchObject({ motivo: 'ja-importou-documento' });
 
     expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
@@ -596,10 +569,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     });
 
     await expect(
-      importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV }),
-        deps,
-      ),
+      importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps),
     ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
 
     // Sem a segunda leitura, cada mutação viraria no-op na guarda do seu próprio
@@ -624,10 +594,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     });
 
     await expect(
-      importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV }),
-        deps,
-      ),
+      importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps),
     ).rejects.toMatchObject({ motivo: 'venda-bloqueada' });
 
     // A lacuna que a revisão apontou: `definirIdentidadeVenda` não é barrada
@@ -648,10 +615,7 @@ describe('resolução de descrição best-effort (T022, AD-096)', () => {
     const store = montarStore();
     const { deps, espioes } = depsDe(store);
 
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     await waitFor(() => {
       expect(store.getState().linhas[0]?.snapshot.descricao).toBe('ARROZ TIPO 1 5KG');
@@ -677,10 +641,7 @@ describe('resolução de descrição best-effort (T022, AD-096)', () => {
       }),
     );
 
-    await importarVendaExistente(
-      fonteDav({ numeroDav: NUMERO_DAV }),
-      deps,
-    );
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
     await waitFor(() => {
       expect(store.getState().linhas[1]?.snapshot.descricao).toBe('FEIJAO CARIOCA 1KG');
@@ -708,10 +669,7 @@ describe('erro de importação (D7, FR-010)', () => {
     });
 
     await expect(
-      importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV }),
-        deps,
-      ),
+      importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps),
     ).rejects.toThrow();
 
     expect(store.getState().linhas).toEqual(antes);
@@ -726,10 +684,7 @@ describe('erro de importação (D7, FR-010)', () => {
     });
 
     await expect(
-      importarVendaExistente(
-        fonteDav({ numeroDav: NUMERO_DAV }),
-        deps,
-      ),
+      importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps),
     ).rejects.toThrow();
 
     // Nenhuma mutação: nem linha, nem identidade, nem vendedor, nem pagamento.

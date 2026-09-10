@@ -130,7 +130,7 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     // --- corpo enviado ao ERP (`FR-010`, `research.md` D5/D7) ----------------
     const { sdt } = await ultimoPix(request);
     expect(sdt?.TrnValor).toBe(10);
-    expect(sdt?.TrnFormaPagamento).toBe('Pix');
+    expect(sdt?.TrnFormaPagamento).toBe('17');
     expect(sdt?.FPgCod).toBe(3);
     // Cliente default da sessão sintética: nome preenchido, documento vazio —
     // `GetSessao` não devolve o CPF/CNPJ dele (AD-100).

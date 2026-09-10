@@ -12,6 +12,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { MEIO_PAGTO } from '../../domain/pagamento/formaPagamento';
 import type { CobrancaPix, DadosGerarPix } from '../../domain/pix/cobrancaPix';
 import type { ResultadoStatusPix } from '../../domain/pix/interpretarStatusPix';
 import { gerarPixOutputSchema, statusPixOutputSchema } from '../../../shared/schemas/pix.schema';
@@ -97,9 +98,16 @@ export async function gerarCobrancaPix(
         TrnGUID: trnGuid,
         TrnValor: reaisDeCentavos(entrada.valor),
         // `MeioPagtoNFe` da forma aplicada, não um segundo enum paralelo
-        // (`research.md` D5): o campo usa o mesmo domínio `Nfce_FormaPagto` que
-        // `FormaMeioPagtoNFe`. Esta feature só existe para `'Pix'`.
-        TrnFormaPagamento: 'Pix',
+        // (`research.md` D5): o campo usa o mesmo domínio `NFCe_FormaPagto` que
+        // `FormaMeioPagtoNFe`, e portanto o **código** (`'17'`), não o nome
+        // (AD-204). Esta feature só existe para PIX dinâmico.
+        //
+        // Único campo de saída desta correção que **não** foi verificado contra
+        // o ERP real: a integração PIX não foi exercitada ao vivo (feature 009).
+        // A troca segue a afirmação que este próprio comentário já fazia — que o
+        // campo compartilha o domínio de `FormaMeioPagtoNFe`, cujo dialeto é
+        // comprovadamente o código.
+        TrnFormaPagamento: MEIO_PAGTO.Pix,
         FPgCod: entrada.formaCodigo,
         TrnPagadorNome: entrada.pagador.nome,
         TrnPagadorCgc: entrada.pagador.documento,

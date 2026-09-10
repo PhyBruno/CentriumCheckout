@@ -5,9 +5,28 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
+import { notificar } from '@/lib/notificar';
+import {
+  codigoParaConsulta,
+  rotuloTipoCodigoProduto,
+} from '../../domain/precificacao/codigoProduto';
 import { ITENS_POR_PAGINA } from '../../services/paginacao';
 import { useBuscaProdutos } from '../../services/produto/produtoQueries';
-import { useQtdMinCharParaConsulta } from './useCarrinho';
+import { useQtdMinCharParaConsulta, useTipoCodigoProduto } from './useCarrinho';
+
+/**
+ * Um candidato da lista de `GetListaProdutos`, como esta tela o consome.
+ *
+ * Declarado aqui (e não importado do schema) pelo mesmo motivo de sempre nesta
+ * base: a tela depende só do que exibe e do que reenvia, não do SDT inteiro.
+ */
+interface ProdutoDaBusca {
+  readonly CodigoProduto: string;
+  readonly Descricao: string;
+  readonly Referencia: string;
+  readonly CodigoBarras: string;
+  readonly UDM: string;
+}
 
 /**
  * Modal de busca de produto por termo livre (T015, `CART-01`) — réplica do
@@ -54,6 +73,7 @@ export function ModalBuscaProduto({
   const [termoDebounced, setTermoDebounced] = useState('');
   const [pagina, setPagina] = useState(1);
   const qtdMinChar = useQtdMinCharParaConsulta();
+  const tipoCodigoProduto = useTipoCodigoProduto();
 
   // O componente nunca desmonta (`App.tsx` sempre o renderiza, `aberto` só
   // controla se devolve `null`) — sem isto, reabrir o modal reaproveitava o
@@ -102,8 +122,28 @@ export function ModalBuscaProduto({
   const termoLimpo = termo.trim();
   const abaixoDoMinimo = termoLimpo.length < minimo;
 
-  function selecionar(codigoProduto: string): void {
-    onProdutoSelecionado(codigoProduto);
+  /**
+   * O candidato inteiro entra, **um** código sai (AD-204).
+   *
+   * A escolha do campo depende do `Tipocodproduto` da sessão: com `'B'` o ERP
+   * filtra por código de barras, e devolver o reduzido — como se fazia — casava
+   * com nada e trazia o SDT vazio. Quando o candidato não tem o campo exigido
+   * preenchido, nada é inserido e o modal fica aberto: não há código que
+   * funcione, e fechá-lo em silêncio esconderia do operador por que o produto
+   * não entrou.
+   */
+  function selecionar(candidato: ProdutoDaBusca): void {
+    const codigo = codigoParaConsulta(candidato, tipoCodigoProduto ?? '');
+    if (codigo === null) {
+      notificar.erro(
+        `"${candidato.Descricao}" não tem ${rotuloTipoCodigoProduto(
+          tipoCodigoProduto ?? '',
+        ).toLowerCase()} cadastrado — não é possível inseri-lo por aqui.`,
+      );
+      return;
+    }
+
+    onProdutoSelecionado(codigo);
     onFechar();
   }
 
@@ -220,8 +260,8 @@ export function ModalBuscaProduto({
           ) : (
             <ResultadosDaBusca
               produtos={busca.data?.Produtos ?? []}
-              onSelecionar={(codigo) => {
-                void selecionar(codigo);
+              onSelecionar={(candidato) => {
+                selecionar(candidato);
               }}
             />
           )}
@@ -277,14 +317,13 @@ export function ModalBuscaProduto({
 }
 
 interface ResultadosDaBuscaProps {
-  readonly produtos: readonly {
-    CodigoProduto: string;
-    Descricao: string;
-    Referencia: string;
-    CodigoBarras: string;
-    UDM: string;
-  }[];
-  readonly onSelecionar: (codigoProduto: string) => void;
+  readonly produtos: readonly ProdutoDaBusca[];
+  /**
+   * Recebe o **candidato inteiro**, não um código: qual dos três códigos dele é
+   * o utilizável depende do `Tipocodproduto` da sessão, e essa decisão mora em
+   * quem tem a sessão (`selecionar`), não na lista (AD-204).
+   */
+  readonly onSelecionar: (candidato: ProdutoDaBusca) => void;
 }
 
 const classeCelulaCabecalho =
@@ -344,7 +383,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
               data-codigo-produto={produto.CodigoProduto}
               className="grid w-full grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-sm gap-y-0.5 px-base py-2.5 text-left hover:bg-accent md:flex md:h-10 md:gap-0 md:px-0 md:py-0"
               onClick={() => {
-                onSelecionar(produto.CodigoProduto);
+                onSelecionar(produto);
               }}
             >
               {/* `circle-check` do Pencil (MCP, nó `UM0Ej`, "Resultado produto

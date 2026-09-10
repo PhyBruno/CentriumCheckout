@@ -4,6 +4,7 @@ import {
   projetarPagamentos,
   type FormaCandidata,
 } from '../../../../src/client/domain/validacaoVenda/projetarPagamentos';
+import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import { pagamentoDe } from '../../../support/pagamento';
 
 /**
@@ -14,7 +15,7 @@ import { pagamentoDe } from '../../../support/pagamento';
 
 const CANDIDATA: FormaCandidata = {
   formaCodigo: 9,
-  meioPagtoNFe: 'Outros',
+  meioPagtoNFe: MEIO_PAGTO.Outros,
   valor: centavos(5_000),
   fpgUtiCar: 'CRD',
   entrada: 'N',

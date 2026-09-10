@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DicaAtalhos } from '../../../../src/client/features/venda-rapida/DicaAtalhos';
 import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../../../src/client/hotkeys/mapaAtalhos';
+import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import type { AtalhoVendaRapida } from '../../../../src/client/domain/vendaRapida/tipos';
 
 /**
@@ -21,14 +22,19 @@ function atalhoDe(opcoes: Partial<AtalhoVendaRapida> = {}): AtalhoVendaRapida {
     nome: opcoes.nome ?? 'Dinheiro à vista',
     condicaoCodigo: opcoes.condicaoCodigo ?? 1,
     formaCodigo: opcoes.formaCodigo ?? 1,
-    meioPagtoNFe: opcoes.meioPagtoNFe ?? 'Dinheiro',
+    meioPagtoNFe: opcoes.meioPagtoNFe ?? MEIO_PAGTO.Dinheiro,
     encerraOperacao: opcoes.encerraOperacao ?? false,
   };
 }
 
 const DOIS_ATALHOS = [
   atalhoDe({ tecla: 'F6', nome: 'Dinheiro à vista' }),
-  atalhoDe({ tecla: 'F8', nome: 'Débito à vista', formaCodigo: 3, meioPagtoNFe: 'CartaoDebito' }),
+  atalhoDe({
+    tecla: 'F8',
+    nome: 'Débito à vista',
+    formaCodigo: 3,
+    meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
+  }),
 ];
 
 /* ------------------------------------------------------------------ *

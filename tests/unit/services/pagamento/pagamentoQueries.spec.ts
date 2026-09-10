@@ -71,7 +71,7 @@ function condicaoValida(): Record<string, unknown> {
         FormaCodigo: 1,
         FormaDescricao: 'DINHEIRO',
         FormaEntrada: 'S',
-        FormaMeioPagtoNFe: 'Dinheiro',
+        FormaMeioPagtoNFe: '01',
         FormaIntegracaoCartao: '',
         FormaTipoTransacaoTEF: '',
         FormaFpgUtiCar: '',

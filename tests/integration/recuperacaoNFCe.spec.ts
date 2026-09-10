@@ -9,6 +9,7 @@ import {
   fetchListaNFCes,
   fonteRascunho,
 } from '../../src/client/services/recuperacao/recuperacaoQueries';
+import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
 import type { ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
@@ -579,7 +580,7 @@ describe('T026 — quickstart Cenário 2: retomada completa', () => {
 
     const pagamentos = store.getState().pagamentos;
     expect(pagamentos).toHaveLength(1);
-    expect(pagamentos[0]?.meioPagtoNFe).toBe('Dinheiro');
+    expect(pagamentos[0]?.meioPagtoNFe).toBe(MEIO_PAGTO.Dinheiro);
     expect(pagamentos[0]?.status).toBe('APROVADO');
     expect(pagamentos[0]?.valorAplicado).toBe(9350);
     // `valorRecebido = valor` em dinheiro: o troco do documento original não é

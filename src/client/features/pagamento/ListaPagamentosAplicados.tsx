@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
-import type { MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
+import { MEIO_PAGTO, type MeioPagtoNFe } from '../../domain/pagamento/formaPagamento';
 import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/saldoPagamento';
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
@@ -517,27 +517,25 @@ const ANOTACAO_POR_STATUS: Record<StatusPagamento, string | null> = {
  * O rótulo de `Pix` é "PIX" em caixa alta, como o nó `Q2wLdo` do Pencil.
  */
 const ROTULO_POR_MEIO: Record<MeioPagtoNFe, string> = {
-  Dinheiro: 'Dinheiro',
-  Cheque: 'Cheque',
-  CartaoCredito: 'Cartão de crédito',
-  CartaoDebito: 'Cartão de débito',
-  CreditoLoja: 'Crédito da loja',
-  ValeAlimentacao: 'Vale alimentação',
-  ValeRefeicao: 'Vale refeição',
-  ValePresente: 'Vale presente',
-  ValeCombustivel: 'Vale combustível',
-  DuplicataMercantil: 'Duplicata mercantil',
-  BoletoBancario: 'Boleto bancário',
-  DepositoBancario: 'Depósito bancário',
-  Pix: 'PIX',
-  TransferenciaBancaria: 'Transferência bancária',
-  // Typo reproduzido do domínio do ERP (ver `formaPagamento.ts`): a chave é o
-  // valor que o `GetSessao` devolve; o rótulo exibido é o correto em português.
-  ProgaramaFidelidade: 'Programa de fidelidade',
-  PixEstatico: 'PIX estático',
-  CreditoEmLoja: 'Crédito em loja',
-  PagamentoNaoInformado: 'Pagamento não informado',
-  SemPagamento: 'Sem pagamento',
-  PagamentoPosterior: 'Pagamento posterior',
-  Outros: 'Outros',
+  [MEIO_PAGTO.Dinheiro]: 'Dinheiro',
+  [MEIO_PAGTO.Cheque]: 'Cheque',
+  [MEIO_PAGTO.CartaoCredito]: 'Cartão de crédito',
+  [MEIO_PAGTO.CartaoDebito]: 'Cartão de débito',
+  [MEIO_PAGTO.CreditoLoja]: 'Crédito da loja',
+  [MEIO_PAGTO.ValeAlimentacao]: 'Vale alimentação',
+  [MEIO_PAGTO.ValeRefeicao]: 'Vale refeição',
+  [MEIO_PAGTO.ValePresente]: 'Vale presente',
+  [MEIO_PAGTO.ValeCombustivel]: 'Vale combustível',
+  [MEIO_PAGTO.DuplicataMercantil]: 'Duplicata mercantil',
+  [MEIO_PAGTO.BoletoBancario]: 'Boleto bancário',
+  [MEIO_PAGTO.DepositoBancario]: 'Depósito bancário',
+  [MEIO_PAGTO.Pix]: 'PIX',
+  [MEIO_PAGTO.TransferenciaBancaria]: 'Transferência bancária',
+  [MEIO_PAGTO.ProgramaFidelidade]: 'Programa de fidelidade',
+  [MEIO_PAGTO.PixEstatico]: 'PIX estático',
+  [MEIO_PAGTO.CreditoEmLoja]: 'Crédito em loja',
+  [MEIO_PAGTO.PagamentoNaoInformado]: 'Pagamento não informado',
+  [MEIO_PAGTO.SemPagamento]: 'Sem pagamento',
+  [MEIO_PAGTO.PagamentoPosterior]: 'Pagamento posterior',
+  [MEIO_PAGTO.Outros]: 'Outros',
 };

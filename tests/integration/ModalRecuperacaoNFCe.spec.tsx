@@ -423,7 +423,6 @@ describe('condição de pagamento do rascunho (AD-171)', () => {
   });
 });
 
-
 /* ------------------------------------------------------------------ *
  * T016 — a linha retomada fica congelada até a reinserção manual
  * ------------------------------------------------------------------ */

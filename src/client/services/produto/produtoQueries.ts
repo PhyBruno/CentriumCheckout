@@ -151,6 +151,21 @@ export async function fetchProduto(
     throw new ErroRespostaInvalida('GetProduto', validado.error.message);
   }
 
+  // `PCheckout_GetProduto` **não** responde 404 quando o `For Each` não acha
+  // nada: devolve `200` com o SDT recém-criado, todos os campos no default
+  // (`CodigoProduto: ""`, todos os preços `0.0000`) — verificado contra o ERP
+  // real em 2026-09-10, AD-204. Sem esta checagem o SDT vazio atravessa o Zod
+  // limpo (`ProdutoPesavelEditavel: ''` é valor válido da união) e vira linha de
+  // carrinho **sem descrição, sem unidade e com preço R$ 0,00**.
+  //
+  // O caso não é hipotético: acontece toda vez que o código informado não é do
+  // tipo que `Tipocodproduto` declara — com `'B'` o procedure filtra por
+  // `MatCodBar`, então um código reduzido não casa com nada. Mesma guarda que
+  // `buscarCliente` já fazia por `CodCliente <= 0`.
+  if (validado.data.CodigoProduto === '') {
+    throw new ErroProdutoNaoEncontrado(codigoProduto);
+  }
+
   // `validado.data` já é o SDT do produto: o schema aceita a resposta com ou
   // sem o envelope `Produto` e entrega sempre o conteúdo (AD-165).
   return paraSnapshotPrecoProduto(validado.data);

@@ -44,6 +44,24 @@ export class ErroClienteNaoEncontrado extends Error {
 }
 
 /**
+ * O ERP achou o cliente mas devolveu o cadastro em branco (AD-204).
+ *
+ * Distinto de `ErroClienteNaoEncontrado` de propósito: "não existe" manda o
+ * operador cadastrar, e cadastrar de novo um cliente que já existe é justamente
+ * o que ele **não** deve fazer aqui. O texto diz que a falha é do ERP para que
+ * o chamado vá para o lugar certo em vez de o caixa tentar de novo.
+ */
+export class ErroClienteIncompleto extends Error {
+  constructor(readonly identificador: string) {
+    super(
+      `O ERP encontrou o cliente ${identificador} mas devolveu o cadastro sem nome. ` +
+        'Não é possível identificá-lo na venda — avise o suporte.',
+    );
+    this.name = 'ErroClienteIncompleto';
+  }
+}
+
+/**
  * Recusa de negócio do ERP no cadastro simplificado — "CPF já cadastrado",
  * "UF inválida" e afins.
  *
@@ -115,6 +133,22 @@ async function buscarCliente(
   // devolve os campos na raiz.
   if (validado.data.CodCliente <= 0) {
     throw new ErroClienteNaoEncontrado(identificador);
+  }
+
+  // `CodCliente > 0` prova que o `For Each` **achou** o registro, não que o SDT
+  // foi preenchido. Contra o ERP real (2026-09-10, AD-204) toda chamada a
+  // `GetCliente` volta assim: `CodCliente` correto, `ListaPreco`/
+  // `PermiteVendaCredito` corretos, e `nome`/`cpf`/`celular`/endereço **vazios**
+  // — inclusive para o cliente default, que o `GetSessao` nomeia. Os mesmos
+  // clientes vêm completos no `GetListaClientes`, então o dado existe: quem não
+  // o publica é o procedure.
+  //
+  // O defeito é do ERP e não há contorno aqui — mas seguir em frente associaria
+  // à venda um cliente sem nome, exibido como um campo em branco, e o operador
+  // fecharia a NFCe sem saber para quem vendeu. Falhar com o motivo real é a
+  // única resposta honesta enquanto o procedure não for corrigido.
+  if (validado.data.nome.trim() === '') {
+    throw new ErroClienteIncompleto(identificador);
   }
 
   return validado.data;

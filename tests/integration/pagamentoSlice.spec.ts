@@ -53,6 +53,7 @@ import {
 } from '../../src/client/stores/slices/pagamentoSlice';
 import type { VendaState } from '../../src/client/stores/vendaStore';
 import { criarValidacaoVendaSlice } from '../../src/client/stores/slices/validacaoVendaSlice';
+import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import { formaDe, validacaoDepsInertes } from '../support/pagamento';
 
 /**
@@ -79,14 +80,14 @@ const DINHEIRO = formaDe({
   codigo: 1,
   descricao: 'DINHEIRO',
   entrada: 'S',
-  meioPagtoNFe: 'Dinheiro',
+  meioPagtoNFe: MEIO_PAGTO.Dinheiro,
 });
 
 const CARTAO = formaDe({
   codigo: 2,
   descricao: 'CARTAO CREDITO',
   entrada: 'N',
-  meioPagtoNFe: 'CartaoCredito',
+  meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
   integracaoCartao: '1',
   tipoTransacaoTEF: 'CREDITO',
   // Cartão comum: `fpgUtiCar` vazio. Antes era `'VDV'`, porque sob AD-048 esse
@@ -95,13 +96,13 @@ const CARTAO = formaDe({
   fpgUtiCar: '',
 });
 
-const PIX = formaDe({ codigo: 3, descricao: 'PIX', entrada: 'S', meioPagtoNFe: 'Pix' });
+const PIX = formaDe({ codigo: 3, descricao: 'PIX', entrada: 'S', meioPagtoNFe: MEIO_PAGTO.Pix });
 
 const PIX_ESTATICO = formaDe({
   codigo: 4,
   descricao: 'PIX ESTATICO',
   entrada: 'S',
-  meioPagtoNFe: 'PixEstatico',
+  meioPagtoNFe: MEIO_PAGTO.PixEstatico,
 });
 
 /** Outro cartão comum — `fpgUtiCar` preenchido, mas não com `'VDV'`. */
@@ -109,7 +110,7 @@ const CARTAO_SEM_VALE = formaDe({
   codigo: 5,
   descricao: 'CARTAO DEBITO',
   entrada: 'N',
-  meioPagtoNFe: 'CartaoDebito',
+  meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
   integracaoCartao: '1',
   fpgUtiCar: 'OUTRO',
 });
@@ -123,7 +124,7 @@ const VALE = formaDe({
   codigo: 6,
   descricao: 'VALE DEVOLUCAO',
   entrada: 'N',
-  meioPagtoNFe: 'Outros',
+  meioPagtoNFe: MEIO_PAGTO.Outros,
   fpgUtiCar: 'VDV',
 });
 
@@ -415,7 +416,7 @@ describe('pagamentoSlice — guardas ignoram forma excluída (AD-171)', () => {
     store.getState().importarFormasDePagamento([
       {
         formaCodigo: 1,
-        formaMeioPagtoNFe: 'Dinheiro',
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
         valor: centavos(10_000),
         tef: null,
         pixGuid: null,
@@ -895,7 +896,7 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
 
     expect(payload.FormasDePagamento[0]).toEqual({
       FormaCodigo: CARTAO.codigo,
-      FormaMeioPagtoNFe: 'CartaoCredito',
+      FormaMeioPagtoNFe: MEIO_PAGTO.CartaoCredito,
       FormaValor: 70,
       FormaIntegracaoCartao: '1',
       // `FormaFpgUtiCar` entrou no payload com a feature 014: é por ele que o
@@ -908,7 +909,7 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
     });
     expect(payload.FormasDePagamento[1]).toEqual({
       FormaCodigo: DINHEIRO.codigo,
-      FormaMeioPagtoNFe: 'Dinheiro',
+      FormaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
       FormaValor: 30,
       FormaIntegracaoCartao: '',
       FormaFpgUtiCar: '',
@@ -1189,7 +1190,7 @@ describe('pagamentoSlice — aplicarForma (porta da feature 013)', () => {
     expect(validarInsercao).toHaveBeenCalledWith(
       {
         formaCodigo: DINHEIRO.codigo,
-        meioPagtoNFe: 'Dinheiro',
+        meioPagtoNFe: MEIO_PAGTO.Dinheiro,
         valor: 10_000,
         fpgUtiCar: '',
         entrada: 'S',
@@ -1231,7 +1232,7 @@ describe('pagamentoSlice — importação e limpeza', () => {
   const IMPORTADAS: readonly FormaPagamentoImportada[] = [
     {
       formaCodigo: DINHEIRO.codigo,
-      formaMeioPagtoNFe: 'Dinheiro',
+      formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
       valor: centavos(4_000),
       tef: null,
       pixGuid: null,
@@ -1239,7 +1240,7 @@ describe('pagamentoSlice — importação e limpeza', () => {
     },
     {
       formaCodigo: DINHEIRO.codigo,
-      formaMeioPagtoNFe: 'Dinheiro',
+      formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
       valor: centavos(6_000),
       tef: null,
       pixGuid: null,

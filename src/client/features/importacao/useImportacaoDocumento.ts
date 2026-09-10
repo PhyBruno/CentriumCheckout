@@ -11,6 +11,7 @@ import {
   type MotivoRecusaImportacao,
 } from '../../services/importacao/importarVendaExistente';
 import {
+  ErroClienteIncompleto,
   ErroClienteNaoEncontrado,
   fetchClientePorCodigo,
 } from '../../services/cliente/clienteQueries';
@@ -117,6 +118,12 @@ function mensagemDeErro(erro: unknown): string {
   }
   if (erro instanceof ErroClienteNaoEncontrado) {
     return 'O cliente deste documento não foi encontrado no ERP. Nada foi importado.';
+  }
+  // Distinto do anterior: o cliente **existe**, o ERP é que devolveu o cadastro
+  // em branco (AD-204). Dizer "não encontrado" mandaria o operador cadastrá-lo
+  // de novo — exatamente o que ele não deve fazer.
+  if (erro instanceof ErroClienteIncompleto) {
+    return `${erro.message} Nada foi importado.`;
   }
   // Nomeia a condição pelo código: é o que o operador leva ao supervisor para
   // reativá-la no ERP. Sem o número, a mensagem não distingue "condição

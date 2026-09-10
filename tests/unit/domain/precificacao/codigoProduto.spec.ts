@@ -3,6 +3,7 @@ import {
   ErroPrecoIndisponivelParaPesagem,
   interpretarEntradaCodigo,
   quantidadePesavel,
+  codigoParaConsulta,
   rotuloTipoCodigoProduto,
 } from '../../../../src/client/domain/precificacao/codigoProduto';
 import { emCentavos } from '../../../support/precificacao';
@@ -95,18 +96,53 @@ describe('quantidadePesavel (AD-076)', () => {
   });
 });
 
-/** Domain `EnumTipoCodigoProduto` da KB GeneXus — `ControlValues` real. */
+/**
+ * Os valores que `PCheckout_GetProduto` sabe filtrar (AD-204) — **não** os do
+ * domínio `EnumTipoCodigoProduto` (`''`/`'D'`/`'C'`/`'P'`), que esta tabela
+ * afirmava antes e que o campo não usa: `UsuarioTipoCodigoProduto` vem do
+ * parâmetro `PRM0656`, e o tenant real devolve `'B'`.
+ */
 describe('rotuloTipoCodigoProduto', () => {
   it.each([
     ['', 'Código reduzido'],
-    ['D', 'Código de barras'],
-    ['C', 'Referência'],
-    ['P', 'Código de barras pesável'],
+    ['R', 'Código reduzido'],
+    ['B', 'Código de barras'],
+    ['M', 'Referência'],
   ])('mapeia UsuarioTipoCodigoProduto=%j para %j', (valor, esperado) => {
     expect(rotuloTipoCodigoProduto(valor)).toBe(esperado);
   });
 
   it('valor fora do domínio conhecido cai num rótulo genérico, sem lançar', () => {
     expect(rotuloTipoCodigoProduto('X')).toBe('Código do produto');
+  });
+});
+
+/**
+ * `codigoParaConsulta` — qual código do candidato pode ser reenviado ao
+ * `GetProduto` (AD-204). É a correção do defeito em que o modal devolvia sempre
+ * o código reduzido e o ERP, configurado em `'B'`, respondia SDT vazio.
+ */
+describe('codigoParaConsulta', () => {
+  const CANDIDATO = {
+    CodigoProduto: '0001284000101',
+    CodigoBarras: '0012840001017',
+    Referencia: '0001284',
+  };
+
+  it.each([
+    ['', CANDIDATO.CodigoProduto],
+    ['R', CANDIDATO.CodigoProduto],
+    ['B', CANDIDATO.CodigoBarras],
+    ['M', CANDIDATO.Referencia],
+  ])('com Tipocodproduto=%j devolve %j', (tipo, esperado) => {
+    expect(codigoParaConsulta(CANDIDATO, tipo)).toBe(esperado);
+  });
+
+  it('tipo desconhecido cai no código reduzido, o filtro default do ERP', () => {
+    expect(codigoParaConsulta(CANDIDATO, 'X')).toBe(CANDIDATO.CodigoProduto);
+  });
+
+  it('devolve null quando o campo exigido está vazio — não há código que funcione', () => {
+    expect(codigoParaConsulta({ ...CANDIDATO, CodigoBarras: '' }, 'B')).toBeNull();
   });
 });

@@ -155,9 +155,9 @@ describe('mapearVendaExistente — violação de contrato', () => {
       const documento = documentoValidado();
       const semCampo = { ...documento, [campo]: undefined };
 
-      expect(() =>
-        mapearVendaExistente(semCampo as unknown as typeof documento),
-      ).toThrow(ErroDocumentoImportadoInvalido);
+      expect(() => mapearVendaExistente(semCampo as unknown as typeof documento)).toThrow(
+        ErroDocumentoImportadoInvalido,
+      );
     },
   );
 

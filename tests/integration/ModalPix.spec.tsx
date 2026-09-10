@@ -14,6 +14,7 @@ import { resolverIntegracao } from '../../src/client/domain/pagamento/roteamento
 import type { ClienteVenda } from '../../src/client/domain/cliente/clienteVenda';
 import { centavos } from '../../src/client/domain/precificacao/dinheiro';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
+import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import { formaDe } from '../support/pagamento';
 
 /**
@@ -55,7 +56,12 @@ const COPIA_E_COLA_BASE64 = btoa(COPIA_E_COLA);
 const QRCODE_BASE64 = '/9j/4AAQSkZJRgABAQAAsintetico';
 
 const INTERVALO_TESTE_MS = 20;
-const FORMA_PIX = formaDe({ codigo: 3, descricao: 'PIX', meioPagtoNFe: 'Pix', entrada: 'S' });
+const FORMA_PIX = formaDe({
+  codigo: 3,
+  descricao: 'PIX',
+  meioPagtoNFe: MEIO_PAGTO.Pix,
+  entrada: 'S',
+});
 
 const MINIMO_PIX = centavos(500);
 const VALOR_PADRAO = centavos(6550);
@@ -342,7 +348,7 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
     await screen.findByTestId('pix-qrcode');
 
     expect(geracoes(chamadas)[0]).toMatchObject({
-      TrnFormaPagamento: 'Pix',
+      TrnFormaPagamento: MEIO_PAGTO.Pix,
       FPgCod: FORMA_PIX.codigo,
       TrnPagadorNome: 'MARIA EXEMPLO',
       TrnPagadorCgc: '11122233344',

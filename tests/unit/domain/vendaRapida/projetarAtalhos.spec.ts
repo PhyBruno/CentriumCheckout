@@ -7,6 +7,7 @@ import {
   projetarAtalhos,
 } from '../../../../src/client/domain/vendaRapida/projetarAtalhos';
 import type { CenarioPagamentoBruto } from '../../../../src/client/domain/vendaRapida/tipos';
+import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import { formaDe } from '../../../support/pagamento';
 
 /**
@@ -21,9 +22,13 @@ import { formaDe } from '../../../support/pagamento';
  * Fixtures sintéticas de catálogo
  * ------------------------------------------------------------------ */
 
-const DINHEIRO = formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: 'Dinheiro' });
-const DEBITO = formaDe({ codigo: 3, descricao: 'CARTAO DEB', meioPagtoNFe: 'CartaoDebito' });
-const PIX = formaDe({ codigo: 4, descricao: 'PIX', meioPagtoNFe: 'Pix' });
+const DINHEIRO = formaDe({ codigo: 1, descricao: 'DINHEIRO', meioPagtoNFe: MEIO_PAGTO.Dinheiro });
+const DEBITO = formaDe({
+  codigo: 3,
+  descricao: 'CARTAO DEB',
+  meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
+});
+const PIX = formaDe({ codigo: 4, descricao: 'PIX', meioPagtoNFe: MEIO_PAGTO.Pix });
 
 function condicaoDe(codigo: number, formas: readonly ReturnType<typeof formaDe>[]) {
   return {
@@ -40,7 +45,7 @@ function condicaoDe(codigo: number, formas: readonly ReturnType<typeof formaDe>[
 /** À vista (1) tem dinheiro, débito e PIX; 30 dias (30) não tem forma alguma útil. */
 const CATALOGO: readonly CondicaoPagamento[] = [
   condicaoDe(1, [DINHEIRO, DEBITO, PIX]),
-  condicaoDe(30, [formaDe({ codigo: 7, descricao: 'CREDIARIO', meioPagtoNFe: 'Outros' })]),
+  condicaoDe(30, [formaDe({ codigo: 7, descricao: 'CREDIARIO', meioPagtoNFe: MEIO_PAGTO.Outros })]),
 ];
 
 function cenarioDe(opcoes: Partial<CenarioPagamentoBruto> = {}): CenarioPagamentoBruto {
@@ -155,7 +160,7 @@ describe('projetarAtalhos — E4: cruzamento com o catálogo da sessão (I5)', (
       'desktop',
     );
 
-    expect(atalhos[0]?.meioPagtoNFe).toBe('Pix');
+    expect(atalhos[0]?.meioPagtoNFe).toBe(MEIO_PAGTO.Pix);
   });
 });
 

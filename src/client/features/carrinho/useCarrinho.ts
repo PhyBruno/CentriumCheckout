@@ -78,6 +78,21 @@ export function useQtdMinCharParaConsulta(): number | null {
   return useSessionStore((estado) => estado.registro?.SessaoUsuario.QtdMinCharParaConsulta ?? null);
 }
 
+/**
+ * `SessaoUsuario.UsuarioTipoCodigoProduto` para a UI (AD-204).
+ *
+ * O modal de busca precisa dele para saber **qual** dos códigos do candidato
+ * devolver à barra de entrada (`codigoParaConsulta`) — mandar o campo errado faz
+ * o ERP responder com o SDT vazio. `null` enquanto o bootstrap não chegou; o
+ * modal só é alcançável com a tela de venda liberada, então na prática isso é a
+ * janela entre montar e hidratar.
+ */
+export function useTipoCodigoProduto(): string | null {
+  return useSessionStore(
+    (estado) => estado.registro?.SessaoUsuario.UsuarioTipoCodigoProduto ?? null,
+  );
+}
+
 /** O produto exige revisão do operador antes de entrar na venda (`FR-014`). */
 export interface PendenteDeEdicao {
   readonly situacao: 'edicao';

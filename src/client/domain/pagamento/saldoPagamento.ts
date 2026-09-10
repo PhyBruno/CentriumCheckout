@@ -7,7 +7,7 @@
  */
 
 import { centavos, somar, subtrair, ZERO_CENTAVOS, type Centavos } from '../precificacao/dinheiro';
-import { geraTroco, type FormaPagamento, type MeioPagtoNFe } from './formaPagamento';
+import { geraTroco, MEIO_PAGTO, type FormaPagamento, type MeioPagtoNFe } from './formaPagamento';
 import { ehFormaDeValeDevolucao } from './valeDevolucao';
 import type { IntegracaoPagamento } from './roteamentoIntegracao';
 
@@ -130,7 +130,7 @@ export function calcularSaldo(
   );
   const saldoRestante = centavos(Math.max(0, totalLiquido - totalAplicado));
 
-  const dinheiro = aprovados.find((pagamento) => pagamento.meioPagtoNFe === 'Dinheiro');
+  const dinheiro = aprovados.find((pagamento) => pagamento.meioPagtoNFe === MEIO_PAGTO.Dinheiro);
   const troco =
     dinheiro !== undefined && dinheiro.valorRecebido !== null
       ? centavos(Math.max(0, dinheiro.valorRecebido - dinheiro.valorAplicado))
@@ -174,8 +174,8 @@ export function podeAplicarForma(
   );
 
   if (
-    forma.meioPagtoNFe === 'Dinheiro' &&
-    naoRecusados.some((pagamento) => pagamento.meioPagtoNFe === 'Dinheiro')
+    forma.meioPagtoNFe === MEIO_PAGTO.Dinheiro &&
+    naoRecusados.some((pagamento) => pagamento.meioPagtoNFe === MEIO_PAGTO.Dinheiro)
   ) {
     return { ok: false, motivo: 'DINHEIRO_DUPLICADO' };
   }
@@ -229,7 +229,7 @@ export function derivarValores(
 ): { readonly valorAplicado: Centavos; readonly valorRecebido: Centavos | null } {
   const valorAplicado = centavos(Math.min(valorInformado, saldoRestante));
 
-  if (forma.meioPagtoNFe === 'Dinheiro') {
+  if (forma.meioPagtoNFe === MEIO_PAGTO.Dinheiro) {
     return { valorAplicado, valorRecebido: valorInformado };
   }
   return { valorAplicado, valorRecebido: null };
