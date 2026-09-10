@@ -7,6 +7,7 @@ import { criarCifradorDeSessao } from './session/cookie';
 import { registrarRotaSessionStart } from './routes/session-start';
 import { registrarRotaBootstrap } from './routes/bootstrap';
 import { registrarRotaErpProxy } from './routes/erp-proxy';
+import { registrarRotaGerencial } from './routes/gerencial';
 
 /**
  * Monta a instância Fastify do BFF.
@@ -34,6 +35,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   registrarRotaSessionStart(app, { env, cifrador });
   registrarRotaBootstrap(app, { env, cifrador });
   registrarRotaErpProxy(app, { env, cifrador });
+  registrarRotaGerencial(app, { env, cifrador });
 
   // Assets estáticos da SPA (build do Vite) servidos pelo mesmo processo Node —
   // não há Nginx separado (plan.md § Structure Decision).
