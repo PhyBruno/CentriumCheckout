@@ -47,7 +47,10 @@ function normalizarTecla(bruta: string): TeclaAtalho | null {
 function localizarNoCatalogo(
   cenario: CenarioPagamentoBruto,
   catalogo: readonly CondicaoPagamento[],
-): { readonly condicao: CondicaoPagamento; readonly forma: CondicaoPagamento['formas'][number] } | null {
+): {
+  readonly condicao: CondicaoPagamento;
+  readonly forma: CondicaoPagamento['formas'][number];
+} | null {
   const condicao = catalogo.find((candidata) => candidata.codigo === cenario.condicaoCodigo);
   if (condicao === undefined) {
     return null;
