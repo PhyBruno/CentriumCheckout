@@ -16,8 +16,9 @@ import { cn } from '@/lib/utils';
  *
  * Substitui o `<input type="date">` nativo, cujo calendário só abre pelo ícone
  * do navegador — o operador clicava no meio do campo e nada acontecia. Aqui
- * **qualquer** clique no campo abre o calendário, e a digitação direta em
- * `DD/MM/AAAA` continua valendo para quem prefere o teclado.
+ * **qualquer** clique no campo abre o calendário, e a digitação direta continua
+ * valendo para quem prefere o teclado: as barras de `DD/MM/AAAA` são postas
+ * pela máscara (`aplicarMascaraData`), então `11092026` basta.
  *
  * Construído à mão, sem dependência nova: a base não tem `react-day-picker`
  * nem biblioteca de data, e um calendário de mês é aritmética de `Date` —
@@ -90,6 +91,32 @@ function paraExibicao(iso: string): string {
     return '';
   }
   return `${doisDigitos(data.getDate())}/${doisDigitos(data.getMonth() + 1)}/${data.getFullYear()}`;
+}
+
+/**
+ * Máscara de digitação: os dígitos que o operador teclou viram `DD/MM/AAAA`
+ * com as barras postas sozinhas (correção do usuário, 2026-09-11).
+ *
+ * Sem ela o campo aceitava `11092026` cru — texto que `paraIso` não reconhece,
+ * então o filtro nunca era aplicado e o `onBlur` devolvia a data anterior em
+ * silêncio. No caixa ninguém digita a barra: a mão vem do teclado numérico.
+ *
+ * A barra só entra **depois** do dígito seguinte, nunca antecipada: com
+ * `11/` já montado, o Backspace apagaria a barra e a máscara a reporia na
+ * mesma tecla, prendendo o operador no campo. Assim `11` continua `11`, e a
+ * barra aparece quando o mês começa a existir.
+ *
+ * Tudo o que não é dígito é descartado — inclusive as barras da própria
+ * máscara, que são reconstruídas a cada tecla. Isso torna a função idempotente
+ * e faz o texto colado (`11/09/2026`) percorrer o mesmo caminho do digitado.
+ */
+export function aplicarMascaraData(texto: string): string {
+  const digitos = texto.replace(/\D/g, '').slice(0, 8);
+  const dia = digitos.slice(0, 2);
+  const mes = digitos.slice(2, 4);
+  const ano = digitos.slice(4, 8);
+
+  return [dia, mes, ano].filter((parte) => parte !== '').join('/');
 }
 
 /** `DD/MM/AAAA` digitado para `YYYY-MM-DD`, ou `null` enquanto está incompleto. */
@@ -191,8 +218,13 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
         {...(testId === undefined ? {} : { 'data-testid': testId })}
         value={texto}
         onChange={(evento) => {
-          setTexto(evento.target.value);
-          const iso = paraIso(evento.target.value);
+          // A máscara reescreve o campo a cada tecla. O cursor vai para o fim
+          // quando ela muda o texto, que é onde ele já estava: a digitação
+          // aqui é sempre da esquerda para a direita, e o operador que quer
+          // trocar a data inteira redigita ou usa o calendário.
+          const mascarado = aplicarMascaraData(evento.target.value);
+          setTexto(mascarado);
+          const iso = paraIso(mascarado);
           if (iso !== null) {
             onChange(iso);
             setMesVisivel(mesDoValor(iso));

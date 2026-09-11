@@ -1,16 +1,8 @@
-import {
-  ArchiveUp,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  Import,
-  Record,
-  Search,
-  X,
-} from 'reicon-react';
+import { ArchiveUp, CheckCircle, Import, Record, Search, X } from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
+import { ControlePaginacao } from '@/components/ui/controle-paginacao';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -39,6 +31,12 @@ import { useRecuperacaoNFCe } from './useRecuperacaoNFCe';
  *
  * - Filtros "Status", "Vendedor", "Caixa" e "Série" — nenhum tem parâmetro
  *   correspondente. Desenhá-los produziria controles que não filtram nada.
+ * - **Filtro de período**, o par de pílulas que a janela de DAV tem. Pedido
+ *   para cá em 2026-09-11 e **não implementado por decisão do usuário na mesma
+ *   conversa**, depois de medir o endpoint real: `GetListaNFCes` devolve os
+ *   mesmos 123 registros com e sem `Datainicial`/`Datafinal` — ignora os dois
+ *   parâmetros, que nem constam do contrato. As pílulas existiriam sem filtrar
+ *   nada. Entra quando o ERP aceitar o período (pendência 53).
  * - Coluna "Série" — não existe no contrato da listagem. O lugar dela exibe
  *   **Emissão**, que existe e é o que distingue dois rascunhos do mesmo
  *   cliente. (A série usada para carregar é sempre a da sessão,
@@ -319,43 +317,15 @@ export function ModalRecuperacaoNFCe({
         </div>
 
         <footer className="flex h-[60px] shrink-0 items-center justify-between gap-sm border-t border-border px-lg">
-          <div className="flex items-center gap-xs" data-testid="paginacao-nfce">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              data-testid="nfce-pagina-anterior"
-              disabled={pagina <= 1}
-              onClick={() => {
-                setPagina((atual) => Math.max(1, atual - 1));
-                setSelecionado(null);
-              }}
-            >
-              <ChevronLeft className="size-3.5" aria-hidden="true" />
-              Anterior
-            </Button>
-            <span className="flex h-9 items-center rounded-full bg-secondary px-sm text-sm font-semibold text-foreground">
-              {lista.data?.paginaAtual ?? pagina} de {lista.data?.totalPaginas ?? 1}
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              data-testid="nfce-pagina-proxima"
-              disabled={
-                lista.data === undefined || lista.data.paginaAtual >= lista.data.totalPaginas
-              }
-              onClick={() => {
-                setPagina((atual) => atual + 1);
-                setSelecionado(null);
-              }}
-            >
-              Próxima
-              <ChevronRight className="size-3.5" aria-hidden="true" />
-            </Button>
-          </div>
+          <ControlePaginacao
+            pagina={pagina}
+            totalPaginas={lista.data?.totalPaginas}
+            testIdPrefixo="nfce"
+            onTrocarPagina={(proxima) => {
+              setPagina(proxima);
+              setSelecionado(null);
+            }}
+          />
 
           <div className="flex items-center gap-[10px]">
             <Button

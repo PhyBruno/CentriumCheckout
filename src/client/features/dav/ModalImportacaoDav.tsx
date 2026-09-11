@@ -1,18 +1,9 @@
-import {
-  CalendarDays,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  FileCheck,
-  ReceiptText,
-  Record,
-  Search,
-  X,
-} from 'reicon-react';
+import { CalendarDays, CheckCircle, FileCheck, ReceiptText, Record, Search, X } from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import { CampoData, isoRelativoAHoje } from '@/components/ui/campo-data';
+import { ControlePaginacao } from '@/components/ui/controle-paginacao';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -289,17 +280,24 @@ export function ModalImportacaoDav({
                 duas datas liam como um campo único e nada dizia qual metade
                 estava sendo editada. Cada pílula conserva a forma do desenho
                 (altura 36, raio total, superfície secundária, ícone
-                `calendar-days`) e o mesmo vão de 10 que separa os filtros. */}
-            <div className="flex shrink-0 items-center gap-[10px]">
+                `calendar-days`).
+
+                As etiquetas dizem **"Data inicial"/"Data final"**, e não mais
+                "Emissão de"/"até" (pedido do usuário, 2026-09-11): "até"
+                sozinho só faz sentido lido em sequência com a pílula anterior,
+                que é justamente a leitura de campo único que a separação veio
+                desfazer. Cada pílula agora se explica isolada, e o vão entre
+                elas (12) é maior que o que as separa da busca (10). */}
+            <div className="flex shrink-0 items-center gap-sm">
               <FiltroDeData
-                etiqueta="Emissão de"
+                etiqueta="Data inicial"
                 rotulo="Data inicial de emissão"
                 testId="dav-data-inicial"
                 valor={dataInicial}
                 onChange={aoTrocarData(setDataInicial)}
               />
               <FiltroDeData
-                etiqueta="até"
+                etiqueta="Data final"
                 rotulo="Data final de emissão"
                 testId="dav-data-final"
                 valor={dataFinal}
@@ -346,43 +344,15 @@ export function ModalImportacaoDav({
         </div>
 
         <footer className="flex h-[60px] shrink-0 items-center justify-between gap-sm border-t border-border px-lg">
-          <div className="flex items-center gap-xs" data-testid="paginacao-dav">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              data-testid="dav-pagina-anterior"
-              disabled={pagina <= 1}
-              onClick={() => {
-                setPagina((atual) => Math.max(1, atual - 1));
-                setSelecionado(null);
-              }}
-            >
-              <ChevronLeft className="size-3.5" aria-hidden="true" />
-              Anterior
-            </Button>
-            <span className="flex h-9 items-center rounded-full bg-secondary px-sm text-sm font-semibold text-foreground">
-              {lista.data?.paginaAtual ?? pagina} de {lista.data?.totalPaginas ?? 1}
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              data-testid="dav-pagina-proxima"
-              disabled={
-                lista.data === undefined || lista.data.paginaAtual >= lista.data.totalPaginas
-              }
-              onClick={() => {
-                setPagina((atual) => atual + 1);
-                setSelecionado(null);
-              }}
-            >
-              Próxima
-              <ChevronRight className="size-3.5" aria-hidden="true" />
-            </Button>
-          </div>
+          <ControlePaginacao
+            pagina={pagina}
+            totalPaginas={lista.data?.totalPaginas}
+            testIdPrefixo="dav"
+            onTrocarPagina={(proxima) => {
+              setPagina(proxima);
+              setSelecionado(null);
+            }}
+          />
 
           <div className="flex items-center gap-[10px]">
             <Button
