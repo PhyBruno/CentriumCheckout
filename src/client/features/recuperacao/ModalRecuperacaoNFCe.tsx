@@ -2,6 +2,12 @@ import { ArchiveUp, CheckCircle, Import, Record, Search, X } from 'reicon-react'
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
+import {
+  CabecalhoOrdenavel,
+  useOrdenacaoDeTabela,
+  type OrdenacaoAtiva,
+  type ValoresDeColuna,
+} from '@/components/ui/cabecalho-ordenavel';
 import { ControlePaginacao } from '@/components/ui/controle-paginacao';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
@@ -62,6 +68,34 @@ export interface ModalRecuperacaoNFCeProps {
 /** Mesmo debounce dos demais modais de busca desta base. */
 const DEBOUNCE_BUSCA_MS = 300;
 
+type ColunaNFCe = 'nfce' | 'cliente' | 'operador' | 'emissao' | 'total' | 'status';
+
+/**
+ * O valor que cada coluna compara ao ordenar a página (ver
+ * `useOrdenacaoDeTabela`). Constante de módulo de propósito: o mapa entra nas
+ * dependências do `useMemo` que ordena.
+ *
+ * `emissao` é comparada no ISO cru que o ERP devolve, e não no `DD/MM/AAAA` da
+ * célula — o formato brasileiro ordenaria por dia do mês, misturando anos. Pelo
+ * mesmo motivo de sempre (Constitution III), ordenar não constrói `Date`: a
+ * comparação lexicográfica de ISO 8601 já é cronológica.
+ */
+const VALORES_DE_COLUNA_NFCE: ValoresDeColuna<RascunhoListado, ColunaNFCe> = {
+  nfce: (rascunho) => rascunho.numeroNota,
+  cliente: (rascunho) => rascunho.cliente,
+  operador: (rascunho) => rascunho.operador,
+  emissao: (rascunho) => rascunho.emissao,
+  total: (rascunho) => rascunho.total,
+  // `GetListaNFCes` só devolve rascunhos suspensos, então hoje o valor é o
+  // mesmo em toda linha e ordenar por ele preserva a ordem (o `sort` é
+  // estável). A coluna é ordenável mesmo assim: se o endpoint passar a
+  // devolver mais de um status, a tela acompanha sem alteração.
+  status: () => 'Suspensa',
+};
+
+/** Identidade estável para a página ainda não carregada — sem ela o `useMemo` da ordenação reinicia a cada render. */
+const SEM_RASCUNHOS: readonly RascunhoListado[] = [];
+
 /**
  * `Emissao` chega em ISO 8601 (`2026-09-01T14:32:00`) e é quebrada **por
  * texto**, nunca por `new Date()`.
@@ -86,12 +120,13 @@ function formatarEmissao(iso: string): { readonly data: string; readonly hora: s
 /**
  * O que o leitor de tela anuncia ao chegar numa linha.
  *
- * A tabela é montada com `div`/`span`, e o seu cabeçalho é `aria-hidden` — ele
- * é sinalização visual, não estrutura de tabela. Sem este rótulo a linha é lida
- * como uma sequência crua de valores ("90210 CLIENTE TESTE 01 CAIXA 03
- * 01/09/2026 14:32 R$ 18,50 Suspensa"), sem dizer qual campo é qual. Nomear os
- * campos aqui é mais barato — e mais fiel ao desenho — do que converter o bloco
- * numa `<table>` só para recuperar o cabeçalho.
+ * A tabela é montada com `div`/`span`, e o seu cabeçalho não é estrutura de
+ * tabela: mesmo agora que ele expõe os botões de ordenação, nada liga uma
+ * célula da linha à coluna correspondente. Sem este rótulo a linha é lida como
+ * uma sequência crua de valores ("90210 CLIENTE TESTE 01 CAIXA 03 01/09/2026
+ * 14:32 R$ 18,50 Suspensa"), sem dizer qual campo é qual. Nomear os campos aqui
+ * é mais barato — e mais fiel ao desenho — do que converter o bloco numa
+ * `<table>` só para recuperar o cabeçalho.
  */
 function rotuloDaLinha(
   rascunho: RascunhoListado,
@@ -167,11 +202,20 @@ export function ModalRecuperacaoNFCe({
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
   const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
+  // A ordenação mora aqui, e não dentro de `TabelaDeRascunhos`: durante o
+  // `isFetching` da página seguinte a tabela dá lugar ao skeleton e desmonta —
+  // um estado local nela perderia a coluna escolhida justo na troca de página,
+  // que é onde o operador espera que ela continue valendo.
+  const {
+    linhas: rascunhos,
+    ordenacao,
+    alternar: alternarOrdenacao,
+  } = useOrdenacaoDeTabela(lista.data?.rascunhos ?? SEM_RASCUNHOS, VALORES_DE_COLUNA_NFCE);
+
   if (!montado) {
     return null;
   }
 
-  const rascunhos = lista.data?.rascunhos ?? [];
   const rascunhoSelecionado = rascunhos.find((item) => item.numeroNota === selecionado) ?? null;
   const semResultado = lista.data !== undefined && rascunhos.length === 0;
 
@@ -202,7 +246,7 @@ export function ModalRecuperacaoNFCe({
       data-testid="modal-recuperacao-nfce"
       onKeyDown={(evento) => {
         // Enter carrega o rascunho já selecionado, de qualquer ponto da janela
-        // — o mesmo que clicar em "Carregar NFCe". A linha da tabela trata a
+        // — o mesmo que clicar em "Importar NFCe". A linha da tabela trata a
         // tecla por conta própria e interrompe a propagação: lá o Enter ainda
         // pode significar "selecionar esta linha", e carregar a anterior seria
         // o documento errado.
@@ -219,7 +263,7 @@ export function ModalRecuperacaoNFCe({
           return;
         }
         // Fora dos botões, Enter carrega o rascunho já selecionado de qualquer
-        // ponto da janela — o mesmo que clicar em "Carregar NFCe".
+        // ponto da janela — o mesmo que clicar em "Importar NFCe".
         void confirmarRecuperacao();
       }}
     >
@@ -227,7 +271,7 @@ export function ModalRecuperacaoNFCe({
         ref={janelaRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Recuperação NFCe"
+        aria-label="Menu NFCe"
         className={cn(
           'flex max-h-full w-full max-w-[1120px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
@@ -239,9 +283,13 @@ export function ModalRecuperacaoNFCe({
               <ArchiveUp className="size-5 text-primary" aria-hidden="true" />
             </span>
             <div className="flex flex-col gap-[2px]">
-              <h2 className="text-xl font-semibold text-foreground">Recuperação NFCe</h2>
+              <h2 className="text-xl font-semibold text-foreground">Menu NFCe</h2>
+              {/* Mesma frase do modal de DAV, de propósito: as duas janelas
+                  fazem a mesma coisa com documentos de origem diferentes, e
+                  descrevê-las igual evita que o operador procure diferença
+                  onde não há. */}
               <p className="text-sm font-medium text-muted-foreground">
-                Carregue uma NFCe suspensa para a venda atual
+                Selecione um documento para importar para a venda
               </p>
             </div>
           </div>
@@ -307,7 +355,9 @@ export function ModalRecuperacaoNFCe({
           ) : (
             <TabelaDeRascunhos
               rascunhos={rascunhos}
+              ordenacao={ordenacao}
               selecionado={selecionado}
+              onAlternarOrdenacao={alternarOrdenacao}
               onSelecionar={setSelecionado}
               onConfirmar={() => {
                 void confirmarRecuperacao();
@@ -338,7 +388,7 @@ export function ModalRecuperacaoNFCe({
               }}
             >
               <Import className="size-4.5" aria-hidden="true" />
-              Carregar NFCe
+              Importar NFCe
             </Button>
           </div>
         </footer>
@@ -349,7 +399,9 @@ export function ModalRecuperacaoNFCe({
 
 interface TabelaDeRascunhosProps {
   readonly rascunhos: readonly RascunhoListado[];
+  readonly ordenacao: OrdenacaoAtiva<ColunaNFCe> | null;
   readonly selecionado: number | null;
+  readonly onAlternarOrdenacao: (chave: ColunaNFCe) => void;
   readonly onSelecionar: (numeroNota: number) => void;
   /** Enter sobre a linha já selecionada — carrega sem passar pelo rodapé. */
   readonly onConfirmar: () => void;
@@ -360,20 +412,63 @@ const classeCelulaCabecalho =
 
 function TabelaDeRascunhos({
   rascunhos,
+  ordenacao,
   selecionado,
+  onAlternarOrdenacao,
   onSelecionar,
   onConfirmar,
 }: TabelaDeRascunhosProps): ReactElement {
   return (
     <div data-testid="resultados-nfce">
-      <div className="flex h-[38px] border-y border-border bg-muted" aria-hidden="true">
-        <span className={cn(classeCelulaCabecalho, 'w-[42px]')} />
-        <span className={cn(classeCelulaCabecalho, 'w-[90px]')}>NFCe</span>
-        <span className={cn(classeCelulaCabecalho, 'flex-1')}>Cliente</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[100px]')}>Operador</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[108px]')}>Emissão</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[116px]')}>Total</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[100px] justify-end')}>Status</span>
+      {/* O bloco deixou de ser `aria-hidden` ao ganhar os botões de ordenação:
+          esconder um controle operável da árvore de acessibilidade tiraria a
+          ordenação de quem navega por teclado ou leitor de tela. Só a primeira
+          coluna — a do marcador de seleção, sem rótulo — segue oculta. */}
+      <div className="flex h-[38px] border-y border-border bg-muted">
+        <span className={cn(classeCelulaCabecalho, 'w-[42px]')} aria-hidden="true" />
+        <CabecalhoOrdenavel
+          chaveDaColuna="nfce"
+          rotulo="NFCe"
+          ordenacao={ordenacao}
+          className="w-[90px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="cliente"
+          rotulo="Cliente"
+          ordenacao={ordenacao}
+          className="min-w-0 flex-1"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="operador"
+          rotulo="Operador"
+          ordenacao={ordenacao}
+          className="w-[100px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="emissao"
+          rotulo="Emissão"
+          ordenacao={ordenacao}
+          className="w-[108px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="total"
+          rotulo="Total"
+          ordenacao={ordenacao}
+          className="w-[116px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="status"
+          rotulo="Status"
+          ordenacao={ordenacao}
+          className="w-[100px] shrink-0"
+          alinharADireita
+          onAlternar={onAlternarOrdenacao}
+        />
       </div>
       <ul>
         {rascunhos.map((rascunho) => {

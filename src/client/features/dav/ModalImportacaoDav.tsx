@@ -1,7 +1,13 @@
-import { CalendarDays, CheckCircle, FileCheck, ReceiptText, Record, Search, X } from 'reicon-react';
+import { CalendarDays, CheckCircle, Import, ReceiptText, Record, Search, X } from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
+import {
+  CabecalhoOrdenavel,
+  useOrdenacaoDeTabela,
+  type OrdenacaoAtiva,
+  type ValoresDeColuna,
+} from '@/components/ui/cabecalho-ordenavel';
 import { CampoData, isoRelativoAHoje } from '@/components/ui/campo-data';
 import { ControlePaginacao } from '@/components/ui/controle-paginacao';
 import { cn } from '@/lib/utils';
@@ -54,6 +60,28 @@ export interface ModalImportacaoDavProps {
 
 /** Mesmo debounce dos demais modais de busca desta base. */
 const DEBOUNCE_BUSCA_MS = 300;
+
+type ColunaDav = 'dav' | 'documento' | 'cliente' | 'emissao' | 'total';
+
+/**
+ * O valor que cada coluna compara ao ordenar a página (ver
+ * `useOrdenacaoDeTabela`). Constante de módulo de propósito: o mapa entra nas
+ * dependências do `useMemo` que ordena.
+ *
+ * `dataEmissao` é comparada crua (`YYYY-MM-DD`, como o ERP devolve) e não pelo
+ * `DD/MM/AAAA` que a célula exibe — o formato brasileiro ordenaria por dia do
+ * mês, misturando anos.
+ */
+const VALORES_DE_COLUNA_DAV: ValoresDeColuna<DavListado, ColunaDav> = {
+  dav: (dav) => dav.numeroDav,
+  documento: (dav) => dav.titulo,
+  cliente: (dav) => dav.clienteNome,
+  emissao: (dav) => dav.dataEmissao,
+  total: (dav) => dav.valorTotal,
+};
+
+/** Identidade estável para a página ainda não carregada — sem ela o `useMemo` da ordenação reinicia a cada render. */
+const SEM_DAVS: readonly DavListado[] = [];
 
 /**
  * Período de emissão pré-aplicado ao abrir a janela (pedido do usuário,
@@ -149,11 +177,20 @@ export function ModalImportacaoDav({
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
   const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
+  // A ordenação mora aqui, e não dentro de `TabelaDeDavs`: durante o
+  // `isFetching` da página seguinte a tabela dá lugar ao skeleton e desmonta —
+  // um estado local nela perderia a coluna escolhida justo na troca de página,
+  // que é onde o operador espera que ela continue valendo.
+  const {
+    linhas: davs,
+    ordenacao,
+    alternar: alternarOrdenacao,
+  } = useOrdenacaoDeTabela(lista.data?.davs ?? SEM_DAVS, VALORES_DE_COLUNA_DAV);
+
   if (!montado) {
     return null;
   }
 
-  const davs = lista.data?.davs ?? [];
   const davSelecionado = davs.find((dav) => dav.numeroDav === selecionado) ?? null;
   const semResultado = lista.data !== undefined && davs.length === 0;
 
@@ -334,7 +371,9 @@ export function ModalImportacaoDav({
           ) : (
             <TabelaDeDavs
               davs={davs}
+              ordenacao={ordenacao}
               selecionado={selecionado}
+              onAlternarOrdenacao={alternarOrdenacao}
               onSelecionar={setSelecionado}
               onConfirmar={() => {
                 void confirmarImportacao();
@@ -364,7 +403,7 @@ export function ModalImportacaoDav({
                 void confirmarImportacao();
               }}
             >
-              <FileCheck className="size-4.5" aria-hidden="true" />
+              <Import className="size-4.5" aria-hidden="true" />
               Importar DAV
             </Button>
           </div>
@@ -404,7 +443,9 @@ function FiltroDeData({
 
 interface TabelaDeDavsProps {
   readonly davs: readonly DavListado[];
+  readonly ordenacao: OrdenacaoAtiva<ColunaDav> | null;
   readonly selecionado: string | null;
+  readonly onAlternarOrdenacao: (chave: ColunaDav) => void;
   readonly onSelecionar: (numeroDav: string) => void;
   /** Enter sobre a linha já selecionada — importa sem passar pelo rodapé. */
   readonly onConfirmar: () => void;
@@ -415,19 +456,55 @@ const classeCelulaCabecalho =
 
 function TabelaDeDavs({
   davs,
+  ordenacao,
   selecionado,
+  onAlternarOrdenacao,
   onSelecionar,
   onConfirmar,
 }: TabelaDeDavsProps): ReactElement {
   return (
     <div data-testid="resultados-dav">
-      <div className="flex h-[38px] border-y border-border bg-muted" aria-hidden="true">
-        <span className={cn(classeCelulaCabecalho, 'w-[42px]')} />
-        <span className={cn(classeCelulaCabecalho, 'w-[86px]')}>DAV</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[116px]')}>Documento</span>
-        <span className={cn(classeCelulaCabecalho, 'flex-1')}>Cliente</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[108px]')}>Emissão</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[116px]')}>Total</span>
+      {/* O bloco deixou de ser `aria-hidden` ao ganhar os botões de ordenação:
+          esconder um controle operável da árvore de acessibilidade tiraria a
+          ordenação de quem navega por teclado ou leitor de tela. Só a primeira
+          coluna — a do marcador de seleção, sem rótulo — segue oculta. */}
+      <div className="flex h-[38px] border-y border-border bg-muted">
+        <span className={cn(classeCelulaCabecalho, 'w-[42px]')} aria-hidden="true" />
+        <CabecalhoOrdenavel
+          chaveDaColuna="dav"
+          rotulo="DAV"
+          ordenacao={ordenacao}
+          className="w-[124px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="documento"
+          rotulo="Documento"
+          ordenacao={ordenacao}
+          className="w-[116px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="cliente"
+          rotulo="Cliente"
+          ordenacao={ordenacao}
+          className="min-w-0 flex-1"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="emissao"
+          rotulo="Emissão"
+          ordenacao={ordenacao}
+          className="w-[108px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="total"
+          rotulo="Total"
+          ordenacao={ordenacao}
+          className="w-[116px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
       </div>
       <ul>
         {davs.map((dav) => {
@@ -470,7 +547,12 @@ function TabelaDeDavs({
                     <Record className="size-4 text-muted-foreground/60" aria-hidden="true" />
                   )}
                 </span>
-                <span className="w-[86px] shrink-0 px-[10px] font-mono text-xs font-bold tabular-nums">
+                {/* `truncate` não é enfeite: sem ele o número transborda a
+                    largura fixa e encosta na coluna "Documento" — foi o que o
+                    operador viu em produção. A largura já comporta 14 dígitos
+                    mono, bem acima do que o ERP devolve, então o corte é rede
+                    de segurança, não comportamento esperado. */}
+                <span className="w-[124px] shrink-0 truncate px-[10px] font-mono text-xs font-bold tabular-nums">
                   {dav.numeroDav}
                 </span>
                 <span className="w-[116px] shrink-0 truncate px-[10px] font-mono text-xs font-semibold">
