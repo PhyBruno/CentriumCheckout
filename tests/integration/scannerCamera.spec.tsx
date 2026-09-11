@@ -206,7 +206,14 @@ beforeEach(() => {
   camera = instalarCameraFalsa();
   stubarGetProduto();
   useSessionStore.setState({ estado: 'pronto', registro: registroBootstrapDe() });
-  useVendaStore.setState({ linhas: [], clienteAtual: null, houveEscolhaExplicita: false });
+  useVendaStore.setState({
+    linhas: [],
+    clienteAtual: null,
+    houveEscolhaExplicita: false,
+    // Nenhuma inserção acontece sem vendedor desde 2026-09-10; estes cenários
+    // são sobre a câmera, não sobre a trava, então a venda nasce com um.
+    vendedorAtual: { codigo: 21, nome: 'Ana Lima', origem: 'DEFAULT' },
+  });
   useVendaStore.getState().resetarAuditoria('NOVA');
   useEdicaoItemStore.setState({ linhaEmEdicao: null });
 });

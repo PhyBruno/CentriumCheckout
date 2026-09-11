@@ -15,6 +15,7 @@ import type { ClienteVenda } from '../../src/client/domain/cliente/clienteVenda'
 import { centavos } from '../../src/client/domain/precificacao/dinheiro';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
+import type { EstadoDisplay } from '../../src/shared/display';
 import { formaDe } from '../support/pagamento';
 
 /**
@@ -190,10 +191,17 @@ const CLIENTE_DEFAULT: ClienteVenda = {
 interface Desfechos {
   readonly aprovados: string[];
   readonly abandonados: string[];
+  /**
+   * Feature 015: o cleanup do efeito de publicação devolve a tela do cliente ao
+   * repouso, e provar isso exige desmontar de propósito — em produção quem
+   * desmonta é `usePixPendente` ao zerar o `idPagamento`.
+   */
+  readonly desmontar: () => void;
 }
 
 function renderizar(cliente: ErpClient, sobrescritas: Partial<ModalPixProps> = {}): Desfechos {
-  const desfechos: Desfechos = { aprovados: [], abandonados: [] };
+  const aprovados: string[] = [];
+  const abandonados: string[] = [];
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -203,8 +211,8 @@ function renderizar(cliente: ErpClient, sobrescritas: Partial<ModalPixProps> = {
     valor: VALOR_PADRAO,
     minimoPix: MINIMO_PIX,
     clienteAtual: CLIENTE_IDENTIFICADO,
-    onAprovado: (pixGuid) => desfechos.aprovados.push(pixGuid),
-    onAbandonado: (motivo) => desfechos.abandonados.push(motivo),
+    onAprovado: (pixGuid) => aprovados.push(pixGuid),
+    onAbandonado: (motivo) => abandonados.push(motivo),
     onFechar: () => {
       /* a janela desmonta pelo estado do pagamento, como em produção. */
     },
@@ -212,12 +220,12 @@ function renderizar(cliente: ErpClient, sobrescritas: Partial<ModalPixProps> = {
     ...sobrescritas,
   };
 
-  render(createElement(ModalPix, props), {
+  const { unmount } = render(createElement(ModalPix, props), {
     wrapper: ({ children }: { children: ReactNode }): ReactElement =>
       createElement(QueryClientProvider, { client: queryClient }, children),
   });
 
-  return desfechos;
+  return { aprovados, abandonados, desmontar: unmount };
 }
 
 /** Espera tempo suficiente para vários ticks — usada para provar que **não** houve. */
@@ -576,5 +584,114 @@ describe('US2 — PIX indisponível nunca alcança esta feature', () => {
     expect(integracao).not.toBe('PIX_DINAMICO');
     expect(screen.queryByTestId('modal-pix')).toBeNull();
     expect(chamadas).toHaveLength(0);
+  });
+});
+
+/**
+ * Feature 015 (T014/T015/T029) — o que a janela conta à tela do cliente.
+ *
+ * O `ModalPix` continua sem saber o que é aba, canal ou display: recebe uma
+ * função e a chama, exatamente como já faz com `onAprovado`/`onAbandonado`
+ * (contrato §7). Estes casos travam o **mapa** de estados, que é onde a
+ * privacidade do cliente é decidida — "gerando" e "erro" mapeiam para repouso de
+ * propósito, e não por omissão.
+ */
+describe('onEstadoDisplay — o que o cliente vê na segunda tela', () => {
+  function coletar(
+    cliente: ErpClient,
+    sobrescritas: Partial<ModalPixProps> = {},
+  ): { readonly estados: EstadoDisplay[]; readonly tela: Desfechos } {
+    const estados: EstadoDisplay[] = [];
+    const tela = renderizar(cliente, {
+      onEstadoDisplay: (estado) => estados.push(estado),
+      ...sobrescritas,
+    });
+    return { estados, tela };
+  }
+
+  // T014 / FR-010: enquanto a cobrança está em geração não há QR a mostrar, e um
+  // esqueleto na tela do cliente prometeria algo que ainda pode falhar.
+  it('publica repouso enquanto gera, a cobrança quando ela chega e repouso ao desmontar', async () => {
+    const { cliente, chamadas } = erpFake({ statusSequencia: ['G'] });
+    const { estados, tela } = coletar(cliente);
+
+    expect(estados[0]).toEqual({ tela: 'BOAS_VINDAS' });
+
+    await screen.findByTestId('pix-qrcode');
+    await waitFor(() => {
+      expect(estados.at(-1)?.tela).toBe('PIX_AGUARDANDO');
+    });
+
+    const publicado = estados.at(-1);
+    expect(publicado).toMatchObject({
+      tela: 'PIX_AGUARDANDO',
+      // FR-008: mesma cobrança que o operador tem à frente.
+      trnGuid: geracoes(chamadas)[0]?.TrnGUID,
+      // Inteiro cru de centavos, nunca decimal (research D5).
+      valorCentavos: 6550,
+      qrCodeFonte: `data:image/jpeg;base64,${QRCODE_BASE64}`,
+      copiaECola: COPIA_E_COLA,
+    });
+
+    tela.desmontar();
+    expect(estados.at(-1)).toEqual({ tela: 'BOAS_VINDAS' });
+  });
+
+  // T015 / FR-011: o erro é conversa com o operador. A tela virada ao cliente
+  // volta ao repouso e não mostra mensagem nenhuma.
+  it('valor abaixo do mínimo nunca publica cobrança — só repouso', async () => {
+    const { cliente } = erpFake();
+    const { estados, tela } = coletar(cliente, { valor: centavos(300) });
+
+    await waitFor(() => {
+      expect(tela.abandonados).toEqual([MOTIVO_ABAIXO_DO_MINIMO]);
+    });
+
+    expect(estados.every((estado) => estado.tela === 'BOAS_VINDAS')).toBe(true);
+  });
+
+  it('erro de geração nunca publica cobrança — só repouso', async () => {
+    const { cliente } = erpFake({ falhasDeGeracao: 1 });
+    const { estados } = coletar(cliente);
+
+    await screen.findByTestId('erro-geracao-pix');
+    await esperarAlemDeUmTick();
+
+    expect(estados.every((estado) => estado.tela === 'BOAS_VINDAS')).toBe(true);
+  });
+
+  // T029 / contrato §7: `voltaEmMs` sai de `atrasoFechamentoMs` **desta
+  // instância**, e não da constante importada — assim o valor publicado
+  // acompanha o que a janela de fato usa, inclusive sob injeção de teste, e as
+  // duas telas voltam juntas (FR-024).
+  it('ao aprovar, publica PIX_APROVADO com a duração do próprio fechamento', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['G', 'P'] });
+    const { estados, tela } = coletar(cliente, { atrasoFechamentoMs: 60_000 });
+
+    await screen.findByTestId('pix-qrcode');
+    await waitFor(() => {
+      expect(tela.aprovados).toHaveLength(1);
+    });
+    await waitFor(() => {
+      expect(estados.at(-1)?.tela).toBe('PIX_APROVADO');
+    });
+
+    expect(estados.at(-1)).toMatchObject({
+      tela: 'PIX_APROVADO',
+      valorCentavos: 6550,
+      voltaEmMs: 60_000,
+    });
+
+    // A cobrança precisa ter passado por `PIX_AGUARDANDO` antes: o cliente vê o
+    // QR, escaneia, e só então a confirmação.
+    expect(estados.map((estado) => estado.tela)).toContain('PIX_AGUARDANDO');
+  });
+
+  it('a janela funciona sem a prop — o display é opcional, não um pré-requisito', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['G'] });
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    expect(screen.getByTestId('modal-pix')).toBeInTheDocument();
   });
 });

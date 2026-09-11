@@ -1,5 +1,5 @@
 import { Search, User } from 'reicon-react';
-import { useState, type ReactElement } from 'react';
+import { useState, type ReactElement, type RefObject } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
@@ -28,7 +28,34 @@ import { rotuloDoVendedor, useVendedorAtual } from './useVendedor';
  * operador precisa poder abrir a lista e ver quem está na venda mesmo depois de
  * um pagamento aprovado.
  */
-export function CampoVendedorVenda(): ReactElement {
+export interface CampoVendedorVendaProps {
+  /**
+   * Ref da **lupa**, para quem monta este par poder focá-la de fora.
+   *
+   * O foco não é resolvido aqui de propósito (achado ao exercitar contra o ERP
+   * real, 2026-09-10): este componente vive **dentro** do bloco colapsável de
+   * `CampoClienteVenda`, que nasce recolhido e é `inert` enquanto isso — e um
+   * `focus()` em subtree `inert` é ignorado pelo navegador, em silêncio. Com a
+   * lupa focada por um efeito local, a barra de entrada rápida recusava a
+   * inserção com o aviso certo e o foco simplesmente não saía do campo de
+   * código.
+   *
+   * Quem precisa **expandir antes de focar** é o dono do estado de expansão, e
+   * esse é o card de cliente — que já faz exatamente isso para o campo de
+   * documento. Entregar o ref para lá é o que põe as duas coisas na mesma mão.
+   *
+   * `CampoVendedorVenda` segue montável sem a prop (o spec o exercita solto).
+   */
+  readonly refLupa?: RefObject<HTMLButtonElement | null>;
+}
+
+/**
+ * O destino do foco é a **lupa**, não a caixa do nome: o par que o Pencil
+ * desenha tem um único controle focável, e é ele que abre `ModalBuscaVendedor`.
+ * Focar a caixa exigiria dar `tabindex` a um `<div>` de leitura, que anunciaria
+ * ao leitor de tela um controle que não faz nada.
+ */
+export function CampoVendedorVenda({ refLupa }: CampoVendedorVendaProps = {}): ReactElement {
   const vendedorAtual = useVendedorAtual();
   const selecionarVendedor = useVendaStore((estado) => estado.selecionarVendedor);
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
@@ -75,6 +102,7 @@ export function CampoVendedorVenda(): ReactElement {
       </div>
 
       <Button
+        ref={refLupa}
         type="button"
         variant="secondary"
         size="icon-lg"

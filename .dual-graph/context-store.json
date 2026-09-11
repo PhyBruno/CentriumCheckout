@@ -5847,5 +5847,401 @@
     ],
     "created_at": "2026-09-10T19:25:00.000000+00:00",
     "created_epoch": 1789068300
+  },
+  {
+    "id": "mem:1789068363782",
+    "kind": "decision",
+    "content": "AD-201: icones passam de lucide-react para reicon-react em todo o produto",
+    "tags": [
+      "icones",
+      "reicon",
+      "AD-201"
+    ],
+    "files": [
+      "src/client/features/pagamento/iconePorMeio.ts",
+      ".specs/project/STATE.md",
+      "CLAUDE.md"
+    ],
+    "file_path": "src/client/features/pagamento/iconePorMeio.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-09T17:59:42.000000+00:00",
+    "created_epoch": 1788976782,
+    "updated_at": "2026-09-09T17:59:42.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068363767",
+    "kind": "decision",
+    "content": "/speckit-specify da feature 015 (display do cliente / espelho do QR Code PIX): spec.md com 4 user stories, 28 FR e 9 SC, checklist de qualidade aprovado sem clarificacoes, feature.json repontado de 014 para 015",
+    "tags": [
+      "speckit",
+      "specify",
+      "feature",
+      "015",
+      "display",
+      "cliente",
+      "espelho",
+      "code"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/spec.md",
+      "specs/015-display-cliente-pix/checklists/requirements.md",
+      ".specify/feature.json",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": "specs/015-display-cliente-pix/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:26:03.768097+00:00",
+    "created_epoch": 1789068363,
+    "updated_at": "2026-09-10T19:26:03.768109+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1789068934963",
+    "kind": "task",
+    "content": "Design da 015 gerado: plan, research, data-model, contracts, quickstart",
+    "tags": [
+      "speckit",
+      "015",
+      "plan",
+      "display"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/plan.md",
+      "specs/015-display-cliente-pix/research.md",
+      "specs/015-display-cliente-pix/data-model.md",
+      "specs/015-display-cliente-pix/contracts/canal-display.md",
+      "specs/015-display-cliente-pix/quickstart.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:34.948835+00:00",
+    "created_epoch": 1789068934,
+    "updated_at": "2026-09-10T19:35:34.948835+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068937086",
+    "kind": "decision",
+    "content": "015: repouso usa nomeDaLoja nova, nao tituloDoProduto; o design errava isso",
+    "tags": [
+      "015",
+      "display",
+      "identidadePdv",
+      "research-D1"
+    ],
+    "files": [
+      "src/client/domain/sessao/identidadePdv.ts",
+      "specs/015-display-cliente-pix/research.md"
+    ],
+    "file_path": "src/client/domain/sessao/identidadePdv.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:37.077369+00:00",
+    "created_epoch": 1789068937,
+    "updated_at": "2026-09-10T19:35:37.077369+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068941942",
+    "kind": "decision",
+    "content": "/speckit-plan da 015: plan.md com gates da constitution aprovados, research.md com 14 decisoes (D1 e D10 corrigem suposicoes erradas do design.md), data-model.md com a maquina de estados, contrato do canal entre abas e quickstart com 9 cenarios",
+    "tags": [
+      "speckit",
+      "plan",
+      "015",
+      "com",
+      "gates",
+      "constitution",
+      "aprovados",
+      "research"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/plan.md",
+      "specs/015-display-cliente-pix/research.md",
+      "specs/015-display-cliente-pix/data-model.md",
+      "specs/015-display-cliente-pix/contracts/canal-display.md",
+      "specs/015-display-cliente-pix/quickstart.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/plan.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:35:41.942866+00:00",
+    "created_epoch": 1789068941,
+    "updated_at": "2026-09-10T19:35:41.942880+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1789069223808",
+    "kind": "task",
+    "content": "tasks.md da 015 gerado: 49 tarefas, 7 fases, 4 user stories, com TDD",
+    "tags": [
+      "speckit",
+      "015",
+      "tasks",
+      "display"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/tasks.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:40:23.790999+00:00",
+    "created_epoch": 1789069223,
+    "updated_at": "2026-09-10T19:40:23.790999+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789069225543",
+    "kind": "decision",
+    "content": "/speckit-tasks da 015: 49 tarefas em 7 fases (Setup, Foundational, US1-US4, Polish), testes incluidos por TDD, com tabela de arquivos tocados em mais de uma fase para nunca paralelizar canalDisplay.ts nem DisplayCliente.tsx",
+    "tags": [
+      "speckit",
+      "tasks",
+      "015",
+      "tarefas",
+      "fases",
+      "setup",
+      "foundational",
+      "us1"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/tasks.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T19:40:25.543250+00:00",
+    "created_epoch": 1789069225,
+    "updated_at": "2026-09-10T19:40:25.543259+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1789068363782",
+    "kind": "decision",
+    "content": "AD-209: vendedor e cliente antes do item; item antes do pagamento rapido",
+    "tags": [
+      "AD-209",
+      "vendedor",
+      "cliente",
+      "venda-rapida",
+      "bloqueio"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+      "src/client/features/venda-rapida/DicaAtalhos.tsx",
+      "src/client/stores/slices/clienteSlice.ts",
+      "src/client/features/cliente/CampoClienteVenda.tsx",
+      "src/client/stores/focoVendaStore.ts"
+    ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T21:00:00.000000+00:00",
+    "created_epoch": 1789074000,
+    "updated_at": "2026-09-10T21:00:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068363782",
+    "kind": "fact",
+    "content": "AD-209 revoga a reprecificacao por troca de cliente (FR-012 da 005)",
+    "tags": [
+      "AD-209",
+      "AD-043",
+      "reprecificacao",
+      "cliente"
+    ],
+    "files": [
+      "src/client/stores/slices/clienteSlice.ts",
+      ".specs/features/identificacao-cadastro-cliente/spec.md"
+    ],
+    "file_path": "src/client/stores/slices/clienteSlice.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T21:01:00.000000+00:00",
+    "created_epoch": 1789074060,
+    "updated_at": "2026-09-10T21:01:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068363782",
+    "kind": "fact",
+    "content": "focus() em subtree inert e ignorado; quem expande e quem foca, um render depois",
+    "tags": [
+      "AD-209",
+      "inert",
+      "foco",
+      "vendedor"
+    ],
+    "files": [
+      "src/client/features/cliente/CampoClienteVenda.tsx",
+      "src/client/features/vendedor/CampoVendedorVenda.tsx"
+    ],
+    "file_path": "src/client/features/cliente/CampoClienteVenda.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T21:02:00.000000+00:00",
+    "created_epoch": 1789074120,
+    "updated_at": "2026-09-10T21:02:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068363782",
+    "kind": "blocker",
+    "content": "fix/contrato-erp-real nao compila: AD-206 importa BotaoMenuGerencial, que so existe em feat/menu-gerencial",
+    "tags": [
+      "AD-206",
+      "AD-203",
+      "branch",
+      "build"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
+      "src/client/features/gerencial/BotaoMenuGerencial.tsx"
+    ],
+    "file_path": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T21:03:00.000000+00:00",
+    "created_epoch": 1789074180,
+    "updated_at": "2026-09-10T21:03:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068363782",
+    "kind": "task",
+    "content": "spec.md da 015 (display do cliente) gerado: 4 user stories, 28 FR, 9 SC, zero clarificacoes",
+    "tags": [
+      "speckit",
+      "015",
+      "display",
+      "pix"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/spec.md",
+      "specs/015-display-cliente-pix/checklists/requirements.md",
+      ".specify/feature.json"
+    ],
+    "file_path": "specs/015-display-cliente-pix/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T22:00:00.000000+00:00",
+    "created_epoch": 1789077600,
+    "updated_at": "2026-09-10T22:00:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789068363782",
+    "kind": "decision",
+    "content": "Spec da 015 exclui propaganda do repouso, divergindo do fluxograma original Tela do cliente",
+    "tags": [
+      "015",
+      "escopo",
+      "AD-066",
+      "item-28"
+    ],
+    "files": [
+      "specs/015-display-cliente-pix/spec.md",
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": "specs/015-display-cliente-pix/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-10T22:01:00.000000+00:00",
+    "created_epoch": 1789077660,
+    "updated_at": "2026-09-10T22:01:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789124416136",
+    "kind": "decision",
+    "content": "AD-214: nome da loja permanece visível na tela de cobrança PIX (prop nomeLoja em TelaCobrancaPix, marca presa no topo com miolo flex-1 min-h-0)",
+    "tags": [
+      "214",
+      "nome",
+      "loja",
+      "permanece",
+      "vis",
+      "vel",
+      "tela",
+      "cobran"
+    ],
+    "files": [
+      "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix",
+      "src/client/features/display/DisplayCliente.tsx::DisplayCliente",
+      "tests/integration/DisplayCliente.spec.tsx",
+      ".specs/project/STATE.md",
+      "specs/015-display-cliente-pix/spec.md"
+    ],
+    "file_path": "src/client/features/display/TelaCobrancaPix.tsx",
+    "symbol_id": "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:00:16.137397+00:00",
+    "created_epoch": 1789124416,
+    "updated_at": "2026-09-11T11:00:46.644237+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
   }
 ]

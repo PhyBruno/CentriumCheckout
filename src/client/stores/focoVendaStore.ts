@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 
 /**
- * Pedidos de foco entre irmãos da tela de venda, nos dois sentidos: do card de
- * cliente para o campo de código de produto e vice-versa.
+ * Pedidos de foco entre irmãos da tela de venda: do card de cliente para o
+ * campo de código de produto, dali de volta ao documento do cliente e, desde
+ * 2026-09-10, dali para o campo do vendedor.
  *
  * Mesmo padrão e mesma justificativa do `edicaoItemStore`: quem dispara
  * (`CampoClienteVenda`, ao identificar o cliente; `EntradaRapidaProduto`, ao
- * receber Shift+TAB) e quem consome (o outro card, dono do `input`) não têm
+ * receber Shift+TAB ou ao recusar a inserção por falta de vendedor) e quem
+ * consome (o outro card, dono do `input`) não têm
  * relação de pai/filho — são irmãos em `TelaDeVenda` (`App.tsx`) —, e um store
  * minúsculo evita prop drilling por `App.tsx` só para isto.
  *
@@ -46,6 +48,27 @@ export interface FocoVendaState {
    * o estado de expansão é dele, e o campo é `inert` enquanto recolhido.
    */
   focarDocumentoCliente(): void;
+  /**
+   * Contador de pedidos de foco no campo do vendedor — mesma razão de ser um
+   * número que os dois acima: bipar dois produtos seguidos numa venda sem
+   * vendedor precisa levar o foco lá as duas vezes.
+   */
+  readonly pedidosDeFocoNoVendedor: number;
+  /**
+   * Leva o foco ao campo "Vendedor NFCe" — na prática, à lupa que abre
+   * `ModalBuscaVendedor`, o único controle focável do par (pedido do usuário,
+   * 2026-09-10).
+   *
+   * Chamado pela barra de entrada rápida quando o operador tenta inserir um
+   * produto numa venda sem vendedor: a inserção é recusada com o motivo, e o
+   * foco vai para o gesto que resolve — Enter na lupa abre o modal.
+   *
+   * **Foca, não abre.** Abrir o modal daqui deixaria um leitor de código de
+   * barras — que dispara uma tecla por caractere, e cada bipagem é uma
+   * tentativa de inserção — reabrindo a janela em rajada por cima do próprio
+   * operador. Com o foco na lupa, quem decide abrir continua sendo ele.
+   */
+  focarVendedor(): void;
 }
 
 export const useFocoVendaStore = create<FocoVendaState>((set) => ({
@@ -56,5 +79,9 @@ export const useFocoVendaStore = create<FocoVendaState>((set) => ({
   pedidosDeFocoNoDocumento: 0,
   focarDocumentoCliente: () => {
     set((estado) => ({ pedidosDeFocoNoDocumento: estado.pedidosDeFocoNoDocumento + 1 }));
+  },
+  pedidosDeFocoNoVendedor: 0,
+  focarVendedor: () => {
+    set((estado) => ({ pedidosDeFocoNoVendedor: estado.pedidosDeFocoNoVendedor + 1 }));
   },
 }));

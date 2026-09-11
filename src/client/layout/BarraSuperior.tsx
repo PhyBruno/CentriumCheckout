@@ -2,6 +2,7 @@ import { CartShopping, Monitor, Settings, User } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { NOME_JANELA_DISPLAY, ROTA_DISPLAY } from '../../shared/display';
 import {
   descreverSessaoAtiva,
   nomeDoOperador,
@@ -68,18 +69,26 @@ export function BarraSuperior(): ReactElement {
           </div>
         )}
 
-        {/* Os dois botões do desenho ficam visíveis, mas inertes: o display do
-            cliente é gap de escopo em aberto (item 28 de `PENDENCIES.md`) e a
-            engrenagem não tem destino definido. Omiti-los mudaria o layout
-            aprovado; dar a eles uma ação inventada é pior.
+        {/* O botão do monitor abre a tela do cliente (feature 015, FR-027):
+            deixou de ser inerte e perdeu o "(ainda não disponível)" do rótulo
+            quando o item 28 de `PENDENCIES.md` fechou.
 
-            A engrenagem **não** abre o Menu gerencial: ele existe desde AD-203,
-            mas o usuário escolheu (2026-09-10) mantê-lo só no atalho da faixa
-            "Atalhos da venda". O rótulo aqui deixou de citá-lo justamente para
-            não prometer o que este botão não faz. */}
-        <BotaoInerte rotulo="Display do cliente (ainda não disponível)">
+            A engrenagem continua inerte — ela é a que não tem destino. E **não**
+            abre o Menu gerencial: ele existe desde AD-203, mas o usuário
+            escolheu (2026-09-10) mantê-lo só no atalho da faixa "Atalhos da
+            venda". O rótulo aqui deixou de citá-lo justamente para não prometer
+            o que este botão não faz. */}
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon-lg"
+          className="rounded-full text-muted-foreground"
+          aria-label={ROTULO_DISPLAY}
+          title={ROTULO_DISPLAY}
+          onClick={abrirDisplayDoCliente}
+        >
           <Monitor className="size-5" aria-hidden />
-        </BotaoInerte>
+        </Button>
         <BotaoInerte rotulo="Configurações (ainda não disponível)">
           <Settings className="size-5" aria-hidden />
         </BotaoInerte>
@@ -90,6 +99,28 @@ export function BarraSuperior(): ReactElement {
 
 /** Pílula `$surface-strong` do desenho: raio total, folga 7×12, gap 8. */
 const PILULA = 'flex items-center gap-xs rounded-full bg-secondary px-sm py-[7px]';
+
+const ROTULO_DISPLAY = 'Display do cliente';
+
+/**
+ * Abre a tela do cliente numa janela **nomeada** e **sem `noopener`**
+ * (feature 015, FR-028, research D3).
+ *
+ * O `noopener` faz a especificação HTML ignorar o nome da janela e abrir um
+ * contexto novo a cada chamada — o operador que clica três vezes ficaria com
+ * três displays, cada um ocupando um monitor que não existe. Com o nome, o
+ * segundo clique traz à frente a tela já aberta.
+ *
+ * É desvio consciente do precedente de `BotaoMenuGerencial.tsx:40`
+ * (`'_blank', 'noopener'`), que continua correto **lá**: aquele destino é o ERP
+ * legado, em outra origem, e o `noopener` é o que impede a página de destino de
+ * tocar o Checkout. Aqui o alvo é página da própria origem e a comunicação é por
+ * `BroadcastChannel`, nunca por `window.opener` — o display não lê nem escreve
+ * nada do abridor.
+ */
+function abrirDisplayDoCliente(): void {
+  window.open(ROTA_DISPLAY, NOME_JANELA_DISPLAY);
+}
 
 function BotaoInerte({
   rotulo,

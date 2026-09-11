@@ -13,6 +13,7 @@ import {
 import { CampoVendedorVenda } from '../vendedor/CampoVendedorVenda';
 import { rotuloDoVendedor, useVendedorAtual } from '../vendedor/useVendedor';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+import { AVISO_CLIENTE_COM_ITEM } from '../../stores/slices/clienteSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
 import { ModalBuscaCliente, type CandidatoEscolhido } from './ModalBuscaCliente';
@@ -79,12 +80,24 @@ import { useIdentificacaoCliente } from './useCliente';
  */
 export function CampoClienteVenda(): ReactElement {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
+  /**
+   * Item ativo no carrinho fecha a troca de cliente (decisão do usuário,
+   * 2026-09-10) — o porquê está no TSDoc de `AVISO_CLIENTE_COM_ITEM`.
+   *
+   * Quem recusa de verdade é o `clienteSlice`, para todos os caminhos de uma
+   * vez (campo, lupa, cadastro). Aqui a mesma condição só chega ao operador
+   * **antes** do gesto: linha cancelada não conta, e o seletor devolve um
+   * booleano, então nada re-renderiza à toa.
+   */
+  const vendaTemItem = useVendaStore((estado) => estado.linhas.some((linha) => !linha.cancelada));
   const rotuloVendedor = rotuloDoVendedor(useVendedorAtual());
   const { identificarPorDocumento, identificarPorCodigo, cadastrar } = useIdentificacaoCliente();
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
 
   const [expandido, setExpandido] = useState(false);
   const campoDocumento = useRef<HTMLInputElement>(null);
+  /** Da lupa do vendedor, que este card monta — ver o efeito de foco abaixo. */
+  const refLupaVendedor = useRef<HTMLButtonElement>(null);
   const [documento, setDocumento] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
@@ -158,6 +171,41 @@ export function CampoClienteVenda(): ReactElement {
     setExpandido(true);
     setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }, [pedidosExternosDeFocoNoDocumento]);
+
+  /**
+   * O mesmo par de efeitos, agora para a **lupa do vendedor** — pedida pela
+   * barra de entrada rápida ao recusar uma inserção em venda sem vendedor
+   * (AD-209).
+   *
+   * **Mora aqui, e não em `CampoVendedorVenda`, porque o dono do `inert` é este
+   * card.** A primeira versão focava a lupa de dentro do próprio
+   * `CampoVendedorVenda`, e não funcionava com o card recolhido — que é
+   * justamente o estado em que ele nasce: o `focus()` num subtree `inert` é
+   * ignorado pelo navegador, sem erro. Medido contra o ERP real em 2026-09-10:
+   * a bipagem era recusada com o aviso correto e o foco ficava no campo de
+   * código; com o card já aberto à mão, ia para a lupa. Expandir aqui não
+   * bastaria sozinho — o efeito do filho roda **antes** do efeito do pai, então
+   * o foco aconteceria no render em que o `inert` ainda existe. Por isso o ref
+   * vem para cá (`refLupaVendedor`) e o foco é disparado pelo contador local,
+   * um render depois, exatamente como o campo de documento acima.
+   */
+  const pedidosExternosDeFocoNoVendedor = useFocoVendaStore(
+    (estado) => estado.pedidosDeFocoNoVendedor,
+  );
+  const [pedidosDeFocoNaLupaVendedor, setPedidosDeFocoNaLupaVendedor] = useState(0);
+  useEffect(() => {
+    if (pedidosExternosDeFocoNoVendedor === 0) {
+      return;
+    }
+    setExpandido(true);
+    setPedidosDeFocoNaLupaVendedor((atual) => atual + 1);
+  }, [pedidosExternosDeFocoNoVendedor]);
+  useEffect(() => {
+    if (pedidosDeFocoNaLupaVendedor === 0) {
+      return;
+    }
+    refLupaVendedor.current?.focus();
+  }, [pedidosDeFocoNaLupaVendedor]);
 
   /**
    * Qual das duas identidades do cliente o campo mostra depois de identificar:
@@ -279,11 +327,25 @@ export function CampoClienteVenda(): ReactElement {
    * São os dois mesmos termos da guarda de `identificar()`, na mesma ordem:
    * botão e função respondem à mesma condição, escrita uma vez só.
    */
-  const bloqueioDeIdentificacao: MotivoBloqueio = buscando
-    ? 'Aguarde: a consulta ao ERP ainda está em andamento.'
-    : documento.trim() === ''
-      ? 'Digite o CPF do consumidor para identificar.'
-      : null;
+  /**
+   * O campo inteiro fecha quando a venda já tem item (decisão do usuário,
+   * 2026-09-10).
+   *
+   * Separado de `bloqueioDeIdentificacao` porque os dois têm alcances
+   * diferentes: os outros dois motivos impedem *identificar agora* (consulta em
+   * voo, campo vazio) e não têm por que travar a digitação; este impede
+   * **trocar de cliente**, e deixar o operador digitar um código novo que a
+   * venda vai recusar seria oferecer um caminho que não existe.
+   */
+  const bloqueioPorItemNaVenda: MotivoBloqueio = vendaTemItem ? AVISO_CLIENTE_COM_ITEM : null;
+
+  const bloqueioDeIdentificacao: MotivoBloqueio =
+    bloqueioPorItemNaVenda ??
+    (buscando
+      ? 'Aguarde: a consulta ao ERP ainda está em andamento.'
+      : documento.trim() === ''
+        ? 'Digite o CPF do consumidor para identificar.'
+        : null);
 
   /**
    * Recusa que **mantém o operador no campo** (pedido do usuário,
@@ -295,6 +357,26 @@ export function CampoClienteVenda(): ReactElement {
   function recusarMantendoFoco(termo: string, mensagem: string): void {
     setRecusaComFocoPreso({ termo, mensagem });
     notificar.aviso(mensagem);
+    devolverFocoAoDocumento();
+  }
+
+  /**
+   * Só o foco de volta ao campo, **sem avisar de novo** (correção do usuário,
+   * 2026-09-10: "se dá erro de cliente não existe, o foco não está voltando
+   * para a inserção do código do cliente").
+   *
+   * Existe separada de `recusarMantendoFoco` porque nem toda recusa é dona da
+   * própria frase: a de `situacao: 'recusado'` já foi dita por
+   * `useIdentificacaoCliente`, que emite o toast do erro antes de devolver o
+   * desfecho. Chamar `recusarMantendoFoco` ali escreveria a mesma mensagem duas
+   * vezes na tela.
+   *
+   * Também não grava `recusaComFocoPreso`: aquele registro existe para não
+   * repetir consulta ao ERP com um termo que já se sabe recusado, e um
+   * `'recusado'` pode ser falha de rede — prender o termo faria a tentativa
+   * seguinte, com a rede de volta, morrer sem sequer chamar o ERP.
+   */
+  function devolverFocoAoDocumento(): void {
     setPedidosDeFocoNoDocumento((atual) => atual + 1);
   }
 
@@ -340,18 +422,37 @@ export function CampoClienteVenda(): ReactElement {
       return;
     }
 
+    // Troca fechada por já haver item na venda (decisão do usuário,
+    // 2026-09-10). **Depois** da guarda de "mesmo cliente", de propósito: o
+    // campo espelha a identificação de quem está na venda, então um foco que
+    // apenas passa por ele sai calado; só um termo de fato diferente — uma
+    // troca — chega aqui e é recusado, sem consultar o ERP por um cadastro que
+    // a venda não pode receber.
+    if (bloqueioPorItemNaVenda !== null) {
+      notificar.aviso(bloqueioPorItemNaVenda);
+      return;
+    }
+
     // Mais de 11 dígitos é pessoa jurídica: a venda não pode acontecer no
     // Checkout (Ajuste SINIEF 11/2025), então o ERP nem é consultado — buscar
     // um cadastro que não poderia ser usado só gastaria uma ida à rede e
     // sugeriria ao operador que o caminho existe.
+    //
+    // Prende o foco como a letra no campo (AD-182): o operador tem um número
+    // errado em tela e o próximo gesto dele é corrigi-lo — deixar o foco seguir
+    // adiante o obrigaria a voltar de mouse ao campo que ele acabou de deixar.
     if (entrada.tipo === 'PESSOA_JURIDICA') {
-      notificar.aviso(
+      recusarMantendoFoco(
+        termo,
         `${MOTIVO_VENDA_PESSOA_JURIDICA} Informe um CPF (11 dígitos) ou o código do cliente.`,
       );
       return;
     }
     if (entrada.tipo === 'INVALIDO') {
-      notificar.aviso('Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).');
+      recusarMantendoFoco(
+        termo,
+        'Informe o código do cliente (até 6 dígitos) ou um CPF (11 dígitos).',
+      );
       return;
     }
 
@@ -389,7 +490,23 @@ export function CampoClienteVenda(): ReactElement {
         // reescreveria a entrada dele.
         setFaceDaIdentificacao(entrada.tipo === 'CPF' ? 'documento' : 'codigo');
         concluirIdentificacao();
+        return;
       }
+
+      // `'recusado'` — o que sobra: erro de rede, ERP fora do ar e, na prática
+      // deste ERP, **o cliente que não existe** (correção do usuário,
+      // 2026-09-10).
+      //
+      // O caminho é esse porque `GetCliente` não devolve `404`: devolve `200`
+      // com o cadastro em branco, que `clienteQueries` converte em
+      // `ErroClienteIncompleto` (AD-204) — nunca em `ErroClienteNaoEncontrado`.
+      // Ou seja, o desfecho que o operador lê como "esse cliente não existe"
+      // **não** passa pelo ramo `'nao-encontrado'` acima, e era o único que
+      // deixava o foco cair fora do campo: o aviso aparecia, o número errado
+      // ficava em tela e o caixa tinha que voltar de mouse para corrigi-lo.
+      //
+      // Só o foco: a frase já foi dita por `useIdentificacaoCliente`.
+      devolverFocoAoDocumento();
     } finally {
       setBuscando(false);
     }
@@ -553,7 +670,18 @@ export function CampoClienteVenda(): ReactElement {
                     inputMode="numeric"
                     placeholder="Digite"
                     value={documento}
+                    // `readOnly`, não `disabled` (AD-143): o campo continua
+                    // legível e o clique explica o motivo, em vez de virar um
+                    // controle inerte que não responde a nada.
+                    readOnly={bloqueioPorItemNaVenda !== null}
+                    {...atributosDeBloqueio(bloqueioPorItemNaVenda)}
+                    onClick={acaoBloqueavel(bloqueioPorItemNaVenda, () => {
+                      /* campo livre: o clique só posiciona o cursor. */
+                    })}
                     onChange={(evento) => {
+                      if (bloqueioPorItemNaVenda !== null) {
+                        return;
+                      }
                       setDocumento(evento.target.value);
                       setRecusaPessoaJuridica(false);
                       // A entrada mudou: o motivo que prendia o foco não vale
@@ -691,7 +819,7 @@ export function CampoClienteVenda(): ReactElement {
                 </span>
               </div>
 
-              <CampoVendedorVenda />
+              <CampoVendedorVenda refLupa={refLupaVendedor} />
             </div>
           </div>
         </div>

@@ -2942,3 +2942,119 @@ O discriminante — bloco `NotaFiscal` presente **e** `Autorizada ≠ 'S'` — r
 O `erp-mock` passou a reproduzir a forma **real** (flat, `Autorizada: 'R'`, `NumeroNota: '0'`) no cenário de rejeição, e mantém a forma do YAML no de sucesso: é o que faz o E2E exercitar a tolerância às duas.
 
 **Impact:** alterados — `src/shared/schemas/faturarNFCe.schema.ts` (`semEnvelope` nos dois outputs), `src/client/services/faturamento/faturarNFCeMapper.ts` (acesso direto a `.NotaFiscal`, `messages` da raiz); testes — `tests/unit/services/faturamento/faturarNFCeMapper.spec.ts` (bloco novo "forma real do ERP", com sucesso e rejeição sem envelope), `tests/e2e/support/erp-mock.ts`. Verificação: `tsc --noEmit` limpo, 64 testes das duas suítes de faturamento passando, **e o ciclo completo confirmado ao vivo contra o ERP real** — a segunda emissão exibiu "NFCe rejeitada / O documento já ficou registrado no ERP" com o motivo do ERP, e "Fechar e liberar o caixa" zerou carrinho, pagamentos e vendedor. **Não verificado ao vivo:** uma NFCe **autorizada** de verdade — o caminho de sucesso sem envelope está coberto só por teste unitário, porque exigiria um SKU com cenário tributário completo.
+
+### AD-209: a venda tem uma ordem — vendedor, cliente, itens, pagamento — e cada etapa fechada diz por que (2026-09-10)
+
+**Origem:** três correções do usuário na mesma sessão. Verbatim: (1) "A forma de pagamento rapida também tem que estar disabled com notification se não tiver nenhum produto ativo no grid"; (2) "Também tem que bloquear inserir produto se nao tiver vendedor, e colocar o foco no campo do vendedor para chamar o modal"; (3) "Digitar um codigo de cliente, ao sair o foco do campo do codigo, deve carregar o cliente novo. Não é possível alterar o cliente após ter item inserido, justamente por ter lista de preco, etc".
+
+As três dizem a mesma coisa por três ângulos: **a venda tem uma ordem, e cada etapa só abre quando a anterior fechou.** Vendedor e cliente antes do primeiro item; item antes do pagamento. O que faltava não era a regra — duas das três já eram recusadas em algum lugar — e sim a tela **dizer** isso antes do gesto, em vez de deixar o operador descobrir batendo.
+
+#### 1. A faixa de pagamento rápido parecia acionável numa venda vazia
+
+`acionarCenario` já recusava com `SEM_ITENS` e avisava (guarda G3, `AVISO_ATALHO_SEM_ITENS`). Mas os quatro botões da faixa "Métodos de pagamento rápidos" seguiam com a mesma aparência dos acionáveis: o operador só descobria a regra ao clicar. `DicaAtalhos` ganha a prop `bloqueio`, e `FaixaAtalhosVendaRapida` — que é quem lê a venda — a preenche com a **mesma constante** que o comando usa ao recusar. Duas redações do mesmo motivo divergem no dia em que só uma for revisada.
+
+"Produto ativo" é a leitura de `vendaTemItens` em `criarDepsPadrao`: linha cancelada não conta. Bloqueio pelo padrão da base (`aria-disabled` + `acaoBloqueavel`, nunca `disabled`), com o motivo no `title` no lugar do rótulo do atalho — o nome do cenário já está escrito no próprio botão, e o motivo é a informação que falta.
+
+#### 2. Sem vendedor não se insere produto — e o foco vai para onde resolve
+
+A trava por vendedor existia só no **fim** da venda: `AcoesFinaisVenda` (AD-206) recusa o "Finalizar" enquanto `vendedorAtual` é `null`, porque o ERP não aceita NFCe sem vendedor associado. Descobrir isso depois do carrinho montado é tarde — e o caso é real, não hipotético: o tenant medido em AD-206 devolve `VendedorCodigo = 0`, e toda venda ali nasce sem vendedor.
+
+`exigirVendedor()` em `EntradaRapidaProduto` é a porta única: avisa **e** pede o foco no campo do vendedor. É chamada nos quatro gestos que podem terminar em item no grid — câmera, leitor/Enter no código, TAB/modal de busca e confirmação da prévia —, porque os quatro entram por caminhos diferentes e barrar só no último gastaria um `GetProduto` por produto que nunca vai entrar.
+
+**Foca, não abre o modal.** O `focoVendaStore` ganha `pedidosDeFocoNoVendedor`, e quem foca é `CampoVendedorVenda` — a lupa, único controle focável do par que o Pencil desenha; Enter nela abre `ModalBuscaVendedor`. Abrir a janela direto deixaria um leitor de código de barras, que dispara uma tecla por caractere e uma tentativa de inserção por bipagem, reabrindo o modal em rajada por cima do operador.
+
+**Editar linha já existente não passa pela trava** (lápis da grid): o item já está na venda — inclusive numa venda vinda de DAV/rascunho sem vendedor (`codigo <= 0`, AD-095) — e travar a correção de quantidade não impede NFCe nenhuma, enquanto prenderia o operador sem saída. Quem impede continua sendo o "Finalizar".
+
+#### 3. O cliente é escolhido antes do primeiro item — isto substitui `FR-012` da 005
+
+**A regra passa a ser:** com item ativo no carrinho, o cliente da venda não muda mais. A saída existe e a frase a nomeia — cancelar os itens devolve o carrinho ao estado em que o cliente ainda é trocável.
+
+**O que isto revoga:** a reprecificação por troca de cliente que a feature 005 previa em `FR-012`. Não existe mais troca de cliente com carrinho populado e, portanto, não existe mais o carrinho que precisava ser reprecificado. O motivo é o que o próprio usuário nomeou: a lista de preço. Cada linha foi precificada pelo ERP sob a `Listapreco`/`Codcliente` de quem estava na venda (AD-033), e trocar depois obrigava a refazer todos os `GetProduto` — uma chamada por SKU, com a corrida entre duas trocas resolvida por contador de geração, e um desfecho (`AVISO_REPRECIFICACAO_FALHOU`) em que a venda seguia na tela com o preço do cliente anterior. Fechar a troca elimina a classe inteira de problema em vez de administrá-la.
+
+A recusa mora no `clienteSlice`, não em cada superfície: são três os caminhos que associam cliente — campo de código/CPF, lupa e cadastro simplificado — e eles precisam responder a uma condição só. No cadastro simplificado a recusa vem **antes** de `criar`, senão cada tentativa deixaria um cadastro órfão no ERP.
+
+**Duas exceções, as duas deliberadas.** A **importação de documento** (`'DAV'`/`'RASCUNHO'`) passa por cima: `importarVendaExistente` insere as linhas congeladas **antes** de associar o cliente do documento, e ali a venda inteira está sendo substituída pelo conteúdo do ERP — não há cliente da venda corrente a proteger. É a mesma distinção que `trocarVendedor` faz ao sobrescrever incondicionalmente; bloqueá-las deixaria todo DAV importado com o cliente default, calado. E **reescolher quem já está na venda** continua um no-op silencioso: a guarda de "mesmo cliente" vem antes da recusa, porque avisar "o cliente não pode mais ser trocado" a quem não trocaria nada alarmaria por um gesto inócuo.
+
+A primeira metade do pedido — código digitado + sair do campo carrega o cliente — **já funcionava**: o `onBlur` identifica desde 2026-09-03, e `classificarEntradaCliente` roteia código e CPF para os parâmetros certos de `GetCliente`. Não havia teste automatizado cobrindo a variante **código** (só o gesto manual), e agora há: sem ele, a regressão passaria calada.
+
+**Impact:** alterados — `src/client/stores/focoVendaStore.ts` (`pedidosDeFocoNoVendedor`/`focarVendedor`), `src/client/features/vendedor/CampoVendedorVenda.tsx` (prop `refLupa`), `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`exigirVendedor`, `AVISO_SEM_VENDEDOR`, `bloqueadoPorVendedor` no botão de inserir), `src/client/features/venda-rapida/DicaAtalhos.tsx` (prop `bloqueio` + leitura do grid na faixa), `src/client/stores/slices/clienteSlice.ts` (`AVISO_CLIENTE_COM_ITEM`, `trocaRecusadaPorItem`), `src/client/features/cliente/CampoClienteVenda.tsx` (`bloqueioPorItemNaVenda` no campo e no "Identificar", `refLupaVendedor` + os dois efeitos de foco, `devolverFocoAoDocumento` nas recusas); testes — `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (describe novo de venda sem vendedor), `tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx` (faixa bloqueada), `tests/unit/client/cliente/CampoClienteVenda.spec.tsx` (blur pelo código + trava por item), `tests/integration/clienteSlice.spec.ts` (describe novo da recusa; os casos de re-fetch migraram para a origem de importação, a única que ainda associa cliente sobre carrinho populado), `tests/integration/scannerCamera.spec.tsx`. Verificação: `tsc --noEmit` limpo, ESLint limpo, 1212 testes unit/integração passando **e o conjunto exercitado ao vivo contra o ERP real** (tenant `c0lj6mvzeh`, empresa 1, BFF local sem `ERP_HOST_OVERRIDE`) — ver o item 4 abaixo.
+
+#### 4. Exercício contra o ERP real — e o bug que só ele revelou
+
+Rodado no navegador em 2026-09-10, com produto e vendedor reais do tenant, **sem emitir nem suspender nada**: as três travas são bloqueios, então nenhuma exige concluir venda.
+
+Confirmado nos **dois sentidos** (bloqueado ⇄ liberado), que é o que um teste de estado inicial não pega:
+
+- Faixa de pagamento rápido: `atalho-venda-rapida-F9` nasce `aria-disabled` com o motivo; **destrava** ao entrar o item (`title` volta a "Duplicata (F9)"); **volta a travar** com o item cancelado.
+- Vendedor: o tenant devolve `VendedorCodigo = 0`, então a venda nasce sem vendedor e a bipagem é recusada com 0 linhas inseridas; escolhido o vendedor (`BRUNO EDUARDO SANTOS`, código 999), a mesma bipagem insere — `AGUA MINERAL`, R$ 3,24, resolvida por `GetProduto` real.
+- Cliente: com o item lançado, o campo fica `readOnly` + `aria-disabled` + `tabindex="-1"`, o clique diz a frase, e o cliente **não** muda; cancelado o item, o campo destrava.
+
+**O bug:** com o card de cliente **recolhido** — que é o estado em que ele nasce — o foco não ia para a lupa do vendedor. `CampoVendedorVenda` é montado **dentro** do bloco colapsável de `CampoClienteVenda`, e esse bloco é `inert` enquanto recolhido: um `focus()` em subtree `inert` é ignorado pelo navegador, em silêncio. A recusa e o aviso funcionavam; o foco ficava parado no campo de código. Medido com precisão — com o card aberto à mão, o mesmo gesto focava a lupa.
+
+Os testes não pegaram porque `CampoVendedorVenda.spec.tsx` monta o componente **solto**, fora do card. **A correção move o foco para o card**, que é o dono do `inert` e já fazia exatamente isso para o campo de documento: `refLupa` vem por prop e o foco é disparado por contador local, um render depois de `setExpandido(true)`. Expandir sem mover o ref não bastaria — o efeito do filho roda **antes** do efeito do pai, e o foco cairia no render em que o `inert` ainda existe. O caso novo vive em `CampoClienteVenda.spec.tsx` e monta o card recolhido de verdade.
+
+Reexercitado ao vivo depois da correção: card recolhido → bipagem recusada → card expande → lupa focada → **Enter abre `ModalBuscaVendedor`**, que é o ciclo inteiro do pedido original.
+
+#### 5. Toda recusa do campo de cliente devolve o foco — inclusive a que o ERP produz
+
+Correção do usuário na sequência do exercício, verbatim: "Se da erro de cliente nao existe, o foco nao está voltando para a insercao do codigo do cliente".
+
+AD-182 já mandava a recusa **prender o operador no campo** — o número errado continua em tela e o próximo gesto é corrigir um dígito, não voltar de mouse. O que faltava era que o desfecho que o operador lê como "esse cliente não existe" **não passa pelo ramo `'nao-encontrado'`**: `GetCliente` deste ERP não devolve `404`, devolve `200` com o cadastro em branco, que `clienteQueries` converte em `ErroClienteIncompleto` (item 4 acima) e chega ao componente como `situacao: 'recusado'` — o único desfecho de recusa sem tratamento, caindo no fim da cadeia sem nada.
+
+Três recusas passam a devolver o foco: `'recusado'` (cliente inexistente neste ERP, e também falha de rede), `PESSOA_JURIDICA` e `INVALIDO` — as duas últimas pelo mesmo motivo da letra no campo, e nenhuma delas o devolvia.
+
+`devolverFocoAoDocumento` existe separada de `recusarMantendoFoco` por duas razões: `'recusado'` **já teve a frase dita** por `useIdentificacaoCliente` (chamar a outra escreveria a mesma mensagem duas vezes), e **não deve gravar `recusaComFocoPreso`** — aquele registro evita reconsultar o ERP com um termo já recusado, e prender um `'recusado'` que pode ser falha de rede faria a tentativa seguinte, com a rede de volta, morrer sem chamar o ERP.
+
+Verificado ao vivo no mesmo ambiente: código `1470` + sair do campo → foco de volta no campo, valor `1470` preservado, um aviso só.
+
+**Achado à parte, do ERP e não do Checkout:** `GetCliente` devolve `200` com o cadastro **inteiro vazio** (`nome: ""`, `cpf: ""`) para qualquer cliente — por código **e** por CPF —, inclusive para um que `GetListaClientes` acabou de listar com nome (`ANA FLAVIA STOLF`, código 1470, CPF `105.742.249-55`). O gesto do blur funciona: a consulta sai pelo parâmetro certo e o Checkout responde com frase clara ("o ERP encontrou o cliente … mas devolveu o cadastro sem nome"). O que **não** dá para exercitar contra este tenant é a identificação **completar** — confirma AD-204 e é caso para o time do ERP.
+
+### AD-210: o Checkout ganha o seu primeiro canal entre abas, e ele é `BroadcastChannel` (2026-09-10)
+
+Implementação da feature 015 (display do cliente). Até aqui o projeto **não tinha nenhum** canal entre contextos: verificado antes de decidir — nenhum `BroadcastChannel`, `SharedWorker`, ouvinte de `storage`, SSE ou WebSocket em `src/`. Esta feature introduz o primeiro, então a escolha vale registro.
+
+A necessidade é concreta e não tinha contorno: a `CobrancaPix` vive **só** no `useState` do `ModalPix` — não está no `vendaStore`, não está no Dexie, e os stores rodam sem `persist` (Constitution VI). Uma segunda aba nasce vazia e não tem de onde ler.
+
+`BroadcastChannel` é API de plataforma (**nenhuma dependência nova**, Constitution "stack fixada"), entrega estruturado-clonado a todos os contextos da mesma origem, e é exatamente do tamanho do problema: mensagens efêmeras, sem persistência, sem servidor. As três alternativas foram rejeitadas por motivo, não por gosto — evento `storage` do `localStorage` exigiria **escrever** o QR Code e o valor em armazenamento persistente, de frente contra a Constitution VI; `SharedWorker` é um processo a mais a gerir sem estado compartilhado a coordenar; SSE/WebSocket faria o BFF crescer além de sessão/autenticação para um problema local à máquina.
+
+O protocolo mora em `src/shared/display.ts` pelo mesmo motivo de `gerencial.ts`: é vocabulário comum às duas pontas, e centralizá-lo faz um rename quebrar a compilação em vez de virar erro silencioso em runtime. Papéis fixos — o checkout **publica**, o display **escuta**; a única mensagem que o display emite é `SOLICITAR_ESTADO`, que não carrega dado nenhum.
+
+**Duas regras contra-intuitivas do canal, as duas com teste próprio.** O **handshake é seletivo**: uma aba de checkout em repouso fica calada diante de `SOLICITAR_ESTADO`, senão o handshake de um display aberto no meio de uma cobrança apagaria o QR que **outra** aba de checkout acabou de publicar. E **descartar não é voltar ao repouso**: mensagem que não valida no Zod é jogada fora em silêncio, sem mudar a tela e **sem** atualizar a marca da última mensagem válida — uma aba antiga publicando lixo a cada 5 s não pode segurar um QR morto na tela.
+
+### AD-211: `noopener` fica de fora do botão do monitor — de propósito, e só ali (2026-09-10)
+
+`window.open(ROTA_DISPLAY, NOME_JANELA_DISPLAY)`, **sem** o terceiro argumento. É desvio consciente do precedente de `BotaoMenuGerencial.tsx:40` (`'_blank', 'noopener'`), que continua correto **lá**.
+
+O motivo é da especificação HTML, não preferência: `noopener` faz o **nome** da janela ser ignorado, e um contexto novo nasce a cada chamada. Com ele, o operador que clica três vezes fica com três displays, cada um mostrando a mesma coisa e cada um ocupando um monitor que não existe — o oposto do requisito de reaproveitamento (FR-028).
+
+Abrir mão do `noopener` aqui não custa segurança: o alvo é página da **própria origem**, e a comunicação é por canal, nunca por `window.opener` — o display não lê nem escreve nada do abridor. No menu gerencial a conta é outra: aquele destino é o ERP legado em **outra** origem, e o `noopener` é exatamente o que impede a página de destino de tocar o Checkout.
+
+A alternativa de manter `noopener` e desduplicar por canal ("já tem display aberto?") foi rejeitada porque resolveria o clique repetido mas **não conseguiria focar** a janela existente — que é metade do requisito — e ainda adicionaria um round-trip assíncrono a um gesto que precisa ser imediato.
+
+### AD-212: a tela do cliente não faz polling, e é o checkout que a mantém viva (2026-09-10)
+
+O display é terminal burro por decisão explícita: não gera cobrança (FR-013), não consulta status (FR-014), não oferece ação capaz de alterar a venda (FR-015) e não abre sessão nem verificação periódica (FR-016). Por isso monta **fora** de `App`, `AppShell` e dos providers — `main.tsx` ramifica por `window.location.pathname`.
+
+Não é organização de código. O `AppShell` chama `abrirSessaoDeVenda('NOVA')` na montagem, registra o `beforeunload` de `useAvisoAoSair` e liga o polling de `GetStatusSistema`; uma aba de display dentro dele abriria uma segunda sessão de auditoria e um segundo polling para uma tela que não vende nada. E o risco maior é o outro: as travas de dupla geração do `ModalPix` são `useRef` **por instância** (`geracaoIniciada`), então uma segunda aba rodando o mesmo hook criaria uma **segunda cobrança real**, órfã, sem endpoint de cancelamento no contrato (invariante J5).
+
+Como o display não pergunta nada, quem garante que a tela não fica com um QR obsoleto é o **par pulso + corte por silêncio**: o checkout reconfirma a cobrança a cada 5 s enquanto ela vive, e o display volta ao repouso após 15 s sem mensagem. `pagehide` cobre o fechamento **normal** da aba e dá a volta imediata; não cobre a aba que trava, é morta pelo gerenciador de tarefas ou perde o processo de renderização — casos em que nenhum código nosso roda, e em que o risco concreto é o **próximo** cliente pagar a cobrança do anterior. A folga de 3× entre os dois números é deliberada: duas mensagens perdidas não derrubam um QR válido.
+
+O valor atravessa o canal como **inteiro de centavos** e é reconstruído por `centavos()` na chegada. A marca `Centavos` é de compilação e não sobrevive ao clone estrutural; fingir que sobrevive seria um `as` não justificado, e `centavos()` **lança** em não-inteiro — payload corrompido vira falha alta em vez de discrepância de centavo na tela (Constitution V).
+
+### AD-213: `nomeDaLoja` sai de `tituloDoProduto`, porque a tela do cliente pede outro rótulo (2026-09-10)
+
+`identidadePdv.ts` ganha `nomeDaLoja(sessao): string | null`, e `tituloDoProduto` passa a chamá-la — a regra de precedência (nome fantasia vence razão social) existe **uma** vez só.
+
+O desenho da feature supunha que o repouso usaria `tituloDoProduto`; isso está **errado** e produziria a tela errada. Aquela função devolve `"Centrium Checkout - Mercado Aurora"` — o nome do **produto** na frente — e `"Centrium Checkout"` sozinho quando a empresa não está cadastrada. É o rótulo certo para a barra do operador, que precisa saber em que sistema está. Na tela virada ao cliente erra duas vezes: anuncia o nome de um software de PDV que não diz nada a quem paga e, sem cadastro, apresentaria a loja como se ela se chamasse "Centrium Checkout". `nomeDaLoja` devolve `null` nesse caso, e a tela mostra só a saudação, sem linha órfã.
+
+### AD-214: a marca da loja atravessa a cobrança — o QR Code nunca fica anônimo (2026-09-11)
+
+A implementação da 015 mostrava o nome da loja **só** no repouso (`TelaBoasVindas`); ao entrar na cobrança, a marca sumia e sobrava um QR Code sem dono. É o pior momento possível para perdê-la: o cliente está prestes a transferir dinheiro de um app bancário, e a tela é a única coisa que diz **a quem** ele está pagando. `TelaCobrancaPix` passa a receber `nomeLoja` e a exibi-la com o mesmo `data-testid="display-nome-loja"` do repouso — as duas telas nunca coexistem, então o identificador é um só e o teste pergunta "a marca está visível?", não "em qual componente ela está?".
+
+O nome fica **preso no topo**, fora da coluna centralizada (`flex-1 min-h-0` no miolo), e não dentro dela. Empilhar mais uma linha na coluna centralizada empurraria o QR Code e o valor para baixo, e FR-006 dimensiona os dois para leitura a cerca de um metro: `min(46vh, 380px)` de QR mais o bloco de valor já ocupam quase toda a altura útil, e sem o `min-h-0` a coluna interna adota a altura do conteúdo e vaza da tela (mesma armadilha do AD-164).
+
+`null` continua valendo como "empresa sem cadastro" e não vira linha órfã, igual ao repouso — herdado de AD-213, não redecidido aqui. **A tela de confirmação (`TelaPagamentoAprovado`) segue sem a marca**: o pedido foi sobre o QR Code, e ampliá-lo por conta própria mudaria uma tela que ninguém reclamou. Fica anotado como pergunta aberta, porque a marca reaparecer no repouso depois de sumir por ~10 s de confirmação é uma piscada visível.
+
+**Impact:** alterados — `src/client/features/display/TelaCobrancaPix.tsx` (prop `nomeLoja` + moldura topo/miolo), `src/client/features/display/DisplayCliente.tsx` (passa o `nomeLoja` que já mantinha em estado); testes — `tests/integration/DisplayCliente.spec.tsx` (marca visível durante o QR Code; `null` não vira linha órfã na cobrança). Verificação: `tsc --noEmit` limpo, 28 testes do `DisplayCliente.spec.tsx` passando. FR-004 de `specs/015-display-cliente-pix/spec.md` atualizado para listar a identificação da loja entre o que a cobrança exibe.
+
+**Impact (AD-210 a AD-213):** novos — `src/shared/display.ts`, `src/client/services/display/canalDisplay.ts`, `src/client/services/display/useCanalDisplay.ts`, `src/client/features/display/{DisplayCliente,TelaBoasVindas,TelaCobrancaPix,TelaPagamentoAprovado}.tsx`; alterados — `src/client/main.tsx` (ramo por `pathname`), `src/client/layout/BarraSuperior.tsx` (botão do monitor ativo), `src/client/domain/sessao/identidadePdv.ts` (`nomeDaLoja`), `src/client/features/pagamento/pix/ModalPix.tsx` (prop `onEstadoDisplay` + efeito de publicação, com o cleanup de repouso em efeito **próprio** para a tela não piscar a cada transição), `src/client/features/pagamento/ListaPagamentosAplicados.tsx` (`usePixPendente` liga a prop ao canal); testes — `tests/support/display.ts` (barramento falso), `tests/unit/shared/display.spec.ts`, `tests/unit/client/services/display/canalDisplay.spec.ts`, `tests/unit/domain/sessao/identidadePdv.spec.ts`, `tests/unit/client/layout/BarraSuperior.spec.tsx`, `tests/integration/DisplayCliente.spec.tsx`, `tests/integration/ModalPix.spec.tsx`, `tests/e2e/display-cliente.spec.ts`. Verificação: `tsc --noEmit` limpo, ESLint limpo, 1288 testes unit/integração e 3 E2E do display passando — o E2E é o único lugar em que o canal é o de verdade (duas páginas no **mesmo** contexto de browser; nos demais ele é injetado, porque o jsdom não implementa `BroadcastChannel`). **Não exercitado contra o ERP real nem com dois monitores físicos** — ver o item 28 de `PENDENCIES.md` e T048 de `specs/015-display-cliente-pix/tasks.md`.

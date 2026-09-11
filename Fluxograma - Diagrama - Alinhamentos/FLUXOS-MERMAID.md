@@ -628,4 +628,8 @@ flowchart TD
     F --> G(["Fim"])
 ```
 
-> ⚠️ **Gap real de escopo, registrado como pendência (2026-08-25, AD-066 em `.specs/project/STATE.md` / item 28 de `.specs/project/PENDENCIES.md`)**: recurso de segunda tela confirmado pelo usuário como ausente do escopo atual — vai exigir UI própria no Pencil e uma fase Specify dedicada antes de entrar no roadmap. Ainda não decidido se entra ou não no produto.
+> ✅ **Implementado em 2026-09-10 como a feature 015** (`specs/015-display-cliente-pix/`, AD-210 a AD-213 em `.specs/project/STATE.md`). A tela existe em `/display`, é aberta pelo botão do monitor da barra superior e espelha a cobrança do operador por `BroadcastChannel`. O item 28 de `.specs/project/PENDENCIES.md`, aberto por AD-066, está **fechado** — este fluxograma deixou de ser um gap de escopo em aberto.
+>
+> **Um passo do desenho acima ficou de fora, por decisão do usuário (2026-09-10):** o `"Exibe imagem, grava em contexto"` do estado inicial. O repouso implementado mostra **nome da loja e saudação, e nada mais** — nenhuma propaganda, nenhum item, preço, total, nome ou documento, porque a tela fica virada ao público da loja o dia inteiro. Nada no desenho técnico impede acrescentar a imagem depois: `BOAS_VINDAS` é um estado próprio do protocolo e ganharia conteúdo sem mexer no canal.
+>
+> **Dois passos ganharam detalhe que o fluxograma não modela**, e são o que impede um QR obsoleto de ficar na tela: enquanto a cobrança vive, a aba do checkout a reconfirma a cada 5 s; sem mensagem por 15 s, a tela do cliente volta sozinha ao repouso. O `"Pagamento aprovado?"` também não fica no laço para sempre — a confirmação aparece com contador regressivo e a tela volta ao repouso junto com a do operador.

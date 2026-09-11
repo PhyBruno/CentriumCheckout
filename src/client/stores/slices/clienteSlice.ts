@@ -8,6 +8,7 @@ import {
 import type {
   CadastroSimplificadoInput,
   ClienteVenda,
+  OrigemCliente,
   OrigemSelecaoCliente,
 } from '../../domain/cliente/clienteVenda';
 import {
@@ -140,6 +141,33 @@ export interface ClienteSlice extends ClienteState {
 const AVISO_CLIENTE_BLOQUEADO =
   'Já há pagamento aprovado nesta venda: o cliente não pode mais ser trocado.';
 
+/**
+ * **O cliente da venda é escolhido antes do primeiro item, e não muda depois**
+ * (decisão do usuário, 2026-09-10).
+ *
+ * Esta regra **substitui** a reprecificação por troca de cliente que a 005
+ * previa (`FR-012`): não existe mais troca de cliente com carrinho populado, e
+ * portanto não existe mais o carrinho que precisava ser reprecificado. O motivo
+ * é o que o próprio usuário nomeou — a lista de preço. Cada linha foi
+ * precificada pelo ERP sob a `Listapreco`/`Codcliente` de quem estava na venda
+ * (AD-033), e trocar o cliente depois obriga a refazer todos os `GetProduto`
+ * para repor preço e convênio. Esse caminho existia e era caro: uma chamada por
+ * SKU, com a corrida entre duas trocas resolvida por contador de geração, e um
+ * desfecho — `AVISO_REPRECIFICACAO_FALHOU` — em que a venda continua na tela com
+ * o preço do cliente anterior. Fechar a troca elimina a classe inteira de
+ * problema no lugar de administrá-la.
+ *
+ * A frase nomeia a saída porque ela existe: cancelar os itens (ou limpar a
+ * venda) devolve o carrinho ao estado em que o cliente ainda pode ser trocado.
+ *
+ * Exportada porque `CampoClienteVenda` diz o mesmo motivo **antes** do gesto,
+ * no campo e no botão "Identificar" — mesma razão de `AVISO_CONDICAO_COM_PAGAMENTO`
+ * ser lida pelo `SeletorCondicaoForma`: duas redações do mesmo motivo divergem
+ * no dia em que só uma for revisada.
+ */
+export const AVISO_CLIENTE_COM_ITEM =
+  'Esta venda já tem itens: o cliente não pode mais ser trocado, porque a lista de preço dele já valeu na precificação. Cancele os itens para trocar o cliente.';
+
 const AVISO_REPRECIFICACAO_FALHOU =
   'O cliente foi trocado, mas os preços do carrinho não puderam ser atualizados. Verifique antes de finalizar.';
 
@@ -241,6 +269,32 @@ export function criarClienteSlice(
       await reprecificarSob(novo, geracao);
     }
 
+    /**
+     * A troca pedida pelo **operador** com o carrinho já populado
+     * (`AVISO_CLIENTE_COM_ITEM`).
+     *
+     * Linha cancelada não conta: ela saiu da venda, e o cliente volta a ser
+     * trocável — é justamente a saída que a frase nomeia.
+     *
+     * **A importação não passa por aqui.** `'DAV'` e `'RASCUNHO'` chegam de
+     * `importarVendaExistente`, que insere as linhas congeladas **antes** de
+     * associar o cliente do documento: para elas a venda inteira está sendo
+     * substituída pelo conteúdo do ERP, e não há cliente da venda corrente a
+     * proteger. É a mesma distinção que `trocarVendedor` faz ao sobrescrever
+     * incondicionalmente. Bloquear as duas deixaria todo DAV importado com o
+     * cliente default, calado.
+     */
+    function trocaRecusadaPorItem(origem: OrigemCliente): boolean {
+      if (origem === 'DAV' || origem === 'RASCUNHO') {
+        return false;
+      }
+      if (!get().linhas.some((linha) => !linha.cancelada)) {
+        return false;
+      }
+      deps.avisar?.(AVISO_CLIENTE_COM_ITEM);
+      return true;
+    }
+
     return {
       clienteAtual: null,
       houveEscolhaExplicita: false,
@@ -273,6 +327,14 @@ export function criarClienteSlice(
           return 'inalterado';
         }
 
+        // A recusa por item vem **depois** da guarda acima: reescolher quem já
+        // está na venda não muda cliente nenhum, e avisar ali que "o cliente
+        // não pode mais ser trocado" alarmaria o operador por um gesto que não
+        // trocaria nada.
+        if (trocaRecusadaPorItem(origem)) {
+          return 'bloqueado';
+        }
+
         const primeiraEscolha = !get().houveEscolhaExplicita;
 
         await aplicar(novo, (anterior) => {
@@ -297,7 +359,9 @@ export function criarClienteSlice(
       },
 
       cadastrarESelecionarCliente: async (dados, criar) => {
-        if (clienteBloqueado()) {
+        // A recusa vem **antes** de `criar`: cadastrar no ERP um cliente que a
+        // venda não pode receber deixaria um cadastro órfão a cada tentativa.
+        if (clienteBloqueado() || trocaRecusadaPorItem('CADASTRO_SIMPLIFICADO')) {
           return 'bloqueado';
         }
 

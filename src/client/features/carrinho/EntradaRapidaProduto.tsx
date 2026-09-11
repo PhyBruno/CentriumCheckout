@@ -36,6 +36,10 @@ import {
 } from '../../domain/precificacao/quantidade';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+// Mesma leitura que `AcoesFinaisVenda` (004) faz para travar o "Finalizar":
+// o vendedor da venda tem um hook só, e duplicar o seletor aqui abriria duas
+// respostas possíveis para "esta venda tem vendedor?".
+import { useVendedorAtual } from '../vendedor/useVendedor';
 import { ModalBuscaProduto } from './ModalBuscaProduto';
 import {
   useContextoPrecificacao,
@@ -81,6 +85,23 @@ const AVISO_PRECO_INVALIDO =
   'Informe o preço unitário do item: ele precisa ser um valor maior que zero.';
 const AVISO_DESCONTO_INVALIDO =
   'Informe o desconto do item: digite 0,00 quando não houver desconto.';
+
+/**
+ * Venda sem vendedor não recebe produto (pedido do usuário, 2026-09-10).
+ *
+ * A trava por vendedor já existia no **fim** da venda — `AcoesFinaisVenda`
+ * (004) recusa o "Finalizar" enquanto `vendedorAtual` é `null`, porque o ERP
+ * não aceita NFCe sem vendedor associado (`FR-006`/`SC-003` da 012). Descobrir
+ * isso só depois de o carrinho estar montado é tarde: o operador bipa a compra
+ * inteira e só então é mandado escolher quem vende. Puxar a mesma exigência
+ * para a primeira inserção põe o pedido no começo do fluxo, que é onde ele
+ * custa um clique.
+ *
+ * A frase é irmã da que a 004 usa, e nomeia a saída — a lupa — porque é para
+ * ela que o foco vai junto com o aviso (`focarVendedor`).
+ */
+const AVISO_SEM_VENDEDOR =
+  'Escolha o vendedor da venda antes de inserir produtos: use a lupa ao lado de "Vendedor NFCe".';
 
 /** `"12,34"` e `"12.34"` → `1234` centavos; entrada inválida vira `null`. */
 function lerCentavos(texto: string): Centavos | null {
@@ -421,6 +442,38 @@ export function EntradaRapidaProduto({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidosDeFocoNoCodigo]);
 
+  // Terceiro sentido do `focoVendaStore`: daqui para o campo do vendedor,
+  // quando a venda ainda não tem um (ver `exigirVendedor`).
+  const semVendedor = useVendedorAtual() === null;
+  const focarVendedor = useFocoVendaStore((estado) => estado.focarVendedor);
+
+  /**
+   * Porta única da regra "sem vendedor não se insere produto" (pedido do
+   * usuário, 2026-09-10): responde `false` depois de avisar e de levar o foco
+   * ao campo do vendedor.
+   *
+   * É chamada em **cada gesto** que pode terminar num item no grid —
+   * `capturarPorCamera`, `confirmarEntradaRapida`, `resolverEExibir` e
+   * `confirmar` — e não num ponto único mais abaixo, porque os quatro entram
+   * por caminhos diferentes: câmera, leitor/Enter no código, TAB/modal de busca
+   * e confirmação da prévia. Barrar só no último deixaria a consulta ao ERP
+   * acontecer para um produto que nunca vai entrar.
+   *
+   * **Editar linha já existente não passa por aqui.** O lápis mexe em item que
+   * já está na venda — inclusive numa venda vinda de DAV/rascunho sem vendedor
+   * (`trocarVendedor` com `codigo <= 0`, AD-095) — e travar a correção de
+   * quantidade de um item já lançado não impede NFCe nenhuma: quem impede é o
+   * "Finalizar" da 004, que continua exigindo o vendedor.
+   */
+  function exigirVendedor(): boolean {
+    if (!semVendedor) {
+      return true;
+    }
+    notificar.erro(AVISO_SEM_VENDEDOR);
+    focarVendedor();
+    return false;
+  }
+
   function resetar(): void {
     setResolvido(null);
     setTexto('');
@@ -445,6 +498,10 @@ export function EntradaRapidaProduto({
   async function confirmarEntradaRapida(codigoExterno?: string): Promise<void> {
     const entrada = (codigoExterno ?? texto).trim();
     if (entrada === '' || ocupado) {
+      return;
+    }
+
+    if (!exigirVendedor()) {
       return;
     }
 
@@ -531,6 +588,12 @@ export function EntradaRapidaProduto({
     if (ocupado) {
       return;
     }
+    // **Antes** do `resetar()` abaixo: recusada a inserção por falta de
+    // vendedor, descartar a prévia em curso cobraria do operador um trabalho
+    // que a leitura recusada nem chegou a substituir.
+    if (!exigirVendedor()) {
+      return;
+    }
     if (resolvido !== null || linhaEmEdicao !== null) {
       resetar();
     }
@@ -572,6 +635,13 @@ export function EntradaRapidaProduto({
     codigo: string,
     opcoes?: { origem?: 'BUSCA'; tipoCodigo?: string },
   ): Promise<void> {
+    // O TAB e o modal de busca também terminam em item no grid quando o produto
+    // é `''` (inserção direta, AD-124), então a exigência vale aqui e não só na
+    // confirmação da prévia — e vale **antes** do `GetProduto`.
+    if (!exigirVendedor()) {
+      return;
+    }
+
     setOcupado(true);
     try {
       const resultado = await revisarPorCodigo(codigo, opcoes);
@@ -671,6 +741,14 @@ export function EntradaRapidaProduto({
         descontoManual: descontoManualLido,
       });
       resetar();
+      return;
+    }
+
+    // Daqui para baixo é **inserção**, não edição de linha existente — e toda
+    // inserção exige vendedor. `confirmarEntradaRapida` repete a checagem por
+    // ser também o alvo da câmera; aqui ela cobre a confirmação da prévia, que
+    // chama `confirmarEdicao`/`confirmarPrevia` direto.
+    if (!exigirVendedor()) {
       return;
     }
 
@@ -782,21 +860,40 @@ export function EntradaRapidaProduto({
    * a regra de negócio recusa, e só faz sentido apontá-lo quando não há mais
    * nenhum campo por preencher.
    */
-  const bloqueioDeInsercao: MotivoBloqueio = podeConfirmar
-    ? null
-    : ocupado
-      ? 'Aguarde: o produto ainda está sendo consultado no ERP.'
-      : semResolucao
-        ? 'Digite ou bipe o código do produto para inserir.'
-        : quantidadeInvalida
-          ? AVISO_QUANTIDADE_INVALIDA
-          : precoInvalido
-            ? AVISO_PRECO_INVALIDO
-            : descontoInvalido
-              ? AVISO_DESCONTO_INVALIDO
-              : descontoZeraItem
-                ? AVISO_DESCONTO_ZERA_ITEM
-                : 'Revise quantidade, preço e desconto: há um valor inválido.';
+  /**
+   * O "+" está bloqueado por falta de vendedor.
+   *
+   * Booleano à parte, e não só um termo do encadeado abaixo, porque o clique
+   * precisa distinguir **este** motivo dos demais: só ele responde por
+   * `exigirVendedor`, que também move o foco.
+   *
+   * `linhaEmEdicao === null` porque com o lápis o mesmo botão confirma a
+   * **edição** de um item já lançado, que a regra não alcança (ver
+   * `exigirVendedor`) — bloqueá-lo ali prenderia o operador numa venda retomada
+   * sem vendedor, sem poder nem corrigir a quantidade.
+   */
+  const bloqueadoPorVendedor = semVendedor && linhaEmEdicao === null;
+
+  const bloqueioDeInsercao: MotivoBloqueio = bloqueadoPorVendedor
+    ? // Primeiro de todos: sem vendedor nenhum outro motivo importa, e a barra
+      // pode estar perfeitamente preenchida — `podeConfirmar` diria `true` e o
+      // botão apareceria livre para uma inserção que `exigirVendedor` recusa.
+      AVISO_SEM_VENDEDOR
+    : podeConfirmar
+      ? null
+      : ocupado
+        ? 'Aguarde: o produto ainda está sendo consultado no ERP.'
+        : semResolucao
+          ? 'Digite ou bipe o código do produto para inserir.'
+          : quantidadeInvalida
+            ? AVISO_QUANTIDADE_INVALIDA
+            : precoInvalido
+              ? AVISO_PRECO_INVALIDO
+              : descontoInvalido
+                ? AVISO_DESCONTO_INVALIDO
+                : descontoZeraItem
+                  ? AVISO_DESCONTO_ZERA_ITEM
+                  : 'Revise quantidade, preço e desconto: há um valor inválido.';
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -1117,7 +1214,13 @@ export function EntradaRapidaProduto({
           }
           data-testid="previa-confirmar"
           {...atributosDeBloqueio(bloqueioDeInsercao)}
-          onClick={acaoBloqueavel(bloqueioDeInsercao, confirmar)}
+          // Sem vendedor o clique **não** para em `acaoBloqueavel`: quem
+          // responde é `exigirVendedor`, dentro de `confirmar`, porque além de
+          // dizer o motivo ele leva o foco ao campo do vendedor — e
+          // `acaoBloqueavel` só notifica. O motivo continua em
+          // `bloqueioDeInsercao` para o botão aparecer bloqueado e o `title`
+          // explicar sem depender do clique.
+          onClick={acaoBloqueavel(bloqueadoPorVendedor ? null : bloqueioDeInsercao, confirmar)}
         >
           <Plus className="size-5 shrink-0" aria-hidden="true" />
           <span className="text-md font-bold md:hidden">
