@@ -258,7 +258,7 @@ export function ModalImportacaoDav({
         ref={janelaRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Menu Importação"
+        aria-label="Importação de DAV"
         className={cn(
           'flex max-h-full w-full max-w-[1120px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
@@ -270,7 +270,7 @@ export function ModalImportacaoDav({
               <ReceiptText className="size-5 text-primary" aria-hidden="true" />
             </span>
             <div className="flex flex-col gap-[2px]">
-              <h2 className="text-xl font-semibold text-foreground">Menu DAV</h2>
+              <h2 className="text-xl font-semibold text-foreground">Importação de DAV</h2>
               <p className="text-sm font-medium text-muted-foreground">
                 Selecione um documento para importar para a venda
               </p>

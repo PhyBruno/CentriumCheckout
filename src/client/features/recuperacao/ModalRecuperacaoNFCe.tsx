@@ -271,7 +271,7 @@ export function ModalRecuperacaoNFCe({
         ref={janelaRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Menu NFCe"
+        aria-label="Importação de NFCe"
         className={cn(
           'flex max-h-full w-full max-w-[1120px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
@@ -283,7 +283,7 @@ export function ModalRecuperacaoNFCe({
               <ArchiveUp className="size-5 text-primary" aria-hidden="true" />
             </span>
             <div className="flex flex-col gap-[2px]">
-              <h2 className="text-xl font-semibold text-foreground">Menu NFCe</h2>
+              <h2 className="text-xl font-semibold text-foreground">Importação de NFCe</h2>
               {/* Mesma frase do modal de DAV, de propósito: as duas janelas
                   fazem a mesma coisa com documentos de origem diferentes, e
                   descrevê-las igual evita que o operador procure diferença
