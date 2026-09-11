@@ -590,7 +590,12 @@ describe('ordenação por coluna', () => {
   function tresRascunhos(): readonly Record<string, unknown>[] {
     return [
       rascunhoDaLista({ NumeroNota: 90212, Cliente: 'ZULMIRA', Operador: 'CAIXA 03', Total: 7.25 }),
-      rascunhoDaLista({ NumeroNota: 90210, Cliente: 'ANTONIA', Operador: 'CAIXA 01', Total: 130.4 }),
+      rascunhoDaLista({
+        NumeroNota: 90210,
+        Cliente: 'ANTONIA',
+        Operador: 'CAIXA 01',
+        Total: 130.4,
+      }),
       rascunhoDaLista({ NumeroNota: 90211, Cliente: 'MARCOS', Operador: 'CAIXA 02', Total: 48.9 }),
     ];
   }
