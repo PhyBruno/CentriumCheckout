@@ -87,6 +87,7 @@ Não são dúvida de requisito — é trabalho de design ainda não feito, ou um
 | # | Item | Onde mora | Nota |
 |---|---|---|---|
 | 17 | `layout-responsivo-mobile` — fase Design técnico não iniciada | `.specs/features/layout-responsivo-mobile/spec.md`, Requirement Traceability (`MOB-01` a `MOB-05`) | Design visual 100% concluído; falta breakpoint, componentes React, hook `useIsMobile` |
+| 52 | **`design/CentriumCheckout.pen` tem edições no disco desde 2026-09-03 que nunca foram commitadas.** O arquivo cresceu de 1336155 para 1368699 bytes e o `git status` não mostrava, por cache de `stat` obsoleto no índice; só apareceu no `git add --renormalize .` de AD-215. As edições foram **preservadas** (backup antes da reescrita em massa e exclusão explícita do lote) e seguem não commitadas. | `design/CentriumCheckout.pen`, AD-215 em `.specs/project/STATE.md` | **Novo (2026-09-11, AD-215).** Só o usuário sabe se essas alterações do Pencil são para versionar ou descartar — o `.pen` é a fonte de verdade visual, e commitá-las por conta própria mudaria a referência de design de todas as telas. Decidir e então `git add design/CentriumCheckout.pen` ou `git checkout -- design/CentriumCheckout.pen`. |
 
 ## 5. Infraestrutura/deploy
 
