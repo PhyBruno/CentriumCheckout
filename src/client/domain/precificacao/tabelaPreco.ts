@@ -124,12 +124,17 @@ export function resolvePrecoUnitario(
  * aparecia como `ErroPrecoIndisponivelParaPesagem`. Digitar o mesmo código, ou
  * escolhê-lo no modal, criava a linha zerada sem nenhum aviso.
  *
- * **`'E'` fica de fora, e não por descuido:** produto editável normalmente
- * *não tem* `PrecoVenda` significativo no ERP — é a razão de o operador digitar
- * o preço na prévia (`FR-014`, mesma observação de `repricarSku`). Recusá-lo
- * aqui tornaria todo produto editável impossível de inserir. O carrinho fica
- * igualmente sem linha zerada porque o preço **digitado** já é obrigado a ser
- * maior que zero antes de o botão de inserir liberar.
+ * **`'E'` fica de fora porque a recusa não protegeria nada ali** (decisão do
+ * usuário, 2026-09-11): em produto editável o preço da linha é o **digitado**,
+ * e o operador pode alterá-lo de qualquer forma — barrar a entrada por causa do
+ * cadastro só tiraria dele o caso de uso do próprio tipo, que é preço definido
+ * na hora. O carrinho fica igualmente sem linha zerada porque o preço digitado
+ * já é obrigado a ser maior que zero antes de o botão de inserir liberar.
+ *
+ * Não é o caso de supor que `'E'` venha sempre sem preço: medido no tenant
+ * `c0lj6mvzeh` (2026-09-11, 195 produtos), `'E'` é o tipo dominante — 191
+ * deles — e **80 têm `PrecoVenda` > 0**. Zero ali é cadastro incompleto, como
+ * em qualquer outro tipo, não característica do valor.
  *
  * Roda sobre o snapshot, sem a quantidade agregada: em `TipoPreco 8` o piso é
  * `PrecoVenda1`, sempre aplicável, e as faixas acima dele continuam sendo
@@ -140,8 +145,7 @@ export function exigirPrecoDeInsercao(tipoPreco: number, snapshot: SnapshotPreco
     return;
   }
 
-  const preco =
-    tipoPreco === TIPO_PRECO_POR_FAIXA ? snapshot.precosFaixa[0] : snapshot.precoBase;
+  const preco = tipoPreco === TIPO_PRECO_POR_FAIXA ? snapshot.precosFaixa[0] : snapshot.precoBase;
 
   if (preco === undefined || preco <= ZERO_CENTAVOS) {
     throw new ErroProdutoSemPreco(snapshot.codigoProduto);

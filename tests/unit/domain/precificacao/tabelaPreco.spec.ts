@@ -123,14 +123,19 @@ describe('exigirPrecoDeInsercao', () => {
     expect(() => exigirPrecoDeInsercao(1, comPreco)).not.toThrow();
   });
 
-  it("produto 'E' com preço zerado passa — é o cadastro normal de um editável", () => {
-    // `'E'` normalmente não tem `PrecoVenda` significativo no ERP: é a razão de
-    // o operador digitar o preço na prévia (`FR-014`). Recusá-lo aqui tornaria
-    // todo produto editável impossível de inserir.
-    const editavelSemPreco = snapshotDe({ pesavelEditavel: 'E', precoBase: 0 });
+  it.each([0, 1000])(
+    "produto 'E' passa com preço %i — em editável quem decide o preço é o operador",
+    (precoBase) => {
+      // Recusar aqui não protegeria nada: o operador pode alterar o preço de
+      // qualquer forma (`FR-014`), e barrar a entrada só tiraria dele o caso de
+      // uso do tipo — preço definido na hora. Os dois valores estão no teste
+      // porque `'E'` **não** implica cadastro zerado: medido no tenant real
+      // (2026-09-11), 80 dos 191 produtos `'E'` têm `PrecoVenda` > 0.
+      const editavel = snapshotDe({ pesavelEditavel: 'E', precoBase });
 
-    expect(() => exigirPrecoDeInsercao(1, editavelSemPreco)).not.toThrow();
-  });
+      expect(() => exigirPrecoDeInsercao(1, editavel)).not.toThrow();
+    },
+  );
 
   it('em TipoPreco 8 o piso conferido é PrecoVenda1, não o PrecoVenda', () => {
     // O preço-base é irrelevante em 8 — quem vale na faixa 1 é `PrecoVenda1`.

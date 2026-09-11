@@ -416,9 +416,12 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
   });
 
   /**
-   * O contraponto do caso acima: `'E'` normalmente **vem** com `PrecoVenda`
-   * zerado do ERP — é a razão de o operador digitar o preço (`FR-014`).
-   * Recusá-lo junto tornaria todo produto editável impossível de inserir.
+   * O contraponto do caso acima: em `'E'` o preço da linha é o digitado, e o
+   * operador pode alterá-lo de qualquer forma (`FR-014`) — recusar a entrada
+   * por causa do cadastro só tiraria dele o caso de uso do tipo, que é preço
+   * definido na hora. O cadastro zerado aqui é o cenário mais hostil, não o
+   * normal: medido no tenant real (2026-09-11), 80 dos 191 produtos `'E'` têm
+   * `PrecoVenda` > 0.
    */
   it("produto editável ('E') com preço zerado no ERP continua abrindo a prévia", async () => {
     vi.stubGlobal(
