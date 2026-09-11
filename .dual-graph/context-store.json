@@ -1,97 +1,5 @@
 [
   {
-    "id": "mem:1788185161687",
-    "kind": "next",
-    "content": "Rodar /speckit-tasks na feature 014",
-    "tags": [
-      "speckit",
-      "014"
-    ],
-    "files": [
-      "specs/014-validacao-previa-nfce/plan.md"
-    ],
-    "file_path": "specs/014-validacao-previa-nfce/plan.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788185161687",
-    "kind": "fact",
-    "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
-    "tags": [
-      "validarnfce",
-      "erp"
-    ],
-    "files": [
-      "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md"
-    ],
-    "file_path": "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788185161687",
-    "kind": "decision",
-    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
-    "tags": [
-      "validacao",
-      "pagamento",
-      "014"
-    ],
-    "files": [
-      "specs/014-validacao-previa-nfce/spec.md",
-      "specs/008-pagamento-geral/spec.md"
-    ],
-    "file_path": "specs/014-validacao-previa-nfce/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788200445679",
-    "kind": "decision",
-    "content": "ValidarNFCe vira feature 014: gate em toda insercao de pagamento",
-    "tags": [
-      "validacao",
-      "pagamento",
-      "014"
-    ],
-    "files": [
-      "specs/014-validacao-previa-nfce/spec.md",
-      "specs/008-pagamento-geral/spec.md"
-    ],
-    "file_path": "specs/014-validacao-previa-nfce/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
     "id": "mem:1788200445679",
     "kind": "fact",
     "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
@@ -261,52 +169,6 @@
     "id": "mem:1788200445679",
     "kind": "task",
     "content": "tasks.md da feature 007 (layout responsivo) gerado: 27 tarefas, 6 fases, 3 user stories P2/P2/P3",
-    "tags": [
-      "speckit",
-      "007"
-    ],
-    "files": [
-      "specs/007-layout-responsivo-mobile/tasks.md"
-    ],
-    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788201050235",
-    "kind": "decision",
-    "content": "/speckit-analyze na 007: achou I1 CRITICO (DesktopLayout.tsx sem tarefa de criacao), corrigido",
-    "tags": [
-      "speckit",
-      "007",
-      "analyze"
-    ],
-    "files": [
-      "specs/007-layout-responsivo-mobile/tasks.md",
-      ".specs/project/STATE.md"
-    ],
-    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788201050235",
-    "kind": "task",
-    "content": "tasks.md da 007 corrigido: 27 -> 31 tarefas (DesktopLayout + 3 testes de cobertura)",
     "tags": [
       "speckit",
       "007"
@@ -3643,7 +3505,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.546052+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-09T13:17:30.361750+00:00",
+    "updated_at": "2026-09-11T11:00:16.185808+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5279,7 +5141,9 @@
       "display",
       "cliente",
       "espelho",
-      "code"
+      "code",
+      "214",
+      "nome"
     ],
     "files": [
       "specs/015-display-cliente-pix/spec.md"
@@ -5289,7 +5153,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-10T19:26:03.785849+00:00",
     "created_epoch": 1789068363,
-    "updated_at": "2026-09-10T19:26:03.785865+00:00",
+    "updated_at": "2026-09-11T11:00:16.199057+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5898,5 +5762,186 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1789124416174",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "214",
+      "nome",
+      "loja",
+      "permanece",
+      "vis",
+      "vel",
+      "tela",
+      "cobran"
+    ],
+    "files": [
+      "tests/integration/DisplayCliente.spec.tsx"
+    ],
+    "file_path": "tests/integration/DisplayCliente.spec.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:00:16.174058+00:00",
+    "created_epoch": 1789124416,
+    "updated_at": "2026-09-11T11:00:16.174070+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789124416147",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "214",
+      "nome",
+      "loja",
+      "permanece",
+      "vis",
+      "vel",
+      "tela",
+      "cobran"
+    ],
+    "files": [
+      "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix"
+    ],
+    "file_path": "src/client/features/display/TelaCobrancaPix.tsx",
+    "symbol_id": "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:00:16.147048+00:00",
+    "created_epoch": 1789124416,
+    "updated_at": "2026-09-11T11:00:46.644206+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789124416136",
+    "kind": "decision",
+    "content": "AD-214: nome da loja permanece vis\u00edvel na tela de cobran\u00e7a PIX (prop nomeLoja em TelaCobrancaPix, marca presa no topo com miolo flex-1 min-h-0)",
+    "tags": [
+      "214",
+      "nome",
+      "loja",
+      "permanece",
+      "vis",
+      "vel",
+      "tela",
+      "cobran"
+    ],
+    "files": [
+      "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix",
+      "src/client/features/display/DisplayCliente.tsx::DisplayCliente",
+      "tests/integration/DisplayCliente.spec.tsx",
+      ".specs/project/STATE.md",
+      "specs/015-display-cliente-pix/spec.md"
+    ],
+    "file_path": "src/client/features/display/TelaCobrancaPix.tsx",
+    "symbol_id": "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:00:16.137397+00:00",
+    "created_epoch": 1789124416,
+    "updated_at": "2026-09-11T11:00:46.644237+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1789124416161",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "214",
+      "nome",
+      "loja",
+      "permanece",
+      "vis",
+      "vel",
+      "tela",
+      "cobran"
+    ],
+    "files": [
+      "src/client/features/display/DisplayCliente.tsx::DisplayCliente"
+    ],
+    "file_path": "src/client/features/display/DisplayCliente.tsx",
+    "symbol_id": "src/client/features/display/DisplayCliente.tsx::DisplayCliente",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:00:16.161102+00:00",
+    "created_epoch": 1789124416,
+    "updated_at": "2026-09-11T11:00:46.644246+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789124446667",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/client/features/display/DisplayCliente.tsx::DisplayCliente"
+    ],
+    "file_path": "src/client/features/display/DisplayCliente.tsx",
+    "symbol_id": "src/client/features/display/DisplayCliente.tsx::DisplayCliente",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:00:46.644248+00:00",
+    "created_epoch": 1789124446,
+    "updated_at": "2026-09-11T11:00:46.644251+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1789124446646",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix",
+      "src/client/features/display/DisplayCliente.tsx::DisplayCliente",
+      "tests/integration/DisplayCliente.spec.tsx",
+      ".specs/project/STATE.md",
+      "specs/015-display-cliente-pix/spec.md"
+    ],
+    "file_path": "src/client/features/display/TelaCobrancaPix.tsx",
+    "symbol_id": "src/client/features/display/TelaCobrancaPix.tsx::TelaCobrancaPix",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:00:46.644224+00:00",
+    "created_epoch": 1789124446,
+    "updated_at": "2026-09-11T11:00:46.644243+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "decision"
+    }
   }
 ]
