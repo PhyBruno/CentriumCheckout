@@ -87,6 +87,82 @@ describe('ControlePaginacao', () => {
     expect(screen.getByTestId('dav-pagina-proxima')).toBeDisabled();
   });
 
+  /** Pedido do usuário: as pontas são alcançáveis de qualquer página. */
+  it('salta para a primeira e para a última página em um clique', async () => {
+    const aoTrocar = vi.fn<(pagina: number) => void>();
+    const usuario = userEvent.setup();
+    render(
+      <ControlePaginacao
+        pagina={7}
+        totalPaginas={25}
+        testIdPrefixo="dav"
+        onTrocarPagina={aoTrocar}
+      />,
+    );
+
+    await usuario.click(screen.getByTestId('dav-primeira-pagina'));
+    expect(aoTrocar).toHaveBeenLastCalledWith(1);
+
+    await usuario.click(screen.getByTestId('dav-ultima-pagina'));
+    expect(aoTrocar).toHaveBeenLastCalledWith(25);
+  });
+
+  /**
+   * O salto usa o total lembrado, não um número inventado: enquanto a consulta
+   * está em voo, "Última página" leva ao fim que se conhece.
+   */
+  it('salta para o último total conhecido enquanto a consulta não responde', async () => {
+    const aoTrocar = vi.fn<(pagina: number) => void>();
+    const usuario = userEvent.setup();
+    const { rerender } = render(
+      <ControlePaginacao
+        pagina={2}
+        totalPaginas={9}
+        testIdPrefixo="dav"
+        onTrocarPagina={aoTrocar}
+      />,
+    );
+    rerender(
+      <ControlePaginacao
+        pagina={3}
+        totalPaginas={undefined}
+        testIdPrefixo="dav"
+        onTrocarPagina={aoTrocar}
+      />,
+    );
+
+    await usuario.click(screen.getByTestId('dav-ultima-pagina'));
+    expect(aoTrocar).toHaveBeenLastCalledWith(9);
+  });
+
+  it('fecha os saltos nas pontas, junto com "Anterior" e "Próxima"', () => {
+    const semAcao = (): void => {
+      /* o teste olha só o estado dos botões */
+    };
+    const { rerender } = render(
+      <ControlePaginacao
+        pagina={1}
+        totalPaginas={4}
+        testIdPrefixo="dav"
+        onTrocarPagina={semAcao}
+      />,
+    );
+
+    expect(screen.getByTestId('dav-primeira-pagina')).toBeDisabled();
+    expect(screen.getByTestId('dav-ultima-pagina')).toBeEnabled();
+
+    rerender(
+      <ControlePaginacao
+        pagina={4}
+        totalPaginas={4}
+        testIdPrefixo="dav"
+        onTrocarPagina={semAcao}
+      />,
+    );
+    expect(screen.getByTestId('dav-primeira-pagina')).toBeEnabled();
+    expect(screen.getByTestId('dav-ultima-pagina')).toBeDisabled();
+  });
+
   it('fecha "Anterior" na primeira página e "Próxima" na última', () => {
     const semAcao = (): void => {
       /* o teste olha só o estado dos botões */

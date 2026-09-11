@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'reicon-react';
+import { ChevronLeft, ChevronRight, Next, Previous } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -25,8 +25,15 @@ import { Button } from '@/components/ui/button';
  * cache do TanStack Query guarda uma entrada por página, e nenhuma delas
  * sobrevive à troca de filtro — que é exatamente quando o total muda de valor.
  *
+ * **As duas pontas são navegáveis de qualquer página** (pedido do usuário,
+ * 2026-09-11): com 25 páginas de rascunhos, chegar ao fim por "Próxima" custa
+ * 24 cliques e 24 consultas ao ERP. Os saltos usam o mesmo total lembrado do
+ * contador — enquanto uma consulta está em voo, "Última página" leva ao fim
+ * que se conhece, e não a um número inventado.
+ *
  * Forma do frame do Pencil (`Modal Menu DAV`, nó `Hao17`): dois botões de 36px
- * de altura e 112 de largura, pílula de contagem entre eles, folga de 8.
+ * de altura e 112 de largura, pílula de contagem entre eles, folga de 8. Os
+ * dois saltos são quadrados de 36, nas pontas da fileira.
  */
 
 export interface ControlePaginacaoProps {
@@ -65,6 +72,25 @@ export function ControlePaginacao({
 
   return (
     <div className="flex items-center gap-xs" data-testid={`paginacao-${testIdPrefixo}`}>
+      {/* Salto direto para as pontas (pedido do usuário, 2026-09-11): com 25
+          páginas de rascunhos, chegar ao fim por "Próxima" são 24 cliques e 24
+          consultas ao ERP. O ícone é de mídia — barra + triângulo, o mesmo
+          gesto de "voltar ao início da faixa" — porque o catálogo do reicon não
+          tem chevron duplo nem `chevron-first`/`chevron-last`. */}
+      <Button
+        type="button"
+        variant="secondary"
+        size="icon"
+        className="rounded-full"
+        aria-label="Primeira página"
+        data-testid={`${testIdPrefixo}-primeira-pagina`}
+        disabled={pagina <= 1}
+        onClick={() => {
+          onTrocarPagina(1);
+        }}
+      >
+        <Previous className="size-3.5" aria-hidden="true" />
+      </Button>
       <Button
         type="button"
         variant="secondary"
@@ -98,6 +124,20 @@ export function ControlePaginacao({
       >
         Próxima
         <ChevronRight className="size-3.5" aria-hidden="true" />
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        size="icon"
+        className="rounded-full"
+        aria-label="Última página"
+        data-testid={`${testIdPrefixo}-ultima-pagina`}
+        disabled={naUltima}
+        onClick={() => {
+          onTrocarPagina(total);
+        }}
+      >
+        <Next className="size-3.5" aria-hidden="true" />
       </Button>
     </div>
   );
