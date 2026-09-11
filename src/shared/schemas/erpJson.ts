@@ -19,8 +19,19 @@ import { z } from 'zod';
  *    saída.** `GetProduto` devolve o SDT do produto na raiz, não
  *    `{"Produto": …}`; o mesmo vale para `GetCliente`, `GetSessao`,
  *    `GetListaProdutos`, `GetListaClientes`, `ListaDAVs`, `GetListaNFCes`,
- *    `GetListaVendedores` e `CarregarNFCe`. Quem **mantém** o envelope é quem
- *    também devolve `messages`: `GetDav` e `FaturarNFCe` (verificados um a um).
+ *    `GetListaVendedores` e `CarregarNFCe`.
+ *
+ *    **O envelope não pertence a endpoint nenhum — pertence à presença de
+ *    `messages`** (AD-218, 2026-09-11). Com a coleção vazia sobra um único
+ *    parâmetro de saída e o SDT vai para a raiz; com mensagem a devolver, os
+ *    dois aparecem e o SDT volta para dentro da chave nomeada. O **mesmo**
+ *    endpoint responde das duas formas: `GetDav` e `CarregarNFCe` envelopam a
+ *    recusa e entregam o sucesso flat. A lista de "endpoints que mantêm o
+ *    envelope" que este comentário trazia até 2026-09-11 (`GetDav` e
+ *    `FaturarNFCe`) nasceu de uma amostra que só continha recusas — foi ela que
+ *    fez `faturarNFCe.schema.ts` errar (AD-208) e, depois, `getDavOutputSchema`
+ *    reprovar toda importação de DAV bem-sucedida (AD-218). Por isso a regra
+ *    prática é aplicar `semEnvelope` **sempre**, e nunca decidir por endpoint.
  *
  * Os dois helpers são deliberadamente **tolerantes**, não substitutivos: aceitam
  * tanto o formato real quanto o do YAML. Não é indulgência — é a única forma

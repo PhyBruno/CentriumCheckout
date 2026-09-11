@@ -1,44 +1,16 @@
 [
   {
     "id": "mem:1788200445679",
-    "kind": "blocker",
-    "content": "Item 37: build real da KB (AD-115) n\u00e3o confirmado, s\u00f3 Specify; yaml exportado n\u00e3o regenerado",
-    "tags": [
-      "genexus",
-      "kb-change",
-      "pendencia"
-    ],
-    "files": [
-      ".specs/project/PENDENCIES.md"
-    ],
-    "file_path": ".specs/project/PENDENCIES.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788200445679",
-    "kind": "decision",
-    "content": "AD-115: GetCliente/PCheckout_GetCliente passam a aceitar CodCliente, via MCP GenExus",
+    "kind": "next",
+    "content": "Rodar /speckit-tasks na feature 014",
     "tags": [
       "speckit",
-      "006",
-      "005",
-      "genexus",
-      "kb-change"
+      "014"
     ],
     "files": [
-      "specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md",
-      "specs/005-identificacao-cadastro-cliente/data-model.md",
-      "specs/005-identificacao-cadastro-cliente/tasks.md"
+      "specs/014-validacao-previa-nfce/plan.md"
     ],
-    "file_path": "specs/005-identificacao-cadastro-cliente/contracts/erp-cliente-api.md",
+    "file_path": "specs/014-validacao-previa-nfce/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-08-31",
@@ -73,83 +45,6 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
-  },
-  {
-    "id": "mem:1788200445679",
-    "kind": "next",
-    "content": "Rodar /speckit-tasks na feature 014",
-    "tags": [
-      "speckit",
-      "014"
-    ],
-    "files": [
-      "specs/014-validacao-previa-nfce/plan.md"
-    ],
-    "file_path": "specs/014-validacao-previa-nfce/plan.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788200445679",
-    "kind": "fact",
-    "content": "So Valido bloqueia; Type da mensagem nao decide (Warning bloqueia e nao bloqueia)",
-    "tags": [
-      "validarnfce",
-      "erp"
-    ],
-    "files": [
-      "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md"
-    ],
-    "file_path": "specs/014-validacao-previa-nfce/contracts/erp-validacao-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788145200,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788185161691",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "propaga",
-      "emendas",
-      "013",
-      "014",
-      "004",
-      "001",
-      "podefinalizar",
-      "montarretratovenda"
-    ],
-    "files": [
-      "specs/004-finalizacao-suspensao-venda/data-model.md"
-    ],
-    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T14:06:01.691504+00:00",
-    "created_epoch": 1788185161,
-    "updated_at": "2026-08-31T14:06:01.691517+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
   },
   {
     "id": "mem:1788185161675",
@@ -187,6 +82,39 @@
     }
   },
   {
+    "id": "mem:1788185161691",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "propaga",
+      "emendas",
+      "013",
+      "014",
+      "004",
+      "001",
+      "podefinalizar",
+      "montarretratovenda"
+    ],
+    "files": [
+      "specs/004-finalizacao-suspensao-venda/data-model.md"
+    ],
+    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T14:06:01.691504+00:00",
+    "created_epoch": 1788185161,
+    "updated_at": "2026-08-31T14:06:01.691517+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
     "id": "mem:1788200000001",
     "kind": "decision",
     "content": "AD-108: cliente default usa SessaoUsuario.ListaPrecoDefault e nao tem desconto de convenio; fecha item 31",
@@ -215,7 +143,7 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788200445704",
+    "id": "mem:1788200445685",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -231,14 +159,14 @@
       "achados"
     ],
     "files": [
-      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md"
+      "specs/007-layout-responsivo-mobile/tasks.md"
     ],
-    "file_path": "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
+    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-31T18:20:45.704186+00:00",
+    "created_at": "2026-08-31T18:20:45.685569+00:00",
     "created_epoch": 1788200445,
-    "updated_at": "2026-08-31T18:30:50.250190+00:00",
+    "updated_at": "2026-08-31T18:30:50.237932+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -286,7 +214,7 @@
     }
   },
   {
-    "id": "mem:1788200445685",
+    "id": "mem:1788200445704",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -302,14 +230,14 @@
       "achados"
     ],
     "files": [
-      "specs/007-layout-responsivo-mobile/tasks.md"
+      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md"
     ],
-    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
+    "file_path": "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-31T18:20:45.685569+00:00",
+    "created_at": "2026-08-31T18:20:45.704186+00:00",
     "created_epoch": 1788200445,
-    "updated_at": "2026-08-31T18:30:50.237932+00:00",
+    "updated_at": "2026-08-31T18:30:50.250190+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -356,6 +284,40 @@
     }
   },
   {
+    "id": "mem:1788205657568",
+    "kind": "decision",
+    "content": "Gera tasks.md da feature 012 (selecao-vendedor): 16 tarefas, 1 user story",
+    "tags": [
+      "gera",
+      "tasks",
+      "feature",
+      "012",
+      "selecao",
+      "vendedor",
+      "tarefas",
+      "user"
+    ],
+    "files": [
+      "specs/012-selecao-vendedor/tasks.md",
+      ".specify/feature.json",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": "specs/012-selecao-vendedor/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T19:47:37.568555+00:00",
+    "created_epoch": 1788205657,
+    "updated_at": "2026-08-31T19:47:37.568561+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
     "id": "mem:1788205657574",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -391,41 +353,7 @@
     }
   },
   {
-    "id": "mem:1788205657568",
-    "kind": "decision",
-    "content": "Gera tasks.md da feature 012 (selecao-vendedor): 16 tarefas, 1 user story",
-    "tags": [
-      "gera",
-      "tasks",
-      "feature",
-      "012",
-      "selecao",
-      "vendedor",
-      "tarefas",
-      "user"
-    ],
-    "files": [
-      "specs/012-selecao-vendedor/tasks.md",
-      ".specify/feature.json",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": "specs/012-selecao-vendedor/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T19:47:37.568555+00:00",
-    "created_epoch": 1788205657,
-    "updated_at": "2026-08-31T19:47:37.568561+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1788206288275",
+    "id": "mem:1788206288289",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -439,14 +367,14 @@
       "001"
     ],
     "files": [
-      "specs/012-selecao-vendedor/quickstart.md"
+      "specs/012-selecao-vendedor/contracts/vendedor-domain-api.md"
     ],
-    "file_path": "specs/012-selecao-vendedor/quickstart.md",
+    "file_path": "specs/012-selecao-vendedor/contracts/vendedor-domain-api.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-31T19:58:08.275890+00:00",
+    "created_at": "2026-08-31T19:58:08.289135+00:00",
     "created_epoch": 1788206288,
-    "updated_at": "2026-08-31T19:58:08.275902+00:00",
+    "updated_at": "2026-08-31T19:58:08.289151+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -458,7 +386,7 @@
     }
   },
   {
-    "id": "mem:1788206288255",
+    "id": "mem:1788206288265",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -472,14 +400,47 @@
       "001"
     ],
     "files": [
-      "specs/012-selecao-vendedor/research.md"
+      "specs/012-selecao-vendedor/plan.md"
     ],
-    "file_path": "specs/012-selecao-vendedor/research.md",
+    "file_path": "specs/012-selecao-vendedor/plan.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-31T19:58:08.255160+00:00",
+    "created_at": "2026-08-31T19:58:08.265030+00:00",
     "created_epoch": 1788206288,
-    "updated_at": "2026-08-31T19:58:08.255171+00:00",
+    "updated_at": "2026-08-31T19:58:08.265041+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788206288243",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "aplica",
+      "achados",
+      "speckit",
+      "analyze",
+      "feature",
+      "012",
+      "008",
+      "001"
+    ],
+    "files": [
+      "specs/012-selecao-vendedor/data-model.md"
+    ],
+    "file_path": "specs/012-selecao-vendedor/data-model.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-08-31T19:58:08.243723+00:00",
+    "created_epoch": 1788206288,
+    "updated_at": "2026-08-31T19:58:08.243734+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -528,7 +489,7 @@
     }
   },
   {
-    "id": "mem:1788206288243",
+    "id": "mem:1788206288255",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -542,14 +503,14 @@
       "001"
     ],
     "files": [
-      "specs/012-selecao-vendedor/data-model.md"
+      "specs/012-selecao-vendedor/research.md"
     ],
-    "file_path": "specs/012-selecao-vendedor/data-model.md",
+    "file_path": "specs/012-selecao-vendedor/research.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-31T19:58:08.243723+00:00",
+    "created_at": "2026-08-31T19:58:08.255160+00:00",
     "created_epoch": 1788206288,
-    "updated_at": "2026-08-31T19:58:08.243734+00:00",
+    "updated_at": "2026-08-31T19:58:08.255171+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -561,7 +522,7 @@
     }
   },
   {
-    "id": "mem:1788206288265",
+    "id": "mem:1788206288275",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -575,47 +536,14 @@
       "001"
     ],
     "files": [
-      "specs/012-selecao-vendedor/plan.md"
+      "specs/012-selecao-vendedor/quickstart.md"
     ],
-    "file_path": "specs/012-selecao-vendedor/plan.md",
+    "file_path": "specs/012-selecao-vendedor/quickstart.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-08-31T19:58:08.265030+00:00",
+    "created_at": "2026-08-31T19:58:08.275890+00:00",
     "created_epoch": 1788206288,
-    "updated_at": "2026-08-31T19:58:08.265041+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788206288289",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "aplica",
-      "achados",
-      "speckit",
-      "analyze",
-      "feature",
-      "012",
-      "008",
-      "001"
-    ],
-    "files": [
-      "specs/012-selecao-vendedor/contracts/vendedor-domain-api.md"
-    ],
-    "file_path": "specs/012-selecao-vendedor/contracts/vendedor-domain-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T19:58:08.289135+00:00",
-    "created_epoch": 1788206288,
-    "updated_at": "2026-08-31T19:58:08.289151+00:00",
+    "updated_at": "2026-08-31T19:58:08.275902+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -675,19 +603,128 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788366372093",
-    "kind": "blocker",
-    "content": "4 subagentes paralelos editando arquivos compartilhados (carrinhoSlice/linha/EdicaoItemEditavel) deixaram tsc quebrado por instante; reconciliacao resolveu",
+    "id": "mem:1788458404832",
+    "kind": "decision",
+    "content": "Barra superior le SessaoUsuario; Online via navigator.onLine",
     "tags": [
-      "003",
-      "subagentes",
-      "concorrencia",
+      "barra-superior",
+      "ui"
+    ],
+    "files": [
+      "src/client/layout/BarraSuperior.tsx"
+    ],
+    "file_path": "src/client/layout/BarraSuperior.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "decision",
+    "content": "AD-127: caminho feliz sem modal; PDF em aba nova via blob; finalizar exige valor",
+    "tags": [
+      "004",
+      "ui"
+    ],
+    "files": [
+      "src/client/services/impressao/abrirPdfNFCe.ts"
+    ],
+    "file_path": "src/client/services/impressao/abrirPdfNFCe.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "decision",
+    "content": "AD-126: suspensao vira toast; cancelar exige item; ESC no modal; toasts top-right",
+    "tags": [
+      "004",
+      "ui"
+    ],
+    "files": [
+      "src/client/main.tsx"
+    ],
+    "file_path": "src/client/main.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "decision",
+    "content": "AD-125: finalizar dentro do card de pagamento; cancelar a esquerda; resumo sempre visivel",
+    "tags": [
+      "004",
+      "ui",
+      "pencil"
+    ],
+    "files": [
+      "src/client/App.tsx"
+    ],
+    "file_path": "src/client/App.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "fact",
+    "content": "abrirSessaoDeVenda no vendaStore e o call site unico de inicio de venda",
+    "tags": [
+      "004",
+      "auditoria"
+    ],
+    "files": [
+      "src/client/stores/vendaStore.ts"
+    ],
+    "file_path": "src/client/stores/vendaStore.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "fact",
+    "content": "max-w-md/lg colidem com tokens --spacing-*; usar largura explicita em dialogos",
+    "tags": [
+      "tailwind",
       "gotcha"
     ],
     "files": [
-      "src/client/stores/slices/carrinhoSlice.ts"
+      "src/client/styles/global.css"
     ],
-    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
+    "file_path": "src/client/styles/global.css",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-02",
@@ -699,144 +736,17 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788366372093",
-    "kind": "fact",
-    "content": "descontoLinha virou descontoConvenio + descontoManual em LinhaCarrinho; repricarSku so recalcula o de convenio",
-    "tags": [
-      "003",
-      "precificacao",
-      "desconto"
-    ],
-    "files": [
-      "src/client/domain/precificacao/linha.ts",
-      "src/client/domain/precificacao/reprecificacao.ts"
-    ],
-    "file_path": "src/client/domain/precificacao/linha.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
+    "id": "mem:1788458404832",
     "kind": "decision",
-    "content": "Revisao code-review high da 003 achou 7 gaps/bugs; 4 subagentes Sonnet corrigiram em paralelo (commit cf42fad)",
+    "content": "Feature 004 implementada: 31 tarefas, 291 unit + 31 E2E verdes",
     "tags": [
-      "003",
-      "code-review",
-      "precificacao",
-      "carrinho"
+      "004",
+      "finalizacao"
     ],
     "files": [
-      "src/client/domain/precificacao/reprecificacao.ts",
-      "src/client/domain/precificacao/linha.ts",
-      "src/client/domain/precificacao/tabelaPreco.ts",
-      "src/client/stores/slices/carrinhoSlice.ts",
-      "src/client/features/carrinho/EdicaoItemEditavel.tsx",
-      "src/client/features/carrinho/ModalBuscaProduto.tsx",
-      "src/client/features/carrinho/EdicaoQuantidadeItem.tsx"
+      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts"
     ],
-    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "decision",
-    "content": "AD-119/120/121 registram os achados da implementacao da 003",
-    "tags": [
-      "003",
-      "adr",
-      "specs"
-    ],
-    "files": [
-      ".specs/project/STATE.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "fact",
-    "content": "repricarSku tem 4o param opcional: desconto de convenio junto do preco",
-    "tags": [
-      "003",
-      "contrato"
-    ],
-    "files": [
-      "src/client/domain/precificacao/reprecificacao.ts"
-    ],
-    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "decision",
-    "content": "Feature 003 implementada: dominio de precificacao, carrinhoSlice e UI",
-    "tags": [
-      "003",
-      "carrinho",
-      "precificacao"
-    ],
-    "files": [
-      "src/client/domain/precificacao/reprecificacao.ts",
-      "src/client/stores/slices/carrinhoSlice.ts"
-    ],
-    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "decision",
-    "content": "Feature 001 implementada: slice de auditoria, 20 eventos, serializacao do Log",
-    "tags": [
-      "speckit",
-      "001",
-      "auditoria",
-      "zustand"
-    ],
-    "files": [
-      "src/client/domain/auditoria/eventos.ts",
-      "src/client/stores/slices/auditoriaSlice.ts",
-      "src/client/stores/vendaStore.ts"
-    ],
-    "file_path": "src/client/domain/auditoria/eventos.ts",
+    "file_path": "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-02",
@@ -882,17 +792,21 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788458404832",
+    "id": "mem:1788366372093",
     "kind": "decision",
-    "content": "Feature 004 implementada: 31 tarefas, 291 unit + 31 E2E verdes",
+    "content": "Feature 001 implementada: slice de auditoria, 20 eventos, serializacao do Log",
     "tags": [
-      "004",
-      "finalizacao"
+      "speckit",
+      "001",
+      "auditoria",
+      "zustand"
     ],
     "files": [
-      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts"
+      "src/client/domain/auditoria/eventos.ts",
+      "src/client/stores/slices/auditoriaSlice.ts",
+      "src/client/stores/vendaStore.ts"
     ],
-    "file_path": "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
+    "file_path": "src/client/domain/auditoria/eventos.ts",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-02",
@@ -904,17 +818,142 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788458404832",
-    "kind": "fact",
-    "content": "max-w-md/lg colidem com tokens --spacing-*; usar largura explicita em dialogos",
+    "id": "mem:1788366372093",
+    "kind": "decision",
+    "content": "Feature 003 implementada: dominio de precificacao, carrinhoSlice e UI",
     "tags": [
-      "tailwind",
+      "003",
+      "carrinho",
+      "precificacao"
+    ],
+    "files": [
+      "src/client/domain/precificacao/reprecificacao.ts",
+      "src/client/stores/slices/carrinhoSlice.ts"
+    ],
+    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788366372093",
+    "kind": "fact",
+    "content": "repricarSku tem 4o param opcional: desconto de convenio junto do preco",
+    "tags": [
+      "003",
+      "contrato"
+    ],
+    "files": [
+      "src/client/domain/precificacao/reprecificacao.ts"
+    ],
+    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788366372093",
+    "kind": "decision",
+    "content": "AD-119/120/121 registram os achados da implementacao da 003",
+    "tags": [
+      "003",
+      "adr",
+      "specs"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788366372093",
+    "kind": "decision",
+    "content": "Revisao code-review high da 003 achou 7 gaps/bugs; 4 subagentes Sonnet corrigiram em paralelo (commit cf42fad)",
+    "tags": [
+      "003",
+      "code-review",
+      "precificacao",
+      "carrinho"
+    ],
+    "files": [
+      "src/client/domain/precificacao/reprecificacao.ts",
+      "src/client/domain/precificacao/linha.ts",
+      "src/client/domain/precificacao/tabelaPreco.ts",
+      "src/client/stores/slices/carrinhoSlice.ts",
+      "src/client/features/carrinho/EdicaoItemEditavel.tsx",
+      "src/client/features/carrinho/ModalBuscaProduto.tsx",
+      "src/client/features/carrinho/EdicaoQuantidadeItem.tsx"
+    ],
+    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788366372093",
+    "kind": "fact",
+    "content": "descontoLinha virou descontoConvenio + descontoManual em LinhaCarrinho; repricarSku so recalcula o de convenio",
+    "tags": [
+      "003",
+      "precificacao",
+      "desconto"
+    ],
+    "files": [
+      "src/client/domain/precificacao/linha.ts",
+      "src/client/domain/precificacao/reprecificacao.ts"
+    ],
+    "file_path": "src/client/domain/precificacao/linha.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02",
+    "created_epoch": 1788318000,
+    "updated_at": "2026-09-02",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788366372093",
+    "kind": "blocker",
+    "content": "4 subagentes paralelos editando arquivos compartilhados (carrinhoSlice/linha/EdicaoItemEditavel) deixaram tsc quebrado por instante; reconciliacao resolveu",
+    "tags": [
+      "003",
+      "subagentes",
+      "concorrencia",
       "gotcha"
     ],
     "files": [
-      "src/client/styles/global.css"
+      "src/client/stores/slices/carrinhoSlice.ts"
     ],
-    "file_path": "src/client/styles/global.css",
+    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-02",
@@ -926,118 +965,7 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788458404832",
-    "kind": "fact",
-    "content": "abrirSessaoDeVenda no vendaStore e o call site unico de inicio de venda",
-    "tags": [
-      "004",
-      "auditoria"
-    ],
-    "files": [
-      "src/client/stores/vendaStore.ts"
-    ],
-    "file_path": "src/client/stores/vendaStore.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-125: finalizar dentro do card de pagamento; cancelar a esquerda; resumo sempre visivel",
-    "tags": [
-      "004",
-      "ui",
-      "pencil"
-    ],
-    "files": [
-      "src/client/App.tsx"
-    ],
-    "file_path": "src/client/App.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-126: suspensao vira toast; cancelar exige item; ESC no modal; toasts top-right",
-    "tags": [
-      "004",
-      "ui"
-    ],
-    "files": [
-      "src/client/main.tsx"
-    ],
-    "file_path": "src/client/main.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-127: caminho feliz sem modal; PDF em aba nova via blob; finalizar exige valor",
-    "tags": [
-      "004",
-      "ui"
-    ],
-    "files": [
-      "src/client/services/impressao/abrirPdfNFCe.ts"
-    ],
-    "file_path": "src/client/services/impressao/abrirPdfNFCe.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "Barra superior le SessaoUsuario; Online via navigator.onLine",
-    "tags": [
-      "barra-superior",
-      "ui"
-    ],
-    "files": [
-      "src/client/layout/BarraSuperior.tsx"
-    ],
-    "file_path": "src/client/layout/BarraSuperior.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788353062824",
+    "id": "mem:1788353062795",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1051,14 +979,14 @@
       "factories"
     ],
     "files": [
-      "specs/001-auditoria-acoes-operador/tasks.md"
+      "tests/unit/domain/auditoria/eventos.spec.ts"
     ],
-    "file_path": "specs/001-auditoria-acoes-operador/tasks.md",
+    "file_path": "tests/unit/domain/auditoria/eventos.spec.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.824771+00:00",
+    "created_at": "2026-09-02T12:44:22.795330+00:00",
     "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.824780+00:00",
+    "updated_at": "2026-09-02T12:44:22.795341+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1070,7 +998,7 @@
     }
   },
   {
-    "id": "mem:1788353062804",
+    "id": "mem:1788353062770",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1084,14 +1012,14 @@
       "factories"
     ],
     "files": [
-      "tests/unit/domain/auditoria/serializarLog.spec.ts"
+      "src/client/stores/slices/auditoriaSlice.ts"
     ],
-    "file_path": "tests/unit/domain/auditoria/serializarLog.spec.ts",
+    "file_path": "src/client/stores/slices/auditoriaSlice.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.804285+00:00",
+    "created_at": "2026-09-02T12:44:22.770955+00:00",
     "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.804295+00:00",
+    "updated_at": "2026-09-02T12:44:22.770969+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1103,7 +1031,7 @@
     }
   },
   {
-    "id": "mem:1788353062782",
+    "id": "mem:1788353062749",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1117,47 +1045,14 @@
       "factories"
     ],
     "files": [
-      "src/client/stores/vendaStore.ts"
+      "src/client/domain/auditoria/eventos.ts"
     ],
-    "file_path": "src/client/stores/vendaStore.ts",
+    "file_path": "src/client/domain/auditoria/eventos.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.782496+00:00",
+    "created_at": "2026-09-02T12:44:22.749950+00:00",
     "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.782508+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788353062759",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "src/client/domain/auditoria/serializarLog.ts"
-    ],
-    "file_path": "src/client/domain/auditoria/serializarLog.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.759682+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.759696+00:00",
+    "updated_at": "2026-09-02T12:44:22.749960+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1208,7 +1103,7 @@
     }
   },
   {
-    "id": "mem:1788353062749",
+    "id": "mem:1788353062759",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1222,14 +1117,14 @@
       "factories"
     ],
     "files": [
-      "src/client/domain/auditoria/eventos.ts"
+      "src/client/domain/auditoria/serializarLog.ts"
     ],
-    "file_path": "src/client/domain/auditoria/eventos.ts",
+    "file_path": "src/client/domain/auditoria/serializarLog.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.749950+00:00",
+    "created_at": "2026-09-02T12:44:22.759682+00:00",
     "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.749960+00:00",
+    "updated_at": "2026-09-02T12:44:22.759696+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1241,7 +1136,7 @@
     }
   },
   {
-    "id": "mem:1788353062770",
+    "id": "mem:1788353062782",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1255,14 +1150,14 @@
       "factories"
     ],
     "files": [
-      "src/client/stores/slices/auditoriaSlice.ts"
+      "src/client/stores/vendaStore.ts"
     ],
-    "file_path": "src/client/stores/slices/auditoriaSlice.ts",
+    "file_path": "src/client/stores/vendaStore.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.770955+00:00",
+    "created_at": "2026-09-02T12:44:22.782496+00:00",
     "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.770969+00:00",
+    "updated_at": "2026-09-02T12:44:22.782508+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1274,7 +1169,7 @@
     }
   },
   {
-    "id": "mem:1788353062795",
+    "id": "mem:1788353062804",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1288,14 +1183,14 @@
       "factories"
     ],
     "files": [
-      "tests/unit/domain/auditoria/eventos.spec.ts"
+      "tests/unit/domain/auditoria/serializarLog.spec.ts"
     ],
-    "file_path": "tests/unit/domain/auditoria/eventos.spec.ts",
+    "file_path": "tests/unit/domain/auditoria/serializarLog.spec.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.795330+00:00",
+    "created_at": "2026-09-02T12:44:22.804285+00:00",
     "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.795341+00:00",
+    "updated_at": "2026-09-02T12:44:22.804295+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1307,7 +1202,73 @@
     }
   },
   {
-    "id": "mem:1788366372221",
+    "id": "mem:1788353062824",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "implementa",
+      "feature",
+      "001",
+      "auditoria",
+      "eventos",
+      "com",
+      "tipos",
+      "factories"
+    ],
+    "files": [
+      "specs/001-auditoria-acoes-operador/tasks.md"
+    ],
+    "file_path": "specs/001-auditoria-acoes-operador/tasks.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T12:44:22.824771+00:00",
+    "created_epoch": 1788353062,
+    "updated_at": "2026-09-02T12:44:22.824780+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788366372233",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "corrige",
+      "achados",
+      "revisao",
+      "code",
+      "review",
+      "high",
+      "feature",
+      "003"
+    ],
+    "files": [
+      "src/client/features/carrinho/EdicaoQuantidadeItem.tsx"
+    ],
+    "file_path": "src/client/features/carrinho/EdicaoQuantidadeItem.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T16:26:12.233365+00:00",
+    "created_epoch": 1788366372,
+    "updated_at": "2026-09-02T16:26:12.233377+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788366372209",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1323,14 +1284,14 @@
       "lapis"
     ],
     "files": [
-      "src/client/features/carrinho/useCarrinho.ts"
+      "src/client/features/carrinho/ModalBuscaProduto.tsx"
     ],
-    "file_path": "src/client/features/carrinho/useCarrinho.ts",
+    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.221463+00:00",
+    "created_at": "2026-09-02T16:26:12.209109+00:00",
     "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T21:24:47.244883+00:00",
+    "updated_at": "2026-09-02T21:24:47.232630+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1342,7 +1303,7 @@
     }
   },
   {
-    "id": "mem:1788366372193",
+    "id": "mem:1788366372180",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1358,14 +1319,14 @@
       "lapis"
     ],
     "files": [
-      "src/client/features/carrinho/ListaItensMobile.tsx"
+      "src/client/features/carrinho/GridItens.tsx"
     ],
-    "file_path": "src/client/features/carrinho/ListaItensMobile.tsx",
+    "file_path": "src/client/features/carrinho/GridItens.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.193818+00:00",
+    "created_at": "2026-09-02T16:26:12.180312+00:00",
     "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T21:24:47.202560+00:00",
+    "updated_at": "2026-09-02T21:24:47.186546+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1377,7 +1338,7 @@
     }
   },
   {
-    "id": "mem:1788366372167",
+    "id": "mem:1788366372153",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1391,14 +1352,14 @@
       "003"
     ],
     "files": [
-      "src/client/features/carrinho/EdicaoItemEditavel.tsx"
+      "src/client/stores/slices/carrinhoSlice.ts"
     ],
-    "file_path": "src/client/features/carrinho/EdicaoItemEditavel.tsx",
+    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.167593+00:00",
+    "created_at": "2026-09-02T16:26:12.153230+00:00",
     "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T16:26:12.167604+00:00",
+    "updated_at": "2026-09-02T16:26:12.153241+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1410,7 +1371,7 @@
     }
   },
   {
-    "id": "mem:1788366372141",
+    "id": "mem:1788366372124",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1424,47 +1385,14 @@
       "003"
     ],
     "files": [
-      "src/client/domain/precificacao/tabelaPreco.ts"
+      "src/client/domain/precificacao/reprecificacao.ts"
     ],
-    "file_path": "src/client/domain/precificacao/tabelaPreco.ts",
+    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.141329+00:00",
+    "created_at": "2026-09-02T16:26:12.124747+00:00",
     "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T16:26:12.141344+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788366372111",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "corrige",
-      "achados",
-      "revisao",
-      "code",
-      "review",
-      "high",
-      "feature",
-      "003"
-    ],
-    "files": [
-      "src/client/domain/precificacao/linha.ts"
-    ],
-    "file_path": "src/client/domain/precificacao/linha.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.111169+00:00",
-    "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T16:26:12.111183+00:00",
+    "updated_at": "2026-09-02T16:26:12.124759+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1518,7 +1446,7 @@
     }
   },
   {
-    "id": "mem:1788366372124",
+    "id": "mem:1788366372111",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1532,14 +1460,14 @@
       "003"
     ],
     "files": [
-      "src/client/domain/precificacao/reprecificacao.ts"
+      "src/client/domain/precificacao/linha.ts"
     ],
-    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
+    "file_path": "src/client/domain/precificacao/linha.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.124747+00:00",
+    "created_at": "2026-09-02T16:26:12.111169+00:00",
     "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T16:26:12.124759+00:00",
+    "updated_at": "2026-09-02T16:26:12.111183+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1551,7 +1479,7 @@
     }
   },
   {
-    "id": "mem:1788366372153",
+    "id": "mem:1788366372141",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1565,14 +1493,14 @@
       "003"
     ],
     "files": [
-      "src/client/stores/slices/carrinhoSlice.ts"
+      "src/client/domain/precificacao/tabelaPreco.ts"
     ],
-    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
+    "file_path": "src/client/domain/precificacao/tabelaPreco.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.153230+00:00",
+    "created_at": "2026-09-02T16:26:12.141329+00:00",
     "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T16:26:12.153241+00:00",
+    "updated_at": "2026-09-02T16:26:12.141344+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1584,7 +1512,40 @@
     }
   },
   {
-    "id": "mem:1788366372180",
+    "id": "mem:1788366372167",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "corrige",
+      "achados",
+      "revisao",
+      "code",
+      "review",
+      "high",
+      "feature",
+      "003"
+    ],
+    "files": [
+      "src/client/features/carrinho/EdicaoItemEditavel.tsx"
+    ],
+    "file_path": "src/client/features/carrinho/EdicaoItemEditavel.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T16:26:12.167593+00:00",
+    "created_epoch": 1788366372,
+    "updated_at": "2026-09-02T16:26:12.167604+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788366372193",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1600,14 +1561,14 @@
       "lapis"
     ],
     "files": [
-      "src/client/features/carrinho/GridItens.tsx"
+      "src/client/features/carrinho/ListaItensMobile.tsx"
     ],
-    "file_path": "src/client/features/carrinho/GridItens.tsx",
+    "file_path": "src/client/features/carrinho/ListaItensMobile.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.180312+00:00",
+    "created_at": "2026-09-02T16:26:12.193818+00:00",
     "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T21:24:47.186546+00:00",
+    "updated_at": "2026-09-02T21:24:47.202560+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1619,7 +1580,7 @@
     }
   },
   {
-    "id": "mem:1788366372209",
+    "id": "mem:1788366372221",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1635,179 +1596,148 @@
       "lapis"
     ],
     "files": [
-      "src/client/features/carrinho/ModalBuscaProduto.tsx"
-    ],
-    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.209109+00:00",
-    "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T21:24:47.232630+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788366372233",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "corrige",
-      "achados",
-      "revisao",
-      "code",
-      "review",
-      "high",
-      "feature",
-      "003"
-    ],
-    "files": [
-      "src/client/features/carrinho/EdicaoQuantidadeItem.tsx"
-    ],
-    "file_path": "src/client/features/carrinho/EdicaoQuantidadeItem.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.233365+00:00",
-    "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T16:26:12.233377+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788369539791",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "barra",
-      "entrada",
-      "pida",
-      "reconstru",
-      "fiel",
-      "pencil",
-      "123",
-      "tab"
-    ],
-    "files": [
-      "tests/unit/domain/precificacao/codigoProduto.spec.ts"
-    ],
-    "file_path": "tests/unit/domain/precificacao/codigoProduto.spec.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.791008+00:00",
-    "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T17:18:59.791021+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788369539758",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "barra",
-      "entrada",
-      "pida",
-      "reconstru",
-      "fiel",
-      "pencil",
-      "123",
-      "tab"
-    ],
-    "files": [
-      "tests/e2e/support/erp-mock.ts::payloadGetSessao"
-    ],
-    "file_path": "tests/e2e/support/erp-mock.ts",
-    "symbol_id": "tests/e2e/support/erp-mock.ts::payloadGetSessao",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.758449+00:00",
-    "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T17:22:47.796017+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788369539727",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "barra",
-      "entrada",
-      "pida",
-      "reconstru",
-      "fiel",
-      "pencil",
-      "123",
-      "tab"
-    ],
-    "files": [
-      "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto"
-    ],
-    "file_path": "src/client/features/carrinho/PreviaInsercaoProduto.tsx",
-    "symbol_id": "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.727936+00:00",
-    "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T17:22:47.796011+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788369539700",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "barra",
-      "entrada",
-      "pida",
-      "reconstru",
-      "fiel",
-      "pencil",
-      "123",
-      "tab"
-    ],
-    "files": [
-      "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto"
+      "src/client/features/carrinho/useCarrinho.ts"
     ],
     "file_path": "src/client/features/carrinho/useCarrinho.ts",
-    "symbol_id": "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto",
+    "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.700305+00:00",
+    "created_at": "2026-09-02T16:26:12.221463+00:00",
+    "created_epoch": 1788366372,
+    "updated_at": "2026-09-02T21:24:47.244883+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788369539774",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "barra",
+      "entrada",
+      "pida",
+      "reconstru",
+      "fiel",
+      "pencil",
+      "123",
+      "tab",
+      "124",
+      "lapis"
+    ],
+    "files": [
+      "tests/e2e/carrinho-precificacao.spec.ts"
+    ],
+    "file_path": "tests/e2e/carrinho-precificacao.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T17:18:59.774887+00:00",
     "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T17:22:47.796006+00:00",
+    "updated_at": "2026-09-02T21:24:47.302789+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788369539743",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "barra",
+      "entrada",
+      "pida",
+      "reconstru",
+      "fiel",
+      "pencil",
+      "123",
+      "tab"
+    ],
+    "files": [
+      "src/client/App.tsx::TelaDeVenda"
+    ],
+    "file_path": "src/client/App.tsx",
+    "symbol_id": "src/client/App.tsx::TelaDeVenda",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T17:18:59.743382+00:00",
+    "created_epoch": 1788369539,
+    "updated_at": "2026-09-02T17:22:47.795963+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788369539713",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "barra",
+      "entrada",
+      "pida",
+      "reconstru",
+      "fiel",
+      "pencil",
+      "123",
+      "tab"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto"
+    ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T17:18:59.713159+00:00",
+    "created_epoch": 1788369539,
+    "updated_at": "2026-09-02T17:22:47.795985+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788369539687",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "barra",
+      "entrada",
+      "pida",
+      "reconstru",
+      "fiel",
+      "pencil",
+      "123",
+      "tab"
+    ],
+    "files": [
+      "src/client/domain/precificacao/codigoProduto.ts::rotuloTipoCodigoProduto"
+    ],
+    "file_path": "src/client/domain/precificacao/codigoProduto.ts",
+    "symbol_id": "src/client/domain/precificacao/codigoProduto.ts::rotuloTipoCodigoProduto",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T17:18:59.687031+00:00",
+    "created_epoch": 1788369539,
+    "updated_at": "2026-09-02T17:22:47.795993+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -1859,7 +1789,7 @@
     }
   },
   {
-    "id": "mem:1788369539687",
+    "id": "mem:1788369539700",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1873,14 +1803,14 @@
       "tab"
     ],
     "files": [
-      "src/client/domain/precificacao/codigoProduto.ts::rotuloTipoCodigoProduto"
+      "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto"
     ],
-    "file_path": "src/client/domain/precificacao/codigoProduto.ts",
-    "symbol_id": "src/client/domain/precificacao/codigoProduto.ts::rotuloTipoCodigoProduto",
+    "file_path": "src/client/features/carrinho/useCarrinho.ts",
+    "symbol_id": "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.687031+00:00",
+    "created_at": "2026-09-02T17:18:59.700305+00:00",
     "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T17:22:47.795993+00:00",
+    "updated_at": "2026-09-02T17:22:47.796006+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -1892,7 +1822,7 @@
     }
   },
   {
-    "id": "mem:1788369539713",
+    "id": "mem:1788369539727",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1906,14 +1836,14 @@
       "tab"
     ],
     "files": [
-      "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto"
+      "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto"
     ],
-    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
-    "symbol_id": "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto",
+    "file_path": "src/client/features/carrinho/PreviaInsercaoProduto.tsx",
+    "symbol_id": "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.713159+00:00",
+    "created_at": "2026-09-02T17:18:59.727936+00:00",
     "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T17:22:47.795985+00:00",
+    "updated_at": "2026-09-02T17:22:47.796011+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -1925,7 +1855,7 @@
     }
   },
   {
-    "id": "mem:1788369539743",
+    "id": "mem:1788369539758",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1939,14 +1869,14 @@
       "tab"
     ],
     "files": [
-      "src/client/App.tsx::TelaDeVenda"
+      "tests/e2e/support/erp-mock.ts::payloadGetSessao"
     ],
-    "file_path": "src/client/App.tsx",
-    "symbol_id": "src/client/App.tsx::TelaDeVenda",
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "tests/e2e/support/erp-mock.ts::payloadGetSessao",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.743382+00:00",
+    "created_at": "2026-09-02T17:18:59.758449+00:00",
     "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T17:22:47.795963+00:00",
+    "updated_at": "2026-09-02T17:22:47.796017+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -1958,7 +1888,7 @@
     }
   },
   {
-    "id": "mem:1788369539774",
+    "id": "mem:1788369539791",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -1969,19 +1899,17 @@
       "fiel",
       "pencil",
       "123",
-      "tab",
-      "124",
-      "lapis"
+      "tab"
     ],
     "files": [
-      "tests/e2e/carrinho-precificacao.spec.ts"
+      "tests/unit/domain/precificacao/codigoProduto.spec.ts"
     ],
-    "file_path": "tests/e2e/carrinho-precificacao.spec.ts",
+    "file_path": "tests/unit/domain/precificacao/codigoProduto.spec.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:18:59.774887+00:00",
+    "created_at": "2026-09-02T17:18:59.791008+00:00",
     "created_epoch": 1788369539,
-    "updated_at": "2026-09-02T21:24:47.302789+00:00",
+    "updated_at": "2026-09-02T17:18:59.791021+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1993,19 +1921,19 @@
     }
   },
   {
-    "id": "mem:1788369767874",
+    "id": "mem:1788369767889",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto"
+      "tests/e2e/support/erp-mock.ts::payloadGetSessao"
     ],
-    "file_path": "src/client/features/carrinho/PreviaInsercaoProduto.tsx",
-    "symbol_id": "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto",
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "tests/e2e/support/erp-mock.ts::payloadGetSessao",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:22:47.796013+00:00",
+    "created_at": "2026-09-02T17:22:47.796020+00:00",
     "created_epoch": 1788369767,
-    "updated_at": "2026-09-02T17:22:47.796015+00:00",
+    "updated_at": "2026-09-02T17:22:47.796021+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -2014,40 +1942,19 @@
     }
   },
   {
-    "id": "mem:1788369767814",
+    "id": "mem:1788369767858",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto"
+      "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto"
     ],
-    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
-    "symbol_id": "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto",
+    "file_path": "src/client/features/carrinho/useCarrinho.ts",
+    "symbol_id": "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:22:47.795988+00:00",
+    "created_at": "2026-09-02T17:22:47.796008+00:00",
     "created_epoch": 1788369767,
-    "updated_at": "2026-09-02T17:22:47.795991+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
-    "observed_queries": [],
-    "evidence": {
-      "source_kind": "edit_observation"
-    }
-  },
-  {
-    "id": "mem:1788369767798",
-    "kind": "stale_marker",
-    "content": "Marked stale because symbol removed",
-    "tags": [],
-    "files": [
-      "src/client/App.tsx::TelaDeVenda"
-    ],
-    "file_path": "src/client/App.tsx",
-    "symbol_id": "src/client/App.tsx::TelaDeVenda",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T17:22:47.795976+00:00",
-    "created_epoch": 1788369767,
-    "updated_at": "2026-09-02T17:22:47.795981+00:00",
+    "updated_at": "2026-09-02T17:22:47.796009+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -2085,19 +1992,19 @@
     }
   },
   {
-    "id": "mem:1788369767858",
+    "id": "mem:1788369767798",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto"
+      "src/client/App.tsx::TelaDeVenda"
     ],
-    "file_path": "src/client/features/carrinho/useCarrinho.ts",
-    "symbol_id": "src/client/features/carrinho/useCarrinho.ts::useInsercaoDeProduto",
+    "file_path": "src/client/App.tsx",
+    "symbol_id": "src/client/App.tsx::TelaDeVenda",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:22:47.796008+00:00",
+    "created_at": "2026-09-02T17:22:47.795976+00:00",
     "created_epoch": 1788369767,
-    "updated_at": "2026-09-02T17:22:47.796009+00:00",
+    "updated_at": "2026-09-02T17:22:47.795981+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -2106,19 +2013,19 @@
     }
   },
   {
-    "id": "mem:1788369767889",
+    "id": "mem:1788369767814",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "tests/e2e/support/erp-mock.ts::payloadGetSessao"
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto"
     ],
-    "file_path": "tests/e2e/support/erp-mock.ts",
-    "symbol_id": "tests/e2e/support/erp-mock.ts::payloadGetSessao",
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "src/client/features/carrinho/EntradaRapidaProduto.tsx::EntradaRapidaProduto",
     "symbol_hash": "",
-    "created_at": "2026-09-02T17:22:47.796020+00:00",
+    "created_at": "2026-09-02T17:22:47.795988+00:00",
     "created_epoch": 1788369767,
-    "updated_at": "2026-09-02T17:22:47.796021+00:00",
+    "updated_at": "2026-09-02T17:22:47.795991+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -2127,7 +2034,28 @@
     }
   },
   {
-    "id": "mem:1788384287273",
+    "id": "mem:1788369767874",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto"
+    ],
+    "file_path": "src/client/features/carrinho/PreviaInsercaoProduto.tsx",
+    "symbol_id": "src/client/features/carrinho/PreviaInsercaoProduto.tsx::PreviaInsercaoProduto",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T17:22:47.796013+00:00",
+    "created_epoch": 1788369767,
+    "updated_at": "2026-09-02T17:22:47.796015+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1788384287288",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -2141,14 +2069,14 @@
       "direto"
     ],
     "files": [
-      "tests/unit/client/carrinho/ListaItensMobile.spec.tsx"
+      "tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx"
     ],
-    "file_path": "tests/unit/client/carrinho/ListaItensMobile.spec.tsx",
+    "file_path": "tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T21:24:47.273323+00:00",
+    "created_at": "2026-09-02T21:24:47.288167+00:00",
     "created_epoch": 1788384287,
-    "updated_at": "2026-09-02T21:24:47.273339+00:00",
+    "updated_at": "2026-09-02T21:24:47.288180+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2160,7 +2088,7 @@
     }
   },
   {
-    "id": "mem:1788384287216",
+    "id": "mem:1788384287258",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -2174,14 +2102,47 @@
       "direto"
     ],
     "files": [
-      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
+      "tests/unit/client/carrinho/GridItens.spec.tsx"
     ],
-    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "file_path": "tests/unit/client/carrinho/GridItens.spec.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T21:24:47.216810+00:00",
+    "created_at": "2026-09-02T21:24:47.258429+00:00",
     "created_epoch": 1788384287,
-    "updated_at": "2026-09-02T21:24:47.216825+00:00",
+    "updated_at": "2026-09-02T21:24:47.258443+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788384287171",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "124",
+      "lapis",
+      "carrega",
+      "item",
+      "barra",
+      "modal",
+      "insere",
+      "direto"
+    ],
+    "files": [
+      "src/client/stores/edicaoItemStore.ts"
+    ],
+    "file_path": "src/client/stores/edicaoItemStore.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-02T21:24:47.171110+00:00",
+    "created_epoch": 1788384287,
+    "updated_at": "2026-09-02T21:24:47.171124+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2236,7 +2197,7 @@
     }
   },
   {
-    "id": "mem:1788384287171",
+    "id": "mem:1788384287216",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -2250,14 +2211,14 @@
       "direto"
     ],
     "files": [
-      "src/client/stores/edicaoItemStore.ts"
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
     ],
-    "file_path": "src/client/stores/edicaoItemStore.ts",
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T21:24:47.171110+00:00",
+    "created_at": "2026-09-02T21:24:47.216810+00:00",
     "created_epoch": 1788384287,
-    "updated_at": "2026-09-02T21:24:47.171124+00:00",
+    "updated_at": "2026-09-02T21:24:47.216825+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2269,7 +2230,7 @@
     }
   },
   {
-    "id": "mem:1788384287258",
+    "id": "mem:1788384287273",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -2283,14 +2244,14 @@
       "direto"
     ],
     "files": [
-      "tests/unit/client/carrinho/GridItens.spec.tsx"
+      "tests/unit/client/carrinho/ListaItensMobile.spec.tsx"
     ],
-    "file_path": "tests/unit/client/carrinho/GridItens.spec.tsx",
+    "file_path": "tests/unit/client/carrinho/ListaItensMobile.spec.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-02T21:24:47.258429+00:00",
+    "created_at": "2026-09-02T21:24:47.273323+00:00",
     "created_epoch": 1788384287,
-    "updated_at": "2026-09-02T21:24:47.258443+00:00",
+    "updated_at": "2026-09-02T21:24:47.273339+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -2302,56 +2263,19 @@
     }
   },
   {
-    "id": "mem:1788384287288",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "124",
-      "lapis",
-      "carrega",
-      "item",
-      "barra",
-      "modal",
-      "insere",
-      "direto"
-    ],
-    "files": [
-      "tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx"
-    ],
-    "file_path": "tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T21:24:47.288167+00:00",
-    "created_epoch": 1788384287,
-    "updated_at": "2026-09-02T21:24:47.288180+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788384287166",
+    "id": "mem:1788536040258",
     "kind": "decision",
-    "content": "AD-124: lapis da grid/lista mobile recarrega item na barra (edicaoItemStore); modal insere direto produto nao editavel; icone circle-check",
+    "content": "AD-145: filtro de emissao em duas pilulas; calendario em portal no body",
     "tags": [
-      "carrinho",
-      "busca-produto",
-      "AD-124"
+      "dav",
+      "006",
+      "ui"
     ],
     "files": [
-      "src/client/stores/edicaoItemStore.ts",
-      "src/client/features/carrinho/GridItens.tsx",
-      "src/client/features/carrinho/ListaItensMobile.tsx",
-      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
-      "src/client/features/carrinho/ModalBuscaProduto.tsx",
-      "src/client/features/carrinho/useCarrinho.ts"
+      "src/client/components/ui/campo-data.tsx",
+      "src/client/features/dav/ModalImportacaoDav.tsx"
     ],
-    "file_path": "src/client/stores/edicaoItemStore.ts",
+    "file_path": "src/client/components/ui/campo-data.tsx",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-03",
@@ -2363,20 +2287,20 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788384287166",
+    "id": "mem:1788536040258",
     "kind": "decision",
-    "content": "Modal so devolve codigo; barra resolve/insere; origem BUSCA propagada; inserirPorSelecao removido",
+    "content": "AD-144: TEF liberado no mobile; plataforma sai do roteamento de integracao",
     "tags": [
-      "carrinho",
-      "busca-produto",
-      "AD-091"
+      "tef",
+      "mobile",
+      "008",
+      "010"
     ],
     "files": [
-      "src/client/features/carrinho/ModalBuscaProduto.tsx",
-      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
-      "src/client/features/carrinho/useCarrinho.ts"
+      ".specs/features/pagamento-tef/spec.md",
+      "specs/008-pagamento-geral/research.md"
     ],
-    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
+    "file_path": ".specs/features/pagamento-tef/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-03",
@@ -2388,17 +2312,44 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788458404832",
+    "id": "mem:1788536040257",
     "kind": "decision",
-    "content": "Feature 005 implementada: 29 tarefas, 348 unit + 44 E2E verdes",
+    "content": "AD-141: recusa de importacao conta linha cancelada (linhasNaVenda)",
     "tags": [
-      "005",
-      "cliente"
+      "dav",
+      "006",
+      "regra"
     ],
     "files": [
-      "src/client/stores/slices/clienteSlice.ts"
+      "src/client/services/dav/davQueries.ts",
+      "src/client/features/dav/useImportacaoDav.ts"
     ],
-    "file_path": "src/client/stores/slices/clienteSlice.ts",
+    "file_path": "src/client/services/dav/davQueries.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040257",
+    "kind": "decision",
+    "content": "AD-140: ESC, calendario, Enter, atalho disabled e cancelar com item cancelado",
+    "tags": [
+      "dav",
+      "ux",
+      "006"
+    ],
+    "files": [
+      "src/client/components/ui/campo-data.tsx",
+      "src/client/features/dav/ModalImportacaoDav.tsx",
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
+    ],
+    "file_path": "src/client/components/ui/campo-data.tsx",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-03",
@@ -2412,15 +2363,13 @@
   {
     "id": "mem:1788458404832",
     "kind": "fact",
-    "content": "Busca por documento fica no card; modal cobre so busca livre",
+    "content": "MCP pencil configurado no .claude-dev mas exige o app Pencil aberto",
     "tags": [
-      "005",
-      "pencil"
+      "pencil",
+      "mcp"
     ],
-    "files": [
-      "src/client/features/cliente/CampoClienteVenda.tsx"
-    ],
-    "file_path": "src/client/features/cliente/CampoClienteVenda.tsx",
+    "files": [],
+    "file_path": "",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-03",
@@ -2433,17 +2382,17 @@
   },
   {
     "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-136: hover secondary escurece via --secondary-hover, nos 22 call sites",
+    "kind": "next",
+    "content": "Implementar 008 ou 012 fecha os stubs da 006 (item 39)",
     "tags": [
-      "ui",
-      "tokens"
+      "008",
+      "012",
+      "006"
     ],
     "files": [
-      "src/client/styles/global.css",
-      "src/client/components/ui/button.tsx"
+      "src/client/features/dav/useImportacaoDav.ts"
     ],
-    "file_path": "src/client/styles/global.css",
+    "file_path": "src/client/features/dav/useImportacaoDav.ts",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-03",
@@ -2457,10 +2406,77 @@
   {
     "id": "mem:1788458404832",
     "kind": "fact",
-    "content": "label envolvendo botao propaga :hover ao primeiro form control descendente",
+    "content": "Bug 005: retrato mandava ClienteDefaultCodigo literal, ignorando cliente da venda",
+    "tags": [
+      "005",
+      "004",
+      "bug"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts"
+    ],
+    "file_path": "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "fact",
+    "content": "NumeroNota so chega a FaturarNFCe via identidadeVenda; 006 grava sem abrirSessaoDeVenda",
+    "tags": [
+      "006",
+      "004"
+    ],
+    "files": [
+      "src/client/stores/slices/identidadeVendaSlice.ts"
+    ],
+    "file_path": "src/client/stores/slices/identidadeVendaSlice.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "decision",
+    "content": "Feature 006 implementada: 25 tarefas, 436 unit + 98 E2E verdes",
+    "tags": [
+      "006",
+      "dav"
+    ],
+    "files": [
+      "src/client/services/dav/davQueries.ts"
+    ],
+    "file_path": "src/client/services/dav/davQueries.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "fact",
+    "content": "Barra rapida aperta em 1280: quantidade some, total quebra; pre-existente",
     "tags": [
       "ui",
-      "a11y"
+      "layout"
     ],
     "files": [
       "src/client/features/carrinho/EntradaRapidaProduto.tsx"
@@ -2501,10 +2517,10 @@
   {
     "id": "mem:1788458404832",
     "kind": "fact",
-    "content": "Barra rapida aperta em 1280: quantidade some, total quebra; pre-existente",
+    "content": "label envolvendo botao propaga :hover ao primeiro form control descendente",
     "tags": [
       "ui",
-      "layout"
+      "a11y"
     ],
     "files": [
       "src/client/features/carrinho/EntradaRapidaProduto.tsx"
@@ -2523,15 +2539,16 @@
   {
     "id": "mem:1788458404832",
     "kind": "decision",
-    "content": "Feature 006 implementada: 25 tarefas, 436 unit + 98 E2E verdes",
+    "content": "AD-136: hover secondary escurece via --secondary-hover, nos 22 call sites",
     "tags": [
-      "006",
-      "dav"
+      "ui",
+      "tokens"
     ],
     "files": [
-      "src/client/services/dav/davQueries.ts"
+      "src/client/styles/global.css",
+      "src/client/components/ui/button.tsx"
     ],
-    "file_path": "src/client/services/dav/davQueries.ts",
+    "file_path": "src/client/styles/global.css",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-03",
@@ -2545,38 +2562,15 @@
   {
     "id": "mem:1788458404832",
     "kind": "fact",
-    "content": "NumeroNota so chega a FaturarNFCe via identidadeVenda; 006 grava sem abrirSessaoDeVenda",
-    "tags": [
-      "006",
-      "004"
-    ],
-    "files": [
-      "src/client/stores/slices/identidadeVendaSlice.ts"
-    ],
-    "file_path": "src/client/stores/slices/identidadeVendaSlice.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "fact",
-    "content": "Bug 005: retrato mandava ClienteDefaultCodigo literal, ignorando cliente da venda",
+    "content": "Busca por documento fica no card; modal cobre so busca livre",
     "tags": [
       "005",
-      "004",
-      "bug"
+      "pencil"
     ],
     "files": [
-      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts"
+      "src/client/features/cliente/CampoClienteVenda.tsx"
     ],
-    "file_path": "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
+    "file_path": "src/client/features/cliente/CampoClienteVenda.tsx",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-03",
@@ -2589,378 +2583,81 @@
   },
   {
     "id": "mem:1788458404832",
-    "kind": "next",
-    "content": "Implementar 008 ou 012 fecha os stubs da 006 (item 39)",
-    "tags": [
-      "008",
-      "012",
-      "006"
-    ],
-    "files": [
-      "src/client/features/dav/useImportacaoDav.ts"
-    ],
-    "file_path": "src/client/features/dav/useImportacaoDav.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "fact",
-    "content": "MCP pencil configurado no .claude-dev mas exige o app Pencil aberto",
-    "tags": [
-      "pencil",
-      "mcp"
-    ],
-    "files": [],
-    "file_path": "",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040257",
     "kind": "decision",
-    "content": "AD-140: ESC, calendario, Enter, atalho disabled e cancelar com item cancelado",
-    "tags": [
-      "dav",
-      "ux",
-      "006"
-    ],
-    "files": [
-      "src/client/components/ui/campo-data.tsx",
-      "src/client/features/dav/ModalImportacaoDav.tsx",
-      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
-    ],
-    "file_path": "src/client/components/ui/campo-data.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040257",
-    "kind": "decision",
-    "content": "AD-141: recusa de importacao conta linha cancelada (linhasNaVenda)",
-    "tags": [
-      "dav",
-      "006",
-      "regra"
-    ],
-    "files": [
-      "src/client/services/dav/davQueries.ts",
-      "src/client/features/dav/useImportacaoDav.ts"
-    ],
-    "file_path": "src/client/services/dav/davQueries.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040258",
-    "kind": "decision",
-    "content": "AD-144: TEF liberado no mobile; plataforma sai do roteamento de integracao",
-    "tags": [
-      "tef",
-      "mobile",
-      "008",
-      "010"
-    ],
-    "files": [
-      ".specs/features/pagamento-tef/spec.md",
-      "specs/008-pagamento-geral/research.md"
-    ],
-    "file_path": ".specs/features/pagamento-tef/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040258",
-    "kind": "decision",
-    "content": "AD-145: filtro de emissao em duas pilulas; calendario em portal no body",
-    "tags": [
-      "dav",
-      "006",
-      "ui"
-    ],
-    "files": [
-      "src/client/components/ui/campo-data.tsx",
-      "src/client/features/dav/ModalImportacaoDav.tsx"
-    ],
-    "file_path": "src/client/components/ui/campo-data.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404928",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo"
-    ],
-    "files": [
-      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx::BarraAtalhosVenda"
-    ],
-    "file_path": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
-    "symbol_id": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx::BarraAtalhosVenda",
-    "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.928790+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:35:58.745114+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788458404905",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo"
-    ],
-    "files": [
-      "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas"
-    ],
-    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
-    "symbol_id": "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas",
-    "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.905916+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:35:58.745153+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788458404883",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo"
-    ],
-    "files": [
-      "src/client/features/dav/ModalImportacaoDav.tsx"
-    ],
-    "file_path": "src/client/features/dav/ModalImportacaoDav.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.883120+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.883130+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788458404859",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo"
-    ],
-    "files": [
-      "src/client/services/dav/davQueries.ts"
-    ],
-    "file_path": "src/client/services/dav/davQueries.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.859488+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.859501+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788458404837",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo",
-      "216",
-      "erp"
-    ],
-    "files": [
-      "src/shared/schemas/dav.schema.ts"
-    ],
-    "file_path": "src/shared/schemas/dav.schema.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.837235+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-11T12:21:27.107391+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-129: celular no snapshot, selecionarCliente async, errosErp compartilhado",
+    "content": "Feature 005 implementada: 29 tarefas, 348 unit + 44 E2E verdes",
     "tags": [
       "005",
-      "AD-129"
+      "cliente"
     ],
     "files": [
-      ".specs/project/STATE.md"
+      "src/client/stores/slices/clienteSlice.ts"
     ],
-    "file_path": ".specs/project/STATE.md",
+    "file_path": "src/client/stores/slices/clienteSlice.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.832698+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.832698+00:00",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
   },
   {
-    "id": "mem:1788458404821",
+    "id": "mem:1788384287166",
     "kind": "decision",
-    "content": "Feature 006 (importacao de DAV) implementada; corrige bug de clienteCodigo no retrato de FaturarNFCe (AD-137)",
+    "content": "Modal so devolve codigo; barra resolve/insere; origem BUSCA propagada; inserirPorSelecao removido",
     "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo"
+      "carrinho",
+      "busca-produto",
+      "AD-091"
     ],
     "files": [
-      "src/shared/schemas/dav.schema.ts",
-      "src/client/domain/importacaoVenda/mapearVendaExistente.ts",
-      "src/client/services/dav/davQueries.ts",
-      "src/client/features/dav/useImportacaoDav.ts",
-      "src/client/features/dav/ModalImportacaoDav.tsx",
-      "src/client/features/dav/BotaoMenuImportacao.tsx",
-      "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas",
-      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
-      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx::BarraAtalhosVenda",
-      "src/client/stores/vendaStore.ts::abrirSessaoDeVenda",
-      ".dual-graph/context-store.json"
+      "src/client/features/carrinho/ModalBuscaProduto.tsx",
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+      "src/client/features/carrinho/useCarrinho.ts"
     ],
-    "file_path": "src/shared/schemas/dav.schema.ts",
+    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.821732+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.821741+00:00",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
+    "evidence": {}
   },
   {
-    "id": "mem:1788458404848",
+    "id": "mem:1788384287166",
+    "kind": "decision",
+    "content": "AD-124: lapis da grid/lista mobile recarrega item na barra (edicaoItemStore); modal insere direto produto nao editavel; icone circle-check",
+    "tags": [
+      "carrinho",
+      "busca-produto",
+      "AD-124"
+    ],
+    "files": [
+      "src/client/stores/edicaoItemStore.ts",
+      "src/client/features/carrinho/GridItens.tsx",
+      "src/client/features/carrinho/ListaItensMobile.tsx",
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+      "src/client/features/carrinho/ModalBuscaProduto.tsx",
+      "src/client/features/carrinho/useCarrinho.ts"
+    ],
+    "file_path": "src/client/stores/edicaoItemStore.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03",
+    "created_epoch": 1788404400,
+    "updated_at": "2026-09-03",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404940",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -2974,82 +2671,16 @@
       "clientecodigo"
     ],
     "files": [
-      "src/client/domain/importacaoVenda/mapearVendaExistente.ts"
+      "src/client/stores/vendaStore.ts::abrirSessaoDeVenda"
     ],
-    "file_path": "src/client/domain/importacaoVenda/mapearVendaExistente.ts",
-    "symbol_id": "",
+    "file_path": "src/client/stores/vendaStore.ts",
+    "symbol_id": "src/client/stores/vendaStore.ts::abrirSessaoDeVenda",
     "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.848235+00:00",
+    "created_at": "2026-09-03T18:00:04.940427+00:00",
     "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.848247+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788458404871",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo"
-    ],
-    "files": [
-      "src/client/features/dav/useImportacaoDav.ts"
-    ],
-    "file_path": "src/client/features/dav/useImportacaoDav.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.871266+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.871280+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788458404894",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "feature",
-      "006",
-      "importacao",
-      "dav",
-      "implementada",
-      "corrige",
-      "bug",
-      "clientecodigo"
-    ],
-    "files": [
-      "src/client/features/dav/BotaoMenuImportacao.tsx"
-    ],
-    "file_path": "src/client/features/dav/BotaoMenuImportacao.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.894605+00:00",
-    "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:00:04.894617+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-03T18:35:58.745163+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -3094,7 +2725,7 @@
     }
   },
   {
-    "id": "mem:1788458404940",
+    "id": "mem:1788458404894",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3108,14 +2739,278 @@
       "clientecodigo"
     ],
     "files": [
-      "src/client/stores/vendaStore.ts::abrirSessaoDeVenda"
+      "src/client/features/dav/BotaoMenuImportacao.tsx"
     ],
-    "file_path": "src/client/stores/vendaStore.ts",
-    "symbol_id": "src/client/stores/vendaStore.ts::abrirSessaoDeVenda",
+    "file_path": "src/client/features/dav/BotaoMenuImportacao.tsx",
+    "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-03T18:00:04.940427+00:00",
+    "created_at": "2026-09-03T18:00:04.894605+00:00",
     "created_epoch": 1788458404,
-    "updated_at": "2026-09-03T18:35:58.745163+00:00",
+    "updated_at": "2026-09-03T18:00:04.894617+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788458404871",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo"
+    ],
+    "files": [
+      "src/client/features/dav/useImportacaoDav.ts"
+    ],
+    "file_path": "src/client/features/dav/useImportacaoDav.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.871266+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:00:04.871280+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788458404848",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo"
+    ],
+    "files": [
+      "src/client/domain/importacaoVenda/mapearVendaExistente.ts"
+    ],
+    "file_path": "src/client/domain/importacaoVenda/mapearVendaExistente.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.848235+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:00:04.848247+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788458404821",
+    "kind": "decision",
+    "content": "Feature 006 (importacao de DAV) implementada; corrige bug de clienteCodigo no retrato de FaturarNFCe (AD-137)",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo"
+    ],
+    "files": [
+      "src/shared/schemas/dav.schema.ts",
+      "src/client/domain/importacaoVenda/mapearVendaExistente.ts",
+      "src/client/services/dav/davQueries.ts",
+      "src/client/features/dav/useImportacaoDav.ts",
+      "src/client/features/dav/ModalImportacaoDav.tsx",
+      "src/client/features/dav/BotaoMenuImportacao.tsx",
+      "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas",
+      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx::BarraAtalhosVenda",
+      "src/client/stores/vendaStore.ts::abrirSessaoDeVenda",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": "src/shared/schemas/dav.schema.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.821732+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:00:04.821741+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1788458404832",
+    "kind": "decision",
+    "content": "AD-129: celular no snapshot, selecionarCliente async, errosErp compartilhado",
+    "tags": [
+      "005",
+      "AD-129"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.832698+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:00:04.832698+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788458404837",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo",
+      "216",
+      "erp"
+    ],
+    "files": [
+      "src/shared/schemas/dav.schema.ts"
+    ],
+    "file_path": "src/shared/schemas/dav.schema.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.837235+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-11T12:21:27.107391+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788458404859",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo"
+    ],
+    "files": [
+      "src/client/services/dav/davQueries.ts"
+    ],
+    "file_path": "src/client/services/dav/davQueries.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.859488+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:00:04.859501+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788458404883",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo"
+    ],
+    "files": [
+      "src/client/features/dav/ModalImportacaoDav.tsx"
+    ],
+    "file_path": "src/client/features/dav/ModalImportacaoDav.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.883120+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:00:04.883130+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788458404905",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo"
+    ],
+    "files": [
+      "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas"
+    ],
+    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
+    "symbol_id": "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.905916+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:35:58.745153+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -3127,19 +3022,52 @@
     }
   },
   {
-    "id": "mem:1788460558772",
+    "id": "mem:1788458404928",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "feature",
+      "006",
+      "importacao",
+      "dav",
+      "implementada",
+      "corrige",
+      "bug",
+      "clientecodigo"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx::BarraAtalhosVenda"
+    ],
+    "file_path": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
+    "symbol_id": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx::BarraAtalhosVenda",
+    "symbol_hash": "",
+    "created_at": "2026-09-03T18:00:04.928790+00:00",
+    "created_epoch": 1788458404,
+    "updated_at": "2026-09-03T18:35:58.745114+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788460558758",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/stores/vendaStore.ts::abrirSessaoDeVenda"
+      "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas"
     ],
-    "file_path": "src/client/stores/vendaStore.ts",
-    "symbol_id": "src/client/stores/vendaStore.ts::abrirSessaoDeVenda",
+    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
+    "symbol_id": "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas",
     "symbol_hash": "",
-    "created_at": "2026-09-03T18:35:58.745165+00:00",
+    "created_at": "2026-09-03T18:35:58.745155+00:00",
     "created_epoch": 1788460558,
-    "updated_at": "2026-09-03T18:35:58.745167+00:00",
+    "updated_at": "2026-09-03T18:35:58.745158+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -3169,19 +3097,19 @@
     }
   },
   {
-    "id": "mem:1788460558758",
+    "id": "mem:1788460558772",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas"
+      "src/client/stores/vendaStore.ts::abrirSessaoDeVenda"
     ],
-    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
-    "symbol_id": "src/client/stores/slices/carrinhoSlice.ts::importarLinhasCongeladas",
+    "file_path": "src/client/stores/vendaStore.ts",
+    "symbol_id": "src/client/stores/vendaStore.ts::abrirSessaoDeVenda",
     "symbol_hash": "",
-    "created_at": "2026-09-03T18:35:58.745155+00:00",
+    "created_at": "2026-09-03T18:35:58.745165+00:00",
     "created_epoch": 1788460558,
-    "updated_at": "2026-09-03T18:35:58.745158+00:00",
+    "updated_at": "2026-09-03T18:35:58.745167+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -3192,44 +3120,17 @@
   {
     "id": "mem:1788536040258",
     "kind": "decision",
-    "content": "AD-151: desconto nao pode zerar venda nem item; condicao exige subtotal",
+    "content": "AD-162: TEF ganha cancelamento via endpoint ERP + polling; endpoints ainda sem contrato (item 41)",
     "tags": [
-      "008",
-      "desconto",
-      "rateio",
-      "ad-151"
+      "010",
+      "pagamento-tef",
+      "ad-162"
     ],
     "files": [
-      "src/client/domain/pagamento/descontoCapa.ts",
-      "src/client/domain/precificacao/linha.ts",
-      "src/client/stores/slices/pagamentoSlice.ts"
+      ".specs/features/pagamento-tef/spec.md",
+      ".specs/project/PENDENCIES.md"
     ],
-    "file_path": "src/client/domain/pagamento/descontoCapa.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04",
-    "created_epoch": 1788490800,
-    "updated_at": "2026-09-04",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040258",
-    "kind": "decision",
-    "content": "AD-158: modal PIX nasce do estado; iniciarIntegracao segue no-op",
-    "tags": [
-      "009",
-      "pagamento-pix",
-      "ad-158"
-    ],
-    "files": [
-      "src/client/features/pagamento/pix/ModalPix.tsx",
-      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
-      "src/client/stores/vendaStore.ts"
-    ],
-    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
+    "file_path": ".specs/features/pagamento-tef/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-04",
@@ -3243,17 +3144,90 @@
   {
     "id": "mem:1788536040258",
     "kind": "fact",
-    "content": "E2E pagamento-geral e importacao-dav ja falhavam: SKUs ausentes no mock",
+    "content": "ERP mock: PIX vira pago por relogio (20s) sem roteiro explicito de statusPixTransicoes",
     "tags": [
       "e2e",
       "mock",
-      "pre-existente"
+      "pix",
+      "ad-161"
     ],
     "files": [
-      "tests/e2e/support/erp-mock.ts",
-      "tests/e2e/pagamento-geral.spec.ts"
+      "tests/e2e/support/erp-mock.ts"
     ],
     "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-161: beforeunload implementado via useAvisoAoSair, cliente default nao conta",
+    "tags": [
+      "ad-006",
+      "ad-161",
+      "app"
+    ],
+    "files": [
+      "src/client/lib/useAvisoAoSair.ts",
+      "src/client/App.tsx"
+    ],
+    "file_path": "src/client/lib/useAvisoAoSair.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-161: base64 do PIX so decodifica apos validar formato; imagem detecta MIME pelos bytes",
+    "tags": [
+      "009",
+      "pagamento-pix",
+      "ad-161"
+    ],
+    "files": [
+      "src/client/domain/pix/base64.ts",
+      "src/client/services/pix/pixMapper.ts",
+      "src/client/domain/pix/cobrancaPix.ts"
+    ],
+    "file_path": "src/client/domain/pix/base64.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-161: modal PIX trava ESC/X ate aprovar, fecha sozinho 10s depois de aprovado",
+    "tags": [
+      "009",
+      "pagamento-pix",
+      "ad-161"
+    ],
+    "files": [
+      "src/client/features/pagamento/pix/ModalPix.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-04",
@@ -3295,89 +3269,16 @@
   },
   {
     "id": "mem:1788536040258",
-    "kind": "decision",
-    "content": "AD-161: modal PIX trava ESC/X ate aprovar, fecha sozinho 10s depois de aprovado",
-    "tags": [
-      "009",
-      "pagamento-pix",
-      "ad-161"
-    ],
-    "files": [
-      "src/client/features/pagamento/pix/ModalPix.tsx",
-      "src/client/features/pagamento/ListaPagamentosAplicados.tsx"
-    ],
-    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04",
-    "created_epoch": 1788490800,
-    "updated_at": "2026-09-04",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040258",
-    "kind": "decision",
-    "content": "AD-161: base64 do PIX so decodifica apos validar formato; imagem detecta MIME pelos bytes",
-    "tags": [
-      "009",
-      "pagamento-pix",
-      "ad-161"
-    ],
-    "files": [
-      "src/client/domain/pix/base64.ts",
-      "src/client/services/pix/pixMapper.ts",
-      "src/client/domain/pix/cobrancaPix.ts"
-    ],
-    "file_path": "src/client/domain/pix/base64.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04",
-    "created_epoch": 1788490800,
-    "updated_at": "2026-09-04",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040258",
-    "kind": "decision",
-    "content": "AD-161: beforeunload implementado via useAvisoAoSair, cliente default nao conta",
-    "tags": [
-      "ad-006",
-      "ad-161",
-      "app"
-    ],
-    "files": [
-      "src/client/lib/useAvisoAoSair.ts",
-      "src/client/App.tsx"
-    ],
-    "file_path": "src/client/lib/useAvisoAoSair.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04",
-    "created_epoch": 1788490800,
-    "updated_at": "2026-09-04",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788536040258",
     "kind": "fact",
-    "content": "ERP mock: PIX vira pago por relogio (20s) sem roteiro explicito de statusPixTransicoes",
+    "content": "E2E pagamento-geral e importacao-dav ja falhavam: SKUs ausentes no mock",
     "tags": [
       "e2e",
       "mock",
-      "pix",
-      "ad-161"
+      "pre-existente"
     ],
     "files": [
-      "tests/e2e/support/erp-mock.ts"
+      "tests/e2e/support/erp-mock.ts",
+      "tests/e2e/pagamento-geral.spec.ts"
     ],
     "file_path": "tests/e2e/support/erp-mock.ts",
     "symbol_id": "",
@@ -3393,17 +3294,18 @@
   {
     "id": "mem:1788536040258",
     "kind": "decision",
-    "content": "AD-162: TEF ganha cancelamento via endpoint ERP + polling; endpoints ainda sem contrato (item 41)",
+    "content": "AD-158: modal PIX nasce do estado; iniciarIntegracao segue no-op",
     "tags": [
-      "010",
-      "pagamento-tef",
-      "ad-162"
+      "009",
+      "pagamento-pix",
+      "ad-158"
     ],
     "files": [
-      ".specs/features/pagamento-tef/spec.md",
-      ".specs/project/PENDENCIES.md"
+      "src/client/features/pagamento/pix/ModalPix.tsx",
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+      "src/client/stores/vendaStore.ts"
     ],
-    "file_path": ".specs/features/pagamento-tef/spec.md",
+    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-04",
@@ -3415,199 +3317,56 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788536040534",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
+    "id": "mem:1788536040258",
+    "kind": "decision",
+    "content": "AD-151: desconto nao pode zerar venda nem item; condicao exige subtotal",
     "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal"
+      "008",
+      "desconto",
+      "rateio",
+      "ad-151"
     ],
     "files": [
-      ".specs/features/finalizacao-suspensao-venda/spec.md"
-    ],
-    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.534308+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.534338+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040483",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal",
-      "163",
-      "origem"
-    ],
-    "files": [
-      "tests/integration/pagamentoSlice.spec.ts"
-    ],
-    "file_path": "tests/integration/pagamentoSlice.spec.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.483263+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T16:02:17.620313+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040457",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal",
-      "163",
-      "origem"
-    ],
-    "files": [
-      "tests/e2e/pagamento-pix.spec.ts"
-    ],
-    "file_path": "tests/e2e/pagamento-pix.spec.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.457698+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T16:02:17.673152+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040428",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal"
-    ],
-    "files": [
-      "src/client/App.tsx"
-    ],
-    "file_path": "src/client/App.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.428200+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.428215+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040404",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal"
-    ],
-    "files": [
-      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
-    ],
-    "file_path": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.404795+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.404836+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040377",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal",
-      "163",
-      "origem"
-    ],
-    "files": [
+      "src/client/domain/pagamento/descontoCapa.ts",
+      "src/client/domain/precificacao/linha.ts",
       "src/client/stores/slices/pagamentoSlice.ts"
     ],
-    "file_path": "src/client/stores/slices/pagamentoSlice.ts",
+    "file_path": "src/client/domain/pagamento/descontoCapa.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.377872+00:00",
+    "created_at": "2026-09-04",
+    "created_epoch": 1788490800,
+    "updated_at": "2026-09-04",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1788536040546",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "specs",
+      "010"
+    ],
+    "files": [
+      ".specs/project/STATE.md"
+    ],
+    "file_path": ".specs/project/STATE.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.546052+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T16:02:17.512392+00:00",
+    "updated_at": "2026-09-11T12:21:27.223687+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3619,7 +3378,139 @@
     }
   },
   {
-    "id": "mem:1788536040348",
+    "id": "mem:1788536040496",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "tests/unit/domain/pix/base64.spec.ts"
+    ],
+    "file_path": "tests/unit/domain/pix/base64.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.496675+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.496688+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040469",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "tests/integration/ModalPix.spec.tsx"
+    ],
+    "file_path": "tests/integration/ModalPix.spec.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.469710+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.469724+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040442",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "tests/e2e/support/erp-mock.ts"
+    ],
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.441987+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.442000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040416",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/lib/useAvisoAoSair.ts"
+    ],
+    "file_path": "src/client/lib/useAvisoAoSair.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.416030+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.416049+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040362",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3635,14 +3526,14 @@
       "origem"
     ],
     "files": [
-      "src/client/features/pagamento/ListaPagamentosAplicados.tsx"
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx"
     ],
-    "file_path": "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+    "file_path": "src/client/features/pagamento/PainelPagamentoETotais.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.348172+00:00",
+    "created_at": "2026-09-04T15:34:00.362757+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T16:02:17.606461+00:00",
+    "updated_at": "2026-09-04T16:02:17.583461+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3654,7 +3545,7 @@
     }
   },
   {
-    "id": "mem:1788536040317",
+    "id": "mem:1788536040331",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3668,14 +3559,14 @@
       "modal"
     ],
     "files": [
-      "src/client/features/pagamento/pix/avisosPix.ts"
+      "src/client/features/pagamento/pix/DialogoConfirmacaoPix.tsx"
     ],
-    "file_path": "src/client/features/pagamento/pix/avisosPix.ts",
+    "file_path": "src/client/features/pagamento/pix/DialogoConfirmacaoPix.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.317602+00:00",
+    "created_at": "2026-09-04T15:34:00.331683+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.317637+00:00",
+    "updated_at": "2026-09-04T15:34:00.331704+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3687,7 +3578,7 @@
     }
   },
   {
-    "id": "mem:1788536040289",
+    "id": "mem:1788536040303",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3701,14 +3592,14 @@
       "modal"
     ],
     "files": [
-      "src/client/services/pix/pixMapper.ts"
+      "src/client/features/pagamento/pix/ModalPix.tsx"
     ],
-    "file_path": "src/client/services/pix/pixMapper.ts",
+    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.289343+00:00",
+    "created_at": "2026-09-04T15:34:00.303948+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.289355+00:00",
+    "updated_at": "2026-09-04T15:34:00.303962+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3720,7 +3611,7 @@
     }
   },
   {
-    "id": "mem:1788536040265",
+    "id": "mem:1788536040276",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3734,14 +3625,14 @@
       "modal"
     ],
     "files": [
-      "src/client/domain/pix/base64.ts"
+      "src/client/domain/pix/cobrancaPix.ts"
     ],
-    "file_path": "src/client/domain/pix/base64.ts",
+    "file_path": "src/client/domain/pix/cobrancaPix.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.265073+00:00",
+    "created_at": "2026-09-04T15:34:00.276899+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.265085+00:00",
+    "updated_at": "2026-09-04T15:34:00.276911+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3807,7 +3698,7 @@
     }
   },
   {
-    "id": "mem:1788536040276",
+    "id": "mem:1788536040265",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3821,14 +3712,14 @@
       "modal"
     ],
     "files": [
-      "src/client/domain/pix/cobrancaPix.ts"
+      "src/client/domain/pix/base64.ts"
     ],
-    "file_path": "src/client/domain/pix/cobrancaPix.ts",
+    "file_path": "src/client/domain/pix/base64.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.276899+00:00",
+    "created_at": "2026-09-04T15:34:00.265073+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.276911+00:00",
+    "updated_at": "2026-09-04T15:34:00.265085+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3840,7 +3731,7 @@
     }
   },
   {
-    "id": "mem:1788536040303",
+    "id": "mem:1788536040289",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3854,14 +3745,14 @@
       "modal"
     ],
     "files": [
-      "src/client/features/pagamento/pix/ModalPix.tsx"
+      "src/client/services/pix/pixMapper.ts"
     ],
-    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
+    "file_path": "src/client/services/pix/pixMapper.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.303948+00:00",
+    "created_at": "2026-09-04T15:34:00.289343+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.303962+00:00",
+    "updated_at": "2026-09-04T15:34:00.289355+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3873,7 +3764,7 @@
     }
   },
   {
-    "id": "mem:1788536040331",
+    "id": "mem:1788536040317",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3887,14 +3778,14 @@
       "modal"
     ],
     "files": [
-      "src/client/features/pagamento/pix/DialogoConfirmacaoPix.tsx"
+      "src/client/features/pagamento/pix/avisosPix.ts"
     ],
-    "file_path": "src/client/features/pagamento/pix/DialogoConfirmacaoPix.tsx",
+    "file_path": "src/client/features/pagamento/pix/avisosPix.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.331683+00:00",
+    "created_at": "2026-09-04T15:34:00.317602+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.331704+00:00",
+    "updated_at": "2026-09-04T15:34:00.317637+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3906,7 +3797,7 @@
     }
   },
   {
-    "id": "mem:1788536040362",
+    "id": "mem:1788536040348",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -3922,14 +3813,14 @@
       "origem"
     ],
     "files": [
-      "src/client/features/pagamento/PainelPagamentoETotais.tsx"
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx"
     ],
-    "file_path": "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+    "file_path": "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.362757+00:00",
+    "created_at": "2026-09-04T15:34:00.348172+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T16:02:17.583461+00:00",
+    "updated_at": "2026-09-04T16:02:17.606461+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -3941,139 +3832,7 @@
     }
   },
   {
-    "id": "mem:1788536040416",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal"
-    ],
-    "files": [
-      "src/client/lib/useAvisoAoSair.ts"
-    ],
-    "file_path": "src/client/lib/useAvisoAoSair.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.416030+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.416049+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040442",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal"
-    ],
-    "files": [
-      "tests/e2e/support/erp-mock.ts"
-    ],
-    "file_path": "tests/e2e/support/erp-mock.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.441987+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.442000+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040469",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal"
-    ],
-    "files": [
-      "tests/integration/ModalPix.spec.tsx"
-    ],
-    "file_path": "tests/integration/ModalPix.spec.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.469710+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.469724+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040496",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "161",
-      "162",
-      "pix",
-      "removivel",
-      "confirmacao",
-      "tef",
-      "bloqueia",
-      "modal"
-    ],
-    "files": [
-      "tests/unit/domain/pix/base64.spec.ts"
-    ],
-    "file_path": "tests/unit/domain/pix/base64.spec.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.496675+00:00",
-    "created_epoch": 1788536040,
-    "updated_at": "2026-09-04T15:34:00.496688+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788536040546",
+    "id": "mem:1788536040377",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4085,18 +3844,18 @@
       "tef",
       "bloqueia",
       "modal",
-      "specs",
-      "010"
+      "163",
+      "origem"
     ],
     "files": [
-      ".specs/project/STATE.md"
+      "src/client/stores/slices/pagamentoSlice.ts"
     ],
-    "file_path": ".specs/project/STATE.md",
+    "file_path": "src/client/stores/slices/pagamentoSlice.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:34:00.546052+00:00",
+    "created_at": "2026-09-04T15:34:00.377872+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-11T12:21:27.223687+00:00",
+    "updated_at": "2026-09-04T16:02:17.512392+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -4108,7 +3867,176 @@
     }
   },
   {
-    "id": "mem:1788536185192",
+    "id": "mem:1788536040404",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx"
+    ],
+    "file_path": "src/client/features/finalizacao-suspensao/AcoesFinaisVenda.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.404795+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.404836+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040428",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      "src/client/App.tsx"
+    ],
+    "file_path": "src/client/App.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.428200+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.428215+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040457",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "163",
+      "origem"
+    ],
+    "files": [
+      "tests/e2e/pagamento-pix.spec.ts"
+    ],
+    "file_path": "tests/e2e/pagamento-pix.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.457698+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.673152+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040483",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal",
+      "163",
+      "origem"
+    ],
+    "files": [
+      "tests/integration/pagamentoSlice.spec.ts"
+    ],
+    "file_path": "tests/integration/pagamentoSlice.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.483263+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T16:02:17.620313+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536040534",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "161",
+      "162",
+      "pix",
+      "removivel",
+      "confirmacao",
+      "tef",
+      "bloqueia",
+      "modal"
+    ],
+    "files": [
+      ".specs/features/finalizacao-suspensao-venda/spec.md"
+    ],
+    "file_path": ".specs/features/finalizacao-suspensao-venda/spec.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T15:34:00.534308+00:00",
+    "created_epoch": 1788536040,
+    "updated_at": "2026-09-04T15:34:00.534338+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788536185206",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4122,14 +4050,14 @@
       "user"
     ],
     "files": [
-      "specs/010-pagamento-tef/spec.md"
+      "specs/010-pagamento-tef/checklists/requirements.md"
     ],
-    "file_path": "specs/010-pagamento-tef/spec.md",
+    "file_path": "specs/010-pagamento-tef/checklists/requirements.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:36:25.192853+00:00",
+    "created_at": "2026-09-04T15:36:25.206324+00:00",
     "created_epoch": 1788536185,
-    "updated_at": "2026-09-04T15:36:25.192866+00:00",
+    "updated_at": "2026-09-04T15:36:25.206343+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -4175,7 +4103,7 @@
     }
   },
   {
-    "id": "mem:1788536185206",
+    "id": "mem:1788536185192",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4189,14 +4117,14 @@
       "user"
     ],
     "files": [
-      "specs/010-pagamento-tef/checklists/requirements.md"
+      "specs/010-pagamento-tef/spec.md"
     ],
-    "file_path": "specs/010-pagamento-tef/checklists/requirements.md",
+    "file_path": "specs/010-pagamento-tef/spec.md",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T15:36:25.206324+00:00",
+    "created_at": "2026-09-04T15:36:25.192853+00:00",
     "created_epoch": 1788536185,
-    "updated_at": "2026-09-04T15:36:25.206343+00:00",
+    "updated_at": "2026-09-04T15:36:25.192866+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -4239,7 +4167,7 @@
     "evidence": {}
   },
   {
-    "id": "mem:1788537737660",
+    "id": "mem:1788537737646",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4253,14 +4181,14 @@
       "modal"
     ],
     "files": [
-      "tests/unit/client/pagamento/EntradaPagamento.spec.tsx"
+      "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx"
     ],
-    "file_path": "tests/unit/client/pagamento/EntradaPagamento.spec.tsx",
+    "file_path": "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:02:17.660016+00:00",
+    "created_at": "2026-09-04T16:02:17.646674+00:00",
     "created_epoch": 1788537737,
-    "updated_at": "2026-09-04T16:02:17.660029+00:00",
+    "updated_at": "2026-09-04T16:02:17.646689+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -4272,7 +4200,7 @@
     }
   },
   {
-    "id": "mem:1788537737633",
+    "id": "mem:1788537737595",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4286,14 +4214,80 @@
       "modal"
     ],
     "files": [
-      "tests/unit/domain/pagamento/saldoPagamento.spec.ts"
+      "src/client/features/pagamento/EntradaPagamento.tsx"
     ],
-    "file_path": "tests/unit/domain/pagamento/saldoPagamento.spec.ts",
+    "file_path": "src/client/features/pagamento/EntradaPagamento.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:02:17.633758+00:00",
+    "created_at": "2026-09-04T16:02:17.595750+00:00",
     "created_epoch": 1788537737,
-    "updated_at": "2026-09-04T16:02:17.633772+00:00",
+    "updated_at": "2026-09-04T16:02:17.595765+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737571",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx"
+    ],
+    "file_path": "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.571582+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.571593+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788537737500",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "163",
+      "origem",
+      "sele",
+      "teclado",
+      "mouse",
+      "decide",
+      "abertura",
+      "modal"
+    ],
+    "files": [
+      "src/client/domain/pagamento/saldoPagamento.ts"
+    ],
+    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-04T16:02:17.500933+00:00",
+    "created_epoch": 1788537737,
+    "updated_at": "2026-09-04T16:02:17.500946+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -4348,7 +4342,7 @@
     }
   },
   {
-    "id": "mem:1788537737500",
+    "id": "mem:1788537737633",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4362,14 +4356,14 @@
       "modal"
     ],
     "files": [
-      "src/client/domain/pagamento/saldoPagamento.ts"
+      "tests/unit/domain/pagamento/saldoPagamento.spec.ts"
     ],
-    "file_path": "src/client/domain/pagamento/saldoPagamento.ts",
+    "file_path": "tests/unit/domain/pagamento/saldoPagamento.spec.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:02:17.500933+00:00",
+    "created_at": "2026-09-04T16:02:17.633758+00:00",
     "created_epoch": 1788537737,
-    "updated_at": "2026-09-04T16:02:17.500946+00:00",
+    "updated_at": "2026-09-04T16:02:17.633772+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -4381,7 +4375,7 @@
     }
   },
   {
-    "id": "mem:1788537737571",
+    "id": "mem:1788537737660",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4395,14 +4389,14 @@
       "modal"
     ],
     "files": [
-      "src/client/features/pagamento/SeletorCondicaoForma.tsx"
+      "tests/unit/client/pagamento/EntradaPagamento.spec.tsx"
     ],
-    "file_path": "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+    "file_path": "tests/unit/client/pagamento/EntradaPagamento.spec.tsx",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:02:17.571582+00:00",
+    "created_at": "2026-09-04T16:02:17.660016+00:00",
     "created_epoch": 1788537737,
-    "updated_at": "2026-09-04T16:02:17.571593+00:00",
+    "updated_at": "2026-09-04T16:02:17.660029+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -4414,73 +4408,7 @@
     }
   },
   {
-    "id": "mem:1788537737595",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "163",
-      "origem",
-      "sele",
-      "teclado",
-      "mouse",
-      "decide",
-      "abertura",
-      "modal"
-    ],
-    "files": [
-      "src/client/features/pagamento/EntradaPagamento.tsx"
-    ],
-    "file_path": "src/client/features/pagamento/EntradaPagamento.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T16:02:17.595750+00:00",
-    "created_epoch": 1788537737,
-    "updated_at": "2026-09-04T16:02:17.595765+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788537737646",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "163",
-      "origem",
-      "sele",
-      "teclado",
-      "mouse",
-      "decide",
-      "abertura",
-      "modal"
-    ],
-    "files": [
-      "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx"
-    ],
-    "file_path": "tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-04T16:02:17.646674+00:00",
-    "created_epoch": 1788537737,
-    "updated_at": "2026-09-04T16:02:17.646689+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788538526479",
+    "id": "mem:1788538526500",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4494,16 +4422,16 @@
       "para"
     ],
     "files": [
-      "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais"
+      "tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx"
     ],
-    "file_path": "src/client/features/pagamento/PainelPagamentoETotais.tsx",
-    "symbol_id": "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais",
+    "file_path": "tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx",
+    "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:15:26.479695+00:00",
+    "created_at": "2026-09-04T16:15:26.500463+00:00",
     "created_epoch": 1788538526,
-    "updated_at": "2026-09-04T16:16:39.350777+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
+    "updated_at": "2026-09-04T16:15:26.500485+00:00",
+    "stale": false,
+    "stale_reason": "",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -4513,7 +4441,7 @@
     }
   },
   {
-    "id": "mem:1788538526425",
+    "id": "mem:1788538526454",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4527,14 +4455,14 @@
       "para"
     ],
     "files": [
-      "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ListaPagamentosAplicados"
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado"
     ],
     "file_path": "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
-    "symbol_id": "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ListaPagamentosAplicados",
+    "symbol_id": "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:15:26.425431+00:00",
+    "created_at": "2026-09-04T16:15:26.454659+00:00",
     "created_epoch": 1788538526,
-    "updated_at": "2026-09-04T16:16:39.350802+00:00",
+    "updated_at": "2026-09-04T16:16:39.350819+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -4582,7 +4510,7 @@
     }
   },
   {
-    "id": "mem:1788538526454",
+    "id": "mem:1788538526425",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4596,14 +4524,14 @@
       "para"
     ],
     "files": [
-      "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado"
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ListaPagamentosAplicados"
     ],
     "file_path": "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
-    "symbol_id": "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado",
+    "symbol_id": "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ListaPagamentosAplicados",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:15:26.454659+00:00",
+    "created_at": "2026-09-04T16:15:26.425431+00:00",
     "created_epoch": 1788538526,
-    "updated_at": "2026-09-04T16:16:39.350819+00:00",
+    "updated_at": "2026-09-04T16:16:39.350802+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -4615,7 +4543,7 @@
     }
   },
   {
-    "id": "mem:1788538526500",
+    "id": "mem:1788538526479",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4629,16 +4557,16 @@
       "para"
     ],
     "files": [
-      "tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx"
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais"
     ],
-    "file_path": "tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx",
-    "symbol_id": "",
+    "file_path": "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+    "symbol_id": "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:15:26.500463+00:00",
+    "created_at": "2026-09-04T16:15:26.479695+00:00",
     "created_epoch": 1788538526,
-    "updated_at": "2026-09-04T16:15:26.500485+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-04T16:16:39.350777+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -4648,19 +4576,19 @@
     }
   },
   {
-    "id": "mem:1788538599352",
+    "id": "mem:1788538599379",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais"
+      "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado"
     ],
-    "file_path": "src/client/features/pagamento/PainelPagamentoETotais.tsx",
-    "symbol_id": "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais",
+    "file_path": "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
+    "symbol_id": "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:16:39.350790+00:00",
+    "created_at": "2026-09-04T16:16:39.350821+00:00",
     "created_epoch": 1788538599,
-    "updated_at": "2026-09-04T16:16:39.350797+00:00",
+    "updated_at": "2026-09-04T16:16:39.350823+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -4694,19 +4622,19 @@
     }
   },
   {
-    "id": "mem:1788538599379",
+    "id": "mem:1788538599352",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado"
+      "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais"
     ],
-    "file_path": "src/client/features/pagamento/ListaPagamentosAplicados.tsx",
-    "symbol_id": "src/client/features/pagamento/ListaPagamentosAplicados.tsx::ItemPagamentoAplicado",
+    "file_path": "src/client/features/pagamento/PainelPagamentoETotais.tsx",
+    "symbol_id": "src/client/features/pagamento/PainelPagamentoETotais.tsx::PainelPagamentoETotais",
     "symbol_hash": "",
-    "created_at": "2026-09-04T16:16:39.350821+00:00",
+    "created_at": "2026-09-04T16:16:39.350790+00:00",
     "created_epoch": 1788538599,
-    "updated_at": "2026-09-04T16:16:39.350823+00:00",
+    "updated_at": "2026-09-04T16:16:39.350797+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -4715,7 +4643,7 @@
     }
   },
   {
-    "id": "mem:1788959850339",
+    "id": "mem:1788959850351",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4729,14 +4657,47 @@
       "duas"
     ],
     "files": [
-      "src/client/features/vendedor/ModalBuscaVendedor.tsx::ResultadosDaBusca"
+      "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca"
     ],
-    "file_path": "src/client/features/vendedor/ModalBuscaVendedor.tsx",
-    "symbol_id": "src/client/features/vendedor/ModalBuscaVendedor.tsx::ResultadosDaBusca",
+    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
+    "symbol_id": "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca",
     "symbol_hash": "",
-    "created_at": "2026-09-09T13:17:30.339792+00:00",
+    "created_at": "2026-09-09T13:17:30.351476+00:00",
     "created_epoch": 1788959850,
-    "updated_at": "2026-09-09T13:26:44.958472+00:00",
+    "updated_at": "2026-09-09T13:26:44.958540+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788959850327",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "196",
+      "tres",
+      "listas",
+      "consulta",
+      "viram",
+      "grade",
+      "rotulada",
+      "duas"
+    ],
+    "files": [
+      "src/client/features/cliente/ModalBuscaCliente.tsx::ResultadosDaBusca"
+    ],
+    "file_path": "src/client/features/cliente/ModalBuscaCliente.tsx",
+    "symbol_id": "src/client/features/cliente/ModalBuscaCliente.tsx::ResultadosDaBusca",
+    "symbol_hash": "",
+    "created_at": "2026-09-09T13:17:30.327921+00:00",
+    "created_epoch": 1788959850,
+    "updated_at": "2026-09-09T13:26:44.958529+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -4783,7 +4744,7 @@
     }
   },
   {
-    "id": "mem:1788959850327",
+    "id": "mem:1788959850339",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -4796,72 +4757,39 @@
       "rotulada",
       "duas"
     ],
-    "files": [
-      "src/client/features/cliente/ModalBuscaCliente.tsx::ResultadosDaBusca"
-    ],
-    "file_path": "src/client/features/cliente/ModalBuscaCliente.tsx",
-    "symbol_id": "src/client/features/cliente/ModalBuscaCliente.tsx::ResultadosDaBusca",
-    "symbol_hash": "",
-    "created_at": "2026-09-09T13:17:30.327921+00:00",
-    "created_epoch": 1788959850,
-    "updated_at": "2026-09-09T13:26:44.958529+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788959850351",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "196",
-      "tres",
-      "listas",
-      "consulta",
-      "viram",
-      "grade",
-      "rotulada",
-      "duas"
-    ],
-    "files": [
-      "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca"
-    ],
-    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
-    "symbol_id": "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca",
-    "symbol_hash": "",
-    "created_at": "2026-09-09T13:17:30.351476+00:00",
-    "created_epoch": 1788959850,
-    "updated_at": "2026-09-09T13:26:44.958540+00:00",
-    "stale": true,
-    "stale_reason": "symbol removed",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788960404962",
-    "kind": "stale_marker",
-    "content": "Marked stale because symbol removed",
-    "tags": [],
     "files": [
       "src/client/features/vendedor/ModalBuscaVendedor.tsx::ResultadosDaBusca"
     ],
     "file_path": "src/client/features/vendedor/ModalBuscaVendedor.tsx",
     "symbol_id": "src/client/features/vendedor/ModalBuscaVendedor.tsx::ResultadosDaBusca",
     "symbol_hash": "",
-    "created_at": "2026-09-09T13:26:44.958493+00:00",
+    "created_at": "2026-09-09T13:17:30.339792+00:00",
+    "created_epoch": 1788959850,
+    "updated_at": "2026-09-09T13:26:44.958472+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1788960405002",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca"
+    ],
+    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
+    "symbol_id": "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca",
+    "symbol_hash": "",
+    "created_at": "2026-09-09T13:26:44.958543+00:00",
     "created_epoch": 1788960404,
-    "updated_at": "2026-09-09T13:26:44.958505+00:00",
+    "updated_at": "2026-09-09T13:26:44.958547+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -4894,19 +4822,19 @@
     }
   },
   {
-    "id": "mem:1788960405002",
+    "id": "mem:1788960404962",
     "kind": "stale_marker",
     "content": "Marked stale because symbol removed",
     "tags": [],
     "files": [
-      "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca"
+      "src/client/features/vendedor/ModalBuscaVendedor.tsx::ResultadosDaBusca"
     ],
-    "file_path": "src/client/features/carrinho/ModalBuscaProduto.tsx",
-    "symbol_id": "src/client/features/carrinho/ModalBuscaProduto.tsx::ResultadosDaBusca",
+    "file_path": "src/client/features/vendedor/ModalBuscaVendedor.tsx",
+    "symbol_id": "src/client/features/vendedor/ModalBuscaVendedor.tsx::ResultadosDaBusca",
     "symbol_hash": "",
-    "created_at": "2026-09-09T13:26:44.958543+00:00",
+    "created_at": "2026-09-09T13:26:44.958493+00:00",
     "created_epoch": 1788960404,
-    "updated_at": "2026-09-09T13:26:44.958547+00:00",
+    "updated_at": "2026-09-09T13:26:44.958505+00:00",
     "stale": true,
     "stale_reason": "symbol removed",
     "observed_queries": [],
@@ -4961,20 +4889,18 @@
     "evidence": {}
   },
   {
-    "id": "mem:1789068363782",
-    "kind": "decision",
-    "content": "AD-201: icones passam de lucide-react para reicon-react em todo o produto",
+    "id": "mem:1789129286992",
+    "kind": "fact",
+    "content": "reicon injeta SVG por innerHTML; espacos entre paths entram no textContent",
     "tags": [
-      "icones",
       "reicon",
+      "testes",
       "AD-201"
     ],
     "files": [
-      "src/client/features/pagamento/iconePorMeio.ts",
-      ".specs/project/STATE.md",
-      "CLAUDE.md"
+      "tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx"
     ],
-    "file_path": "src/client/features/pagamento/iconePorMeio.ts",
+    "file_path": "tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-09T17:59:42.000000+00:00",
@@ -5007,23 +4933,48 @@
     "evidence": {}
   },
   {
-    "id": "mem:1789129286992",
-    "kind": "fact",
-    "content": "reicon injeta SVG por innerHTML; espacos entre paths entram no textContent",
+    "id": "mem:1789068363782",
+    "kind": "decision",
+    "content": "AD-201: icones passam de lucide-react para reicon-react em todo o produto",
     "tags": [
+      "icones",
       "reicon",
-      "testes",
       "AD-201"
     ],
     "files": [
-      "tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx"
+      "src/client/features/pagamento/iconePorMeio.ts",
+      ".specs/project/STATE.md",
+      "CLAUDE.md"
     ],
-    "file_path": "tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx",
+    "file_path": "src/client/features/pagamento/iconePorMeio.ts",
     "symbol_id": "",
     "symbol_hash": "",
     "created_at": "2026-09-09T17:59:42.000000+00:00",
     "created_epoch": 1788976782,
     "updated_at": "2026-09-09T17:59:42.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789129286992",
+    "kind": "fact",
+    "content": "Linha de 40px cabe 10 na janela: medido 690px, viewport minimo 738px",
+    "tags": [
+      "layout",
+      "modais",
+      "AD-202"
+    ],
+    "files": [
+      "src/client/features/dav/ModalImportacaoDav.tsx"
+    ],
+    "file_path": "src/client/features/dav/ModalImportacaoDav.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-09T18:30:00.000000+00:00",
+    "created_epoch": 1788978600,
+    "updated_at": "2026-09-09T18:30:00.000000+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5056,22 +5007,25 @@
   },
   {
     "id": "mem:1789129286992",
-    "kind": "fact",
-    "content": "Linha de 40px cabe 10 na janela: medido 690px, viewport minimo 738px",
+    "kind": "decision",
+    "content": "AD-203: menu gerencial redireciona pelo BFF, nao pela SPA",
     "tags": [
-      "layout",
-      "modais",
-      "AD-202"
+      "gerencial",
+      "bff",
+      "redirect",
+      "AD-203"
     ],
     "files": [
-      "src/client/features/dav/ModalImportacaoDav.tsx"
+      "src/server/routes/gerencial.ts",
+      "src/shared/gerencial.ts",
+      "src/client/features/gerencial/BotaoMenuGerencial.tsx"
     ],
-    "file_path": "src/client/features/dav/ModalImportacaoDav.tsx",
+    "file_path": "src/server/routes/gerencial.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-09T18:30:00.000000+00:00",
-    "created_epoch": 1788978600,
-    "updated_at": "2026-09-09T18:30:00.000000+00:00",
+    "created_at": "2026-09-10T18:30:00.000000+00:00",
+    "created_epoch": 1789065000,
+    "updated_at": "2026-09-10T18:30:00.000000+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5089,32 +5043,6 @@
     "files": [
       "src/server/routes/gerencial.ts",
       ".specs/codebase/ARCHITECTURE.md"
-    ],
-    "file_path": "src/server/routes/gerencial.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-10T18:30:00.000000+00:00",
-    "created_epoch": 1789065000,
-    "updated_at": "2026-09-10T18:30:00.000000+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1789129286992",
-    "kind": "decision",
-    "content": "AD-203: menu gerencial redireciona pelo BFF, nao pela SPA",
-    "tags": [
-      "gerencial",
-      "bff",
-      "redirect",
-      "AD-203"
-    ],
-    "files": [
-      "src/server/routes/gerencial.ts",
-      "src/shared/gerencial.ts",
-      "src/client/features/gerencial/BotaoMenuGerencial.tsx"
     ],
     "file_path": "src/server/routes/gerencial.ts",
     "symbol_id": "",
@@ -5601,6 +5529,39 @@
     "evidence": {}
   },
   {
+    "id": "mem:1789129286996",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "216",
+      "erp",
+      "mock",
+      "alinhado",
+      "respostas",
+      "reais",
+      "arrays",
+      "lista"
+    ],
+    "files": [
+      "tests/e2e/support/erp-mock.ts::criarMockErp"
+    ],
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "tests/e2e/support/erp-mock.ts::criarMockErp",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T12:21:26.996290+00:00",
+    "created_epoch": 1789129286,
+    "updated_at": "2026-09-11T13:00:46.216889+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
     "id": "mem:1789129286977",
     "kind": "decision",
     "content": "AD-216: erp-mock alinhado \u00e0s respostas reais do ERP; arrays de lista viram opcionais nos 5 schemas; flag getClienteSemCadastro",
@@ -5629,9 +5590,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-11T12:21:26.977721+00:00",
     "created_epoch": 1789129286,
-    "updated_at": "2026-09-11T12:21:26.977732+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-11T13:00:46.216536+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "window_sec": 120,
@@ -5640,7 +5601,7 @@
     }
   },
   {
-    "id": "mem:1789129286996",
+    "id": "mem:1789129287027",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -5654,16 +5615,16 @@
       "lista"
     ],
     "files": [
-      "tests/e2e/support/erp-mock.ts::criarMockErp"
+      "src/shared/schemas/produto.schema.ts::checkoutListaProdutosSchema"
     ],
-    "file_path": "tests/e2e/support/erp-mock.ts",
-    "symbol_id": "tests/e2e/support/erp-mock.ts::criarMockErp",
+    "file_path": "src/shared/schemas/produto.schema.ts",
+    "symbol_id": "src/shared/schemas/produto.schema.ts::checkoutListaProdutosSchema",
     "symbol_hash": "",
-    "created_at": "2026-09-11T12:21:26.996290+00:00",
-    "created_epoch": 1789129286,
-    "updated_at": "2026-09-11T12:21:26.996302+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "created_at": "2026-09-11T12:21:27.027326+00:00",
+    "created_epoch": 1789129287,
+    "updated_at": "2026-09-11T13:00:46.216904+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -5673,7 +5634,7 @@
     }
   },
   {
-    "id": "mem:1789129287417",
+    "id": "mem:1789129287010",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -5687,14 +5648,47 @@
       "lista"
     ],
     "files": [
-      ".dual-graph/context-store.json"
+      "src/shared/schemas/cliente.schema.ts::checkoutListaClientesSchema"
     ],
-    "file_path": ".dual-graph/context-store.json",
+    "file_path": "src/shared/schemas/cliente.schema.ts",
+    "symbol_id": "src/shared/schemas/cliente.schema.ts::checkoutListaClientesSchema",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T12:21:27.010543+00:00",
+    "created_epoch": 1789129287,
+    "updated_at": "2026-09-11T13:00:46.216899+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789129287067",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "216",
+      "erp",
+      "mock",
+      "alinhado",
+      "respostas",
+      "reais",
+      "arrays",
+      "lista"
+    ],
+    "files": [
+      "src/shared/schemas/vendedor.schema.ts"
+    ],
+    "file_path": "src/shared/schemas/vendedor.schema.ts",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-11T12:21:27.417814+00:00",
+    "created_at": "2026-09-11T12:21:27.067023+00:00",
     "created_epoch": 1789129287,
-    "updated_at": "2026-09-11T12:21:27.417828+00:00",
+    "updated_at": "2026-09-11T12:21:27.067034+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5739,7 +5733,7 @@
     }
   },
   {
-    "id": "mem:1789129287067",
+    "id": "mem:1789129287417",
     "kind": "edit_observation",
     "content": "Edited during active session",
     "tags": [
@@ -5753,80 +5747,14 @@
       "lista"
     ],
     "files": [
-      "src/shared/schemas/vendedor.schema.ts"
+      ".dual-graph/context-store.json"
     ],
-    "file_path": "src/shared/schemas/vendedor.schema.ts",
+    "file_path": ".dual-graph/context-store.json",
     "symbol_id": "",
     "symbol_hash": "",
-    "created_at": "2026-09-11T12:21:27.067023+00:00",
+    "created_at": "2026-09-11T12:21:27.417814+00:00",
     "created_epoch": 1789129287,
-    "updated_at": "2026-09-11T12:21:27.067034+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1789129287010",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "216",
-      "erp",
-      "mock",
-      "alinhado",
-      "respostas",
-      "reais",
-      "arrays",
-      "lista"
-    ],
-    "files": [
-      "src/shared/schemas/cliente.schema.ts::checkoutListaClientesSchema"
-    ],
-    "file_path": "src/shared/schemas/cliente.schema.ts",
-    "symbol_id": "src/shared/schemas/cliente.schema.ts::checkoutListaClientesSchema",
-    "symbol_hash": "",
-    "created_at": "2026-09-11T12:21:27.010543+00:00",
-    "created_epoch": 1789129287,
-    "updated_at": "2026-09-11T12:21:27.010553+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1789129287027",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "216",
-      "erp",
-      "mock",
-      "alinhado",
-      "respostas",
-      "reais",
-      "arrays",
-      "lista"
-    ],
-    "files": [
-      "src/shared/schemas/produto.schema.ts::checkoutListaProdutosSchema"
-    ],
-    "file_path": "src/shared/schemas/produto.schema.ts",
-    "symbol_id": "src/shared/schemas/produto.schema.ts::checkoutListaProdutosSchema",
-    "symbol_hash": "",
-    "created_at": "2026-09-11T12:21:27.027326+00:00",
-    "created_epoch": 1789129287,
-    "updated_at": "2026-09-11T12:21:27.027337+00:00",
+    "updated_at": "2026-09-11T12:21:27.417828+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5911,5 +5839,100 @@
     "stale_reason": "",
     "observed_queries": [],
     "evidence": {}
+  },
+  {
+    "id": "mem:1789131646272",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/shared/schemas/produto.schema.ts::checkoutListaProdutosSchema"
+    ],
+    "file_path": "src/shared/schemas/produto.schema.ts",
+    "symbol_id": "src/shared/schemas/produto.schema.ts::checkoutListaProdutosSchema",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T13:00:46.216906+00:00",
+    "created_epoch": 1789131646,
+    "updated_at": "2026-09-11T13:00:46.216908+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1789131646226",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "tests/e2e/support/erp-mock.ts::criarMockErp",
+      "src/shared/schemas/cliente.schema.ts::checkoutListaClientesSchema",
+      "src/shared/schemas/produto.schema.ts::checkoutListaProdutosSchema",
+      "src/shared/schemas/vendedor.schema.ts",
+      "src/shared/schemas/dav.schema.ts",
+      "src/shared/schemas/recuperacaoNFCe.schema.ts",
+      ".specs/project/STATE.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": "tests/e2e/support/erp-mock.ts",
+    "symbol_id": "tests/e2e/support/erp-mock.ts::criarMockErp",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T13:00:46.216554+00:00",
+    "created_epoch": 1789131646,
+    "updated_at": "2026-09-11T13:00:46.216896+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1789131646259",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/shared/schemas/cliente.schema.ts::checkoutListaClientesSchema"
+    ],
+    "file_path": "src/shared/schemas/cliente.schema.ts",
+    "symbol_id": "src/shared/schemas/cliente.schema.ts::checkoutListaClientesSchema",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T13:00:46.216900+00:00",
+    "created_epoch": 1789131646,
+    "updated_at": "2026-09-11T13:00:46.216902+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "type": "decision",
+    "content": "AD-218: envelope do ERP depende de messages, nao do endpoint",
+    "tags": ["erp", "schema", "zod", "contrato"],
+    "files": [
+      "src/shared/schemas/erpJson.ts",
+      "src/shared/schemas/dav.schema.ts",
+      "src/shared/schemas/cliente.schema.ts"
+    ],
+    "date": "2026-09-11"
+  },
+  {
+    "type": "fact",
+    "content": "PostCliente responde {messages:[...]} tambem no sucesso, com Type 2",
+    "tags": ["erp", "cliente", "contrato"],
+    "files": ["src/shared/schemas/cliente.schema.ts", "tests/e2e/support/erp-mock.ts"],
+    "date": "2026-09-11"
+  },
+  {
+    "type": "blocker",
+    "content": "Cliente 37 de teste gravado no tenant demo; sem endpoint de exclusao",
+    "tags": ["erp", "tenant-demo", "lixo-de-dados"],
+    "files": [],
+    "date": "2026-09-11"
   }
 ]

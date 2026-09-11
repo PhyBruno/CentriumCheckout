@@ -130,7 +130,37 @@ export const mensagemErpSchema = z.looseObject({
   Description: z.string(),
 });
 
-export const postClienteOutputSchema = z.array(mensagemErpSchema);
+/**
+ * `POST /ApiCentriumOAuth/PostCliente` — o ERP real embrulha as mensagens em
+ * **`{"messages": [...]}`**, não devolve o array nu que o YAML desenha.
+ *
+ * Medido ao vivo em 2026-09-11 (tenant `c0lj6mvzeh`), nas duas saídas possíveis:
+ *
+ * - recusa → `{"messages":[{"Id":"9998","Type":1,"Description":"CPF do cliente
+ *   é obrigatório"}]}`;
+ * - **sucesso** → `{"messages":[{"Id":"1","Type":2,"Description":"37 - FULANO
+ *   DE TAL"}]}` (o `Description` do sucesso é `<código gravado> - <nome>`).
+ *
+ * Com `z.array(...)` puro, **nenhuma** das duas casava: o cadastro simplificado
+ * de cliente (feature 005) reprovava na fronteira em toda chamada contra o ERP
+ * real — inclusive quando o cliente era gravado, caso em que o operador via
+ * erro para um cadastro que existia de verdade.
+ *
+ * O `preprocess` aceita as duas formas e entrega sempre o array, então quem
+ * consome (`primeiroErroDeNegocio`) não muda e o `erp-mock`/YAML seguem válidos.
+ *
+ * O desembrulho só acontece quando a chave `messages` **está presente**: um
+ * objeto qualquer sem ela continua sendo erro de fronteira, em vez de virar
+ * lista vazia e passar por sucesso silencioso — é a mesma razão pela qual
+ * `semEnvelope` valida a raiz quando não encontra a chave, e não um `[]` de
+ * conveniência.
+ */
+export const postClienteOutputSchema = z.preprocess((valor: unknown) => {
+  if (typeof valor === 'object' && valor !== null && !Array.isArray(valor) && 'messages' in valor) {
+    return (valor as Record<string, unknown>).messages;
+  }
+  return valor;
+}, z.array(mensagemErpSchema));
 
 export type MensagemErp = z.infer<typeof mensagemErpSchema>;
 

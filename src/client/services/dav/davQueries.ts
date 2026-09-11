@@ -219,7 +219,11 @@ export async function fetchDav(
     throw new ErroRespostaInvalida('GetDav', validado.error.message);
   }
 
-  return validado.data.OutCheckoutFaturarNFCe;
+  // `validado.data` já é o documento: o schema aceita a resposta com ou sem o
+  // envelope `OutCheckoutFaturarNFCe` e entrega sempre o conteúdo interno — o
+  // ERP real só envelopa quando há `messages` (2026-09-11, TSDoc de
+  // `getDavOutputSchema`).
+  return validado.data;
 }
 
 /**

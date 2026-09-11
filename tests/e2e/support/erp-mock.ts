@@ -8,8 +8,13 @@ import Fastify, { type FastifyInstance } from 'fastify';
  * em 2026-09-04 (AD-165) — não o shape "de livro" do YAML/`contracts/`, que
  * diverge em pontos importantes: a maioria dos endpoints de leitura devolve o
  * SDT flat na raiz (sem o envelope `Get<X>Output.<Campo>` que o YAML sugere e
- * sem `messages`); `GetDav`/`FaturarNFCe` são exceção e mantêm envelope +
- * `messages`; campos `double`/muitos `int64` vêm como string JSON, não
+ * sem `messages`). **O envelope não é propriedade de endpoint nenhum**: ele
+ * aparece quando há `messages` a devolver junto, e some quando a coleção está
+ * vazia — `GetDav`, `CarregarNFCe` e `FaturarNFCe` foram vistos nas duas formas
+ * (2026-09-11; AD-165 achava que os dois primeiros sempre envelopavam, o que
+ * valia só para as recusas que a amostra daquele dia continha). `PostCliente`
+ * responde `{"messages":[…]}` inclusive no sucesso. Campos
+ * `double`/muitos `int64` vêm como string JSON, não
  * número; `FormaIntegracaoCartao` vem `" "` (espaço), não `""`;
  * `GetStatusSistema` devolve `{"Status": 0}`, não o inteiro solto. Ver
  * memória do projeto `erp-real-oauth-latencia` para o levantamento completo.
@@ -1816,9 +1821,12 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       const enviado = request.body.Cliente ?? {};
       const cpf = String(enviado['cpf'] ?? '');
       if (cpf === '') {
-        return reply
-          .code(400)
-          .send([{ Id: 'ERR', Type: 1, Description: 'CPF obrigatório (sintético).' }]);
+        // Recusa de negócio vem `200` com `messages[].Type: 1` — nunca status
+        // HTTP de erro (medido ao vivo 2026-09-11: `{"messages":[{"Id":"9998",
+        // "Type":1,"Description":"CPF do cliente é obrigatório"}]}`).
+        return reply.send({
+          messages: [{ Id: '9998', Type: 1, Description: 'CPF do cliente é obrigatório' }],
+        });
       }
 
       // O ERP grava só os campos de AD-024 e força `CliTip = 'F'`. Aqui o mock
@@ -1845,7 +1853,19 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         CliTip: 'F',
       };
 
-      return reply.send([]);
+      // Sucesso também vem embrulhado em `messages`, com `Type: 2` e o
+      // `Description` no formato `<código gravado> - <nome>` (medido ao vivo
+      // 2026-09-11). O array nu que este mock devolvia era o shape do YAML, e
+      // era o que fazia a suíte passar com um schema que reprovava o ERP real.
+      return reply.send({
+        messages: [
+          {
+            Id: '1',
+            Type: 2,
+            Description: `${String(CLIENTES[cpf]?.['CodCliente'] ?? '')} - ${String(enviado['nome'] ?? '')}`,
+          },
+        ],
+      });
     },
   );
 
@@ -1922,10 +1942,13 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply.code(404).send({ error: 'DAV não encontrado' });
       }
 
-      // `GetDav` MANTÉM o envelope + `messages` — ao contrário das listas,
-      // confirmado ao vivo 2026-09-04: o padrão acompanha exatamente quem
-      // devolve `messages` de verdade (AD-165).
-      return reply.send({ OutCheckoutFaturarNFCe: dav.documento, messages: [] });
+      // Sucesso vai FLAT, sem envelope e sem `messages` — medido ao vivo em
+      // 2026-09-11 e contrário ao que este mock afirmava (AD-165 só tinha
+      // observado recusas deste endpoint). O envelope acompanha a presença de
+      // `messages`: com a coleção vazia sobra um parâmetro de saída e o GeneXus
+      // serializa o SDT na raiz. Reproduzir aqui o envelope que o ERP não manda
+      // foi o que escondeu da suíte a reprovação de toda importação de DAV.
+      return reply.send(dav.documento);
     },
   );
 

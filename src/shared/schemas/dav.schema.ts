@@ -168,30 +168,59 @@ export const checkoutFaturarNFCeSchema = z.looseObject({
   vendedorNome: z.string().optional(),
   CondicaoPagamentoCodigo: inteiroErp,
   NumeroNota: inteiroErp,
+  /**
+   * **Obrigatório, e é ele quem separa documento de recusa.** Um documento
+   * importável sempre tem ao menos um item; o SDT zerado que o ERP devolve ao
+   * recusar (DAV não liberado, rascunho inexistente) nunca traz esta chave.
+   * Com `FormasDePagamento` agora opcional, `produtos` é a única guarda que
+   * impede uma recusa de virar importação silenciosa de documento vazio.
+   */
   produtos: z.array(produtoDoDocumentoSchema),
-  FormasDePagamento: z.array(formaDePagamentoDoDocumentoSchema),
+  /**
+   * **Ausente quando o documento não tem pagamento lançado** — que é o estado
+   * normal de um DAV, gerado antes de qualquer cobrança. O ERP não devolve
+   * `[]`: omite a chave, o mesmo comportamento já registrado em AD-216 para as
+   * listagens. Medido ao vivo em 2026-09-11 (`GetDav` do DAV 5881, tenant
+   * `c0lj6mvzeh`): resposta com `produtos` de dois itens e **sem**
+   * `FormasDePagamento`.
+   *
+   * Exigi-la reprovava na fronteira exatamente o caminho feliz da importação —
+   * o operador via "resposta inválida" para um DAV que o ERP tinha entregue
+   * inteiro. Quem lê trata a ausência como "nada pago ainda".
+   */
+  FormasDePagamento: z.array(formaDePagamentoDoDocumentoSchema).optional().default([]),
 });
 
 /**
- * `GET /ApiCentriumOAuth/GetDav` — **mantém** o envelope, ao contrário de
- * `ListaDAVs`/`GetProduto`/`GetCliente`.
+ * `GET /ApiCentriumOAuth/GetDav` — **sem** envelope no caminho de sucesso, como
+ * todo o resto do `ApiCentriumOAuth`.
  *
- * Não é inconsistência do ERP: o envelope sobrevive exatamente nos endpoints
- * que também devolvem `messages` (`GetDav` e `FaturarNFCe`); onde a procedure
- * tem um único parâmetro de saída, o GeneXus serializa o SDT na raiz. Os dois
- * casos foram verificados um a um ao vivo em 2026-09-04 (AD-165) — daí
- * `z.looseObject` aqui e `semEnvelope` lá.
+ * Isto **corrige** o que AD-165 registrava e este TSDoc afirmava até
+ * 2026-09-11: que `GetDav` "mantém o envelope". A afirmação nasceu de uma
+ * amostra enviesada — as únicas respostas observadas na época eram recusas de
+ * negócio. Medido ao vivo em 2026-09-11 (tenant `c0lj6mvzeh`), o mesmo endpoint
+ * responde nas duas formas:
  *
- * `produtos` e `FormasDePagamento` seguem **obrigatórios**: uma recusa de
- * negócio do ERP (DAV não liberado, por exemplo) volta `200` com o SDT zerado e
- * sem essas coleções, e aceitá-la importaria um documento vazio, com
- * `clienteCodigo: 0`, como se fosse sucesso. Falhar na fronteira é o desfecho
- * correto — o que falta é exibir a `messages[].Description` do ERP em vez do
- * erro genérico (item registrado em `.specs/project/PENDENCIES.md`).
+ * - **sucesso** → SDT na raiz, sem envelope e sem `messages`
+ *   (`{"Empresa":1,"clienteCodigo":"1007",…,"produtos":[…]}`);
+ * - **recusa** → `{"OutCheckoutFaturarNFCe":{…zerado…},"messages":[{…}]}`.
+ *
+ * O envelope não é propriedade do endpoint: ele aparece quando há `messages` a
+ * devolver junto — com a coleção vazia sobra um único parâmetro de saída e o
+ * GeneXus serializa o SDT na raiz. É a mesma regra que AD-208 já tinha
+ * observado em `FaturarNFCe` e que `CarregarNFCe` exibe nas duas formas.
+ *
+ * A consequência de exigir o envelope era grave e silenciosa: **toda importação
+ * de DAV bem-sucedida** reprovava na fronteira, e o operador via "resposta
+ * inválida" para um documento que o ERP entregara inteiro. Só a recusa casava.
+ *
+ * `semEnvelope` aceita as duas formas e devolve sempre o documento. A guarda
+ * contra importar uma recusa como documento vazio passou a ser `produtos`
+ * (obrigatório no SDT acima), que o SDT zerado nunca traz — o que falta ainda é
+ * exibir a `messages[].Description` do ERP em vez do erro genérico (item
+ * registrado em `.specs/project/PENDENCIES.md`).
  */
-export const getDavOutputSchema = z.looseObject({
-  OutCheckoutFaturarNFCe: checkoutFaturarNFCeSchema,
-});
+export const getDavOutputSchema = semEnvelope('OutCheckoutFaturarNFCe', checkoutFaturarNFCeSchema);
 
 export type DavDaLista = z.infer<typeof davDaListaSchema>;
 export type CheckoutListaDavs = z.infer<typeof checkoutListaDavsSchema>;
