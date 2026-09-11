@@ -77,7 +77,10 @@ describe('buscarUsuarioCodigo', () => {
       .fn<typeof fetch>()
       .mockResolvedValue(respostaComSessao({ UsuarioCodigo: '147' }));
 
-    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toBe('147');
+    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
+      situacao: 'identificado',
+      usuarioCodigo: '147',
+    });
 
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
     expect(String(url)).toBe(
@@ -90,24 +93,50 @@ describe('buscarUsuarioCodigo', () => {
     expect((init?.headers as Record<string, string>)['Empresa']).toBe('1');
   });
 
-  it('devolve null quando o ERP recusa a consulta', async () => {
+  it('ERP fora é indisponibilidade — o desfecho que vale repetir', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 500 }));
 
-    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toBeNull();
+    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
+      situacao: 'indisponivel',
+    });
   });
 
-  it('devolve null quando a resposta não é JSON, sem lançar', async () => {
+  it('falha de rede vira indisponibilidade, não exceção', async () => {
+    // O chamador trata indisponibilidade num lugar só; um `throw` escapando
+    // daqui cairia no catch de "falha não tratada" e perderia a repetição.
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('fetch failed'));
+
+    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
+      situacao: 'indisponivel',
+    });
+  });
+
+  it('2xx com corpo ilegível é o ERP em mau estado, não veredito sobre o login', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response('<html>erro</html>', { status: 200 }));
 
-    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toBeNull();
+    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
+      situacao: 'indisponivel',
+    });
+  });
+
+  it('login não resolvido é resposta do ERP — repetir daria o mesmo', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaComSessao({ UsuarioCodigo: '0' }));
+
+    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
+      situacao: 'naoIdentificado',
+    });
   });
 
   it('não tenta renovar o token — ele acabou de nascer', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 401 }));
 
-    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toBeNull();
+    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
+      situacao: 'indisponivel',
+    });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

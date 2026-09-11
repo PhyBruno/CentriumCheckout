@@ -38,6 +38,8 @@ export interface SessionStartDeps {
   readonly fetchImpl?: typeof fetch;
   /** URL limpa da SPA para onde o navegador é redirecionado (padrão: `/`). */
   readonly destinoAposLogin?: string;
+  /** Espera entre tentativas; injetável para o teste não dormir de verdade. */
+  readonly esperar?: (ms: number) => Promise<void>;
 }
 
 /** Comparação em tempo constante — evita distinguir chaves por tempo de resposta. */
@@ -45,6 +47,70 @@ function chaveConfere(recebida: string, esperada: string): boolean {
   const a = Buffer.from(recebida, 'utf8');
   const b = Buffer.from(esperada, 'utf8');
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/**
+ * Esperas entre as tentativas de cada etapa da entrada.
+ *
+ * Duas repetições, com pouco mais de um segundo no pior caso: a falha que elas
+ * cobrem é o blip — um `502` do proxy do ERP, um DNS que demorou, a rede que
+ * piscou —, e essa passa em centenas de milissegundos. ERP fora de verdade não
+ * volta em um segundo, e insistir mais só faria o operador encarar uma tela
+ * parada antes de receber a mesma resposta.
+ */
+const ESPERAS_ENTRE_TENTATIVAS_MS = [250, 750] as const;
+
+function dormir(ms: number): Promise<void> {
+  return new Promise((resolver) => setTimeout(resolver, ms));
+}
+
+/**
+ * Repete uma etapa da entrada enquanto o desfecho for **indisponibilidade**.
+ *
+ * É a diferença entre "o ERP não pôde responder agora" e "o ERP respondeu, e a
+ * resposta foi não": a primeira tem chance na tentativa seguinte, a segunda
+ * daria exatamente o mesmo resultado. Só a primeira é repetida.
+ *
+ * A repetição acontece **aqui**, e não como um botão na tela, porque só o BFF
+ * tem com que repetir: as credenciais do redirect ficam nesta função e são
+ * descartadas antes de o navegador chegar à SPA (FR-001/SC-001). Da SPA, um
+ * "Tentar novamente" não teria o que reenviar.
+ */
+async function comRepeticao<T>(
+  executar: () => Promise<T>,
+  indisponivel: (resultado: T) => boolean,
+  esperar: (ms: number) => Promise<void>,
+): Promise<T> {
+  let resultado = await executar();
+
+  for (const espera of ESPERAS_ENTRE_TENTATIVAS_MS) {
+    if (!indisponivel(resultado)) {
+      return resultado;
+    }
+    await esperar(espera);
+    resultado = await executar();
+  }
+
+  return resultado;
+}
+
+type DesfechoDeToken =
+  | { readonly autenticado: true; readonly access_token: string }
+  | { readonly autenticado: false; readonly erro: ErroTrocaDeToken };
+
+/**
+ * Só indisponibilidade se repete: `rede` é o ERP inalcançável e `5xx` é o ERP
+ * em mau estado. Um `4xx` é veredito sobre as credenciais — repetir o mesmo
+ * `password` grant devolveria a mesma recusa, e ainda gastaria tentativa de
+ * autenticação contra a conta do operador.
+ */
+function tokenIndisponivel(desfecho: DesfechoDeToken): boolean {
+  const NA_FAIXA_DE_ERRO_DO_SERVIDOR = 500;
+  return (
+    !desfecho.autenticado &&
+    (desfecho.erro.motivo === 'rede' ||
+      (desfecho.erro.motivo === 'erp' && desfecho.erro.status >= NA_FAIXA_DE_ERRO_DO_SERVIDOR))
+  );
 }
 
 /**
@@ -90,44 +156,73 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
       return recusarEntrada(reply);
     }
 
+    const erpDeps = { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) };
+    const esperar = deps.esperar ?? dormir;
+
     try {
-      const token = await trocarCredenciaisPorToken(
-        {
-          tenant: query.data.tenant,
-          client_id: query.data.client_id,
-          client_secret: query.data.client_secret,
-          username: query.data.username,
-          password: query.data.password,
-          Repository: query.data.Repository,
+      const autenticacao = await comRepeticao(
+        async (): Promise<DesfechoDeToken> => {
+          try {
+            const token = await trocarCredenciaisPorToken(
+              {
+                tenant: query.data.tenant,
+                client_id: query.data.client_id,
+                client_secret: query.data.client_secret,
+                username: query.data.username,
+                password: query.data.password,
+                Repository: query.data.Repository,
+              },
+              erpDeps,
+            );
+            return { autenticado: true, access_token: token.access_token };
+          } catch (erro) {
+            if (erro instanceof ErroTrocaDeToken) {
+              return { autenticado: false, erro };
+            }
+            throw erro;
+          }
         },
-        { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
+        tokenIndisponivel,
+        esperar,
       );
+
+      if (!autenticacao.autenticado) {
+        request.log.warn(
+          { motivo: autenticacao.erro.motivo, status: autenticacao.erro.status },
+          'falha ao iniciar sessão',
+        );
+        return recusarEntrada(reply);
+      }
 
       // Quem é este operador, segundo o ERP. É a única informação da sessão que
       // não vem no redirect, e sem ela o BFF não teria com que reescrever o
       // `UsuarioCodigo` que o navegador manda no retrato da venda (AD-224).
-      const usuarioCodigo = await buscarUsuarioCodigo(
-        {
-          access_token: token.access_token,
-          tenant: query.data.tenant,
-          codigoEmpresa: query.data.codigoEmpresa,
-          username: query.data.username,
-        },
-        { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
+      const operador = await comRepeticao(
+        () =>
+          buscarUsuarioCodigo(
+            {
+              access_token: autenticacao.access_token,
+              tenant: query.data.tenant,
+              codigoEmpresa: query.data.codigoEmpresa,
+              username: query.data.username,
+            },
+            erpDeps,
+          ),
+        (resultado) => resultado.situacao === 'indisponivel',
+        esperar,
       );
 
-      if (usuarioCodigo === null) {
-        // Sessão sem operador identificado não pode existir: toda NFCe que ela
-        // emitisse sairia sem dizer quem a emitiu. Recusar aqui é o mesmo
-        // desfecho de qualquer outra falha de entrada — e o `GetSessao` que
-        // falhou aqui falharia de novo no bootstrap, então o caixa não abriria
-        // de um jeito ou de outro.
-        request.log.warn('operador não identificado pelo ERP; entrada recusada');
+      if (operador.situacao !== 'identificado') {
+        // Esgotadas as tentativas, a sessão não nasce: sem operador
+        // identificado, toda NFCe que ela emitisse sairia sem dizer quem a
+        // emitiu. O operador reabre pelo CentriumWEB, que é o único caminho que
+        // carrega as credenciais de novo.
+        request.log.warn({ situacao: operador.situacao }, 'operador não identificado pelo ERP');
         return recusarEntrada(reply);
       }
 
       const cookie = deps.cifrador.cifrar({
-        access_token: token.access_token,
+        access_token: autenticacao.access_token,
         tenant: query.data.tenant,
         client_id: query.data.client_id,
         client_secret: query.data.client_secret,
@@ -135,7 +230,7 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
         password: query.data.password,
         Repository: query.data.Repository,
         codigoEmpresa: query.data.codigoEmpresa,
-        usuarioCodigo,
+        usuarioCodigo: operador.usuarioCodigo,
       });
 
       return (
@@ -149,13 +244,9 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
           .redirect(destino, 302)
       );
     } catch (erro) {
-      if (erro instanceof ErroTrocaDeToken) {
-        request.log.warn({ motivo: erro.motivo, status: erro.status }, 'falha ao iniciar sessão');
-        return recusarEntrada(reply);
-      }
-
-      // Qualquer outra falha (rede, bug) também é um navegador na tela: o painel
-      // terminal em vez da página de erro padrão do Fastify.
+      // As falhas esperadas do ERP já foram tratadas acima, com repetição. O que
+      // chega aqui é imprevisto (bug) — e também é um navegador na tela: o
+      // painel terminal em vez da página de erro padrão do Fastify.
       request.log.error({ erro }, 'falha não tratada ao iniciar sessão');
       return recusarEntrada(reply);
     }

@@ -71,36 +71,63 @@ export function extrairUsuarioCodigo(json: unknown): string | null {
 }
 
 /**
+ * Desfecho da consulta, com a distinção que decide se vale repetir.
+ *
+ * `indisponivel` é falha do caminho — ERP fora, rede caída, corpo ilegível —, e
+ * repetir tem chance de resolver. `naoIdentificado` é resposta do ERP: ele
+ * respondeu, e a resposta foi "não sei quem é esse login"; repetir devolveria a
+ * mesma coisa. Sem essa separação, a entrada ou insiste à toa ou desiste cedo
+ * demais.
+ */
+export type ResultadoGetSessao =
+  | { readonly situacao: 'identificado'; readonly usuarioCodigo: string }
+  | { readonly situacao: 'naoIdentificado' }
+  | { readonly situacao: 'indisponivel' };
+
+/**
  * Pergunta ao ERP qual é o `UsuarioCodigo` do login autenticado.
  *
  * Chamada em `/session/start`, entre a troca OAuth e a gravação do cookie —
  * por isso recebe credenciais soltas e não uma `SessaoOperador`: a sessão ainda
  * não existe, e é justamente este valor que falta para montá-la.
  *
- * Sem renovação de token de propósito: o token acabou de ser emitido. Devolve
- * `null` para qualquer desfecho que não seja um código utilizável — ERP fora,
- * resposta não-JSON, login não resolvido —, e quem chama decide o que fazer.
+ * Sem renovação de token de propósito: o token acabou de ser emitido. Falha de
+ * rede não escapa como exceção — vira `indisponivel`, para o chamador tratar
+ * indisponibilidade num lugar só.
  */
 export async function buscarUsuarioCodigo(
   credenciais: CredenciaisGetSessao,
   deps: ChamadaAutenticadaDeps,
-): Promise<string | null> {
-  const resposta = await chamarErp(
-    credenciais,
-    { caminho: CAMINHO_GET_SESSAO, query: queryGetSessao(credenciais) },
-    deps,
-  );
+): Promise<ResultadoGetSessao> {
+  let resposta: Response;
+  try {
+    resposta = await chamarErp(
+      credenciais,
+      { caminho: CAMINHO_GET_SESSAO, query: queryGetSessao(credenciais) },
+      deps,
+    );
+  } catch {
+    return { situacao: 'indisponivel' };
+  }
 
   if (!resposta.ok) {
     // O corpo não vai para lugar nenhum, mas precisa ser consumido: o undici só
     // devolve a conexão ao pool depois disso.
     await resposta.arrayBuffer().catch(() => undefined);
-    return null;
+    return { situacao: 'indisponivel' };
   }
 
+  let json: unknown;
   try {
-    return extrairUsuarioCodigo(await resposta.json());
+    json = await resposta.json();
   } catch {
-    return null;
+    // Respondeu 2xx com corpo ilegível: é o ERP em mau estado, não um veredito
+    // sobre o login.
+    return { situacao: 'indisponivel' };
   }
+
+  const usuarioCodigo = extrairUsuarioCodigo(json);
+  return usuarioCodigo === null
+    ? { situacao: 'naoIdentificado' }
+    : { situacao: 'identificado', usuarioCodigo };
 }
