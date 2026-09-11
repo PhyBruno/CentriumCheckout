@@ -8,6 +8,11 @@ import {
 } from '../session/cookie';
 import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
 import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
+import {
+  CAMINHO_GET_SESSAO,
+  queryGetSessao,
+  type UsuarioDaSessao,
+} from '../session/usuarioDaSessao';
 import { calcularVersionHash } from '../../shared/versionHash';
 import { normalizarEtag } from '../../shared/etag';
 
@@ -29,10 +34,13 @@ function hashConhecido(cabecalho: string | string[] | undefined, hash: string): 
 export interface BootstrapDeps {
   readonly env: Env;
   readonly cifrador: CifradorDeSessao;
+  /**
+   * Cache do operador da sessão. Esta rota é a que aquece: já chama `GetSessao`
+   * por outro motivo, então o faturamento não precisa chamar de novo.
+   */
+  readonly usuarioDaSessao: UsuarioDaSessao;
   readonly fetchImpl?: typeof fetch;
 }
-
-const CAMINHO_GET_SESSAO = '/ApiCentriumOAuth/GetSessao';
 
 /**
  * `GET /api/bootstrap` — configuração do ponto de venda (T019, US2).
@@ -55,13 +63,11 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
         sessao,
         {
           caminho: CAMINHO_GET_SESSAO,
-          // `Empresa` vai na query **além** do cabeçalho, como em toda chamada
-          // ao ERP (AD-205) — e **antes** de `Login`, porque o
-          // `Event GetSessao.Before` recorta o login de `Login=` até o fim da
-          // query string: com `Empresa` depois, `&Login` viria `bruno&Empresa=1`
-          // e a sessão voltaria zerada. `URLSearchParams` preserva a ordem de
-          // inserção, então a ordem deste objeto é a ordem enviada.
-          query: { Empresa: sessao.codigoEmpresa, Login: sessao.username },
+          // Caminho e query vivem em `usuarioDaSessao.ts` porque o resolvedor do
+          // operador faz a mesma chamada — e a ordem dos pares é contrato do
+          // ERP, não estética (AD-205). Duas cópias divergiriam no primeiro
+          // ajuste.
+          query: queryGetSessao(sessao),
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
       ),
@@ -120,6 +126,12 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
       request.log.warn('payload de bootstrap fora do contrato esperado');
       return reply.code(502).send({ erro: 'Configuração do ponto de venda fora do contrato' });
     }
+
+    // O operador que o ERP associa a este login, guardado para o proxy usar na
+    // hora de faturar. É o mesmo valor que a SPA recebe — a diferença é que
+    // aqui ele fica do lado do servidor, fora do alcance do navegador, e é essa
+    // cópia que assina a NFCe.
+    deps.usuarioDaSessao.registrar(sessao, validado.data.SessaoUsuario.UsuarioCodigo);
 
     // FR-008/AD-045: se a SPA já tem este payload, não retransmite os ~5MB.
     // O `tenant` faz parte do payload, então o hash difere entre tenants e o

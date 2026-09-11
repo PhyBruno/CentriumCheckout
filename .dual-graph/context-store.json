@@ -1,242 +1,5 @@
 [
   {
-    "id": "mem:1788185161691",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "propaga",
-      "emendas",
-      "013",
-      "014",
-      "004",
-      "001",
-      "podefinalizar",
-      "montarretratovenda"
-    ],
-    "files": [
-      "specs/004-finalizacao-suspensao-venda/data-model.md"
-    ],
-    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T14:06:01.691504+00:00",
-    "created_epoch": 1788185161,
-    "updated_at": "2026-08-31T14:06:01.691517+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788185161675",
-    "kind": "decision",
-    "content": "Propaga emendas de 013/014 em 004/001: podeFinalizar/montarRetratoVenda no data-model de 004; evento VENDA_RAPIDA_ACIONADA no catalogo de auditoria (001)",
-    "tags": [
-      "propaga",
-      "emendas",
-      "013",
-      "014",
-      "004",
-      "001",
-      "podefinalizar",
-      "montarretratovenda"
-    ],
-    "files": [
-      "specs/004-finalizacao-suspensao-venda/data-model.md",
-      "specs/001-auditoria-acoes-operador/data-model.md",
-      "specs/001-auditoria-acoes-operador/contracts/auditoria-events.md",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": "specs/004-finalizacao-suspensao-venda/data-model.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T14:06:01.675046+00:00",
-    "created_epoch": 1788185161,
-    "updated_at": "2026-08-31T14:06:01.675056+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1788200000001",
-    "kind": "decision",
-    "content": "AD-108: cliente default usa SessaoUsuario.ListaPrecoDefault e nao tem desconto de convenio; fecha item 31",
-    "tags": [
-      "ad-108",
-      "cliente-default",
-      "lista-preco",
-      "item-31",
-      "item-36"
-    ],
-    "files": [
-      ".specs/project/STATE.md",
-      ".specs/project/PENDENCIES.md",
-      "specs/005-identificacao-cadastro-cliente/research.md",
-      "specs/003-carrinho-produto-precificacao/contracts/erp-produto-api.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31",
-    "created_epoch": 1788200000,
-    "updated_at": "2026-08-31",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788200445704",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "gerado",
-      "tasks",
-      "feature",
-      "007",
-      "layout",
-      "responsivo",
-      "tarefas",
-      "achado",
-      "aplicados",
-      "achados"
-    ],
-    "files": [
-      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md"
-    ],
-    "file_path": "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T18:20:45.704186+00:00",
-    "created_epoch": 1788200445,
-    "updated_at": "2026-08-31T18:30:50.250190+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788200445667",
-    "kind": "decision",
-    "content": "Gerado tasks.md da feature 007 (layout responsivo, 27 tarefas); achado AD-116 (obterPlataforma para capacidades() da 008) registrado em STATE.md e no contrato da 007",
-    "tags": [
-      "gerado",
-      "tasks",
-      "feature",
-      "007",
-      "layout",
-      "responsivo",
-      "tarefas",
-      "achado"
-    ],
-    "files": [
-      "specs/007-layout-responsivo-mobile/tasks.md",
-      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
-      ".specs/project/STATE.md",
-      ".specify/feature.json",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T18:20:45.667400+00:00",
-    "created_epoch": 1788200445,
-    "updated_at": "2026-08-31T18:20:45.667411+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1788200445685",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "gerado",
-      "tasks",
-      "feature",
-      "007",
-      "layout",
-      "responsivo",
-      "tarefas",
-      "achado",
-      "aplicados",
-      "achados"
-    ],
-    "files": [
-      "specs/007-layout-responsivo-mobile/tasks.md"
-    ],
-    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T18:20:45.685569+00:00",
-    "created_epoch": 1788200445,
-    "updated_at": "2026-08-31T18:30:50.237932+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788201050214",
-    "kind": "decision",
-    "content": "Aplicados 6 achados do /speckit-analyze na feature 007: T008 (DesktopLayout.tsx, achado critico I1), T019/T027/T028 (cobertura FR-008/009/010/SC-001), correcoes de documentacao no contrato e no tasks.md",
-    "tags": [
-      "aplicados",
-      "achados",
-      "speckit",
-      "analyze",
-      "feature",
-      "007",
-      "t008",
-      "desktoplayout"
-    ],
-    "files": [
-      "specs/007-layout-responsivo-mobile/tasks.md",
-      "specs/007-layout-responsivo-mobile/contracts/layout-domain-api.md",
-      ".specs/project/STATE.md",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": "specs/007-layout-responsivo-mobile/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T18:30:50.214682+00:00",
-    "created_epoch": 1788201050,
-    "updated_at": "2026-08-31T18:30:50.214699+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
     "id": "mem:1788205657574",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -3977,7 +3740,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-04T15:34:00.546052+00:00",
     "created_epoch": 1788536040,
-    "updated_at": "2026-09-11T12:21:27.223687+00:00",
+    "updated_at": "2026-09-11T19:28:54.470836+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5565,7 +5328,9 @@
       "respostas",
       "reais",
       "arrays",
-      "lista"
+      "lista",
+      "224",
+      "225"
     ],
     "files": [
       ".dual-graph/context-store.json"
@@ -5575,7 +5340,7 @@
     "symbol_hash": "",
     "created_at": "2026-09-11T12:21:27.417814+00:00",
     "created_epoch": 1789129287,
-    "updated_at": "2026-09-11T12:21:27.417828+00:00",
+    "updated_at": "2026-09-11T19:28:54.495426+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -5896,6 +5661,7 @@
     }
   },
   {
+    "id": "mem:1789154934399",
     "kind": "decision",
     "content": "AD-222: ordena\u00e7\u00e3o dos modais mora na janela, n\u00e3o na tabela que desmonta",
     "tags": [
@@ -5908,7 +5674,252 @@
       "src/client/features/dav/ModalImportacaoDav.tsx",
       "src/client/features/recuperacao/ModalRecuperacaoNFCe.tsx"
     ],
+    "file_path": "src/client/components/ui/cabecalho-ordenavel.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-11T17:24:59.740126+00:00",
-    "created_epoch": 1789147499
+    "created_epoch": 1789147499,
+    "updated_at": "2026-09-11T17:24:59.740126+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789154934444",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "224",
+      "225",
+      "bff",
+      "reescreve",
+      "usuariocodigo",
+      "corpo",
+      "pelo",
+      "operador"
+    ],
+    "files": [
+      "src/server/plugins/headersSeguranca.ts"
+    ],
+    "file_path": "src/server/plugins/headersSeguranca.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T19:28:54.444780+00:00",
+    "created_epoch": 1789154934,
+    "updated_at": "2026-09-11T19:28:54.444823+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789154934418",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "224",
+      "225",
+      "bff",
+      "reescreve",
+      "usuariocodigo",
+      "corpo",
+      "pelo",
+      "operador"
+    ],
+    "files": [
+      "src/server/routes/erp-proxy.ts::corpoComUsuarioDaSessao"
+    ],
+    "file_path": "src/server/routes/erp-proxy.ts",
+    "symbol_id": "src/server/routes/erp-proxy.ts::corpoComUsuarioDaSessao",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T19:28:54.418289+00:00",
+    "created_epoch": 1789154934,
+    "updated_at": "2026-09-11T19:28:54.418303+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789154934374",
+    "kind": "decision",
+    "content": "AD-224/AD-225: BFF reescreve UsuarioCodigo do corpo pelo operador da sess\u00e3o (GetSessao + cache) e passa a enviar cabe\u00e7alhos de seguran\u00e7a em toda resposta",
+    "tags": [
+      "224",
+      "225",
+      "bff",
+      "reescreve",
+      "usuariocodigo",
+      "corpo",
+      "pelo",
+      "operador"
+    ],
+    "files": [
+      "src/server/session/usuarioDaSessao.ts",
+      "src/server/routes/erp-proxy.ts::corpoComUsuarioDaSessao",
+      "src/server/routes/bootstrap.ts::registrarRotaBootstrap",
+      "src/server/plugins/headersSeguranca.ts",
+      "src/server/index.ts::buildApp",
+      ".specs/project/STATE.md",
+      ".specs/project/PENDENCIES.md",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": "src/server/session/usuarioDaSessao.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T19:28:54.374809+00:00",
+    "created_epoch": 1789154934,
+    "updated_at": "2026-09-11T19:28:54.375054+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1789154934403",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "224",
+      "225",
+      "bff",
+      "reescreve",
+      "usuariocodigo",
+      "corpo",
+      "pelo",
+      "operador"
+    ],
+    "files": [
+      "src/server/session/usuarioDaSessao.ts"
+    ],
+    "file_path": "src/server/session/usuarioDaSessao.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T19:28:54.403240+00:00",
+    "created_epoch": 1789154934,
+    "updated_at": "2026-09-11T19:28:54.403260+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789154934430",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "224",
+      "225",
+      "bff",
+      "reescreve",
+      "usuariocodigo",
+      "corpo",
+      "pelo",
+      "operador"
+    ],
+    "files": [
+      "src/server/routes/bootstrap.ts::registrarRotaBootstrap"
+    ],
+    "file_path": "src/server/routes/bootstrap.ts",
+    "symbol_id": "src/server/routes/bootstrap.ts::registrarRotaBootstrap",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T19:28:54.430748+00:00",
+    "created_epoch": 1789154934,
+    "updated_at": "2026-09-11T19:28:54.430761+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789154934458",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "224",
+      "225",
+      "bff",
+      "reescreve",
+      "usuariocodigo",
+      "corpo",
+      "pelo",
+      "operador"
+    ],
+    "files": [
+      "src/server/index.ts::buildApp"
+    ],
+    "file_path": "src/server/index.ts",
+    "symbol_id": "src/server/index.ts::buildApp",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T19:28:54.458126+00:00",
+    "created_epoch": 1789154934,
+    "updated_at": "2026-09-11T19:28:54.458145+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1789154934483",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "224",
+      "225",
+      "bff",
+      "reescreve",
+      "usuariocodigo",
+      "corpo",
+      "pelo",
+      "operador"
+    ],
+    "files": [
+      ".specs/project/PENDENCIES.md"
+    ],
+    "file_path": ".specs/project/PENDENCIES.md",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T19:28:54.483356+00:00",
+    "created_epoch": 1789154934,
+    "updated_at": "2026-09-11T19:28:54.483369+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
   }
 ]

@@ -7,10 +7,13 @@ import {
 } from '../session/cookie';
 import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
 import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
+import type { UsuarioDaSessao } from '../session/usuarioDaSessao';
 
 export interface ErpProxyDeps {
   readonly env: Env;
   readonly cifrador: CifradorDeSessao;
+  /** Quem é o operador desta sessão, segundo o ERP — nunca segundo o corpo. */
+  readonly usuarioDaSessao: UsuarioDaSessao;
   readonly fetchImpl?: typeof fetch;
 }
 
@@ -96,6 +99,42 @@ export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): u
   return corpo;
 }
 
+/** Campo do retrato que diz quem emitiu a nota (`CheckoutFaturarNFCe`, AD-221). */
+const CAMPO_USUARIO = 'UsuarioCodigo';
+
+/**
+ * A requisição afirma um operador? É isso que decide se o servidor precisa
+ * resolver a identidade antes de repassar a chamada.
+ *
+ * A checagem é pela **presença do campo**, não por uma lista de caminhos: hoje
+ * só `FaturarNFCe` e `ValidarNFCe` o mandam, mas um endpoint novo que passe a
+ * mandá-lo entra protegido por construção, em vez de entrar esquecido numa
+ * lista que ninguém lembra de atualizar.
+ */
+export function corpoDeclaraUsuario(body: unknown): boolean {
+  return typeof body === 'object' && body !== null && !Array.isArray(body) && CAMPO_USUARIO in body;
+}
+
+/**
+ * Reescreve `UsuarioCodigo` com o operador da sessão.
+ *
+ * Mesmo princípio de `corpoComEmpresaDaSessao`, e pelo mesmo motivo: o campo
+ * viaja no corpo, o corpo vem do navegador, e o ERP não o confere contra o
+ * token. Sem esta reescrita, um operador autenticado que editasse o payload
+ * emitiria nota assinada por outro — e a assinatura é justamente o que AD-221
+ * existe para garantir (item 53 de `.specs/project/PENDENCIES.md`, OWASP
+ * A01/A09).
+ *
+ * O valor entra como número, que é o tipo do campo no SDT.
+ */
+export function corpoComUsuarioDaSessao(body: unknown, usuarioCodigo: number): unknown {
+  if (!corpoDeclaraUsuario(body)) {
+    return body;
+  }
+
+  return { ...(body as Record<string, unknown>), [CAMPO_USUARIO]: usuarioCodigo };
+}
+
 /**
  * `/api/erp/*` — proxy autenticado das chamadas de negócio (T031, US3).
  *
@@ -109,9 +148,9 @@ export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): u
  */
 export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps): void {
   app.all(`${PREFIXO}/*`, async (request, reply) => {
-    const sessao = deps.cifrador.decifrar(request.cookies[SESSION_COOKIE_NAME]);
+    const sessaoDoCookie = deps.cifrador.decifrar(request.cookies[SESSION_COOKIE_NAME]);
 
-    if (sessao === null) {
+    if (sessaoDoCookie === null) {
       return reply.code(401).send({ erro: 'Sessão ausente ou inválida' });
     }
 
@@ -122,6 +161,32 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
     // sem corpo); aqui o corpo é o da requisição original, então o
     // `Content-Type` real precisa ser repassado como está.
     const contentTypeOriginal = request.headers['content-type'];
+
+    // Quem assina a nota sai da sessão, não do corpo. A resolução vem antes da
+    // chamada porque pode renovar o token — e aí é a sessão renovada que vale
+    // para a chamada de negócio e para o cookie.
+    const precisaDoOperador = corpoDeclaraUsuario(request.body);
+    const operador = precisaDoOperador
+      ? await executarOuEncerrarSessao(reply, () => deps.usuarioDaSessao.resolver(sessaoDoCookie))
+      : { usuarioCodigo: null, sessaoRenovada: null };
+
+    if (operador === null) {
+      return reply;
+    }
+
+    if (precisaDoOperador && operador.usuarioCodigo === null) {
+      // Recusar é a única saída correta: repassar o corpo como veio aceitaria
+      // de volta o valor forjável que esta rota existe para descartar.
+      request.log.warn('operador da sessão não identificado; chamada recusada');
+      return reply.code(502).send({ erro: 'Não foi possível identificar o operador da sessão' });
+    }
+
+    const sessao = operador.sessaoRenovada ?? sessaoDoCookie;
+    const corpoComEmpresa = corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa);
+    const corpo =
+      operador.usuarioCodigo === null
+        ? corpoComEmpresa
+        : corpoComUsuarioDaSessao(corpoComEmpresa, operador.usuarioCodigo);
 
     // `null` = a sessão acabou e o 401 terminal já foi respondido (FR-006).
     const resultado = await executarOuEncerrarSessao(reply, () =>
@@ -136,7 +201,7 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
           ...(contentTypeOriginal === undefined
             ? {}
             : { headersExtras: { 'Content-Type': contentTypeOriginal } }),
-          body: corpoDaRequisicao(corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa)),
+          body: corpoDaRequisicao(corpo),
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
       ),
@@ -146,10 +211,13 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
       return reply;
     }
 
-    if (resultado.sessaoRenovada !== null) {
+    // A renovação pode ter acontecido em qualquer uma das duas chamadas; a mais
+    // recente é a que vale.
+    const sessaoRenovada = resultado.sessaoRenovada ?? operador.sessaoRenovada;
+    if (sessaoRenovada !== null) {
       reply.setCookie(
         SESSION_COOKIE_NAME,
-        deps.cifrador.cifrar(resultado.sessaoRenovada),
+        deps.cifrador.cifrar(sessaoRenovada),
         SESSION_COOKIE_OPTIONS,
       );
     }

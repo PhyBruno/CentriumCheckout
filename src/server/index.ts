@@ -4,6 +4,8 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import { loadEnv, type Env } from './config/env';
 import { criarCifradorDeSessao } from './session/cookie';
+import { criarUsuarioDaSessao } from './session/usuarioDaSessao';
+import { registrarHeadersDeSeguranca } from './plugins/headersSeguranca';
 import { registrarRotaSessionStart } from './routes/session-start';
 import { registrarRotaBootstrap } from './routes/bootstrap';
 import { registrarRotaErpProxy } from './routes/erp-proxy';
@@ -27,14 +29,21 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
 
   await app.register(fastifyCookie);
 
+  // Antes de qualquer rota: o hook precisa alcançar também o estático da SPA, o
+  // redirect de `/session/start` e as páginas de erro.
+  registrarHeadersDeSeguranca(app);
+
   // Sonda de readiness — usada pelo Docker e pelo `webServer` do Playwright.
   app.get('/health', async () => ({ status: 'ok' }));
 
   const cifrador = criarCifradorDeSessao(env.sessionSecret);
+  // Um cache por instância do app: o `/api/bootstrap` o aquece e o proxy o
+  // consome para reescrever `UsuarioCodigo` na hora de faturar.
+  const usuarioDaSessao = criarUsuarioDaSessao({ env });
 
   registrarRotaSessionStart(app, { env, cifrador });
-  registrarRotaBootstrap(app, { env, cifrador });
-  registrarRotaErpProxy(app, { env, cifrador });
+  registrarRotaBootstrap(app, { env, cifrador, usuarioDaSessao });
+  registrarRotaErpProxy(app, { env, cifrador, usuarioDaSessao });
   registrarRotaGerencial(app, { env, cifrador });
 
   // Assets estáticos da SPA (build do Vite) servidos pelo mesmo processo Node —
