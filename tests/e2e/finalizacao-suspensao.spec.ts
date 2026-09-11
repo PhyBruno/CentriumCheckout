@@ -304,19 +304,26 @@ test.describe('User Story 2 — suspender a venda em digitação (T026)', () => 
   });
 
   /**
-   * **Bloqueado pela feature 008 até a 007 existir (2026-09-03).**
+   * **Aposentado: a cobertura migrou para `layout-mobile.spec.ts` (2026-09-11).**
    *
-   * O gate novo de "Finalizar venda" exige `saldoRestante === 0`, e o layout
-   * compacto **não monta o cartão de pagamento** (`App.tsx`: `{!compacto &&
-   * <PainelPagamentoETotais />}`) — não há, na tela mobile, nenhum caminho de
-   * operador para aplicar uma forma. A superfície de pagamento no compacto é o
-   * `MobileWizard` da feature 007, ainda não implementada.
+   * O motivo original do `skip` (2026-09-03) era que o layout compacto não
+   * montava o cartão de pagamento e a superfície mobile dependia da feature
+   * 007, então não havia caminho de operador para aplicar uma forma. **Isso
+   * não vale mais:** a 007 foi implementada em 2026-09-08 (AD-191), o wizard
+   * tem `EtapaPagamento`, e o passo 7 do quickstart da 004 é exercitado por
+   * "fluxo dourado: bipar na etapa 1, pagar na 2, finalizar na 3" em
+   * `layout-mobile.spec.ts`.
    *
-   * `skip` explícito, e não remoção: o passo 7 do quickstart da 004 continua
-   * sendo requisito, e apagar o teste esconderia a lacuna. Reativar é excluir
-   * esta anotação depois que a 007 montar o pagamento no compacto — a
-   * finalização em si não muda (AD-144 já removeu qualquer divergência de
-   * comportamento entre os dois layouts).
+   * O corpo abaixo **não** deve ser reativado como está: ele chama
+   * `setViewportSize` esperando a tela única num viewport estreito, e desde
+   * AD-198 o layout não é escolhido por largura, e sim pelo tipo de ponteiro
+   * (`any-pointer`) — num Chromium de teste sem toque, estreitar a janela não
+   * monta o wizard. Reativá-lo exigiria reescrevê-lo para o wizard, que é
+   * exatamente o teste que já existe no outro arquivo.
+   *
+   * Mantido como `skip` em vez de removido enquanto a 004 não tiver uma
+   * revisão de quickstart que reaponte o passo 7 para o arquivo da 007 —
+   * apagá-lo agora perderia o rastro entre o requisito e onde ele é provado.
    */
   test.skip('mesmo fluxo de finalização no layout mobile (passo 7, AD-089)', async ({
     page,

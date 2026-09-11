@@ -140,6 +140,31 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
     await expect(page.getByTestId('previa-preco-unitario')).toBeEditable();
   });
+
+  test("produto pesável ('S') escolhido no modal abre a prévia, com preço e desconto travados (AD-223)", async ({
+    page,
+  }) => {
+    // A outra metade da correção de 2026-09-11: o mesmo produto que entra
+    // direto pelo TAB para aqui quando vem do modal. Quem chegou por descrição
+    // ainda não viu o código, e a prévia é onde o pesável é conferido antes de
+    // somar peso ao carrinho.
+    await abrirTelaDeVenda(page);
+    await page.getByTestId('abrir-busca-produto').click();
+    await page.getByTestId('campo-busca-produto').fill('PRODUTO PESAVEL');
+
+    const candidato = page.getByTestId('candidato-produto').filter({ hasText: 'PRODUTO PESAVEL' });
+    await expect(candidato).toBeVisible();
+    await candidato.click();
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('10,00');
+    // `disabled`, não `readOnly`: fora de `'E'` o campo recusa o ponteiro e sai
+    // da navegação por TAB (pedido do usuário, 2026-09-11).
+    await expect(page.getByTestId('previa-preco-unitario')).toBeDisabled();
+    await expect(page.getByTestId('previa-desconto-item')).toBeDisabled();
+    // A quantidade continua ajustável — é o único campo que faz sentido mexer.
+    await expect(page.getByTestId('previa-quantidade')).toBeEnabled();
+  });
 });
 
 test.describe('User Story 2 — inserção direta por código conhecido (T025)', () => {
@@ -237,23 +262,23 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     await expect(campo).toBeFocused();
   });
 
-  test("TAB num produto pesável continua abrindo a revisão (só `''` insere direto)", async ({
+  test('TAB num produto pesável insere direto — a prévia ficou por conta do modal (AD-223)', async ({
     page,
   }) => {
-    // O recorte importa: em produto pesável a quantidade vem do peso, e
-    // inserir `1,000` sozinho lançaria a venda errada.
+    // Correção do usuário (2026-09-11): quem abre a prévia é a **origem**, não
+    // o tipo. O TAB é continuação de um código que o operador já tem em mãos —
+    // a etiqueta bipada ou digitada —, então parar ali repetiria o gesto que o
+    // Enter resolve numa tecla. Antes desta data `'S'`/`'B'` abriam a revisão
+    // nos dois caminhos.
     await abrirTelaDeVenda(page);
 
     const campo = page.getByTestId('campo-codigo-produto');
     await campo.fill(SKU_PESAVEL);
     await campo.press('Tab');
 
-    // A revisão carregou os dados do `GetProduto` — nenhuma linha foi criada.
-    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('10,00');
-    // Fora do `value`, mas na tela: o campo somente-leitura mostra o mesmo
-    // "R$" do editável (`SimboloReal`).
-    await expect(page.getByTestId('previa-preco-unitario-simbolo')).toBeVisible();
-    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    // A barra volta ao estado vazio, pronta para o próximo código.
+    await expect(campo).toHaveValue('');
   });
 
   test('TAB num produto editável continua exigindo revisão (FR-014)', async ({ page }) => {
@@ -269,10 +294,19 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
 
   test('o rótulo do campo de código reflete SessaoUsuario.UsuarioTipoCodigoProduto', async ({
     page,
+    request,
   }) => {
+    // O valor é **configurado no teste**, e não herdado do default, porque o
+    // default (`'R'`) e o `''` produzem o mesmo rótulo: sem variar o campo, o
+    // teste passaria mesmo que o componente tivesse parado de lê-lo.
+    //
+    // A redação anterior dizia "mock configurado com `'D'`" e esperava "Código
+    // de barras". `'D'` vinha do domínio `EnumTipoCodigoProduto`, que AD-204
+    // provou **não** ser a fonte deste campo — os valores reais são
+    // `R`/`''`/`B`/`M`, e `'D'` nem filtra produto no ERP. O mock foi
+    // corrigido; este teste tinha ficado para trás.
+    await configurar(request, { tipoCodigoProduto: 'B' });
     await abrirTelaDeVenda(page);
-
-    // Mock configurado com `'D'` (Código de Barras — domain `EnumTipoCodigoProduto`).
     await expect(page.getByTestId('entrada-rapida-produto')).toContainText('Código de barras');
   });
 

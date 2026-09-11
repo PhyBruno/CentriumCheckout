@@ -177,12 +177,21 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
   });
 
-  test('passo 6: trocar o cliente com carrinho populado reprecifica por SKU', async ({
+  test('passo 6: com o carrinho populado o cliente não pode mais ser trocado (AD-209)', async ({
     page,
     request,
   }) => {
-    // `TipoPreco = 9`: o preço depende da lista do cliente, então trocá-lo
-    // obriga uma nova chamada a `GetProduto` (`research.md` D7).
+    // **Este teste afirmava o oposto até 2026-09-11.** A redação anterior
+    // provava que trocar o cliente com carrinho populado reprecificava por SKU
+    // — comportamento que AD-209 revogou ao fixar a ordem da venda: vendedor e
+    // cliente **antes** do item. A lista de preço do cliente já valeu na
+    // precificação das linhas existentes, então trocá-lo depois deixaria a
+    // venda com preços de duas listas ou obrigaria a recalcular item já
+    // conferido pelo operador. O campo passa a recusar a troca, em vez de
+    // reprecificar.
+    //
+    // `TipoPreco = 9` fica de propósito: é o regime em que o preço depende da
+    // lista do cliente, ou seja, o caso em que a troca seria mais tentadora.
     await configurar(request, { tipoPreco: 9 });
     await abrirTelaDeVenda(page);
 
@@ -192,12 +201,17 @@ test.describe('User Story 1 — localizar cliente (T020)', () => {
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
 
     const antes = await contadores(request);
-    await identificarPorDocumento(page, CPF_CONVENIADO);
-    await expect(page.getByTestId('status-cliente')).toHaveText('CLIENTE CONVENIADO');
+    await expandirCardCliente(page);
 
-    await expect
-      .poll(async () => (await contadores(request)).getProduto)
-      .toBeGreaterThan(antes.getProduto);
+    // Bloqueio explicativo (AD-143): `aria-disabled` com o motivo legível, não
+    // um campo inerte que não diz nada.
+    const documento = page.getByTestId('campo-documento-cliente');
+    await expect(documento).toHaveAttribute('aria-disabled', 'true');
+    await expect(documento).toHaveAttribute('title', /não pode mais ser trocado/);
+
+    // E nenhuma reprecificação disparou por tabela — o contador de `GetProduto`
+    // fica onde estava.
+    expect((await contadores(request)).getProduto).toBe(antes.getProduto);
   });
 
   test('passo 8 (mobile): os passos 2 e 3 funcionam no layout compacto', async ({ page }) => {

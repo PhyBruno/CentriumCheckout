@@ -125,6 +125,15 @@ export interface ConfigMockErp {
    */
   semVendedorDefault: boolean;
   /**
+   * `SessaoUsuario.UsuarioTipoCodigoProduto` — o campo que a empresa configura
+   * e que decide, além do filtro de `GetProduto`, o rótulo da barra de entrada
+   * (`rotuloTipoCodigoProduto`). Configurável porque `''` e `'R'` produzem o
+   * **mesmo** rótulo: sem poder variar o valor, um teste de rótulo só
+   * confirmaria o default e passaria mesmo que a leitura do campo tivesse
+   * sido removida do componente.
+   */
+  tipoCodigoProduto: string;
+  /**
    * `GetCliente` devolve o **SDT parcial** que o ERP real devolve hoje: só
    * `CodCliente`, `PermiteVendaCredito` e `ListaPreco` preenchidos, com
    * `nome`/`cpf`/`celular`/endereço/convênio vazios mesmo para cliente que
@@ -185,6 +194,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
   atrasoPagamentoPixMs: 20_000,
   semVendedorDefault: false,
+  tipoCodigoProduto: 'R',
 };
 
 /**
@@ -1114,7 +1124,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
      * padrão da suíte porque é o código que os E2E digitam; `'B'` e `'M'` são
      * igualmente válidos e agora o `GetProduto` deste mock filtra pelos três.
      */
-    UsuarioTipoCodigoProduto: 'R',
+    UsuarioTipoCodigoProduto: config.tipoCodigoProduto,
     ClienteDefaultCodigo: String(1), // int64
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
