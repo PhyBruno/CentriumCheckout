@@ -6243,5 +6243,54 @@
       "recent_action_kinds": [],
       "recent_queries": []
     }
+  },
+  {
+    "id": "mem:1789125600000",
+    "kind": "fact",
+    "content": "PR 69 mesclado; fix/contrato-erp-real virou fast-forward do master e voltou a compilar",
+    "tags": [
+      "PR-69",
+      "015",
+      "AD-206",
+      "branch",
+      "merge"
+    ],
+    "files": [
+      "src/client/layout/BarraSuperior.tsx",
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": "src/client/layout/BarraSuperior.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:20:00.000000+00:00",
+    "created_epoch": 1789125600,
+    "updated_at": "2026-09-11T11:20:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789125660000",
+    "kind": "decision",
+    "content": "Conflito do context-store se resolve por uniao de entradas, nunca escolhendo um lado",
+    "tags": [
+      "context-store",
+      "merge",
+      "dual-graph"
+    ],
+    "files": [
+      ".dual-graph/context-store.json"
+    ],
+    "file_path": ".dual-graph/context-store.json",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-11T11:21:00.000000+00:00",
+    "created_epoch": 1789125660,
+    "updated_at": "2026-09-11T11:21:00.000000+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   }
 ]
