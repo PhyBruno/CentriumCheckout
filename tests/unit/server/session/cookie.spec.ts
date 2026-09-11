@@ -17,6 +17,7 @@ const sessao: SessaoOperador = {
   password: 'senha-sintetica',
   Repository: '00000000-0000-0000-0000-000000000000',
   codigoEmpresa: '1',
+  usuarioCodigo: '147',
 };
 
 describe('cookie de sessão', () => {

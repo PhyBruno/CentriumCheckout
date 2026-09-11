@@ -9,6 +9,7 @@ import {
   type CifradorDeSessao,
 } from '../session/cookie';
 import { ErroTrocaDeToken, trocarCredenciaisPorToken } from '../session/tokenExchange';
+import { buscarUsuarioCodigo } from '../session/getSessao';
 import {
   COOKIE_ENTRADA,
   PARAM_ERRO_ACESSO,
@@ -102,6 +103,29 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
       );
 
+      // Quem é este operador, segundo o ERP. É a única informação da sessão que
+      // não vem no redirect, e sem ela o BFF não teria com que reescrever o
+      // `UsuarioCodigo` que o navegador manda no retrato da venda (AD-224).
+      const usuarioCodigo = await buscarUsuarioCodigo(
+        {
+          access_token: token.access_token,
+          tenant: query.data.tenant,
+          codigoEmpresa: query.data.codigoEmpresa,
+          username: query.data.username,
+        },
+        { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
+      );
+
+      if (usuarioCodigo === null) {
+        // Sessão sem operador identificado não pode existir: toda NFCe que ela
+        // emitisse sairia sem dizer quem a emitiu. Recusar aqui é o mesmo
+        // desfecho de qualquer outra falha de entrada — e o `GetSessao` que
+        // falhou aqui falharia de novo no bootstrap, então o caixa não abriria
+        // de um jeito ou de outro.
+        request.log.warn('operador não identificado pelo ERP; entrada recusada');
+        return recusarEntrada(reply);
+      }
+
       const cookie = deps.cifrador.cifrar({
         access_token: token.access_token,
         tenant: query.data.tenant,
@@ -111,6 +135,7 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
         password: query.data.password,
         Repository: query.data.Repository,
         codigoEmpresa: query.data.codigoEmpresa,
+        usuarioCodigo,
       });
 
       return (

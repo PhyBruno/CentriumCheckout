@@ -234,8 +234,15 @@ test.describe('Cenário 3 — Isolamento por tenant (FR-009)', () => {
 });
 
 test.describe('Cenário 4 — Falha não-401 no bootstrap (AUTH-07)', () => {
-  test('mostra "Tentar novamente" e não uma tela de login', async ({ page, request }) => {
-    await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusGetSessao: 500 } });
+  // A falha é interceptada em `/api/bootstrap`, e não mais via
+  // `statusGetSessao` do mock: desde AD-224 o `/session/start` **também** chama
+  // `GetSessao`, para gravar o operador no cookie, então derrubar o endpoint
+  // inteiro passou a barrar a entrada antes de existir sessão — e este cenário
+  // é sobre a falha **depois** da entrada, com o operador já dentro (AUTH-07).
+  test('mostra "Tentar novamente" e não uma tela de login', async ({ page }) => {
+    await page.route('**/api/bootstrap', (rota) =>
+      rota.fulfill({ status: 500, body: '{"erro":"indisponível"}' }),
+    );
 
     await page.goto(urlSessionStart());
 
@@ -246,10 +253,29 @@ test.describe('Cenário 4 — Falha não-401 no bootstrap (AUTH-07)', () => {
     await expect(page.locator('input[type="password"]')).toHaveCount(0);
 
     // Restabelecido o ERP, o botão recarrega sem exigir novo login.
-    await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusGetSessao: 200 } });
+    await page.unroute('**/api/bootstrap');
     await botao.click();
 
     await expect(page.getByTestId('tela-de-venda')).toBeVisible();
+  });
+
+  // Contrapartida de AD-224: a mesma falha do ERP, agora **antes** de a sessão
+  // existir, é terminal. Sem `UsuarioCodigo` não há sessão a criar — toda NFCe
+  // que ela emitisse sairia sem dizer quem a emitiu —, e "Tentar novamente"
+  // prometeria uma recuperação que não existe: não há sessão para recarregar.
+  test('ERP fora no momento da entrada recusa a sessão, sem oferecer repetição', async ({
+    page,
+    request,
+  }) => {
+    await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusGetSessao: 500 } });
+
+    await page.goto(urlSessionStart());
+
+    await expect(page.getByText('Acesse o Checkout novamente pelo CentriumWEB.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tentar novamente' })).toHaveCount(0);
+    await expect(page.getByTestId('tela-de-venda')).toHaveCount(0);
+
+    await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusGetSessao: 200 } });
   });
 
   // Correção pedida pelo usuário (2026-09-08): "Tentar novamente" é só para

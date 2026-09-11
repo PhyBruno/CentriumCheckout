@@ -4,6 +4,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import { loadEnv, type Env } from './config/env';
 import { criarCifradorDeSessao } from './session/cookie';
+import { registrarHeadersDeSeguranca } from './plugins/headersSeguranca';
 import { registrarRotaSessionStart } from './routes/session-start';
 import { registrarRotaBootstrap } from './routes/bootstrap';
 import { registrarRotaErpProxy } from './routes/erp-proxy';
@@ -26,6 +27,10 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   });
 
   await app.register(fastifyCookie);
+
+  // Antes de qualquer rota: o hook precisa alcançar também o estático da SPA, o
+  // redirect de `/session/start` e as páginas de erro.
+  registrarHeadersDeSeguranca(app);
 
   // Sonda de readiness — usada pelo Docker e pelo `webServer` do Playwright.
   app.get('/health', async () => ({ status: 'ok' }));

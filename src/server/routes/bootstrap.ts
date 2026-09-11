@@ -8,6 +8,7 @@ import {
 } from '../session/cookie';
 import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
 import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
+import { CAMINHO_GET_SESSAO, queryGetSessao } from '../session/getSessao';
 import { calcularVersionHash } from '../../shared/versionHash';
 import { normalizarEtag } from '../../shared/etag';
 
@@ -32,8 +33,6 @@ export interface BootstrapDeps {
   readonly fetchImpl?: typeof fetch;
 }
 
-const CAMINHO_GET_SESSAO = '/ApiCentriumOAuth/GetSessao';
-
 /**
  * `GET /api/bootstrap` — configuração do ponto de venda (T019, US2).
  *
@@ -55,13 +54,11 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
         sessao,
         {
           caminho: CAMINHO_GET_SESSAO,
-          // `Empresa` vai na query **além** do cabeçalho, como em toda chamada
-          // ao ERP (AD-205) — e **antes** de `Login`, porque o
-          // `Event GetSessao.Before` recorta o login de `Login=` até o fim da
-          // query string: com `Empresa` depois, `&Login` viria `bruno&Empresa=1`
-          // e a sessão voltaria zerada. `URLSearchParams` preserva a ordem de
-          // inserção, então a ordem deste objeto é a ordem enviada.
-          query: { Empresa: sessao.codigoEmpresa, Login: sessao.username },
+          // Caminho e query vivem em `usuarioDaSessao.ts` porque o resolvedor do
+          // operador faz a mesma chamada — e a ordem dos pares é contrato do
+          // ERP, não estética (AD-205). Duas cópias divergiriam no primeiro
+          // ajuste.
+          query: queryGetSessao(sessao),
         },
         { env: deps.env, ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) },
       ),
