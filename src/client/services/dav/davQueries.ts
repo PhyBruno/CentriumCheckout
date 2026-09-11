@@ -20,10 +20,16 @@ import {
   listaDavsOutputSchema,
   type CheckoutFaturarNFCe,
 } from '../../../shared/schemas/dav.schema';
+import { recusaDeNegocio } from '../../../shared/schemas/erpJson';
 import { eventoDavImportado } from '../../domain/auditoria/eventos';
 import type { Centavos } from '../../domain/precificacao/dinheiro';
 import { criarErpClient, type ErpClient } from '../erpClient';
-import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
+import {
+  ErroNegocioErp,
+  ErroRedeErp,
+  ErroRespostaInvalida,
+  ErroSessaoEncerrada,
+} from '../errosErp';
 import type { FonteDocumento } from '../importacao/importarVendaExistente';
 import { ITENS_POR_PAGINA } from '../paginacao';
 
@@ -214,12 +220,28 @@ export async function fetchDav(
     throw new ErroRedeErp();
   }
 
-  const validado = getDavOutputSchema.safeParse(await resposta.json());
+  const corpo: unknown = await resposta.json();
+
+  // A recusa de negócio é lida **antes** da validação, e da raiz: o ERP responde
+  // `200` com o SDT zerado e a razão em `messages[]` (DAV não liberado, em
+  // digitação, inexistente). O schema reprova esse SDT — corretamente, senão a
+  // venda nasceria vazia —, mas a mensagem de fronteira descartava a única frase
+  // que dizia ao operador o que fazer (2026-09-11).
+  const recusa = recusaDeNegocio(corpo);
+  if (recusa !== null) {
+    throw new ErroNegocioErp('GetDav', recusa);
+  }
+
+  const validado = getDavOutputSchema.safeParse(corpo);
   if (!validado.success) {
     throw new ErroRespostaInvalida('GetDav', validado.error.message);
   }
 
-  return validado.data.OutCheckoutFaturarNFCe;
+  // `validado.data` já é o documento: o schema aceita a resposta com ou sem o
+  // envelope `OutCheckoutFaturarNFCe` e entrega sempre o conteúdo interno — o
+  // ERP real só envelopa quando há `messages` (2026-09-11, TSDoc de
+  // `getDavOutputSchema`).
+  return validado.data;
 }
 
 /**

@@ -185,4 +185,34 @@ describe('postClienteOutputSchema e primeiroErroDeNegocio', () => {
   it('recusa um corpo que não é array de mensagens', () => {
     expect(postClienteOutputSchema.safeParse({ mensagem: 'erro' }).success).toBe(false);
   });
+
+  /**
+   * A forma que o ERP real devolve (2026-09-11): as mensagens vêm embrulhadas
+   * em `messages`, nunca como array nu. Com o schema anterior, **toda** chamada
+   * de cadastro reprovava na fronteira contra o ERP real.
+   */
+  it('aceita a recusa embrulhada em messages, como o ERP real devolve', () => {
+    const validado = postClienteOutputSchema.safeParse({
+      messages: [{ Id: '9998', Type: 1, Description: 'CPF do cliente é obrigatório' }],
+    });
+
+    expect(validado.success).toBe(true);
+    expect(primeiroErroDeNegocio(validado.data ?? [])?.Description).toBe(
+      'CPF do cliente é obrigatório',
+    );
+  });
+
+  /**
+   * O sucesso também vem embrulhado, com `Type: 2` e `Description` no formato
+   * `<código gravado> - <nome>` — e não pode ser lido como erro de negócio, sob
+   * pena de recusar um cadastro que o ERP gravou de verdade.
+   */
+  it('aceita o sucesso embrulhado em messages sem tratá-lo como erro', () => {
+    const validado = postClienteOutputSchema.safeParse({
+      messages: [{ Id: '1', Type: 2, Description: '37 - FULANO DE TAL' }],
+    });
+
+    expect(validado.success).toBe(true);
+    expect(primeiroErroDeNegocio(validado.data ?? [])).toBeNull();
+  });
 });

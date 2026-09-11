@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   ErroFaixaSemPreco,
+  ErroProdutoSemPreco,
   ErroTipoPrecoDesconhecido,
+  exigirPrecoDeInsercao,
   resolvePrecoUnitario,
 } from '../../../../src/client/domain/precificacao/tabelaPreco';
 import { snapshotDe, unidades } from '../../../support/precificacao';
@@ -92,6 +94,55 @@ describe('resolvePrecoUnitario — TipoPreco 8 (faixa flat)', () => {
       limiaresFaixaEmUnidades: [5, 0, 0, 0],
     });
 
+    // Quem recusa esse zero é `exigirPrecoDeInsercao`, na entrada do produto:
+    // aqui a função também serve à reprecificação de linha já inserida, e
+    // lançar derrubaria o recálculo de um item que o operador não pode
+    // consertar (pedido do usuário, 2026-09-11).
     expect(resolvePrecoUnitario(8, precoBaseZero, unidades(1))).toBe(0);
+  });
+});
+
+/**
+ * Recusa de produto sem preço na **entrada** (pedido do usuário, 2026-09-11).
+ * Antes disso, só o caminho da balança recusava — e por acidente da divisão
+ * que deriva o peso; digitar o mesmo código criava linha de R$ 0,00 calada.
+ */
+describe('exigirPrecoDeInsercao', () => {
+  it.each(['', 'S', 'B'] as const)(
+    "produto '%s' sem PrecoVenda é recusado antes de virar linha",
+    (pesavelEditavel) => {
+      const semPreco = snapshotDe({ pesavelEditavel, precoBase: 0 });
+
+      expect(() => exigirPrecoDeInsercao(1, semPreco)).toThrow(ErroProdutoSemPreco);
+    },
+  );
+
+  it.each(['', 'S', 'B'] as const)("produto '%s' com preço passa", (pesavelEditavel) => {
+    const comPreco = snapshotDe({ pesavelEditavel, precoBase: 1000 });
+
+    expect(() => exigirPrecoDeInsercao(1, comPreco)).not.toThrow();
+  });
+
+  it.each([0, 1000])(
+    "produto 'E' passa com preço %i — em editável quem decide o preço é o operador",
+    (precoBase) => {
+      // Recusar aqui não protegeria nada: o operador pode alterar o preço de
+      // qualquer forma (`FR-014`), e barrar a entrada só tiraria dele o caso de
+      // uso do tipo — preço definido na hora. Os dois valores estão no teste
+      // porque `'E'` **não** implica cadastro zerado: medido no tenant real
+      // (2026-09-11), 80 dos 191 produtos `'E'` têm `PrecoVenda` > 0.
+      const editavel = snapshotDe({ pesavelEditavel: 'E', precoBase });
+
+      expect(() => exigirPrecoDeInsercao(1, editavel)).not.toThrow();
+    },
+  );
+
+  it('em TipoPreco 8 o piso conferido é PrecoVenda1, não o PrecoVenda', () => {
+    // O preço-base é irrelevante em 8 — quem vale na faixa 1 é `PrecoVenda1`.
+    const faixaUmZerada = snapshotDe({ precoBase: 1000, precosFaixa: [0, 900, 0, 0, 0] });
+    const faixaUmComPreco = snapshotDe({ precoBase: 0, precosFaixa: [1000, 900, 0, 0, 0] });
+
+    expect(() => exigirPrecoDeInsercao(8, faixaUmZerada)).toThrow(ErroProdutoSemPreco);
+    expect(() => exigirPrecoDeInsercao(8, faixaUmComPreco)).not.toThrow();
   });
 });

@@ -37,6 +37,19 @@ export const sessaoUsuarioSchema = z.looseObject({
   EmpresaNomeFantasia: z.string().optional(),
   EmpresaRazaoSocial: z.string().optional(),
   UsuarioNome: z.string().optional(),
+  /**
+   * Operador logado no PDV, enviado como `UsuarioCodigo` no corpo de
+   * `FaturarNFCe`/`ValidarNFCe` (decisão do usuário, 2026-09-11) — é quem
+   * emitiu a nota, e não se confunde com o **vendedor** da venda
+   * (`VendedorCodigo`, feature 012), que o operador troca a qualquer momento.
+   *
+   * Obrigatório, ao contrário dos rótulos acima: o valor vai para dentro do
+   * documento fiscal, e um `?? 0` silencioso gravaria a NFCe sem operador —
+   * defeito que só apareceria na nota emitida. `GetSessao` sempre o devolve
+   * para uma sessão autenticada (confirmado contra o ERP real: `'147281'`,
+   * string, como todo `int64` daquele contrato).
+   */
+  UsuarioCodigo: inteiroErp,
   /** Número do caixa. Minúsculo no contrato do ERP — não é typo. */
   caixa: inteiroErp.optional(),
   CadMaqCod: z.string(),

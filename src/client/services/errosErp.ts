@@ -26,6 +26,31 @@ export class ErroSessaoEncerrada extends Error {
   }
 }
 
+/**
+ * O ERP recusou por regra de negócio, e disse por quê.
+ *
+ * Distinto de `ErroRespostaInvalida`, que vem logo abaixo: ali o ERP respondeu
+ * algo que o Checkout não sabe ler; aqui ele respondeu **exatamente** o que
+ * devia — `200` com o SDT zerado e a razão em `messages[].Description`, o padrão
+ * GeneXus de recusa. Separá-los é o que permite mostrar ao operador "Série é
+ * obrigatório" ou "Pedido Liberado: S, Status Digitação: N" em vez de "formato
+ * inesperado", que era o que ele lia até 2026-09-11 para **toda** recusa de
+ * importação de DAV e de rascunho de NFCe.
+ *
+ * `motivo` é o texto do ERP, íntegro: quem exibe não reescreve nem interpreta
+ * (Constitution III). O Checkout não tenta mapear a frase para uma taxonomia
+ * própria — o conjunto de recusas possíveis é do ERP e muda sem aviso.
+ */
+export class ErroNegocioErp extends Error {
+  constructor(
+    endpoint: string,
+    readonly motivo: string,
+  ) {
+    super(`O ERP recusou a chamada a ${endpoint}: ${motivo}`);
+    this.name = 'ErroNegocioErp';
+  }
+}
+
 /** Resposta que não passou na validação de fronteira (Constitution IV). */
 export class ErroRespostaInvalida extends Error {
   constructor(

@@ -323,6 +323,10 @@ function snapshotDaVendaCorrente(): SnapshotVenda {
     clienteCodigo: venda.clienteAtual?.codigoCliente ?? sessao.ClienteDefaultCodigo,
     // O vendedor **selecionado**, nunca o operador logado (`FR-010` da 012).
     vendedorCodigo: venda.vendedorAtual?.codigo ?? 0,
+    // E o operador logado, no campo que é dele — os dois convivem no mesmo SDT
+    // (correção do usuário, 2026-09-11). Sempre do bootstrap: o operador não
+    // escolhe quem ele é.
+    usuarioCodigo: sessao.UsuarioCodigo,
     condicaoPagamentoCodigo: venda.condicaoSelecionada?.codigo ?? 0,
     eventos: venda.eventos,
   };

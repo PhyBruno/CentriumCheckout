@@ -143,6 +143,7 @@ function registroDeBootstrap() {
     _versionHash: 'hash-teste',
     SessaoUsuario: {
       TipoPreco: 8,
+      UsuarioCodigo: 147,
       CadMaqCod: 'PDV01',
       ListaPrecoDefault: 3,
       CenarioPagamento: '[]',

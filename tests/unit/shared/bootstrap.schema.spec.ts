@@ -8,6 +8,8 @@ function payloadValido(): Record<string, unknown> {
     codigoEmpresa: '1',
     SessaoUsuario: {
       TipoPreco: 1,
+      // Como o ERP real devolve `int64`: string, normalizada por `inteiroErp`.
+      UsuarioCodigo: '147281',
       CadMaqCod: 'PDV01',
       ListaPrecoDefault: 3,
       CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',

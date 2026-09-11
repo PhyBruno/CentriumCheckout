@@ -13,6 +13,7 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import type { CheckoutFaturarNFCe } from '../../../shared/schemas/dav.schema';
+import { recusaDeNegocio } from '../../../shared/schemas/erpJson';
 import {
   carregarNFCeOutputSchema,
   listaNFCesOutputSchema,
@@ -20,7 +21,12 @@ import {
 import { eventoNFCeRecuperada } from '../../domain/auditoria/eventos';
 import type { Centavos } from '../../domain/precificacao/dinheiro';
 import { criarErpClient, type ErpClient } from '../erpClient';
-import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
+import {
+  ErroNegocioErp,
+  ErroRedeErp,
+  ErroRespostaInvalida,
+  ErroSessaoEncerrada,
+} from '../errosErp';
 import type { FonteDocumento } from '../importacao/importarVendaExistente';
 import { ITENS_POR_PAGINA } from '../paginacao';
 
@@ -210,7 +216,18 @@ export async function fetchCarregarNFCe(
     throw new ErroRedeErp();
   }
 
-  const validado = carregarNFCeOutputSchema.safeParse(await resposta.json());
+  const corpo: unknown = await resposta.json();
+
+  // Recusa de negócio lida antes da validação, e da raiz — mesmo tratamento de
+  // `fetchDav`. É o caminho de "Série é obrigatório", que o ERP responde quando
+  // `SessaoUsuario.CadSerieNFCe` vem vazio: o operador precisa ler isso, não
+  // "formato inesperado" (2026-09-11).
+  const recusa = recusaDeNegocio(corpo);
+  if (recusa !== null) {
+    throw new ErroNegocioErp('CarregarNFCe', recusa);
+  }
+
+  const validado = carregarNFCeOutputSchema.safeParse(corpo);
   if (!validado.success) {
     throw new ErroRespostaInvalida('CarregarNFCe', validado.error.message);
   }

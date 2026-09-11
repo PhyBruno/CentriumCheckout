@@ -8,8 +8,13 @@ import Fastify, { type FastifyInstance } from 'fastify';
  * em 2026-09-04 (AD-165) — não o shape "de livro" do YAML/`contracts/`, que
  * diverge em pontos importantes: a maioria dos endpoints de leitura devolve o
  * SDT flat na raiz (sem o envelope `Get<X>Output.<Campo>` que o YAML sugere e
- * sem `messages`); `GetDav`/`FaturarNFCe` são exceção e mantêm envelope +
- * `messages`; campos `double`/muitos `int64` vêm como string JSON, não
+ * sem `messages`). **O envelope não é propriedade de endpoint nenhum**: ele
+ * aparece quando há `messages` a devolver junto, e some quando a coleção está
+ * vazia — `GetDav`, `CarregarNFCe` e `FaturarNFCe` foram vistos nas duas formas
+ * (2026-09-11; AD-165 achava que os dois primeiros sempre envelopavam, o que
+ * valia só para as recusas que a amostra daquele dia continha). `PostCliente`
+ * responde `{"messages":[…]}` inclusive no sucesso. Campos
+ * `double`/muitos `int64` vêm como string JSON, não
  * número; `FormaIntegracaoCartao` vem `" "` (espaço), não `""`;
  * `GetStatusSistema` devolve `{"Status": 0}`, não o inteiro solto. Ver
  * memória do projeto `erp-real-oauth-latencia` para o levantamento completo.
@@ -119,6 +124,28 @@ export interface ConfigMockErp {
    * nasce sem vendedor e exige seleção manual.
    */
   semVendedorDefault: boolean;
+  /**
+   * `SessaoUsuario.UsuarioTipoCodigoProduto` — o campo que a empresa configura
+   * e que decide, além do filtro de `GetProduto`, o rótulo da barra de entrada
+   * (`rotuloTipoCodigoProduto`). Configurável porque `''` e `'R'` produzem o
+   * **mesmo** rótulo: sem poder variar o valor, um teste de rótulo só
+   * confirmaria o default e passaria mesmo que a leitura do campo tivesse
+   * sido removida do componente.
+   */
+  tipoCodigoProduto: string;
+  /**
+   * `GetCliente` devolve o **SDT parcial** que o ERP real devolve hoje: só
+   * `CodCliente`, `PermiteVendaCredito` e `ListaPreco` preenchidos, com
+   * `nome`/`cpf`/`celular`/endereço/convênio vazios mesmo para cliente que
+   * existe (medido ao vivo 2026-09-11 em quatro clientes, por documento e por
+   * código; os mesmos clientes vêm completos em `GetListaClientes`).
+   *
+   * **Desligado por padrão**: o defeito é do procedure do ERP e o Checkout já o
+   * trata como tal (`ErroClienteIncompleto`, AD-204), então a suíte das features
+   * 005/006/011 continua afirmando o contrato prometido. Ligue para exercitar a
+   * recusa — é o único jeito de esse caminho aparecer em teste.
+   */
+  getClienteSemCadastro: boolean;
 }
 
 export interface ContadoresMockErp {
@@ -154,6 +181,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   faturarSemNotaFiscal: false,
   faturarNFCeRejeitada: false,
   davJaFaturado: false,
+  getClienteSemCadastro: false,
   pixAtivo: true,
   /**
    * R$ 5,00 — piso realista e **abaixo** do total de qualquer cenário que
@@ -166,6 +194,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
   atrasoPagamentoPixMs: 20_000,
   semVendedorDefault: false,
+  tipoCodigoProduto: 'R',
 };
 
 /**
@@ -427,22 +456,28 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
  */
 const VENDEDORES: readonly Record<string, unknown>[] = [
   {
-    VendedorCodigo: String(21), // int64
+    // `VendedorCodigo` vem **número** nativo, ao contrário do `ClienteCodigo`
+    // de `GetListaClientes`, que vem string — os dois são `int64` no YAML e o
+    // ERP serializa cada um de um jeito (medido ao vivo 2026-09-11).
+    VendedorCodigo: 21,
     VendedorNome: 'Mariana Alves',
     VendedorCGC: '000.111.222-33',
-    VendedorFone: '55 47 99900-0021',
+    // Formato real: `(DD)9999-9999`, e um cadastro pode trazer dois números
+    // separados por `/` no mesmo campo.
+    VendedorFone: '(47)99900-0021',
   },
   {
-    VendedorCodigo: String(14), // int64
+    VendedorCodigo: 14,
     VendedorNome: 'Marcos Pereira',
     VendedorCGC: '111.222.333-44',
-    VendedorFone: '55 47 99900-0014',
+    VendedorFone: '(47)3274-4301/4302',
   },
   {
-    VendedorCodigo: String(8), // int64
+    VendedorCodigo: 8,
     VendedorNome: 'Marta Souza',
-    VendedorCGC: '222.333.444-55',
-    VendedorFone: '55 47 99900-0008',
+    // Um cadastro sem documento e sem telefone: o ERP devolve os dois vazios.
+    VendedorCGC: '',
+    VendedorFone: '',
   },
 ];
 
@@ -453,7 +488,11 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     nome: 'CLIENTE VAREJO',
     cpf: '12298023980',
     email: 'varejo@example.test',
-    celular: '55 47 99988-2100',
+    // Formato que o ERP devolve de fato: `(DD)99999-9999`, sem código de país
+    // e sem espaço depois do DDD (medido ao vivo 2026-09-11 em toda a lista de
+    // clientes do tenant). Um cadastro pode vir só em dígitos — é o que o
+    // `CLIENTE SEM DOCUMENTO` abaixo reproduz.
+    celular: '(47)99988-2100',
     cep: '89000000',
     endereco: 'Rua Exemplo',
     bairro: 'Centro',
@@ -472,7 +511,7 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     nome: 'CLIENTE CONVENIADO',
     cpf: '89554068000',
     email: 'conveniado@example.test',
-    celular: '55 47 92238-670',
+    celular: '(47)92238-6700',
     cep: '78550000',
     endereco: 'Avenida Exemplo',
     bairro: 'Jardim',
@@ -510,7 +549,8 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     nome: 'CLIENTE SEM DOCUMENTO',
     cpf: '',
     email: '',
-    celular: '55 47 90000-3100',
+    // Só dígitos, sem máscara: as duas formas convivem no mesmo tenant real.
+    celular: '47900003100',
     cep: '89000000',
     endereco: 'Rua Sem Documento',
     bairro: 'Centro',
@@ -530,7 +570,7 @@ const CLIENTES: Record<string, Record<string, unknown>> = {
     CliTip: 'J',
     cpf: '52059715000113',
     email: 'nilmaq@example.test',
-    celular: '14 9119-8027',
+    celular: '(14)9119-8027',
     cep: '83300000',
     endereco: 'Rodovia Exemplo',
     bairro: 'Distrito',
@@ -734,6 +774,288 @@ function quitacaoDoRascunho(documento: Record<string, unknown>): Record<string, 
 }
 
 /**
+ * Resposta de lista paginada no dialeto **real** do `ApiCentriumOAuth`,
+ * reconferido endpoint a endpoint ao vivo em 2026-09-11 (`GetListaClientes`,
+ * `GetListaVendedores`, `GetListaProdutos`, `ListaDAVs`, `GetListaNFCes`).
+ *
+ * Três regras que o mock não seguia, e cada uma esconde um caminho de produção:
+ *
+ * 1. **O array vem primeiro**, antes de `PaginaAtual`. Irrelevante para um
+ *    `JSON.parse`, mas é o que o ERP emite — e manter a ordem mantém a
+ *    comparação byte a byte com uma captura real possível.
+ * 2. **Busca sem resultado OMITE a chave do array** — não devolve `[]`. Este é
+ *    o achado que motivou a rodada: `checkoutListaClientesSchema` exige
+ *    `Clientes` (e os irmãos exigem `Produtos`/`Vendedores`/`DAV`/`Rascunho`),
+ *    então contra o ERP real **toda busca sem resultado reprovava na fronteira**
+ *    e o operador via erro de resposta inválida em vez de "nenhum encontrado".
+ *    Com `Clientes: []` no mock, nenhum E2E jamais passou por esse caminho.
+ * 3. **`TotalPaginas` é `0`** quando não há registro — não `1`. O mock forçava
+ *    `Math.max(1, …)` e nunca produzia o zero real.
+ *
+ * `PaginaAtual`/`RegistrosPorPagina`/`TotalRegistros`/`TotalPaginas` vêm como
+ * número nativo (`int32`), ao contrário dos campos de negócio do item.
+ */
+function respostaPaginada(
+  chaveDoArray: string,
+  itens: readonly unknown[],
+  query: { Pagina?: string; Tamanhopagina?: string },
+): Record<string, unknown> {
+  const registrosPorPagina = Math.max(1, Number(query.Tamanhopagina) || 20);
+  const totalPaginas = Math.ceil(itens.length / registrosPorPagina);
+  const paginaPedida = Math.max(1, Number(query.Pagina) || 1);
+  const paginaAtual = Math.min(paginaPedida, Math.max(1, totalPaginas));
+  const inicio = (paginaAtual - 1) * registrosPorPagina;
+  const pagina = itens.slice(inicio, inicio + registrosPorPagina);
+
+  return {
+    // Chave do array primeiro, e **ausente** quando a página é vazia.
+    ...(pagina.length > 0 ? { [chaveDoArray]: pagina } : {}),
+    PaginaAtual: paginaAtual,
+    RegistrosPorPagina: registrosPorPagina,
+    TotalRegistros: itens.length,
+    TotalPaginas: totalPaginas,
+  };
+}
+
+/**
+ * `SDTCheckout_GetProduto` completo, na ordem e nos tipos que `GetProduto`
+ * devolve de fato (medido ao vivo 2026-09-11 em três produtos do tenant).
+ *
+ * Oito campos que as fixtures não declaravam e o ERP **sempre** manda:
+ * `PrecoMinimo`, `Estoque`, `CodigoGrupo`/`DescricaoGrupo`,
+ * `CodigoSubgrupo`/`DescricaoSubgrupo`, `Aplicacao` e `GTINTributavel`. Cada
+ * fixture pode sobrescrever o que interessar ao seu cenário; o resto recebe o
+ * default do catálogo de demonstração.
+ *
+ * Tipos observados: preço e `Estoque` (`double`) vêm **string** (`"1.0000"`,
+ * `"-205.000"`), `CodigoGrupo`/`CodigoSubgrupo`/`QtdMinimaPreco2..5` vêm
+ * **número** — o mock mandava `QtdMinimaPreco*` como string.
+ */
+function produtoComoOErpResponde(produto: Record<string, unknown>): Record<string, unknown> {
+  return {
+    CodigoProduto: produto['CodigoProduto'],
+    Descricao: produto['Descricao'],
+    Referencia: produto['Referencia'],
+    CodigoBarras: produto['CodigoBarras'],
+    PrecoVenda: produto['PrecoVenda'],
+    PrecoVenda1: produto['PrecoVenda1'],
+    PrecoVenda2: produto['PrecoVenda2'],
+    PrecoVenda3: produto['PrecoVenda3'],
+    PrecoVenda4: produto['PrecoVenda4'],
+    PrecoVenda5: produto['PrecoVenda5'],
+    PrecoMinimo: produto['PrecoMinimo'] ?? '0.0000',
+    Estoque: produto['Estoque'] ?? '10.000',
+    CodigoGrupo: produto['CodigoGrupo'] ?? 1, // int32 — número nativo
+    DescricaoGrupo: produto['DescricaoGrupo'] ?? 'GRUPO 1',
+    CodigoSubgrupo: produto['CodigoSubgrupo'] ?? 1, // int32
+    DescricaoSubgrupo: produto['DescricaoSubgrupo'] ?? 'GERAL',
+    Aplicacao: produto['Aplicacao'] ?? '',
+    GTINTributavel: produto['GTINTributavel'] ?? '',
+    QtdMinimaPreco2: Number(produto['QtdMinimaPreco2'] ?? 0),
+    QtdMinimaPreco3: Number(produto['QtdMinimaPreco3'] ?? 0),
+    QtdMinimaPreco4: Number(produto['QtdMinimaPreco4'] ?? 0),
+    QtdMinimaPreco5: Number(produto['QtdMinimaPreco5'] ?? 0),
+    UDM: produto['UDM'],
+    ProdutoPesavelEditavel: produto['ProdutoPesavelEditavel'],
+  };
+}
+
+/** SDT de produto **inteiramente zerado** — a resposta de "não achei". */
+const PRODUTO_INEXISTENTE: Record<string, unknown> = {
+  CodigoProduto: '',
+  Descricao: '',
+  Referencia: '',
+  CodigoBarras: '',
+  PrecoVenda: '0.0000',
+  PrecoVenda1: '0.0000',
+  PrecoVenda2: '0.0000',
+  PrecoVenda3: '0.0000',
+  PrecoVenda4: '0.0000',
+  PrecoVenda5: '0.0000',
+  PrecoMinimo: '0.0000',
+  Estoque: '0.000',
+  CodigoGrupo: 0,
+  DescricaoGrupo: '',
+  CodigoSubgrupo: 0,
+  DescricaoSubgrupo: '',
+  Aplicacao: '',
+  GTINTributavel: '',
+  QtdMinimaPreco2: 0,
+  QtdMinimaPreco3: 0,
+  QtdMinimaPreco4: 0,
+  QtdMinimaPreco5: 0,
+  UDM: '',
+  ProdutoPesavelEditavel: '',
+};
+
+/**
+ * O item de `GetListaProdutos`: o produto **menos** `PrecoVenda`, `PrecoMinimo`
+ * e `ProdutoPesavelEditavel`.
+ *
+ * A leitura anterior — "a lista não traz preço nenhum" (AD-091) — era mais
+ * forte do que a realidade: a lista traz `PrecoVenda1..5`, `Estoque` e os
+ * grupos; o que ela **não** traz são exatamente os três campos acima
+ * (2026-09-11). A conclusão prática de AD-091 não muda (a linha do carrinho não
+ * pode ser montada daqui, porque o preço aplicado e a pesagem/edição vêm nos
+ * campos ausentes), mas o mock estava escondendo dez campos que o ERP publica.
+ */
+const CAMPOS_FORA_DA_LISTA = ['PrecoVenda', 'PrecoMinimo', 'ProdutoPesavelEditavel'];
+
+function itemDaListaDeProdutos(produto: Record<string, unknown>): Record<string, unknown> {
+  const completo = produtoComoOErpResponde(produto);
+  const item = Object.fromEntries(
+    Object.entries(completo).filter(([campo]) => !CAMPOS_FORA_DA_LISTA.includes(campo)),
+  );
+  return item;
+}
+
+/** Só os dígitos — como o ERP compara documento (`57627754968`). */
+function digitos(valor: string): string {
+  return valor.replace(/\D/g, '');
+}
+
+/**
+ * CPF **com máscara**, do jeito que `GetListaClientes` devolve
+ * (`"576.277.549-68"`, confirmado ao vivo 2026-09-11).
+ *
+ * O mock devolvia dígitos crus, e por isso nenhum teste jamais exercitou o
+ * caminho em que o `CPF` do candidato escolhido no modal volta formatado e
+ * precisa ser normalizado antes de ir em `GetCliente` — que é justamente onde o
+ * ERP real recusa a máscara (ver o handler de `GetCliente`).
+ */
+function cpfComMascara(cpf: string): string {
+  const cru = digitos(cpf);
+  if (cru.length !== 11) {
+    return cpf;
+  }
+  return `${cru.slice(0, 3)}.${cru.slice(3, 6)}.${cru.slice(6, 9)}-${cru.slice(9)}`;
+}
+
+/**
+ * `ClienteCheckout` do jeito que `GetCliente` **de fato responde**, medido ao
+ * vivo em 2026-09-11 contra quatro clientes diferentes do ERP (`CodCliente` 1,
+ * 8, 17 e 999999, por documento e por código, todos com o mesmo desfecho).
+ *
+ * **O ERP preenche três campos e só três**: `CodCliente`,
+ * `PermiteVendaCredito` e `ListaPreco`. `nome`, `cpf`, `email`, `celular`, o
+ * endereço inteiro, `LimiteCredito` e os três de convênio voltam vazios/zerados
+ * mesmo para cliente que existe e que `GetListaClientes` devolve completo —
+ * `Empresa` inclusive, que volta `0` e não o `1` consultado.
+ *
+ * Isto contradiz `specs/005-…/contracts/erp-cliente-api.md`, que documenta o
+ * SDT completo — e `clienteQueries.ts` já trata o SDT parcial como **defeito do
+ * ERP** a corrigir no procedure (AD-204), recusando a associação com
+ * `ErroClienteIncompleto` em vez de pôr na venda um cliente sem nome.
+ *
+ * Por isso os **dois modos**, e não só o real (decisão do usuário, 2026-09-11):
+ *
+ * - `getClienteSemCadastro: false` (**padrão**) — cadastro completo, o que o
+ *   contrato promete e o que a suíte das features 005/006/011 afirma. É o ERP
+ *   com o procedure corrigido.
+ * - `getClienteSemCadastro: true` — o SDT parcial, exatamente como o ERP
+ *   responde hoje. É o que faz o caminho de recusa aparecer em teste, coisa que
+ *   nunca acontecia enquanto o mock devolvia o cadastro inteiro sempre.
+ *
+ * Os tipos são os reais nos dois modos, e não os do YAML: `Empresa`/
+ * `CodCliente`/`CodigoConvenio`/`DescontoConvenio`/`ListaPreco` vêm **número**
+ * nativo, e `LimiteCredito` (`double`) vem **string** `"0.00"` — dois `double`
+ * no mesmo SDT com serialização diferente.
+ */
+function clienteComoOErpResponde(
+  cliente: Record<string, unknown> | undefined,
+  semCadastro: boolean,
+): Record<string, unknown> {
+  // Existe = o `For Each` achou o registro. O único sinal disso na resposta é
+  // `CodCliente > 0`, e vale nos dois modos.
+  const achou = cliente !== undefined;
+  // No modo defeituoso, tudo o que não é `CodCliente`/`PermiteVendaCredito`/
+  // `ListaPreco` vem vazio, exista o cliente ou não.
+  const doCadastro = (campo: string): string =>
+    achou && !semCadastro ? String(cliente[campo] ?? '') : '';
+
+  return {
+    Empresa: achou && !semCadastro ? Number(cliente['Empresa']) : 0,
+    CodCliente: Number(cliente?.['CodCliente'] ?? 0),
+    nome: doCadastro('nome'),
+    // Dígitos crus: o formato do `cpf` **neste** endpoint não é observável (vem
+    // sempre vazio no ERP de hoje), então fica como estava — inventar a máscara
+    // de `GetListaClientes` aqui seria afirmar o que não foi medido.
+    cpf: doCadastro('cpf'),
+    email: doCadastro('email'),
+    celular: doCadastro('celular'),
+    cep: doCadastro('cep'),
+    endereco: doCadastro('endereco'),
+    bairro: doCadastro('bairro'),
+    numero: doCadastro('numero'),
+    cidade: doCadastro('cidade'),
+    uf: doCadastro('uf'),
+    LimiteCredito: '0.00', // double — string, ao contrário de `DescontoConvenio`
+    PermiteVendaCredito: achou,
+    CodigoConvenio: achou && !semCadastro ? Number(cliente['CodigoConvenio']) : 0, // int32
+    NomeConvenio: doCadastro('NomeConvenio'),
+    // double — **número**, ao contrário de `LimiteCredito`, que vem string.
+    DescontoConvenio: achou && !semCadastro ? Number(cliente['DescontoConvenio']) : 0,
+    ListaPreco: achou ? Number(cliente['ListaPreco']) : 0,
+  };
+}
+
+/**
+ * `SessaoUsuario` zerado — a resposta de `GetSessao` sem o cabeçalho `Empresa`.
+ *
+ * São 21 campos, exatamente estes: os três blocos ricos
+ * (`CondicoesDePagamento`, `ConfiguracoesTEF`, `ConfiguracoesPIX`) **não
+ * aparecem** nesse caminho (medido ao vivo 2026-09-11).
+ */
+const SESSAO_ZERADA: Record<string, unknown> = {
+  UsuarioCodigo: String(0),
+  UsuarioNome: '',
+  caixa: String(0),
+  EmpresaRazaoSocial: '',
+  EmpresaNomeFantasia: '',
+  VendedorCodigo: String(0),
+  VendedorNome: '',
+  ClienteDefaultCodigo: String(0),
+  ClienteDefaultNome: '',
+  UsuarioTipoCodigoProduto: '',
+  Cliente_UtilizaSegundoNivelDeEnderecos: '',
+  CadMaqCod: '',
+  CadMaqHost: '',
+  CadSerieNFCe: '',
+  QtdMinCharParaConsulta: String(0),
+  TipoPreco: 0,
+  ListaPrecoDefault: 0,
+  TipoImpressao: '',
+  CenarioPagamento: '',
+  ImagemLogoBase64: '',
+  ImagemDisplaySecundarioBase64: '',
+};
+
+/** Texto real do ERP quando falta o cabeçalho `Empresa` (2026-09-11). */
+export const MENSAGEM_CABECALHO_EMPRESA_OBRIGATORIO = 'Cabeçalho de Empresa é obrigatório';
+
+/**
+ * `GetCliente`/`GetSessao` exigem `Empresa` **no cabeçalho** da requisição, não
+ * na query (AD-205), e quando ele falta a resposta muda de forma: volta **com o
+ * envelope** do YAML (`Cliente`/`SessaoUsuario`) mais `messages`, com o SDT
+ * zerado — confirmado ao vivo 2026-09-11. É o inverso do caso de sucesso, que
+ * vem flat e sem `messages`.
+ *
+ * As listas (`GetListaClientes`, `GetListaVendedores`) também dependem do
+ * cabeçalho, mas falham **em silêncio**: `200`, `TotalRegistros: 0` e nenhuma
+ * `messages` — não há como distinguir "nada encontrado" de "cabeçalho ausente".
+ */
+function semCabecalhoEmpresa(headers: Record<string, unknown>): boolean {
+  return String(headers['empresa'] ?? '').trim() === '';
+}
+
+function envelopeCabecalhoObrigatorio(chave: string, sdtZerado: unknown): Record<string, unknown> {
+  return {
+    [chave]: sdtZerado,
+    messages: [{ Id: '9999', Type: 0, Description: MENSAGEM_CABECALHO_EMPRESA_OBRIGATORIO }],
+  };
+}
+
+/**
  * `GetSessao` real devolve `SessaoUsuario` **direto na raiz**, sem envelope
  * nem `messages` — confirmado ao vivo em 2026-09-04 contra o ERP real
  * (`c0lj6mvzeh.apps.centrium.inf.br`): a procedure só tem um output de
@@ -752,7 +1074,16 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     caixa: String(3), // int64
     TipoPreco: config.tipoPreco, // int32 — número nativo
     CadMaqCod: config.cadMaqCod,
-    ListaPrecoDefault: String(3), // int64
+    /**
+     * Campo que o mock não declarava e o `GetSessao` real **sempre** devolve
+     * (2026-09-11): `'S'` quando o tenant guarda endereço em registro separado,
+     * vazio quando guarda no próprio cliente. Vazio aqui, como no tenant medido.
+     */
+    Cliente_UtilizaSegundoNivelDeEnderecos: '',
+    // `int32` — número nativo. O mock mandava string, misturando-o com os
+    // `int64` da mesma resposta (`ClienteDefaultCodigo`, `caixa`), que de fato
+    // vêm string. Medido ao vivo: `"TipoPreco":5,"ListaPrecoDefault":1`.
+    ListaPrecoDefault: 3,
     /**
      * Catálogo de cenários de venda rápida (feature 013, AD-104): array JSON de
      * strings com sete campos posicionais separados por `;`, exatamente como
@@ -780,11 +1111,20 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       '2;CARTAO CREDITO;1;A VISTA;Crédito à vista;False;',
     ]),
     QtdMinCharParaConsulta: String(3), // int64
-    // Domain `EnumTipoCodigoProduto` da KB GeneXus (`ControlValues`):
-    // `''`→Código Reduzido, `'D'`→Código de Barras, `'C'`→Referência,
-    // `'P'`→Codigo de Barra Pesavel. `'D'` aqui é só o cenário padrão dos
-    // testes — não é o único valor válido.
-    UsuarioTipoCodigoProduto: 'D',
+    /**
+     * Os valores que o ERP publica neste campo são `'R'`/`''` (código
+     * reduzido), `'B'` (código de barras) e `'M'` (referência) — os mesmos três
+     * que `GetProduto` sabe filtrar em `Tipocodproduto` (AD-204/AD-205); um
+     * tenant real devolve `'B'`.
+     *
+     * **`'D'`, que estava aqui, não existe.** Com ele o `For Each` do ERP não
+     * filtra por campo nenhum e a resposta é o primeiro produto da empresa
+     * (reproduzido ao vivo em 2026-09-11 com `Tipocodproduto=D`), além de o
+     * rótulo da barra cair no genérico "Código do produto". `'R'` é o cenário
+     * padrão da suíte porque é o código que os E2E digitam; `'B'` e `'M'` são
+     * igualmente válidos e agora o `GetProduto` deste mock filtra pelos três.
+     */
+    UsuarioTipoCodigoProduto: config.tipoCodigoProduto,
     ClienteDefaultCodigo: String(1), // int64
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
@@ -800,6 +1140,18 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     // (`specs/004-.../contracts/impressao-local-api.md`).
     CadMaqHost: '127.0.0.1:4545',
     TipoImpressao: config.tipoImpressao,
+    /**
+     * Logo da empresa e imagem de repouso do display do cliente, em base64 **sem
+     * prefixo `data:`** — dois campos que o `GetSessao` real sempre devolve
+     * (PNG de ~44 KB e ~34 KB no tenant medido em 2026-09-11) e que este mock
+     * não declarava. Nenhum consumidor no Checkout os lê hoje; o PNG 1×1
+     * transparente abaixo existe para que a forma da resposta seja a real e para
+     * que a feature 015 tenha de onde ler quando for exibir a marca.
+     */
+    ImagemLogoBase64:
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    ImagemDisplaySecundarioBase64:
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     /**
      * Catálogo de pagamento da feature 008. **Não existe endpoint dedicado**
      * (AD-097): condições e formas chegam embutidas na sessão, e é daqui que
@@ -825,14 +1177,20 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       {
         CondicaoCodigo: String(1), // int64
         CondicaoDescricao: 'A VISTA',
-        CondicaoPrazo: String(0), // double
-        CondicaoMinimoEntrada: String(0), // double
-        CondicaoDesconto: String(0), // double
-        CondicaoDescontoMaximo: String(0), // double
+        // `double` com **cinco decimais** na string, como o ERP serializa
+        // (`"0.00000"`, `"20.00000"`) — o mock mandava `"0"`/`"20"`.
+        CondicaoPrazo: '0.00000',
+        CondicaoMinimoEntrada: '0.00000',
+        CondicaoDesconto: '0.00000',
+        CondicaoDescontoMaximo: '0.00000',
         CondicaoFormasDePagamento: [
           {
             FormaCodigo: String(1), // int64
-            FormaDescricao: 'DINHEIRO',
+            // **`"<código> - <DESCRIÇÃO>"`**: o ERP devolve `"1 - DINHEIRO"`,
+            // com o código repetido no rótulo (medido ao vivo 2026-09-11 no
+            // catálogo inteiro do tenant). O mock mandava só a descrição, então
+            // nenhuma tela jamais foi vista com o prefixo que produção manda.
+            FormaDescricao: '1 - DINHEIRO',
             FormaEntrada: 'S',
             FormaMeioPagtoNFe: '01',
             // Real: vem `" "` (espaço), nao `""`, pra toda forma deste
@@ -846,7 +1204,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             // integração roteia para TEF (feature 010); sem ele, vira
             // pagamento manual — nunca a janela do ticket.
             FormaCodigo: String(2), // int64
-            FormaDescricao: 'CARTAO CREDITO',
+            FormaDescricao: '2 - CARTAO CREDITO',
             FormaEntrada: 'N',
             FormaMeioPagtoNFe: '03',
             FormaIntegracaoCartao: '1',
@@ -859,7 +1217,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             // vez do campo de valor. Tickets válidos em `TICKETS_DEVOLUCAO` —
             // `VALE10` fecha uma venda do produto `001234` sem excedente.
             FormaCodigo: String(4), // int64
-            FormaDescricao: 'VALE DEVOLUCAO',
+            FormaDescricao: '4 - VALE DEVOLUCAO',
             FormaEntrada: 'N',
             FormaMeioPagtoNFe: '99',
             FormaIntegracaoCartao: ' ',
@@ -868,7 +1226,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
           },
           {
             FormaCodigo: String(3), // int64
-            FormaDescricao: 'PIX',
+            FormaDescricao: '3 - PIX',
             FormaEntrada: 'S',
             FormaMeioPagtoNFe: '17',
             FormaIntegracaoCartao: ' ',
@@ -877,7 +1235,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
           },
           {
             FormaCodigo: String(5), // int64
-            FormaDescricao: 'CARTAO DEBITO',
+            FormaDescricao: '5 - CARTAO DEBITO',
             FormaEntrada: 'N',
             FormaMeioPagtoNFe: '04',
             FormaIntegracaoCartao: '1',
@@ -890,7 +1248,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             // mesmo combobox, a forma que abre a janela de QR Code e a que não
             // abre.
             FormaCodigo: String(6), // int64
-            FormaDescricao: 'PIX ESTATICO',
+            FormaDescricao: '6 - PIX ESTATICO',
             FormaEntrada: 'S',
             FormaMeioPagtoNFe: '20',
             FormaIntegracaoCartao: ' ',
@@ -899,7 +1257,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
           },
           {
             FormaCodigo: String(7), // int64
-            FormaDescricao: 'VALE ALIMENTACAO',
+            FormaDescricao: '7 - VALE ALIMENTACAO',
             FormaEntrada: 'N',
             FormaMeioPagtoNFe: '10',
             FormaIntegracaoCartao: '2',
@@ -925,14 +1283,22 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
          */
         CondicaoCodigo: String(2), // int64
         CondicaoDescricao: '30 DIAS',
-        CondicaoPrazo: String(30), // double
-        CondicaoMinimoEntrada: String(20), // double
-        CondicaoDesconto: String(0), // double
-        CondicaoDescontoMaximo: String(5), // double
+        /**
+         * **`CondicaoPrazo` é número de parcelas, não dias.** No catálogo real:
+         * `'30 DIAS'` → `"1.00000"`, `'2 VEZES'` → `"2.00000"`,
+         * `'30/60/90/120 DIAS'` → `"4.00000"`, `'1+5 VEZES'` → `"5.00000"`
+         * (medido ao vivo 2026-09-11 nas 62 condições do tenant). O mock
+         * mandava `30` para esta condição, o que só faz sentido na leitura "em
+         * dias" — que o ERP não sustenta.
+         */
+        CondicaoPrazo: '1.00000',
+        CondicaoMinimoEntrada: '20.00000',
+        CondicaoDesconto: '0.00000',
+        CondicaoDescontoMaximo: '5.00000',
         CondicaoFormasDePagamento: [
           {
             FormaCodigo: String(8), // int64
-            FormaDescricao: 'BOLETO 30 DIAS',
+            FormaDescricao: '8 - BOLETO 30 DIAS',
             FormaEntrada: 'S',
             FormaMeioPagtoNFe: '15',
             FormaIntegracaoCartao: ' ',
@@ -941,7 +1307,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
           },
           {
             FormaCodigo: String(9), // int64
-            FormaDescricao: 'CREDIARIO LOJA',
+            FormaDescricao: '9 - CREDIARIO LOJA',
             FormaEntrada: 'S',
             FormaMeioPagtoNFe: '05',
             FormaIntegracaoCartao: ' ',
@@ -950,7 +1316,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
           },
           {
             FormaCodigo: String(10), // int64
-            FormaDescricao: 'DUPLICATA MERCANTIL',
+            FormaDescricao: '10 - DUPLICATA MERCANTIL',
             FormaEntrada: 'N',
             FormaMeioPagtoNFe: '14',
             FormaIntegracaoCartao: ' ',
@@ -973,11 +1339,34 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
      * aqui faria toda venda quitada por PIX nas demais suítes passar a depender
      * de um QR Code e de uma sondagem de 10s.
      */
-    ConfiguracoesTEF: { TEFAtivo: false },
+    /**
+     * Os dois SDTs de configuração têm mais campos do que o mock declarava —
+     * sete a mais em TEF e dois a mais em PIX, todos presentes em **toda**
+     * resposta real (medido ao vivo 2026-09-11). O Checkout hoje só lê
+     * `TEFAtivo`/`UtilizaCentriumPAG`/`MinimoPix`/`TempoEspera`, mas publicar a
+     * forma inteira é o que impede um consumidor novo de descobrir na produção
+     * que o campo existia.
+     *
+     * `TEFAtivo` é o único booleano do bloco; os numéricos vêm string (`"0"`).
+     */
+    ConfiguracoesTEF: {
+      TEFempresaAutomacao: '',
+      TEFcapAutomacao: String(0), // int64
+      TEFversaoInterface: String(0), // int64
+      TEFnomeAutomacao: '',
+      TEFversaoAutomacao: '',
+      TEFregistroCertificacao: '',
+      TEFVersaoImpressao: String(0), // int64
+      TEFAtivo: false,
+    },
     ConfiguracoesPIX: {
       UtilizaCentriumPAG: config.pixAtivo,
-      MinimoPix: String(config.minimoPix), // double
+      // `double` com cinco decimais, como as condições.
+      MinimoPix: config.minimoPix.toFixed(5),
       TempoEspera: String(10), // int64
+      // `''` ou `'S'`, como todo flag de caractere deste contrato.
+      UtilizaEncurtador: '',
+      UtilizaLinkExterno: 'S',
     },
   };
 }
@@ -1072,17 +1461,26 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     });
   });
 
-  app.get('/ApiCentriumOAuth/GetSessao', async (_request, reply) => {
+  app.get('/ApiCentriumOAuth/GetSessao', async (request, reply) => {
     contadores.getSessao += 1;
 
     if (config.statusGetSessao !== 200) {
       return reply.code(config.statusGetSessao).send({ error: 'falha simulada' });
     }
 
+    // Sem o cabeçalho `Empresa` a resposta troca de forma: volta **com** o
+    // envelope `SessaoUsuario` e `messages`, e o SDT zerado — e nem
+    // `CondicoesDePagamento` nem os dois blocos de configuração aparecem
+    // (medido ao vivo 2026-09-11). O `chamadaAutenticada` do BFF sempre manda o
+    // cabeçalho, então este é o caminho de quem chama o ERP por fora.
+    if (semCabecalhoEmpresa(request.headers)) {
+      return reply.send(envelopeCabecalhoObrigatorio('SessaoUsuario', SESSAO_ZERADA));
+    }
+
     return reply.send(payloadGetSessao(config));
   });
 
-  app.get<{ Querystring: { Codigoproduto?: string } }>(
+  app.get<{ Querystring: { Codigoproduto?: string; Tipocodproduto?: string } }>(
     '/ApiCentriumOAuth/GetProduto',
     async (request, reply) => {
       contadores.negocio += 1;
@@ -1093,14 +1491,36 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply.code(401).send({ error: 'token expirado' });
       }
 
-      const produto = CATALOGO[request.query.Codigoproduto ?? ''];
-      if (produto === undefined) {
-        return reply.code(404).send({ error: 'produto não encontrado' });
-      }
+      // **`Tipocodproduto` escolhe o campo filtrado**, e o mock ignorava isso:
+      // buscava sempre pela chave do catálogo (o reduzido). Ao vivo (2026-09-11)
+      // `'B'` filtra por código de barras, `'R'`/`''` pelo reduzido e `'M'` pela
+      // referência — e um tipo fora desses três não filtra nada, caso em que o
+      // ERP devolve o **primeiro produto da empresa** (confirmado com
+      // `Tipocodproduto=D`), que é como uma linha errada entra na venda sem
+      // nenhum erro aparecer.
+      const codigo = request.query.Codigoproduto ?? '';
+      const tipo = request.query.Tipocodproduto ?? '';
+      const catalogo = Object.values(CATALOGO);
+      const campoFiltrado: Record<string, string> = {
+        B: 'CodigoBarras',
+        M: 'Referencia',
+        R: 'CodigoProduto',
+        '': 'CodigoProduto',
+      };
+      const campo = campoFiltrado[tipo];
 
-      // Real: flat na raiz, sem envelope `Produto` nem `messages` — confirmado
-      // ao vivo 2026-09-04 (AD-165).
-      return reply.send(produto);
+      const produto =
+        campo === undefined
+          ? catalogo[0]
+          : catalogo.find((candidato) => String(candidato[campo]) === codigo);
+
+      // **Nunca `404`.** Não encontrou é `200` com o SDT todo zerado
+      // (`CodigoProduto: ''`) — o `404` que este mock devolvia não existe no ERP
+      // e fazia a suíte exercitar um caminho de erro que produção não produz.
+      // Real: flat na raiz, sem envelope `Produto` nem `messages` (AD-165).
+      return reply.send(
+        produto === undefined ? PRODUTO_INEXISTENTE : produtoComoOErpResponde(produto),
+      );
     },
   );
 
@@ -1111,43 +1531,19 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.getListaProdutos += 1;
 
       const termo = (request.query.Txtbusca ?? '').toUpperCase();
-      // A lista devolve **apenas** os campos de exibição/seleção: sem
-      // `PrecoVenda` e sem `ProdutoPesavelEditavel`, como o contrato real
-      // (AD-091). É o que impede o Checkout de montar a linha daqui.
+      // A lista traz tudo menos `PrecoVenda`/`PrecoMinimo`/
+      // `ProdutoPesavelEditavel` (ver `itemDaListaDeProdutos`) — é a ausência
+      // desses três que impede montar a linha daqui (AD-091).
       const todos = Object.values(CATALOGO)
         .filter((produto) => String(produto['Descricao']).toUpperCase().includes(termo))
-        .map((produto) => ({
-          CodigoProduto: produto['CodigoProduto'],
-          Descricao: produto['Descricao'],
-          Referencia: produto['Referencia'],
-          CodigoBarras: produto['CodigoBarras'],
-          UDM: produto['UDM'],
-        }));
-
-      // Pagina de verdade em cima de `Pagina`/`Tamanhopagina` (achado da revisão
-      // de código): a versão anterior ignorava os dois parâmetros e sempre
-      // devolvia tudo numa página só, o que nunca exercitava "Anterior"/
-      // "Próxima" contra um comportamento parecido com o do ERP real — só o
-      // teste unitário (com o hook mockado) cobria paginação de fato.
-      const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
-      const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
-      const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
-      const paginaAtual = Math.min(paginaPedida, totalPaginas);
-      const inicio = (paginaAtual - 1) * registrosPorPagina;
-      const produtos = todos.slice(inicio, inicio + registrosPorPagina);
+        .map(itemDaListaDeProdutos);
 
       // Real: campos soltos na raiz, sem envelope `ListaProdutos` nem
-      // `messages` — e `PaginaAtual`/`RegistrosPorPagina`/`TotalRegistros`/
-      // `TotalPaginas` vêm como número nativo mesmo (não string), confirmado
-      // ao vivo 2026-09-04 — só os campos de negócio (`double`/`int64` do
-      // item em si) vêm como string.
-      return reply.send({
-        PaginaAtual: paginaAtual,
-        RegistrosPorPagina: registrosPorPagina,
-        TotalRegistros: todos.length,
-        TotalPaginas: totalPaginas,
-        Produtos: produtos,
-      });
+      // `messages`; `Produtos` primeiro, ausente quando nada casa, e
+      // `TotalPaginas: 0` na busca vazia. `PaginaAtual`/`RegistrosPorPagina`/
+      // `TotalRegistros`/`TotalPaginas` vêm como número nativo — só os campos
+      // de negócio do item (`double`/`int64`) vêm como string.
+      return reply.send(respostaPaginada('Produtos', todos, request.query));
     },
   );
 
@@ -1300,6 +1696,21 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.negocio += 1;
       contadores.getCliente += 1;
 
+      if (semCabecalhoEmpresa(request.headers)) {
+        return reply.send(
+          envelopeCabecalhoObrigatorio(
+            'Cliente',
+            clienteComoOErpResponde(undefined, config.getClienteSemCadastro),
+          ),
+        );
+      }
+
+      // **Documento só casa em dígitos crus.** O ERP compara o parâmetro com o
+      // campo normalizado do cadastro: `CPFCNPJ=57627754968` acha o cliente,
+      // `CPFCNPJ=576.277.549-68` devolve SDT vazio (as duas chamadas feitas ao
+      // vivo em 2026-09-11, mesmo cliente). É o oposto de `GetListaClientes`,
+      // que aceita as duas formas — e é por isso que passar adiante o `CPF`
+      // mascarado que a lista devolve nunca encontra nada aqui.
       const porDocumento = CLIENTES[request.query.CPFCNPJ ?? ''];
       const porCodigo =
         request.query.CodCliente === undefined
@@ -1308,34 +1719,12 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
               (cliente) => String(cliente['CodCliente']) === request.query.CodCliente,
             );
 
-      const cliente = porDocumento ?? porCodigo;
-      if (cliente === undefined) {
-        // `PCheckout_GetCliente` **não** responde 404 quando não acha: devolve
-        // `200` com o SDT recém-criado, campos no default (código-fonte da KB,
-        // 2026-09-03). O mock reproduz isso — o 404 anterior era otimista e
-        // escondia o caminho real do Checkout. Real: flat na raiz, sem
-        // envelope `Cliente` nem `messages` (confirmado ao vivo 2026-09-04).
-        return reply.send({
-          Empresa: String(0), // int64
-          CodCliente: String(0), // int64
-          nome: '',
-          cpf: '',
-          email: '',
-          celular: '',
-          cep: '',
-          endereco: '',
-          bairro: '',
-          numero: '',
-          cidade: '',
-          uf: '',
-          CodigoConvenio: 0, // int32
-          NomeConvenio: '',
-          DescontoConvenio: String(0), // double
-          ListaPreco: String(0), // int64
-        });
-      }
-
-      return reply.send(cliente);
+      // Não achou: `200` com o SDT zerado, nunca `404` — e é indistinguível de
+      // "achou mas o ERP não preencheu", porque o único sinal de existência é o
+      // `CodCliente` diferente de zero.
+      return reply.send(
+        clienteComoOErpResponde(porDocumento ?? porCodigo, config.getClienteSemCadastro),
+      );
     },
   );
 
@@ -1345,29 +1734,48 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.negocio += 1;
       contadores.getListaClientes += 1;
 
+      // Depende do cabeçalho `Empresa` e falha **em silêncio** sem ele: `200`,
+      // zero registro, nenhuma `messages` (medido ao vivo 2026-09-11 — a mesma
+      // busca por `ANGELA` devolve 1 registro com o cabeçalho e 0 sem ele).
+      if (semCabecalhoEmpresa(request.headers)) {
+        return reply.send(respostaPaginada('Clientes', [], request.query));
+      }
+
       const termo = (request.query.Txtbusca ?? '').toUpperCase();
+      const termoEmDigitos = digitos(termo);
       // Sem `DescontoConvenio`/`CodigoConvenio`/`email`, como o contrato real —
       // é o que obriga o Checkout a resolver por `GetCliente` antes de associar
       // (`research.md` D1). E sem nenhum campo de status (AD-093).
       const todos = Object.values(CLIENTES)
-        // `where CliTip = 'F'` — `PCheckout_ClientesLista` filtra pessoa física
-        // no próprio ERP, nos dois `For Each` (itens e contagem), verificado no
-        // código-fonte da KB em 2026-09-03. O mock não tinha esse filtro e
-        // devolvia PJ na busca, um cenário que produção nunca produz.
+        // `CliTip = 'F'`: a lista é de pessoa física. Não observável ao vivo
+        // neste tenant (não há PJ cadastrado para servir de contraprova), e
+        // mantido porque remover ofereceria na busca um cliente que o Checkout
+        // recusa em seguida por CNPJ (AD-133).
         .filter((cliente) => cliente['CliTip'] !== 'J')
-        .filter(
-          (cliente) =>
-            String(cliente['nome']).toUpperCase().includes(termo) ||
-            String(cliente['cpf']).includes(termo),
-        )
+        .filter((cliente) => {
+          if (termo === '') {
+            return true;
+          }
+          const cpf = digitos(String(cliente['cpf']));
+          // O documento casa por **trecho de dígitos**, com ou sem máscara:
+          // `576.277.549-68`, `57627754968` e `576.277` acham o mesmo cliente
+          // (as três chamadas feitas ao vivo 2026-09-11). Nome casa por
+          // conteúdo, sem exigir início.
+          const porDocumento = termoEmDigitos !== '' && cpf.includes(termoEmDigitos);
+          return String(cliente['nome']).toUpperCase().includes(termo) || porDocumento;
+        })
         .map((cliente) => ({
-          ClienteCodigo: cliente['CodCliente'], // int64 — já string na fonte
+          ClienteCodigo: cliente['CodCliente'], // int64 — string, confirmado ao vivo
           ClienteNome: cliente['nome'],
-          CPF: cliente['cpf'],
+          // **Com máscara**: o ERP devolve `"576.277.549-68"`, nunca os dígitos
+          // crus (2026-09-11). O mock devolvia crus, e é por isso que a
+          // reconsulta do candidato em `GetCliente` nunca falhou em teste — no
+          // ERP real o `CPF` da lista, passado adiante como veio, não acha nada.
+          CPF: cpfComMascara(String(cliente['cpf'])),
           // `ListaPreco` é `int32` **nesta** SDT (`SDTCheckoutListaClientes`),
           // diferente do `int64` de `ClienteCheckout` (GetCliente singular) —
           // dois campos homônimos, tipos diferentes no próprio contrato do
-          // ERP. Confirmado ao vivo 2026-09-04: vem número nativo aqui.
+          // ERP. Confirmado ao vivo: vem número nativo aqui.
           ListaPreco: Number(cliente['ListaPreco']),
           Celular: cliente['celular'],
           Telefone: '',
@@ -1381,21 +1789,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
           },
         }));
 
-      const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
-      const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
-      const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
-      const paginaAtual = Math.min(paginaPedida, totalPaginas);
-      const inicio = (paginaAtual - 1) * registrosPorPagina;
-
       // Real: flat na raiz, sem envelope `ListaClientes` nem `messages`
-      // (confirmado ao vivo 2026-09-04, AD-165).
-      return reply.send({
-        PaginaAtual: paginaAtual,
-        RegistrosPorPagina: registrosPorPagina,
-        TotalRegistros: todos.length,
-        TotalPaginas: totalPaginas,
-        Clientes: todos.slice(inicio, inicio + registrosPorPagina),
-      });
+      // (AD-165), `Clientes` primeiro e **ausente** quando nada casa.
+      return reply.send(respostaPaginada('Clientes', todos, request.query));
     },
   );
 
@@ -1409,26 +1805,20 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // `Empresa`, `Txtbusca`, `Pagina` e `Tamanhopagina` (AD-103). Se o
       // Checkout mandar um filtro de status, ele é ignorado aqui como seria no
       // ERP — não há dado por trás dele.
+      // Mesmo silêncio de `GetListaClientes` sem o cabeçalho `Empresa`: `200`
+      // com zero registro (medido ao vivo 2026-09-11).
+      if (semCabecalhoEmpresa(request.headers)) {
+        return reply.send(respostaPaginada('Vendedores', [], request.query));
+      }
+
       const termo = (request.query.Txtbusca ?? '').toUpperCase();
       const todos = VENDEDORES.filter((vendedor) =>
         String(vendedor['VendedorNome']).toUpperCase().includes(termo),
       );
 
-      const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
-      const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
-      const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
-      const paginaAtual = Math.min(paginaPedida, totalPaginas);
-      const inicio = (paginaAtual - 1) * registrosPorPagina;
-
       // Real: flat na raiz, sem envelope `CheckoutListaVendedores` nem
-      // `messages` — `GetListaVendedores` está na lista de AD-165.
-      return reply.send({
-        PaginaAtual: paginaAtual,
-        RegistrosPorPagina: registrosPorPagina,
-        TotalRegistros: todos.length,
-        TotalPaginas: totalPaginas,
-        Vendedores: todos.slice(inicio, inicio + registrosPorPagina),
-      });
+      // `messages` (AD-165), `Vendedores` primeiro e ausente quando vazio.
+      return reply.send(respostaPaginada('Vendedores', todos, request.query));
     },
   );
 
@@ -1441,9 +1831,12 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       const enviado = request.body.Cliente ?? {};
       const cpf = String(enviado['cpf'] ?? '');
       if (cpf === '') {
-        return reply
-          .code(400)
-          .send([{ Id: 'ERR', Type: 1, Description: 'CPF obrigatório (sintético).' }]);
+        // Recusa de negócio vem `200` com `messages[].Type: 1` — nunca status
+        // HTTP de erro (medido ao vivo 2026-09-11: `{"messages":[{"Id":"9998",
+        // "Type":1,"Description":"CPF do cliente é obrigatório"}]}`).
+        return reply.send({
+          messages: [{ Id: '9998', Type: 1, Description: 'CPF do cliente é obrigatório' }],
+        });
       }
 
       // O ERP grava só os campos de AD-024 e força `CliTip = 'F'`. Aqui o mock
@@ -1470,7 +1863,19 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         CliTip: 'F',
       };
 
-      return reply.send([]);
+      // Sucesso também vem embrulhado em `messages`, com `Type: 2` e o
+      // `Description` no formato `<código gravado> - <nome>` (medido ao vivo
+      // 2026-09-11). O array nu que este mock devolvia era o shape do YAML, e
+      // era o que fazia a suíte passar com um schema que reprovava o ERP real.
+      return reply.send({
+        messages: [
+          {
+            Id: '1',
+            Type: 2,
+            Description: `${String(CLIENTES[cpf]?.['CodCliente'] ?? '')} - ${String(enviado['nome'] ?? '')}`,
+          },
+        ],
+      });
     },
   );
 
@@ -1491,7 +1896,21 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     const ate = request.query.Datafinal ?? '';
 
     const todos = Object.values(DAVS)
-      .map((dav) => dav.lista)
+      // **Sem `VendedorNome`.** A linha real tem oito campos e nenhum deles é o
+      // nome do vendedor (medido ao vivo 2026-09-11) — só o código. O mock
+      // publicava o nome porque a fixture o carrega para `GetListaNFCes`, que aí
+      // sim o traz; emiti-lo aqui era oferecer um dado que a janela de DAVs
+      // nunca recebe (é a limitação de AD-095, que segue valendo).
+      .map((dav) => ({
+        NumeroDAV: dav.lista['NumeroDAV'],
+        Titulo: dav.lista['Titulo'],
+        Senha: dav.lista['Senha'],
+        DataEmissao: dav.lista['DataEmissao'],
+        ClienteCodigo: dav.lista['ClienteCodigo'],
+        ClienteNome: dav.lista['ClienteNome'],
+        VendedorCodigo: dav.lista['VendedorCodigo'],
+        ValorTotal: dav.lista['ValorTotal'],
+      }))
       .filter((dav) => {
         const alvo = `${String(dav['NumeroDAV'])} ${String(dav['Titulo'])} ${String(
           dav['ClienteNome'],
@@ -1511,21 +1930,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return true;
       });
 
-    const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
-    const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
-    const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
-    const paginaAtual = Math.min(paginaPedida, totalPaginas);
-    const inicio = (paginaAtual - 1) * registrosPorPagina;
-
     // Real: flat na raiz, sem envelope `CheckoutListaDAVs` nem `messages`
-    // (confirmado ao vivo 2026-09-04, AD-165).
-    return reply.send({
-      PaginaAtual: paginaAtual,
-      RegistrosPorPagina: registrosPorPagina,
-      TotalRegistros: todos.length,
-      TotalPaginas: totalPaginas,
-      DAV: todos.slice(inicio, inicio + registrosPorPagina),
-    });
+    // (AD-165); `DAV` primeiro, ausente quando nada casa, `TotalPaginas: 0`.
+    return reply.send(respostaPaginada('DAV', todos, request.query));
   });
 
   app.get<{ Querystring: { Numerodav?: string } }>(
@@ -1545,10 +1952,13 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return reply.code(404).send({ error: 'DAV não encontrado' });
       }
 
-      // `GetDav` MANTÉM o envelope + `messages` — ao contrário das listas,
-      // confirmado ao vivo 2026-09-04: o padrão acompanha exatamente quem
-      // devolve `messages` de verdade (AD-165).
-      return reply.send({ OutCheckoutFaturarNFCe: dav.documento, messages: [] });
+      // Sucesso vai FLAT, sem envelope e sem `messages` — medido ao vivo em
+      // 2026-09-11 e contrário ao que este mock afirmava (AD-165 só tinha
+      // observado recusas deste endpoint). O envelope acompanha a presença de
+      // `messages`: com a coleção vazia sobra um parâmetro de saída e o GeneXus
+      // serializa o SDT na raiz. Reproduzir aqui o envelope que o ERP não manda
+      // foi o que escondeu da suíte a reprovação de toda importação de DAV.
+      return reply.send(dav.documento);
     },
   );
 
@@ -1577,14 +1987,16 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
     const todos = Object.values(DAVS)
       .map((dav) => ({
+        // `int32` — número nativo, como os demais contadores da resposta.
         NumeroNota: Number(dav.documento['NumeroNota']),
-        Cliente: String(dav.lista['ClienteNome']),
-        // O mesmo nome que a linha do DAV e o documento carregam (AD-172), em
-        // vez do sintético derivado do código que este mock usava enquanto o
-        // nome não existia em contrato nenhum. Um nome só por vendedor mantém
-        // as três respostas coerentes entre si.
-        Vendedor: String(dav.lista['VendedorNome']),
-        Operador: 'CAIXA 03',
+        // **`"<código> - <NOME>"`**, não o nome solto: o ERP devolve
+        // `"999999 - CONSUMIDOR DEFAULT"`, `"8 - VENDEDOR TESTE CENTRIUM"` e
+        // `"0 -"` para o operador sem nome (medido ao vivo 2026-09-11). O mock
+        // publicava só o nome, então nada na UI jamais precisou lidar com o
+        // código colado no rótulo — nem com o `"0 -"` de operador vazio.
+        Cliente: `${String(dav.lista['ClienteCodigo'])} - ${String(dav.lista['ClienteNome'])}`,
+        Vendedor: `${String(dav.lista['VendedorCodigo'])} - ${String(dav.lista['VendedorNome'])}`,
+        Operador: '3 - CAIXA 03',
         // `date-time`: o dia sai da emissão relativa do DAV, a hora é fixa —
         // nada no Checkout depende dela além da exibição.
         Emissao: `${String(dav.lista['DataEmissao'])}T14:32:00`,
@@ -1597,19 +2009,8 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         return `${rascunho.Cliente} ${rascunho.Vendedor}`.toUpperCase().includes(termo);
       });
 
-    const registrosPorPagina = Math.max(1, Number(request.query.Tamanhopagina) || 20);
-    const totalPaginas = Math.max(1, Math.ceil(todos.length / registrosPorPagina));
-    const paginaPedida = Math.max(1, Number(request.query.Pagina) || 1);
-    const paginaAtual = Math.min(paginaPedida, totalPaginas);
-    const inicio = (paginaAtual - 1) * registrosPorPagina;
-
-    return reply.send({
-      PaginaAtual: paginaAtual,
-      RegistrosPorPagina: registrosPorPagina,
-      TotalRegistros: todos.length,
-      TotalPaginas: totalPaginas,
-      Rascunho: todos.slice(inicio, inicio + registrosPorPagina),
-    });
+    // `Rascunho` primeiro, ausente quando nada casa, `TotalPaginas: 0`.
+    return reply.send(respostaPaginada('Rascunho', todos, request.query));
   });
 
   /**
@@ -1665,16 +2066,21 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       const ticket = (request.body.ticketDevolucao ?? '').trim().toUpperCase();
       const conhecido = TICKETS_DEVOLUCAO[ticket];
 
+      // Real: três campos soltos e **nenhuma `messages`** — o mock acrescentava
+      // um `messages: []` que o ERP não manda. `ValorTicket` (`double`) vem
+      // número nativo aqui, não string: são parâmetros de saída soltos, não um
+      // SDT (chamada ao vivo 2026-09-11 com ticket inexistente devolveu
+      // `{"ValorTicket":0,"Valido":false,"Mensagem":"Ticket de devolução: … inválido !"}`,
+      // e a mensagem deste mock já era exatamente essa).
       if (conhecido === undefined) {
         return reply.send({
           ValorTicket: 0,
           Valido: false,
           Mensagem: `Ticket de devolução: ${ticket} inválido !`,
-          messages: [],
         });
       }
 
-      return reply.send({ ...conhecido, messages: [] });
+      return reply.send(conhecido);
     },
   );
 
@@ -1747,7 +2153,20 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       }
 
       const geradoEm = geracoesPix.get(request.query.Trnguid ?? '');
-      const pago = geradoEm !== undefined && Date.now() - geradoEm >= config.atrasoPagamentoPixMs;
+
+      // Cobrança que este mock nunca gerou: o ERP responde `StatusTransacao`
+      // **vazio** com a mensagem de erro, não `'G'` — medido ao vivo
+      // 2026-09-11 com um GUID nulo. O `'G'` que o mock devolvia aqui era um
+      // desfecho que produção não produz, e escondia do Checkout o único caso em
+      // que a sondagem consulta uma transação que o ERP não conhece.
+      if (geradoEm === undefined) {
+        return reply.send({
+          StatusTransacao: '',
+          messages: [{ Id: '', Type: 1, Description: 'Transação não localizada' }],
+        });
+      }
+
+      const pago = Date.now() - geradoEm >= config.atrasoPagamentoPixMs;
 
       return reply.send({
         StatusTransacao: pago ? 'P' : 'G',

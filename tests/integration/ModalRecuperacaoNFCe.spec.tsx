@@ -580,3 +580,120 @@ describe('teclado — Enter sobre um botão não dispara a retomada', () => {
     });
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Ordenação por coluna — só a página carregada, e sobrevivendo à troca de página
+ * ------------------------------------------------------------------ */
+
+describe('ordenação por coluna', () => {
+  /** Notas e totais fora de ordem de propósito: sem ordenar, a tela mostra nesta sequência. */
+  function tresRascunhos(): readonly Record<string, unknown>[] {
+    return [
+      rascunhoDaLista({ NumeroNota: 90212, Cliente: 'ZULMIRA', Operador: 'CAIXA 03', Total: 7.25 }),
+      rascunhoDaLista({ NumeroNota: 90210, Cliente: 'ANTONIA', Operador: 'CAIXA 01', Total: 130.4 }),
+      rascunhoDaLista({ NumeroNota: 90211, Cliente: 'MARCOS', Operador: 'CAIXA 02', Total: 48.9 }),
+    ];
+  }
+
+  function notasNaTela(): readonly string[] {
+    return screen
+      .getAllByTestId('linha-nfce')
+      .map((linha) => linha.getAttribute('data-numero-nota') ?? '');
+  }
+
+  async function ordenarPor(coluna: string): Promise<void> {
+    await userEvent.click(screen.getByTestId(`ordenar-${coluna}`));
+  }
+
+  it('não reordena nada antes do primeiro clique — a ordem é a que o ERP devolveu', async () => {
+    instalarFetch({ rascunhos: tresRascunhos() });
+    renderizar();
+
+    await screen.findAllByTestId('linha-nfce');
+    expect(notasNaTela()).toEqual(['90212', '90210', '90211']);
+  });
+
+  it('ordena por número da nota, e o segundo clique na mesma coluna inverte', async () => {
+    instalarFetch({ rascunhos: tresRascunhos() });
+    renderizar();
+    await screen.findAllByTestId('linha-nfce');
+
+    await ordenarPor('nfce');
+    expect(notasNaTela()).toEqual(['90210', '90211', '90212']);
+
+    await ordenarPor('nfce');
+    expect(notasNaTela()).toEqual(['90212', '90211', '90210']);
+  });
+
+  it('ordena por cliente e por operador — colunas de texto', async () => {
+    instalarFetch({ rascunhos: tresRascunhos() });
+    renderizar();
+    await screen.findAllByTestId('linha-nfce');
+
+    await ordenarPor('cliente');
+    expect(notasNaTela()).toEqual(['90210', '90211', '90212']);
+
+    await ordenarPor('operador');
+    expect(notasNaTela()).toEqual(['90210', '90211', '90212']);
+  });
+
+  it('ordena o total como número, não como texto', async () => {
+    instalarFetch({ rascunhos: tresRascunhos() });
+    renderizar();
+    await screen.findAllByTestId('linha-nfce');
+
+    // Ordem lexicográfica poria "130,40" antes de "48,90" e de "7,25"; a
+    // comparação numérica é o ponto desta asserção.
+    await ordenarPor('total');
+    expect(notasNaTela()).toEqual(['90212', '90211', '90210']);
+  });
+
+  it('trocar de coluna recomeça em ordem crescente, sem herdar a inversão anterior', async () => {
+    instalarFetch({ rascunhos: tresRascunhos() });
+    renderizar();
+    await screen.findAllByTestId('linha-nfce');
+
+    await ordenarPor('nfce');
+    await ordenarPor('nfce');
+    expect(screen.getByTestId('ordenar-nfce')).toHaveAttribute('data-ordenacao', 'desc');
+
+    await ordenarPor('total');
+    expect(screen.getByTestId('ordenar-total')).toHaveAttribute('data-ordenacao', 'asc');
+    expect(screen.getByTestId('ordenar-nfce')).toHaveAttribute('data-ordenacao', 'nenhuma');
+  });
+
+  it('a coluna escolhida continua valendo na página seguinte', async () => {
+    // Uma linha por página: trocar de página troca o conteúdo inteiro da
+    // tabela, que é justamente quando o skeleton desmonta a `TabelaDeRascunhos`
+    // — e um estado de ordenação morando nela se perderia aqui.
+    instalarFetch({ rascunhos: tresRascunhos(), tamanhoPagina: 1 });
+    renderizar();
+    await screen.findAllByTestId('linha-nfce');
+
+    await ordenarPor('nfce');
+    await ordenarPor('nfce');
+
+    await userEvent.click(screen.getByTestId('nfce-pagina-proxima'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('paginacao-nfce')).toHaveTextContent('2 de 3');
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('ordenar-nfce')).toHaveAttribute('data-ordenacao', 'desc');
+    });
+  });
+
+  it('ordena apenas a página carregada — não pede ordenação ao ERP', async () => {
+    const rota = instalarFetch({ rascunhos: tresRascunhos(), tamanhoPagina: 1 });
+    renderizar();
+    await screen.findAllByTestId('linha-nfce');
+
+    const chamadasAntes = rota.urls.filter((url) => url.startsWith(CAMINHO_LISTA)).length;
+    await ordenarPor('cliente');
+
+    // Nem refetch nem parâmetro novo: `GetListaNFCes` não tem ordenação, e
+    // fingir que tem devolveria a página errada.
+    expect(rota.urls.filter((url) => url.startsWith(CAMINHO_LISTA))).toHaveLength(chamadasAntes);
+    expect(notasNaTela()).toEqual(['90212']);
+  });
+});

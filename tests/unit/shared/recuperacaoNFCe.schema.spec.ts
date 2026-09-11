@@ -92,16 +92,31 @@ describe('carregarNFCeOutputSchema', () => {
    * Uma recusa de negócio do ERP volta `200` com o SDT zerado e sem as
    * coleções. Aceitá-la retomaria um rascunho vazio, com `clienteCodigo: 0`,
    * como se fosse sucesso — falhar na fronteira é o desfecho correto.
+   *
+   * `produtos` é o que discrimina: desde 2026-09-11 `FormasDePagamento` é
+   * opcional (o ERP omite a chave quando nada foi pago — ver o caso abaixo),
+   * então a ausência dela não distingue mais recusa de documento legítimo.
    */
-  it('reprova o documento sem produtos ou sem formas de pagamento', () => {
+  it('reprova o documento sem produtos', () => {
     const semProdutos = carregarNFCeOutputSchema.safeParse(
       respostaCarregarNFCe({ produtos: undefined }),
     );
-    const semFormas = carregarNFCeOutputSchema.safeParse(
+
+    expect(semProdutos.success).toBe(false);
+  });
+
+  /**
+   * Documento sem nenhum pagamento lançado: o ERP **omite** a chave em vez de
+   * mandar `[]` (medido ao vivo em 2026-09-11 sobre `GetDav`, que devolve este
+   * mesmo SDT — AD-057). É o estado normal de um DAV, e exigir a coleção
+   * reprovava na fronteira justamente o caminho feliz da importação.
+   */
+  it('aceita o documento sem formas de pagamento, com a lista vazia por default', () => {
+    const lido = carregarNFCeOutputSchema.parse(
       respostaCarregarNFCe({ FormasDePagamento: undefined }),
     );
 
-    expect(semProdutos.success).toBe(false);
-    expect(semFormas.success).toBe(false);
+    expect(lido.FormasDePagamento).toEqual([]);
+    expect(lido.produtos.length).toBeGreaterThan(0);
   });
 });

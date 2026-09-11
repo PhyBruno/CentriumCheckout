@@ -108,6 +108,7 @@ const SNAPSHOT: SnapshotVenda = {
   cadSerieNFCe: 'SER1',
   clienteCodigo: 4321,
   vendedorCodigo: 7,
+  usuarioCodigo: 147,
   condicaoPagamentoCodigo: A_VISTA.codigo,
   eventos: [],
 };

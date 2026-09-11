@@ -1,0 +1,38 @@
+# Fim de linha: LF no repositório e LF no disco, em qualquer máquina.
+#
+# O Git para Windows já vem com `core.autocrlf=true` no config do sistema
+# (`C:/Program Files/Git/etc/gitconfig`), fora do alcance do repositório. Com
+# ele, cada checkout reescrevia os arquivos em CRLF no working tree enquanto o
+# repositório continuava guardando LF — a divergência não aparece em `git diff`,
+# só nos sintomas:
+#
+#   - `git status` acusa arquivo modificado e `git diff` volta vazio;
+#   - `prettier --check` reprova o arquivo **inteiro**, porque compara linha a
+#     linha e todas diferem;
+#   - `git checkout` de outra branch aborta com "changes would be overwritten",
+#     travando a troca por uma diferença que não existe.
+#
+# `eol=lf` tem precedência sobre `core.autocrlf`, então a regra abaixo resolve
+# para todo mundo sem ninguém precisar alterar a configuração local. Os `.ps1`
+# entram junto de propósito: o PowerShell lê LF sem problema, e não há `.bat`
+# nem `.cmd` versionado (esses sim exigiriam CRLF).
+* text=auto eol=lf
+
+# Arquivos que o Git não deve inspecionar nem converter. O `.pen` é o projeto do
+# Pencil, gravado criptografado — qualquer normalização o corrompe, e é a fonte
+# de verdade visual do produto.
+*.pen binary
+
+# Binários por precaução: `text=auto` os detectaria sozinho, mas declarar evita
+# que um arquivo sem byte nulo escape pela heurística.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary

@@ -85,13 +85,20 @@ export function repricarSku(
   }
 
   const agregado = quantidadeAgregada(linhas, codigoProduto);
-  // Produto `'E'` (`ProdutoPesavelEditavel`) não tem `PrecoVenda` significativo
-  // no ERP — é por isso que o operador digita o preço na revisão (`FR-014`,
-  // `EdicaoItemEditavel`). Chamar `resolvePrecoUnitario` para essa linha
-  // devolveria o cadastro (tipicamente `0`) e sobrescreveria silenciosamente o
-  // preço digitado assim que qualquer mutação disparasse `repricarSku` —
-  // inclusive a própria inserção. Tratado como `descontoManual`: só o
-  // operador escreve.
+  // Em produto `'E'` (`ProdutoPesavelEditavel`) o preço é do **operador**, não
+  // da tabela — é o que `FR-014`/`EdicaoItemEditavel` significam. Chamar
+  // `resolvePrecoUnitario` para essa linha devolveria o cadastro e
+  // sobrescreveria o preço digitado assim que qualquer mutação disparasse
+  // `repricarSku` — inclusive a própria inserção. Tratado como
+  // `descontoManual`: só o operador escreve.
+  //
+  // **Corrigido em 2026-09-11 (AD-223):** a redação anterior justificava isto
+  // dizendo que `'E'` não tem `PrecoVenda` significativo, "tipicamente `0`".
+  // É falso — medido no tenant `c0lj6mvzeh`, 80 dos 191 produtos `'E'` têm
+  // preço cadastrado. O guard não só continua necessário como protege mais do
+  // que se pensava: sobrescrever com um `0` seria visível na hora, enquanto
+  // sobrescrever com o preço plausível do cadastro passa despercebido.
+  // Travado por teste em `reprecificacao.spec.ts`.
   const precoDaTabela =
     referencia.snapshot.pesavelEditavel === 'E'
       ? null

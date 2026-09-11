@@ -15,7 +15,7 @@ import {
   ErroClienteNaoEncontrado,
   fetchClientePorCodigo,
 } from '../../services/cliente/clienteQueries';
-import { ErroRespostaInvalida, ErroSessaoEncerrada } from '../../services/errosErp';
+import { ErroNegocioErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../../services/errosErp';
 import {
   CHAVE_CONDICOES_PAGAMENTO,
   FRESCOR_CATALOGO_PAGAMENTO_MS,
@@ -106,6 +106,18 @@ function estadoDaVendaAtual(): EstadoVendaParaImportacao {
   return estadoParaImportacao(useVendaStore.getState());
 }
 
+/**
+ * Fecha a frase do ERP antes de emendar a nossa.
+ *
+ * O texto vem sem pontuação final ("Série é obrigatório"), e concatenar direto
+ * produzia "Série é obrigatório Nada foi importado." — duas orações coladas. O
+ * conteúdo continua íntegro (Constitution III): só o ponto é acrescentado, e só
+ * quando falta.
+ */
+function comPontoFinal(texto: string): string {
+  return /[.!?:]$/.test(texto) ? texto : `${texto}.`;
+}
+
 function mensagemDeErro(erro: unknown): string {
   // A recusa já vem com o texto que o operador precisa ler — quem a lança sabe
   // o motivo exato, e reescrevê-lo aqui afastaria a mensagem da regra que a
@@ -130,6 +142,14 @@ function mensagemDeErro(erro: unknown): string {
   // inativada" de qualquer outra falha de importação (AD-171).
   if (erro instanceof ErroCondicaoImportadaIndisponivel) {
     return `A condição de pagamento ${erro.codigo} deste documento não está disponível nesta sessão. Nada foi importado.`;
+  }
+  // O ERP recusou e explicou: "Série é obrigatório", "Pedido Liberado: S,
+  // Status Digitação: N". O texto vai íntegro, sem reinterpretação
+  // (Constitution III) — até 2026-09-11 ele era descartado e o operador recebia
+  // "formato inesperado" para **toda** recusa de DAV e de rascunho, sem nenhuma
+  // pista do que corrigir.
+  if (erro instanceof ErroNegocioErp) {
+    return `O ERP recusou este documento: ${comPontoFinal(erro.motivo)} Nada foi importado.`;
   }
   if (erro instanceof ErroDocumentoImportadoInvalido || erro instanceof ErroRespostaInvalida) {
     return 'O ERP devolveu este documento em formato inesperado. Nada foi importado.';

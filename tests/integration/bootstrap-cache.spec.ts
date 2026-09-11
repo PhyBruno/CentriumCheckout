@@ -48,6 +48,7 @@ function payload(tenant: string, cadMaqCod = 'PDV01'): Record<string, unknown> {
     codigoEmpresa: '1',
     SessaoUsuario: {
       TipoPreco: 1,
+      UsuarioCodigo: 147,
       CadMaqCod: cadMaqCod,
       ListaPrecoDefault: 3,
       CenarioPagamento: '["1;DINHEIRO;1;A VISTA;Dinheiro à vista;True;F6"]',

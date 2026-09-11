@@ -33,6 +33,7 @@ function snapshotVendaDe(sobrescritas: Partial<SnapshotVenda> = {}): SnapshotVen
     cadSerieNFCe: '1',
     clienteCodigo: 1,
     vendedorCodigo: 42,
+    usuarioCodigo: 147,
     condicaoPagamentoCodigo: 1,
     eventos: eventosDe(),
     ...sobrescritas,
@@ -76,6 +77,32 @@ describe('montarRetratoVenda — campos obrigatórios (FR-010, AD-034)', () => {
     expect(retrato.vendedorCodigo).toBe(42);
     expect(retrato.clienteCodigo).toBe(1);
     expect(retrato.CondicaoPagamentoCodigo).toBe(1);
+  });
+
+  /**
+   * Correção do usuário, 2026-09-11: o campo existia no contrato e nunca era
+   * preenchido — toda NFCe emitida pelo Checkout saía sem identificar quem a
+   * emitiu. Nas três operações, porque o rascunho suspenso também é documento.
+   */
+  it.each(['FATURAR', 'SUSPENDER', 'VALIDAR'] as const)(
+    'leva o operador logado em UsuarioCodigo (%s)',
+    (operacao) => {
+      const retrato = montarRetratoVenda(snapshotVendaDe(), operacao, []);
+
+      expect(retrato.UsuarioCodigo).toBe(147);
+    },
+  );
+
+  /** Operador e vendedor são campos distintos do mesmo SDT, nunca o mesmo valor. */
+  it('não confunde o operador logado com o vendedor da venda', () => {
+    const retrato = montarRetratoVenda(
+      snapshotVendaDe({ usuarioCodigo: 147, vendedorCodigo: 21 }),
+      'FATURAR',
+      [],
+    );
+
+    expect(retrato.UsuarioCodigo).toBe(147);
+    expect(retrato.vendedorCodigo).toBe(21);
   });
 
   it('repassa as formas de pagamento sem interpretar', () => {

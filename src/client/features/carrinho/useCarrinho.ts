@@ -17,6 +17,10 @@ import type {
 } from '../../domain/precificacao/linha';
 import { milesimosDeUnidades, type Milesimos } from '../../domain/precificacao/quantidade';
 import {
+  ErroProdutoSemPreco,
+  exigirPrecoDeInsercao,
+} from '../../domain/precificacao/tabelaPreco';
+import {
   ErroProdutoNaoEncontrado,
   ErroRespostaInvalida,
   invalidarCacheDeProduto,
@@ -143,6 +147,9 @@ function mensagemDeErro(erro: unknown): string {
   }
   if (erro instanceof ErroPrecoIndisponivelParaPesagem) {
     return 'Produto pesável sem preço cadastrado no ERP. Nada foi inserido.';
+  }
+  if (erro instanceof ErroProdutoSemPreco) {
+    return `Produto ${erro.codigoProduto} está sem preço de venda no ERP. Nada foi inserido.`;
   }
   return 'Não foi possível consultar o produto. Tente novamente.';
 }
@@ -276,10 +283,19 @@ export function useInsercaoDeProduto(): ApiInsercao {
       const contextoDaConsulta =
         tipoCodigo === undefined ? contexto : { ...contexto, tipoCodProduto: tipoCodigo };
 
-      return queryClient.query({
+      const snapshot = await queryClient.query({
         ...opcoesProduto(codigoProduto, contextoDaConsulta),
         staleTime: 'static',
       });
+
+      // Aqui, e não em cada chamador: é o ponto único por onde passam os dois
+      // caminhos (`inserirResolvido` e `revisarResolvido`), então a recusa por
+      // preço zerado vale para digitar, TAB, modal e balança sem depender de
+      // ninguém lembrar de repeti-la. Os dois já traduzem o erro em
+      // notificação e devolvem `'recusado'`.
+      exigirPrecoDeInsercao(contexto.tipoPreco, snapshot);
+
+      return snapshot;
     },
     [contexto, queryClient],
   );

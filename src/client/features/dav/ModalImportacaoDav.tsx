@@ -1,18 +1,15 @@
-import {
-  CalendarDays,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  FileCheck,
-  ReceiptText,
-  Record,
-  Search,
-  X,
-} from 'reicon-react';
+import { CalendarDays, CheckCircle, Import, ReceiptText, Record, Search, X } from 'reicon-react';
 import { useEffect, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
+import {
+  CabecalhoOrdenavel,
+  useOrdenacaoDeTabela,
+  type OrdenacaoAtiva,
+  type ValoresDeColuna,
+} from '@/components/ui/cabecalho-ordenavel';
 import { CampoData, isoRelativoAHoje } from '@/components/ui/campo-data';
+import { ControlePaginacao } from '@/components/ui/controle-paginacao';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -63,6 +60,28 @@ export interface ModalImportacaoDavProps {
 
 /** Mesmo debounce dos demais modais de busca desta base. */
 const DEBOUNCE_BUSCA_MS = 300;
+
+type ColunaDav = 'dav' | 'documento' | 'cliente' | 'emissao' | 'total';
+
+/**
+ * O valor que cada coluna compara ao ordenar a página (ver
+ * `useOrdenacaoDeTabela`). Constante de módulo de propósito: o mapa entra nas
+ * dependências do `useMemo` que ordena.
+ *
+ * `dataEmissao` é comparada crua (`YYYY-MM-DD`, como o ERP devolve) e não pelo
+ * `DD/MM/AAAA` que a célula exibe — o formato brasileiro ordenaria por dia do
+ * mês, misturando anos.
+ */
+const VALORES_DE_COLUNA_DAV: ValoresDeColuna<DavListado, ColunaDav> = {
+  dav: (dav) => dav.numeroDav,
+  documento: (dav) => dav.titulo,
+  cliente: (dav) => dav.clienteNome,
+  emissao: (dav) => dav.dataEmissao,
+  total: (dav) => dav.valorTotal,
+};
+
+/** Identidade estável para a página ainda não carregada — sem ela o `useMemo` da ordenação reinicia a cada render. */
+const SEM_DAVS: readonly DavListado[] = [];
 
 /**
  * Período de emissão pré-aplicado ao abrir a janela (pedido do usuário,
@@ -158,11 +177,20 @@ export function ModalImportacaoDav({
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
   const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
 
+  // A ordenação mora aqui, e não dentro de `TabelaDeDavs`: durante o
+  // `isFetching` da página seguinte a tabela dá lugar ao skeleton e desmonta —
+  // um estado local nela perderia a coluna escolhida justo na troca de página,
+  // que é onde o operador espera que ela continue valendo.
+  const {
+    linhas: davs,
+    ordenacao,
+    alternar: alternarOrdenacao,
+  } = useOrdenacaoDeTabela(lista.data?.davs ?? SEM_DAVS, VALORES_DE_COLUNA_DAV);
+
   if (!montado) {
     return null;
   }
 
-  const davs = lista.data?.davs ?? [];
   const davSelecionado = davs.find((dav) => dav.numeroDav === selecionado) ?? null;
   const semResultado = lista.data !== undefined && davs.length === 0;
 
@@ -230,7 +258,7 @@ export function ModalImportacaoDav({
         ref={janelaRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Menu Importação"
+        aria-label="Importação de DAV"
         className={cn(
           'flex max-h-full w-full max-w-[1120px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg',
           saindo ? 'cc-modal-sai' : 'cc-modal-entra',
@@ -242,7 +270,7 @@ export function ModalImportacaoDav({
               <ReceiptText className="size-5 text-primary" aria-hidden="true" />
             </span>
             <div className="flex flex-col gap-[2px]">
-              <h2 className="text-xl font-semibold text-foreground">Menu DAV</h2>
+              <h2 className="text-xl font-semibold text-foreground">Importação de DAV</h2>
               <p className="text-sm font-medium text-muted-foreground">
                 Selecione um documento para importar para a venda
               </p>
@@ -289,17 +317,24 @@ export function ModalImportacaoDav({
                 duas datas liam como um campo único e nada dizia qual metade
                 estava sendo editada. Cada pílula conserva a forma do desenho
                 (altura 36, raio total, superfície secundária, ícone
-                `calendar-days`) e o mesmo vão de 10 que separa os filtros. */}
-            <div className="flex shrink-0 items-center gap-[10px]">
+                `calendar-days`).
+
+                As etiquetas dizem **"Data inicial"/"Data final"**, e não mais
+                "Emissão de"/"até" (pedido do usuário, 2026-09-11): "até"
+                sozinho só faz sentido lido em sequência com a pílula anterior,
+                que é justamente a leitura de campo único que a separação veio
+                desfazer. Cada pílula agora se explica isolada, e o vão entre
+                elas (12) é maior que o que as separa da busca (10). */}
+            <div className="flex shrink-0 items-center gap-sm">
               <FiltroDeData
-                etiqueta="Emissão de"
+                etiqueta="Data inicial"
                 rotulo="Data inicial de emissão"
                 testId="dav-data-inicial"
                 valor={dataInicial}
                 onChange={aoTrocarData(setDataInicial)}
               />
               <FiltroDeData
-                etiqueta="até"
+                etiqueta="Data final"
                 rotulo="Data final de emissão"
                 testId="dav-data-final"
                 valor={dataFinal}
@@ -336,7 +371,9 @@ export function ModalImportacaoDav({
           ) : (
             <TabelaDeDavs
               davs={davs}
+              ordenacao={ordenacao}
               selecionado={selecionado}
+              onAlternarOrdenacao={alternarOrdenacao}
               onSelecionar={setSelecionado}
               onConfirmar={() => {
                 void confirmarImportacao();
@@ -346,43 +383,15 @@ export function ModalImportacaoDav({
         </div>
 
         <footer className="flex h-[60px] shrink-0 items-center justify-between gap-sm border-t border-border px-lg">
-          <div className="flex items-center gap-xs" data-testid="paginacao-dav">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              data-testid="dav-pagina-anterior"
-              disabled={pagina <= 1}
-              onClick={() => {
-                setPagina((atual) => Math.max(1, atual - 1));
-                setSelecionado(null);
-              }}
-            >
-              <ChevronLeft className="size-3.5" aria-hidden="true" />
-              Anterior
-            </Button>
-            <span className="flex h-9 items-center rounded-full bg-secondary px-sm text-sm font-semibold text-foreground">
-              {lista.data?.paginaAtual ?? pagina} de {lista.data?.totalPaginas ?? 1}
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-9 w-28 gap-xs rounded-full text-sm font-semibold"
-              data-testid="dav-pagina-proxima"
-              disabled={
-                lista.data === undefined || lista.data.paginaAtual >= lista.data.totalPaginas
-              }
-              onClick={() => {
-                setPagina((atual) => atual + 1);
-                setSelecionado(null);
-              }}
-            >
-              Próxima
-              <ChevronRight className="size-3.5" aria-hidden="true" />
-            </Button>
-          </div>
+          <ControlePaginacao
+            pagina={pagina}
+            totalPaginas={lista.data?.totalPaginas}
+            testIdPrefixo="dav"
+            onTrocarPagina={(proxima) => {
+              setPagina(proxima);
+              setSelecionado(null);
+            }}
+          />
 
           <div className="flex items-center gap-[10px]">
             <Button
@@ -394,7 +403,7 @@ export function ModalImportacaoDav({
                 void confirmarImportacao();
               }}
             >
-              <FileCheck className="size-4.5" aria-hidden="true" />
+              <Import className="size-4.5" aria-hidden="true" />
               Importar DAV
             </Button>
           </div>
@@ -434,7 +443,9 @@ function FiltroDeData({
 
 interface TabelaDeDavsProps {
   readonly davs: readonly DavListado[];
+  readonly ordenacao: OrdenacaoAtiva<ColunaDav> | null;
   readonly selecionado: string | null;
+  readonly onAlternarOrdenacao: (chave: ColunaDav) => void;
   readonly onSelecionar: (numeroDav: string) => void;
   /** Enter sobre a linha já selecionada — importa sem passar pelo rodapé. */
   readonly onConfirmar: () => void;
@@ -445,19 +456,55 @@ const classeCelulaCabecalho =
 
 function TabelaDeDavs({
   davs,
+  ordenacao,
   selecionado,
+  onAlternarOrdenacao,
   onSelecionar,
   onConfirmar,
 }: TabelaDeDavsProps): ReactElement {
   return (
     <div data-testid="resultados-dav">
-      <div className="flex h-[38px] border-y border-border bg-muted" aria-hidden="true">
-        <span className={cn(classeCelulaCabecalho, 'w-[42px]')} />
-        <span className={cn(classeCelulaCabecalho, 'w-[86px]')}>DAV</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[116px]')}>Documento</span>
-        <span className={cn(classeCelulaCabecalho, 'flex-1')}>Cliente</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[108px]')}>Emissão</span>
-        <span className={cn(classeCelulaCabecalho, 'w-[116px]')}>Total</span>
+      {/* O bloco deixou de ser `aria-hidden` ao ganhar os botões de ordenação:
+          esconder um controle operável da árvore de acessibilidade tiraria a
+          ordenação de quem navega por teclado ou leitor de tela. Só a primeira
+          coluna — a do marcador de seleção, sem rótulo — segue oculta. */}
+      <div className="flex h-[38px] border-y border-border bg-muted">
+        <span className={cn(classeCelulaCabecalho, 'w-[42px]')} aria-hidden="true" />
+        <CabecalhoOrdenavel
+          chaveDaColuna="dav"
+          rotulo="DAV"
+          ordenacao={ordenacao}
+          className="w-[124px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="documento"
+          rotulo="Documento"
+          ordenacao={ordenacao}
+          className="w-[116px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="cliente"
+          rotulo="Cliente"
+          ordenacao={ordenacao}
+          className="min-w-0 flex-1"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="emissao"
+          rotulo="Emissão"
+          ordenacao={ordenacao}
+          className="w-[108px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="total"
+          rotulo="Total"
+          ordenacao={ordenacao}
+          className="w-[116px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
       </div>
       <ul>
         {davs.map((dav) => {
@@ -500,7 +547,12 @@ function TabelaDeDavs({
                     <Record className="size-4 text-muted-foreground/60" aria-hidden="true" />
                   )}
                 </span>
-                <span className="w-[86px] shrink-0 px-[10px] font-mono text-xs font-bold tabular-nums">
+                {/* `truncate` não é enfeite: sem ele o número transborda a
+                    largura fixa e encosta na coluna "Documento" — foi o que o
+                    operador viu em produção. A largura já comporta 14 dígitos
+                    mono, bem acima do que o ERP devolve, então o corte é rede
+                    de segurança, não comportamento esperado. */}
+                <span className="w-[124px] shrink-0 truncate px-[10px] font-mono text-xs font-bold tabular-nums">
                   {dav.numeroDav}
                 </span>
                 <span className="w-[116px] shrink-0 truncate px-[10px] font-mono text-xs font-semibold">

@@ -6,9 +6,11 @@ import {
   type ImportacaoVendaDeps,
 } from '../../src/client/services/importacao/importarVendaExistente';
 import {
+  fetchCarregarNFCe,
   fetchListaNFCes,
   fonteRascunho,
 } from '../../src/client/services/recuperacao/recuperacaoQueries';
+import { ErroNegocioErp } from '../../src/client/services/errosErp';
 import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
@@ -726,5 +728,38 @@ describe('T026 — quickstart Cenário 6: sem lock entre operadores', () => {
     // ausência de lock permite, e o que o ERP resolve no faturamento.
     expect(primeiro.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
     expect(segundo.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
+  });
+});
+
+describe('recusa de negócio do ERP na retomada', () => {
+  /**
+   * `Serienota` é sempre `SessaoUsuario.CadSerieNFCe` (AD-034), e há tenant em
+   * que esse campo vem vazio — o ERP então recusa com `200` + SDT zerado e
+   * "Série é obrigatório" em `messages[]`. Até 2026-09-11 a validação de
+   * fronteira engolia a frase e o operador lia "formato inesperado", sem saber
+   * que o que faltava era configurar a série do PDV no ERP.
+   */
+  it('série vazia: o motivo escrito pelo ERP chega ao erro, em vez de "formato inesperado"', async () => {
+    const recusaDoErp = {
+      OutCheckoutFaturarNFCe: {
+        Empresa: 0,
+        SuspenderOuFaturar: '',
+        clienteCodigo: '0',
+        vendedorCodigo: '0',
+        CondicaoPagamentoCodigo: '0',
+        NumeroNota: '0',
+        CadSerieNFCe: '',
+        UsuarioCodigo: '0',
+        Log: '',
+      },
+      messages: [{ Id: '9999', Type: 1, Description: 'Série é obrigatório' }],
+    };
+
+    const erpClient = erpClientDe({ '/ApiCentriumOAuth/CarregarNFCe': recusaDoErp });
+
+    await expect(fetchCarregarNFCe(NUMERO_NOTA, '', { erpClient })).rejects.toThrow(ErroNegocioErp);
+    await expect(fetchCarregarNFCe(NUMERO_NOTA, '', { erpClient })).rejects.toThrow(
+      /Série é obrigatório/,
+    );
   });
 });
