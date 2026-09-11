@@ -189,10 +189,11 @@ function SimboloReal({ testId }: { testId: string }): ReactElement {
  * 2026-09-03): vem do cadastro, o operador nunca pode alterá-la, e por isso
  * nem entra na navegação por TAB — o próprio navegador pula elementos
  * desabilitados. Preço e desconto só ficam editáveis quando
- * `ProdutoPesavelEditavel = 'E'` (`FR-014`); nos demais casos ficam somente
- * leitura (`readOnly`, não `disabled` — continuam alcançáveis por TAB, só não
- * aceitam digitação), e o foco ao resolver via TAB vai direto para o botão
- * "+" (nada mais a decidir). Em produto `'E'`, o foco ao resolver vai para a
+ * `ProdutoPesavelEditavel = 'E'` (`FR-014`); nos demais casos ficam
+ * `disabled`, como a unidade — recusam o ponteiro e somem da navegação por
+ * TAB (pedido do usuário, 2026-09-11, substituindo o `readOnly` de
+ * 2026-09-03) —, e o foco ao resolver vai direto para o botão "+" (nada mais
+ * a decidir). Em produto `'E'`, o foco ao resolver vai para a
  * **quantidade** — nunca para o botão de inserir — e o próximo TAB segue a
  * ordem natural do DOM (quantidade → preço → desconto → "+", pulando a
  * unidade desabilitada): o operador revisa e ajusta cada campo digitando,
@@ -624,12 +625,20 @@ export function EntradaRapidaProduto({
    * `revisarPorCodigo` e decidem entre inserir direto e mostrar a revisão pelo
    * mesmo critério.
    *
-   * **Produto não editável e não pesável (`ProdutoPesavelEditavel === ''`)
-   * entra direto no grid** (pedido do usuário, 2026-09-03; antes valia só para
-   * a seleção no modal, AD-124, e agora vale também para o TAB): não há preço
-   * nem desconto a ajustar (`'E'`) nem etiqueta de balança a interpretar
-   * (`'S'`/`'B'`), então a prévia só custaria uma confirmação a mais no ritmo
-   * do caixa. Os outros três valores continuam abrindo a revisão na barra.
+   * **Quem abre a prévia é a origem, não só o tipo do produto** (pedido do
+   * usuário, 2026-09-11):
+   *
+   * - `''` entra direto pelos dois caminhos — não há preço nem desconto a
+   *   ajustar nem etiqueta a interpretar, e a prévia só custaria uma
+   *   confirmação a mais no ritmo do caixa (pedido de 2026-09-03, estendendo ao
+   *   TAB o que AD-124 já fazia no modal).
+   * - `'S'`/`'B'` entram direto **pelo TAB** e abrem a prévia **pelo modal**. O
+   *   TAB é continuação de um código que o operador já tem em mãos — a etiqueta
+   *   bipada ou digitada —, então parar ali repete o gesto que o Enter resolve
+   *   numa tecla. Escolher no modal é outra coisa: o operador chegou por
+   *   descrição, não pelo código, e a prévia é onde ele confere que o pesável
+   *   escolhido é mesmo o que queria antes de somar peso ao carrinho.
+   * - `'E'` nunca entra direto: sem o preço digitado não há linha (`FR-014`).
    */
   async function resolverEExibir(
     codigo: string,
@@ -649,7 +658,9 @@ export function EntradaRapidaProduto({
         campoCodigo.current?.focus();
         return;
       }
-      if (resultado.snapshot.pesavelEditavel === '') {
+      const veioDoModal = opcoes?.origem === 'BUSCA';
+      const tipo = resultado.snapshot.pesavelEditavel;
+      if (tipo === '' || (!veioDoModal && tipo !== 'E')) {
         confirmarPrevia(resultado, resultado.quantidade);
         resetar();
         return;
@@ -1114,7 +1125,14 @@ export function EntradaRapidaProduto({
               className={cn(classeValorDigitavel, semResolucao && 'text-muted-foreground')}
               inputMode="decimal"
               data-testid="previa-preco-unitario"
-              readOnly={!editavel}
+              // `disabled`, não `readOnly` (pedido do usuário, 2026-09-11):
+              // fora de `'E'` o preço vem do ERP e não há o que digitar, então
+              // o campo passa a recusar o ponteiro e a sair da navegação por
+              // TAB, como a unidade acima. Substitui a escolha de 2026-09-03,
+              // que os mantinha alcançáveis: um campo que aceita foco mas não
+              // aceita tecla é justamente o que confundia o operador ao chegar
+              // num pesável pelo modal.
+              disabled={!editavel}
               value={precoExibido}
               onChange={(evento) => {
                 if (editavel) {
@@ -1142,7 +1160,8 @@ export function EntradaRapidaProduto({
               className={cn(classeValorDigitavel, semResolucao && 'text-muted-foreground')}
               inputMode="decimal"
               data-testid="previa-desconto-item"
-              readOnly={!editavel}
+              // Mesma troca do preço (pedido do usuário, 2026-09-11).
+              disabled={!editavel}
               value={descontoExibido}
               onChange={(evento) => {
                 if (editavel) {

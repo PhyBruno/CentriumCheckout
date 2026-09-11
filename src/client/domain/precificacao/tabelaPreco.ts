@@ -32,6 +32,14 @@ export class ErroTipoPrecoDesconhecido extends Error {
   }
 }
 
+/** Produto cujo preço de tabela é zero — cadastro incompleto no ERP. */
+export class ErroProdutoSemPreco extends Error {
+  constructor(readonly codigoProduto: string) {
+    super(`Produto ${codigoProduto} está sem preço de venda no ERP.`);
+    this.name = 'ErroProdutoSemPreco';
+  }
+}
+
 /** Snapshot sem o preço da faixa que a quantidade agregada atingiu. */
 export class ErroFaixaSemPreco extends Error {
   constructor(codigoProduto: string, faixa: number) {
@@ -94,11 +102,48 @@ export function resolvePrecoUnitario(
   // quantidade agregada o alcança). Se o `PrecoVenda{faixa}` correspondente
   // ficou em `0`, o ERP nunca teve esse preço cadastrado: resolver em silêncio
   // para R$0,00 esconderia o erro de configuração. A faixa 1 (`PrecoVenda1`)
-  // fica de fora dessa checagem porque é o preço-base sempre aplicável, não
-  // uma faixa que dependa de limiar — R$0,00 ali é preço intencional, não
-  // configuração ausente.
+  // fica de fora **desta** checagem porque é o preço-base sempre aplicável, não
+  // uma faixa que dependa de limiar — quem recusa o zero ali é
+  // `exigirPrecoDeInsercao`, na entrada do produto. A separação é deliberada:
+  // aqui a função também serve à reprecificação de linha **já inserida**, e
+  // lançar sobre um cadastro que mudou no meio da venda derrubaria o recálculo
+  // de um item que o operador não tem como consertar.
   if (preco === undefined || (faixa > 1 && preco === ZERO_CENTAVOS)) {
     throw new ErroFaixaSemPreco(snapshot.codigoProduto, faixa);
   }
   return preco;
+}
+
+/**
+ * Recusa, **antes de existir linha**, o produto cujo preço de tabela é zero
+ * (pedido do usuário, 2026-09-11).
+ *
+ * Preço zerado no cadastro deixou de virar linha de R$ 0,00 em silêncio. Até
+ * aqui só o caminho da balança recusava, e por acidente de aritmética —
+ * `quantidadePesavel` divide pelo preço para derivar o peso, então o zero
+ * aparecia como `ErroPrecoIndisponivelParaPesagem`. Digitar o mesmo código, ou
+ * escolhê-lo no modal, criava a linha zerada sem nenhum aviso.
+ *
+ * **`'E'` fica de fora, e não por descuido:** produto editável normalmente
+ * *não tem* `PrecoVenda` significativo no ERP — é a razão de o operador digitar
+ * o preço na prévia (`FR-014`, mesma observação de `repricarSku`). Recusá-lo
+ * aqui tornaria todo produto editável impossível de inserir. O carrinho fica
+ * igualmente sem linha zerada porque o preço **digitado** já é obrigado a ser
+ * maior que zero antes de o botão de inserir liberar.
+ *
+ * Roda sobre o snapshot, sem a quantidade agregada: em `TipoPreco 8` o piso é
+ * `PrecoVenda1`, sempre aplicável, e as faixas acima dele continuam sendo
+ * `ErroFaixaSemPreco`, que depende da quantidade e só pode ser avaliado depois.
+ */
+export function exigirPrecoDeInsercao(tipoPreco: number, snapshot: SnapshotPrecoProduto): void {
+  if (snapshot.pesavelEditavel === 'E') {
+    return;
+  }
+
+  const preco =
+    tipoPreco === TIPO_PRECO_POR_FAIXA ? snapshot.precosFaixa[0] : snapshot.precoBase;
+
+  if (preco === undefined || preco <= ZERO_CENTAVOS) {
+    throw new ErroProdutoSemPreco(snapshot.codigoProduto);
+  }
 }

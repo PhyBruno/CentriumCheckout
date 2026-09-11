@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   ErroFaixaSemPreco,
+  ErroProdutoSemPreco,
   ErroTipoPrecoDesconhecido,
+  exigirPrecoDeInsercao,
   resolvePrecoUnitario,
 } from '../../../../src/client/domain/precificacao/tabelaPreco';
 import { snapshotDe, unidades } from '../../../support/precificacao';
@@ -92,6 +94,50 @@ describe('resolvePrecoUnitario — TipoPreco 8 (faixa flat)', () => {
       limiaresFaixaEmUnidades: [5, 0, 0, 0],
     });
 
+    // Quem recusa esse zero é `exigirPrecoDeInsercao`, na entrada do produto:
+    // aqui a função também serve à reprecificação de linha já inserida, e
+    // lançar derrubaria o recálculo de um item que o operador não pode
+    // consertar (pedido do usuário, 2026-09-11).
     expect(resolvePrecoUnitario(8, precoBaseZero, unidades(1))).toBe(0);
+  });
+});
+
+/**
+ * Recusa de produto sem preço na **entrada** (pedido do usuário, 2026-09-11).
+ * Antes disso, só o caminho da balança recusava — e por acidente da divisão
+ * que deriva o peso; digitar o mesmo código criava linha de R$ 0,00 calada.
+ */
+describe('exigirPrecoDeInsercao', () => {
+  it.each(['', 'S', 'B'] as const)(
+    "produto '%s' sem PrecoVenda é recusado antes de virar linha",
+    (pesavelEditavel) => {
+      const semPreco = snapshotDe({ pesavelEditavel, precoBase: 0 });
+
+      expect(() => exigirPrecoDeInsercao(1, semPreco)).toThrow(ErroProdutoSemPreco);
+    },
+  );
+
+  it.each(['', 'S', 'B'] as const)("produto '%s' com preço passa", (pesavelEditavel) => {
+    const comPreco = snapshotDe({ pesavelEditavel, precoBase: 1000 });
+
+    expect(() => exigirPrecoDeInsercao(1, comPreco)).not.toThrow();
+  });
+
+  it("produto 'E' com preço zerado passa — é o cadastro normal de um editável", () => {
+    // `'E'` normalmente não tem `PrecoVenda` significativo no ERP: é a razão de
+    // o operador digitar o preço na prévia (`FR-014`). Recusá-lo aqui tornaria
+    // todo produto editável impossível de inserir.
+    const editavelSemPreco = snapshotDe({ pesavelEditavel: 'E', precoBase: 0 });
+
+    expect(() => exigirPrecoDeInsercao(1, editavelSemPreco)).not.toThrow();
+  });
+
+  it('em TipoPreco 8 o piso conferido é PrecoVenda1, não o PrecoVenda', () => {
+    // O preço-base é irrelevante em 8 — quem vale na faixa 1 é `PrecoVenda1`.
+    const faixaUmZerada = snapshotDe({ precoBase: 1000, precosFaixa: [0, 900, 0, 0, 0] });
+    const faixaUmComPreco = snapshotDe({ precoBase: 0, precosFaixa: [1000, 900, 0, 0, 0] });
+
+    expect(() => exigirPrecoDeInsercao(8, faixaUmZerada)).toThrow(ErroProdutoSemPreco);
+    expect(() => exigirPrecoDeInsercao(8, faixaUmComPreco)).not.toThrow();
   });
 });

@@ -175,7 +175,7 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     });
   });
 
-  it("produto pesável ('S') só libera a quantidade — preço e desconto ficam somente leitura", async () => {
+  it("produto pesável ('S') só libera a quantidade — preço e desconto ficam desabilitados", async () => {
     const usuario = userEvent.setup();
     const linha = linhaDe({
       idLinha: 'linha-1',
@@ -191,9 +191,12 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
       useEdicaoItemStore.getState().carregarParaEdicao(linha);
     });
 
+    // `disabled`, não `readonly` (pedido do usuário, 2026-09-11): fora de
+    // `'E'` o campo recusa o ponteiro e sai da navegação por TAB.
     await waitFor(() => {
-      expect(screen.getByTestId('previa-preco-unitario')).toHaveAttribute('readonly');
+      expect(screen.getByTestId('previa-preco-unitario')).toBeDisabled();
     });
+    expect(screen.getByTestId('previa-desconto-item')).toBeDisabled();
     // Desconto exibido é o real da linha (convênio, já que não há manual) —
     // não `0,00` fixo, que era o comportamento de uma inserção nova. O "R$"
     // vive fora do campo, então o `value` carrega só o número (correção do
@@ -324,6 +327,121 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
       expect(screen.getByTestId('candidato-produto')).toBeInTheDocument();
     });
     await usuario.click(screen.getByTestId('candidato-produto'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+  });
+
+  /**
+   * Pesável escolhido no modal abre a prévia — ao contrário do mesmo produto
+   * resolvido por TAB, que entra direto (correção do usuário, 2026-09-11).
+   * Quem chegou por descrição ainda não viu o código; a prévia é onde ele
+   * confere o pesável antes de somar peso ao carrinho.
+   */
+  it.each(['S', 'B'])(
+    "produto pesável ('%s') escolhido no modal abre a prévia, com preço e desconto desabilitados",
+    async (tipo) => {
+      stubarFetch(tipo);
+      const usuario = userEvent.setup();
+      renderBarra();
+
+      await usuario.click(screen.getByTestId('abrir-busca-produto'));
+      await usuario.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+      await waitFor(() => {
+        expect(screen.getByTestId('candidato-produto')).toBeInTheDocument();
+      });
+      await usuario.click(screen.getByTestId('candidato-produto'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('previa-preco-unitario')).toBeDisabled();
+      });
+      expect(screen.getByTestId('previa-desconto-item')).toBeDisabled();
+      // A quantidade continua ajustável: é o único campo que faz sentido mexer
+      // num pesável.
+      expect(screen.getByTestId('previa-quantidade')).toBeEnabled();
+      expect(useVendaStore.getState().linhas).toHaveLength(0);
+    },
+  );
+
+  it.each(['S', 'B'])(
+    "o mesmo pesável ('%s') resolvido por TAB no código entra direto, sem prévia",
+    async (tipo) => {
+      stubarFetch(tipo);
+      const usuario = userEvent.setup();
+      renderBarra();
+
+      await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+      await usuario.tab();
+
+      await waitFor(() => {
+        expect(useVendaStore.getState().linhas).toHaveLength(1);
+      });
+      expect(screen.getByTestId('campo-codigo-produto')).toHaveValue('');
+    },
+  );
+
+  /**
+   * Preço zerado no cadastro deixou de virar linha de R$ 0,00 (pedido do
+   * usuário, 2026-09-11). Até aqui só a balança recusava, e por acidente da
+   * divisão que deriva o peso.
+   */
+  it('produto sem preço de venda no ERP é recusado, sem criar linha', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              Produto: respostaGetProduto({
+                ProdutoPesavelEditavel: '',
+                PrecoVenda: '0.0000',
+              }),
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-codigo-produto')).toHaveFocus();
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+  });
+
+  /**
+   * O contraponto do caso acima: `'E'` normalmente **vem** com `PrecoVenda`
+   * zerado do ERP — é a razão de o operador digitar o preço (`FR-014`).
+   * Recusá-lo junto tornaria todo produto editável impossível de inserir.
+   */
+  it("produto editável ('E') com preço zerado no ERP continua abrindo a prévia", async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              Produto: respostaGetProduto({
+                ProdutoPesavelEditavel: 'E',
+                PrecoVenda: '0.0000',
+              }),
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
 
     await waitFor(() => {
       expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
