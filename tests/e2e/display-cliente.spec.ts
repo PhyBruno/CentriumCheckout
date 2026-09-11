@@ -146,4 +146,90 @@ test.describe('Display do cliente — o espelho do QR Code (T041)', () => {
 
     await display.close();
   });
+
+  /**
+   * Regressão de AD-217, relatada pelo usuário: *"Ao dar zoom o nome da
+   * organização vai descendo e fica bugado"*, na tela **com QR Code**.
+   *
+   * Zoom do navegador é, para o layout, o mesmo que encolher a viewport em
+   * pixels CSS — por isso o teste redimensiona em vez de chamar uma API de zoom
+   * (o Playwright não tem uma). Três alturas: a de um monitor de PDV, uma
+   * equivalente a ~200 % e outra a ~350 %.
+   *
+   * O que se afirma é **ausência de sobreposição**, não posição exata: a tela é
+   * um kiosk que não rola, então qualquer caixa que invada a de cima é conteúdo
+   * perdido para quem está pagando. Duas invasões diferentes existiam antes: o
+   * miolo subia por cima da marca (`justify-center` transbordando simétrico) e o
+   * QR Code vazava o próprio cartão (imagem de tamanho fixo num cartão que
+   * encolhe).
+   */
+  test('a cobrança não se sobrepõe em nenhum nível de zoom (AD-217)', async ({ page, request }) => {
+    test.setTimeout(90_000);
+
+    await configurarPix(request, ['G']);
+    await abrirVendaComItem(page);
+    await aplicarPix(page, TOTAL_DO_CARRINHO);
+
+    const display = await page.context().newPage();
+    await display.goto('/display');
+    await expect(display.getByTestId('display-cobranca-pix')).toBeVisible({ timeout: 15_000 });
+
+    for (const tamanho of [
+      { width: 1920, height: 1000 },
+      { width: 1280, height: 590 },
+      { width: 800, height: 380 },
+      // ~350 %: é **só aqui** que o cartão do QR chega a encolher, e portanto o
+      // único tamanho que pega a imagem vazando a moldura. Sem esta linha o
+      // teste passa mesmo com o defeito de volta — verificado removendo o
+      // `max-h-full` e vendo os outros três continuarem verdes.
+      { width: 560, height: 280 },
+    ]) {
+      await display.setViewportSize(tamanho);
+
+      const caixas = await display.evaluate(() => {
+        const medir = (seletor: string): { topo: number; base: number } | null => {
+          const elemento = document.querySelector(seletor);
+          if (elemento === null) {
+            return null;
+          }
+          const caixa = elemento.getBoundingClientRect();
+          return { topo: caixa.top, base: caixa.bottom };
+        };
+        const imagem = document.querySelector('[data-testid="display-qrcode"]');
+        const cartao = imagem?.parentElement?.getBoundingClientRect();
+
+        return {
+          marca: medir('[data-testid="display-nome-loja"]'),
+          titulo: medir('[data-testid="display-cobranca-pix"] h1'),
+          qrCode: medir('[data-testid="display-qrcode"]'),
+          cartao: cartao === undefined ? null : { topo: cartao.top, base: cartao.bottom },
+          alturaDaTela: window.innerHeight,
+        };
+      });
+
+      const onde = `${tamanho.width}x${tamanho.height}`;
+      const { marca, titulo, qrCode, cartao, alturaDaTela } = caixas;
+      if (marca === null || titulo === null || qrCode === null || cartao === null) {
+        throw new Error(`tela incompleta em ${onde}: alguma caixa não foi encontrada`);
+      }
+
+      // O título do miolo começa depois que a marca termina — era exatamente
+      // aqui que "Pague com PIX" aparecia escrito por cima do nome da loja.
+      expect(titulo.topo, `título invade a marca em ${onde}`).toBeGreaterThanOrEqual(marca.base);
+      // E o QR Code não passa do cartão que o emoldura, em cima nem embaixo. A
+      // folga de 1 px absorve o arredondamento de subpixel do layout.
+      expect(qrCode.topo, `QR Code vaza o cartão por cima em ${onde}`).toBeGreaterThanOrEqual(
+        cartao.topo - 1,
+      );
+      expect(qrCode.base, `QR Code vaza o cartão por baixo em ${onde}`).toBeLessThanOrEqual(
+        cartao.base + 1,
+      );
+      // Nada começa fora da tela pelo topo: com `center` puro o excedente saía
+      // pelos dois lados, e o que saía por cima ficava inalcançável.
+      expect(marca.topo, `conteúdo começa acima da tela em ${onde}`).toBeGreaterThanOrEqual(0);
+      expect(marca.base, `marca fora da tela em ${onde}`).toBeLessThan(alturaDaTela);
+    }
+
+    await display.close();
+  });
 });
