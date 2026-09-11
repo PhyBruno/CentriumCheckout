@@ -91,7 +91,8 @@ export const checkoutListaProdutosSchema = z.looseObject({
   RegistrosPorPagina: inteiroErp,
   TotalRegistros: inteiroErp,
   TotalPaginas: inteiroErp,
-  Produtos: z.array(produtoDaListaSchema),
+  /** Ausente na busca sem resultado — ver `Clientes` em `cliente.schema.ts`. */
+  Produtos: z.array(produtoDaListaSchema).optional().default([]),
 });
 
 /**

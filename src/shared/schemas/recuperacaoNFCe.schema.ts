@@ -64,7 +64,8 @@ export const checkoutListaRascunhosSchema = z.looseObject({
   RegistrosPorPagina: inteiroErp,
   TotalRegistros: inteiroErp,
   TotalPaginas: inteiroErp,
-  Rascunho: z.array(rascunhoDaListaSchema),
+  /** Ausente na busca sem resultado — ver `Clientes` em `cliente.schema.ts`. */
+  Rascunho: z.array(rascunhoDaListaSchema).optional().default([]),
 });
 
 /**

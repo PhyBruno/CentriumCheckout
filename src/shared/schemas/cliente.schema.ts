@@ -91,7 +91,17 @@ export const checkoutListaClientesSchema = z.looseObject({
   RegistrosPorPagina: inteiroErp,
   TotalRegistros: inteiroErp,
   TotalPaginas: inteiroErp,
-  Clientes: z.array(clienteDaListaSchema),
+  /**
+   * **Ausente quando a busca não acha ninguém.** O ERP não devolve `[]`: ele
+   * omite a chave e manda só `PaginaAtual`/`RegistrosPorPagina`/
+   * `TotalRegistros: 0`/`TotalPaginas: 0` (medido ao vivo 2026-09-11 contra
+   * `GetListaClientes`, e o mesmo vale para produto, vendedor, DAV e rascunho).
+   *
+   * Exigir a chave fazia **toda** busca sem resultado reprovar na fronteira: o
+   * operador via erro de resposta inválida em vez do "nenhum cliente
+   * encontrado" da tela. O `erp-mock` devolvia `[]` e escondia isso da suíte.
+   */
+  Clientes: z.array(clienteDaListaSchema).optional().default([]),
 });
 
 /**

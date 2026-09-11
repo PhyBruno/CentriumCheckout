@@ -127,7 +127,13 @@ export interface FormaPagamento {
 export interface CondicaoPagamento {
   readonly codigo: number;
   readonly descricao: string;
-  /** Dias; não usado pela 008, preservado para a 004. */
+  /**
+   * **Número de parcelas**, não dias: no catálogo real `'30 DIAS'` vem
+   * `"1.00000"`, `'2 VEZES'` vem `"2.00000"` e `'30/60/90/120 DIAS'` vem
+   * `"4.00000"` (medido nas 62 condições do ERP em 2026-09-11, AD-216). A
+   * redação anterior dizia "Dias" e não se sustenta. Não usado pela 008,
+   * preservado para a 004.
+   */
   readonly prazo: number;
   /** `CondicaoMinimoEntrada`, convertido de `double` na fronteira Zod. */
   readonly minimoEntrada: Centavos;

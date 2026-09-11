@@ -79,7 +79,8 @@ export const checkoutListaDavsSchema = z.looseObject({
   RegistrosPorPagina: inteiroErp,
   TotalRegistros: inteiroErp,
   TotalPaginas: inteiroErp,
-  DAV: z.array(davDaListaSchema),
+  /** Ausente na busca sem resultado — ver `Clientes` em `cliente.schema.ts`. */
+  DAV: z.array(davDaListaSchema).optional().default([]),
 });
 
 /**
