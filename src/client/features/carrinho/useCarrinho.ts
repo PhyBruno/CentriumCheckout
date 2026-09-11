@@ -16,10 +16,7 @@ import type {
   SnapshotPrecoProduto,
 } from '../../domain/precificacao/linha';
 import { milesimosDeUnidades, type Milesimos } from '../../domain/precificacao/quantidade';
-import {
-  ErroProdutoSemPreco,
-  exigirPrecoDeInsercao,
-} from '../../domain/precificacao/tabelaPreco';
+import { ErroProdutoSemPreco, exigirPrecoDeInsercao } from '../../domain/precificacao/tabelaPreco';
 import {
   ErroProdutoNaoEncontrado,
   ErroRespostaInvalida,
