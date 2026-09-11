@@ -3,7 +3,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ClienteCheckout } from '../../src/shared/schemas/cliente.schema';
-import { fonteDav, useListaDavs } from '../../src/client/services/dav/davQueries';
+import { fetchDav, fonteDav, useListaDavs } from '../../src/client/services/dav/davQueries';
+import { ErroNegocioErp } from '../../src/client/services/errosErp';
 import {
   importarVendaExistente,
   mensagemDeRecusa,
@@ -675,6 +676,40 @@ describe('erro de importação (D7, FR-010)', () => {
     expect(store.getState().linhas).toEqual(antes);
     expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroNota: 0 });
     expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
+  });
+
+  /**
+   * O ERP recusa um DAV em digitação com `200` + SDT zerado e a razão em
+   * `messages[]`. Até 2026-09-11 o motivo era descartado pela validação de
+   * fronteira e o operador lia "formato inesperado" — sem nenhuma pista de que
+   * bastava liberar o pedido no ERP.
+   */
+  it('DAV não liberado: o motivo escrito pelo ERP chega ao erro, em vez de "formato inesperado"', async () => {
+    const recusaDoErp = {
+      OutCheckoutFaturarNFCe: {
+        Empresa: 0,
+        SuspenderOuFaturar: '',
+        clienteCodigo: '0',
+        vendedorCodigo: '0',
+        CondicaoPagamentoCodigo: '0',
+        NumeroNota: '0',
+        CadSerieNFCe: '',
+        UsuarioCodigo: '0',
+        Log: '',
+      },
+      messages: [
+        {
+          Id: '',
+          Type: 1,
+          Description: 'Erro - Item Liberado: S, Pedido Liberado: S, Status Digitação: N\r\n',
+        },
+      ],
+    };
+
+    const erpClient = erpClientDe({ '/ApiCentriumOAuth/GetDav': recusaDoErp });
+
+    await expect(fetchDav(NUMERO_DAV, { erpClient })).rejects.toThrow(ErroNegocioErp);
+    await expect(fetchDav(NUMERO_DAV, { erpClient })).rejects.toThrow(/Status Digitação: N/);
   });
 
   it('cliente do documento irresolvível aborta antes de popular o carrinho', async () => {

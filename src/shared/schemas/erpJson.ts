@@ -75,9 +75,9 @@ export const inteiroErp = numeroErp.pipe(z.number().int());
  * do ERP real — valida a própria raiz. Como o resultado é o objeto interno nos
  * dois caminhos, quem consome não precisa saber qual formato chegou.
  *
- * `messages`, quando existe ao lado do envelope, é descartado aqui: nenhum dos
- * endpoints que usam este helper o consome (quem consome é `GetDav`/
- * `FaturarNFCe`, que mantêm o envelope e por isso **não** passam por aqui).
+ * `messages`, quando existe ao lado do envelope, é descartado aqui — este
+ * helper entrega só o SDT. Quem precisa do motivo de uma recusa lê a raiz com
+ * `recusaDeNegocio` **antes** de validar.
  */
 export function semEnvelope<S extends z.ZodType>(
   chave: string,
@@ -89,4 +89,53 @@ export function semEnvelope<S extends z.ZodType>(
     }
     return valor;
   }, interno);
+}
+
+/** `Type` de `GeneXus.Common.Messages_Message` que significa erro, não aviso. */
+const TIPO_MENSAGEM_ERRO = 1;
+
+const mensagemDoErpSchema = z.looseObject({
+  Type: z.number().int().optional(),
+  Description: z.string().optional(),
+});
+
+const respostaComMensagensSchema = z.looseObject({
+  messages: z.array(mensagemDoErpSchema).optional(),
+});
+
+/**
+ * O motivo da recusa que o ERP escreveu em `messages[]`, ou `null` quando a
+ * resposta não é uma recusa.
+ *
+ * **Existe porque uma recusa de negócio não é uma resposta malformada, e vinha
+ * sendo tratada como se fosse.** No padrão GeneXus o ERP recusa com `200` e o
+ * SDT zerado, pondo a razão em `messages[].Description` — foi o que ele
+ * respondeu a `CarregarNFCe` ("Série é obrigatório") e a `GetDav` ("Erro - Item
+ * Liberado: S, Pedido Liberado: S, Status Digitação: N") nos casos relatados em
+ * 2026-09-11. O schema reprova o SDT zerado, e com razão: importá-lo iniciaria
+ * uma venda vazia com `clienteCodigo: 0`. Só que a falha de fronteira chegava ao
+ * operador como "o ERP devolveu este documento em formato inesperado", jogando
+ * fora a única frase que dizia o que fazer a respeito.
+ *
+ * Ler a raiz, e não o conteúdo do envelope: `messages` é irmão do SDT, fora do
+ * que `semEnvelope` devolve.
+ *
+ * Só `Type: 1` conta. Aviso (`Type: 0`/`2`) acompanha resposta bem-sucedida — o
+ * próprio `PostCliente` confirma o cadastro com `Type: 2` —, e tratá-lo como
+ * recusa transformaria sucesso em erro.
+ */
+export function recusaDeNegocio(corpo: unknown): string | null {
+  const lido = respostaComMensagensSchema.safeParse(corpo);
+  if (!lido.success) {
+    return null;
+  }
+
+  for (const mensagem of lido.data.messages ?? []) {
+    const descricao = mensagem.Description?.trim() ?? '';
+    if (mensagem.Type === TIPO_MENSAGEM_ERRO && descricao !== '') {
+      return descricao;
+    }
+  }
+
+  return null;
 }
