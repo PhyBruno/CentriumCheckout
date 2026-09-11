@@ -342,6 +342,10 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           // faturamento (`FR-007` da 006), mas o defeito era da 005.
           clienteCodigo: venda.clienteAtual?.codigoCliente ?? sessao.ClienteDefaultCodigo,
           vendedorCodigo,
+          // O operador logado, no campo que é dele — o par de `vendedorCodigo`
+          // no mesmo SDT, e não um substituto (correção do usuário,
+          // 2026-09-11). Sempre do bootstrap, nunca da tela.
+          usuarioCodigo: sessao.UsuarioCodigo,
           condicaoPagamentoCodigo:
             injetadas.condicaoPagamentoCodigo?.() ?? pagamentosDaVenda.CondicaoPagamentoCodigo,
           eventos: venda.eventos,

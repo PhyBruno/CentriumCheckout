@@ -20,6 +20,8 @@ export function registroBootstrapDe(
       EmpresaNomeFantasia: 'Organizações Tabajara',
       EmpresaRazaoSocial: 'Tabajara Comércio Ltda',
       UsuarioNome: 'Bruno',
+      /** Vai como `UsuarioCodigo` no corpo de `FaturarNFCe`/`ValidarNFCe`. */
+      UsuarioCodigo: 147,
       caixa: 3,
       CadMaqCod: 'PDV01',
       CadSerieNFCe: '1',

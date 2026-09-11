@@ -70,6 +70,11 @@ export interface CheckoutFaturarNFCe {
   readonly CadSerieNFCe: string;
   readonly clienteCodigo: number;
   readonly vendedorCodigo: number;
+  /**
+   * Operador logado que emitiu a nota — `SessaoUsuario.UsuarioCodigo`, nunca o
+   * vendedor da venda. Ver o TSDoc de `SnapshotVenda.usuarioCodigo`.
+   */
+  readonly UsuarioCodigo: number;
   readonly CondicaoPagamentoCodigo: number;
   readonly produtos: readonly ItemRetratoVenda[];
   readonly FormasDePagamento: readonly FormaDePagamentoRetrato[];
@@ -106,6 +111,19 @@ export interface SnapshotVenda {
   readonly clienteCodigo: number;
   /** Vendedor **selecionado** para a venda, nunca o operador logado (`FR-010`). */
   readonly vendedorCodigo: number;
+  /**
+   * Operador logado — `SessaoUsuario.UsuarioCodigo` do bootstrap, sempre
+   * (correção do usuário, 2026-09-11).
+   *
+   * É o **par** de `vendedorCodigo`, não um substituto: o vendedor é quem
+   * atendeu e o operador é quem operou o caixa, e o ERP tem um campo para cada
+   * um no mesmo SDT. O campo existia no contrato (`CheckoutFaturarNFCe`
+   * .`UsuarioCodigo`) e nunca era preenchido — toda NFCe emitida pelo Checkout
+   * saía sem identificar quem a emitiu.
+   *
+   * Vem do bootstrap e nunca da tela: o operador não escolhe quem ele é.
+   */
+  readonly usuarioCodigo: number;
   /** Condição de pagamento vigente — escalar, uma por venda (feature 008). */
   readonly condicaoPagamentoCodigo: number;
   /** Histórico acumulado da sessão de venda (feature 001). */
@@ -207,6 +225,7 @@ export function montarRetratoVenda(
     CadSerieNFCe: snapshot.cadSerieNFCe,
     clienteCodigo: snapshot.clienteCodigo,
     vendedorCodigo: snapshot.vendedorCodigo,
+    UsuarioCodigo: snapshot.usuarioCodigo,
     CondicaoPagamentoCodigo: snapshot.condicaoPagamentoCodigo,
     produtos: itensDoRetrato(snapshot.linhas, rateioDescontoCapa),
     FormasDePagamento: pagamentos,
