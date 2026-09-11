@@ -5754,7 +5754,7 @@
   {
     "id": "mem:1789154934374",
     "kind": "decision",
-    "content": "AD-224/AD-225: BFF reescreve UsuarioCodigo do corpo pelo operador da sess\u00e3o (GetSessao + cache) e passa a enviar cabe\u00e7alhos de seguran\u00e7a em toda resposta",
+    "content": "AD-224/AD-225: usuarioCodigo vira campo obrigat\u00f3rio do cookie, gravado no /session/start via GetSessao, e o BFF passa a enviar cabe\u00e7alhos de seguran\u00e7a em toda resposta",
     "tags": [
       "224",
       "225",

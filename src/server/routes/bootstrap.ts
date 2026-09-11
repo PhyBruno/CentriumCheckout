@@ -8,11 +8,7 @@ import {
 } from '../session/cookie';
 import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
 import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
-import {
-  CAMINHO_GET_SESSAO,
-  queryGetSessao,
-  type UsuarioDaSessao,
-} from '../session/usuarioDaSessao';
+import { CAMINHO_GET_SESSAO, queryGetSessao } from '../session/getSessao';
 import { calcularVersionHash } from '../../shared/versionHash';
 import { normalizarEtag } from '../../shared/etag';
 
@@ -34,11 +30,6 @@ function hashConhecido(cabecalho: string | string[] | undefined, hash: string): 
 export interface BootstrapDeps {
   readonly env: Env;
   readonly cifrador: CifradorDeSessao;
-  /**
-   * Cache do operador da sessão. Esta rota é a que aquece: já chama `GetSessao`
-   * por outro motivo, então o faturamento não precisa chamar de novo.
-   */
-  readonly usuarioDaSessao: UsuarioDaSessao;
   readonly fetchImpl?: typeof fetch;
 }
 
@@ -126,12 +117,6 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
       request.log.warn('payload de bootstrap fora do contrato esperado');
       return reply.code(502).send({ erro: 'Configuração do ponto de venda fora do contrato' });
     }
-
-    // O operador que o ERP associa a este login, guardado para o proxy usar na
-    // hora de faturar. É o mesmo valor que a SPA recebe — a diferença é que
-    // aqui ele fica do lado do servidor, fora do alcance do navegador, e é essa
-    // cópia que assina a NFCe.
-    deps.usuarioDaSessao.registrar(sessao, validado.data.SessaoUsuario.UsuarioCodigo);
 
     // FR-008/AD-045: se a SPA já tem este payload, não retransmite os ~5MB.
     // O `tenant` faz parte do payload, então o hash difere entre tenants e o

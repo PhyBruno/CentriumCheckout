@@ -4,7 +4,6 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import { loadEnv, type Env } from './config/env';
 import { criarCifradorDeSessao } from './session/cookie';
-import { criarUsuarioDaSessao } from './session/usuarioDaSessao';
 import { registrarHeadersDeSeguranca } from './plugins/headersSeguranca';
 import { registrarRotaSessionStart } from './routes/session-start';
 import { registrarRotaBootstrap } from './routes/bootstrap';
@@ -37,13 +36,10 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   app.get('/health', async () => ({ status: 'ok' }));
 
   const cifrador = criarCifradorDeSessao(env.sessionSecret);
-  // Um cache por instância do app: o `/api/bootstrap` o aquece e o proxy o
-  // consome para reescrever `UsuarioCodigo` na hora de faturar.
-  const usuarioDaSessao = criarUsuarioDaSessao({ env });
 
   registrarRotaSessionStart(app, { env, cifrador });
-  registrarRotaBootstrap(app, { env, cifrador, usuarioDaSessao });
-  registrarRotaErpProxy(app, { env, cifrador, usuarioDaSessao });
+  registrarRotaBootstrap(app, { env, cifrador });
+  registrarRotaErpProxy(app, { env, cifrador });
   registrarRotaGerencial(app, { env, cifrador });
 
   // Assets estáticos da SPA (build do Vite) servidos pelo mesmo processo Node —

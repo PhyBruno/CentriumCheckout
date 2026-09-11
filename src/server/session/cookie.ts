@@ -17,6 +17,19 @@ export interface SessaoOperador {
   readonly password: string;
   readonly Repository: string;
   readonly codigoEmpresa: string;
+  /**
+   * Operador logado, como o ERP o identifica (`SessaoUsuario.UsuarioCodigo`).
+   *
+   * Único campo que não chega pelo redirect: é perguntado a `GetSessao` em
+   * `/session/start`, logo depois da troca OAuth, e cifrado aqui junto com o
+   * resto. Existe para que o BFF possa reescrever o `UsuarioCodigo` do corpo de
+   * `FaturarNFCe`/`ValidarNFCe` — que vem do navegador e seria editável no
+   * DevTools — com quem de fato está logado (AD-224).
+   *
+   * String como todo campo desta sessão, e como o próprio ERP o devolve
+   * (`int64` serializado); quem precisa do número converte na fronteira.
+   */
+  readonly usuarioCodigo: string;
 }
 
 export const SESSION_COOKIE_NAME = 'cc_session';
@@ -66,6 +79,7 @@ const CAMPOS_OBRIGATORIOS = [
   'password',
   'Repository',
   'codigoEmpresa',
+  'usuarioCodigo',
 ] as const;
 
 /** Cifra e decifra o cookie de sessão. */

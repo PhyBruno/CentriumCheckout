@@ -7,13 +7,10 @@ import {
 } from '../session/cookie';
 import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
 import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
-import type { UsuarioDaSessao } from '../session/usuarioDaSessao';
 
 export interface ErpProxyDeps {
   readonly env: Env;
   readonly cifrador: CifradorDeSessao;
-  /** Quem é o operador desta sessão, segundo o ERP — nunca segundo o corpo. */
-  readonly usuarioDaSessao: UsuarioDaSessao;
   readonly fetchImpl?: typeof fetch;
 }
 
@@ -103,36 +100,37 @@ export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): u
 const CAMPO_USUARIO = 'UsuarioCodigo';
 
 /**
- * A requisição afirma um operador? É isso que decide se o servidor precisa
- * resolver a identidade antes de repassar a chamada.
- *
- * A checagem é pela **presença do campo**, não por uma lista de caminhos: hoje
- * só `FaturarNFCe` e `ValidarNFCe` o mandam, mas um endpoint novo que passe a
- * mandá-lo entra protegido por construção, em vez de entrar esquecido numa
- * lista que ninguém lembra de atualizar.
- */
-export function corpoDeclaraUsuario(body: unknown): boolean {
-  return typeof body === 'object' && body !== null && !Array.isArray(body) && CAMPO_USUARIO in body;
-}
-
-/**
  * Reescreve `UsuarioCodigo` com o operador da sessão.
  *
  * Mesmo princípio de `corpoComEmpresaDaSessao`, e pelo mesmo motivo: o campo
  * viaja no corpo, o corpo vem do navegador, e o ERP não o confere contra o
- * token. Sem esta reescrita, um operador autenticado que editasse o payload
- * emitiria nota assinada por outro — e a assinatura é justamente o que AD-221
- * existe para garantir (item 53 de `.specs/project/PENDENCIES.md`, OWASP
- * A01/A09).
+ * token. Sem esta reescrita, um operador autenticado que editasse o payload no
+ * DevTools emitiria nota assinada por outro — e a assinatura é justamente o que
+ * AD-221 existe para garantir (item 53 de `.specs/project/PENDENCIES.md`, OWASP
+ * A01/A09). O valor confiável é o do cookie cifrado, gravado em
+ * `/session/start` a partir do `GetSessao` (AD-224).
  *
- * O valor entra como número, que é o tipo do campo no SDT.
+ * A reescrita acontece pela **presença do campo**, não por uma lista de
+ * caminhos: hoje só `FaturarNFCe` e `ValidarNFCe` o mandam, mas um endpoint
+ * novo que passe a mandá-lo entra protegido por construção, em vez de entrar
+ * esquecido numa lista que ninguém lembra de atualizar.
+ *
+ * O valor sai como número, que é o tipo do campo no SDT; um cookie com código
+ * não numérico deixa o corpo como está, porque gravar `NaN` no documento fiscal
+ * seria pior que o valor que veio.
  */
-export function corpoComUsuarioDaSessao(body: unknown, usuarioCodigo: number): unknown {
-  if (!corpoDeclaraUsuario(body)) {
+export function corpoComUsuarioDaSessao(body: unknown, usuarioCodigo: string): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return body;
   }
 
-  return { ...(body as Record<string, unknown>), [CAMPO_USUARIO]: usuarioCodigo };
+  const corpo = body as Record<string, unknown>;
+  const codigo = Number(usuarioCodigo);
+  if (!(CAMPO_USUARIO in corpo) || !Number.isFinite(codigo)) {
+    return body;
+  }
+
+  return { ...corpo, [CAMPO_USUARIO]: codigo };
 }
 
 /**
@@ -148,9 +146,9 @@ export function corpoComUsuarioDaSessao(body: unknown, usuarioCodigo: number): u
  */
 export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps): void {
   app.all(`${PREFIXO}/*`, async (request, reply) => {
-    const sessaoDoCookie = deps.cifrador.decifrar(request.cookies[SESSION_COOKIE_NAME]);
+    const sessao = deps.cifrador.decifrar(request.cookies[SESSION_COOKIE_NAME]);
 
-    if (sessaoDoCookie === null) {
+    if (sessao === null) {
       return reply.code(401).send({ erro: 'Sessão ausente ou inválida' });
     }
 
@@ -162,31 +160,12 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
     // `Content-Type` real precisa ser repassado como está.
     const contentTypeOriginal = request.headers['content-type'];
 
-    // Quem assina a nota sai da sessão, não do corpo. A resolução vem antes da
-    // chamada porque pode renovar o token — e aí é a sessão renovada que vale
-    // para a chamada de negócio e para o cookie.
-    const precisaDoOperador = corpoDeclaraUsuario(request.body);
-    const operador = precisaDoOperador
-      ? await executarOuEncerrarSessao(reply, () => deps.usuarioDaSessao.resolver(sessaoDoCookie))
-      : { usuarioCodigo: null, sessaoRenovada: null };
-
-    if (operador === null) {
-      return reply;
-    }
-
-    if (precisaDoOperador && operador.usuarioCodigo === null) {
-      // Recusar é a única saída correta: repassar o corpo como veio aceitaria
-      // de volta o valor forjável que esta rota existe para descartar.
-      request.log.warn('operador da sessão não identificado; chamada recusada');
-      return reply.code(502).send({ erro: 'Não foi possível identificar o operador da sessão' });
-    }
-
-    const sessao = operador.sessaoRenovada ?? sessaoDoCookie;
-    const corpoComEmpresa = corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa);
-    const corpo =
-      operador.usuarioCodigo === null
-        ? corpoComEmpresa
-        : corpoComUsuarioDaSessao(corpoComEmpresa, operador.usuarioCodigo);
+    // Empresa e operador saem do cookie cifrado, nunca do corpo que o navegador
+    // mandou (AD-024 e AD-224).
+    const corpo = corpoComUsuarioDaSessao(
+      corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
+      sessao.usuarioCodigo,
+    );
 
     // `null` = a sessão acabou e o 401 terminal já foi respondido (FR-006).
     const resultado = await executarOuEncerrarSessao(reply, () =>
@@ -211,13 +190,10 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
       return reply;
     }
 
-    // A renovação pode ter acontecido em qualquer uma das duas chamadas; a mais
-    // recente é a que vale.
-    const sessaoRenovada = resultado.sessaoRenovada ?? operador.sessaoRenovada;
-    if (sessaoRenovada !== null) {
+    if (resultado.sessaoRenovada !== null) {
       reply.setCookie(
         SESSION_COOKIE_NAME,
-        deps.cifrador.cifrar(sessaoRenovada),
+        deps.cifrador.cifrar(resultado.sessaoRenovada),
         SESSION_COOKIE_OPTIONS,
       );
     }
