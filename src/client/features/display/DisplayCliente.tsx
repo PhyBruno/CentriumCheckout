@@ -158,6 +158,9 @@ export function DisplayCliente({
           // de uma discrepância de centavo na tela do cliente.
           valor={centavos(estado.valorCentavos)}
           qrCodeFonte={estado.qrCodeFonte}
+          // AD-214: a marca da loja atravessa a cobrança. Vem do mesmo estado que
+          // alimenta o repouso, então sobrevive a um pulso sem `nomeLoja` novo.
+          nomeLoja={nomeLoja}
         />
       )}
 

@@ -105,7 +105,7 @@ A tela fica horas à vista de qualquer pessoa na loja, sem ninguém olhando para
 - **FR-001**: O sistema MUST oferecer uma tela dedicada ao cliente, acessível por um endereço fixo e próprio, separada da tela de operação do caixa.
 - **FR-002**: A tela do cliente MUST ter exatamente três estados visíveis: repouso, cobrança PIX aguardando pagamento, e pagamento confirmado.
 - **FR-003**: No estado de repouso, a tela MUST exibir apenas a identificação da loja e uma saudação, e MUST NOT exibir itens, quantidades, preços, totais, descontos, nome, documento ou qualquer outro dado do cliente ou da venda.
-- **FR-004**: No estado de cobrança, a tela MUST exibir o QR Code da cobrança, o valor a pagar e a indicação de que o pagamento está sendo aguardado.
+- **FR-004**: No estado de cobrança, a tela MUST exibir a identificação da loja, o QR Code da cobrança, o valor a pagar e a indicação de que o pagamento está sendo aguardado. A identificação da loja é a mesma do repouso e MUST permanecer visível durante toda a cobrança — é o que diz ao cliente a quem ele está pagando (AD-214; correção sobre a implementação original, que a exibia só no repouso). Quando a empresa não está cadastrada, ela é omitida, sem linha órfã.
 - **FR-005**: No estado de cobrança, a tela MUST NOT exibir o código "copia e cola" nem oferecer botão de copiar — o cliente não dispõe de teclado nem de apontador nessa tela.
 - **FR-006**: O QR Code e o valor MUST ser dimensionados para leitura confortável a cerca de um metro de distância, em monitor sem toque.
 - **FR-007**: No estado de pagamento confirmado, a tela MUST exibir a confirmação e um contador regressivo até o retorno automático ao repouso.

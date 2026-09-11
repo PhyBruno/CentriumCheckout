@@ -377,6 +377,29 @@ describe('DisplayCliente — US1: a cobrança PIX na tela do cliente (T016)', ()
     expect(screen.getByTestId('display-aguardando')).toHaveTextContent(/aguardando/i);
   });
 
+  // AD-214: a marca da loja atravessa a cobrança. Um QR Code anônimo na frente
+  // de quem vai transferir dinheiro não diz a quem o cliente está pagando.
+  it('mantém o nome da loja enquanto o QR Code está na tela', () => {
+    const barramento = criarBarramentoFalso();
+    montar(barramento);
+
+    entregar(barramento, mensagemDeEstado({ tela: 'BOAS_VINDAS' }));
+    entregar(barramento, mensagemDeEstado(COBRANCA_87_40));
+
+    expect(screen.getByTestId('display-qrcode')).toBeInTheDocument();
+    expect(screen.getByTestId('display-nome-loja')).toHaveTextContent('Mercado Aurora');
+  });
+
+  it('omite o nome na cobrança quando a empresa não está cadastrada', () => {
+    const barramento = criarBarramentoFalso();
+    montar(barramento);
+
+    entregar(barramento, mensagemDeEstado(COBRANCA_87_40, null));
+
+    expect(screen.getByTestId('display-qrcode')).toBeInTheDocument();
+    expect(screen.queryByTestId('display-nome-loja')).not.toBeInTheDocument();
+  });
+
   it('não mostra o "copia e cola" — a tela do cliente não tem teclado (FR-005)', () => {
     const barramento = criarBarramentoFalso();
     montar(barramento);
