@@ -28,6 +28,14 @@ import type { FastifyInstance } from 'fastify';
  *   impede o script injetado de existir em primeiro lugar.
  * - **`img-src` aceita `data:` e `blob:`** porque o QR Code do PIX chega como
  *   base64 no corpo do ERP e o PDF da NFCe vira `blob:` antes de abrir.
+ * - **`object-src` aceita `'self'` e `blob:`**, e não `'none'`, pelo mesmo PDF:
+ *   `abrirPdfNFCe` faz `window.open(blobUrl)`, o documento em `blob:` herda a
+ *   CSP de quem o criou, e o visualizador embutido do Chrome renderiza num
+ *   contexto de plugin regido por `object-src`. Com `'none'` o operador pode
+ *   receber **aba em branco** no lugar do cupom — e em silêncio, porque o
+ *   `window.open` teve sucesso e `abrirPdfNFCe` devolve `{estado:'aberto'}`.
+ *   Continua fechado para plugin de origem externa, que é o risco real da
+ *   diretiva.
  *
  * `style-src` mantém `'unsafe-inline'`: componentes do carrinho e dos modais
  * usam `style={{ … }}` para medidas calculadas em runtime, que o Tailwind não
@@ -37,7 +45,7 @@ import type { FastifyInstance } from 'fastify';
 export const CSP_CHECKOUT = [
   "default-src 'self'",
   "base-uri 'self'",
-  "object-src 'none'",
+  "object-src 'self' blob:",
   "frame-ancestors 'none'",
   "form-action 'self'",
   "script-src 'self'",
@@ -50,6 +58,29 @@ export const CSP_CHECKOUT = [
   "connect-src 'self' http: https:",
   "media-src 'self'",
 ].join('; ');
+
+/**
+ * HSTS **sem `includeSubDomains`**.
+ *
+ * A diretiva saiu por um motivo concreto, não por cautela genérica: o menu
+ * gerencial redireciona o navegador para `<tenant>.<baseDomain>`
+ * (`gerencial.ts`), e `ERP_PROTOCOL` é configurável. Se o Checkout for servido
+ * do próprio `<baseDomain>` em HTTPS enquanto as telas legadas do ERP ainda
+ * estiverem em `http:`, `includeSubDomains` fixaria **todo** subdomínio de
+ * tenant em HTTPS por dois anos naquele navegador — e o gerencial pararia de
+ * abrir, sem nada que o servidor pudesse fazer para desfazer. O host do próprio
+ * Checkout continua protegido, que é o que o cabeçalho existe para fazer aqui.
+ *
+ * Dois anos continua sendo o `max-age` das listas de preload.
+ *
+ * **Vai em toda resposta, sem olhar o esquema — e isso é deliberado.** Emitir só
+ * em `https` pareceria mais correto (RFC 6797 §7.2), mas o app roda em Docker
+ * com o TLS terminando no proxy à frente e **sem `trustProxy`**
+ * (`src/server/index.ts`): `request.protocol` seria `'http'` em produção e o
+ * cabeçalho nunca sairia. Em `http:` de verdade — dev e E2E — o navegador
+ * descarta o cabeçalho por conta própria, então mandá-lo sempre não atrapalha.
+ */
+export const HSTS = 'max-age=63072000';
 
 /**
  * `Referrer-Policy: no-referrer` não é zelo genérico aqui: o Checkout é
@@ -68,9 +99,7 @@ export const HEADERS_DE_SEGURANCA: Readonly<Record<string, string>> = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
-  // Dois anos, o valor que as listas de preload exigem. Em `http:` o navegador
-  // ignora o cabeçalho, então mandá-lo sempre não atrapalha dev nem os E2E.
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+  'Strict-Transport-Security': HSTS,
   'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(), payment=()',
   'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
   'Cross-Origin-Resource-Policy': 'same-origin',

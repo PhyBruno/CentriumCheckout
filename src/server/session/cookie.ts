@@ -64,7 +64,22 @@ export const ENTRADA_COOKIE_OPTIONS: CookieSerializeOptions = {
   path: '/',
 };
 
-const FORMAT_VERSION = 'v1';
+/**
+ * Versão do formato do cookie — `v2` desde que `usuarioCodigo` entrou em
+ * `CAMPOS_OBRIGATORIOS` (AD-224).
+ *
+ * **Bump obrigatório a cada campo obrigatório novo.** Um cookie `v1` decifra
+ * sem erro, mas reprova em `ehSessaoValida` por falta do campo, e `decifrar`
+ * devolve `null` — indistinguível de "não há sessão". Sem o bump, o operador que
+ * estivesse no meio de uma venda no momento do deploy tomaria o 401 terminal na
+ * chamada seguinte e perderia o carrinho, que é Zustand sem `persist`
+ * (`ARCHITECTURE.md`). Com a versão diferente o cookie antigo é rejeitado no
+ * primeiro `split`, o que não muda o desfecho para quem já estava logado, mas
+ * torna a quebra explícita no código em vez de emergente — e obriga quem
+ * acrescentar o próximo campo a decidir conscientemente entre quebrar a sessão
+ * ou aceitar o campo como opcional por um release.
+ */
+const FORMAT_VERSION = 'v2';
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;

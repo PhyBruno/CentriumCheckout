@@ -62,21 +62,39 @@ export function queryComEmpresaDaSessao(queryString: string, codigoEmpresa: stri
   return [`Empresa=${encodeURIComponent(codigoEmpresa)}`, ...semEmpresa].join('&');
 }
 
+function ehObjeto(valor: unknown): valor is Record<string, unknown> {
+  return typeof valor === 'object' && valor !== null && !Array.isArray(valor);
+}
+
 /**
  * Campo de tenant que aparece **dentro** do corpo de alguns endpoints do ERP,
  * além do cabeçalho `Empresa`.
  *
- * O contrato exige `Cliente.Empresa` no corpo de `PostCliente` (AD-024), e o
- * cliente hoje o preenche a partir do bootstrap. Como o corpo é do navegador,
+ * O contrato exige `Cliente.Empresa` no corpo de `PostCliente` (AD-024) e
+ * `CheckoutFaturarNFCe.Empresa` no de `FaturarNFCe`/`ValidarNFCe` (AD-188), e o
+ * cliente hoje os preenche a partir do bootstrap. Como o corpo é do navegador,
  * um operador autenticado poderia trocar o valor e gravar registro em outra
  * empresa do tenant — o cabeçalho, que vem do cookie cifrado, não protegeria
  * disso. Aqui o servidor reescreve o campo com a empresa da sessão, que é a
  * única fonte confiável (achado da revisão, 2026-09-03).
+ *
+ * **Os corpos do ERP não são planos**, e por isso a varredura desce um nível:
+ * `PostCliente` manda `{ Cliente: … }` e `FaturarNFCe`/`ValidarNFCe` mandam
+ * `{ CheckoutFaturarNFCe: … }` (`faturarNFCeMutation.ts`,
+ * `validarNFCeMutation.ts`). Quem olha só a raiz não encontra campo nenhum.
+ *
+ * **O tipo vai declarado por envelope porque os dois SDTs divergem:**
+ * `Cliente.Empresa` é numérico, e `CheckoutFaturarNFCe.Empresa` é **texto** —
+ * essa é a forma confirmada contra o ERP real em 2026-09-08 (AD-188), e trocar
+ * o tipo ali recusaria toda venda com "Empresa é obrigatório".
  */
-const RAIZES_COM_EMPRESA = ['Cliente'] as const;
+const ENVELOPES_COM_EMPRESA = [
+  { raiz: 'Cliente', comoTexto: false },
+  { raiz: 'CheckoutFaturarNFCe', comoTexto: true },
+] as const;
 
 export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): unknown {
-  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+  if (!ehObjeto(body)) {
     return body;
   }
 
@@ -85,11 +103,14 @@ export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): u
     return body;
   }
 
-  let corpo = body as Record<string, unknown>;
-  for (const raiz of RAIZES_COM_EMPRESA) {
+  let corpo: Record<string, unknown> = body;
+  for (const { raiz, comoTexto } of ENVELOPES_COM_EMPRESA) {
     const conteudo = corpo[raiz];
-    if (typeof conteudo === 'object' && conteudo !== null && !Array.isArray(conteudo)) {
-      corpo = { ...corpo, [raiz]: { ...(conteudo as Record<string, unknown>), Empresa: empresa } };
+    if (ehObjeto(conteudo)) {
+      corpo = {
+        ...corpo,
+        [raiz]: { ...conteudo, Empresa: comoTexto ? codigoEmpresa : empresa },
+      };
     }
   }
 
@@ -110,27 +131,49 @@ const CAMPO_USUARIO = 'UsuarioCodigo';
  * A01/A09). O valor confiável é o do cookie cifrado, gravado em
  * `/session/start` a partir do `GetSessao` (AD-224).
  *
- * A reescrita acontece pela **presença do campo**, não por uma lista de
- * caminhos: hoje só `FaturarNFCe` e `ValidarNFCe` o mandam, mas um endpoint
- * novo que passe a mandá-lo entra protegido por construção, em vez de entrar
+ * A reescrita acontece pela **presença do campo** — na raiz do corpo **ou**
+ * dentro de qualquer objeto de primeiro nível —, não por uma lista de caminhos:
+ * hoje só `FaturarNFCe` e `ValidarNFCe` o mandam, sempre envelopado em
+ * `CheckoutFaturarNFCe`, mas um endpoint novo que passe a mandá-lo entra
+ * protegido por construção, seja qual for o nome do envelope, em vez de entrar
  * esquecido numa lista que ninguém lembra de atualizar.
+ *
+ * **Descer um nível não é zelo:** a primeira versão desta função só olhava a
+ * raiz e por isso nunca disparou em produção — os dois chamadores envelopam o
+ * retrato (`faturarNFCeMutation.ts`, `validarNFCeMutation.ts`), e o corpo
+ * forjado no DevTools chegava intacto ao ERP (achado da revisão do PR #73).
  *
  * O valor sai como número, que é o tipo do campo no SDT; um cookie com código
  * não numérico deixa o corpo como está, porque gravar `NaN` no documento fiscal
  * seria pior que o valor que veio.
  */
+function comUsuario(objeto: Record<string, unknown>, codigo: number): Record<string, unknown> {
+  return CAMPO_USUARIO in objeto ? { ...objeto, [CAMPO_USUARIO]: codigo } : objeto;
+}
+
 export function corpoComUsuarioDaSessao(body: unknown, usuarioCodigo: string): unknown {
-  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+  if (!ehObjeto(body)) {
     return body;
   }
 
-  const corpo = body as Record<string, unknown>;
   const codigo = Number(usuarioCodigo);
-  if (!(CAMPO_USUARIO in corpo) || !Number.isFinite(codigo)) {
+  if (!Number.isFinite(codigo)) {
     return body;
   }
 
-  return { ...corpo, [CAMPO_USUARIO]: codigo };
+  let corpo = comUsuario(body, codigo);
+
+  for (const [chave, valor] of Object.entries(body)) {
+    if (!ehObjeto(valor)) {
+      continue;
+    }
+    const envelope = comUsuario(valor, codigo);
+    if (envelope !== valor) {
+      corpo = { ...corpo, [chave]: envelope };
+    }
+  }
+
+  return corpo;
 }
 
 /**

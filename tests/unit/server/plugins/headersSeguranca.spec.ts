@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { loadEnv } from '../../../../src/server/config/env';
 import { buildApp } from '../../../../src/server/index';
-import { CSP_CHECKOUT } from '../../../../src/server/plugins/headersSeguranca';
+import { CSP_CHECKOUT, HSTS } from '../../../../src/server/plugins/headersSeguranca';
 
 /**
  * O BFF não mandava nenhum cabeçalho de segurança — sem CSP, `X-Frame-Options`,
@@ -43,7 +43,6 @@ describe('cabeçalhos de segurança', () => {
     expect(resposta.headers['x-frame-options']).toBe('DENY');
     expect(resposta.headers['x-content-type-options']).toBe('nosniff');
     expect(resposta.headers['referrer-policy']).toBe('no-referrer');
-    expect(resposta.headers['strict-transport-security']).toContain('max-age=');
     expect(resposta.headers['content-security-policy']).toBe(CSP_CHECKOUT);
   });
 
@@ -71,8 +70,17 @@ describe('política de conteúdo', () => {
     expect(CSP_CHECKOUT).toContain("default-src 'self'");
     expect(CSP_CHECKOUT).toContain("script-src 'self'");
     expect(CSP_CHECKOUT).toContain("frame-ancestors 'none'");
-    expect(CSP_CHECKOUT).toContain("object-src 'none'");
     expect(CSP_CHECKOUT).toContain("base-uri 'self'");
+  });
+
+  it('object-src abre para blob: — é por onde o PDF da NFCe é exibido', () => {
+    // `abrirPdfNFCe` faz `window.open(blobUrl)`; o documento em `blob:` herda
+    // esta CSP, e o visualizador do Chrome renderiza num contexto de plugin
+    // regido por `object-src`. Com `'none'` o cupom vira aba em branco, e em
+    // silêncio — `window.open` teve sucesso.
+    expect(CSP_CHECKOUT).toContain("object-src 'self' blob:");
+    // Plugin de origem externa, que é o risco real da diretiva, segue fechado.
+    expect(CSP_CHECKOUT).not.toContain('object-src *');
   });
 
   it('script-src não tem escape inline — é a diretiva que carrega o valor real', () => {
@@ -89,5 +97,25 @@ describe('política de conteúdo', () => {
 
   it('img-src aceita data: e blob: — QR Code do PIX e PDF da NFCe', () => {
     expect(CSP_CHECKOUT).toContain("img-src 'self' data: blob:");
+  });
+});
+
+describe('HSTS', () => {
+  it('acompanha toda resposta, sem depender do esquema da requisição', async () => {
+    // Não é descuido: o TLS termina no proxy à frente do container e o Fastify
+    // não usa `trustProxy`, então `request.protocol` seria `'http'` mesmo em
+    // produção — condicionar ao esquema faria o cabeçalho nunca sair. Em `http:`
+    // de verdade o navegador descarta o cabeçalho sozinho.
+    const resposta = await app.inject({ method: 'GET', url: '/health' });
+
+    expect(resposta.headers['strict-transport-security']).toBe(HSTS);
+  });
+
+  it('não tem includeSubDomains, que travaria o redirect gerencial', () => {
+    // O gerencial manda o navegador para `<tenant>.<baseDomain>`; fixar todo
+    // subdomínio em HTTPS por dois anos quebraria as telas legadas em `http:`,
+    // sem nada que o servidor pudesse fazer para desfazer.
+    expect(HSTS).not.toContain('includeSubDomains');
+    expect(HSTS).toContain('max-age=');
   });
 });

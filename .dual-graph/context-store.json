@@ -1,107 +1,5 @@
 [
   {
-    "id": "mem:1788205657574",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "gera",
-      "tasks",
-      "feature",
-      "012",
-      "selecao",
-      "vendedor",
-      "tarefas",
-      "user",
-      "aplica",
-      "achados"
-    ],
-    "files": [
-      "specs/012-selecao-vendedor/tasks.md"
-    ],
-    "file_path": "specs/012-selecao-vendedor/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T19:47:37.574033+00:00",
-    "created_epoch": 1788205657,
-    "updated_at": "2026-08-31T19:58:08.233355+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788205657568",
-    "kind": "decision",
-    "content": "Gera tasks.md da feature 012 (selecao-vendedor): 16 tarefas, 1 user story",
-    "tags": [
-      "gera",
-      "tasks",
-      "feature",
-      "012",
-      "selecao",
-      "vendedor",
-      "tarefas",
-      "user"
-    ],
-    "files": [
-      "specs/012-selecao-vendedor/tasks.md",
-      ".specify/feature.json",
-      ".dual-graph/context-store.json"
-    ],
-    "file_path": "specs/012-selecao-vendedor/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T19:47:37.568555+00:00",
-    "created_epoch": 1788205657,
-    "updated_at": "2026-08-31T19:47:37.568561+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
-  },
-  {
-    "id": "mem:1788206288275",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "aplica",
-      "achados",
-      "speckit",
-      "analyze",
-      "feature",
-      "012",
-      "008",
-      "001"
-    ],
-    "files": [
-      "specs/012-selecao-vendedor/quickstart.md"
-    ],
-    "file_path": "specs/012-selecao-vendedor/quickstart.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-08-31T19:58:08.275890+00:00",
-    "created_epoch": 1788206288,
-    "updated_at": "2026-08-31T19:58:08.275902+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
     "id": "mem:1788206288255",
     "kind": "edit_observation",
     "content": "Edited during active session",
@@ -5740,9 +5638,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-11T19:28:54.418289+00:00",
     "created_epoch": 1789154934,
-    "updated_at": "2026-09-11T19:28:54.418303+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-14T10:41:51.899136+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -5845,9 +5743,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-11T19:28:54.430748+00:00",
     "created_epoch": 1789154934,
-    "updated_at": "2026-09-11T19:28:54.430761+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-14T10:41:51.899164+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -5878,9 +5776,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-11T19:28:54.458126+00:00",
     "created_epoch": 1789154934,
-    "updated_at": "2026-09-11T19:28:54.458145+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-14T10:41:51.899172+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -5921,5 +5819,96 @@
       "recent_queries": [],
       "edited": true
     }
+  },
+  {
+    "id": "mem:1789382511926",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/server/index.ts::buildApp"
+    ],
+    "file_path": "src/server/index.ts",
+    "symbol_id": "src/server/index.ts::buildApp",
+    "symbol_hash": "",
+    "created_at": "2026-09-14T10:41:51.899174+00:00",
+    "created_epoch": 1789382511,
+    "updated_at": "2026-09-14T10:41:51.899176+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1789382511901",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/server/routes/erp-proxy.ts::corpoComUsuarioDaSessao"
+    ],
+    "file_path": "src/server/routes/erp-proxy.ts",
+    "symbol_id": "src/server/routes/erp-proxy.ts::corpoComUsuarioDaSessao",
+    "symbol_hash": "",
+    "created_at": "2026-09-14T10:41:51.899152+00:00",
+    "created_epoch": 1789382511,
+    "updated_at": "2026-09-14T10:41:51.899159+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1789382511916",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/server/routes/bootstrap.ts::registrarRotaBootstrap"
+    ],
+    "file_path": "src/server/routes/bootstrap.ts",
+    "symbol_id": "src/server/routes/bootstrap.ts::registrarRotaBootstrap",
+    "symbol_hash": "",
+    "created_at": "2026-09-14T10:41:51.899167+00:00",
+    "created_epoch": 1789382511,
+    "updated_at": "2026-09-14T10:41:51.899169+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "type": "fact",
+    "content": "Corpo da NFCe viaja envelopado em CheckoutFaturarNFCe, nao plano",
+    "tags": ["seguranca", "erp-proxy"],
+    "files": ["src/server/routes/erp-proxy.ts"],
+    "date": "2026-09-14"
+  },
+  {
+    "type": "decision",
+    "content": "AD-226: reescrita de UsuarioCodigo/Empresa desce um nivel no envelope",
+    "tags": ["seguranca", "ad-226"],
+    "files": ["src/server/routes/erp-proxy.ts", ".specs/project/STATE.md"],
+    "date": "2026-09-14"
+  },
+  {
+    "type": "fact",
+    "content": "Fastify sem trustProxy: request.protocol e sempre http em producao",
+    "tags": ["seguranca", "headers"],
+    "files": ["src/server/plugins/headersSeguranca.ts", "src/server/index.ts"],
+    "date": "2026-09-14"
+  },
+  {
+    "type": "next",
+    "content": "Conferir no Chrome se o PDF da NFCe abre com object-src blob:",
+    "tags": ["csp", "nfce"],
+    "files": ["src/server/plugins/headersSeguranca.ts"],
+    "date": "2026-09-14"
   }
 ]

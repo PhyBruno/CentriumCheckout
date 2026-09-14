@@ -269,13 +269,22 @@ test.describe('Cenário 4 — Falha não-401 no bootstrap (AUTH-07)', () => {
   }) => {
     await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusGetSessao: 500 } });
 
-    await page.goto(urlSessionStart());
+    // `finally`, e não a última linha do teste: o `erp-mock` é global à suíte
+    // inteira (`workers: 1`, `fullyParallel: false`). Se qualquer asserção
+    // abaixo falhar ou estourar o timeout, um restauro solto ficaria para trás e
+    // **todos** os testes seguintes bateriam 500 em `GetSessao` — e, como
+    // `/session/start` agora depende dele (AD-224), falhariam logo na porta, com
+    // sintoma que não tem nada a ver com a causa. Em CI, `retries: 1` só repetiria
+    // dentro do mesmo estado envenenado.
+    try {
+      await page.goto(urlSessionStart());
 
-    await expect(page.getByText('Acesse o Checkout novamente pelo CentriumWEB.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Tentar novamente' })).toHaveCount(0);
-    await expect(page.getByTestId('tela-de-venda')).toHaveCount(0);
-
-    await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusGetSessao: 200 } });
+      await expect(page.getByText('Acesse o Checkout novamente pelo CentriumWEB.')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Tentar novamente' })).toHaveCount(0);
+      await expect(page.getByTestId('tela-de-venda')).toHaveCount(0);
+    } finally {
+      await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { statusGetSessao: 200 } });
+    }
   });
 
   // Correção pedida pelo usuário (2026-09-08): "Tentar novamente" é só para

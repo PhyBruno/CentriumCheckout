@@ -62,15 +62,30 @@ const RETRATO_FORJADO = {
   vendedorCodigo: 21,
 };
 
+/**
+ * Envelopa o retrato como o cliente de verdade envelopa.
+ *
+ * `faturarNFCeMutation.ts` e `validarNFCeMutation.ts` mandam
+ * `{ CheckoutFaturarNFCe: retrato }` — o corpo **nunca** é o retrato cru. A
+ * primeira versão destes testes usava a forma plana, e por isso ficou verde com
+ * a proteção inerte: o proxy só olhava a raiz, onde `UsuarioCodigo` não está
+ * (achado da revisão do PR #73). Todo teste de ponta a ponta desta suíte passa
+ * por aqui, para que a forma testada e a forma enviada não possam divergir de
+ * novo.
+ */
+function envelopar(retrato: unknown): Record<string, unknown> {
+  return { CheckoutFaturarNFCe: retrato };
+}
+
 let app: FastifyInstance;
 let fetchImpl: ReturnType<typeof vi.fn<typeof fetch>>;
 
-function faturar(corpo: unknown = RETRATO_FORJADO) {
+function faturar(retrato: unknown = RETRATO_FORJADO) {
   return app.inject({
     method: 'POST',
     url: '/api/erp/ApiCentriumOAuth/FaturarNFCe',
     cookies: { [SESSION_COOKIE_NAME]: cookieDeSessao },
-    payload: corpo as Record<string, unknown>,
+    payload: envelopar(retrato),
   });
 }
 
@@ -78,6 +93,11 @@ function faturar(corpo: unknown = RETRATO_FORJADO) {
 function corpoEnviadoAoErp(): Record<string, unknown> {
   const init = fetchImpl.mock.calls[0]?.[1];
   return JSON.parse(String(init?.body)) as Record<string, unknown>;
+}
+
+/** O retrato **dentro** do envelope, que é onde os campos de fato viajam. */
+function retratoEnviadoAoErp(): Record<string, unknown> {
+  return corpoEnviadoAoErp()['CheckoutFaturarNFCe'] as Record<string, unknown>;
 }
 
 beforeEach(() => {
@@ -102,18 +122,29 @@ describe('UsuarioCodigo forjado no corpo', () => {
     const resposta = await faturar();
 
     expect(resposta.statusCode).toBe(200);
-    expect(corpoEnviadoAoErp()['UsuarioCodigo']).toBe(147);
+    expect(retratoEnviadoAoErp()['UsuarioCodigo']).toBe(147);
   });
 
   it('não altera nenhum outro campo do retrato', async () => {
     await faturar();
 
-    const enviado = corpoEnviadoAoErp();
+    const enviado = retratoEnviadoAoErp();
     expect(enviado['SuspenderOuFaturar']).toBe('FATURAR');
     expect(enviado['clienteCodigo']).toBe(1);
     // O vendedor da venda é escolha legítima do operador e continua vindo da
     // tela — é o par de `UsuarioCodigo`, não um substituto (FR-010).
     expect(enviado['vendedorCodigo']).toBe(21);
+  });
+
+  it('vale igual em ValidarNFCe, que envelopa o mesmo retrato', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/api/erp/ApiCentriumOAuth/ValidarNFCe',
+      cookies: { [SESSION_COOKIE_NAME]: cookieDeSessao },
+      payload: envelopar(RETRATO_FORJADO),
+    });
+
+    expect(retratoEnviadoAoErp()['UsuarioCodigo']).toBe(147);
   });
 
   it('corpo sem o campo passa intocado — o proxy não inventa operador', async () => {
@@ -124,22 +155,36 @@ describe('UsuarioCodigo forjado no corpo', () => {
       payload: { Cliente: { nome: 'CLIENTE EXEMPLO' } },
     });
 
-    expect(corpoEnviadoAoErp()).not.toHaveProperty('UsuarioCodigo');
+    const enviado = corpoEnviadoAoErp();
+    expect(enviado).not.toHaveProperty('UsuarioCodigo');
+    expect(enviado['Cliente']).not.toHaveProperty('UsuarioCodigo');
   });
 
-  it('a empresa da sessão continua sendo reescrita junto', async () => {
-    await faturar({ ...RETRATO_FORJADO, Cliente: { Empresa: 999, nome: 'X' } });
+  it('a empresa do envelope também vem da sessão, e como texto', async () => {
+    // `CheckoutFaturarNFCe.Empresa` é obrigatório e é lido do **corpo**
+    // (AD-188); como todo o resto do retrato, ele sai do navegador.
+    await faturar({ ...RETRATO_FORJADO, Empresa: '999' });
 
-    const enviado = corpoEnviadoAoErp();
-    expect((enviado['Cliente'] as Record<string, unknown>)['Empresa']).toBe(1);
-    expect(enviado['UsuarioCodigo']).toBe(147);
+    expect(retratoEnviadoAoErp()['Empresa']).toBe('1');
+  });
+
+  it('a empresa do cadastro de cliente continua sendo reescrita junto', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/api/erp/ApiCentriumOAuth/PostCliente',
+      cookies: { [SESSION_COOKIE_NAME]: cookieDeSessao },
+      payload: { Cliente: { Empresa: 999, nome: 'X' } },
+    });
+
+    const cliente = corpoEnviadoAoErp()['Cliente'] as Record<string, unknown>;
+    expect(cliente['Empresa']).toBe(1);
   });
 
   it('sem cookie de sessão a chamada nem chega ao ERP', async () => {
     const resposta = await app.inject({
       method: 'POST',
       url: '/api/erp/ApiCentriumOAuth/FaturarNFCe',
-      payload: RETRATO_FORJADO,
+      payload: envelopar(RETRATO_FORJADO),
     });
 
     expect(resposta.statusCode).toBe(401);
@@ -169,6 +214,35 @@ describe('corpoComUsuarioDaSessao', () => {
     expect(corpoComUsuarioDaSessao({ UsuarioCodigo: undefined }, '9')).toEqual({
       UsuarioCodigo: 9,
     });
+  });
+
+  it('alcança o campo dentro do envelope, que é onde ele de fato viaja', () => {
+    // A regressão do PR #73: o corpo real é `{ CheckoutFaturarNFCe: retrato }`,
+    // e olhar só a raiz deixava o valor forjado passar.
+    const corpo = corpoComUsuarioDaSessao(
+      { CheckoutFaturarNFCe: { UsuarioCodigo: 999, clienteCodigo: 1 } },
+      OPERADOR_DA_SESSAO,
+    ) as { CheckoutFaturarNFCe: Record<string, unknown> };
+
+    expect(corpo.CheckoutFaturarNFCe['UsuarioCodigo']).toBe(147);
+    expect(corpo.CheckoutFaturarNFCe['clienteCodigo']).toBe(1);
+  });
+
+  it('serve qualquer nome de envelope, não só o da NFCe', () => {
+    const corpo = corpoComUsuarioDaSessao(
+      { EnvelopeQueAindaNaoExiste: { UsuarioCodigo: 999 } },
+      OPERADOR_DA_SESSAO,
+    ) as { EnvelopeQueAindaNaoExiste: Record<string, unknown> };
+
+    expect(corpo.EnvelopeQueAindaNaoExiste['UsuarioCodigo']).toBe(147);
+  });
+
+  it('não muta o envelope original da requisição', () => {
+    const original = { CheckoutFaturarNFCe: { UsuarioCodigo: 999 } };
+
+    corpoComUsuarioDaSessao(original, OPERADOR_DA_SESSAO);
+
+    expect(original.CheckoutFaturarNFCe.UsuarioCodigo).toBe(999);
   });
 
   it('repassa intacto o que não é objeto — array, null, texto cru', () => {

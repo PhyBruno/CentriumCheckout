@@ -54,7 +54,7 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
         sessao,
         {
           caminho: CAMINHO_GET_SESSAO,
-          // Caminho e query vivem em `usuarioDaSessao.ts` porque o resolvedor do
+          // Caminho e query vivem em `session/getSessao.ts` porque o resolvedor do
           // operador faz a mesma chamada — e a ordem dos pares é contrato do
           // ERP, não estética (AD-205). Duas cópias divergiriam no primeiro
           // ajuste.
