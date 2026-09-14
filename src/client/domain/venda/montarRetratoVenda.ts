@@ -122,6 +122,16 @@ export interface SnapshotVenda {
    * saía sem identificar quem a emitiu.
    *
    * Vem do bootstrap e nunca da tela: o operador não escolhe quem ele é.
+   *
+   * **O valor montado aqui não é o que chega ao ERP.** O BFF reescreve
+   * `UsuarioCodigo` com o operador cifrado no cookie de sessão — gravado em
+   * `/session/start` a partir do `GetSessao` (AD-224) —, como já faz com
+   * `Empresa`: o corpo sai do navegador e seria editável no DevTools, e o ERP
+   * não confere o campo contra o token. A reescrita desce no envelope
+   * `CheckoutFaturarNFCe`, que é como este retrato viaja
+   * (`corpoComUsuarioDaSessao`, `erp-proxy.ts`). O cliente continua preenchendo
+   * porque o retrato tem de ficar completo para a validação prévia (feature
+   * 014) e para o log de auditoria; a autoridade, porém, é do servidor.
    */
   readonly usuarioCodigo: number;
   /** Condição de pagamento vigente — escalar, uma por venda (feature 008). */

@@ -53,12 +53,36 @@ describe('corpoComEmpresaDaSessao', () => {
     expect(corpo.Cliente['Empresa']).toBe(3);
   });
 
-  it('repassa intacto o corpo sem a raiz Cliente', () => {
-    // `FaturarNFCe` e os demais endpoints não têm esse campo — o proxy não pode
-    // inventar um.
-    const original = { CheckoutFaturarNFCe: { NumeroNota: 0 } };
+  it('repassa intacto o corpo sem nenhum envelope conhecido', () => {
+    // Endpoint que não carrega `Empresa` no corpo — o proxy não inventa um.
+    const original = { Produto: { CodigoProduto: 'ABC' } };
 
     expect(corpoComEmpresaDaSessao(original, '7')).toEqual(original);
+  });
+
+  it('sobrescreve também CheckoutFaturarNFCe.Empresa, e como texto', () => {
+    // O TSDoc anterior deste teste dizia que `FaturarNFCe` "não tem esse campo".
+    // Tem, é obrigatório, e é lido do **corpo** — sem ele o ERP recusa toda
+    // venda com "Empresa é obrigatório" (AD-188, confirmado ao vivo em
+    // 2026-09-08). Como vinha do navegador, ficava forjável.
+    const corpo = corpoComEmpresaDaSessao(
+      { CheckoutFaturarNFCe: { Empresa: '999', NumeroNota: 0 } },
+      '7',
+    ) as { CheckoutFaturarNFCe: Record<string, unknown> };
+
+    // Texto, não número: é o tipo do campo neste SDT, e o que o ERP aceitou.
+    expect(corpo.CheckoutFaturarNFCe['Empresa']).toBe('7');
+    expect(corpo.CheckoutFaturarNFCe['NumeroNota']).toBe(0);
+  });
+
+  it('reescreve os dois envelopes quando ambos aparecem no mesmo corpo', () => {
+    const corpo = corpoComEmpresaDaSessao(
+      { Cliente: { Empresa: 999 }, CheckoutFaturarNFCe: { Empresa: '999' } },
+      '7',
+    ) as Record<string, Record<string, unknown>>;
+
+    expect(corpo['Cliente']?.['Empresa']).toBe(7);
+    expect(corpo['CheckoutFaturarNFCe']?.['Empresa']).toBe('7');
   });
 
   it('repassa intacto o que não é objeto — string, array, null', () => {

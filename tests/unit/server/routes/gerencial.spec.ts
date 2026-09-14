@@ -31,6 +31,7 @@ const SESSAO: SessaoOperador = {
   password: 'senha-sintetica',
   Repository: 'repo-sintetico',
   codigoEmpresa: '1',
+  usuarioCodigo: '147',
 };
 
 const env = loadEnv({

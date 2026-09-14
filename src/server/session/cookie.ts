@@ -17,6 +17,19 @@ export interface SessaoOperador {
   readonly password: string;
   readonly Repository: string;
   readonly codigoEmpresa: string;
+  /**
+   * Operador logado, como o ERP o identifica (`SessaoUsuario.UsuarioCodigo`).
+   *
+   * Único campo que não chega pelo redirect: é perguntado a `GetSessao` em
+   * `/session/start`, logo depois da troca OAuth, e cifrado aqui junto com o
+   * resto. Existe para que o BFF possa reescrever o `UsuarioCodigo` do corpo de
+   * `FaturarNFCe`/`ValidarNFCe` — que vem do navegador e seria editável no
+   * DevTools — com quem de fato está logado (AD-224).
+   *
+   * String como todo campo desta sessão, e como o próprio ERP o devolve
+   * (`int64` serializado); quem precisa do número converte na fronteira.
+   */
+  readonly usuarioCodigo: string;
 }
 
 export const SESSION_COOKIE_NAME = 'cc_session';
@@ -51,7 +64,22 @@ export const ENTRADA_COOKIE_OPTIONS: CookieSerializeOptions = {
   path: '/',
 };
 
-const FORMAT_VERSION = 'v1';
+/**
+ * Versão do formato do cookie — `v2` desde que `usuarioCodigo` entrou em
+ * `CAMPOS_OBRIGATORIOS` (AD-224).
+ *
+ * **Bump obrigatório a cada campo obrigatório novo.** Um cookie `v1` decifra
+ * sem erro, mas reprova em `ehSessaoValida` por falta do campo, e `decifrar`
+ * devolve `null` — indistinguível de "não há sessão". Sem o bump, o operador que
+ * estivesse no meio de uma venda no momento do deploy tomaria o 401 terminal na
+ * chamada seguinte e perderia o carrinho, que é Zustand sem `persist`
+ * (`ARCHITECTURE.md`). Com a versão diferente o cookie antigo é rejeitado no
+ * primeiro `split`, o que não muda o desfecho para quem já estava logado, mas
+ * torna a quebra explícita no código em vez de emergente — e obriga quem
+ * acrescentar o próximo campo a decidir conscientemente entre quebrar a sessão
+ * ou aceitar o campo como opcional por um release.
+ */
+const FORMAT_VERSION = 'v2';
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
@@ -66,6 +94,7 @@ const CAMPOS_OBRIGATORIOS = [
   'password',
   'Repository',
   'codigoEmpresa',
+  'usuarioCodigo',
 ] as const;
 
 /** Cifra e decifra o cookie de sessão. */

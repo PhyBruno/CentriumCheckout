@@ -49,7 +49,21 @@ export interface ChamadaAutenticadaDeps {
   readonly fetchImpl?: typeof fetch;
 }
 
-function montarUrl(env: Env, sessao: SessaoOperador, requisicao: RequisicaoErp): string {
+/**
+ * O que basta para falar com o ERP: host, token e empresa.
+ *
+ * Menos que uma `SessaoOperador` inteira de propósito — `/session/start`
+ * precisa chamar `GetSessao` **antes** de a sessão existir, para descobrir o
+ * `usuarioCodigo` que vai dentro dela (AD-224). Sem este tipo, aquele ponto
+ * teria de remontar URL e cabeçalhos por fora, e as duas cópias divergiriam no
+ * primeiro ajuste de contrato.
+ */
+export type CredenciaisDeChamada = Pick<
+  SessaoOperador,
+  'access_token' | 'tenant' | 'codigoEmpresa'
+>;
+
+function montarUrl(env: Env, sessao: CredenciaisDeChamada, requisicao: RequisicaoErp): string {
   const base = montarBaseUrlErp(env, sessao.tenant);
 
   if (requisicao.queryString !== undefined) {
@@ -62,7 +76,10 @@ function montarUrl(env: Env, sessao: SessaoOperador, requisicao: RequisicaoErp):
   return `${base}${requisicao.caminho}${sufixo}`;
 }
 
-function montarHeaders(sessao: SessaoOperador, requisicao: RequisicaoErp): Record<string, string> {
+function montarHeaders(
+  sessao: CredenciaisDeChamada,
+  requisicao: RequisicaoErp,
+): Record<string, string> {
   return {
     // O contrato do ERP usa o esquema `OAuth`, não `Bearer` (AD-019).
     Authorization: `OAuth ${sessao.access_token}`,
@@ -70,6 +87,27 @@ function montarHeaders(sessao: SessaoOperador, requisicao: RequisicaoErp): Recor
     'Content-Type': 'application/json',
     ...requisicao.headersExtras,
   };
+}
+
+/**
+ * Uma chamada autenticada ao ERP, sem renovação de token.
+ *
+ * É o tijolo de `chamarErpComRenovacao` e o que `/session/start` usa direto: lá
+ * o token acabou de nascer, então não há expiração a tratar — e não existe
+ * sessão para renovar.
+ */
+export function chamarErp(
+  credenciais: CredenciaisDeChamada,
+  requisicao: RequisicaoErp,
+  deps: ChamadaAutenticadaDeps,
+): Promise<Response> {
+  const executarFetch = deps.fetchImpl ?? fetch;
+
+  return executarFetch(montarUrl(deps.env, credenciais, requisicao), {
+    method: requisicao.method ?? 'GET',
+    headers: montarHeaders(credenciais, requisicao),
+    ...(requisicao.body === undefined ? {} : { body: requisicao.body }),
+  });
 }
 
 /**
@@ -141,14 +179,8 @@ export async function chamarErpComRenovacao(
   requisicao: RequisicaoErp,
   deps: ChamadaAutenticadaDeps,
 ): Promise<ResultadoChamadaAutenticada> {
-  const executarFetch = deps.fetchImpl ?? fetch;
-
-  const executar = async (sessaoAtual: SessaoOperador): Promise<Response> =>
-    executarFetch(montarUrl(deps.env, sessaoAtual, requisicao), {
-      method: requisicao.method ?? 'GET',
-      headers: montarHeaders(sessaoAtual, requisicao),
-      ...(requisicao.body === undefined ? {} : { body: requisicao.body }),
-    });
+  const executar = (sessaoAtual: SessaoOperador): Promise<Response> =>
+    chamarErp(sessaoAtual, requisicao, deps);
 
   const primeira = await executar(sessao);
 
