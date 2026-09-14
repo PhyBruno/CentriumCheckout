@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -96,11 +96,22 @@ function montarStore() {
   return store;
 }
 
+/**
+ * Espiões tipados pela dependência que cada um substitui.
+ *
+ * `ReturnType<typeof vi.fn>` cru não serve mais: desde o vitest 5 (PR #72) ele
+ * resolve para `Mock<Procedure | Constructable>`, que não é atribuível a uma
+ * assinatura concreta — `trocarVendedor` e `importarFormasDePagamento` passavam
+ * direto para `ImportacaoVendaDeps` e quebravam o `tsc`. Amarrar cada espião ao
+ * tipo real da dependência corrige a raiz e vale mais que os `as` que os outros
+ * dois já carregavam: agora um argumento errado no teste é erro de compilação,
+ * não algo que só aparece quando a asserção falha.
+ */
 interface Espioes {
-  readonly trocarVendedor: ReturnType<typeof vi.fn>;
-  readonly importarFormasDePagamento: ReturnType<typeof vi.fn>;
-  readonly buscarDescricaoProduto: ReturnType<typeof vi.fn>;
-  readonly resolverCliente: ReturnType<typeof vi.fn>;
+  readonly trocarVendedor: Mock<ImportacaoVendaDeps['trocarVendedor']>;
+  readonly importarFormasDePagamento: Mock<ImportacaoVendaDeps['importarFormasDePagamento']>;
+  readonly buscarDescricaoProduto: Mock<ImportacaoVendaDeps['buscarDescricaoProduto']>;
+  readonly resolverCliente: Mock<ImportacaoVendaDeps['resolverCliente']>;
 }
 
 /** A condição que `documentoDoDav` referencia em `CondicaoPagamentoCodigo: 1`. */
