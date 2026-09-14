@@ -1379,6 +1379,31 @@ interface EnvelopeFaturarNFCe {
 export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
 
+  /**
+   * Toda resposta sai declarada como JSON, e sem adivinhação de tipo.
+   *
+   * `FaturarNFCe` **ecoa o corpo da requisição** de volta — é o que o ERP real
+   * faz com o retrato, e o E2E depende disso para conferir o que foi enviado.
+   * Isso é, literalmente, valor do cliente refletido na resposta, e foi o que o
+   * CodeQL apontou como XSS refletido (`js/reflected-xss`, alerta #1). O eco não
+   * pode sair: ele é o comportamento sob teste. O que pode sair é a chance de o
+   * navegador **interpretar** esse eco como documento.
+   *
+   * Na prática o Fastify já serializava tudo como JSON, então não havia vetor
+   * explorável; o que faltava era dizer isso de forma verificável, em vez de
+   * depender de um default. Com o tipo explícito e `nosniff`, uma resposta com
+   * `<script>` dentro de um campo continua sendo dado, nunca documento — e a
+   * análise estática passa a ver a garantia em vez de supor o pior.
+   *
+   * Vale para o mock inteiro, e não só para os três ecos de `FaturarNFCe`,
+   * porque qualquer handler novo que passe a refletir corpo nasce coberto.
+   */
+  app.addHook('onSend', async (_request, reply, payload: unknown) => {
+    reply.header('content-type', 'application/json; charset=utf-8');
+    reply.header('x-content-type-options', 'nosniff');
+    return payload;
+  });
+
   let config: ConfigMockErp = { ...CONFIG_PADRAO };
   let contadores: ContadoresMockErp = { ...CONTADORES_ZERADOS };
   /** Cadastro criado por `PostCliente` durante o teste — descartado no reset. */
@@ -1633,7 +1658,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // condição (AD-188).
       const empresaDoFaturamento = retrato?.['Empresa'];
       if (typeof empresaDoFaturamento !== 'string' || empresaDoFaturamento.trim() === '') {
-        return reply.send({
+        // `.type(...)` explícito nos três ecos do retrato: o hook `onSend` acima
+        // já cobre a resposta, mas dizer o tipo junto do dado refletido mantém a
+        // garantia legível no ponto onde ela importa.
+        return reply.type('application/json').send({
           OutCheckoutFaturarNFCe: { ...(retrato ?? {}) },
           messages: [{ Id: '9999', Type: 1, Description: MENSAGEM_EMPRESA_OBRIGATORIA }],
         });
@@ -1652,7 +1680,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // `'N'`. O caminho de sucesso logo abaixo ainda usa a forma do YAML, de
       // propósito: é o que mantém o E2E exercitando a tolerância às duas.
       if (!suspendendo && config.faturarNFCeRejeitada) {
-        return reply.send({
+        return reply.type('application/json').send({
           ...(retrato ?? {}),
           NotaFiscal: {
             NumeroNota: String(0), // o ERP real zera este campo na rejeição
@@ -1681,7 +1709,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
               },
             };
 
-      return reply.send({
+      return reply.type('application/json').send({
         OutCheckoutFaturarNFCe: { ...(retrato ?? {}), ...notaFiscal },
         messages: config.faturarSemNotaFiscal
           ? [{ Id: 'ERR', Type: 1, Description: 'NFCe não autorizada pela SEFAZ (sintético).' }]
