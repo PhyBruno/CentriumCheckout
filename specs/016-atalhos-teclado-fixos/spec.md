@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: mapa fixo das teclas de função do PDV — F1 importação de DAV, F2 importação de NFCe, F3 modal de identificação de cliente, F4 modal de identificação de produto, F5/F11/F12 reservadas, F6–F9 venda rápida (já existente), F10 cancelar/suspender venda; foco direto no campo de digitação ao abrir modal por atalho; PDV de tela de toque deve funcionar só com teclado.
+**Input**: User description: mapa fixo das teclas de função do PDV — F1 importação de DAV, F2 importação de NFCe, F3 modal de identificação de cliente, F4 modal de identificação de produto, F5/F11/F12 reservadas, F6–F9 venda rápida (já existente), F10 suspender venda; foco direto no campo de digitação ao abrir modal por atalho; PDV de tela de toque deve funcionar só com teclado.
 
 ## Contexto
 
@@ -81,20 +81,22 @@ O operador aperta F1 para importar um DAV ou F2 para recuperar uma NFCe. Se a ve
 
 ---
 
-### User Story 4 - Encerrar a venda em aberto por tecla (Priority: P4)
+### User Story 4 - Suspender a venda por tecla (Priority: P4)
 
-O operador aperta F10 para tirar a venda atual da tela, liberando o caixa para o próximo cliente.
+O operador aperta F10 para suspender a venda atual, liberando o caixa para o próximo cliente sem perder o que já foi montado — a venda fica disponível para retomada depois.
 
 **Why this priority**: acontece uma vez por venda interrompida, bem menos que as demais, e o caminho por clique já existe e é visível na tela.
 
-**Independent Test**: acionar F10 em venda com conteúdo e verificar que o desfecho é idêntico ao do caminho por clique, incluindo a confirmação.
+**Independent Test**: acionar F10 em venda com conteúdo e verificar que a venda é suspensa — e não cancelada —, com a mesma confirmação do caminho por clique, e que ela pode ser retomada em seguida.
 
 **Acceptance Scenarios**:
 
-1. **Given** uma venda com itens lançados, **When** o operador aperta F10, **Then** o sistema apresenta a mesma confirmação que o caminho por clique apresenta.
-2. **Given** a confirmação apresentada, **When** o operador confirma, **Then** o desfecho é idêntico ao do caminho por clique.
-3. **Given** uma venda vazia, **When** o operador aperta F10, **Then** o sistema recusa e explica, sem deixar a tecla vazar para o navegador.
-4. **Given** uma venda com pagamento que impede o encerramento, **When** o operador aperta F10, **Then** a recusa é a mesma que o caminho por clique apresentaria.
+1. **Given** uma venda com itens lançados, **When** o operador aperta F10, **Then** o sistema apresenta a mesma confirmação que o caminho por clique de suspensão apresenta.
+2. **Given** a confirmação apresentada, **When** o operador confirma, **Then** a venda é suspensa e fica disponível para retomada, exatamente como no caminho por clique.
+3. **Given** a venda suspensa pelo atalho, **When** o operador a retoma, **Then** o conteúdo recuperado é o mesmo que a suspensão por clique produziria.
+4. **Given** uma venda vazia, **When** o operador aperta F10, **Then** o sistema recusa e explica, sem deixar a tecla vazar para o navegador.
+5. **Given** uma venda com pagamento que impede a suspensão, **When** o operador aperta F10, **Then** a recusa é a mesma que o caminho por clique apresentaria.
+6. **Given** qualquer estado da venda, **When** o operador aperta F10, **Then** em nenhum momento lhe é oferecido cancelar com descarte — F10 tem um desfecho só.
 
 ---
 
@@ -152,7 +154,7 @@ Um PDV com monitor de toque e teclado físico, sem mouse, hoje é classificado c
 - **FR-014**: F2 MUST abrir a recuperação de NFCe, sujeita à mesma regra e ao mesmo reuso de FR-013 (feature 011).
 - **FR-015**: F3 MUST abrir o modal de identificação de cliente (feature 005).
 - **FR-016**: F4 MUST abrir o modal de identificação de produto (feature 003).
-- **FR-017**: F10 MUST encerrar a venda em aberto, com a mesma confirmação, as mesmas recusas e o mesmo desfecho do caminho por clique (feature 004). [NEEDS CLARIFICATION: "Cancelar venda [Suspender]" admite duas leituras com desfechos diferentes no ERP — suspender a venda para retomada posterior, ou cancelá-la descartando o que foi montado. Qual das duas?]
+- **FR-017**: F10 MUST **suspender** a venda em aberto, com a mesma confirmação, as mesmas recusas e o mesmo desfecho do caminho por clique (feature 004). A suspensão é o **único** desfecho do F10: a tecla MUST NOT oferecer, nem produzir por qualquer caminho, o cancelamento com descarte da venda. Decisão do usuário (2026-09-15), tomada sobre a alternativa de F10 abrir uma escolha entre suspender e cancelar — descartada para que a tecla tenha um resultado só, previsível de cor pelo operador.
 - **FR-018**: Todo atalho MUST executar a ação através do **mesmo** ponto de entrada que o controle equivalente na tela usa. Nenhuma regra de negócio pode ser duplicada dentro do tratamento da tecla.
 - **FR-019**: As ações acionadas por atalho MUST ser registradas na auditoria de ações do operador com a mesma identificação de origem já usada pelos demais comandos com duas origens, para que a análise posterior distinga teclado de clique.
 
@@ -186,6 +188,7 @@ Um PDV com monitor de toque e teclado físico, sem mouse, hoje é classificado c
 - **F5 fica com o navegador, com perda de venda.** Decisão explícita do usuário (2026-09-15) após o trade-off ser apresentado: recarregar perde a venda em andamento, porque o estado da venda não é persistido. A rede existente é a confirmação de saída do navegador, que já está implementada. Reservar F5 para engoli-la teria protegido a venda; ficou para depois.
 - **F11 e F12 não são "reservadas para o futuro", são indisponíveis.** A escolha de não capturá-las coincide com o limite técnico; nenhuma feature futura poderá reivindicá-las sem que o navegador mude.
 - **Cliente padrão não é venda em andamento.** Segue a regra já estabelecida para importação: apenas cliente identificado ou item lançado caracterizam venda em andamento.
+- **F10 suspende, sempre.** Decisão do usuário (2026-09-15): o desfecho é único e não negociável em tempo de execução. O cancelamento com descarte continua existindo apenas pelo caminho por clique, se a tela o oferecer — nunca por tecla. O motivo é o mesmo que sustenta o resto desta spec: uma tecla que o operador decora precisa produzir sempre o mesmo resultado, e a diferença entre suspender e descartar é grande demais para depender de um diálogo lido às pressas no caixa.
 - **Origem registrada na auditoria.** Assume-se que a auditoria distingue teclado de clique reutilizando o padrão de parâmetro de origem já adotado em comandos com dois caminhos, sem inventar um segundo mecanismo.
 - **A faixa visual permanece o único canal de descoberta dos atalhos de venda rápida.** Esta feature não cria tela de ajuda de atalhos; a descrição curta exigida em FR-009 existe para viabilizá-la depois.
 - **Reuso sobre as features existentes.** As ações de F1, F2, F3, F4 e F10 já estão implementadas e acessíveis por clique nas features 006, 011, 005, 003 e 004. Esta feature adiciona um caminho de acionamento, não comportamento de negócio novo.

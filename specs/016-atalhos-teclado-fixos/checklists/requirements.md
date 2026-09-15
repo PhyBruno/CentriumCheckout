@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,9 +31,10 @@
 
 ## Notes
 
-- **FR-017 (F10) tem marcador [NEEDS CLARIFICATION] aberto**: "Cancelar venda [Suspender]" admite
-  duas leituras com desfechos distintos no ERP. É o único marcador da spec e está dentro do limite
-  de três. Precisa ser resolvido antes de `/speckit-plan`.
+- **FR-017 (F10) resolvido em 2026-09-15**: o único marcador [NEEDS CLARIFICATION] da spec foi
+  fechado pelo usuário — F10 **sempre suspende**, nunca cancela com descarte, e não oferece escolha
+  entre os dois. FR-017 e a User Story 4 foram reescritos; a US4 ganhou um cenário de aceitação a
+  mais, fixando que o cancelamento nunca é oferecido pela tecla. Checklist sem pendências.
 - **Validação de linguagem**: a spec descreve comportamento observável pelo operador. Nomes de
   arquivo e de símbolo do código foram mantidos **fora** dos requisitos e aparecem apenas na seção
   de Contexto e em Dependencies, como rastreabilidade — decisão consciente, porque esta feature
