@@ -50,6 +50,30 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     ).toBeVisible();
   });
 
+  /**
+   * A tela de carregamento do celular era a do desktop: colunas de largura fixa
+   * alargavam a página muito além da tela, e toda recarga mostrava uma miniatura
+   * da tela única antes de pular para o wizard (achado em 2026-09-15).
+   */
+  test('carrega com o esqueleto do wizard, sem alargar a página', async ({ page }) => {
+    await page.route('**/api/bootstrap', async (route) => {
+      await new Promise((resolver) => setTimeout(resolver, 1500));
+      await route.continue();
+    });
+
+    await page.goto(urlSessionStart());
+
+    await expect(page.getByTestId('skeleton-compacto')).toBeVisible();
+    const larguras = await page.evaluate(() => ({
+      pagina: document.documentElement.scrollWidth,
+      tela: window.innerWidth,
+    }));
+    expect(larguras.pagina).toBeLessThanOrEqual(larguras.tela);
+
+    await expect(page.getByTestId('mobile-wizard')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('skeleton-carregamento')).toHaveCount(0);
+  });
+
   test('fluxo dourado: bipar na etapa 1, pagar na 2, finalizar na 3', async ({ page }) => {
     await stubarImpressoraLocal(page);
     await page.goto(urlSessionStart());

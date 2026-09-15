@@ -13,12 +13,12 @@ import {
 import { useIdentidadeNoDisplay } from './services/display/useCanalDisplay';
 import { leitorCarrinhoVazio, type LeitorCarrinho } from './services/erpClient';
 import { useSessionStore, telaDeVendaLiberada } from './stores/sessionStore';
-import { LoadingSkeleton } from './features/session-bootstrap/LoadingSkeleton';
 import { ErrorRetry } from './features/session-bootstrap/ErrorRetry';
 import { SessionExpiredWarning } from './features/session-bootstrap/SessionExpiredWarning';
 import { AcessoInvalido } from './features/session-bootstrap/AcessoInvalido';
 import { COOKIE_ENTRADA, PARAM_ERRO_ACESSO, VALOR_COOKIE_ENTRADA } from '../shared/erroAcesso';
 import { AppShell } from './layout/AppShell';
+import { TelaDeCarregamento } from './layout/TelaDeCarregamento';
 
 /**
  * O BFF recusou o redirect de entrada e mandou o navegador para `/?erro=sessao`
@@ -199,7 +199,9 @@ export function App({
   }
 
   if (!telaDeVendaLiberada(estado)) {
-    return <LoadingSkeleton />;
+    // Tela única ou wizard, conforme o layout: a do desktop alargava a página do
+    // celular a cada recarga (2026-09-15).
+    return <TelaDeCarregamento />;
   }
 
   /**
