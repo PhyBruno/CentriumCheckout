@@ -5,6 +5,8 @@ import { notificar } from '@/lib/notificar';
 import { cn } from '@/lib/utils';
 import { AcaoCancelarVenda } from '../../features/finalizacao-suspensao/AcoesFinaisVenda';
 import { TotalDaVenda } from '../../features/pagamento/TotalDaVenda';
+import { useMotivoCarrinhoBloqueado } from '../../features/carrinho/useCarrinho';
+import { ATRIBUTO_ROLAGEM_DE_NOTIFICACAO } from '../rolarParaOTopo';
 import {
   NOME_DO_PRODUTO,
   descreverSessaoAtiva,
@@ -139,6 +141,15 @@ export function MobileWizard(): ReactElement {
    * Durante o render, pelo mesmo motivo do reinício de sessão logo acima: a
    * etapa 1 entra no mesmo quadro em que o modal abre, sem pintar a etapa
    * anterior com uma janela invisível por cima.
+   *
+   * **Não passa por `motivoParaEntrarNaEtapa`**, e a exceção é deliberada
+   * (2026-09-15). A janela já está aberta no `janelasStore` quando este código
+   * roda: recusar a etapa aqui deixaria o store inerte com uma janela que
+   * ninguém desenha, e F3/F4 parariam de responder pelo resto da venda — o
+   * modo de falha que esta volta existe para evitar. Fechá-la seria efeito
+   * externo no meio do render. Com a venda em cobrança nada se perde: os dois
+   * modais recusam o que fariam pelos motivos do `clienteSlice` e do
+   * `carrinhoSlice`, com as frases deles.
    */
   const pedeBuscaDaEtapa1 = useJanelasStore(
     (estado) => estado.janela === 'cliente' || estado.janela === 'produto',
@@ -169,12 +180,38 @@ export function MobileWizard(): ReactElement {
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
 
   /**
+   * A venda já está em cobrança — e por isso a **etapa 1 passa a barrar**
+   * (pedido do usuário, 2026-09-15: "se tiver um pagamento em andamento, ou um
+   * pagamento aprovado, sem tirar o pagamento o usuário não pode poder voltar da
+   * etapa 2 para a etapa 1, por exemplo, pois quando ele fosse inserir um item
+   * daria erro, ou editasse um produto").
+   *
+   * **A regra não é nova, a antecipação é.** Quem recusa inserir, editar e
+   * apagar item com condição escolhida ou forma aprovada continua sendo o
+   * `carrinhoSlice` (`motivoCarrinhoBloqueado`), e esta é exatamente a mesma
+   * frase que ele mostra — não uma segunda redação. O que mudou é o momento: o
+   * operador voltava para a etapa 1, encontrava a barra de entrada rápida e a
+   * lista de itens aparentemente vivas e só descobria a trava ao bipar. É o
+   * padrão de `lib/bloqueio.ts` (AD-143) aplicado à navegação, como as duas
+   * recusas de avanço acima.
+   *
+   * **Isto revoga em parte o "voltar é sempre permitido" de `FR-004`.** A
+   * liberdade continua valendo entre as etapas 2 e 3 e para toda venda ainda
+   * editável; o que deixa de existir é a volta para uma etapa 1 em que não há
+   * gesto nenhum disponível. A saída é nomeada pela própria frase — "Limpar" no
+   * cartão de pagamento, que fica na etapa 2, onde o operador já está.
+   */
+  const motivoDaVendaEmCobranca = useMotivoCarrinhoBloqueado();
+
+  /**
    * Por que entrar em `etapa` está barrado — a frase que o operador lê, ou
    * `null` quando o caminho está livre (padrão de `lib/bloqueio.ts`).
    *
-   * **A etapa 1 nunca barra**: ela é o lugar onde se corrige o que falta, e
-   * prender o operador longe dela seria o único desfecho sem saída. Voltar é
-   * sempre permitido (`FR-004`).
+   * **A etapa 1 barra num caso só: a venda já em cobrança** (2026-09-15, ver
+   * `motivoDaVendaEmCobranca`). Fora dele ela continua sendo o lugar onde se
+   * corrige o que falta, e prender o operador longe dela seria o único desfecho
+   * sem saída — nenhum campo de cadastro incompleto (cliente, vendedor,
+   * condição) recusa a volta.
    *
    * A regra aqui é de **navegação**, não de finalização: quem recusa faturar
    * continua sendo `AcoesFinaisVenda` (saldo, vendedor, veredito da 014). O que
@@ -186,7 +223,7 @@ export function MobileWizard(): ReactElement {
    */
   function motivoParaEntrarNaEtapa(etapa: EtapaWizard): MotivoBloqueio {
     if (etapa === 1) {
-      return null;
+      return motivoDaVendaEmCobranca;
     }
     if (!temProduto) {
       return MOTIVO_SEM_PRODUTO;
@@ -215,7 +252,11 @@ export function MobileWizard(): ReactElement {
     const motivo = motivoParaEntrarNaEtapa(etapa);
     if (motivo !== null) {
       notificar.erro(motivo);
-      if (motivo === MOTIVO_SEM_PRODUTO) {
+      // O `&& === null` não é redundante com o `if` externo: este ramo **leva**
+      // o operador à etapa 1, e desde 2026-09-15 ela também pode estar barrada.
+      // Empurrá-lo para lá logo depois de recusar a entrada seria o wizard
+      // desdizendo a própria frase no mesmo gesto.
+      if (motivo === MOTIVO_SEM_PRODUTO && motivoParaEntrarNaEtapa(1) === null) {
         setEtapaAtual(1);
         focarCodigoProduto();
       }
@@ -275,6 +316,10 @@ export function MobileWizard(): ReactElement {
   const anterior = etapaAtual > 1 ? ((etapaAtual - 1) as EtapaWizard) : null;
   const proxima = etapaAtual < 3 ? ((etapaAtual + 1) as EtapaWizard) : null;
   const bloqueioDeAvanco = proxima === null ? null : motivoParaEntrarNaEtapa(proxima);
+  // O voltar também anuncia desde 2026-09-15: com a venda em cobrança, o único
+  // destino que ele oferece a partir da etapa 2 é a etapa 1 barrada, e um botão
+  // de aparência normal que só responde com uma recusa é o oposto de AD-143.
+  const bloqueioDeVolta = anterior === null ? null : motivoParaEntrarNaEtapa(anterior);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="mobile-wizard">
@@ -293,7 +338,14 @@ export function MobileWizard(): ReactElement {
           estouro foram corrigidas uma a uma; o corte fica como rede de
           segurança, e não come anel de foco nenhum porque os 16px de `px-base`
           são folga de sobra para os 3px de `focus-visible`. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-xs overflow-x-hidden overflow-y-auto px-base pt-2.5 pb-2.5">
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-xs overflow-x-hidden overflow-y-auto px-base pt-2.5 pb-2.5"
+        // Esta é a coluna que um toast traz de volta ao topo (`rolarParaOTopo`,
+        // pedido do usuário 2026-09-15): é a única que rola no compacto, e com
+        // ela no fim da lista de itens o canto onde o toast nasce fica fora do
+        // enquadramento visível do celular.
+        {...{ [ATRIBUTO_ROLAGEM_DE_NOTIFICACAO]: '' }}
+      >
         <IndicadorDeEtapa
           etapaAtual={etapaAtual}
           etapasVisitadas={etapasVisitadas}
@@ -324,8 +376,9 @@ export function MobileWizard(): ReactElement {
           {anterior !== null && (
             <button
               type="button"
-              className="flex h-[50px] min-w-0 shrink items-center justify-center gap-1.5 rounded-full border border-border bg-card px-base text-sm font-bold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="flex h-[50px] min-w-0 shrink items-center justify-center gap-1.5 rounded-full border border-border bg-card px-base text-sm font-bold text-foreground outline-none aria-disabled:cursor-not-allowed aria-disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
               data-testid="wizard-voltar"
+              {...atributosDeBloqueio(bloqueioDeVolta)}
               onClick={() => {
                 irPara(anterior);
               }}

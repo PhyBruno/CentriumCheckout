@@ -462,7 +462,7 @@ export function ModalPix({
 
   return (
     <div
-      className="cc-backdrop-entra fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] px-lg pt-9"
+      className="cc-backdrop-entra fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] px-base pt-3 md:px-lg md:pt-9"
       data-testid="modal-pix"
     >
       <div
@@ -475,7 +475,20 @@ export function ModalPix({
         {/* Cabeçalho `lSsvw`, com o `X` que o desenho não tem — ver o TSDoc do
             componente: ele existe para o estado aprovado, e fica bloqueado (com
             motivo, nunca `disabled` mudo) enquanto o pagamento não confirma. */}
-        <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
+        {/* As medidas do Pencil — 78px de cabeçalho, 60 de rodapé, 28/24 de
+            folga no corpo, QR de 200 — são de um cartão de 480px numa tela de
+            balcão, e o `.pen` não modela variante compacta desta janela. No
+            celular elas somavam ~750px de altura e a janela passou a exigir
+            rolagem para o operador ver o valor a cobrar e a confirmação
+            (correção do usuário, 2026-09-15: "o modal do PIX está necessitando
+            de Scroll down para ver informação, deveria ser suficiente sem
+            scroll").
+
+            A saída é densidade, não corte: nenhum elemento do desenho saiu da
+            tela — encolheram as folgas, o QR e as alturas de cabeçalho/rodapé, e
+            `md:` (que desde AD-198 significa "árvore desktop", não largura)
+            devolve os valores exatos do `.pen` onde eles cabem. */}
+        <header className="flex h-16 shrink-0 items-center gap-sm border-b border-border px-base md:h-[78px] md:px-lg">
           <span
             className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]"
             data-testid="pix-disco-cabecalho"
@@ -515,7 +528,14 @@ export function ModalPix({
           </Button>
         </header>
 
-        <div className="flex flex-col items-center gap-md overflow-y-auto px-lg py-7">
+        <div
+          className="flex flex-col items-center gap-3 overflow-y-auto px-base py-4 md:gap-md md:px-lg md:py-7"
+          // O `overflow-y-auto` continua aqui como rede de segurança — uma
+          // tradução longa, um aparelho muito baixo —, mas no celular comum ele
+          // não deve ter o que rolar. Quem verifica isso é o E2E de layout
+          // mobile, que compara `scrollHeight` com `clientHeight` deste nó.
+          data-testid="pix-corpo"
+        >
           {emErro ? (
             <div
               className="flex w-full flex-col gap-xs rounded-lg bg-[var(--cc-color-warning-soft)] px-sm py-sm"
@@ -538,17 +558,20 @@ export function ModalPix({
           ) : (
             <>
               {/* Cartão `DRKJh` — 200×200 é a medida do nó `g8F3HF`. */}
-              <div className="flex items-center justify-center rounded-2xl border border-border bg-background p-base">
+              <div className="flex items-center justify-center rounded-2xl border border-border bg-background p-3 md:p-base">
                 {cobranca === null ? (
                   <div
-                    className="cc-shimmer size-[200px] rounded-md"
+                    className="cc-shimmer size-[160px] rounded-md md:size-[200px]"
                     data-testid="pix-qrcode-carregando"
                     aria-label="Gerando o QR Code do PIX"
                     role="status"
                   />
                 ) : (
                   <img
-                    className="size-[200px]"
+                    // 160px no compacto: continua acima do mínimo que a câmera
+                    // de um celular lê com folga a um palmo de distância, e é o
+                    // corte que mais devolve altura sem tirar nada da tela.
+                    className="size-[160px] md:size-[200px]"
                     data-testid="pix-qrcode"
                     // Já é uma `data:` URL pronta, com o tipo MIME detectado no
                     // mapper a partir dos bytes reais — a UI não escolhe formato.
@@ -569,7 +592,12 @@ export function ModalPix({
                   "copia e cola" tem ~130 caracteres e o desenho o mostra inteiro. */}
               <div className="flex w-full items-center gap-xs rounded-lg border border-border bg-muted px-sm py-[10px]">
                 <span
-                  className="min-w-0 flex-1 font-mono text-xs leading-[1.3] break-all text-[var(--cc-color-muted)]"
+                  // Duas linhas no compacto, inteiro no desktop. O texto
+                  // permanece no DOM — `line-clamp` corta só o que se pinta —,
+                  // então seleção, leitor de tela e o `Copiar` ao lado continuam
+                  // vendo os ~130 caracteres. Ler o código para digitá-lo à mão
+                  // não é gesto de PDV; o botão é.
+                  className="line-clamp-2 min-w-0 flex-1 font-mono text-xs leading-[1.3] break-all text-[var(--cc-color-muted)] md:line-clamp-none"
                   data-testid="pix-copia-e-cola"
                 >
                   {cobranca?.copiaECola ?? ''}
@@ -599,7 +627,7 @@ export function ModalPix({
 
               {/* Bloco escuro `ZgrCz` — o valor é o único número da tela e usa a
                   maior escala tipográfica do produto. */}
-              <div className="flex w-full flex-col items-center gap-[6px] rounded-[20px] bg-[var(--cc-color-surface-dark)] p-base">
+              <div className="flex w-full flex-col items-center gap-[6px] rounded-[20px] bg-[var(--cc-color-surface-dark)] p-3 md:p-base">
                 <span className="text-base text-[var(--cc-color-on-dark-muted)]">
                   Valor a cobrar
                 </span>
@@ -630,7 +658,7 @@ export function ModalPix({
           )}
         </div>
 
-        <footer className="flex h-[60px] shrink-0 items-center justify-center gap-[10px] border-t border-border px-lg">
+        <footer className="flex h-14 shrink-0 items-center justify-center gap-[10px] border-t border-border px-base md:h-[60px] md:px-lg">
           {emErro && (
             <Button
               type="button"

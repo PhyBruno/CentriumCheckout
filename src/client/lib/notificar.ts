@@ -1,5 +1,6 @@
 import { gooeyToast } from 'goey-toast';
 import { obterPlataforma } from '../layout/obterPlataforma';
+import { rolarParaOTopo } from '../layout/rolarParaOTopo';
 
 /**
  * Notificações do Checkout — **toda** frase que o operador lê num toast passa
@@ -126,6 +127,19 @@ function montarToast(
 
 function emitir(tipo: TipoNotificacao, mensagem: string): void {
   const { titulo, opcoes } = montarToast(tipo, mensagem);
+
+  // **No compacto, a tela volta ao topo junto com o toast** (pedido do usuário,
+  // 2026-09-15). O toast é fixo, mas fixo contra a *layout* viewport: com o
+  // teclado virtual aberto — que é o estado normal de quem digita quantidade ou
+  // busca cliente — o Chrome/Android desloca a *visual* viewport por dentro dela
+  // e a faixa visível deixa de conter o canto onde o toast nasce. O operador
+  // ouvia o "não" e não via frase nenhuma. Ver `rolarParaOTopo`.
+  //
+  // Só no compacto: no desktop a tela de venda ocupa a janela inteira sem
+  // rolagem de página, e rolar ali seria mexer em quem já está no lugar certo.
+  if (obterPlataforma() !== 'DESKTOP') {
+    rolarParaOTopo();
+  }
 
   if (tipo === 'erro') {
     gooeyToast.error(titulo, opcoes);
