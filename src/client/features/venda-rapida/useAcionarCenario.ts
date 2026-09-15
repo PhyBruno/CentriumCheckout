@@ -285,11 +285,12 @@ export function criarDepsPadrao(
        * lado do carrinho: não há etapa a navegar, e a exigência de `FR-019` é
        * satisfeita pela própria estrutura da tela.
        *
-       * **Pendente desde a feature 016**: com F6–F9 acionando também no wizard
-       * mobile (`FR-011` da 016), o pagamento é lançado sem levar o operador à
-       * etapa 2 — ele o vê no cartão de total do topo, mas não a lista de
-       * pagamentos. A porta existe justamente para isso e continua vazia;
-       * registrado em `.specs/project/PENDENCIES.md`.
+       * **No wizard mobile (feature 016) a porta só faz falta quando a venda
+       * continua aberta.** Cenário com "encerra a operação" finaliza sozinho
+       * (P5), e os diálogos da finalização moram acima do wizard — aparecem em
+       * qualquer etapa. Sobram o cenário sem "encerra a operação" e a
+       * finalização recusada: aí o operador segue na etapa 1, longe da lista de
+       * pagamentos e do "Finalizar". Item 55 de `.specs/project/PENDENCIES.md`.
        */
     },
     selecionarCondicao: (codigo) => {
