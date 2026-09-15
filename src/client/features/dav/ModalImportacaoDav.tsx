@@ -1,5 +1,5 @@
 import { CalendarDays, CheckCircle, Import, ReceiptText, Record, Search, X } from 'reicon-react';
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -175,7 +175,10 @@ export function ModalImportacaoDav({
 
   const { importar } = useImportacaoDav(deps);
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
-  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
+  // Foco inicial declarado, e não `autoFocus` (feature 016): ver
+  // `OpcoesFocoDeModal.focoInicial`.
+  const campoBusca = useRef<HTMLInputElement>(null);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto, { focoInicial: campoBusca });
 
   // A ordenação mora aqui, e não dentro de `TabelaDeDavs`: durante o
   // `isFetching` da página seguinte a tabela dá lugar ao skeleton e desmonta —
@@ -296,8 +299,8 @@ export function ModalImportacaoDav({
               <input
                 className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
                 data-testid="campo-busca-dav"
+                ref={campoBusca}
                 autoComplete="off"
-                autoFocus
                 placeholder="Busque por número, título ou cliente"
                 value={termo}
                 onChange={(evento) => {

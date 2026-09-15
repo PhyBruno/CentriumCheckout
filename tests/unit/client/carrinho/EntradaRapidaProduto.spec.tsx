@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EntradaRapidaProduto } from '../../../../src/client/features/carrinho/EntradaRapidaProduto';
 import { useEdicaoItemStore } from '../../../../src/client/stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
+import { useJanelasStore } from '../../../../src/client/stores/janelasStore';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 import { linhaDe, respostaGetProduto, snapshotDe } from '../../../support/precificacao';
@@ -750,5 +751,58 @@ describe('EntradaRapidaProduto — venda sem vendedor (correção do usuário, 2
     );
 
     vi.unstubAllGlobals();
+  });
+});
+
+/**
+ * T016 (feature 016) — o modal de busca abre pelo `janelasStore`, e o campo de
+ * busca fica focado pelo clique e pelo pedido do F4 (`FR-020`/`FR-021`).
+ */
+describe('EntradaRapidaProduto — abertura do modal de busca pelo janelasStore (016)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+  });
+
+  it('o clique na lupa abre o modal com o campo de busca focado', async () => {
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.click(screen.getByTestId('abrir-busca-produto'));
+
+    expect(useJanelasStore.getState().janela).toBe('produto');
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-busca-produto')).toHaveFocus();
+    });
+  });
+
+  it('o pedido que chega pelo store — o caminho do F4 — abre o mesmo modal, com o mesmo foco', async () => {
+    renderBarra();
+
+    act(() => {
+      useJanelasStore.getState().abrir('produto');
+    });
+
+    expect(await screen.findByTestId('modal-busca-produto')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-busca-produto')).toHaveFocus();
+    });
+  });
+
+  it('fechar o modal libera o store para a próxima janela', async () => {
+    const usuario = userEvent.setup();
+    renderBarra();
+    act(() => {
+      useJanelasStore.getState().abrir('produto');
+    });
+    await screen.findByTestId('campo-busca-produto');
+
+    await usuario.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(useJanelasStore.getState().janela).toBe('nenhuma');
+    });
   });
 });

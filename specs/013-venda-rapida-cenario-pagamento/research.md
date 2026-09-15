@@ -124,11 +124,13 @@ Em contrapartida, três coisas que o ERP **não** garante e que a implementaçã
 
 ---
 
-## D11 — Desktop-only expresso como dado, não como ramo de código
+## D11 — A faixa é desktop-only pela montagem da tela; a tecla vale em qualquer layout
 
-**Decisão**: a exclusividade de desktop (`FR-020`) é aplicada pela mesma capacidade `plataforma` já injetada na feature 008 — a projeção de atalhos devolve lista vazia quando a plataforma é mobile.
+**Decisão (vigente desde 2026-09-15, feature 016, AD-227)**: a projeção de atalhos **não recebe plataforma** e devolve a mesma lista em qualquer layout. A exclusividade de desktop de `FR-020` vale só para a **faixa visual**, e é garantida pela montagem: a faixa vive no cartão de pagamento, que só o layout desktop monta. As teclas F6–F9 são registradas por `TeclasVendaRapida`, montado em `AppShell` acima da bifurcação de layout.
 
-**Rationale**: decisão direta do usuário (2026-08-31): venda rápida restrita ao desktop, sem equivalente tocável. Modelar como dado injetado (e não como `if (isMobile)` espalhado na UI) repete o padrão de capacidade injetada que AD-074 estreou — **o padrão continua válido, a regra de TEF que o originou não: AD-144 (2026-09-03) liberou o TEF no mobile** —, mantém a regra testável sem renderizar componente e evita divergência entre "não mostra" e "não aciona" — com lista vazia, as duas coisas são a mesma coisa.
+**Decisão anterior, descartada**: a exclusividade de desktop era aplicada pela capacidade `plataforma` injetada na projeção, que devolvia lista vazia no mobile — e, como a faixa era também quem registrava as teclas, "não mostra" e "não aciona" eram a mesma coisa. A 016 separou os dois fatos (`FR-011`/`FR-012` daquela spec) porque um PDV de toque com teclado físico ficava com F3 funcionando e F7 não. O raciocínio original segue abaixo como registro.
+
+**Rationale original (2026-08-31)**: decisão direta do usuário: venda rápida restrita ao desktop, sem equivalente tocável. Modelar como dado injetado (e não como `if (isMobile)` espalhado na UI) repete o padrão de capacidade injetada que AD-074 estreou — **o padrão continua válido, a regra de TEF que o originou não: AD-144 (2026-09-03) liberou o TEF no mobile** —, mantém a regra testável sem renderizar componente e evita divergência entre "não mostra" e "não aciona" — com lista vazia, as duas coisas são a mesma coisa.
 
 ---
 

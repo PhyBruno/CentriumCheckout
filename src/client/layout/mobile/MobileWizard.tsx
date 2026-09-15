@@ -12,6 +12,8 @@ import {
 } from '../../domain/sessao/identidadePdv';
 import { linhasAtivas } from '../../domain/precificacao/linha';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+import { useEtapaVendaStore } from '../../stores/etapaVendaStore';
+import { useJanelasStore } from '../../stores/janelasStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { EtapaClienteProdutos } from './EtapaClienteProdutos';
@@ -34,11 +36,15 @@ import { EtapaRevisao } from './EtapaRevisao';
  * preservação do estado de **venda** (`FR-002`), nunca da posição de navegação —
  * e essa posição é barata de refazer, enquanto o carrinho não é.
  *
- * **Nenhum atalho de teclado é registrado nesta árvore** (`FR-005`, MOB-05, D6):
- * o único `useHotkeys` do projeto vive em `mapaAtalhos.ts`, chamado só por
- * `DicaAtalhos`, que por sua vez só recebe teclas quando `projetarAtalhos`
- * recebe a plataforma `desktop`. No mobile a lista chega vazia e o mapa não
- * escuta nada.
+ * **Nenhum atalho de teclado é registrado nesta árvore** (MOB-05, D6): os dois
+ * registros do projeto — o mapa fixo F1–F4/F10 e as teclas F6–F9 da venda
+ * rápida — vivem em `AppShell`, acima da bifurcação.
+ *
+ * **O que mudou com a feature 016**: `FR-005` da 007 dizia que o compacto não
+ * escuta o teclado; a 016 revoga isso para as teclas de ação (`FR-010`,
+ * `FR-011`), porque o PDV de toque com teclado físico precisa dos mesmos
+ * atalhos do desktop. Esta árvore continua sem registrar tecla — só obedece aos
+ * pedidos que chegam pelo `janelasStore` (ver `pedeBuscaDaEtapa1`).
  */
 export type EtapaWizard = 1 | 2 | 3;
 
@@ -118,6 +124,27 @@ export function MobileWizard(): ReactElement {
     setSessaoAnterior(sessaoDeVenda);
     setEtapaAtual(1);
     setEtapasVisitadas(new Set<EtapaWizard>([1]));
+  }
+
+  /**
+   * Pedido de busca de cliente ou de produto com o operador fora da etapa 1 —
+   * na prática, o F3/F4 da feature 016 (decisão do usuário, 2026-09-15).
+   *
+   * Os dois modais pertencem a `CampoClienteVenda` e `EntradaRapidaProduto`,
+   * que só existem na etapa 1. Sem esta volta, a tecla gravaria a janela no
+   * `janelasStore` sem ninguém para desenhá-la — e o store, inerte com janela
+   * "aberta", ignoraria toda tecla seguinte. A etapa 1 nunca é barrada
+   * (`motivoParaEntrarNaEtapa`), então ir para lá não precisa de checagem.
+   *
+   * Durante o render, pelo mesmo motivo do reinício de sessão logo acima: a
+   * etapa 1 entra no mesmo quadro em que o modal abre, sem pintar a etapa
+   * anterior com uma janela invisível por cima.
+   */
+  const pedeBuscaDaEtapa1 = useJanelasStore(
+    (estado) => estado.janela === 'cliente' || estado.janela === 'produto',
+  );
+  if (pedeBuscaDaEtapa1 && etapaAtual !== 1) {
+    setEtapaAtual(1);
   }
 
   /**
@@ -202,6 +229,47 @@ export function MobileWizard(): ReactElement {
       }
       return new Set<EtapaWizard>([...visitadas, etapa]);
     });
+  }
+
+  /**
+   * Pedidos de etapa da venda rápida (feature 016, pendência 55).
+   *
+   * F6–F9 acionam no compacto desde a 016, e o comando pede a etapa de
+   * pagamento antes de lançar — a janela do PIX só existe nela — e a revisão ao
+   * fim, para a venda que não fechou sozinha chegar ao "Finalizar" (correção do
+   * usuário, 2026-09-15).
+   *
+   * **Mesma regra dos botões, sem o aviso.** Um pedido recusado não é gesto do
+   * operador: a venda que o cenário finalizou já zerou o caixa e não tem o que
+   * revisar, e dizer "insira um produto" a quem acabou de fechar uma venda
+   * seria falso. Quem fala com o operador é o atalho.
+   *
+   * Durante o render, comparando com o último pedido atendido, pelo mesmo motivo
+   * do reinício de sessão acima. O estado começa no valor atual do store: um
+   * pedido feito antes de o wizard montar — do outro lado de uma travessia de
+   * breakpoint, por exemplo — não é atendido por uma árvore que acabou de nascer
+   * na etapa 1 (I1).
+   */
+  const pedidosDePagamento = useEtapaVendaStore((estado) => estado.pedidosDePagamento);
+  const pedidosDeRevisao = useEtapaVendaStore((estado) => estado.pedidosDeRevisao);
+  const [pedidosAtendidos, setPedidosAtendidos] = useState({
+    pagamento: pedidosDePagamento,
+    revisao: pedidosDeRevisao,
+  });
+  if (
+    pedidosDePagamento !== pedidosAtendidos.pagamento ||
+    pedidosDeRevisao !== pedidosAtendidos.revisao
+  ) {
+    const pediuRevisao = pedidosDeRevisao !== pedidosAtendidos.revisao;
+    setPedidosAtendidos({ pagamento: pedidosDePagamento, revisao: pedidosDeRevisao });
+
+    const destino: EtapaWizard = pediuRevisao ? 3 : 2;
+    if (motivoParaEntrarNaEtapa(destino) === null) {
+      setEtapaAtual(destino);
+      // Chegar à revisão por aqui é ter passado pelo pagamento: as duas ficam
+      // visitadas, para as barrinhas do indicador levarem de volta a qualquer uma.
+      setEtapasVisitadas((visitadas) => new Set<EtapaWizard>([...visitadas, 2, destino]));
+    }
   }
 
   const anterior = etapaAtual > 1 ? ((etapaAtual - 1) as EtapaWizard) : null;

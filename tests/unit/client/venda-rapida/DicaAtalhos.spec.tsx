@@ -1,7 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import { useFocoDeModal } from '../../../../src/client/lib/useFocoDeModal';
 import { DicaAtalhos } from '../../../../src/client/features/venda-rapida/DicaAtalhos';
+import { TeclasDosAtalhos } from '../../../../src/client/features/venda-rapida/TeclasVendaRapida';
 import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../../../src/client/hotkeys/mapaAtalhos';
 import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import type { AtalhoVendaRapida } from '../../../../src/client/domain/vendaRapida/tipos';
@@ -93,17 +96,36 @@ describe('DicaAtalhos — acionamento (T021)', () => {
   it('a tecla chama o mesmo comando, com o mesmo argumento', async () => {
     const usuario = userEvent.setup();
     const onAcionar = vi.fn();
-    render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+    render(
+      <>
+        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+      </>,
+    );
 
     await usuario.keyboard('{F8}');
 
     expect(onAcionar).toHaveBeenCalledExactlyOnceWith('F8');
   });
 
-  it('tecla sem atalho na lista não chama nada', async () => {
+  it('a faixa sozinha não escuta tecla nenhuma — o dono das teclas é outro (feature 016)', async () => {
+    // Desde a 016 a faixa é só visual: as teclas são registradas por
+    // `TeclasVendaRapida`, montado em `AppShell` nos dois layouts. Se a faixa
+    // voltasse a registrar, o desktop teria dois donos para F6–F9 e o segundo
+    // veria `defaultPrevented` do primeiro.
     const usuario = userEvent.setup();
     const onAcionar = vi.fn();
     render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+
+    await usuario.keyboard('{F6}');
+
+    expect(onAcionar).not.toHaveBeenCalled();
+  });
+
+  it('tecla sem atalho na lista não chama nada', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(<TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
 
     await usuario.keyboard('{F7}');
     await usuario.keyboard('{F9}');
@@ -114,13 +136,17 @@ describe('DicaAtalhos — acionamento (T021)', () => {
 
 /* ------------------------------------------------------------------ *
  * T012 — não colide com digitação nem com bipagem (FR-014, SC-005, C8)
+ *
+ * Desde a feature 016 estes casos exercitam `TeclasDosAtalhos`, que herdou o
+ * registro de F6–F9 da faixa. As regras são as mesmas; mudou só quem as
+ * aplica.
  * ------------------------------------------------------------------ */
 
 describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem (T012)', () => {
   function renderizarComCampos(onAcionar: () => void) {
     return render(
       <>
-        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
         {/* O campo de código do produto é a **única** exceção: declara-se
             transparente aos atalhos globais, como em `EntradaRapidaProduto`. */}
         <input aria-label="Código do produto" {...ATRIBUTO_ATALHOS_PERMITIDOS} />
@@ -178,7 +204,7 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     const onAcionar = vi.fn();
     render(
       <>
-        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
         <button type="button" role="option" aria-selected="false">
           A VISTA
         </button>
@@ -194,7 +220,7 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
   it('combinação com modificador é outro atalho, não este', async () => {
     const usuario = userEvent.setup();
     const onAcionar = vi.fn();
-    render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+    render(<TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
 
     await usuario.keyboard('{Control>}{F6}{/Control}');
     await usuario.keyboard('{Shift>}{F6}{/Shift}');
@@ -208,7 +234,7 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     const onAcionar = vi.fn();
     render(
       <>
-        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
         <div role="dialog" aria-modal="true">
           <button type="button">Confirmar</button>
         </div>
@@ -275,5 +301,121 @@ describe('DicaAtalhos — faixa bloqueada (correção do usuário, 2026-09-10)',
 
     await usuario.click(botao);
     expect(onAcionar).toHaveBeenCalledWith('F6');
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Posse das teclas com cenário (achado do usuário, 2026-09-15)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Achado do usuário no dev server: com um modal aberto, F6 e F7 **com cenário
+ * cadastrado** chegavam ao navegador — F6 leva o foco à barra de endereços, F7
+ * liga a navegação por cursor. As guardas de modal, campo e repetição ficavam em
+ * `ignoreEventWhen`, e a biblioteca pula o `preventDefault` junto: a ação era
+ * suprimida, mas a tecla escapava. É a mesma classe de falha que a feature 016
+ * fechou para F1–F4/F10 (`data-model.md` §4 daquela spec).
+ *
+ * A regra agora: tecla com cenário é sempre do Checkout; modal, campo e
+ * repetição suprimem só a ação. "Chegou ao navegador" é lido de
+ * `defaultPrevented` num ouvinte de `window`, o último da propagação.
+ */
+describe('TeclasDosAtalhos — a tecla com cenário nunca escapa para o navegador', () => {
+  let chegadas: { readonly tecla: string; readonly engolida: boolean }[] = [];
+  function observar(evento: KeyboardEvent): void {
+    chegadas.push({ tecla: evento.key, engolida: evento.defaultPrevented });
+  }
+
+  beforeEach(() => {
+    chegadas = [];
+    window.addEventListener('keydown', observar);
+  });
+
+  afterEach(() => {
+    window.removeEventListener('keydown', observar);
+  });
+
+  /** Uma janela aberta de verdade, pela mesma pilha dos modais da base. */
+  function JanelaAberta(): ReactElement {
+    const ref = useFocoDeModal<HTMLDivElement>(true);
+    return (
+      <div ref={ref} role="dialog" aria-modal="true">
+        <input aria-label="Busca do modal" />
+      </div>
+    );
+  }
+
+  it('com um modal aberto e o foco dentro dele, F6 é engolida e não aciona', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(
+      <>
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <JanelaAberta />
+      </>,
+    );
+
+    await usuario.click(screen.getByLabelText('Busca do modal'));
+    chegadas = [];
+    await usuario.keyboard('{F6}');
+
+    expect(chegadas).toEqual([{ tecla: 'F6', engolida: true }]);
+    expect(onAcionar).not.toHaveBeenCalled();
+  });
+
+  it('com o modal aberto e o foco solto no body, F8 também não aciona por baixo dele', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(
+      <>
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <JanelaAberta />
+      </>,
+    );
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await usuario.keyboard('{F8}');
+
+    expect(chegadas).toEqual([{ tecla: 'F8', engolida: true }]);
+    expect(onAcionar).not.toHaveBeenCalled();
+  });
+
+  it('com o foco no campo de quantidade, F6 é engolida — o próximo bipe não vai parar no navegador', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(
+      <>
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <input aria-label="Quantidade" />
+      </>,
+    );
+
+    await usuario.click(screen.getByLabelText('Quantidade'));
+    chegadas = [];
+    await usuario.keyboard('{F6}');
+
+    expect(chegadas).toEqual([{ tecla: 'F6', engolida: true }]);
+    expect(onAcionar).not.toHaveBeenCalled();
+  });
+
+  it('tecla segurada aciona uma vez e nenhuma repetição escapa', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(<TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+
+    await usuario.keyboard('{F6>3/}');
+
+    expect(chegadas).toHaveLength(3);
+    expect(chegadas.every((chegada) => chegada.engolida)).toBe(true);
+    expect(onAcionar).toHaveBeenCalledOnce();
+  });
+
+  it('tecla sem cenário continua com o navegador — a posse cobre só o que está cadastrado', async () => {
+    const usuario = userEvent.setup();
+    render(<TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={vi.fn()} />);
+
+    await usuario.keyboard('{F7}');
+
+    expect(chegadas).toEqual([{ tecla: 'F7', engolida: false }]);
   });
 });

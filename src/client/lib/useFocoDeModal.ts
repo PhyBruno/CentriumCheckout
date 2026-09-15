@@ -31,6 +31,23 @@ const SELETOR_FOCAVEL = [
 const pilhaDeJanelas: RefObject<HTMLElement | null>[] = [];
 
 /**
+ * Há alguma janela modal aberta agora? Consulta síncrona, sem React.
+ *
+ * Existe para as teclas fixas da feature 016 (`FR-006`): com uma janela aberta
+ * a tecla continua engolida, mas a ação não roda. A resposta vem da **pilha**, e
+ * não de `closest('[role="dialog"]')` sobre o alvo do evento, porque o foco nem
+ * sempre está dentro da janela — logo depois de ela abrir, ou quando um clique
+ * no backdrop o solta no `body`, o `closest` devolveria `null` e o atalho
+ * passaria por baixo do modal (`research.md` D3).
+ *
+ * Vale para toda janela que usa este hook, inclusive as que não passam pelo
+ * `janelasStore` — confirmações destrutivas, o modal do PIX, o vale devolução.
+ */
+export function haJanelaAberta(): boolean {
+  return pilhaDeJanelas.length > 0;
+}
+
+/**
  * Prende o foco dentro de uma janela modal e o devolve de onde veio ao fechar.
  *
  * `role="dialog"` + `aria-modal="true"` **afirmam** ao leitor de tela que o
@@ -53,9 +70,32 @@ const pilhaDeJanelas: RefObject<HTMLElement | null>[] = [];
  * renderiza condicionalmente — existir já significa aberto — passam `true`.
  * @returns `ref` para o elemento com `role="dialog"` — é a fronteira do laço.
  */
-export function useFocoDeModal<T extends HTMLElement>(aberto: boolean): RefObject<T | null> {
+export interface OpcoesFocoDeModal {
+  /**
+   * Elemento que recebe o foco quando a janela abre — tipicamente o campo de
+   * busca (feature 016, `FR-020`/`FR-021`).
+   *
+   * Aplicado **depois do commit** em que ele passa a existir, e não por
+   * `autoFocus`. O `autoFocus` roda na fase de layout, na ordem da árvore: se a
+   * janela nasce no mesmo commit que outro campo com foco próprio montado depois
+   * dela, o outro vence. É o F3 no wizard mobile — a etapa 1 monta junto com o
+   * modal, e o campo de código de produto roubava a busca em silêncio.
+   *
+   * O hook não sabe como a janela foi aberta, e é por isso que `FR-021` sai de
+   * graça: clique e tecla chegam ao mesmo foco.
+   */
+  readonly focoInicial?: RefObject<HTMLElement | null>;
+}
+
+export function useFocoDeModal<T extends HTMLElement>(
+  aberto: boolean,
+  opcoes: OpcoesFocoDeModal = {},
+): RefObject<T | null> {
   const janelaRef = useRef<T | null>(null);
   const focoAnterior = useRef<HTMLElement | null>(null);
+  /** O foco inicial desta abertura ainda não foi aplicado. */
+  const focoInicialPendente = useRef(false);
+  const { focoInicial } = opcoes;
 
   useEffect(() => {
     if (!aberto) {
@@ -64,6 +104,7 @@ export function useFocoDeModal<T extends HTMLElement>(aberto: boolean): RefObjec
 
     const ativoAoAbrir = document.activeElement;
     focoAnterior.current = ativoAoAbrir instanceof HTMLElement ? ativoAoAbrir : null;
+    focoInicialPendente.current = true;
 
     pilhaDeJanelas.push(janelaRef);
 
@@ -117,6 +158,7 @@ export function useFocoDeModal<T extends HTMLElement>(aberto: boolean): RefObjec
 
     return () => {
       window.removeEventListener('keydown', aoTeclar);
+      focoInicialPendente.current = false;
 
       const posicao = pilhaDeJanelas.lastIndexOf(janelaRef);
       if (posicao !== -1) {
@@ -150,6 +192,30 @@ export function useFocoDeModal<T extends HTMLElement>(aberto: boolean): RefObjec
       }
     };
   }, [aberto]);
+
+  /**
+   * Foco inicial — sem dependências de propósito, e **depois** do efeito acima.
+   *
+   * Roda a cada render porque o elemento pode não existir no commit em que
+   * `aberto` vira `true`: `usePresenca` monta o modal um render depois, pelo
+   * mesmo motivo que obriga a ler `janelaRef` no evento. A bandeira garante uma
+   * aplicação por abertura — sem ela, cada tecla digitada na busca re-renderiza
+   * o modal e o foco seria puxado de volta de onde o operador o levou com TAB.
+   *
+   * Ser efeito passivo é o que vence o `autoFocus` de um campo montado no mesmo
+   * commit: a fase de layout já terminou quando isto roda.
+   */
+  useEffect(() => {
+    if (!focoInicialPendente.current) {
+      return;
+    }
+    const alvo = focoInicial?.current;
+    if (alvo === null || alvo === undefined || !alvo.isConnected) {
+      return;
+    }
+    focoInicialPendente.current = false;
+    alvo.focus();
+  });
 
   return janelaRef;
 }

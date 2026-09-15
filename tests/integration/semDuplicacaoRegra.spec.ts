@@ -90,13 +90,16 @@ const CONSULTAS_DE_LAYOUT = [
 ] as const;
 
 /**
- * As exceções declaradas. Ambas variam a **apresentação** de algo que já
- * aconteceu, nunca a disponibilidade de uma forma de pagamento, de uma
- * integração ou de um passo da venda — que é a linha que este teste protege.
+ * A exceção declarada. Ela varia a **apresentação** de algo que já aconteceu,
+ * nunca a disponibilidade de uma forma de pagamento, de uma integração ou de um
+ * passo da venda — que é a linha que este teste protege.
  *
- * - `useAtalhosVendaRapida.ts` (013): `projetarAtalhos` recebe a plataforma como
- *   capacidade injetada (`FR-020`/D11 daquela feature) e devolve lista vazia no
- *   compacto — é exatamente assim que `FR-005` da 007 se cumpre, sem flag nova.
+ * `useAtalhosVendaRapida.ts` (013) era a segunda exceção até a feature 016: a
+ * projeção recebia a plataforma e devolvia lista vazia no compacto. A 016
+ * removeu a plataforma da projeção (`FR-011`), o arquivo deixou de ler layout e
+ * a exceção saiu daqui — mantê-la liberaria esse arquivo a voltar a consultar
+ * o breakpoint sem que ninguém percebesse.
+ *
  * - `lib/notificar.ts` (007/AD-195): escolhe **onde a mesma frase é desenhada** —
  *   título no desktop, `description` mais tremida no compacto. O operador lê
  *   palavra por palavra o mesmo texto nos dois layouts; o que muda é o campo da
@@ -105,10 +108,7 @@ const CONSULTAS_DE_LAYOUT = [
  *   falta no outro — se um dia faltasse, seria uma violação de verdade e este
  *   comentário estaria mentindo.
  */
-const EXCECOES = [
-  'src/client/features/venda-rapida/useAtalhosVendaRapida.ts',
-  'src/client/lib/notificar.ts',
-] as const;
+const EXCECOES = ['src/client/lib/notificar.ts'] as const;
 
 function arquivosDoCliente(
   diretorio: string = join(process.cwd(), 'src/client'),
@@ -127,7 +127,7 @@ function relativo(caminho: string): string {
 }
 
 describe('Só o AppShell decide por layout (research.md D3, FR-009/AD-144)', () => {
-  it('nenhum arquivo fora de layout/ consulta o breakpoint, salvo a exceção declarada da 013', () => {
+  it('nenhum arquivo fora de layout/ consulta o breakpoint, salvo a exceção declarada', () => {
     const violacoes = arquivosDoCliente().flatMap((caminho) => {
       const relativoDoArquivo = relativo(caminho);
       if (

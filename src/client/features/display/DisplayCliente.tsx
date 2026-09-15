@@ -66,7 +66,14 @@ export function DisplayCliente({
 
     const aoReceber = (evento: EventoMensagem): void => {
       const mensagem = interpretarMensagemDisplay(evento.data);
-      if (mensagem === null || mensagem.tipo !== 'ESTADO') {
+      if (mensagem === null || mensagem.tipo === 'SOLICITAR_ESTADO') {
+        return;
+      }
+      // Só a marca: sem estado de tela e **sem** adiar o corte por silêncio — é
+      // o que deixa qualquer aba de checkout anunciá-la sem risco para um QR em
+      // curso (correção do usuário, 2026-09-15).
+      if (mensagem.tipo === 'IDENTIDADE') {
+        setNomeLoja(mensagem.nomeLoja);
         return;
       }
       setEstado(mensagem.estado);

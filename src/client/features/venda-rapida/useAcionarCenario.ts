@@ -11,6 +11,7 @@ import type {
   ResultadoAcionamento,
   TeclaAtalho,
 } from '../../domain/vendaRapida/tipos';
+import { useEtapaVendaStore } from '../../stores/etapaVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { useFinalizacaoVenda } from '../finalizacao-suspensao/AcoesFinaisVenda';
 import { aplicarFormaComIntegracao } from './aplicarFormaComIntegracao';
@@ -62,6 +63,17 @@ export interface AcionarCenarioDeps {
   vendaTemFormaAplicada(): boolean;
   /** 008 — garante que a venda está na etapa de pagamento (`FR-019`). */
   irParaEtapaPagamento(): void;
+  /**
+   * 007 — leva a venda à revisão, onde está o "Finalizar" (feature 016,
+   * pendência 55; correção do usuário, 2026-09-15).
+   *
+   * Pedida ao fim de **todo** acionamento que lançou, e não só quando a venda
+   * ficou aberta: decidir isso aqui exigiria ler o desfecho da finalização, que
+   * é da 004. Quem aceita ou recusa entrar é a porta — no wizard, pela mesma
+   * regra dos botões; e a venda que finalizou já zerou o caixa, então a revisão
+   * simplesmente não abre.
+   */
+  irParaRevisao(): void;
   /** 008 — seleciona a condição do cenário. */
   selecionarCondicao(codigo: number): void;
   /**
@@ -141,9 +153,9 @@ export async function acionarCenario(
     return recusar(deps, 'ACIONAMENTO_EM_ANDAMENTO');
   }
 
-  // G2 — `buscarAtalho` é a fonte única. No mobile a lista já vem vazia (I10),
-  // então a resposta ali também é `ATALHO_INEXISTENTE`; `PLATAFORMA_NAO_SUPORTADA`
-  // permanece no tipo por completude do contrato, sem caminho que o produza.
+  // G2 — `buscarAtalho` é a fonte única. Desde a feature 016 a lista é a mesma
+  // em qualquer plataforma (`FR-011`); `PLATAFORMA_NAO_SUPORTADA` permanece no
+  // tipo por completude do contrato, sem caminho que o produza.
   const atalho = buscarAtalho(atalhos, tecla);
   if (atalho === undefined) {
     return recusar(deps, 'ATALHO_INEXISTENTE');
@@ -248,6 +260,12 @@ export async function acionarCenario(
     // acionamento que alterou a venda (I12).
     deps.registrarEvento(atalho, valorLancado, finalizacaoIniciada);
 
+    // Depois de P5, e não antes: a venda que o cenário finalizou já zerou o
+    // caixa quando isto roda, e a revisão recusa entrar numa venda vazia. A que
+    // continuou aberta — sem "encerra a operação", ou com a finalização recusada
+    // — chega ao "Finalizar" (pendência 55).
+    deps.irParaRevisao();
+
     return { tipo: 'LANCADO', valorLancado, finalizacaoIniciada };
   } finally {
     // P7 — sempre, inclusive em falha.
@@ -279,15 +297,21 @@ export function criarDepsPadrao(
         .pagamentos.some(
           (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
         ),
+    /**
+     * As duas portas de etapa viram **pedidos** no `etapaVendaStore`: este
+     * módulo não pode saber qual layout está montado (`semDuplicacaoRegra`).
+     *
+     * No desktop o cartão "Pagamento e totais" fica sempre ao lado do carrinho e
+     * ninguém observa o pedido. No wizard mobile (feature 016) os dois importam:
+     * a etapa de pagamento é onde a janela do PIX existe, e sem ela um cenário
+     * PIX acionado da etapa 1 esperaria uma confirmação que o operador não vê;
+     * a revisão é onde está o "Finalizar" da venda que não fechou sozinha.
+     */
     irParaEtapaPagamento: () => {
-      /**
-       * No layout desktop — o único onde a venda rápida existe (`FR-020`) — o
-       * cartão "Pagamento e totais" está sempre montado ao lado do carrinho:
-       * não há etapa a navegar, e a exigência de `FR-019` é satisfeita pela
-       * própria estrutura da tela. A porta permanece no contrato porque o
-       * `MobileWizard` da feature 007 vai ter etapas de verdade, e é ela que a
-       * 007 preencherá sem tocar no comando.
-       */
+      useEtapaVendaStore.getState().pedirPagamento();
+    },
+    irParaRevisao: () => {
+      useEtapaVendaStore.getState().pedirRevisao();
     },
     selecionarCondicao: (codigo) => {
       const condicao = condicoes.find((candidata) => candidata.codigo === codigo);

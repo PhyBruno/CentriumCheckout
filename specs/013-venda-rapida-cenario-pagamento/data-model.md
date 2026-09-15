@@ -71,7 +71,7 @@ SessaoUsuario.CenarioPagamento (string)
   ├─ E3  filtrarTeclaValida ......... descarta tecla fora de F6–F9 após normalizar
   ├─ E4  filtrarExistenciaNoCatalogo  descarta condição/forma ausente da sessão
   ├─ E5  resolverEmpateDeTecla ...... mantém o primeiro por tecla, na ordem do ERP
-  └─ E6  aplicarPlataforma .......... mobile → []
+  └─ (E6 removida pela feature 016 — a projeção não conhece plataforma)
   │
   ▼
 ListaAtalhos (≤ 4)
@@ -87,7 +87,7 @@ ListaAtalhos (≤ 4)
 
 **E5 — `resolverEmpateDeTecla`**: primeiro item vence, na ordem em que o ERP devolveu — que é estável (`Order CPgEmpCod CPgFpgCod`), tornando o resultado idêntico entre recarregamentos da mesma sessão (`FR-006`, D6).
 
-**E6 — `aplicarPlataforma`**: plataforma mobile devolve `[]` (`FR-020`, D11). Sendo a última etapa, garante que "não exibe" e "não aciona" sejam consequência do mesmo fato.
+**E6 — removida em 2026-09-15 pela feature 016 (AD-227).** A projeção devolve a mesma lista em qualquer plataforma: a tecla aciona no mobile (`FR-011` da 016) e só a faixa visual continua restrita ao desktop, pela montagem da tela (`FR-020` revisto, D11). Antes, esta etapa devolvia `[]` no mobile, e "não exibe" e "não aciona" eram consequência do mesmo fato.
 
 ---
 
@@ -136,7 +136,7 @@ Posição na sequência: **antes de G4**. As duas recusas coincidem numa venda j
 | **I7** | Venda nunca é finalizada com saldo em aberto > 0 | P5 | lançamento forçado a não zerar ⇒ nenhuma finalização |
 | **I8** | Falha no lançamento ⇒ nenhuma finalização e estado da venda inalterado | P4/P5/P7 | lançamento que rejeita ⇒ snapshot do store idêntico ao anterior |
 | **I9** | Dois acionamentos concorrentes produzem no máximo um lançamento | G1 + P1/P7 | dois `acionarCenario` sem aguardar o primeiro |
-| **I10** | Plataforma mobile ⇒ nenhum atalho listado e nenhum acionável | E6 + G2 | mesma sessão avaliada como desktop e como mobile |
+| **I10** | A lista de atalhos independe da plataforma; só a faixa visual é desktop-only (**revisto em 2026-09-15 pela 016, AD-227** — antes: "mobile ⇒ nenhum atalho listado e nenhum acionável") | montagem da tela + `TeclasVendaRapida` | a projeção não recebe plataforma; no compacto a faixa não é montada e a tecla aciona (`vendaRapidaPlataforma.spec.tsx`) |
 | **I11** | `encerraOperacao` indeterminado é tratado como `false` | E2 (D4) | literais `"True"`, `"true"`, `"1"`, `"False"`, `""`, `"talvez"` |
 | **I12** | Todo acionamento que altera a venda gera exatamente um evento de auditoria | P6 | um acionamento ⇒ um evento; acionamento recusado ⇒ nenhum |
 | **I13** | O atalho nunca lança sobre venda com forma aplicada, nem sob condição diferente da sua | G5 | condição diversa, forma importada de documento, e segundo acionamento após o primeiro ter lançado |

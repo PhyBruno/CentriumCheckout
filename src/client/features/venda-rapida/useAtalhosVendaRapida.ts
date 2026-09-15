@@ -3,7 +3,6 @@ import type { CondicaoPagamento } from '../../domain/pagamento/formaPagamento';
 import { parsearCenarios } from '../../domain/vendaRapida/parsearCenarios';
 import { projetarAtalhos } from '../../domain/vendaRapida/projetarAtalhos';
 import type { ListaAtalhos } from '../../domain/vendaRapida/tipos';
-import { usePlataforma } from '../../layout/usePlataforma';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
 import { useSessionStore } from '../../stores/sessionStore';
 
@@ -41,10 +40,11 @@ export function useAtalhosVendaRapida(): ListaAtalhos {
     (estado) => estado.registro?.SessaoUsuario.CenarioPagamento ?? null,
   );
   const condicoes = useCatalogoDeCondicoes();
-  const plataforma = usePlataforma();
 
+  // Sem plataforma desde a feature 016 (`FR-011`): a mesma lista vale para o
+  // desktop e para o PDV de toque com teclado físico.
   return useMemo(
-    () => projetarAtalhos(parsearCenarios(campoCenarios), condicoes, plataforma),
-    [campoCenarios, condicoes, plataforma],
+    () => projetarAtalhos(parsearCenarios(campoCenarios), condicoes),
+    [campoCenarios, condicoes],
   );
 }

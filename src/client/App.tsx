@@ -10,14 +10,15 @@ import {
   criarAnalisadorViaWorker,
   type AnalisadorBootstrap,
 } from './services/bootstrapClient';
+import { useIdentidadeNoDisplay } from './services/display/useCanalDisplay';
 import { leitorCarrinhoVazio, type LeitorCarrinho } from './services/erpClient';
 import { useSessionStore, telaDeVendaLiberada } from './stores/sessionStore';
-import { LoadingSkeleton } from './features/session-bootstrap/LoadingSkeleton';
 import { ErrorRetry } from './features/session-bootstrap/ErrorRetry';
 import { SessionExpiredWarning } from './features/session-bootstrap/SessionExpiredWarning';
 import { AcessoInvalido } from './features/session-bootstrap/AcessoInvalido';
 import { COOKIE_ENTRADA, PARAM_ERRO_ACESSO, VALOR_COOKIE_ENTRADA } from '../shared/erroAcesso';
 import { AppShell } from './layout/AppShell';
+import { TelaDeCarregamento } from './layout/TelaDeCarregamento';
 
 /**
  * O BFF recusou o redirect de entrada e mandou o navegador para `/?erro=sessao`
@@ -103,6 +104,12 @@ export function App({
   const [carregando, setCarregando] = useState(false);
 
   const acessoRecusado = useMemo(acessoRecusadoNaEntrada, []);
+
+  // A tela do cliente mostra o nome da loja desde a primeira abertura, e não só
+  // depois do primeiro PIX (correção do usuário, 2026-09-15). Aqui, e não na
+  // tela de venda: é o `App` que sabe quando a sessão — e com ela o nome —
+  // termina de carregar, e `layout/` não importa `services/`.
+  useIdentidadeNoDisplay();
 
   const carregar = useCallback(async (): Promise<void> => {
     const { iniciarCarregamento, concluir, falhar, encerrarSessao } = useSessionStore.getState();
@@ -192,7 +199,9 @@ export function App({
   }
 
   if (!telaDeVendaLiberada(estado)) {
-    return <LoadingSkeleton />;
+    // Tela única ou wizard, conforme o layout: a do desktop alargava a página do
+    // celular a cada recarga (2026-09-15).
+    return <TelaDeCarregamento />;
   }
 
   /**

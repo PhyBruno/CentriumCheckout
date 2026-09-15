@@ -428,6 +428,30 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     UDM: 'UN',
     ProdutoPesavelEditavel: '',
   },
+  /**
+   * Código de barras de uma embalagem real (EAN-13 com dígito verificador
+   * válido), para bipar com a câmera do celular no teste manual pela rede
+   * (pedido do usuário, 2026-09-15). Descrição e preço são sintéticos: nenhum
+   * E2E bipa este produto.
+   */
+  '004273': {
+    CodigoProduto: '004273',
+    Descricao: 'PRODUTO TESTE ANDROID',
+    Referencia: 'REF-ANDROID',
+    CodigoBarras: '7908222424273',
+    PrecoVenda: String(15.0),
+    PrecoVenda1: String(15.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+  },
 };
 
 /**

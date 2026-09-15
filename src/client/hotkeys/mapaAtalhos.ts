@@ -1,5 +1,8 @@
 import { useMemo, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { notificar } from '@/lib/notificar';
+import { haJanelaAberta } from '@/lib/useFocoDeModal';
+import { MAPA_FIXO, type IdComando } from './mapaFixo';
 
 /**
  * Mapa central de atalhos de teclado da tela de venda (feature 013, T014).
@@ -115,19 +118,31 @@ function dentroDeModal(alvo: EventTarget | null): boolean {
 }
 
 /**
- * Eventos que nunca são atalho, qualquer que seja a tecla.
+ * A pressionada é da tecla, mas **não aciona** o atalho.
  *
  * `repeat`: tecla segurada dispara um acionamento por pressionada, nunca pela
  * repetição automática do sistema — num atalho que lança pagamento, a diferença
  * é entre um lançamento e uma enxurrada deles.
  *
- * `defaultPrevented`: alguém mais específico (um modal, um campo com
- * comportamento próprio) já tratou a tecla; não há segundo dono para ela.
+ * Modal aberto: pela pilha de `useFocoDeModal` **ou** pelo foco dentro de um
+ * `role="dialog"` — a pilha pega o foco solto no `body` com a janela aberta, o
+ * seletor pega diálogos que não passam pelo hook.
+ *
+ * Campo de entrada: a regra de `FR-014` da 013, com a exceção declarada no
+ * próprio campo (`ATRIBUTO_ATALHOS_PERMITIDOS`).
+ *
+ * **Nenhuma destas devolve a tecla ao navegador** (achado do usuário,
+ * 2026-09-15). Elas moravam em `ignoreEventWhen`, que a biblioteca avalia
+ * **antes** do `preventDefault` — com um modal aberto, F6 levava o foco à barra
+ * de endereços e F7 ligava a navegação por cursor; com o foco na quantidade, o
+ * bipe seguinte ia parar fora da tela. Agora são avaliadas dentro do handler,
+ * depois de a tecla já ter sido engolida — o mesmo desenho que a feature 016
+ * adotou para F1–F4/F10.
  */
-function eventoIgnorado(evento: KeyboardEvent): boolean {
+function acionamentoSuprimido(evento: KeyboardEvent): boolean {
   return (
     evento.repeat ||
-    evento.defaultPrevented ||
+    haJanelaAberta() ||
     dentroDeModal(evento.target) ||
     ehCampoQueEngoleATecla(evento.target)
   );
@@ -159,6 +174,11 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
   useHotkeys(
     teclas,
     (evento) => {
+      // A tecla já foi engolida pela biblioteca; daqui para baixo só se decide
+      // se o atalho age.
+      if (acionamentoSuprimido(evento)) {
+        return;
+      }
       const alvo = atalhosRef.current.find(
         (atalho) => atalho.tecla.toUpperCase() === evento.key.toUpperCase(),
       );
@@ -166,7 +186,8 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
     },
     {
       // Sem tecla registrada, o mapa não escuta nada — e um F6 sem cenário volta
-      // a ser do navegador.
+      // a ser do navegador. A posse vale para as teclas **cadastradas**; estendê-la
+      // às vagas de F6–F9 seria decisão de spec, como foi o mapa fixo da 016.
       enabled: ativo && atalhos.length > 0,
       /**
        * Casa por `event.key` (a tecla **lógica**), não por `event.code` (a
@@ -191,15 +212,115 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
        */
       preventDefault: true,
       /**
-       * A guarda de campo de entrada é **nossa**, em `ignoreEventWhen`, e não a
-       * da biblioteca. A regra de `FR-014` continua idêntica — com o foco num
-       * campo a tecla pertence a quem digita —, mas ela precisa admitir uma
-       * exceção declarada no próprio campo (`ATRIBUTO_ATALHOS_PERMITIDOS`), e o
-       * `enableOnFormTags` da biblioteca é tudo-ou-nada.
+       * A guarda de campo de entrada é **nossa**, em `acionamentoSuprimido`, e
+       * não a da biblioteca. A regra de `FR-014` continua valendo para a
+       * **ação** — com o foco num campo o atalho não age —, mas ela precisa
+       * admitir uma exceção declarada no próprio campo
+       * (`ATRIBUTO_ATALHOS_PERMITIDOS`), e o `enableOnFormTags` da biblioteca é
+       * tudo-ou-nada — além de, desligado, devolver a tecla ao navegador.
        */
       enableOnFormTags: true,
       enableOnContentEditable: true,
-      ignoreEventWhen: eventoIgnorado,
+      // Só a deferência a quem já tratou a tecla: um segundo dono é o que não
+      // pode existir. As demais guardas suprimem a ação, nunca a posse.
+      ignoreEventWhen: (evento) => evento.defaultPrevented,
+    },
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Teclas fixas do produto (feature 016)
+ * ------------------------------------------------------------------ */
+
+/** O que o call site fornece para um comando do mapa fixo (`contracts` §2). */
+export interface AcaoFixa {
+  /**
+   * O comando pode rodar agora? Devolve a frase da recusa, ou `null`.
+   *
+   * Consultada **na pressionada**, nunca no render: o estado da venda muda entre
+   * o render e o gesto, e num atalho isso é ainda mais provável que num clique.
+   */
+  readonly indisponivel: () => string | null;
+  /** Executa. Só é chamada quando `indisponivel()` devolveu `null`. */
+  readonly executar: () => void;
+}
+
+/**
+ * As teclas do mapa fixo, na forma que a biblioteca espera. Constante de módulo:
+ * o conjunto não varia, então a inscrição nunca é refeita.
+ */
+const TECLAS_FIXAS = MAPA_FIXO.map((entrada) => entrada.tecla.toLowerCase()).join(',');
+
+/**
+ * Registra o mapa fixo inteiro (`contracts/atalhos-fixos-api.md` §2). Chamado
+ * **uma vez** na árvore — em `AppShell` — para cada tecla ter um dono só (I6).
+ *
+ * ### Por que um segundo registro, e não `useAtalhosDeTeclado` com uma flag
+ *
+ * Os dois têm regras **opostas** sobre foco (`research.md` D1). F6–F9 cedem a
+ * tecla a quem digita; as fixas a tomam justamente ali (`FR-005`) — é o F3 com
+ * o foco na quantidade que abria a busca do Chrome e engolia o bipe seguinte.
+ * Um hook com dois modos teria duas razões de mudança e deixaria o leitor
+ * adivinhando qual política está valendo.
+ *
+ * ### Três estágios, nesta ordem (`data-model.md` §4)
+ *
+ * 1. **Posse.** `enabled` é literal `true` e o `preventDefault` é da biblioteca,
+ *    aplicado no casamento da tecla e **antes** do callback. Não há parâmetro,
+ *    query, cadastro nem plataforma capaz de devolver a tecla ao navegador
+ *    (`FR-001`, `FR-002`). A única deferência é a quem já tratou o evento
+ *    (`defaultPrevented`): um segundo dono é o que `FR-004` proíbe.
+ * 2. **Elegibilidade.** Repetição automática e janela aberta suprimem a
+ *    **ação**, em silêncio — a tecla já foi engolida. Os dois ficam dentro do
+ *    handler, e não em `ignoreEventWhen`, porque ali eles pulariam também o
+ *    `preventDefault`: segurar F1 abriria a ajuda do navegador a partir da
+ *    segunda repetição.
+ * 3. **Disponibilidade.** Indisponível, o operador lê o motivo (`FR-003`, I5);
+ *    disponível, a ação roda pelo mesmo ponto de entrada do clique (`FR-018`).
+ *
+ * `acoes` é exaustivo sobre `IdComando`: uma tecla nova no mapa não compila
+ * até ganhar ação. Fica numa `ref` pelo mesmo motivo de `useAtalhosDeTeclado` —
+ * o call site monta as ações inline, e rebindar a cada render abriria a janela
+ * em que uma tecla se perde.
+ */
+export function useTeclasFixas(acoes: Readonly<Record<IdComando, AcaoFixa>>): void {
+  const acoesRef = useRef(acoes);
+  acoesRef.current = acoes;
+
+  useHotkeys(
+    TECLAS_FIXAS,
+    (evento) => {
+      const entrada = MAPA_FIXO.find(
+        (candidata) => candidata.tecla.toUpperCase() === evento.key.toUpperCase(),
+      );
+      if (entrada === undefined) {
+        return;
+      }
+
+      // Estágio 2 — a tecla já é nossa; só a ação fica de fora.
+      if (evento.repeat || haJanelaAberta()) {
+        return;
+      }
+
+      // Estágio 3.
+      const acao = acoesRef.current[entrada.comando];
+      const motivo = acao.indisponivel();
+      if (motivo !== null) {
+        notificar.erro(motivo);
+        return;
+      }
+      acao.executar();
+    },
+    {
+      enabled: true,
+      // Tecla lógica, como no mapa de F6–F9 — e pelo mesmo efeito prático: o
+      // `user-event` emite `code: 'Unknown'` para teclas de função, e sem isto a
+      // posse só seria verificável no E2E.
+      useKey: true,
+      preventDefault: true,
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+      ignoreEventWhen: (evento) => evento.defaultPrevented,
     },
   );
 }

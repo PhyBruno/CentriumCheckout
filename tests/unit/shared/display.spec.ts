@@ -147,3 +147,45 @@ describe('constantes de tempo', () => {
     expect(MS_SILENCIO_ATE_REPOUSO).toBe(MS_PULSO_DISPLAY * 3);
   });
 });
+
+/**
+ * `IDENTIDADE` (correção do usuário, 2026-09-15): o nome da loja viaja sozinho,
+ * sem estado de tela, para o repouso mostrar a marca antes do primeiro PIX.
+ */
+describe('interpretarMensagemDisplay — IDENTIDADE', () => {
+  it('aceita a identidade com o nome da loja, sem estado de tela', () => {
+    const mensagem = {
+      tipo: 'IDENTIDADE',
+      nomeLoja: 'Mercado Aurora',
+      origemId: 'aba-sintetica',
+      emitidoEm: 1_789_077_600_000,
+    };
+
+    expect(interpretarMensagemDisplay(mensagem)).toEqual(mensagem);
+  });
+
+  it('descarta a identidade sem nome — não há o que mostrar', () => {
+    expect(
+      interpretarMensagemDisplay({
+        tipo: 'IDENTIDADE',
+        nomeLoja: null,
+        origemId: 'aba-sintetica',
+        emitidoEm: 1_789_077_600_000,
+      }),
+    ).toBeNull();
+  });
+
+  it('descarta a identidade que tenta carregar um estado de tela junto', () => {
+    // Estado só viaja em `ESTADO`: uma identidade que o levasse poderia apagar o
+    // QR de outra aba, que é justamente o que esta mensagem existe para evitar.
+    expect(
+      interpretarMensagemDisplay({
+        tipo: 'IDENTIDADE',
+        nomeLoja: 'Mercado Aurora',
+        estado: { tela: 'BOAS_VINDAS' },
+        origemId: 'aba-sintetica',
+        emitidoEm: 1_789_077_600_000,
+      }),
+    ).toBeNull();
+  });
+});

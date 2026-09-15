@@ -11,6 +11,7 @@ import {
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { haJanelaAberta } from '@/lib/useFocoDeModal';
 import { cn } from '@/lib/utils';
 import {
   rotuloTipoCodigoProduto,
@@ -36,6 +37,7 @@ import {
 } from '../../domain/precificacao/quantidade';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+import { useJanelasStore } from '../../stores/janelasStore';
 // Mesma leitura que `AcoesFinaisVenda` (004) faz para travar o "Finalizar":
 // o vendedor da venda tem um hook só, e duplicar o seletor aqui abriria duas
 // respostas possíveis para "esta venda tem vendedor?".
@@ -273,7 +275,12 @@ export function EntradaRapidaProduto({
   // `TelaDeVenda`, sem relação de pai/filho) — ver `linhaEmEdicao` abaixo.
   const linhaEmEdicao = useEdicaoItemStore((estado) => estado.linhaEmEdicao);
   const limparEdicao = useEdicaoItemStore((estado) => estado.limparEdicao);
-  const [buscaAberta, setBuscaAberta] = useState(false);
+  // Pelo `janelasStore` desde a feature 016: o F4 mora em `AppShell` e não
+  // alcançava um `useState` desta barra. Só a janela sobe — o código escolhido
+  // no modal continua sendo tratado aqui (`research.md` D8).
+  const buscaAberta = useJanelasStore((estado) => estado.janela === 'produto');
+  const abrirJanela = useJanelasStore((estado) => estado.abrir);
+  const fecharJanela = useJanelasStore((estado) => estado.fechar);
   // Rótulo do campo depende de `SessaoUsuario.UsuarioTipoCodigoProduto`
   // (`GetSessao`) — é configuração da empresa, nunca um texto fixo (mesmo
   // valor que `Tipocodproduto` leva em toda chamada a `GetProduto`, AD-033).
@@ -413,8 +420,13 @@ export function EntradaRapidaProduto({
    * navegador ignora o foco em silêncio (achado do usuário: Enter inseria,
    * mas o foco não voltava).
    */
+  //
+  // **Não com janela aberta** (feature 016): este efeito também roda na
+  // montagem, e no wizard mobile o F3/F4 monta a etapa 1 junto com o modal de
+  // busca — sem a guarda, o campo de código tiraria o foco da busca que o
+  // operador acabou de pedir.
   useEffect(() => {
-    if (resolvido === null && linhaEmEdicao === null) {
+    if (resolvido === null && linhaEmEdicao === null && !haJanelaAberta()) {
       campoCodigo.current?.focus();
     }
   }, [resolvido, linhaEmEdicao]);
@@ -1021,7 +1033,7 @@ export function EntradaRapidaProduto({
           aria-label="Buscar produto"
           data-testid="abrir-busca-produto"
           onClick={() => {
-            setBuscaAberta(true);
+            abrirJanela('produto');
           }}
         >
           <Search className="size-4.5" aria-hidden="true" />
@@ -1266,9 +1278,7 @@ export function EntradaRapidaProduto({
 
       <ModalBuscaProduto
         aberto={buscaAberta}
-        onFechar={() => {
-          setBuscaAberta(false);
-        }}
+        onFechar={fecharJanela}
         onProdutoSelecionado={(consulta) => {
           void selecionarDaBusca(consulta);
         }}

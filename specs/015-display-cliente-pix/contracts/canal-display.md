@@ -64,8 +64,16 @@ export type MensagemDisplay =
       readonly origemId: string;
       readonly emitidoEm: number;
     }
+  | {
+      readonly tipo: 'IDENTIDADE';
+      readonly nomeLoja: string;
+      readonly origemId: string;
+      readonly emitidoEm: number;
+    }
   | { readonly tipo: 'SOLICITAR_ESTADO' };
 ```
+
+**`IDENTIDADE` — só a marca da loja, sem estado de tela** (acrescentada em 2026-09-15, AD-230, correção do usuário). O display a aplica só ao nome e **não** adia o corte por silêncio. Toda aba de checkout a envia quando o nome passa a ser conhecido e em todo `SOLICITAR_ESTADO` (`criarAnuncianteIdentidadeDisplay`, montado por `useIdentidadeNoDisplay` em `App`). Existe porque o nome só viajava em `ESTADO`, que a aba em repouso não publica (C2): a tela do cliente aberta antes do primeiro PIX ficava sem o nome da empresa. Schema estrito — uma identidade com `estado` junto é descartada.
 
 **Exemplo de `ESTADO` (valores sintéticos, nunca dado real de produção):**
 
@@ -138,7 +146,7 @@ export function criarCanalDisplay(deps?: DepsCanalDisplay): CanalDisplay;
 | # | Regra | Requisito |
 |---|---|---|
 | C1 | `publicar` emite e memoriza como `ultimoEstado` | FR-009 |
-| C2 | Responde `SOLICITAR_ESTADO` **só** com cobrança ativa; em repouso fica calado | FR-018 |
+| C2 | Responde `SOLICITAR_ESTADO` com `ESTADO` **só** com cobrança ativa; em repouso fica calado. O nome da loja no repouso chega por `IDENTIDADE`, que outro componente responde (§3, AD-230) | FR-018 |
 | C3 | Pulso de `MS_PULSO_DISPLAY` enquanto há cobrança; desligado no repouso | FR-019 |
 | C4 | `pagehide` publica `BOAS_VINDAS` antes de a aba morrer | FR-021 |
 | C5 | `encerrar()` é idempotente (`StrictMode` desmonta duas vezes) | research D9 |

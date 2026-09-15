@@ -1,5 +1,5 @@
 import { ArchiveUp, CheckCircle, Import, Record, Search, X } from 'reicon-react';
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -200,7 +200,10 @@ export function ModalRecuperacaoNFCe({
 
   const { retomar } = useRecuperacaoNFCe(deps);
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
-  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
+  // Foco inicial declarado, e não `autoFocus` (feature 016): ver
+  // `OpcoesFocoDeModal.focoInicial`.
+  const campoBusca = useRef<HTMLInputElement>(null);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto, { focoInicial: campoBusca });
 
   // A ordenação mora aqui, e não dentro de `TabelaDeRascunhos`: durante o
   // `isFetching` da página seguinte a tabela dá lugar ao skeleton e desmonta —
@@ -312,8 +315,8 @@ export function ModalRecuperacaoNFCe({
             <input
               className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
               data-testid="campo-busca-nfce"
+              ref={campoBusca}
               autoComplete="off"
-              autoFocus
               // O ERP filtra só nome de cliente e de vendedor: busca por número
               // da nota não retorna nada (`research.md` D1). O texto do campo
               // diz isso, para o operador não concluir que o rascunho sumiu.

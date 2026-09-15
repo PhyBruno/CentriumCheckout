@@ -41,6 +41,7 @@ import {
   type PagamentoDeps,
   type PagamentoSlice,
 } from '../../src/client/stores/slices/pagamentoSlice';
+import { useEtapaVendaStore } from '../../src/client/stores/etapaVendaStore';
 import { useVendaStore, type VendaState } from '../../src/client/stores/vendaStore';
 import { criarValidacaoVendaSlice } from '../../src/client/stores/slices/validacaoVendaSlice';
 import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
@@ -155,6 +156,7 @@ function montar(opcoes: OpcoesMontagem = {}) {
 
   const finalizarVenda = vi.fn((): Promise<void> => Promise.resolve());
   const irParaEtapaPagamento = vi.fn(() => undefined);
+  const irParaRevisao = vi.fn(() => undefined);
   const selecionarCondicao = vi.fn((codigo: number) => {
     if (codigo === A_VISTA.codigo) {
       store.getState().selecionarCondicao(A_VISTA);
@@ -180,6 +182,7 @@ function montar(opcoes: OpcoesMontagem = {}) {
           (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
         ),
     irParaEtapaPagamento,
+    irParaRevisao,
     selecionarCondicao,
     aplicarForma,
     finalizarVenda,
@@ -208,6 +211,7 @@ function montar(opcoes: OpcoesMontagem = {}) {
     deps,
     finalizarVenda,
     irParaEtapaPagamento,
+    irParaRevisao,
     selecionarCondicao,
     aplicarForma,
     iniciarIntegracao,
@@ -758,5 +762,71 @@ describe('criarDepsPadrao — as portas ligadas ao vendaStore de produção (T02
 
     useVendaStore.setState({ linhas: [linhaDe({ precoUnitario: 1_000, cancelada: true })] });
     expect(deps.vendaTemItens()).toBe(false);
+  });
+
+  it('as duas portas de etapa viram pedidos no etapaVendaStore — quem decide entrar é o wizard', () => {
+    const deps = criarDepsPadrao([A_VISTA], () => Promise.resolve());
+    const antes = useEtapaVendaStore.getState();
+
+    deps.irParaEtapaPagamento();
+    deps.irParaRevisao();
+
+    expect(useEtapaVendaStore.getState().pedidosDePagamento).toBe(antes.pedidosDePagamento + 1);
+    expect(useEtapaVendaStore.getState().pedidosDeRevisao).toBe(antes.pedidosDeRevisao + 1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Pendência 55 — a venda que continua aberta vai para a revisão
+ * ------------------------------------------------------------------ */
+
+/**
+ * Correção do usuário (2026-09-15): no wizard mobile, depois que F6–F9 lançam o
+ * pagamento, a venda que **não** fechou sozinha — cenário sem "encerra a
+ * operação", ou finalização automática recusada — precisa levar o operador à
+ * etapa 3, onde está o "Finalizar".
+ *
+ * O comando só **pede** a revisão, ao fim de todo acionamento que lançou; quem
+ * aceita ou recusa entrar é o wizard, pela mesma regra dos botões. É por isso
+ * que a venda que finalizou não volta à revisão: o caixa já zerou, e a etapa 3
+ * recusa em silêncio.
+ */
+describe('acionarCenario — pedido de revisão ao fim de um acionamento que lançou (pendência 55)', () => {
+  it('pede a revisão depois da tentativa de finalização, e a etapa de pagamento antes do lançamento', async () => {
+    const { deps, irParaEtapaPagamento, irParaRevisao, aplicarForma, finalizarVenda } = montar();
+
+    await acionarCenario('F6', [atalhoDe({ encerraOperacao: true })], deps);
+
+    expect(irParaRevisao).toHaveBeenCalledTimes(1);
+    const ordem = (espiao: { mock: { invocationCallOrder: number[] } }): number =>
+      espiao.mock.invocationCallOrder[0] ?? Number.NaN;
+    expect(ordem(irParaEtapaPagamento)).toBeLessThan(ordem(aplicarForma));
+    expect(ordem(finalizarVenda)).toBeLessThan(ordem(irParaRevisao));
+  });
+
+  it('pede a revisão também quando o cenário não encerra a operação — a venda ficou aberta', async () => {
+    const { deps, irParaRevisao, finalizarVenda } = montar();
+
+    await acionarCenario('F6', [atalhoDe({ encerraOperacao: false })], deps);
+
+    expect(finalizarVenda).not.toHaveBeenCalled();
+    expect(irParaRevisao).toHaveBeenCalledTimes(1);
+  });
+
+  it('não pede a revisão quando o lançamento falhou — não há o que finalizar', async () => {
+    const { deps, irParaRevisao } = montar({ aplicarForma: () => Promise.resolve(false) });
+
+    await acionarCenario('F6', [atalhoDe({ encerraOperacao: false })], deps);
+
+    expect(irParaRevisao).not.toHaveBeenCalled();
+  });
+
+  it('não pede nada quando o acionamento é recusado antes de tocar na venda', async () => {
+    const { deps, irParaEtapaPagamento, irParaRevisao } = montar({ temItens: false });
+
+    await acionarCenario('F6', [atalhoDe()], deps);
+
+    expect(irParaEtapaPagamento).not.toHaveBeenCalled();
+    expect(irParaRevisao).not.toHaveBeenCalled();
   });
 });

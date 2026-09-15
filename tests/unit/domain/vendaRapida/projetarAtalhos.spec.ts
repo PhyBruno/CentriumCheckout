@@ -14,8 +14,8 @@ import { formaDe } from '../../../support/pagamento';
  * Projeção de atalhos (T005) — invariantes I1, I2, I5 e I10 de
  * `specs/013-venda-rapida-cenario-pagamento/data-model.md`.
  *
- * Puro: nenhum React, nenhum store. `plataforma` é parâmetro, o que torna I10
- * verificável sem renderizar nada.
+ * Puro: nenhum React, nenhum store. Desde a feature 016 a projeção não recebe
+ * plataforma — I10 passou a afirmar que a lista independe dela.
  */
 
 /* ------------------------------------------------------------------ *
@@ -68,7 +68,7 @@ describe('projetarAtalhos — E3: só F6..F9, depois de normalizar (I1)', () => 
   it.each(['F6', 'F7', 'F8', 'F9', 'f7 ', ' f9', '  F8  ', 'f6'])(
     'aceita a tecla %s',
     (teclaAtalho) => {
-      const atalhos = projetarAtalhos([cenarioDe({ teclaAtalho })], CATALOGO, 'desktop');
+      const atalhos = projetarAtalhos([cenarioDe({ teclaAtalho })], CATALOGO);
 
       expect(atalhos).toHaveLength(1);
       expect(atalhos[0]?.tecla).toBe(teclaAtalho.trim().toUpperCase());
@@ -78,7 +78,7 @@ describe('projetarAtalhos — E3: só F6..F9, depois de normalizar (I1)', () => 
   it.each(['', ' ', 'F5', 'F10', 'F', 'ENTER', 'SHIFT+F6', 'F6+', '6'])(
     'descarta a tecla %s',
     (teclaAtalho) => {
-      expect(projetarAtalhos([cenarioDe({ teclaAtalho })], CATALOGO, 'desktop')).toEqual([]);
+      expect(projetarAtalhos([cenarioDe({ teclaAtalho })], CATALOGO)).toEqual([]);
     },
   );
 });
@@ -98,7 +98,7 @@ describe('projetarAtalhos — E5: teto de quatro e desempate estável (I2)', () 
       cenarioDe({ teclaAtalho: 'F7', nome: 'Seis', formaCodigo: 4 }),
     ];
 
-    const atalhos = projetarAtalhos(cenarios, CATALOGO, 'desktop');
+    const atalhos = projetarAtalhos(cenarios, CATALOGO);
 
     expect(atalhos).toHaveLength(4);
     expect(atalhos.map((atalho) => atalho.tecla)).toEqual(['F6', 'F7', 'F8', 'F9']);
@@ -110,8 +110,8 @@ describe('projetarAtalhos — E5: teto de quatro e desempate estável (I2)', () 
       cenarioDe({ teclaAtalho: 'F6', nome: 'Segundo', formaCodigo: 3 }),
     ];
 
-    const primeira = projetarAtalhos(cenarios, CATALOGO, 'desktop');
-    const segunda = projetarAtalhos(cenarios, CATALOGO, 'desktop');
+    const primeira = projetarAtalhos(cenarios, CATALOGO);
+    const segunda = projetarAtalhos(cenarios, CATALOGO);
 
     expect(primeira[0]?.nome).toBe('Primeiro');
     expect(primeira[0]?.formaCodigo).toBe(1);
@@ -124,10 +124,7 @@ describe('projetarAtalhos — E5: teto de quatro e desempate estável (I2)', () 
       cenarioDe({ teclaAtalho: 'F6', nome: 'Dinheiro', formaCodigo: 1 }),
     ];
 
-    expect(projetarAtalhos(cenarios, CATALOGO, 'desktop').map((a) => a.tecla)).toEqual([
-      'F6',
-      'F9',
-    ]);
+    expect(projetarAtalhos(cenarios, CATALOGO).map((a) => a.tecla)).toEqual(['F6', 'F9']);
   });
 });
 
@@ -139,25 +136,24 @@ describe('projetarAtalhos — E4: cruzamento com o catálogo da sessão (I5)', (
   it('descarta cenário cuja condição não existe na sessão', () => {
     const cenarios = [cenarioDe({ condicaoCodigo: 999, teclaAtalho: 'F6' })];
 
-    expect(projetarAtalhos(cenarios, CATALOGO, 'desktop')).toEqual([]);
+    expect(projetarAtalhos(cenarios, CATALOGO)).toEqual([]);
   });
 
   it('descarta cenário cuja forma existe, mas em outra condição', () => {
     // Forma 1 (dinheiro) existe na condição 1, não na 30.
     const cenarios = [cenarioDe({ condicaoCodigo: 30, formaCodigo: 1, teclaAtalho: 'F6' })];
 
-    expect(projetarAtalhos(cenarios, CATALOGO, 'desktop')).toEqual([]);
+    expect(projetarAtalhos(cenarios, CATALOGO)).toEqual([]);
   });
 
   it('descarta tudo quando o catálogo da sessão está vazio', () => {
-    expect(projetarAtalhos([cenarioDe()], [], 'desktop')).toEqual([]);
+    expect(projetarAtalhos([cenarioDe()], [])).toEqual([]);
   });
 
   it('copia o meio de pagamento do catálogo, para a dica visual não reinterpretar nada', () => {
     const atalhos = projetarAtalhos(
       [cenarioDe({ formaCodigo: 4, teclaAtalho: 'F9', nome: 'PIX à vista' })],
       CATALOGO,
-      'desktop',
     );
 
     expect(atalhos[0]?.meioPagtoNFe).toBe(MEIO_PAGTO.Pix);
@@ -165,18 +161,31 @@ describe('projetarAtalhos — E4: cruzamento com o catálogo da sessão (I5)', (
 });
 
 /* ------------------------------------------------------------------ *
- * I10 — mobile não tem venda rápida (E6)
+ * A projeção não conhece plataforma (feature 016, FR-011)
  * ------------------------------------------------------------------ */
 
-describe('projetarAtalhos — E6: plataforma (I10, FR-020)', () => {
-  const cenarios = [
-    cenarioDe({ teclaAtalho: 'F6' }),
-    cenarioDe({ teclaAtalho: 'F9', formaCodigo: 4 }),
-  ];
+/**
+ * Até a feature 016 existia aqui a etapa E6: `projetarAtalhos` recebia a
+ * plataforma e devolvia `[]` no mobile, e "não exibir a faixa" e "não acionar
+ * a tecla" eram o mesmo fato (`FR-020`/D11 da 013, I10). A 016 separou os dois
+ * — a tecla aciona em qualquer plataforma (`FR-011`) e só a faixa continua
+ * restrita ao desktop (`FR-012`), decidida pela montagem da tela, não por
+ * este módulo.
+ */
+describe('projetarAtalhos — sem plataforma (FR-011 da 016)', () => {
+  it('a assinatura recebe só cenários e catálogo', () => {
+    // Um terceiro parâmetro que voltasse traria de volta a pergunta "isto
+    // aparece na tela?" para dentro do domínio.
+    expect(projetarAtalhos.length).toBe(2);
+  });
 
-  it('a mesma sessão produz atalhos no desktop e nenhum no mobile', () => {
-    expect(projetarAtalhos(cenarios, CATALOGO, 'desktop')).toHaveLength(2);
-    expect(projetarAtalhos(cenarios, CATALOGO, 'mobile')).toEqual([]);
+  it('a mesma sessão produz os mesmos atalhos, sem nenhum insumo de layout', () => {
+    const cenarios = [
+      cenarioDe({ teclaAtalho: 'F6' }),
+      cenarioDe({ teclaAtalho: 'F9', formaCodigo: 4 }),
+    ];
+
+    expect(projetarAtalhos(cenarios, CATALOGO).map((atalho) => atalho.tecla)).toEqual(['F6', 'F9']);
   });
 });
 
@@ -194,7 +203,7 @@ describe('pipeline completo — a fixture do quickstart produz exatamente F6, F7
   ]);
 
   it('descarta o sem tecla e o de 8 campos, sem tocar nos válidos', () => {
-    const atalhos = projetarAtalhos(parsearCenarios(CATALOGO_QUICKSTART), CATALOGO, 'desktop');
+    const atalhos = projetarAtalhos(parsearCenarios(CATALOGO_QUICKSTART), CATALOGO);
 
     expect(atalhos.map((atalho) => atalho.tecla)).toEqual(['F6', 'F7', 'F9']);
     expect(atalhos.map((atalho) => atalho.nome)).toEqual([
@@ -210,7 +219,6 @@ describe('buscarAtalho', () => {
   const atalhos = projetarAtalhos(
     [cenarioDe({ teclaAtalho: 'F6' }), cenarioDe({ teclaAtalho: 'F9', formaCodigo: 4 })],
     CATALOGO,
-    'desktop',
   );
 
   it('devolve o atalho da tecla', () => {

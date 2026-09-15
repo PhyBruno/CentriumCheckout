@@ -13,6 +13,7 @@ import {
 import { CampoVendedorVenda } from '../vendedor/CampoVendedorVenda';
 import { rotuloDoVendedor, useVendedorAtual } from '../vendedor/useVendedor';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+import { useJanelasStore } from '../../stores/janelasStore';
 import { AVISO_CLIENTE_COM_ITEM } from '../../stores/slices/clienteSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
@@ -100,7 +101,16 @@ export function CampoClienteVenda(): ReactElement {
   const refLupaVendedor = useRef<HTMLButtonElement>(null);
   const [documento, setDocumento] = useState('');
   const [buscando, setBuscando] = useState(false);
-  const [modalAberto, setModalAberto] = useState(false);
+  /**
+   * O modal de busca abre pelo `janelasStore` desde a feature 016: o F3 é
+   * registrado em `AppShell`, acima deste card, e não tinha como alcançar um
+   * `useState` daqui. O cadastro simplificado continua local — nenhum atalho o
+   * abre, e o `cpfSugerido` que ele recebe é parâmetro de abertura, que o store
+   * não guarda (`research.md` D8).
+   */
+  const modalAberto = useJanelasStore((estado) => estado.janela === 'cliente');
+  const abrirJanela = useJanelasStore((estado) => estado.abrir);
+  const fecharJanela = useJanelasStore((estado) => estado.fechar);
   const [cadastroAberto, setCadastroAberto] = useState(false);
   const [cpfSugerido, setCpfSugerido] = useState('');
   /**
@@ -742,7 +752,7 @@ export function CampoClienteVenda(): ReactElement {
                 data-testid="abrir-busca-cliente"
                 aria-label="Buscar cliente"
                 onClick={() => {
-                  setModalAberto(true);
+                  abrirJanela('cliente');
                 }}
               >
                 <Search className="size-4" aria-hidden="true" />
@@ -827,14 +837,12 @@ export function CampoClienteVenda(): ReactElement {
 
       <ModalBuscaCliente
         aberto={modalAberto}
-        onFechar={() => {
-          setModalAberto(false);
-        }}
+        onFechar={fecharJanela}
         onCandidatoSelecionado={(candidato) => {
           void selecionarCandidato(candidato);
         }}
         onCadastrarNovo={(termo) => {
-          setModalAberto(false);
+          fecharJanela();
           const entrada = classificarEntradaCliente(termo);
           setCpfSugerido(entrada.tipo === 'CPF' ? entrada.documento : '');
           setCadastroAberto(true);

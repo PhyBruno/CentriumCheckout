@@ -25,6 +25,16 @@ export type OrigemValidacaoVenda = 'MANUAL' | 'ATALHO_CENARIO';
 export type TeclaVendaRapida = 'F6' | 'F7' | 'F8' | 'F9';
 
 /**
+ * Por qual caminho o operador acionou um comando que tem dois (feature 016,
+ * `FR-019`).
+ *
+ * **Irmão de `TeclaVendaRapida`, não extensão dela** (`research.md` D12): aquela
+ * união descreve a venda rápida, e aceitar ali uma tecla que a venda rápida
+ * nunca emite deixaria a auditoria dela registrar o que não aconteceu.
+ */
+export type OrigemAcionamento = 'CLIQUE' | 'TECLADO';
+
+/**
  * Forma canônica de todo evento. `timestamp` é atribuído pelo slice no momento
  * do `push`, nunca pelo call site — ver `EventoAuditoriaSemTimestamp`.
  */
@@ -232,10 +242,38 @@ export type EventoNFCeRecuperada = EventoAuditoriaBase<
 >;
 
 /* ------------------------------------------------------------------ *
+ * 22. Atalhos fixos de teclado (016)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Um comando do mapa fixo de teclas foi executado (feature 016, `FR-019`).
+ *
+ * **Evento próprio, e não uma origem acrescentada aos eventos de cada ação**:
+ * três dos cinco comandos só *abrem uma janela* (importação, cliente, produto),
+ * gesto que por clique nunca foi auditado, e o de suspensão atravessa uma
+ * confirmação assíncrona até virar `VENDA_SUSPENSA`. Costurar a origem por
+ * dentro de cada fluxo exigiria mudar cinco pontos de entrada que o atalho, por
+ * `FR-018`, não pode alterar. O evento registra o gesto no instante em que ele
+ * acontece; o desfecho continua sendo registrado por quem sempre registrou.
+ *
+ * Só é emitido quando o comando **roda**: tecla engolida por janela aberta,
+ * repetição ou recusa não gera evento — mesma regra da venda rápida (I12 da
+ * 013).
+ *
+ * `comando` é o `IdComando` do mapa fixo como texto: o domínio não importa da
+ * borda de teclado, pelo mesmo motivo de `condicao` e `formaPagamento` chegarem
+ * aqui como texto já normalizado.
+ */
+export type EventoAtalhoAcionado = EventoAuditoriaBase<
+  'ATALHO_ACIONADO',
+  { readonly comando: string; readonly origem: OrigemAcionamento }
+>;
+
+/* ------------------------------------------------------------------ *
  * União e histórico
  * ------------------------------------------------------------------ */
 
-/** União discriminada por `tipo` dos 21 eventos do catálogo (`data-model.md`). */
+/** União discriminada por `tipo` dos 22 eventos do catálogo (`data-model.md`). */
 export type EventoAuditoria =
   | EventoVendaIniciada
   | EventoClienteSelecionado
@@ -257,7 +295,8 @@ export type EventoAuditoria =
   | EventoValidacaoVendaRecusada
   | EventoVendaRapidaAcionada
   | EventoDavImportado
-  | EventoNFCeRecuperada;
+  | EventoNFCeRecuperada
+  | EventoAtalhoAcionado;
 
 /** Todo `tipo` do catálogo, para exaustividade em testes e consumidores. */
 export type TipoEventoAuditoria = EventoAuditoria['tipo'];
@@ -439,4 +478,10 @@ export function eventoNFCeRecuperada(
   detalhes: EventoNFCeRecuperada['detalhes'],
 ): SemTimestamp<EventoNFCeRecuperada> {
   return { tipo: 'NFCE_RECUPERADA', detalhes };
+}
+
+export function eventoAtalhoAcionado(
+  detalhes: EventoAtalhoAcionado['detalhes'],
+): SemTimestamp<EventoAtalhoAcionado> {
+  return { tipo: 'ATALHO_ACIONADO', detalhes };
 }

@@ -1,4 +1,3 @@
-import type { PlataformaVendaRapida } from '../domain/vendaRapida/tipos';
 import { CONSULTA_LAYOUT_COMPACTO, useIsMobile } from './useIsMobile';
 
 /**
@@ -23,14 +22,10 @@ export function useLayoutCompacto(): boolean {
   return useIsMobile();
 }
 
-/**
- * A mesma leitura de layout, no vocabulário da feature 013 — a capacidade
- * `plataforma` que `projetarAtalhos` recebe como parâmetro (`FR-020`/D11,
- * mesmo padrão de capacidade injetada estreado por AD-074).
- *
- * Existe para que o domínio puro nunca precise ler `window`: quem consulta a
- * mídia é `useIsMobile`, na borda de React, e o domínio só recebe o veredito.
+/*
+ * `usePlataforma` foi removido pela feature 016. Ele traduzia o layout para o
+ * vocabulário da 013 (`'desktop' | 'mobile'`) só para `projetarAtalhos`, que
+ * deixou de receber plataforma (`FR-011` da 016): sem consumidor, mantê-lo
+ * seria deixar à mão uma porta para a venda rápida voltar a depender do
+ * tamanho da tela.
  */
-export function usePlataforma(): PlataformaVendaRapida {
-  return useIsMobile() ? 'mobile' : 'desktop';
-}

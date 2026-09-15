@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Skeleton, configureBoneyard } from 'boneyard-js/react';
 import { cn } from '@/lib/utils';
 
@@ -11,11 +11,44 @@ configureBoneyard({
   shimmerAngle: -99.778,
 });
 
-const SHIMMER_PILL =
+/** Pílula com o shimmer em CSS (`cc-shimmer`), para o que fica fora do `<Skeleton>`. */
+export const SHIMMER_PILL =
   'cc-shimmer motion-reduce:animate-none motion-reduce:bg-none motion-reduce:bg-[var(--cc-skeleton-base)]';
 
+export interface MolduraDeCarregamentoProps {
+  readonly className: string;
+  readonly children: ReactNode;
+}
+
 /**
- * Tela de carregamento bloqueante do bootstrap (T025, AUTH-05 / FR-004).
+ * O que toda tela de carregamento do bootstrap anuncia, em qualquer layout:
+ * `role="status"` ocupado e a frase para leitores de tela (AUTH-05 / FR-004).
+ *
+ * Separada do desenho porque o desenho varia — tela única no desktop, wizard no
+ * compacto (`layout/TelaDeCarregamento.tsx`) — e a semântica não pode variar
+ * junto: um leitor de tela ouve a mesma coisa nos dois.
+ */
+export function MolduraDeCarregamento({
+  className,
+  children,
+}: MolduraDeCarregamentoProps): ReactElement {
+  return (
+    <div
+      className={cn('flex flex-col', className)}
+      data-testid="skeleton-carregamento"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only">Carregando a configuração do ponto de venda…</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Tela de carregamento bloqueante do bootstrap na tela única do desktop (T025,
+ * AUTH-05 / FR-004).
  *
  * O shimmer é gerado pelo Boneyard em runtime, a partir da estrutura de layout
  * real desta tela — não há um desenho separado do skeleton. A estrutura replica
@@ -25,18 +58,15 @@ const SHIMMER_PILL =
  * A barra superior fica fora do `<Skeleton>` de propósito: no design ela já
  * aparece com marca e identidade do PDV visíveis, e só os indicadores de status
  * entram em shimmer.
+ *
+ * **Só serve o desktop.** A lateral de 392px e as colunas de largura fixa não
+ * cabem num celular — até 2026-09-15 o compacto recebia esta tela e a página se
+ * alargava para 956px num aparelho de 412px. Quem escolhe entre esta tela e a do
+ * wizard é `layout/TelaDeCarregamento.tsx`.
  */
 export function LoadingSkeleton(): ReactElement {
   return (
-    <div
-      className="flex min-h-screen flex-col bg-muted"
-      data-testid="skeleton-carregamento"
-      role="status"
-      aria-busy="true"
-      aria-live="polite"
-    >
-      <span className="sr-only">Carregando a configuração do ponto de venda…</span>
-
+    <MolduraDeCarregamento className="min-h-screen bg-muted">
       <header className="flex h-18 shrink-0 items-center justify-between border-b border-border bg-background px-7">
         <div className="flex flex-row items-center gap-3.5">
           <div className="size-10 rounded-full bg-primary" />
@@ -65,7 +95,7 @@ export function LoadingSkeleton(): ReactElement {
       >
         <EstruturaTelaVenda />
       </Skeleton>
-    </div>
+    </MolduraDeCarregamento>
   );
 }
 
