@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "concurrently -n client,server -c cyan,magenta \"npm:dev:client\" \"npm:dev:server\"",
     "dev:client": "vite",
+    "dev:client:lan": "vite --mode lan --host 0.0.0.0",
     "dev:server": "tsx watch src/server/index.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
@@ -59,6 +60,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^5.0.0",
     "concurrently": "^9.0.0",
     "esbuild": "^0.25.0",
