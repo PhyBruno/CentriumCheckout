@@ -1,6 +1,10 @@
-import { Scan, X } from 'reicon-react';
+import { Refresh, Scan, X } from 'reicon-react';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { suportaScannerCamera } from '../../domain/layout/suportaScannerCamera';
+import {
+  CAUSA_CONTEXTO_INSEGURO,
+  mensagemDeFalhaDaCamera,
+} from '../../domain/layout/mensagemDeFalhaDaCamera';
 
 /**
  * Leitura de código de barras pela câmera (T023, `US3`).
@@ -52,6 +56,20 @@ export interface ScannerCameraProps {
 export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElement | null {
   const [aberto, setAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  /**
+   * Quantas vezes o operador já pediu a câmera **nesta** abertura da janela.
+   *
+   * Existe para o "Tentar de novo" (correção do usuário, 2026-09-15): a causa
+   * mais comum de falha aqui é ambiental e se resolve fora do navegador —
+   * fechar a bolha de conversa que bloqueia o diálogo de permissão, sair do app
+   * que está com a câmera, conceder a permissão nas configurações. Sem um
+   * gatilho de nova tentativa, a única saída era fechar a janela e reabri-la,
+   * que é o mesmo gesto com um passo a mais e a mira perdida no meio.
+   *
+   * Contador, e não booleano, pelo mesmo motivo dos pedidos de etapa: duas
+   * tentativas seguidas precisam reabrir o efeito duas vezes.
+   */
+  const [tentativas, setTentativas] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const quadroRef = useRef<number | null>(null);
@@ -110,6 +128,14 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
 
     async function iniciar(): Promise<void> {
       try {
+        // Contexto inseguro (`http://<ip-da-lan>`, HTTPS com certificado não
+        // confiável) não publica `mediaDevices`, e chamar por cima produziria um
+        // `TypeError` de propriedade indefinida — que vira "não foi possível
+        // abrir a câmera" e manda o operador procurar um problema de hardware
+        // que não existe. A causa sintética diz a verdade: falta HTTPS.
+        if (navigator.mediaDevices === undefined) {
+          throw new DOMException('mediaDevices indisponível', CAUSA_CONTEXTO_INSEGURO);
+        }
         // `environment`: a câmera traseira é a que o operador aponta para a
         // etiqueta. Sem isto o Android abre a frontal em boa parte dos casos.
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -128,13 +154,17 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
           await video.play();
         }
         procurar();
-      } catch {
+      } catch (causa) {
         // Permissão negada ou câmera indisponível: a janela **permanece
         // aberta** e troca o vídeo pela frase — quem a fecha é o operador, pelo
         // X do cabeçalho. Fechá-la sozinha esconderia o motivo antes de ele ser
         // lido, e a saída que a frase indica (o campo de código) nunca deixou
         // de existir atrás dela.
-        setErro('Não foi possível abrir a câmera. Use o campo de código.');
+        //
+        // A frase vem de `mensagemDeFalhaDaCamera` porque as causas pedem saídas
+        // diferentes, e a genérica manda o operador procurar defeito onde não há
+        // (correção do usuário, 2026-09-15).
+        setErro(mensagemDeFalhaDaCamera(causa));
       }
     }
 
@@ -186,9 +216,10 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
       encerrar();
     };
     // `onCodigoLido` **não** entra aqui de propósito (lido por `aoLerRef`): quem
-    // liga e desliga a câmera é a abertura da janela, nunca a identidade de uma
-    // função que o pai recria a cada render.
-  }, [aberto, encerrar]);
+    // liga e desliga a câmera é a abertura da janela — ou um "Tentar de novo"
+    // explícito —, nunca a identidade de uma função que o pai recria a cada
+    // render.
+  }, [aberto, tentativas, encerrar]);
 
   // Avaliado a cada render, mas estável na prática: nem a UA nem a presença da
   // API mudam dentro de uma mesma sessão de navegador (`data-model.md` §3).
@@ -214,6 +245,7 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
         onClick={() => {
           jaLeuRef.current = false;
           setErro(null);
+          setTentativas(0);
           setAberto(true);
         }}
       >
@@ -255,12 +287,32 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
               playsInline
             />
           ) : (
-            <p
-              className="flex min-h-0 flex-1 items-center justify-center px-lg text-center text-base text-[var(--cc-color-on-dark-strong)]"
-              data-testid="erro-scanner-camera"
-            >
-              {erro}
-            </p>
+            // A frase **e** o gesto que a resolve: a causa mais comum aqui é
+            // ambiental (uma sobreposição de outro app bloqueando o diálogo de
+            // permissão do Android, a câmera presa noutro aplicativo) e some
+            // fora do navegador. Sem este botão, tentar de novo significava
+            // fechar a janela e reabri-la — o mesmo gesto com um passo a mais.
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-base px-lg">
+              <p
+                className="text-center text-base leading-[1.45] text-[var(--cc-color-on-dark-strong)]"
+                data-testid="erro-scanner-camera"
+                role="alert"
+              >
+                {erro}
+              </p>
+              <button
+                type="button"
+                className="flex h-11 items-center justify-center gap-xs rounded-full bg-[var(--cc-color-surface-dark-elevated)] px-base text-base font-semibold text-[var(--cc-color-on-dark)] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                data-testid="tentar-novamente-scanner-camera"
+                onClick={() => {
+                  setErro(null);
+                  setTentativas((anterior) => anterior + 1);
+                }}
+              >
+                <Refresh className="size-4 shrink-0" aria-hidden="true" />
+                Tentar de novo
+              </button>
+            </div>
           )}
         </div>
       )}

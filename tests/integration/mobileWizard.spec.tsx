@@ -13,7 +13,8 @@ import {
   instalarMatchMediaDeLayout,
   renderizarComProvedores,
 } from '../support/layout';
-import { pagamentoDe } from '../support/pagamento';
+import { motivoCarrinhoBloqueado } from '../../src/client/stores/slices/carrinhoSlice';
+import { condicaoDe, pagamentoDe } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -79,7 +80,22 @@ describe('MobileWizard — navegação', () => {
     expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('1/3');
   });
 
-  it('avança 1 → 2 → 3 e volta livremente a qualquer etapa já visitada (FR-004)', async () => {
+  it('com a venda ainda editável, volta livremente para a etapa 1 (FR-004)', async () => {
+    const usuario = userEvent.setup();
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('2/3');
+
+    // Sem condição, sem desconto e sem forma aprovada: nenhum campo de cadastro
+    // incompleto barra o retorno, que é o que `FR-004` sempre quis dizer.
+    await usuario.click(screen.getByTestId('ir-para-etapa-1'));
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+    expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('1/3');
+  });
+
+  it('avança 1 → 2 → 3 e volta da revisão para o pagamento', async () => {
     const usuario = userEvent.setup();
     cobrirSaldo();
     renderizarWizard();
@@ -92,11 +108,12 @@ describe('MobileWizard — navegação', () => {
     expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
     expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('3/3');
 
-    // Salto direto da 3 para a 1, sem passar pela 2: é isso que "livremente"
-    // quer dizer — não há validação de campo obrigatório barrando o retorno.
-    await usuario.click(screen.getByTestId('ir-para-etapa-1'));
-    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
-    expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('1/3');
+    // A venda já está cobrada, e a volta que resta é para o pagamento — onde
+    // fica o "Limpar" que a destrava. O retorno à etapa 1 é assunto do describe
+    // "venda em cobrança" abaixo (2026-09-15).
+    await usuario.click(screen.getByTestId('ir-para-etapa-2'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('2/3');
   });
 
   it('não oferece atalho para uma etapa nunca visitada', () => {
@@ -110,21 +127,17 @@ describe('MobileWizard — navegação', () => {
 
   it('a alteração feita na etapa 1 aparece na revisão (quickstart §3)', async () => {
     const usuario = userEvent.setup();
-    // R$ 125,00 já cobertos: o cenário acrescenta um item de R$ 25,00 no meio
-    // do caminho e volta à etapa 3, que desde 2026-09-09 exige saldo zerado.
-    // Pagar o total final desde o começo mantém as duas entradas na revisão
-    // liberadas sem inventar um segundo gesto de pagamento no meio do teste.
-    cobrirSaldo(12_500);
     renderizarWizard();
 
+    // A ordem do cenário mudou em 2026-09-15, e a razão é a regra nova: o item
+    // entra **antes** de a venda ser cobrada, porque com pagamento aprovado a
+    // etapa 1 deixa de ser alcançável. Continua sendo o mesmo ponto — as etapas
+    // são janelas sobre o **mesmo** `vendaStore`, e a alteração não passa pelo
+    // wizard.
     await usuario.click(screen.getByTestId('wizard-avancar'));
-    await usuario.click(screen.getByTestId('wizard-avancar'));
-    expect(screen.getByTestId('conferencia-produtos')).toHaveTextContent('1 item');
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
 
     await usuario.click(screen.getByTestId('ir-para-etapa-1'));
-
-    // Um item a mais, pelo mesmo store que o carrinho já usa — a alteração não
-    // passa pelo wizard, e é justamente esse o ponto.
     act(() => {
       useVendaStore.setState((estado) => ({
         linhas: [
@@ -134,7 +147,10 @@ describe('MobileWizard — navegação', () => {
       }));
     });
 
-    await usuario.click(screen.getByTestId('ir-para-etapa-3'));
+    // R$ 125,00: a etapa 3 exige saldo zerado desde 2026-09-09.
+    cobrirSaldo(12_500);
+    await usuario.click(screen.getByTestId('ir-para-etapa-2'));
+    await usuario.click(screen.getByTestId('wizard-avancar'));
 
     expect(screen.getByTestId('conferencia-produtos')).toHaveTextContent('2 itens');
     expect(screen.getByTestId('conferencia-produtos')).toHaveTextContent('R$ 125,00');
@@ -161,24 +177,29 @@ describe('MobileWizard — navegação', () => {
 describe('MobileWizard — invariantes de navegação (data-model §2)', () => {
   it('etapasVisitadas só cresce: voltar não apaga o atalho para onde já se esteve (I2)', async () => {
     const usuario = userEvent.setup();
-    cobrirSaldo();
     renderizarWizard();
 
     await usuario.click(screen.getByTestId('wizard-avancar'));
-    await usuario.click(screen.getByTestId('wizard-avancar'));
     await usuario.click(screen.getByTestId('ir-para-etapa-1'));
 
-    // De volta à etapa 1, os atalhos para 2 e 3 continuam de pé. Se o conjunto
+    // De volta à etapa 1, o atalho para a 2 continua de pé. Se o conjunto
     // encolhesse ao sair de uma etapa, a segunda ida ao pagamento viraria
-    // navegação recusada — e `FR-004` deixaria de valer no gesto mais comum de
-    // todos, que é corrigir um item e voltar a cobrar.
+    // navegação recusada — e a volta livre deixaria de valer no gesto mais comum
+    // de todos, que é corrigir um item e voltar a cobrar.
     expect(screen.getByTestId('ir-para-etapa-2')).toBeInTheDocument();
-    expect(screen.getByTestId('ir-para-etapa-3')).toBeInTheDocument();
 
-    await usuario.click(screen.getByTestId('ir-para-etapa-3'));
+    cobrirSaldo();
+    await usuario.click(screen.getByTestId('ir-para-etapa-2'));
+    await usuario.click(screen.getByTestId('wizard-avancar'));
     expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+
     // E a barra da etapa em que se está nunca é botão: não há para onde ir.
     expect(screen.queryByTestId('ir-para-etapa-3')).toBeNull();
+    // As outras duas seguem no conjunto — a da etapa 1 inclusive, agora
+    // anunciada como bloqueada pela cobrança em vez de sumir. Uma barra que
+    // desaparecesse contaria ao operador que ele nunca esteve lá.
+    expect(screen.getByTestId('ir-para-etapa-2')).toBeInTheDocument();
+    expect(screen.getByTestId('ir-para-etapa-1')).toBeInTheDocument();
   });
 
   it('voltar é permitido com a venda incompleta — cliente e vendedor não barram o retorno (I3)', async () => {
@@ -207,8 +228,13 @@ describe('MobileWizard — invariantes de navegação (data-model §2)', () => {
     expect(screen.getByTestId('conferencia-cliente')).toHaveTextContent('Não identificado');
     expect(screen.getByTestId('conferencia-vendedor')).toHaveTextContent('Não selecionado');
 
-    await usuario.click(screen.getByTestId('ir-para-etapa-1'));
-    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+    // A volta e a ida de novo: o que I3 garante é que nenhum **campo de
+    // cadastro** vazio recusa a navegação. A etapa escolhida aqui é a 2, e não a
+    // 1, porque esta venda já está cobrada — a recusa que ela encontraria na
+    // etapa 1 é a da cobrança (2026-09-15), não a de um cadastro incompleto, e
+    // misturar as duas faria este caso vigiar a regra errada.
+    await usuario.click(screen.getByTestId('ir-para-etapa-2'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
     await usuario.click(screen.getByTestId('ir-para-etapa-3'));
     expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
   });
@@ -340,6 +366,94 @@ describe('MobileWizard — recusa de avanço', () => {
     await usuario.click(screen.getByTestId('wizard-avancar'));
 
     expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+  });
+});
+
+/**
+ * A venda em cobrança não volta à etapa 1 (pedido do usuário, 2026-09-15).
+ *
+ * A regra de negócio não é nova — `carrinhoSlice` recusa inserir, editar e
+ * apagar item com condição escolhida ou forma aprovada desde 2026-09-04. O que
+ * estes casos travam é a **antecipação**: antes, o operador voltava para a etapa
+ * 1, encontrava a barra de entrada rápida e a lista de itens aparentemente vivas
+ * e só descobria a trava ao bipar. A frase é a mesma dos dois lados de
+ * propósito; um texto próprio aqui divergiria do slice na primeira mudança de
+ * regra.
+ */
+describe('MobileWizard — venda em cobrança não volta à etapa 1', () => {
+  /** A frase vem do slice, nunca copiada: é o que impede as duas divergirem. */
+  const AVISO_EM_COBRANCA = motivoCarrinhoBloqueado(false, false);
+
+  it('com forma aprovada, a etapa 1 é recusada com a frase do carrinho travado', async () => {
+    const usuario = userEvent.setup();
+    const avisar = vi.spyOn(notificar, 'erro');
+    cobrirSaldo();
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+
+    const voltar = screen.getByTestId('wizard-voltar');
+    // Anunciado antes do gesto, e clicável mesmo assim (AD-143): é o clique que
+    // ensina a saída, e `disabled` nativo nunca chegaria a dizê-la.
+    expect(voltar).toHaveAttribute('aria-disabled', 'true');
+    expect(voltar).toHaveAttribute('title', AVISO_EM_COBRANCA);
+
+    await usuario.click(voltar);
+
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(screen.queryByTestId('etapa-cliente-produtos')).toBeNull();
+    expect(avisar).toHaveBeenCalledWith(AVISO_EM_COBRANCA);
+    avisar.mockRestore();
+  });
+
+  it('com a condição escolhida e nenhuma forma aplicada, a recusa é a mesma', async () => {
+    const usuario = userEvent.setup();
+    // O "pagamento em andamento" do relato: a condição já congela a venda, e
+    // uma forma pendente de integração só existe depois dela.
+    act(() => {
+      useVendaStore.setState({ condicaoSelecionada: condicaoDe(1, 'À VISTA') });
+    });
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('wizard-voltar'));
+
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+  });
+
+  it('descartado o pagamento, a volta à etapa 1 funciona de novo', async () => {
+    const usuario = userEvent.setup();
+    cobrirSaldo();
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    await usuario.click(screen.getByTestId('wizard-voltar'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+
+    // É a saída que a própria frase nomeia — o "Limpar" do cartão de pagamento.
+    // Sem este caso, a recusa poderia ser permanente sem ninguém perceber.
+    act(() => {
+      useVendaStore.getState().descartarPagamento();
+    });
+
+    await usuario.click(screen.getByTestId('wizard-voltar'));
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+  });
+
+  it('a barra da etapa 1 continua no indicador, anunciada como bloqueada', async () => {
+    const usuario = userEvent.setup();
+    cobrirSaldo();
+    renderizarWizard();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+
+    const barra = screen.getByTestId('ir-para-etapa-1');
+    expect(barra).toHaveAttribute('aria-disabled', 'true');
+    expect(barra).toHaveAttribute('title', AVISO_EM_COBRANCA);
+
+    await usuario.click(barra);
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
   });
 });
 

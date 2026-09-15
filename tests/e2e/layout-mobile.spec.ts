@@ -143,4 +143,69 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await page.getByTestId('wizard-avancar').click();
     await expect(page.getByTestId('conferencia-produtos')).toContainText('2 itens');
   });
+
+  /**
+   * A janela do PIX cabe na tela do celular (correção do usuário, 2026-09-15:
+   * "o modal do PIX está necessitando de Scroll down para ver informação,
+   * deveria ser suficiente sem scroll").
+   *
+   * As medidas do `.pen` — cabeçalho de 78px, QR de 200, folga de 28/24 — são de
+   * um cartão de 480px numa tela de balcão, e somavam ~750px de altura no
+   * compacto: o valor a cobrar e a badge de confirmação ficavam abaixo da dobra,
+   * num aparelho onde a informação que o operador confere é justamente o valor.
+   *
+   * A verificação é de **geometria**, não de classe CSS: comparar `scrollHeight`
+   * com `clientHeight` responde à pergunta do usuário sem depender de qual
+   * utilitário produziu a altura, e continua valendo se as folgas mudarem de
+   * nome.
+   */
+  test.describe('em 360×640, a tela útil de um celular comum com a barra do navegador', () => {
+    // 390×844 é a **viewport** do frame do Pencil; o aparelho real desconta a
+    // barra de endereço e a faixa de gestos, e é nessa faixa menor que a janela
+    // estourava. Com 844 de altura a versão antiga ainda cabia por pouco, e o
+    // caso passaria sem nada provar.
+    test.use({ viewport: { width: 360, height: 640 } });
+
+    test('a janela do PIX cabe na tela, sem exigir rolagem', async ({ page, request }) => {
+      await request.post(`${URL_ERP_MOCK}/__mock/config`, {
+        // Sem transição para pago: a janela fica no estado que o operador olha —
+        // QR na tela, aguardando confirmação —, que é também o mais alto.
+        data: { pixAtivo: true, minimoPix: 5, statusPixTransicoes: ['G'] },
+      });
+      await page.goto(urlSessionStart());
+
+      const campo = page.getByTestId('campo-codigo-produto');
+      await campo.fill('001234');
+      await campo.press('Enter');
+      await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+      await page.getByTestId('wizard-avancar').click();
+      await page.getByTestId('combobox-condicao-pagamento').click();
+      await page.getByTestId('opcao-condicao-1').click();
+      await page.getByTestId('combobox-forma-pagamento').click();
+      await page.getByTestId('opcao-forma-3').click();
+      await page.getByTestId('campo-valor-recebido').fill('10,00');
+      await page.getByTestId('adicionar-pagamento').click();
+
+      await expect(page.getByTestId('modal-pix')).toBeVisible();
+      await expect(page.getByTestId('pix-qrcode')).toBeVisible();
+
+      const corpo = page.getByTestId('pix-corpo');
+      const medidas = await corpo.evaluate((elemento) => ({
+        conteudo: elemento.scrollHeight,
+        visivel: elemento.clientHeight,
+      }));
+      // 1px de folga para o arredondamento de subpixel do layout. Medido em
+      // 2026-09-15: 467px de conteúdo contra 508 de faixa útil — a versão
+      // anterior somava ~165px a mais e o corpo rolava.
+      expect(medidas.conteudo).toBeLessThanOrEqual(medidas.visivel + 1);
+
+      // E o que estava embaixo da dobra aparece sem nenhum gesto: o valor a
+      // cobrar e a badge são o que o operador confere antes de entregar o QR ao
+      // cliente.
+      await expect(page.getByTestId('pix-valor-a-cobrar')).toBeInViewport();
+      await expect(page.getByTestId('pix-badge-status')).toBeInViewport();
+      await expect(page.getByTestId('desistir-operacao-pix')).toBeInViewport();
+    });
+  });
 });

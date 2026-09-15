@@ -491,6 +491,67 @@ describe('ScannerCamera — permissão negada (FR-006)', () => {
     });
   });
 
+  it('a frase nomeia a sobreposição de outro app, que é o que o Android recusa', async () => {
+    const usuario = userEvent.setup();
+    camera = instalarCameraFalsa(true);
+    definirUserAgent(UA_CHROME_ANDROID);
+    instalarBarcodeDetector(CODIGO_LIDO);
+
+    renderizarComProvedores(<EtapaClienteProdutos />);
+    await usuario.click(screen.getByTestId('abrir-scanner-camera'));
+
+    // O relato do usuário (2026-09-15): o Android respondeu "este site não pode
+    // pedir permissões — feche todos os balões e sobreposições de outros apps",
+    // e o Checkout dizia apenas "não foi possível abrir a câmera". A frase
+    // genérica manda procurar defeito onde não há.
+    const erro = await screen.findByTestId('erro-scanner-camera');
+    expect(erro.textContent).toMatch(/sobreposto|sobreposição/i);
+  });
+
+  it('fora de contexto seguro aponta o HTTPS, sem chamar a API que não existe', async () => {
+    const usuario = userEvent.setup();
+    definirUserAgent(UA_CHROME_ANDROID);
+    instalarBarcodeDetector(CODIGO_LIDO);
+    // `http://<ip-da-lan>`, ou HTTPS com certificado que o celular não confia:
+    // o navegador nem publica `mediaDevices`. Antes, o `TypeError` de
+    // propriedade indefinida virava a mesma frase genérica de sempre.
+    Object.defineProperty(window.navigator, 'mediaDevices', {
+      configurable: true,
+      value: undefined,
+    });
+
+    renderizarComProvedores(<EtapaClienteProdutos />);
+    await usuario.click(screen.getByTestId('abrir-scanner-camera'));
+
+    expect((await screen.findByTestId('erro-scanner-camera')).textContent).toContain('HTTPS');
+  });
+
+  it('"Tentar de novo" reabre a câmera sem fechar a janela', async () => {
+    const usuario = userEvent.setup();
+    camera = instalarCameraFalsa(true);
+    definirUserAgent(UA_CHROME_ANDROID);
+    instalarBarcodeDetectorPendente(CODIGO_LIDO);
+
+    renderizarComProvedores(<EtapaClienteProdutos />);
+    await usuario.click(screen.getByTestId('abrir-scanner-camera'));
+    await screen.findByTestId('erro-scanner-camera');
+
+    // O operador fecha a bolha de conversa que bloqueava o diálogo — ou concede
+    // a permissão — sem sair do Checkout. Sem este botão, a única saída era
+    // fechar a janela e reabri-la: o mesmo gesto com um passo a mais e a mira
+    // perdida no meio.
+    camera = instalarCameraFalsa();
+    await usuario.click(screen.getByTestId('tentar-novamente-scanner-camera'));
+
+    await waitFor(() => {
+      expect(camera.getUserMedia).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByTestId('erro-scanner-camera')).toBeNull();
+    expect(screen.getByTestId('video-scanner')).toBeInTheDocument();
+    // E a janela nunca saiu de cena: o operador não precisou reabri-la.
+    expect(screen.getByTestId('scanner-camera')).toBeInTheDocument();
+  });
+
   it('uma segunda tentativa parte do zero, sem o erro da primeira na tela', async () => {
     const usuario = userEvent.setup();
     camera = instalarCameraFalsa(true);

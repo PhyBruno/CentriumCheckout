@@ -5917,5 +5917,49 @@
     ],
     "created_at": "2026-09-15T17:00:00+00:00",
     "created_epoch": 1789491600
+  },
+  {
+    "kind": "decision",
+    "content": "AD-232: venda em cobranca nao volta a etapa 1 do wizard mobile",
+    "tags": [
+      "mobile",
+      "pagamento",
+      "007"
+    ],
+    "files": [
+      "src/client/layout/mobile/MobileWizard.tsx",
+      "specs/007-layout-responsivo-mobile/spec.md"
+    ],
+    "created_at": "2026-09-15T20:00:00+00:00",
+    "created_epoch": 1789502400
+  },
+  {
+    "kind": "decision",
+    "content": "AD-233: causa da falha da camera, toast rola ao topo, modal PIX compacto",
+    "tags": [
+      "mobile",
+      "scanner",
+      "pix"
+    ],
+    "files": [
+      "src/client/domain/layout/mensagemDeFalhaDaCamera.ts",
+      "src/client/layout/rolarParaOTopo.ts",
+      "src/client/features/pagamento/pix/ModalPix.tsx"
+    ],
+    "created_at": "2026-09-15T20:00:00+00:00",
+    "created_epoch": 1789502400
+  },
+  {
+    "kind": "fact",
+    "content": "context-store no working tree tinha perdido 7 entradas antigas; restaurado do HEAD",
+    "tags": [
+      "memoria",
+      "dual-graph"
+    ],
+    "files": [
+      ".dual-graph/context-store.json"
+    ],
+    "created_at": "2026-09-15T20:00:00+00:00",
+    "created_epoch": 1789502400
   }
 ]
