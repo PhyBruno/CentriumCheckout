@@ -141,9 +141,9 @@ export async function acionarCenario(
     return recusar(deps, 'ACIONAMENTO_EM_ANDAMENTO');
   }
 
-  // G2 — `buscarAtalho` é a fonte única. No mobile a lista já vem vazia (I10),
-  // então a resposta ali também é `ATALHO_INEXISTENTE`; `PLATAFORMA_NAO_SUPORTADA`
-  // permanece no tipo por completude do contrato, sem caminho que o produza.
+  // G2 — `buscarAtalho` é a fonte única. Desde a feature 016 a lista é a mesma
+  // em qualquer plataforma (`FR-011`); `PLATAFORMA_NAO_SUPORTADA` permanece no
+  // tipo por completude do contrato, sem caminho que o produza.
   const atalho = buscarAtalho(atalhos, tecla);
   if (atalho === undefined) {
     return recusar(deps, 'ATALHO_INEXISTENTE');
@@ -281,12 +281,15 @@ export function criarDepsPadrao(
         ),
     irParaEtapaPagamento: () => {
       /**
-       * No layout desktop — o único onde a venda rápida existe (`FR-020`) — o
-       * cartão "Pagamento e totais" está sempre montado ao lado do carrinho:
-       * não há etapa a navegar, e a exigência de `FR-019` é satisfeita pela
-       * própria estrutura da tela. A porta permanece no contrato porque o
-       * `MobileWizard` da feature 007 vai ter etapas de verdade, e é ela que a
-       * 007 preencherá sem tocar no comando.
+       * No layout desktop o cartão "Pagamento e totais" está sempre montado ao
+       * lado do carrinho: não há etapa a navegar, e a exigência de `FR-019` é
+       * satisfeita pela própria estrutura da tela.
+       *
+       * **Pendente desde a feature 016**: com F6–F9 acionando também no wizard
+       * mobile (`FR-011` da 016), o pagamento é lançado sem levar o operador à
+       * etapa 2 — ele o vê no cartão de total do topo, mas não a lista de
+       * pagamentos. A porta existe justamente para isso e continua vazia;
+       * registrado em `.specs/project/PENDENCIES.md`.
        */
     },
     selecionarCondicao: (codigo) => {

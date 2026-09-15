@@ -7,6 +7,7 @@ import { CampoClienteVenda } from '../../../../src/client/features/cliente/Campo
 import { clienteCheckoutDe } from '../../../support/cliente';
 import { linhaDe } from '../../../support/precificacao';
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
+import { useJanelasStore } from '../../../../src/client/stores/janelasStore';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 
@@ -368,5 +369,59 @@ describe('CampoClienteVenda — troca de cliente (correção do usuário, 2026-0
       .selecionarCliente(clienteCheckoutDe({ CodCliente: 2538 }), 'BUSCA_LIVRE');
 
     expect(resultado).toBe('aplicado');
+  });
+});
+
+/**
+ * T016 (feature 016) — a abertura do modal de busca passou para o
+ * `janelasStore`, e o campo de busca fica focado **pelos dois caminhos**
+ * (`FR-020`/`FR-021`): o hook de foco não sabe como a janela foi aberta.
+ */
+describe('CampoClienteVenda — abertura do modal de busca pelo janelasStore (016)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [] });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+  });
+
+  it('o clique na lupa abre o modal com o campo de busca focado', async () => {
+    const usuario = userEvent.setup();
+    renderCard();
+    await usuario.click(screen.getByTestId('alternar-cliente-expandido'));
+
+    await usuario.click(screen.getByTestId('abrir-busca-cliente'));
+
+    expect(useJanelasStore.getState().janela).toBe('cliente');
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-busca-cliente')).toHaveFocus();
+    });
+  });
+
+  it('o pedido que chega pelo store — o caminho do F3 — abre o mesmo modal, com o mesmo foco', async () => {
+    renderCard();
+
+    act(() => {
+      useJanelasStore.getState().abrir('cliente');
+    });
+
+    expect(await screen.findByTestId('modal-busca-cliente')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-busca-cliente')).toHaveFocus();
+    });
+  });
+
+  it('fechar o modal libera o store para a próxima janela', async () => {
+    const usuario = userEvent.setup();
+    renderCard();
+    act(() => {
+      useJanelasStore.getState().abrir('cliente');
+    });
+    await screen.findByTestId('campo-busca-cliente');
+
+    await usuario.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(useJanelasStore.getState().janela).toBe('nenhuma');
+    });
   });
 });

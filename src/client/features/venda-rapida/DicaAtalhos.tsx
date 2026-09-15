@@ -2,7 +2,6 @@ import type { ReactElement } from 'react';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { ICONE_POR_MEIO } from '../pagamento/iconePorMeio';
-import { useAtalhosDeTeclado } from '../../hotkeys/mapaAtalhos';
 import type { AtalhoVendaRapida, ListaAtalhos, TeclaAtalho } from '../../domain/vendaRapida/tipos';
 import { useVendaStore } from '../../stores/vendaStore';
 import { AVISO_ATALHO_SEM_ITENS } from './avisosVendaRapida';
@@ -37,9 +36,13 @@ import { useAcionarCenario } from './useAcionarCenario';
  *
  * **A UI não filtra, não ordena e não reinterpreta nada**
  * (`contracts/venda-rapida-domain-api.md` §6): recebe `ListaAtalhos` pronta.
- * Não há `if (isMobile)` neste arquivo — no mobile `projetarAtalhos` já devolve
- * `[]` (D11/I10), então "não exibe" e "não aciona" são consequência do mesmo
- * fato, decidido num lugar só.
+ *
+ * **Só apresentação desde a feature 016.** A faixa registrava as teclas F6–F9,
+ * e por isso "não exibir" e "não acionar" eram o mesmo fato no mobile, onde ela
+ * não é montada. A 016 separou os dois (`FR-011`/`FR-012`): as teclas passaram
+ * para `TeclasVendaRapida`, montado em `AppShell` nos dois layouts, e esta
+ * faixa continua restrita ao desktop **por montagem** — só `DesktopLayout`
+ * monta `PainelPagamentoETotais`. Continua sem `if (isMobile)` neste arquivo.
  */
 
 interface BotaoAtalhoProps {
@@ -114,20 +117,6 @@ export function DicaAtalhos({
   onAcionar,
   bloqueio = null,
 }: DicaAtalhosProps): ReactElement | null {
-  // Registro das teclas no mapa central: a **mesma** função do clique, nunca um
-  // segundo caminho de lançamento (`US3`, cenário 3). Desligado quando não há
-  // atalho — a faixa não escuta o teclado à toa, e um F6 sem cenário volta a ser
-  // do navegador.
-  useAtalhosDeTeclado(
-    atalhos.map((atalho) => ({
-      tecla: atalho.tecla,
-      aoAcionar: () => {
-        onAcionar(atalho.tecla);
-      },
-    })),
-    atalhos.length > 0,
-  );
-
   // Sem atalho, a área inteira é omitida (`FR-016`) — nada de faixa vazia nem
   // de mensagem de erro: catálogo ausente é um desfecho normal (I4).
   if (atalhos.length === 0) {

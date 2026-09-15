@@ -35,8 +35,10 @@ description: "Task list for feature implementation"
 
 **Purpose**: o vocabulário compartilhado. Nada aqui depende de React.
 
-- [ ] T001 Criar `src/client/hotkeys/mapaFixo.ts` com `TeclaFixa`, `IdComando`, `ComandoFixo` e a constante `MAPA_FIXO` das cinco entradas, conforme `contracts/atalhos-fixos-api.md` §1 — sem F5, F11 e F12
-- [ ] T002 [P] Criar `src/client/hotkeys/mapaFixo.test.ts` verificando a invariante I1: `MAPA_FIXO` e `TECLAS_ATALHO` (de `src/client/domain/vendaRapida/tipos.ts`) não têm tecla em comum, e `MAPA_FIXO` tem exatamente uma entrada por `TeclaFixa`
+> **Nota de implementação (2026-09-15):** os testes desta feature ficam em `tests/unit/**` e `tests/integration/**` com sufixo `.spec.ts(x)`, e não ao lado do código com `.test.ts(x)` como as tarefas abaixo escrevem — é o único padrão que o `include` de `vitest.config.ts` executa. Um `*.test.tsx` em `src/` nunca rodaria.
+
+- [X] T001 Criar `src/client/hotkeys/mapaFixo.ts` com `TeclaFixa`, `IdComando`, `ComandoFixo` e a constante `MAPA_FIXO` das cinco entradas, conforme `contracts/atalhos-fixos-api.md` §1 — sem F5, F11 e F12
+- [X] T002 [P] Criar `tests/unit/client/hotkeys/mapaFixo.spec.ts` verificando a invariante I1: `MAPA_FIXO` e `TECLAS_ATALHO` (de `src/client/domain/vendaRapida/tipos.ts`) não têm tecla em comum, e `MAPA_FIXO` tem exatamente uma entrada por `TeclaFixa`
 
 **Checkpoint**: o mapa existe e a disjunção é verificada por suíte, não por convenção.
 
@@ -48,12 +50,12 @@ description: "Task list for feature implementation"
 
 **⚠️ CRITICAL**: é aqui que FR-001/FR-002/FR-005 viram estrutura. Se esta fase sair errada, todas as stories herdam o vazamento.
 
-- [ ] T003 ⚠️ [P] Escrever `src/client/hotkeys/useTeclasFixas.test.tsx` cobrindo os quatro estágios de posse do `data-model.md` §4: (a) a tecla é engolida com o foco fora de campo; (b) engolida com o foco em `input` comum; (c) engolida com tecla repetida (`repeat: true`), e a ação **não** roda; (d) deferida quando `defaultPrevented` já está marcado. Simular com `user-event`, nunca `keyDown` cru
-- [ ] T004 ⚠️ [P] Escrever `src/client/stores/janelasStore.test.ts` cobrindo a invariante I3: `abrir` é inerte com outra janela já aberta, `substituir` troca sem passar por `'nenhuma'`, e nenhum estado representa duas janelas
-- [ ] T005 [P] Criar `src/client/stores/janelasStore.ts` conforme `contracts/atalhos-fixos-api.md` §3 — Zustand sem `persist` e sem Immer (o estado é um enum). Faz T004 passar
-- [ ] T006 [P] Acrescentar `haJanelaAberta()` a `src/client/lib/useFocoDeModal.ts`, consultando a `pilhaDeJanelas` que o módulo já mantém (research D3). **Não** usar `closest('[role="dialog"]')` — devolve `null` com o foco no `body`
-- [ ] T007 Acrescentar `useTeclasFixas` e `AcaoFixa` a `src/client/hotkeys/mapaAtalhos.ts` conforme §2 do contrato: `enabled` literal `true`, `preventDefault: true`, `useKey: true`, `enableOnFormTags: true`, `enableOnContentEditable: true`, `ignoreEventWhen` restrito a `defaultPrevented`; `repeat` e `haJanelaAberta()` suprimem a **ação**, nunca o `preventDefault`. Faz T003 passar. `useAtalhosDeTeclado` fica intacto (depende de T005, T006)
-- [ ] T008 [P] Acrescentar `OrigemAcionamento = 'CLIQUE' | 'TECLADO'` a `src/client/domain/auditoria/eventos.ts`, sem tocar em `TeclaVendaRapida` — são vocabulários distintos (research D12)
+- [X] T003 ⚠️ [P] Escrever `tests/unit/client/hotkeys/useTeclasFixas.spec.tsx` cobrindo os quatro estágios de posse do `data-model.md` §4: (a) a tecla é engolida com o foco fora de campo; (b) engolida com o foco em `input` comum; (c) engolida com tecla repetida (`repeat: true`), e a ação **não** roda; (d) deferida quando `defaultPrevented` já está marcado. Simular com `user-event`, nunca `keyDown` cru
+- [X] T004 ⚠️ [P] Escrever `tests/unit/client/stores/janelasStore.spec.ts` cobrindo a invariante I3: `abrir` é inerte com outra janela já aberta, `substituir` troca sem passar por `'nenhuma'`, e nenhum estado representa duas janelas
+- [X] T005 [P] Criar `src/client/stores/janelasStore.ts` conforme `contracts/atalhos-fixos-api.md` §3 — Zustand sem `persist` e sem Immer (o estado é um enum). Faz T004 passar
+- [X] T006 [P] Acrescentar `haJanelaAberta()` a `src/client/lib/useFocoDeModal.ts`, consultando a `pilhaDeJanelas` que o módulo já mantém (research D3). **Não** usar `closest('[role="dialog"]')` — devolve `null` com o foco no `body`
+- [X] T007 Acrescentar `useTeclasFixas` e `AcaoFixa` a `src/client/hotkeys/mapaAtalhos.ts` conforme §2 do contrato: `enabled` literal `true`, `preventDefault: true`, `useKey: true`, `enableOnFormTags: true`, `enableOnContentEditable: true`, `ignoreEventWhen` restrito a `defaultPrevented`; `repeat` e `haJanelaAberta()` suprimem a **ação**, nunca o `preventDefault`. Faz T003 passar. `useAtalhosDeTeclado` fica intacto (depende de T005, T006)
+- [X] T008 [P] Acrescentar `OrigemAcionamento = 'CLIQUE' | 'TECLADO'` a `src/client/domain/auditoria/eventos.ts`, sem tocar em `TeclaVendaRapida` — são vocabulários distintos (research D12). **Desvio:** a origem viaja num evento próprio, `ATALHO_ACIONADO { comando, origem }`, e não costurada nos eventos de cada ação — três dos cinco comandos só abrem janela (gesto nunca auditado por clique) e o de suspensão atravessa uma confirmação assíncrona; costurar a origem por dentro mudaria os pontos de entrada que FR-018 proíbe alterar
 
 **Checkpoint**: a posse existe e é testada isoladamente. As user stories podem começar.
 
@@ -67,14 +69,14 @@ description: "Task list for feature implementation"
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T009 ⚠️ [P] [US1] Escrever `src/client/layout/AppShell.atalhos.test.tsx`: com a tela de venda montada e a query do catálogo **pendente**, cada uma das cinco teclas é engolida (`preventDefault` chamado) — o cenário C1 do quickstart, que é o bug original
-- [ ] T010 ⚠️ [P] [US1] Acrescentar ao mesmo arquivo: as cinco teclas são engolidas com o foco no campo de quantidade e com uma janela aberta (cenários C2 e C3)
-- [ ] T011 ⚠️ [P] [US1] Acrescentar ao mesmo arquivo: nenhuma das teclas F5, F11 e F12 é registrada — `preventDefault` **não** é chamado para elas (FR-008)
+- [X] T009 ⚠️ [P] [US1] Escrever `tests/integration/appShell.atalhos.spec.tsx`: com a tela de venda montada e a query do catálogo **pendente**, cada uma das cinco teclas é engolida (`preventDefault` chamado) — o cenário C1 do quickstart, que é o bug original
+- [X] T010 ⚠️ [P] [US1] Acrescentar ao mesmo arquivo: as cinco teclas são engolidas com o foco no campo de quantidade e com uma janela aberta (cenários C2 e C3)
+- [X] T011 ⚠️ [P] [US1] Acrescentar ao mesmo arquivo: nenhuma das teclas F5, F11 e F12 é registrada — `preventDefault` **não** é chamado para elas (FR-008)
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Chamar `useTeclasFixas` uma única vez em `src/client/layout/AppShell.tsx`, acima da bifurcação `useIsMobile()`, com as cinco ações: `indisponivel` já real onde a fonte existe, `executar` como no-op documentado com o número da tarefa que o substitui (faz T009–T011 passarem)
-- [ ] T013 [US1] Verificar em `src/client/layout/AppShell.tsx` que o registro não consulta query, `sessionStore`, cadastro nem plataforma — FR-002 é sobre ausência de dependência, e é o que um teste não pega sozinho
+- [X] T012 [US1] Chamar `useTeclasFixas` uma única vez em `src/client/layout/AppShell.tsx`, acima da bifurcação `useIsMobile()`, com as cinco ações: `indisponivel` já real onde a fonte existe, `executar` como no-op documentado com o número da tarefa que o substitui (faz T009–T011 passarem). **Nota:** o call site é o componente privado `TeclasFixasDaVenda`, no mesmo arquivo, renderizado **dentro** do `ProvedorFinalizacaoVenda` — o F10 precisa de `useFinalizacaoVenda`, e o provider é renderizado pelo próprio `AppShell`
+- [X] T013 [US1] Verificar em `src/client/layout/AppShell.tsx` que o registro não consulta query, `sessionStore`, cadastro nem plataforma — FR-002 é sobre ausência de dependência, e é o que um teste não pega sozinho
 
 **Checkpoint**: US1 completa. A classe de falha em que um bipe desaparece dentro do navegador deixou de existir, mesmo sem nenhum atalho ainda agir.
 
@@ -88,17 +90,17 @@ description: "Task list for feature implementation"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T014 ⚠️ [P] [US2] Escrever em `src/client/lib/useFocoDeModal.test.tsx` o caso do foco inicial: o elemento declarado recebe foco **depois** de a janela deixar de ser inerte, e um `focus()` disparado cedo demais é detectado como falha
-- [ ] T015 ⚠️ [P] [US2] Escrever os dois casos obrigatórios de F3 e de F4 (quatro no total) em `src/client/layout/AppShell.atalhos.test.tsx`: (a) aciona com o foco fora de campo; (b) não vaza para o navegador durante digitação no campo de bipagem
-- [ ] T016 ⚠️ [P] [US2] Escrever em `src/client/features/cliente/CampoClienteVenda.test.tsx` e `src/client/features/carrinho/EntradaRapidaProduto.test.tsx` que a abertura por clique continua funcionando e que o campo de busca fica focado nos dois caminhos (FR-021)
+- [X] T014 ⚠️ [P] [US2] Escrever em `tests/unit/client/lib/useFocoDeModal.spec.tsx` o caso do foco inicial. **Premissa corrigida na implementação:** os modais **desmontam** ao fechar (`usePresenca`) e o `autoFocus` da busca funcionava em toda abertura sobre tela já montada — o `inert` não era o problema. A falha real é a janela nascer **no mesmo commit** que outro campo com `autoFocus` montado depois dela (F3 no wizard mobile, que monta a etapa 1 junto com o modal); o teste reproduz esse "ladrão" de foco
+- [X] T015 ⚠️ [P] [US2] Escrever os dois casos obrigatórios de F3 e de F4 (quatro no total) em `tests/integration/appShell.atalhos.spec.tsx`: (a) aciona com o foco fora de campo; (b) não vaza para o navegador durante digitação no campo de bipagem. Acrescentados: modal aberto não abre o segundo (US2-4) e F3 fora da etapa 1 do wizard mobile
+- [X] T016 ⚠️ [P] [US2] Escrever em `tests/unit/client/cliente/CampoClienteVenda.spec.tsx` e `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` que a abertura por clique continua funcionando e que o campo de busca fica focado nos dois caminhos (FR-021)
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Acrescentar `focoInicial` a `src/client/lib/useFocoDeModal.ts` conforme §4 do contrato, aplicado um render depois de a janela deixar de ser inerte (faz T014 passar)
-- [ ] T018 [US2] **Investigar antes de alterar** (risco 1 do plano, research D8): em `src/client/features/carrinho/EntradaRapidaProduto.tsx` e `src/client/features/cliente/CampoClienteVenda.tsx`, confirmar que nenhum parâmetro de abertura (termo pré-preenchido, item em edição) está acoplado ao booleano de abertura. Registrar o achado no próprio PR; se estiver acoplado, parar e reportar antes de prosseguir
-- [ ] T019 [P] [US2] Migrar a abertura de `ModalBuscaCliente` em `src/client/features/cliente/CampoClienteVenda.tsx` para `janelasStore` (`'cliente'`), mantendo local qualquer parâmetro de abertura, e declarar o campo de busca como `focoInicial` (depende de T017, T018)
-- [ ] T020 [P] [US2] Migrar a abertura de `ModalBuscaProduto` em `src/client/features/carrinho/EntradaRapidaProduto.tsx` para `janelasStore` (`'produto'`), mesmas condições (depende de T017, T018)
-- [ ] T021 [US2] Substituir em `src/client/layout/AppShell.tsx` os no-ops de `IDENTIFICAR_CLIENTE` e `IDENTIFICAR_PRODUTO` pelo `abrir()` do store, registrando auditoria com `origem: 'TECLADO'` (faz T015 passar; depende de T019, T020)
+- [X] T017 [US2] Acrescentar `focoInicial` a `src/client/lib/useFocoDeModal.ts` conforme §4 do contrato, aplicado em efeito passivo depois do commit em que o elemento existe (faz T014 passar). Os quatro modais (`ModalBuscaCliente`, `ModalBuscaProduto`, `ModalImportacaoDav`, `ModalRecuperacaoNFCe`) trocaram `autoFocus` por `focoInicial`; e o efeito de "foco de volta ao código" de `EntradaRapidaProduto` passou a respeitar `haJanelaAberta()`, senão roubaria a busca na montagem da etapa 1
+- [X] T018 [US2] **Investigar antes de alterar** (risco 1 do plano, research D8): em `src/client/features/carrinho/EntradaRapidaProduto.tsx` e `src/client/features/cliente/CampoClienteVenda.tsx`, confirmar que nenhum parâmetro de abertura (termo pré-preenchido, item em edição) está acoplado ao booleano de abertura. **Achado:** nenhum. `ModalBuscaCliente` e `ModalBuscaProduto` recebem só `aberto`/`onFechar`/callbacks de seleção; o `cpfSugerido` pertence ao `FormCadastroSimplificado` (outro modal, fica local) e o item em edição vive no `edicaoItemStore`. **Achado paralelo, não previsto pelo plano:** no wizard mobile os dois componentes só existem na etapa 1 e `BotaoMenuImportacao` não existe em etapa nenhuma (FR-008 da 007) — resolvido por decisão do usuário (2026-09-15): F3/F4 levam à etapa 1 e abrem lá; F1/F2 recusam com explicação no compacto
+- [X] T019 [P] [US2] Migrar a abertura de `ModalBuscaCliente` em `src/client/features/cliente/CampoClienteVenda.tsx` para `janelasStore` (`'cliente'`), mantendo local qualquer parâmetro de abertura, e declarar o campo de busca como `focoInicial` (depende de T017, T018)
+- [X] T020 [P] [US2] Migrar a abertura de `ModalBuscaProduto` em `src/client/features/carrinho/EntradaRapidaProduto.tsx` para `janelasStore` (`'produto'`), mesmas condições (depende de T017, T018)
+- [X] T021 [US2] Substituir em `src/client/layout/AppShell.tsx` os no-ops de `IDENTIFICAR_CLIENTE` e `IDENTIFICAR_PRODUTO` pelo `abrir()` do store, registrando auditoria com `origem: 'TECLADO'` (faz T015 passar; depende de T019, T020). Acrescentado em `src/client/layout/mobile/MobileWizard.tsx`: pedido de janela `'cliente'`/`'produto'` fora da etapa 1 leva à etapa 1
 
 **Checkpoint**: US1 e US2 funcionam de forma independente.
 
@@ -112,14 +114,14 @@ description: "Task list for feature implementation"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T022 ⚠️ [P] [US3] Escrever os dois casos obrigatórios de F1 e de F2 em `src/client/layout/AppShell.atalhos.test.tsx`, mais a recusa: com item lançado, a janela não abre e a mensagem de recusa é a mesma do botão bloqueado (cenário C7)
-- [ ] T023 ⚠️ [P] [US3] Escrever o caso do cliente padrão em `src/client/layout/AppShell.atalhos.test.tsx`: com apenas o cliente padrão aplicado, F1 **abre** — cliente padrão não é venda em andamento (cenário C8, regra AD-138)
-- [ ] T024 ⚠️ [P] [US3] Escrever em `src/client/features/importacao/BotaoMenuImportacao.test.tsx` que o caminho por clique continua passando pelo seletor, inalterado
+- [X] T022 ⚠️ [P] [US3] Escrever os dois casos obrigatórios de F1 e de F2 em `tests/integration/appShell.atalhos.spec.tsx`, mais a recusa: com item lançado, a janela não abre e a mensagem de recusa é a mesma do botão bloqueado (cenário C7)
+- [X] T023 ⚠️ [P] [US3] Escrever o caso do cliente padrão em `tests/integration/appShell.atalhos.spec.tsx`: com apenas o cliente padrão aplicado, F1 **abre** — cliente padrão não é venda em andamento (cenário C8, regra AD-138). Acrescentado: no layout compacto F1/F2 recusam com `MOTIVO_IMPORTACAO_NO_COMPACTO` (decisão do usuário, 2026-09-15)
+- [X] T024 ⚠️ [P] [US3] Escrever em `tests/unit/client/importacao/BotaoMenuImportacao.spec.tsx` que o caminho por clique continua passando pelo seletor, inalterado
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Migrar o `JanelaAberta` local de `src/client/features/importacao/BotaoMenuImportacao.tsx` para `janelasStore`, usando `substituir()` na escolha do seletor para não empilhar janelas (faz T024 passar)
-- [ ] T026 [US3] Substituir em `src/client/layout/AppShell.tsx` os no-ops de `IMPORTAR_DAV` e `IMPORTAR_NFCE`: `indisponivel` chama `recusaAtual()` de `useRecusaDeImportacao` e devolve `mensagemDeRecusa(motivo)`; `executar` abre `'dav'`/`'nfce'` direto, pulando o seletor (research D6, D7). Auditoria com `origem: 'TECLADO'` (faz T022, T023 passarem; depende de T025)
+- [X] T025 [US3] Migrar o `JanelaAberta` local de `src/client/features/importacao/BotaoMenuImportacao.tsx` para `janelasStore`, usando `substituir()` na escolha do seletor para não empilhar janelas (faz T024 passar)
+- [X] T026 [US3] Substituir em `src/client/layout/AppShell.tsx` os no-ops de `IMPORTAR_DAV` e `IMPORTAR_NFCE`: `indisponivel` recusa no layout compacto (a importação não existe ali, FR-008 da 007) e, fora dele, chama `recusaAtual()` de `useRecusaDeImportacao` e devolve `mensagemDeRecusa(motivo)`; `executar` abre `'dav'`/`'nfce'` direto, pulando o seletor (research D6, D7). Auditoria com `origem: 'TECLADO'` (faz T022, T023 passarem; depende de T025)
 
 **Checkpoint**: US1, US2 e US3 funcionam de forma independente.
 
@@ -133,12 +135,12 @@ description: "Task list for feature implementation"
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T027 ⚠️ [P] [US4] Escrever os dois casos obrigatórios de F10 em `src/client/layout/AppShell.atalhos.test.tsx`, mais: em venda vazia a recusa é explicada e a tecla não vaza (cenário C9)
-- [ ] T028 ⚠️ [P] [US4] Escrever que F10 resolve para **suspensão** e que o descarte da venda não é oferecido em nenhum momento (FR-017, cenário US4-6 da spec)
+- [X] T027 ⚠️ [P] [US4] Escrever os dois casos obrigatórios de F10 em `tests/integration/appShell.atalhos.spec.tsx`, mais: em venda vazia a recusa é explicada e a tecla não vaza (cenário C9); e o segundo F10 durante o envio recusa com "Aguarde" em vez de ficar mudo ou reenviar
+- [X] T028 ⚠️ [P] [US4] Escrever que F10 resolve para **suspensão** e que o descarte da venda não é oferecido em nenhum momento (FR-017, cenário US4-6 da spec)
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] Substituir em `src/client/layout/AppShell.tsx` o no-op de `SUSPENDER_VENDA` por `useFinalizacaoVenda().suspender`, com `indisponivel` vindo de `motivoDeBloqueioDoCancelar` — os mesmos de `AcaoCancelarVenda` (research D9). O `ProvedorFinalizacaoVenda` já está montado neste arquivo. Auditoria com `origem: 'TECLADO'`
+- [X] T029 [US4] Substituir em `src/client/layout/AppShell.tsx` o no-op de `SUSPENDER_VENDA` por `useFinalizacaoVenda().suspender`, com `indisponivel` vindo de `motivoDeBloqueioDoCancelar` — os mesmos de `AcaoCancelarVenda` (research D9). O `ProvedorFinalizacaoVenda` já está montado neste arquivo. Auditoria com `origem: 'TECLADO'`. `motivoDeBloqueioDoCancelar` passou a ser exportada de `AcoesFinaisVenda.tsx`. O caso "nenhuma tecla global move a venda no mobile" de `tests/integration/appShell.spec.tsx` perdeu F1–F4/F10 da varredura — afirmava o FR-005 da 007 que FR-010 da 016 revoga para essas teclas
 
 **Checkpoint**: os cinco atalhos funcionam. `AppShell.tsx` não tem mais nenhum no-op.
 
@@ -152,15 +154,15 @@ description: "Task list for feature implementation"
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T030 ⚠️ [P] [US5] Ajustar `src/client/domain/vendaRapida/projetarAtalhos.test.ts`: remover os casos de plataforma e verificar que a projeção devolve os atalhos independentemente dela
-- [ ] T031 ⚠️ [P] [US5] Escrever em `src/client/features/venda-rapida/DicaAtalhos.test.tsx` que a faixa **não** é renderizada no layout compacto e **é** no desktop (FR-012), e que a tecla aciona nos dois (FR-011)
+- [X] T030 ⚠️ [P] [US5] Ajustar `tests/unit/domain/vendaRapida/projetarAtalhos.spec.ts`: remover os casos de plataforma e verificar que a projeção devolve os atalhos independentemente dela
+- [X] T031 ⚠️ [P] [US5] Escrever que a faixa **não** é renderizada no layout compacto e **é** no desktop (FR-012), e que a tecla aciona nos dois (FR-011). **Desvio de local:** a ligação tecla↔plataforma só é observável com o `AppShell` montado, e foi para `tests/integration/vendaRapidaPlataforma.spec.tsx`; `tests/unit/client/venda-rapida/DicaAtalhos.spec.tsx` ganhou o caso de dono único (a faixa sozinha não escuta tecla) e as regras de digitação passaram a exercitar `TeclasDosAtalhos`. O caso "as teclas de venda rápida não disparam nada no mobile" de `appShell.spec.tsx` foi removido — afirmava o comportamento que FR-011 revoga
 
 ### Implementation for User Story 5
 
-- [ ] T032 [US5] Remover o parâmetro `plataforma` e o curto-circuito de `src/client/domain/vendaRapida/projetarAtalhos.ts` conforme §5 do contrato; demais etapas intactas (faz T030 passar)
-- [ ] T033 [P] [US5] Remover `plataforma` de `src/client/domain/vendaRapida/tipos.ts`; se `PlataformaVendaRapida` ficar sem consumidor, removê-lo junto (depende de T032)
-- [ ] T034 [P] [US5] Ajustar `src/client/features/venda-rapida/useAtalhosVendaRapida.ts` para não consultar `usePlataforma` (depende de T032)
-- [ ] T035 [US5] Mover a condição de exibição para `src/client/features/venda-rapida/DicaAtalhos.tsx`, onde `useIsMobile` é observável (faz T031 passar; depende de T034)
+- [X] T032 [US5] Remover o parâmetro `plataforma` e o curto-circuito de `src/client/domain/vendaRapida/projetarAtalhos.ts` conforme §5 do contrato; demais etapas intactas (faz T030 passar)
+- [X] T033 [P] [US5] Remover `plataforma` de `src/client/domain/vendaRapida/tipos.ts`; se `PlataformaVendaRapida` ficar sem consumidor, removê-lo junto (depende de T032). Removidos `PlataformaVendaRapida` e `usePlataforma` (`src/client/layout/usePlataforma.ts`), ambos sem consumidor; saiu também a exceção de `useAtalhosVendaRapida.ts` em `tests/integration/semDuplicacaoRegra.spec.ts`
+- [X] T034 [P] [US5] Ajustar `src/client/features/venda-rapida/useAtalhosVendaRapida.ts` para não consultar `usePlataforma` (depende de T032)
+- [X] T035 [US5] ~~Mover a condição de exibição para `DicaAtalhos.tsx`, onde `useIsMobile` é observável~~. **Desvio (premissa do plano não se sustentava):** a faixa já só existe no desktop **por montagem** (`PainelPagamentoETotais` só é montado por `DesktopLayout`), e era ela quem **registrava** F6–F9 — por isso a tecla não chegava ao mobile de jeito nenhum. Levar `useIsMobile` para `features/` também violaria `semDuplicacaoRegra.spec.ts` (só `layout/` lê o breakpoint). O registro saiu da faixa para `src/client/features/venda-rapida/TeclasVendaRapida.tsx`, montado em `AppShell` acima da bifurcação; `DicaAtalhos` virou só apresentação. **Achado colateral corrigido:** com as janelas no store, cruzar o breakpoint com uma janela aberta a levaria para a outra árvore (a de DAV nem existe no compacto e travaria F3/F4 ali) — `AppShell` agora fecha a janela na travessia, antes de montar a árvore nova
 
 **Checkpoint**: as cinco stories completas.
 
@@ -168,12 +170,12 @@ description: "Task list for feature implementation"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T036 Reescrever `FR-020`/`D11` em `specs/013-venda-rapida-cenario-pagamento/` **no ponto onde o leitor encontraria a informação desatualizada** — não anexar a correção ao final do parágrafo (regra do projeto para decisão superada, Constitution "Additional Constraints")
-- [ ] T037 [P] Registrar o AD correspondente em `.specs/project/STATE.md`: a separação entre posse da tecla e disponibilidade da ação, o mapa fixo das cinco teclas, F11/F12 como incapturáveis, e a revogação parcial de FR-020/D11 da 013
-- [ ] T038 [P] Registrar em `.specs/project/PENDENCIES.md` que F5 ficou com o navegador por decisão de 2026-09-15, com o trade-off (recarregar perde a venda; `beforeunload` é a única rede) — para a reavaliação não recomeçar do zero
-- [ ] T039 Rodar os dez cenários de `quickstart.md`. **C1–C4 exigem pressionada real de teclado num Chrome comum** — tecla injetada por CDP não passa pelos aceleradores do navegador e daria falso verde
-- [ ] T040 Rodar `npx tsc --noEmit` (gate obrigatório antes de qualquer push) e a suíte completa; antes de crer numa falha E2E, derrubar a porta 3100
-- [ ] T041 Invocar `/owasp-security` antes do merge para `master` (gate da constitution)
+- [X] T036 Reescrever `FR-020`/`D11` em `specs/013-venda-rapida-cenario-pagamento/` **no ponto onde o leitor encontraria a informação desatualizada** — não anexar a correção ao final do parágrafo (regra do projeto para decisão superada, Constitution "Additional Constraints"). Reescritos também o edge case, a dependência e a tabela de decisões da `spec.md`, E6/I10 do `data-model.md` e — por citar a mesma informação — `FR-005` de `specs/007-layout-responsivo-mobile/spec.md`
+- [X] T037 [P] Registrar o AD correspondente em `.specs/project/STATE.md`: a separação entre posse da tecla e disponibilidade da ação, o mapa fixo das cinco teclas, F11/F12 como incapturáveis, e a revogação parcial de FR-020/D11 da 013 — **AD-227**, com as duas decisões do usuário e as três premissas do `research.md` que não se sustentaram
+- [X] T038 [P] Registrar em `.specs/project/PENDENCIES.md` que F5 ficou com o navegador por decisão de 2026-09-15, com o trade-off (recarregar perde a venda; `beforeunload` é a única rede) — para a reavaliação não recomeçar do zero — **item 54**; aberto também o **item 55** (F6–F9 no wizard mobile não navegam à etapa 2)
+- [ ] T039 Rodar os dez cenários de `quickstart.md`. **C1–C4 exigem pressionada real de teclado num Chrome comum** — tecla injetada por CDP não passa pelos aceleradores do navegador e daria falso verde. **Pendente (2026-09-15):** não executável pela IA — sem teclado físico. C5–C10 estão cobertos por teste de componente/integração (`appShell.atalhos.spec.tsx`, `vendaRapidaPlataforma.spec.tsx`), mas a conferência visual e a de C1–C4 ficam para o operador
+- [X] T040 Rodar `npx tsc --noEmit` (gate obrigatório antes de qualquer push) e a suíte completa; antes de crer numa falha E2E, derrubar a porta 3100. **Resultado (2026-09-15):** `tsc` e ESLint limpos, Prettier limpo em `src`/`tests`; Vitest 1476 testes em 101 arquivos; Playwright 183 passaram e 1 pulado (porta 3100 conferida livre antes)
+- [ ] T041 Invocar `/owasp-security` antes do merge para `master` (gate da constitution). **Pendente:** gate de merge — esta tarefa não faz merge
 
 ---
 

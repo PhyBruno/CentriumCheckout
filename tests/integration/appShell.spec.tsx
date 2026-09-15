@@ -311,45 +311,33 @@ describe('AppShell — atalhos de teclado no mobile (FR-005)', () => {
     expect(screen.queryByTestId('dica-atalhos-venda-rapida')).toBeNull();
   });
 
-  it('as teclas de venda rápida não disparam nada no mobile', async () => {
+  // "As teclas de venda rápida não disparam nada no mobile" saiu daqui com a
+  // feature 016: `FR-011` daquela spec revoga a parte "não aciona" de
+  // `FR-020`/D11 da 013 — o PDV de toque com teclado físico usa F6–F9 como o
+  // desktop. O comportamento novo é afirmado em `vendaRapidaPlataforma.spec.tsx`;
+  // a parte que continua valendo (a faixa não é montada no compacto) é o caso
+  // logo acima.
+
+  it('nenhuma tecla fora do mapa fixo move a venda no mobile, incluindo a do quickstart §4', async () => {
     const usuario = userEvent.setup();
     definirLayoutInicial('mobile');
     popularVenda();
     renderizarShell();
 
     const antes = useVendaStore.getState();
-    for (const tecla of ['{F6}', '{F7}', '{F8}', '{F9}']) {
-      await usuario.keyboard(tecla);
-    }
-
-    // Nenhuma condição escolhida, nenhum pagamento lançado: o mapa central não
-    // chegou a registrar tecla alguma nesta árvore (D6 — ausência estrutural,
-    // não condicional dentro do handler).
-    expect(useVendaStore.getState().condicaoSelecionada).toBe(antes.condicaoSelecionada);
-    expect(useVendaStore.getState().pagamentos).toHaveLength(0);
-  });
-
-  it('nenhuma tecla global move a venda no mobile, incluindo a do quickstart §4', async () => {
-    const usuario = userEvent.setup();
-    definirLayoutInicial('mobile');
-    popularVenda();
-    renderizarShell();
-
-    const antes = useVendaStore.getState();
-    // A varredura vai além de F6–F9 de propósito: `FR-005` é sobre a árvore
-    // mobile não escutar o teclado, não sobre as quatro teclas que a 013
-    // registra hoje. `Ctrl+Enter` é a combinação que o `quickstart.md` §4 manda
-    // testar à mão, e F1–F5/F10–F12 são as vagas que uma feature futura ocuparia
-    // sem lembrar de conferir o compacto — este teste falha no dia em que
-    // alguém registrar uma delas globalmente.
+    // A varredura vai além de F6–F9 de propósito: é sobre a árvore mobile não
+    // ganhar atalho por acidente. `Ctrl+Enter` é a combinação que o
+    // `quickstart.md` §4 manda testar à mão, e F5/F11/F12 são as vagas que uma
+    // feature futura ocuparia sem lembrar de conferir o compacto.
+    //
+    // **F1–F4 e F10 saíram desta lista com a feature 016**, que revoga `FR-005`
+    // da 007 para elas: o PDV de toque com teclado físico tem os mesmos atalhos
+    // fixos do desktop (`FR-010` da 016) — F10 com item suspende a venda também
+    // no tablet. O comportamento delas é afirmado em
+    // `appShell.atalhos.spec.tsx`, e não é regressão que elas movam a venda.
     for (const tecla of [
       '{Control>}{Enter}{/Control}',
-      '{F1}',
-      '{F2}',
-      '{F3}',
-      '{F4}',
       '{F5}',
-      '{F10}',
       '{F11}',
       '{F12}',
       '{Escape}',

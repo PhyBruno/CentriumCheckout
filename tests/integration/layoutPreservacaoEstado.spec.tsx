@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppShell } from '../../src/client/layout/AppShell';
 import { useEdicaoItemStore } from '../../src/client/stores/edicaoItemStore';
+import { useJanelasStore } from '../../src/client/stores/janelasStore';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
 import {
@@ -273,11 +274,14 @@ describe('Travessia do breakpoint no meio de um gesto', () => {
     const antes = useVendaStore.getState();
     cruzarBreakpointPara('mobile');
 
-    // O modal é estado local de apresentação, do mesmo tipo que a etapa do
-    // wizard: perdê-lo na travessia é o comportamento aceito (`research.md` D2).
+    // O modal é estado de apresentação, do mesmo tipo que a etapa do wizard:
+    // perdê-lo na travessia é o comportamento aceito (`research.md` D2). Desde a
+    // feature 016 a janela mora no `janelasStore` e sobreviveria ao desmonte —
+    // quem a fecha na travessia é o `AppShell`, e o store tem de voltar vazio.
     // O que não pode acontecer é ele levar a venda junto — nem deixar a barra
     // presa num estado de "busca em andamento" que o operador não consiga sair.
     expect(screen.queryByTestId('modal-busca-produto')).toBeNull();
+    expect(useJanelasStore.getState().janela).toBe('nenhuma');
     expect(useVendaStore.getState().linhas).toBe(antes.linhas);
     expect(useVendaStore.getState().pagamentos).toBe(antes.pagamentos);
 

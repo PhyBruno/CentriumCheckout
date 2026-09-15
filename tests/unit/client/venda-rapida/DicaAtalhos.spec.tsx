@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DicaAtalhos } from '../../../../src/client/features/venda-rapida/DicaAtalhos';
+import { TeclasDosAtalhos } from '../../../../src/client/features/venda-rapida/TeclasVendaRapida';
 import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../../../src/client/hotkeys/mapaAtalhos';
 import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import type { AtalhoVendaRapida } from '../../../../src/client/domain/vendaRapida/tipos';
@@ -93,17 +94,36 @@ describe('DicaAtalhos — acionamento (T021)', () => {
   it('a tecla chama o mesmo comando, com o mesmo argumento', async () => {
     const usuario = userEvent.setup();
     const onAcionar = vi.fn();
-    render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+    render(
+      <>
+        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+      </>,
+    );
 
     await usuario.keyboard('{F8}');
 
     expect(onAcionar).toHaveBeenCalledExactlyOnceWith('F8');
   });
 
-  it('tecla sem atalho na lista não chama nada', async () => {
+  it('a faixa sozinha não escuta tecla nenhuma — o dono das teclas é outro (feature 016)', async () => {
+    // Desde a 016 a faixa é só visual: as teclas são registradas por
+    // `TeclasVendaRapida`, montado em `AppShell` nos dois layouts. Se a faixa
+    // voltasse a registrar, o desktop teria dois donos para F6–F9 e o segundo
+    // veria `defaultPrevented` do primeiro.
     const usuario = userEvent.setup();
     const onAcionar = vi.fn();
     render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+
+    await usuario.keyboard('{F6}');
+
+    expect(onAcionar).not.toHaveBeenCalled();
+  });
+
+  it('tecla sem atalho na lista não chama nada', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    render(<TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
 
     await usuario.keyboard('{F7}');
     await usuario.keyboard('{F9}');
@@ -114,13 +134,17 @@ describe('DicaAtalhos — acionamento (T021)', () => {
 
 /* ------------------------------------------------------------------ *
  * T012 — não colide com digitação nem com bipagem (FR-014, SC-005, C8)
+ *
+ * Desde a feature 016 estes casos exercitam `TeclasDosAtalhos`, que herdou o
+ * registro de F6–F9 da faixa. As regras são as mesmas; mudou só quem as
+ * aplica.
  * ------------------------------------------------------------------ */
 
 describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem (T012)', () => {
   function renderizarComCampos(onAcionar: () => void) {
     return render(
       <>
-        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
         {/* O campo de código do produto é a **única** exceção: declara-se
             transparente aos atalhos globais, como em `EntradaRapidaProduto`. */}
         <input aria-label="Código do produto" {...ATRIBUTO_ATALHOS_PERMITIDOS} />
@@ -178,7 +202,7 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     const onAcionar = vi.fn();
     render(
       <>
-        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
         <button type="button" role="option" aria-selected="false">
           A VISTA
         </button>
@@ -194,7 +218,7 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
   it('combinação com modificador é outro atalho, não este', async () => {
     const usuario = userEvent.setup();
     const onAcionar = vi.fn();
-    render(<DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+    render(<TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
 
     await usuario.keyboard('{Control>}{F6}{/Control}');
     await usuario.keyboard('{Shift>}{F6}{/Shift}');
@@ -208,7 +232,7 @@ describe('DicaAtalhos — o atalho não dispara durante digitação nem bipagem 
     const onAcionar = vi.fn();
     render(
       <>
-        <DicaAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
         <div role="dialog" aria-modal="true">
           <button type="button">Confirmar</button>
         </div>

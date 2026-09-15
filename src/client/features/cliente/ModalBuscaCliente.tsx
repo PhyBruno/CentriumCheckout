@@ -1,5 +1,5 @@
 import { CheckCircle, ChevronLeft, ChevronRight, Search, User, UserAdd, X } from 'reicon-react';
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
@@ -137,7 +137,11 @@ export function ModalBuscaCliente({
   });
 
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
-  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
+  // Foco inicial declarado, e não `autoFocus` (feature 016): no wizard mobile o
+  // F3 monta este modal no mesmo commit da etapa 1, e o `autoFocus` do campo de
+  // código de produto, montado depois, venceria.
+  const campoBusca = useRef<HTMLInputElement>(null);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto, { focoInicial: campoBusca });
 
   // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
   // animação de saída (`usePresenca`).
@@ -228,8 +232,8 @@ export function ModalBuscaCliente({
               <input
                 className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
                 data-testid="campo-busca-cliente"
+                ref={campoBusca}
                 autoComplete="off"
-                autoFocus
                 placeholder="Busque por nome, e-mail, telefone ou documento"
                 value={termo}
                 onChange={(evento) => {

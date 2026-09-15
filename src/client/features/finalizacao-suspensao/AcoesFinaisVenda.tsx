@@ -152,8 +152,13 @@ function useVendaTemItem(): boolean {
  *
  * O envio vem primeiro porque é o estado mais transitório: dizer "não há itens"
  * a quem está esperando o ERP responder seria falso.
+ *
+ * Exportada desde a feature 016: o F10 recusa com **esta** frase, pelo mesmo
+ * motivo de o botão e a lixeira compartilharem `AcaoCancelarVenda` — uma
+ * segunda cópia da regra liberaria a tecla no instante em que o botão recusa
+ * (`FR-018`).
  */
-function motivoDeBloqueioDoCancelar(travado: boolean, temItem: boolean): string | null {
+export function motivoDeBloqueioDoCancelar(travado: boolean, temItem: boolean): string | null {
   if (travado) {
     return 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
   }

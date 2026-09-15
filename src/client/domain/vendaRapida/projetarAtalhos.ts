@@ -19,7 +19,6 @@ import {
   type AtalhoVendaRapida,
   type CenarioPagamentoBruto,
   type ListaAtalhos,
-  type PlataformaVendaRapida,
   type TeclaAtalho,
 } from './tipos';
 
@@ -65,7 +64,14 @@ function localizarNoCatalogo(
 }
 
 /**
- * E3 → E6: cenários brutos, catálogo da sessão e plataforma ⇒ `ListaAtalhos`.
+ * E3 → E5: cenários brutos e catálogo da sessão ⇒ `ListaAtalhos`.
+ *
+ * **Não conhece plataforma desde a feature 016** (`FR-011`). A etapa E6 — que
+ * devolvia `[]` no mobile e fazia "não exibir a faixa" e "não acionar a tecla"
+ * serem o mesmo fato (`FR-020`/D11 da 013) — foi removida: a tecla aciona em
+ * qualquer plataforma, e só a faixa continua restrita ao desktop, decidida por
+ * quem monta a tela (`FR-012`). A projeção responde apenas "quais cenários
+ * viraram atalho", que é a sua pergunta legítima.
  *
  * A ordem do resultado é a das **teclas** (`F6..F9`), não a que o ERP devolveu:
  * a faixa de atalhos é lida em relance, e uma ordem que mudasse conforme o
@@ -77,16 +83,7 @@ function localizarNoCatalogo(
 export function projetarAtalhos(
   cenarios: readonly CenarioPagamentoBruto[],
   catalogo: readonly CondicaoPagamento[],
-  plataforma: PlataformaVendaRapida,
 ): ListaAtalhos {
-  // E6 primeiro, como curto-circuito: sendo a última etapa do pipeline no
-  // desenho, avaliá-la aqui não muda o resultado (mobile ⇒ `[]` de qualquer
-  // forma) e evita percorrer o catálogo à toa. "Não exibe" e "não aciona"
-  // continuam sendo consequência do mesmo fato (`FR-020`/D11, I10).
-  if (plataforma !== 'desktop') {
-    return [];
-  }
-
   const porTecla = new Map<TeclaAtalho, AtalhoVendaRapida>();
 
   for (const cenario of cenarios) {

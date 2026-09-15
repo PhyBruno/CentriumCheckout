@@ -5819,5 +5819,88 @@
     ],
     "created_at": "2026-09-15T15:10:26.738433+00:00",
     "created_epoch": 1789485026
+  },
+  {
+    "kind": "fact",
+    "content": "T018 resolvido: nenhum parametro de abertura acoplado ao booleano dos modais",
+    "tags": [
+      "atalhos",
+      "016"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+      "src/client/features/cliente/CampoClienteVenda.tsx"
+    ],
+    "created_at": "2026-09-15T16:00:00+00:00",
+    "created_epoch": 1789488000
+  },
+  {
+    "kind": "decision",
+    "content": "F1/F2 no layout compacto recusam explicando; importacao segue ausente do mobile",
+    "tags": [
+      "atalhos",
+      "mobile",
+      "016"
+    ],
+    "files": [
+      "src/client/layout/AppShell.tsx"
+    ],
+    "created_at": "2026-09-15T16:00:00+00:00",
+    "created_epoch": 1789488000
+  },
+  {
+    "kind": "decision",
+    "content": "F3/F4 fora da etapa 1 do wizard levam a etapa 1 e abrem a busca",
+    "tags": [
+      "atalhos",
+      "mobile",
+      "016"
+    ],
+    "files": [
+      "src/client/layout/mobile/MobileWizard.tsx"
+    ],
+    "created_at": "2026-09-15T16:00:00+00:00",
+    "created_epoch": 1789488000
+  },
+  {
+    "kind": "fact",
+    "content": "Registro F6-F9 saiu da faixa para TeclasVendaRapida montado no AppShell",
+    "tags": [
+      "atalhos",
+      "venda-rapida",
+      "016"
+    ],
+    "files": [
+      "src/client/features/venda-rapida/TeclasVendaRapida.tsx"
+    ],
+    "created_at": "2026-09-15T16:00:00+00:00",
+    "created_epoch": 1789488000
+  },
+  {
+    "kind": "fact",
+    "content": "Janela nascida no mesmo commit perde foco para autoFocus posterior; usar focoInicial",
+    "tags": [
+      "foco",
+      "modal",
+      "016"
+    ],
+    "files": [
+      "src/client/lib/useFocoDeModal.ts"
+    ],
+    "created_at": "2026-09-15T16:00:00+00:00",
+    "created_epoch": 1789488000
+  },
+  {
+    "kind": "next",
+    "content": "Validar C1-C4 do quickstart 016 com teclado real no Chrome",
+    "tags": [
+      "atalhos",
+      "016"
+    ],
+    "files": [
+      "specs/016-atalhos-teclado-fixos/quickstart.md"
+    ],
+    "created_at": "2026-09-15T16:00:00+00:00",
+    "created_epoch": 1789488000
   }
 ]

@@ -1,5 +1,5 @@
 import { BoxSearch, CheckCircle, ChevronLeft, ChevronRight, Search, X } from 'reicon-react';
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -111,7 +111,10 @@ export function ModalBuscaProduto({
   const busca = useBuscaProdutos(termoDebounced, { qtdMinCharParaConsulta: minimo, pagina });
 
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
-  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto);
+  // Foco inicial declarado, e não `autoFocus` (feature 016): ver
+  // `OpcoesFocoDeModal.focoInicial`.
+  const campoBusca = useRef<HTMLInputElement>(null);
+  const janelaRef = useFocoDeModal<HTMLDivElement>(aberto, { focoInicial: campoBusca });
 
   // Fechar não desmonta na hora: o overlay fica no DOM pelo tempo da
   // animação de saída (`usePresenca`).
@@ -217,8 +220,8 @@ export function ModalBuscaProduto({
             <input
               className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
               data-testid="campo-busca-produto"
+              ref={campoBusca}
               autoComplete="off"
-              autoFocus
               placeholder="Busque por código, descrição, SKU ou referência"
               value={termo}
               onChange={(evento) => {

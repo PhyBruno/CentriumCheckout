@@ -1,5 +1,5 @@
 import { FileText } from 'reicon-react';
-import { useState, type ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import { notificar } from '@/lib/notificar';
 import { cn } from '@/lib/utils';
 import { atributosDeBloqueio } from '@/lib/bloqueio';
@@ -8,6 +8,7 @@ import {
   type ImportacaoVendaDeps,
 } from '../../services/importacao/importarVendaExistente';
 import { ModalImportacaoDav } from '../dav/ModalImportacaoDav';
+import { useJanelasStore } from '../../stores/janelasStore';
 import { ModalRecuperacaoNFCe } from '../recuperacao/ModalRecuperacaoNFCe';
 import { ModalMenuImportacao } from './ModalMenuImportacao';
 import { useRecusaDeImportacao } from './useImportacaoDocumento';
@@ -27,24 +28,25 @@ import { useRecusaDeImportacao } from './useImportacaoDocumento';
  * Mora em `features/importacao/`, e não mais em `features/dav/`: ele já não
  * pertence a nenhuma das duas features, é o ponto de entrada comum das duas.
  *
- * O estado de abertura mora neste componente, não em `BarraAtalhosVenda`: a
- * faixa de atalhos é da feature 004 e não deve conhecer o ciclo de vida destes
- * modais.
+ * **O estado de abertura mora no `janelasStore`** desde a feature 016. Antes
+ * era um `useState` daqui — e continua não sendo de `BarraAtalhosVenda`, que é
+ * da 004 e não deve conhecer o ciclo de vida destes modais —, mas o F1/F2 é
+ * registrado em `AppShell` e precisava alcançar a mesma janela. Os modais
+ * continuam **renderizados** aqui: o atalho só escreve no store, e quem desenha
+ * é quem sempre desenhou.
  */
 export interface BotaoMenuImportacaoProps {
   /** Portas injetáveis em teste (stub da feature 012, rede). */
   readonly deps?: Partial<ImportacaoVendaDeps>;
 }
 
-/**
- * Qual janela está aberta. Um estado só, e não três booleanos: as janelas são
- * mutuamente exclusivas, e booleanos independentes permitiriam representar
- * "seletor e DAV abertos ao mesmo tempo", que não é um estado real.
- */
-type JanelaAberta = 'nenhuma' | 'seletor' | 'dav' | 'nfce';
-
 export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): ReactElement {
-  const [janela, setJanela] = useState<JanelaAberta>('nenhuma');
+  // Um valor só para as três janelas, e não três booleanos — a exclusão mútua
+  // que este componente já garantia agora é do tipo do store (I3 da 016).
+  const janela = useJanelasStore((estado) => estado.janela);
+  const abrirJanela = useJanelasStore((estado) => estado.abrir);
+  const substituirJanela = useJanelasStore((estado) => estado.substituir);
+  const fechar = useJanelasStore((estado) => estado.fechar);
   const { recusa, recusaAtual } = useRecusaDeImportacao();
 
   /**
@@ -69,11 +71,7 @@ export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): Re
       notificar.erro(mensagemDeRecusa(motivo));
       return;
     }
-    setJanela('seletor');
-  }
-
-  function fechar(): void {
-    setJanela('nenhuma');
+    abrirJanela('seletor-importacao');
   }
 
   const depsOpcional = deps === undefined ? {} : { deps };
@@ -105,16 +103,16 @@ export function BotaoMenuImportacao({ deps }: BotaoMenuImportacaoProps = {}): Re
       </button>
 
       <ModalMenuImportacao
-        aberto={janela === 'seletor'}
+        aberto={janela === 'seletor-importacao'}
         onFechar={fechar}
         // A escolha **substitui** o seletor em vez de empilhar uma janela sobre
         // a outra: são dois passos do mesmo gesto, e dois modais sobrepostos
         // deixariam dois backdrops e duas armadilhas de ESC na tela.
         onEscolherDav={() => {
-          setJanela('dav');
+          substituirJanela('dav');
         }}
         onEscolherNFCe={() => {
-          setJanela('nfce');
+          substituirJanela('nfce');
         }}
       />
 

@@ -96,7 +96,7 @@ Como Checkout, quero descartar silenciosamente qualquer cenário que não sirva 
 - **Operador digitando**: a tecla de atalho é pressionada enquanto o foco está num campo de busca de produto, de quantidade ou de valor — o atalho não deve disparar e não deve interferir na bipagem de código de barras.
 - **Forma com integração externa**: o cenário aponta para uma forma que exige terminal físico (TEF) ou PIX dinâmico — o atalho vale, mas o pagamento só se confirma após a integração (`FR-013`).
 - **Tecla acionada com o carrinho ainda aberto**: o sistema leva a venda à etapa de pagamento e lança o cenário na mesma ação (`FR-019`).
-- **Layout mobile**: o dispositivo não tem teclado físico — a venda rápida por cenário não existe nesse layout (`FR-020`).
+- **Layout mobile**: a **tecla** do cenário aciona normalmente — um PDV de toque com teclado físico usa F6–F9 como o desktop —, mas a **faixa visual** de métodos rápidos não é exibida (`FR-020`). **Revisto em 2026-09-15 pela feature 016 (`FR-011`/`FR-012`, AD-227):** a premissa anterior, "o dispositivo não tem teclado físico, então a venda rápida não existe nesse layout", foi descartada.
 - **Acionamento repetido**: o operador pressiona a mesma tecla duas vezes em sequência rápida, ou uma segunda tecla enquanto o primeiro lançamento ainda está em andamento.
 - **Venda já em finalização**: a tecla é pressionada depois que a finalização automática já começou.
 - **Cenário com "encerra a operação" ligado numa venda que ainda não tem cliente ou vendedor definido**: a finalização automática esbarra nas obrigatoriedades já especificadas para a finalização normal.
@@ -121,7 +121,7 @@ Como Checkout, quero descartar silenciosamente qualquer cenário que não sirva 
 - **FR-012**: A finalização disparada por atalho MUST obedecer exatamente às mesmas regras, validações e obrigatoriedades da finalização acionada manualmente — o atalho substitui o gesto do operador, nunca as regras.
 - **FR-013**: Quando a forma de pagamento do cenário exigir uma integração externa (terminal físico ou PIX dinâmico), o sistema MUST seguir o mesmo roteamento já definido para a seleção manual dessa forma, e só MUST considerar o pagamento lançado — e, se aplicável, iniciar a finalização automática — após a confirmação dessa integração. **Resolvido (2026-08-31, decisão direta do usuário):** cenários com forma que exige TEF ou PIX dinâmico **continuam elegíveis a atalho**; a tecla substitui apenas o gesto de selecionar a forma, nunca o fluxo da integração.
 - **FR-019**: Os atalhos MUST estar ativos em qualquer momento da venda, não apenas na etapa de pagamento. **Resolvido (2026-08-31, decisão direta do usuário):** acionada a tecla com o carrinho ainda aberto, o sistema MUST levar a venda à etapa de pagamento e lançar o cenário na mesma ação, respeitando `FR-009` (venda sem itens ou sem saldo em aberto recusa o acionamento) e `FR-014` (não dispara com foco em campo de entrada).
-- **FR-020**: A venda rápida por cenário MUST ser exclusiva do layout desktop. **Resolvido (2026-08-31, decisão direta do usuário):** no layout mobile o sistema MUST NOT exibir os atalhos nem oferecer equivalente tocável, e nenhum cenário MUST ser acionável por esse layout.
+- **FR-020**: A **faixa visual** de atalhos da venda rápida MUST ser exclusiva do layout desktop — no layout mobile o sistema MUST NOT exibir os atalhos nem oferecer equivalente tocável. As **teclas** F6–F9, por outro lado, MUST acionar o cenário em qualquer layout. **Revisto em 2026-09-15 pela feature 016 (`FR-011`/`FR-012` daquela spec, AD-227):** a redação anterior (2026-08-31) também proibia acionar qualquer cenário pelo layout mobile, tratando "não exibe" e "não aciona" como o mesmo fato; a parte "não aciona" foi revogada, porque um PDV de toque com teclado físico ficava com F3 funcionando e F7 não. A parte "não exibe" continua valendo.
 - **FR-014**: Os atalhos MUST NOT disparar enquanto o foco estiver em um campo de entrada de texto ou numérico da venda, nem MUST interferir na leitura de código de barras. **Exceção única (decisão direta do usuário, 2026-09-05):** o campo de **código do produto** MUST deixar os atalhos dispararem com o foco nele. É onde o operador passa a venda inteira, e exigir que ele saia do campo para fechar a venda transformaria um toque em três gestos; a exceção não enfraquece a proteção contra a bipagem, que emite dígitos e `Enter`, nunca teclas de função. Nenhum outro campo — quantidade, preço, desconto, valor recebido, documento do cliente, busca — MUST abrir essa exceção.
 - **FR-015**: O sistema MUST ignorar acionamentos de atalho enquanto um lançamento ou uma finalização anterior ainda estiver em andamento, evitando pagamento duplicado.
 - **FR-016**: No layout desktop, o sistema MUST exibir ao operador, para cada atalho ativo, a tecla correspondente e o nome do cenário; e MUST omitir integralmente essa área quando não houver atalho ativo.
@@ -163,7 +163,7 @@ Como Checkout, quero descartar silenciosamente qualquer cenário que não sirva 
 - **008 — Pagamento (geral)**: fornece o lançamento de pagamento, o saldo em aberto, o catálogo de condições/formas usado na validação de `FR-005` e o roteamento por integração externa de `FR-013`.
 - **004 — Finalização e suspensão da venda**: fornece a finalização acionada por `FR-010`/`FR-012`.
 - **001 — Auditoria de ações do operador**: recebe o evento exigido por `FR-017`.
-- **007 — Layout responsivo/mobile**: precisa registrar que a venda rápida por cenário não existe no layout mobile (`FR-020`).
+- **007 — Layout responsivo/mobile**: precisa registrar que a faixa visual da venda rápida não existe no layout mobile, embora as teclas acionem nele (`FR-020`, revisto pela 016).
 - **010 — Pagamento por terminal físico (TEF)** e **009 — Pagamento PIX**: fornecem o fluxo de integração que `FR-013` reaproveita quando o cenário aponta para essas formas.
 
 ## Decisões registradas nesta especificação
@@ -174,6 +174,6 @@ Todas as clarificações levantadas na redação foram resolvidas por decisão d
 |---------|---------|-----------|
 | Cenário com forma que exige TEF/PIX dinâmico pode ser atalho? | Sim — a tecla aciona a integração normalmente e o pagamento só se confirma após aprovação | `FR-013` |
 | Quando as teclas F6–F9 valem? | Em qualquer momento da venda; com carrinho aberto, a tecla leva à etapa de pagamento e lança o cenário | `FR-019` |
-| Comportamento no layout mobile? | Restrito ao desktop — nenhum atalho nem equivalente tocável no mobile | `FR-020` |
+| Comportamento no layout mobile? | Faixa visual restrita ao desktop; as teclas acionam em qualquer layout (revisto em 2026-09-15 pela 016, AD-227 — antes, nenhum atalho acionava no mobile) | `FR-020` |
 | Valor lançado pela tecla | Saldo em aberto integral, não editável no ato | `FR-008` |
 | Finalização automática | Direto, sem diálogo de confirmação | `FR-010` |

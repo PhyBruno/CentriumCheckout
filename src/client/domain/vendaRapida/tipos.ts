@@ -30,15 +30,6 @@ export function ehTeclaAtalho(valor: string): valor is TeclaAtalho {
 }
 
 /**
- * Onde a venda rápida está disponível (`FR-020`/D11).
- *
- * Recebido como **parâmetro** por `projetarAtalhos`, nunca lido de `window`
- * dentro do domínio: é o que torna I10 testável sem renderizar nada, no mesmo
- * padrão de capacidade injetada estreado por AD-074.
- */
-export type PlataformaVendaRapida = 'desktop' | 'mobile';
-
-/**
  * Um item do array que vem serializado em `SessaoUsuario.CenarioPagamento`,
  * já convertido campo a campo (`data-model.md` §1.1).
  *
@@ -112,10 +103,11 @@ export type MotivoRecusa =
    */
   | 'PAGAMENTO_JA_INICIADO'
   /**
-   * Permanece no tipo por completude do contrato, mas **nunca é produzido**:
-   * no mobile `projetarAtalhos` já devolve `[]` (I10), então G2 responde
-   * `ATALHO_INEXISTENTE` antes de qualquer checagem de plataforma
-   * (`tasks.md`, nota de `/speckit-analyze` sobre G2).
+   * Permanece no tipo por completude do contrato, mas **nunca é produzido**.
+   * Até a feature 016 isso valia porque `projetarAtalhos` devolvia `[]` no
+   * mobile; desde a 016 vale por um motivo mais forte — a venda rápida é
+   * suportada em toda plataforma (`FR-011`), então não existe recusa por
+   * plataforma a produzir.
    */
   | 'PLATAFORMA_NAO_SUPORTADA'
   | 'LANCAMENTO_FALHOU';

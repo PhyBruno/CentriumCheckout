@@ -4,6 +4,7 @@ import {
   ErroCondicaoImportadaIndisponivel,
   ErroImportacaoRecusada,
   importarVendaExistente,
+  mensagemDeRecusa,
   recusaDeImportacao,
   type EstadoVendaParaImportacao,
   type FonteDocumento,
@@ -201,6 +202,22 @@ export function useRecusaDeImportacao(): Pick<ApiImportacaoDocumento, 'recusa' |
   return {
     recusa,
     recusaAtual: () => recusaDeImportacao(estadoDaVendaAtual()),
+  };
+}
+
+/**
+ * A mesma recusa, lida no instante da chamada e já na frase que o operador lê
+ * — ou `null` quando a importação é possível.
+ *
+ * Existe para o F1/F2 da feature 016, registrado em `AppShell`: `layout/` não
+ * importa `services/` (`semDuplicacaoRegra.spec.ts`), então a frase chega por
+ * aqui, pela mesma regra e pela mesma redação do botão "Menu Importação".
+ */
+export function useFraseDeRecusaDeImportacao(): () => string | null {
+  const { recusaAtual } = useRecusaDeImportacao();
+  return () => {
+    const motivo = recusaAtual();
+    return motivo === null ? null : mensagemDeRecusa(motivo);
   };
 }
 
