@@ -150,6 +150,42 @@ When the user signals they are done (e.g. "bye", "done", "wrap up", "end session
 
 Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation  -  only what's needed to resume next session.
 
+# Engram Persistent Memory Policy
+
+Este projeto usa o plugin **Engram** (MCP local) como memória persistente entre sessões — ver `[[reference-engram-mcp]]` no registro de memória do projeto para binário/config.
+
+## MANDATORY: salvar proativamente
+
+Chame `mem_save` **imediatamente** após qualquer um destes eventos, sem esperar o usuário pedir:
+- Decisão tomada (arquitetura, convenção, workflow, escolha de ferramenta)
+- Bug corrigido (incluir a causa raiz)
+- Convenção ou workflow documentado/atualizado
+- Artefato de Notion/Jira/GitHub criado ou atualizado com conteúdo relevante
+- Descoberta não óbvia, pegadinha ou caso de borda encontrado
+- Padrão estabelecido (nomenclatura, estrutura, abordagem)
+- Preferência ou restrição do usuário aprendida
+- Feature implementada com abordagem não óbvia
+- Usuário confirma uma recomendação ("vai assim", "pode seguir") ou rejeita uma abordagem expressando preferência
+- Discussão concluída com direção clara escolhida
+
+**Autoverificação após cada tarefa:** "Acabei de tomar (ou o usuário tomou) uma decisão, confirmar recomendação, expressar preferência, corrigir bug, aprender algo ou estabelecer convenção? Se sim → `mem_save` agora."
+
+## Buscar memória
+
+Chame `mem_search` quando:
+- O usuário pedir para lembrar de algo
+- Começar trabalho em algo que pode já ter sido feito antes
+- O usuário mencionar um tópico sem contexto prévio nesta sessão
+- A primeira mensagem do usuário referenciar o projeto, uma feature ou um problema — buscar por palavras-chave antes de responder
+
+## Fechamento de sessão
+
+Antes de dizer que a tarefa está concluída, chamar `mem_session_summary` com: objetivo, descobertas, o que foi feito e próximos passos.
+
+## Ferramentas
+
+Núcleo (sempre disponível, sem `ToolSearch`): `mem_save`, `mem_search`, `mem_context`, `mem_session_summary`, `mem_get_observation`, `mem_save_prompt`. Demais ferramentas (`mem_update`, `mem_review`, `mem_pin`, `mem_session_start`, `mem_stats` etc.) via `ToolSearch`.
+
 # Pre-Production Security Requirements
 
 **MANDATORY SKILL BEFORE ANY PRODUCTION DEPLOYMENT**
