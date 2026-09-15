@@ -118,19 +118,31 @@ function dentroDeModal(alvo: EventTarget | null): boolean {
 }
 
 /**
- * Eventos que nunca são atalho, qualquer que seja a tecla.
+ * A pressionada é da tecla, mas **não aciona** o atalho.
  *
  * `repeat`: tecla segurada dispara um acionamento por pressionada, nunca pela
  * repetição automática do sistema — num atalho que lança pagamento, a diferença
  * é entre um lançamento e uma enxurrada deles.
  *
- * `defaultPrevented`: alguém mais específico (um modal, um campo com
- * comportamento próprio) já tratou a tecla; não há segundo dono para ela.
+ * Modal aberto: pela pilha de `useFocoDeModal` **ou** pelo foco dentro de um
+ * `role="dialog"` — a pilha pega o foco solto no `body` com a janela aberta, o
+ * seletor pega diálogos que não passam pelo hook.
+ *
+ * Campo de entrada: a regra de `FR-014` da 013, com a exceção declarada no
+ * próprio campo (`ATRIBUTO_ATALHOS_PERMITIDOS`).
+ *
+ * **Nenhuma destas devolve a tecla ao navegador** (achado do usuário,
+ * 2026-09-15). Elas moravam em `ignoreEventWhen`, que a biblioteca avalia
+ * **antes** do `preventDefault` — com um modal aberto, F6 levava o foco à barra
+ * de endereços e F7 ligava a navegação por cursor; com o foco na quantidade, o
+ * bipe seguinte ia parar fora da tela. Agora são avaliadas dentro do handler,
+ * depois de a tecla já ter sido engolida — o mesmo desenho que a feature 016
+ * adotou para F1–F4/F10.
  */
-function eventoIgnorado(evento: KeyboardEvent): boolean {
+function acionamentoSuprimido(evento: KeyboardEvent): boolean {
   return (
     evento.repeat ||
-    evento.defaultPrevented ||
+    haJanelaAberta() ||
     dentroDeModal(evento.target) ||
     ehCampoQueEngoleATecla(evento.target)
   );
@@ -162,6 +174,11 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
   useHotkeys(
     teclas,
     (evento) => {
+      // A tecla já foi engolida pela biblioteca; daqui para baixo só se decide
+      // se o atalho age.
+      if (acionamentoSuprimido(evento)) {
+        return;
+      }
       const alvo = atalhosRef.current.find(
         (atalho) => atalho.tecla.toUpperCase() === evento.key.toUpperCase(),
       );
@@ -169,7 +186,8 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
     },
     {
       // Sem tecla registrada, o mapa não escuta nada — e um F6 sem cenário volta
-      // a ser do navegador.
+      // a ser do navegador. A posse vale para as teclas **cadastradas**; estendê-la
+      // às vagas de F6–F9 seria decisão de spec, como foi o mapa fixo da 016.
       enabled: ativo && atalhos.length > 0,
       /**
        * Casa por `event.key` (a tecla **lógica**), não por `event.code` (a
@@ -194,15 +212,18 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
        */
       preventDefault: true,
       /**
-       * A guarda de campo de entrada é **nossa**, em `ignoreEventWhen`, e não a
-       * da biblioteca. A regra de `FR-014` continua idêntica — com o foco num
-       * campo a tecla pertence a quem digita —, mas ela precisa admitir uma
-       * exceção declarada no próprio campo (`ATRIBUTO_ATALHOS_PERMITIDOS`), e o
-       * `enableOnFormTags` da biblioteca é tudo-ou-nada.
+       * A guarda de campo de entrada é **nossa**, em `acionamentoSuprimido`, e
+       * não a da biblioteca. A regra de `FR-014` continua valendo para a
+       * **ação** — com o foco num campo o atalho não age —, mas ela precisa
+       * admitir uma exceção declarada no próprio campo
+       * (`ATRIBUTO_ATALHOS_PERMITIDOS`), e o `enableOnFormTags` da biblioteca é
+       * tudo-ou-nada — além de, desligado, devolver a tecla ao navegador.
        */
       enableOnFormTags: true,
       enableOnContentEditable: true,
-      ignoreEventWhen: eventoIgnorado,
+      // Só a deferência a quem já tratou a tecla: um segundo dono é o que não
+      // pode existir. As demais guardas suprimem a ação, nunca a posse.
+      ignoreEventWhen: (evento) => evento.defaultPrevented,
     },
   );
 }
