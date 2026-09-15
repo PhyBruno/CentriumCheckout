@@ -12,6 +12,7 @@ import {
 } from '../../domain/sessao/identidadePdv';
 import { linhasAtivas } from '../../domain/precificacao/linha';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+import { useEtapaVendaStore } from '../../stores/etapaVendaStore';
 import { useJanelasStore } from '../../stores/janelasStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
@@ -228,6 +229,47 @@ export function MobileWizard(): ReactElement {
       }
       return new Set<EtapaWizard>([...visitadas, etapa]);
     });
+  }
+
+  /**
+   * Pedidos de etapa da venda rápida (feature 016, pendência 55).
+   *
+   * F6–F9 acionam no compacto desde a 016, e o comando pede a etapa de
+   * pagamento antes de lançar — a janela do PIX só existe nela — e a revisão ao
+   * fim, para a venda que não fechou sozinha chegar ao "Finalizar" (correção do
+   * usuário, 2026-09-15).
+   *
+   * **Mesma regra dos botões, sem o aviso.** Um pedido recusado não é gesto do
+   * operador: a venda que o cenário finalizou já zerou o caixa e não tem o que
+   * revisar, e dizer "insira um produto" a quem acabou de fechar uma venda
+   * seria falso. Quem fala com o operador é o atalho.
+   *
+   * Durante o render, comparando com o último pedido atendido, pelo mesmo motivo
+   * do reinício de sessão acima. O estado começa no valor atual do store: um
+   * pedido feito antes de o wizard montar — do outro lado de uma travessia de
+   * breakpoint, por exemplo — não é atendido por uma árvore que acabou de nascer
+   * na etapa 1 (I1).
+   */
+  const pedidosDePagamento = useEtapaVendaStore((estado) => estado.pedidosDePagamento);
+  const pedidosDeRevisao = useEtapaVendaStore((estado) => estado.pedidosDeRevisao);
+  const [pedidosAtendidos, setPedidosAtendidos] = useState({
+    pagamento: pedidosDePagamento,
+    revisao: pedidosDeRevisao,
+  });
+  if (
+    pedidosDePagamento !== pedidosAtendidos.pagamento ||
+    pedidosDeRevisao !== pedidosAtendidos.revisao
+  ) {
+    const pediuRevisao = pedidosDeRevisao !== pedidosAtendidos.revisao;
+    setPedidosAtendidos({ pagamento: pedidosDePagamento, revisao: pedidosDeRevisao });
+
+    const destino: EtapaWizard = pediuRevisao ? 3 : 2;
+    if (motivoParaEntrarNaEtapa(destino) === null) {
+      setEtapaAtual(destino);
+      // Chegar à revisão por aqui é ter passado pelo pagamento: as duas ficam
+      // visitadas, para as barrinhas do indicador levarem de volta a qualquer uma.
+      setEtapasVisitadas((visitadas) => new Set<EtapaWizard>([...visitadas, 2, destino]));
+    }
   }
 
   const anterior = etapaAtual > 1 ? ((etapaAtual - 1) as EtapaWizard) : null;

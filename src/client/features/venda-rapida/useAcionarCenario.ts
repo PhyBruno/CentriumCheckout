@@ -11,6 +11,7 @@ import type {
   ResultadoAcionamento,
   TeclaAtalho,
 } from '../../domain/vendaRapida/tipos';
+import { useEtapaVendaStore } from '../../stores/etapaVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { useFinalizacaoVenda } from '../finalizacao-suspensao/AcoesFinaisVenda';
 import { aplicarFormaComIntegracao } from './aplicarFormaComIntegracao';
@@ -62,6 +63,17 @@ export interface AcionarCenarioDeps {
   vendaTemFormaAplicada(): boolean;
   /** 008 — garante que a venda está na etapa de pagamento (`FR-019`). */
   irParaEtapaPagamento(): void;
+  /**
+   * 007 — leva a venda à revisão, onde está o "Finalizar" (feature 016,
+   * pendência 55; correção do usuário, 2026-09-15).
+   *
+   * Pedida ao fim de **todo** acionamento que lançou, e não só quando a venda
+   * ficou aberta: decidir isso aqui exigiria ler o desfecho da finalização, que
+   * é da 004. Quem aceita ou recusa entrar é a porta — no wizard, pela mesma
+   * regra dos botões; e a venda que finalizou já zerou o caixa, então a revisão
+   * simplesmente não abre.
+   */
+  irParaRevisao(): void;
   /** 008 — seleciona a condição do cenário. */
   selecionarCondicao(codigo: number): void;
   /**
@@ -248,6 +260,12 @@ export async function acionarCenario(
     // acionamento que alterou a venda (I12).
     deps.registrarEvento(atalho, valorLancado, finalizacaoIniciada);
 
+    // Depois de P5, e não antes: a venda que o cenário finalizou já zerou o
+    // caixa quando isto roda, e a revisão recusa entrar numa venda vazia. A que
+    // continuou aberta — sem "encerra a operação", ou com a finalização recusada
+    // — chega ao "Finalizar" (pendência 55).
+    deps.irParaRevisao();
+
     return { tipo: 'LANCADO', valorLancado, finalizacaoIniciada };
   } finally {
     // P7 — sempre, inclusive em falha.
@@ -279,19 +297,21 @@ export function criarDepsPadrao(
         .pagamentos.some(
           (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
         ),
+    /**
+     * As duas portas de etapa viram **pedidos** no `etapaVendaStore`: este
+     * módulo não pode saber qual layout está montado (`semDuplicacaoRegra`).
+     *
+     * No desktop o cartão "Pagamento e totais" fica sempre ao lado do carrinho e
+     * ninguém observa o pedido. No wizard mobile (feature 016) os dois importam:
+     * a etapa de pagamento é onde a janela do PIX existe, e sem ela um cenário
+     * PIX acionado da etapa 1 esperaria uma confirmação que o operador não vê;
+     * a revisão é onde está o "Finalizar" da venda que não fechou sozinha.
+     */
     irParaEtapaPagamento: () => {
-      /**
-       * No layout desktop o cartão "Pagamento e totais" está sempre montado ao
-       * lado do carrinho: não há etapa a navegar, e a exigência de `FR-019` é
-       * satisfeita pela própria estrutura da tela.
-       *
-       * **No wizard mobile (feature 016) a porta só faz falta quando a venda
-       * continua aberta.** Cenário com "encerra a operação" finaliza sozinho
-       * (P5), e os diálogos da finalização moram acima do wizard — aparecem em
-       * qualquer etapa. Sobram o cenário sem "encerra a operação" e a
-       * finalização recusada: aí o operador segue na etapa 1, longe da lista de
-       * pagamentos e do "Finalizar". Item 55 de `.specs/project/PENDENCIES.md`.
-       */
+      useEtapaVendaStore.getState().pedirPagamento();
+    },
+    irParaRevisao: () => {
+      useEtapaVendaStore.getState().pedirRevisao();
     },
     selecionarCondicao: (codigo) => {
       const condicao = condicoes.find((candidata) => candidata.codigo === codigo);

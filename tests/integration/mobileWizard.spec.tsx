@@ -3,6 +3,8 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { AppShell } from '../../src/client/layout/AppShell';
+import { notificar } from '../../src/client/lib/notificar';
+import { useEtapaVendaStore } from '../../src/client/stores/etapaVendaStore';
 import { useFocoVendaStore } from '../../src/client/stores/focoVendaStore';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { abrirSessaoDeVenda, useVendaStore } from '../../src/client/stores/vendaStore';
@@ -372,5 +374,77 @@ describe('MobileWizard — cabeçalho', () => {
     // A segunda linha continua respondendo "qual caixa, qual PDV".
     // `rotularPdv` normaliza `CadMaqCod: 'PDV01'` para "PDV 01".
     expect(cabecalho).toHaveTextContent('Caixa 03 • PDV 01');
+  });
+});
+
+/**
+ * Pedidos de etapa vindos da venda rápida (feature 016, pendência 55).
+ *
+ * F6–F9 acionam no compacto desde a 016, e o comando pede duas navegações: a
+ * etapa de pagamento antes de lançar — é lá que a janela do PIX existe — e a
+ * revisão ao fim, para a venda que continuou aberta chegar ao "Finalizar"
+ * (correção do usuário, 2026-09-15). O wizard atende pela mesma regra dos
+ * botões, **sem aviso** quando recusa: quem falou com o operador foi o atalho.
+ */
+describe('MobileWizard — pedidos de etapa da venda rápida (016, pendência 55)', () => {
+  it('pedido de pagamento leva à etapa 2', () => {
+    renderizarWizard();
+
+    act(() => {
+      useEtapaVendaStore.getState().pedirPagamento();
+    });
+
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+  });
+
+  it('pedido de revisão, com produto e saldo coberto, leva à etapa 3 com o "Finalizar"', () => {
+    cobrirSaldo();
+    renderizarWizard();
+
+    act(() => {
+      useEtapaVendaStore.getState().pedirRevisao();
+    });
+
+    expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+    expect(screen.getByTestId('botao-finalizar-venda')).toBeInTheDocument();
+    // Chegou pela etapa de pagamento: as duas ficam visitadas para o indicador.
+    expect(screen.getByTestId('ir-para-etapa-2')).toBeInTheDocument();
+  });
+
+  it('pedido de revisão sem saldo coberto não navega nem avisa', () => {
+    const erro = vi.spyOn(notificar, 'erro');
+    renderizarWizard();
+
+    act(() => {
+      useEtapaVendaStore.getState().pedirRevisao();
+    });
+
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+    expect(erro).not.toHaveBeenCalled();
+    erro.mockRestore();
+  });
+
+  it('venda já finalizada — sem produto — fica na etapa 1 da venda nova', () => {
+    act(() => {
+      useVendaStore.setState({ linhas: [] });
+    });
+    renderizarWizard();
+
+    act(() => {
+      useEtapaVendaStore.getState().pedirRevisao();
+    });
+
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
+  });
+
+  it('um pedido anterior à montagem não é atendido — o wizard que monta começa na etapa 1', () => {
+    cobrirSaldo();
+    act(() => {
+      useEtapaVendaStore.getState().pedirRevisao();
+    });
+
+    renderizarWizard();
+
+    expect(screen.getByTestId('etapa-cliente-produtos')).toBeInTheDocument();
   });
 });
