@@ -12,6 +12,11 @@ const BFF_DEV_TARGET = process.env.BFF_DEV_TARGET ?? 'http://127.0.0.1:3000';
 // e o navegador só aceita cookie `Secure` em HTTPS ou em `localhost` — por
 // `http://<ip-da-lan>` o `/session/start` responde o 302, mas o cookie é
 // descartado e a entrada falha.
+//
+// Para usar de fato num celular prefira `preview:client:lan` (build servido) a
+// `dev:client:lan`: em dev o `reicon-react` chega inteiro (~8MB) e a página faz
+// ~200 requisições, e o Chrome não guarda cache de origem com certificado não
+// confiável — cada recarga baixa tudo de novo pelo Wi-Fi.
 const MODO_LAN = 'lan';
 
 // SPA React servida pelo mesmo processo Node do BFF em produção (plan.md § Structure
