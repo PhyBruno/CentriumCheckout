@@ -6,6 +6,7 @@ import { App } from './App';
 import { ROTA_DISPLAY } from '../shared/display';
 import { DisplayCliente } from './features/display/DisplayCliente';
 import { sincronizarLayoutNoDocumento } from './layout/sincronizarLayoutNoDocumento';
+import { ancorarToastNaViewport } from './layout/ancorarToastNaViewport';
 // Bones gerados por `npm run bones` (CLI do Boneyard). Sem este import,
 // `<Skeleton name="pdv-venda">` não acha a geometria capturada e cai no
 // `fallback` estático — sem shimmer nenhum (AUTH-05).
@@ -25,6 +26,14 @@ if (container === null) {
 // mobile num desktop. Síncrono, então nada chega a ser pintado com o veredito
 // errado.
 sincronizarLayoutNoDocumento();
+
+// O toast segue a faixa realmente visível do celular — com o teclado virtual
+// aberto, `position: fixed` o deixaria desenhado acima dela (correção do
+// usuário, 2026-09-15). Instalado aqui, e não num efeito de componente, porque o
+// container do toaster vive pela aplicação inteira; nunca removido, pela mesma
+// razão. Inerte onde as duas viewports coincidem — desktop e celular sem
+// teclado.
+ancorarToastNaViewport();
 
 /**
  * Cache do ERP durante a venda (feature 003).

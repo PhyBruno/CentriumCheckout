@@ -206,6 +206,28 @@ describe('notificar — rolagem da tela', () => {
     expect(coluna.posicao()).toBe(300);
   });
 
+  it('desliza em vez de saltar quando o navegador oferece `scrollTo`', () => {
+    // Correção do usuário, 2026-09-15: *"a notificação não tá suave, parece meio
+    // lagada"*. Um `scrollTop = 0` cru move a tela inteira num quadro só, no
+    // mesmo instante em que o toast entra — dois movimentos brutos somados. O
+    // jsdom não implementa `scrollTo`, então o duplo é o único jeito de provar
+    // qual caminho o código escolhe quando ele existe.
+    definirLargura(LARGURA_MOBILE);
+    const coluna = colunaRolada(300);
+    const pedidos: unknown[] = [];
+    Object.defineProperty(coluna.elemento, 'scrollTo', {
+      configurable: true,
+      value: (opcoes: unknown) => pedidos.push(opcoes),
+    });
+
+    notificar.erro(FRASE_LONGA);
+
+    expect(pedidos).toEqual([{ top: 0, behavior: 'smooth' }]);
+    // E sem escrever `scrollTop` por cima: as duas rolagens juntas brigariam,
+    // uma cancelando a animação da outra.
+    expect(coluna.posicao()).toBe(300);
+  });
+
   it('não alcança container nenhum que não tenha se declarado', () => {
     // `ListaPagamentosAplicados` rola para o **fim** ao aplicar uma forma. Se a
     // varredura fosse por "qualquer coisa rolada", um aviso qualquer desfaria

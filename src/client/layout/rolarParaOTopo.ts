@@ -33,11 +33,37 @@
  */
 export const ATRIBUTO_ROLAGEM_DE_NOTIFICACAO = 'data-rolagem-notificacao';
 
+/**
+ * Volta ao topo **deslizando**, não saltando (correção do usuário, 2026-09-15:
+ * *"a notificação não tá suave, parece meio lagada"*).
+ *
+ * Um `scrollTop = 0` cru move a tela inteira num quadro só, no mesmo instante em
+ * que o toast está entrando: são dois movimentos brutos somados, e o conjunto se
+ * lê como engasgo. `scrollTo({ behavior: 'smooth' })` entrega a animação ao
+ * navegador, que a roda fora do trabalho de layout do React.
+ *
+ * O `scrollTop` continua como desfecho para quem não tem `scrollTo` — é o caso
+ * do jsdom, onde ele é a única via que os testes conseguem observar — e para
+ * quem pediu menos movimento no sistema, que não deve receber uma animação a
+ * mais por causa de um aviso.
+ */
+function levarAoTopo(elemento: Element): void {
+  // `?.` porque nem todo ambiente de teste instala `matchMedia`, e um aviso não
+  // pode virar exceção por causa da preferência de movimento do sistema.
+  const preferePoucoMovimento =
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  if (!preferePoucoMovimento && typeof elemento.scrollTo === 'function') {
+    elemento.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  elemento.scrollTop = 0;
+}
+
 export function rolarParaOTopo(): void {
   for (const elemento of document.querySelectorAll<HTMLElement>(
     `[${ATRIBUTO_ROLAGEM_DE_NOTIFICACAO}]`,
   )) {
-    elemento.scrollTop = 0;
+    levarAoTopo(elemento);
   }
 
   // A página em si, para o caso de o estouro ter ido parar no documento — e por
@@ -49,6 +75,5 @@ export function rolarParaOTopo(): void {
   // devolve `undefined`, e sem o fallback todo toast do compacto derrubava o
   // teste com "Cannot set properties of undefined" — uma falha que só apareceria
   // na suíte, nunca no navegador.
-  const pagina = document.scrollingElement ?? document.documentElement;
-  pagina.scrollTop = 0;
+  levarAoTopo(document.scrollingElement ?? document.documentElement);
 }

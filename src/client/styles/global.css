@@ -665,8 +665,38 @@ button:not(:disabled):not([aria-disabled='true']),
  * fixa. A altura do corpo é **medida** (`getBoundingClientRect`), então ele
  * cresce junto e nada é recortado: é a diferença que AD-194 aprendeu.
  */
+/*
+ * A quebra de linha da frase é **decidida pelo texto**, nunca pela largura que o
+ * pacote está animando (correção do usuário, 2026-09-15: *"a escrita ficou meio
+ * cagada, 'encontrado' está indo pra linha de baixo e voltando pra de cima"*).
+ *
+ * Medido no navegador: durante a entrada do toast a largura do `.gooey-content`
+ * varre 311 → 319 → 308 → 304 → 312px, e a frase, que é filha em largura
+ * automática, era redistribuída a cada quadro — a altura dela alternava entre
+ * 32px (duas linhas) e 16px (uma), com a última palavra pulando para baixo e
+ * voltando. Não é lentidão: são quebras diferentes em quadros seguidos.
+ *
+ * `width: max-content` tira a frase dessa dependência: a caixa passa a valer o
+ * texto numa linha só, limitada pelo `max-width`. Nos dois desfechos possíveis a
+ * largura é **constante** — ou o texto cabe numa linha, ou a caixa vale o teto e
+ * quebra sempre no mesmo ponto —, então o pai pode animar à vontade que a
+ * distribuição não muda. Uma largura fixa em px resolveria o refluxo do mesmo
+ * jeito e alargaria a bolha de "Venda suspensa." até o mesmo tamanho da frase
+ * mais longa do produto.
+ *
+ * **O teto é 280px, e o número foi medido, não escolhido.** A bolha branca que o
+ * pacote desenha em SVG para em 300px de largura — não acompanha o conteúdo
+ * além disso —, e o corpo expandido tem 10px de folga de cada lado. Varrendo os
+ * tetos no navegador em 390px (2026-09-15): com 338px a frase ia de 26 a 364
+ * contra uma bolha de 74 a 374, e as primeiras letras de cada linha ficavam
+ * **fora** da bolha; com 300px ainda escapava 10px à esquerda; com 280px a
+ * frase assenta em 84→364, exatamente dentro. O `calc` continua como piso para
+ * telas mais estreitas que 332px, onde a tela manda antes da bolha.
+ */
 .gooey-content .gooey-description.cc-toast-frase {
   margin-top: 16px;
+  width: max-content;
+  max-width: min(calc(100vw - 2 * var(--cc-space-base) - 20px), 280px);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
