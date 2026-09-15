@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StrictMode } from 'react';
 import { act, render, screen } from '@testing-library/react';
 import { DisplayCliente } from '../../src/client/features/display/DisplayCliente';
+import { criarAnuncianteIdentidadeDisplay } from '../../src/client/services/display/identidadeDisplay';
 import {
   MS_PULSO_DISPLAY,
   MS_SILENCIO_ATE_REPOUSO,
@@ -431,5 +432,67 @@ describe('DisplayCliente — US1: a cobrança PIX na tela do cliente (T016)', ()
     entregar(barramento, mensagemDeEstado({ ...COBRANCA_87_40, valorCentavos: 87.4 }));
 
     expect(screen.getByTestId('display-valor')).toHaveTextContent('R$ 87,40');
+  });
+});
+
+/**
+ * Correção do usuário (2026-09-15): aberta antes do primeiro PIX, a tela do
+ * cliente ficava sem o nome da empresa — ele só viajava dentro de `ESTADO`, e a
+ * aba de checkout em repouso não publica estado (C2). A identidade passou a ter
+ * mensagem própria, anunciada por toda aba de checkout.
+ */
+describe('DisplayCliente — nome da loja antes do primeiro PIX', () => {
+  function identidade(nomeLoja: string): unknown {
+    return {
+      tipo: 'IDENTIDADE',
+      nomeLoja,
+      origemId: 'aba-sintetica',
+      emitidoEm: 1_789_077_600_000,
+    };
+  }
+
+  it('em repouso, a identidade mostra o nome da loja sem nenhuma cobrança', () => {
+    const barramento = criarBarramentoFalso();
+    montar(barramento);
+
+    entregar(barramento, identidade('Mercado Aurora'));
+
+    expect(screen.getByTestId('display-boas-vindas')).toBeInTheDocument();
+    expect(screen.getByTestId('display-nome-loja')).toHaveTextContent('Mercado Aurora');
+  });
+
+  it('durante uma cobrança, a identidade não tira o QR da tela', () => {
+    const barramento = criarBarramentoFalso();
+    montar(barramento);
+    entregar(barramento, mensagemDeEstado(COBRANCA_87_40));
+
+    entregar(barramento, identidade('Mercado Aurora'));
+
+    expect(screen.getByTestId('display-cobranca-pix')).toBeInTheDocument();
+  });
+
+  it('com a aba de checkout já aberta, a tela nova recebe o nome no handshake', () => {
+    const barramento = criarBarramentoFalso();
+    const anunciante = criarAnuncianteIdentidadeDisplay({ criarCanal: barramento.criarCanal });
+    anunciante.anunciar('Mercado Aurora');
+
+    montar(barramento);
+
+    expect(screen.getByTestId('display-nome-loja')).toHaveTextContent('Mercado Aurora');
+    anunciante.encerrar();
+  });
+
+  it('com a tela do cliente aberta primeiro, o nome chega quando a sessão do checkout carrega', () => {
+    const barramento = criarBarramentoFalso();
+    montar(barramento);
+    expect(screen.queryByTestId('display-nome-loja')).not.toBeInTheDocument();
+
+    const anunciante = criarAnuncianteIdentidadeDisplay({ criarCanal: barramento.criarCanal });
+    act(() => {
+      anunciante.anunciar('Mercado Aurora');
+    });
+
+    expect(screen.getByTestId('display-nome-loja')).toHaveTextContent('Mercado Aurora');
+    anunciante.encerrar();
   });
 });

@@ -81,7 +81,7 @@ export type EstadoDisplay =
       readonly voltaEmMs: number;
     };
 
-/** O que trafega no canal. Duas mensagens, discriminadas por `tipo`. */
+/** O que trafega no canal. Três mensagens, discriminadas por `tipo`. */
 export type MensagemDisplay =
   | {
       readonly tipo: 'ESTADO';
@@ -91,6 +91,23 @@ export type MensagemDisplay =
       /** Identifica a aba que publicou. Diagnóstico; não decide nada. */
       readonly origemId: string;
       /** Epoch ms da emissão. Não ordena nada — o canal já entrega em ordem. */
+      readonly emitidoEm: number;
+    }
+  | {
+      /**
+       * Só a marca da loja, **sem estado de tela** (correção do usuário,
+       * 2026-09-15).
+       *
+       * Existe porque o nome só viajava dentro de `ESTADO`, e a aba em repouso
+       * não publica estado — calar ali é o que impede o handshake de apagar o QR
+       * de outra aba (C2). A tela do cliente aberta antes do primeiro PIX ficava
+       * sem o nome da empresa. Sem campo de estado, esta mensagem pode ser
+       * enviada por qualquer aba de checkout, a qualquer momento, sem risco para
+       * a cobrança em curso.
+       */
+      readonly tipo: 'IDENTIDADE';
+      readonly nomeLoja: string;
+      readonly origemId: string;
       readonly emitidoEm: number;
     }
   | { readonly tipo: 'SOLICITAR_ESTADO' };
@@ -125,6 +142,14 @@ const mensagemDisplaySchema = z.discriminatedUnion('tipo', [
     tipo: z.literal('ESTADO'),
     estado: estadoDisplaySchema,
     nomeLoja: z.string().nullable(),
+    origemId: z.string(),
+    emitidoEm: z.number(),
+  }),
+  // Estrito: uma identidade que trouxesse um `estado` junto seria uma segunda
+  // porta para mudar a tela, e é exatamente o que ela existe para não ser.
+  z.strictObject({
+    tipo: z.literal('IDENTIDADE'),
+    nomeLoja: z.string(),
     origemId: z.string(),
     emitidoEm: z.number(),
   }),

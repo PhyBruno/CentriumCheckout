@@ -47,12 +47,12 @@ const REPOUSO: EstadoDisplay = { tela: 'BOAS_VINDAS' };
  * `origemId` da aba. Opaco de propósito: serve a diagnóstico e a ignorar o
  * próprio eco, e nenhuma regra de negócio o lê.
  */
-function gerarOrigemId(): string {
+export function gerarOrigemId(): string {
   const aleatorio = globalThis.crypto.randomUUID();
   return `aba-${aleatorio.slice(0, 8)}`;
 }
 
-function criarCanalNativo(nome: string): CanalBruto {
+export function criarCanalNativo(nome: string): CanalBruto {
   return new BroadcastChannel(nome);
 }
 

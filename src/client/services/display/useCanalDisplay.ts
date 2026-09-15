@@ -3,6 +3,10 @@ import type { EstadoDisplay } from '../../../shared/display';
 import { nomeDaLoja } from '../../domain/sessao/identidadePdv';
 import { useSessionStore } from '../../stores/sessionStore';
 import { criarCanalDisplay, type CanalDisplay, type DepsCanalDisplay } from './canalDisplay';
+import {
+  criarAnuncianteIdentidadeDisplay,
+  type AnuncianteIdentidadeDisplay,
+} from './identidadeDisplay';
 
 /**
  * Ponte React do publicador (feature 015, `contracts/canal-display.md` §6).
@@ -44,4 +48,36 @@ export function useCanalDisplay(deps?: DepsCanalDisplay): (estado: EstadoDisplay
   }, []);
 
   return publicar;
+}
+
+/**
+ * Mantém a identidade da loja anunciada à tela do cliente durante toda a vida
+ * da aba de checkout (correção do usuário, 2026-09-15).
+ *
+ * Chamado **uma vez**, em `App`, e não junto do PIX: o nome precisa estar na
+ * tela do cliente antes de existir qualquer cobrança. Aqui o `sessionStore` é
+ * assinado por selector, ao contrário de `useCanalDisplay`: a mudança do nome —
+ * a sessão terminando de carregar — é justamente o evento que precisa ir ao
+ * canal. O selector devolve texto, então nada re-renderiza à toa.
+ */
+export function useIdentidadeNoDisplay(deps?: DepsCanalDisplay): void {
+  const nomeLoja = useSessionStore((estado) => nomeDaLoja(estado.registro?.SessaoUsuario ?? {}));
+  const anuncianteRef = useRef<AnuncianteIdentidadeDisplay | null>(null);
+  const depsRef = useRef(deps);
+  depsRef.current = deps;
+
+  // Declarado antes do efeito de anúncio: efeitos rodam na ordem, e o canal
+  // precisa existir quando o primeiro nome for anunciado.
+  useEffect(() => {
+    const anunciante = criarAnuncianteIdentidadeDisplay(depsRef.current);
+    anuncianteRef.current = anunciante;
+    return () => {
+      anunciante.encerrar();
+      anuncianteRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    anuncianteRef.current?.anunciar(nomeLoja);
+  }, [nomeLoja]);
 }
