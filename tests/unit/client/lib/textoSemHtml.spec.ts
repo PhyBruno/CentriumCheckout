@@ -33,4 +33,16 @@ describe('textoSemHtml', () => {
   it('colapsa espaços e linhas vazias', () => {
     expect(textoSemHtml('<div>\n  a   b \n\n</div>\n\n<div> c</div>')).toBe('a b\nc');
   });
+
+  it('lê tag aninhada como o navegador, sem reabrir o texto já emitido', () => {
+    // `<scr<script>` é uma tag só (`scr`, com `<script` dentro dos atributos):
+    // o que sobra é texto, e a varredura nunca o reexamina.
+    expect(textoSemHtml('<scr<script>ipt>531 - Rejeicao')).toBe('ipt>531 - Rejeicao');
+    // `<` solto é texto; só o `<b>` seguinte é tag — igual ao textContent do DOM.
+    expect(textoSemHtml('<<b>b>x')).toBe('<b>x');
+  });
+
+  it('descarta até o fim quando o bloco não fecha', () => {
+    expect(textoSemHtml('<p>ok</p><script>alert("x")')).toBe('ok');
+  });
 });

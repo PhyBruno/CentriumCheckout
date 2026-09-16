@@ -3559,3 +3559,29 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `DialogoErroFaturamento.tsx`, `AcoesFinaisVenda.tsx` (`vendaTemAlgoACancelar` exportado), `AppShell.tsx` (F10), `useFinalizarOuSuspenderVenda.ts`, `EntradaRapidaProduto.tsx`, `GridItens.tsx`, `codigoProduto.ts` e os cinco `Modal*` com `EstruturaResultados`; testes em `finalizacaoSuspensao.spec.ts` (ESC nos dois tons, cancelar sem item nos dois caminhos), `codigoProduto.spec.ts` (ordem do multiplicador) e `EntradaRapidaProduto.spec.tsx` (campo numérico), mais o ajuste da frase no E2E.
 
 **Verificação (AD-240):** `tsc --noEmit` e ESLint limpos; 1734 testes unit/integração passando em 111 arquivos; E2E `finalizacao-suspensao`, `carrinho-precificacao`, `importacao-dav`, `recuperacao-nfce` e `identificacao-cliente` verdes (114 + 60 passando nas duas execuções). O caminho `quantidade*código` tem cobertura de unidade no parser e **não** tem E2E: o catálogo do `erp-mock` só tem códigos numéricos, e a forma ambígua (`4*789`) resolve pelo outro lado da regra — um E2E exigiria inventar um SKU alfanumérico no catálogo, que é pedido de produto (ver [[e2e-stack-defasada-e-catalogo-do-mock]]).
+
+### AD-241: o texto do erro do ERP sai das tags numa varredura única, não por `String.replace` (2026-09-16)
+
+**Origem:** o check **CodeQL** do PR #80 reprovou com dois alertas *high* `js/incomplete-multi-character-sanitization` em `src/client/lib/textoSemHtml.ts` — o gate de merge, não uma falha de teste.
+
+**O que a regra acusa.** Remover tags com `valor.replace(/<\/?[a-z][^>]*>/g, '')` reexamina o texto **já produzido**: cada `replace` percorre a string uma vez, e um trecho que só vira tag *depois* de a vizinhança sair passa intacto. O caso canônico é `<<b>b>x`, que o passe único devolve como `<b>x`. Aqui isso nunca foi vulnerabilidade — o resultado é sempre renderizado como texto pelo React, jamais por `dangerouslySetInnerHTML` (AD-238) —, mas a regra é estrutural: ela olha a forma da chamada, não o destino do valor. Suprimir o alerta deixaria o gate cego para um `replace` futuro que de fato importasse.
+
+**A troca.** `removerTags` passou a ser uma varredura da esquerda para a direita: acha o próximo `<`, decide ali mesmo se é bloco descartado (`script`/`style`), tag comum ou `<` literal, emite o pedaço e **avança**. O que já foi emitido nunca volta a ser lido, então não existe "resíduo que vira tag" — a propriedade que o `replace` não conseguia dar. As três constantes de regex viraram duas âncoras (`ABERTURA_DESCARTADA`, `TAG`) e um `Set` de nomes de bloco; a decodificação de entidades e o colapso de espaços seguem iguais, e continuam **depois** das tags saírem.
+
+**Semântica preservada, agora igual à do DOM.** A saída dos cinco casos já cobertos não mudou. Dois pontos que o `replace` deixava implícitos ficaram explícitos e testados: `<scr<script>ipt>` é **uma** tag chamada `scr` (o `<script` cai dentro dos atributos), sobrando o texto `ipt>`; e `<` solto é texto — o mesmo que `textContent` devolveria no navegador. Um `<script>` **sem** fechamento agora engole o resto da string, em vez de devolver o corpo do bloco ao operador.
+
+**Impact:** `src/client/lib/textoSemHtml.ts` (reescrito, assinatura pública inalterada — `faturarNFCeMapper.ts:163` não mudou) e `tests/unit/client/lib/textoSemHtml.spec.ts` (dois casos novos: aninhamento/`<` solto e bloco sem fechamento).
+
+**Verificação (AD-241):** `tsc --noEmit` e ESLint/Prettier limpos; 1737 testes unit/integração passando em 111 arquivos. O veredito do CodeQL só se confirma no push — o check roda sobre o diff do PR.
+
+### AD-242: nos diálogos de desfecho, o que fica livre é o **checkout**, e o botão diz o que vem depois (2026-09-16)
+
+**Origem:** pedido do usuário na mesma rodada do AD-241.
+
+**1. "Caixa" só quando for o caixa do ERP.** A cópia dos desfechos dizia "A venda continua aberta no caixa" e "Ao fechar, o caixa fica livre para a próxima venda". *Caixa* neste produto é outra coisa — é o caixa numerado da sessão (`Caixa 01`, `identidadePdv.ts`) e o resumo/movimentação do menu gerencial. O que fica livre é **o checkout**, a tela. As quatro frases de `DialogoErroFaturamento` passaram a dizer "checkout". Ficaram de fora, de propósito, "impressora do caixa" (`DialogoDocumentoFiscal`) e o menu gerencial ("resumo de caixa", "movimentações de caixa"), onde *caixa* é mesmo o caixa do ERP.
+
+**2. O botão nomeia o resultado, não o mecanismo.** "Fechar e liberar o caixa" virou **"Fechar e iniciar uma nova venda"** nos dois desfechos que limpam a tela (NFCe rejeitada e cenário tributário). "Liberar o caixa" descreve o efeito interno; o operador precisa saber o que acontece com ele em seguida — a tela volta zerada e pronta para vender.
+
+**Impact:** `src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx` (quatro strings) e as duas asserções de cópia em `tests/integration/finalizacaoSuspensao.spec.ts`. As menções a "Fechar e liberar o caixa" em ADs anteriores são registro do que foi visto na época e **não** se reescrevem.
+
+**Verificação (AD-242):** `tsc --noEmit`, ESLint e Prettier limpos; 68 testes de `finalizacaoSuspensao.spec.ts` passando. Nenhum E2E cita as frases (`grep` em `tests/e2e` vazio).

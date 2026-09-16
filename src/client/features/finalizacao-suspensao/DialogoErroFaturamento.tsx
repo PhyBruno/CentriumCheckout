@@ -97,7 +97,7 @@ function copiaDoDesfecho(desfecho: Desfecho, contexto: ContextoDoDesfecho): Copi
           contexto === 'SUSPENDER' ? 'Falha ao suspender a venda' : 'Falha ao emitir a NFCe',
         tituloCabecalho: contexto === 'SUSPENDER' ? 'Venda não suspensa' : 'NFCe não emitida',
         subtituloCabecalho: 'O envio não foi concluído',
-        chamada: 'A venda continua aberta no caixa',
+        chamada: 'A venda continua aberta no checkout',
         explicacao: `Confira o que o ERP respondeu e ${TENTAR_DE_NOVO[contexto]}.`,
         tituloDoMotivo: 'Resposta do ERP',
         rotuloBotao: 'Entendi',
@@ -111,7 +111,7 @@ function copiaDoDesfecho(desfecho: Desfecho, contexto: ContextoDoDesfecho): Copi
           contexto === 'PAGAMENTO' ? 'Pagamento não aceito' : 'Venda não aceita pelo ERP',
         subtituloCabecalho:
           contexto === 'PAGAMENTO' ? 'A forma não foi aplicada' : 'A venda precisa de ajuste',
-        chamada: 'A venda continua aberta no caixa',
+        chamada: 'A venda continua aberta no checkout',
         explicacao: `Ajuste o que o ERP apontou e ${TENTAR_DE_NOVO[contexto]}.`,
         tituloDoMotivo: MOTIVO_DO_ERP,
         rotuloBotao: 'Entendi',
@@ -126,9 +126,9 @@ function copiaDoDesfecho(desfecho: Desfecho, contexto: ContextoDoDesfecho): Copi
         // Anuncia a limpeza **antes** de ela acontecer: o operador precisa saber
         // que vai perder a tela ao fechar, e que isso é o comportamento correto.
         explicacao:
-          'Localize o rascunho abaixo no ERP para corrigir e transmitir de novo. Ao fechar, o caixa fica livre para a próxima venda.',
+          'Localize o rascunho abaixo no ERP para corrigir e transmitir de novo. Ao fechar, o checkout fica livre para a próxima venda.',
         tituloDoMotivo: 'Motivo da rejeição',
-        rotuloBotao: 'Fechar e liberar o caixa',
+        rotuloBotao: 'Fechar e iniciar uma nova venda',
       };
 
     case 'CENARIO_TRIBUTARIO':
@@ -138,9 +138,9 @@ function copiaDoDesfecho(desfecho: Desfecho, contexto: ContextoDoDesfecho): Copi
         subtituloCabecalho: 'Correção no cadastro fiscal do ERP',
         chamada: 'Não há o que corrigir no Checkout',
         explicacao:
-          'O ERP precisa do cenário tributário cadastrado para emitir esta venda. Ao fechar, o caixa fica livre para a próxima venda.',
+          'O ERP precisa do cenário tributário cadastrado para emitir esta venda. Ao fechar, o checkout fica livre para a próxima venda.',
         tituloDoMotivo: MOTIVO_DO_ERP,
-        rotuloBotao: 'Fechar e liberar o caixa',
+        rotuloBotao: 'Fechar e iniciar uma nova venda',
       };
   }
 }

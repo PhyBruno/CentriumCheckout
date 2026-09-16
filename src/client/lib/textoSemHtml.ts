@@ -10,12 +10,39 @@
  *
  * Só conta como tag `<` seguido de letra (ou `</` + letra): um texto puro como
  * `valor < 10` passa intacto.
+ *
+ * As tags saem num **varredura única da esquerda para a direita**, nunca por
+ * `String.replace` global: um `replace` reexamina o texto já produzido, então
+ * `<scr<script>ipt>` viraria `<script>` — resíduo que a varredura não pode
+ * formar, porque o que já foi emitido nunca volta a ser lido.
  */
 
-const BLOCOS_DESCARTADOS = /<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;
-const TAGS_DE_BLOCO =
-  /<\/?(?:div|p|pre|br|li|ul|ol|tr|table|h[1-6]|section|article|header|footer)\b[^>]*>/gi;
-const QUALQUER_TAG = /<\/?[a-z][a-z0-9-]*\b[^>]*>/gi;
+/** Tag de abertura de um bloco cujo conteúdo inteiro é descartado. */
+const ABERTURA_DESCARTADA = /^<(script|style)\b[^>]*>/i;
+/** Qualquer tag: `<` (ou `</`) seguido de letra. */
+const TAG = /^<\/?([a-z][a-z0-9-]*)\b[^>]*>/i;
+/** Tags que viram quebra de linha; as demais somem sem deixar separador. */
+const TAGS_DE_BLOCO: ReadonlySet<string> = new Set([
+  'div',
+  'p',
+  'pre',
+  'br',
+  'li',
+  'ul',
+  'ol',
+  'tr',
+  'table',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'section',
+  'article',
+  'header',
+  'footer',
+]);
 const ENTIDADE = /&(#x[0-9a-f]+|#\d+|[a-z]+);/gi;
 
 /** Espaço não separável (`&nbsp;`), montado por código para não ir cru no fonte. */
@@ -43,12 +70,53 @@ function decodificarEntidade(original: string, corpo: string): string {
   return ENTIDADES_NOMEADAS[corpo.toLowerCase()] ?? original;
 }
 
+/**
+ * Posição logo depois do fechamento de `nome` a partir de `inicio`; o fim do
+ * texto quando o fechamento não existe — um `<script>` sem `</script>` engole o
+ * resto, em vez de devolver o conteúdo do bloco ao operador.
+ */
+function fimDoBlocoDescartado(valor: string, nome: string, inicio: number): number {
+  const fechamento = new RegExp(`</${nome}\\s*>`, 'i').exec(valor.slice(inicio));
+  return fechamento === null ? valor.length : inicio + fechamento.index + fechamento[0].length;
+}
+
+/** Remove as tags numa varredura só: nada do que é emitido volta a ser lido. */
+function removerTags(valor: string): string {
+  const partes: string[] = [];
+  let posicao = 0;
+
+  while (posicao < valor.length) {
+    const abertura = valor.indexOf('<', posicao);
+    if (abertura === -1) {
+      partes.push(valor.slice(posicao));
+      break;
+    }
+    if (abertura > posicao) partes.push(valor.slice(posicao, abertura));
+
+    const restante = valor.slice(abertura);
+    const descartada = ABERTURA_DESCARTADA.exec(restante);
+    if (descartada !== null) {
+      const nome = descartada[1] ?? '';
+      posicao = fimDoBlocoDescartado(valor, nome, abertura + descartada[0].length);
+      continue;
+    }
+
+    const tag = TAG.exec(restante);
+    if (tag !== null) {
+      if (TAGS_DE_BLOCO.has((tag[1] ?? '').toLowerCase())) partes.push('\n');
+      posicao = abertura + tag[0].length;
+      continue;
+    }
+
+    partes.push('<');
+    posicao = abertura + 1;
+  }
+
+  return partes.join('');
+}
+
 export function textoSemHtml(valor: string): string {
-  const semTags = valor
-    .replace(BLOCOS_DESCARTADOS, '')
-    .replace(TAGS_DE_BLOCO, '\n')
-    .replace(QUALQUER_TAG, '');
-  const decodificado = semTags.replace(ENTIDADE, (original, corpo: string) =>
+  const decodificado = removerTags(valor).replace(ENTIDADE, (original, corpo: string) =>
     decodificarEntidade(original, corpo),
   );
 

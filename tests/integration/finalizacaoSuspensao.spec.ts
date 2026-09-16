@@ -1261,7 +1261,7 @@ describe('janela da NFCe rejeitada', () => {
     expect(screen.getByRole('alertdialog')).toHaveAccessibleName('NFCe rejeitada pelo ERP');
     // A instrução é o oposto da recusa sem documento gravado: não há o que
     // corrigir e reenviar daqui.
-    expect(screen.getByText(/o caixa fica livre para a próxima venda/i)).toBeInTheDocument();
+    expect(screen.getByText(/o checkout fica livre para a próxima venda/i)).toBeInTheDocument();
   });
 
   it('fecha pelo botão e libera o caixa para a próxima venda', async () => {
@@ -1362,7 +1362,7 @@ describe('janela da NFCe rejeitada', () => {
     await userEvent.click(screen.getByTestId('disparar-finalizacao'));
 
     await screen.findByTestId('dialogo-erro-faturamento');
-    expect(screen.getByText(/A venda continua aberta no caixa/i)).toBeInTheDocument();
+    expect(screen.getByText(/A venda continua aberta no checkout/i)).toBeInTheDocument();
     expect(screen.queryByTestId('rascunho-no-erp')).not.toBeInTheDocument();
   });
 
