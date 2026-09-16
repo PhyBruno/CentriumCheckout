@@ -137,6 +137,10 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('10,00');
     expect(screen.getByTestId('previa-desconto-item')).toHaveValue('0,50');
     expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    // O campo de código continua acessível com a barra em edição (correção do
+    // usuário, 2026-09-16): era `disabled`, e o operador não voltava a ele nem
+    // por Tab nem com o mouse.
+    expect(screen.getByTestId('campo-codigo-produto')).toBeEnabled();
     // Unidade vem do cadastro, nunca editável (correção do usuário,
     // 2026-09-03) — `disabled`, não só `readOnly`.
     expect(screen.getByTestId('previa-unidade')).toBeDisabled();
@@ -514,6 +518,44 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
     await usuario.clear(campo);
     await usuario.type(campo, 'abc');
     expect(campo).toHaveValue('');
+  });
+
+  /**
+   * Correção do usuário (2026-09-16): com a prévia aberta o operador precisa
+   * conseguir voltar ao campo de código — por Tab ou clique — e trocar o que
+   * digitou. O código novo **vence** a revisão em curso, como a câmera e o
+   * modal de busca já faziam.
+   */
+  it('com a prévia aberta, digitar outro código no campo resolve o novo produto', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify(respostaGetProduto({ ProdutoPesavelEditavel: 'E' })), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    await abrirPreviaEditavel();
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    expect(campo).toBeEnabled();
+
+    await usuario.click(campo);
+    await usuario.clear(campo);
+    await usuario.type(campo, '002000{Enter}');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-descricao-produto')).toHaveTextContent(
+        'PRODUTO EXEMPLO 500G',
+      );
+    });
+    // A edição pendente saiu: o contorno pulsante não fica preso à barra.
+    expect(screen.getByTestId('entrada-rapida-produto')).not.toHaveClass('cc-pulso-edicao');
+    vi.unstubAllGlobals();
   });
 
   it('quantidade vazia não deixa o foco sair do campo', async () => {

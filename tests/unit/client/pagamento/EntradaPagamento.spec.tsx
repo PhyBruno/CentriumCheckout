@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { EntradaPagamento } from '../../../../src/client/features/pagamento/EntradaPagamento';
+import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
-import { formaDe } from '../../../support/pagamento';
+import { formaDe, pagamentoDe } from '../../../support/pagamento';
 import { linhaDe } from '../../../support/precificacao';
 
 /**
@@ -42,6 +43,50 @@ describe('EntradaPagamento — campo trava sem forma escolhida (pedido do usuár
     await usuario.keyboard('10,00');
 
     expect(campo).toHaveValue('');
+  });
+
+  /**
+   * Pedido do usuário (2026-09-16): coberta a venda, o foco vai para
+   * "Finalizar venda", e o Enter dali fecha. Faltando valor, o foco volta ao
+   * campo — o gesto seguinte é informar o próximo pagamento.
+   *
+   * O pedido de foco viaja pelo `focoVendaStore` (mesmo mecanismo do foco pós
+   * identificação de cliente, AD-174); quem o consome é `BotaoFinalizarVenda`,
+   * que não está montado aqui.
+   */
+  describe('foco depois de aplicar o pagamento', () => {
+    const DINHEIRO = formaDe({ meioPagtoNFe: MEIO_PAGTO.Dinheiro });
+
+    it('venda coberta pede o foco no botão de finalizar', async () => {
+      // A venda já está quitada: seja qual for o desfecho da tentativa, o saldo
+      // lido depois dela é zero — é o estado que decide o foco.
+      useVendaStore.setState({ pagamentos: [pagamentoDe({ valorAplicado: 10_000 })] });
+      const antes = useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao;
+      const usuario = userEvent.setup();
+      render(createElement(EntradaPagamento, { forma: DINHEIRO }));
+
+      await usuario.click(screen.getByTestId('campo-valor-recebido'));
+      await usuario.keyboard('10,00{Enter}');
+
+      await waitFor(() => {
+        expect(useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao).toBe(antes + 1);
+      });
+    });
+
+    it('com valor ainda faltando, o foco volta para o campo', async () => {
+      const antes = useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao;
+      const usuario = userEvent.setup();
+      render(createElement(EntradaPagamento, { forma: DINHEIRO }));
+
+      const campo = screen.getByTestId('campo-valor-recebido');
+      await usuario.click(campo);
+      await usuario.keyboard('10,00{Enter}');
+
+      await waitFor(() => {
+        expect(campo).toHaveFocus();
+      });
+      expect(useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao).toBe(antes);
+    });
   });
 
   it('com forma escolhida, o campo aceita a digitação normalmente', async () => {

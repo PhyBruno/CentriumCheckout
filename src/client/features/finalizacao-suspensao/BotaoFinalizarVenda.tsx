@@ -1,7 +1,8 @@
 import { CheckCircle } from 'reicon-react';
-import type { ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 
 /**
  * Botão "Finalizar venda" (T018, AD-089).
@@ -58,10 +59,30 @@ export function BotaoFinalizarVenda({
   const motivo: MotivoBloqueio = enviando
     ? 'Aguarde: esta venda ainda está sendo enviada ao ERP.'
     : motivoBloqueio;
+
+  /**
+   * Foco pedido pelo painel de pagamento quando a venda passa a estar coberta
+   * (pedido do usuário, 2026-09-16): dali o Enter finaliza.
+   *
+   * O efeito mora aqui, e não no call site, porque as duas superfícies — o
+   * rodapé do desktop e a etapa 3 do wizard mobile — renderizam **este**
+   * componente, e o botão é quem tem o `ref`. Foca mesmo bloqueado: o motivo
+   * está no `title` e o Enter o repete em voz alta (`acaoBloqueavel`), o que é
+   * melhor que deixar o operador com o foco num campo que já não recebe nada.
+   */
+  const botao = useRef<HTMLButtonElement>(null);
+  const pedidosDeFoco = useFocoVendaStore((estado) => estado.pedidosDeFocoNaFinalizacao);
+  useEffect(() => {
+    if (pedidosDeFoco === 0) {
+      return;
+    }
+    botao.current?.focus();
+  }, [pedidosDeFoco]);
   const desabilitado = motivo !== null;
 
   return (
     <button
+      ref={botao}
       type="button"
       data-testid="botao-finalizar-venda"
       {...atributosDeBloqueio(motivo)}

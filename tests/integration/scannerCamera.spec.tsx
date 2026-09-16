@@ -626,12 +626,15 @@ describe('ScannerCamera — leitura com prévia ou edição pendente (revisão d
 
     renderizarComProvedores(<EtapaClienteProdutos />);
 
-    // Produto `'E'`: não entra no carrinho, abre a revisão na barra e desabilita
-    // o campo de código — o estado em que a câmera não tinha como entrar.
+    // Produto `'E'`: não entra no carrinho, abre a revisão na barra — o estado
+    // em que a câmera não tinha como entrar. O campo de código **continua
+    // acessível** desde 2026-09-16 (AD-240); quem impedia a câmera era a guarda
+    // de `confirmarEntradaRapida`, não o `disabled`.
     await usuario.type(screen.getByTestId('campo-codigo-produto'), '7890000000009{Enter}');
     await waitFor(() => {
-      expect(screen.getByTestId('campo-codigo-produto')).toBeDisabled();
+      expect(screen.getByTestId('previa-quantidade')).toBeVisible();
     });
+    expect(screen.getByTestId('campo-codigo-produto')).toBeEnabled();
     expect(useVendaStore.getState().linhas).toHaveLength(0);
 
     await usuario.click(screen.getByTestId('abrir-scanner-camera'));
@@ -642,7 +645,7 @@ describe('ScannerCamera — leitura com prévia ou edição pendente (revisão d
     await waitFor(() => {
       expect(useVendaStore.getState().linhas).toHaveLength(1);
     });
-    expect(screen.getByTestId('campo-codigo-produto')).not.toBeDisabled();
+    expect(screen.getByTestId('campo-codigo-produto')).toBeEnabled();
   });
 
   it('a leitura descarta o item carregado pelo lápis e não o deixa em edição', async () => {
@@ -654,7 +657,9 @@ describe('ScannerCamera — leitura com prévia ou edição pendente (revisão d
     instalarBarcodeDetector(CODIGO_LIDO);
 
     renderizarComProvedores(<EtapaClienteProdutos />);
-    expect(screen.getByTestId('campo-codigo-produto')).toBeDisabled();
+    // O campo segue acessível com o lápis ativo (AD-240) — a barra em edição é
+    // sinalizada pelo contorno pulsante, não por travar o código.
+    expect(screen.getByTestId('campo-codigo-produto')).toBeEnabled();
 
     await usuario.click(screen.getByTestId('abrir-scanner-camera'));
 

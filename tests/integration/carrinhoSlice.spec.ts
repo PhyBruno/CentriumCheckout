@@ -733,9 +733,12 @@ describe('inserção pela rede — saldo de estoque (AD-236)', () => {
   }
 
   function renderInsercao() {
-    return renderHook(() => ({ insercao: useInsercaoDeProduto(), edicao: useEdicaoDeItemExistente() }), {
-      wrapper: envolverComQueryClient(),
-    });
+    return renderHook(
+      () => ({ insercao: useInsercaoDeProduto(), edicao: useEdicaoDeItemExistente() }),
+      {
+        wrapper: envolverComQueryClient(),
+      },
+    );
   }
 
   beforeEach(() => {

@@ -69,6 +69,24 @@ export interface FocoVendaState {
    * operador. Com o foco na lupa, quem decide abrir continua sendo ele.
    */
   focarVendedor(): void;
+  /**
+   * Contador de pedidos de foco no botão "Finalizar venda" — mesma razão de ser
+   * um número que os três acima: duas coberturas seguidas (o operador remove um
+   * pagamento e lança outro) precisam levar o foco lá as duas vezes.
+   */
+  readonly pedidosDeFocoNaFinalizacao: number;
+  /**
+   * Leva o foco ao botão "Finalizar venda" (pedido do usuário, 2026-09-16).
+   *
+   * Chamado quando o pagamento aplicado passa a cobrir o total: o gesto
+   * seguinte do caixa é fechar a venda, e o Enter no botão focado a finaliza.
+   * Antes o foco voltava sempre ao campo de valor, que já não tem o que
+   * receber.
+   *
+   * **Foca, não finaliza.** Emitir a NFCe por conta própria tiraria do operador
+   * a última conferência — e o Enter que fecha a venda tem de ser dele.
+   */
+  focarFinalizarVenda(): void;
 }
 
 export const useFocoVendaStore = create<FocoVendaState>((set) => ({
@@ -83,5 +101,9 @@ export const useFocoVendaStore = create<FocoVendaState>((set) => ({
   pedidosDeFocoNoVendedor: 0,
   focarVendedor: () => {
     set((estado) => ({ pedidosDeFocoNoVendedor: estado.pedidosDeFocoNoVendedor + 1 }));
+  },
+  pedidosDeFocoNaFinalizacao: 0,
+  focarFinalizarVenda: () => {
+    set((estado) => ({ pedidosDeFocoNaFinalizacao: estado.pedidosDeFocoNaFinalizacao + 1 }));
   },
 }));

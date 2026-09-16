@@ -629,23 +629,22 @@ export function EntradaRapidaProduto({
     }
 
     /**
-     * Digitação e leitor físico param aqui quando há prévia resolvida ou item
-     * carregado pelo lápis — os dois estados desabilitam o campo de código
-     * (`disabled` mais abaixo) e `confirmar()` os roteia para outro desfecho,
-     * então chegar aqui com um deles ativo significaria inserir um produto por
-     * cima de uma revisão que o operador ainda não fechou.
+     * A revisão em curso — prévia resolvida ou item carregado pelo lápis —
+     * **perde** para o código que acabou de ser digitado ou bipado (correção do
+     * usuário, 2026-09-16). Era o contrário até então: a digitação parava aqui,
+     * porque o campo de código ficava desabilitado e ninguém voltava a ele; com
+     * o campo sempre acessível, insistir na guarda faria o Enter não responder.
      *
-     * `linhaEmEdicao` entrou nesta guarda junto com a captura por câmera
-     * (revisão da 007, 2026-09-09): antes só `resolvido` era conferido, e o
-     * campo desabilitado era a **única** coisa impedindo o caso do lápis.
-     * Quem chega por fora do campo — a câmera — não passava por ele.
+     * É a mesma política de `capturarPorCamera` e `selecionarDaBusca`: apontar
+     * a câmera para outra etiqueta, escolher outro produto no modal e digitar
+     * outro código são gestos igualmente deliberados.
      *
-     * A captura por câmera é a exceção declarada, e por isso não cai aqui:
-     * quem a trata é `capturarPorCamera`.
+     * Só a revisão é descartada — o texto digitado fica, porque é justamente o
+     * que vai ser resolvido agora.
      */
-    if (codigoExterno === undefined && (resolvido !== null || linhaEmEdicao !== null)) {
-      return;
-    }
+    setResolvido(null);
+    setSaldoConhecido(null);
+    limparEdicao();
 
     setOcupado(true);
     try {
@@ -814,7 +813,10 @@ export function EntradaRapidaProduto({
 
   async function revisarEntrada(): Promise<void> {
     const entrada = texto.trim();
-    if (entrada === '' || ocupado || resolvido !== null) {
+    // `resolvido !== null` saiu da guarda (correção do usuário, 2026-09-16): com
+    // o campo de código sempre acessível, o TAB dali resolve o texto novo, como
+    // o Enter. Quem aplica a revisão já descarta a anterior (`aplicarRevisao`).
+    if (entrada === '' || ocupado) {
       return;
     }
     await resolverEExibir(entrada);
@@ -876,6 +878,21 @@ export function EntradaRapidaProduto({
     if (ocupado && !semResolucao) {
       return;
     }
+
+    // **Com o foco no campo de código, quem manda é o código** (correção do
+    // usuário, 2026-09-16): o operador voltou ao campo para trocar o que
+    // digitou, e o Enter dali resolve o texto novo em vez de confirmar a
+    // revisão que está na tela. Confirmar a revisão continua sendo o Enter de
+    // qualquer outro campo da barra, o `+` e o clique no botão.
+    if (
+      texto.trim() !== '' &&
+      campoCodigo.current !== null &&
+      document.activeElement === campoCodigo.current
+    ) {
+      void confirmarEntradaRapida();
+      return;
+    }
+
     if (!semResolucao && !previaValida()) {
       return;
     }
@@ -1175,7 +1192,14 @@ export function EntradaRapidaProduto({
             autoFocus
             placeholder="Bipe ou digite (use * p/ quantidade)"
             value={texto}
-            disabled={resolvido !== null || linhaEmEdicao !== null}
+            /* **Nunca desabilitado** (correção do usuário, 2026-09-16). Ele
+               ficava `disabled` enquanto havia prévia resolvida ou item
+               carregado pelo lápis, e o operador não voltava a ele nem por Tab
+               nem com o mouse: para trocar o código digitado errado, só
+               cancelando a prévia no Escape — que no compacto nem existe.
+               Digitar aqui agora **vence** a revisão em curso, a mesma política
+               que a câmera (`capturarPorCamera`) e o modal de busca já
+               seguiam. */
             onChange={(evento) => {
               setTexto(evento.target.value);
             }}

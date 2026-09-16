@@ -5,6 +5,7 @@ import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import { ZERO_CENTAVOS, centavos, type Centavos } from '../../domain/precificacao/dinheiro';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
 
 const CENTAVOS_POR_REAL = 100;
@@ -77,6 +78,7 @@ export interface EntradaPagamentoProps {
  */
 export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement {
   const aplicarPagamento = useVendaStore((estado) => estado.aplicarPagamento);
+  const focarFinalizarVenda = useFocoVendaStore((estado) => estado.focarFinalizarVenda);
   /**
    * Venda sem valor a cobrar (pedido do usuário, 2026-09-04). A mesma guarda
    * existe no slice (`AVISO_VENDA_SEM_VALOR`) e é ela que decide de verdade;
@@ -152,9 +154,20 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
     // O campo é esvaziado mesmo quando o slice recusa a inserção (dinheiro
     // duplicado, saldo coberto, veredito da 014): a recusa já chegou ao
     // operador por toast, e manter o valor antigo faria o próximo Enter
-    // repetir a mesma tentativa. O foco volta para cá porque o gesto seguinte
-    // do caixa é informar o próximo valor.
+    // repetir a mesma tentativa.
     setValorTexto('');
+
+    // Coberta a venda, o foco vai para "Finalizar venda" (pedido do usuário,
+    // 2026-09-16): o gesto seguinte do caixa é fechar, e o Enter no botão
+    // focado finaliza. Faltando valor, o foco volta para cá — o gesto seguinte
+    // é informar o próximo pagamento.
+    //
+    // Lido do estado **depois** do `await`, e não de um seletor do render: o
+    // saldo que interessa é o de agora, já com esta forma aplicada.
+    if (useVendaStore.getState().saldo().saldoRestante === ZERO_CENTAVOS) {
+      focarFinalizarVenda();
+      return;
+    }
     campo.current?.focus();
   }
 
