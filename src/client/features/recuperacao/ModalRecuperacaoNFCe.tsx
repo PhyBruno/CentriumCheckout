@@ -647,6 +647,10 @@ function TabelaDeRascunhos({
 function EstruturaResultados(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
     <ul aria-hidden={props['aria-hidden']}>
+      {/* Cabeçalho da tabela no esqueleto (correção do usuário, 2026-09-16):
+          sem ele o bloco de carregamento ficava 38px mais curto que o
+          carregado e as linhas saltavam ao chegar o resultado. */}
+      <li className="h-[38px] border-y border-border bg-muted" aria-hidden="true" />
       {Array.from({ length: ITENS_POR_PAGINA }, (_, indice) => (
         <li
           key={indice}

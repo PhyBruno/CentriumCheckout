@@ -127,6 +127,32 @@ function paraTextoDecimal(valorEmCentavos: number): string {
   return (valorEmCentavos / CENTAVOS_POR_REAL).toFixed(2).replace('.', ',');
 }
 
+/**
+ * O que o campo de quantidade aceita digitar (correção do usuário, 2026-09-16):
+ * dígitos e **um** separador decimal, `,` ou `.`. O que não for isso é
+ * descartado no `onChange` — a tecla simplesmente não aparece.
+ *
+ * Filtrar em vez de recusar o campo inteiro: o operador digita rápido, com a
+ * mão no teclado numérico do PDV, e apagar o que ele já digitou por causa de
+ * uma tecla vizinha custaria mais que ignorá-la. O separador é preservado como
+ * o operador o digitou — `lerQuantidadeTexto` trata os dois.
+ */
+function somenteQuantidade(texto: string): string {
+  let separadorUsado = false;
+  let saida = '';
+  for (const caractere of texto) {
+    if (caractere >= '0' && caractere <= '9') {
+      saida += caractere;
+      continue;
+    }
+    if ((caractere === ',' || caractere === '.') && !separadorUsado) {
+      separadorUsado = true;
+      saida += caractere;
+    }
+  }
+  return saida;
+}
+
 /** `"3"`, `"3,5"` ou `"3.5"` → `Milesimos`; inválida ou não positiva vira `null`. */
 function lerQuantidadeTexto(texto: string): Milesimos | null {
   const normalizado = texto.trim().replace(',', '.');
@@ -1216,8 +1242,13 @@ export function EntradaRapidaProduto({
               data-testid="previa-quantidade"
               value={quantidadeTexto}
               onChange={(evento) => {
-                avisarSeCruzouSaldo(lerQuantidadeTexto(evento.target.value));
-                setQuantidadeTexto(evento.target.value);
+                // Letra digitada no campo **não entra** (correção do usuário,
+                // 2026-09-16): quantidade é número, e deixar o texto livre
+                // dependia do operador reparar no aviso do `onBlur` para
+                // descobrir que a barra não ia inserir nada.
+                const digitado = somenteQuantidade(evento.target.value);
+                avisarSeCruzouSaldo(lerQuantidadeTexto(digitado));
+                setQuantidadeTexto(digitado);
               }}
               // Quantidade vazia ou zerada não sai do campo (pedido do
               // usuário, 2026-09-04). Só vale com um produto em revisão: com a

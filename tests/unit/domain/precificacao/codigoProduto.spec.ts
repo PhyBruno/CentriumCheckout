@@ -37,6 +37,50 @@ describe('interpretarEntradaCodigo', () => {
     });
   });
 
+  /**
+   * AD-240 — o operador também digita a quantidade **antes** do código
+   * (`4*teste789`), que é a ordem do PDV antigo. A regra, decidida pelo usuário
+   * em 2026-09-16: a **direita** continua sendo a quantidade sempre que for
+   * número; a esquerda só é lida como quantidade quando a direita não for.
+   * Assim `001234*3` não muda de significado.
+   */
+  describe('quantidade antes do código (AD-240)', () => {
+    it('lê "quantidade*codigo" quando a direita não é número', () => {
+      expect(interpretarEntradaCodigo('4*teste789')).toEqual({
+        tipo: 'COM_QTD',
+        codigo: 'teste789',
+        quantidade: 4000,
+      });
+    });
+
+    it('aceita fracionária à esquerda, com vírgula ou ponto', () => {
+      expect(interpretarEntradaCodigo('2,5*ABC')).toEqual({
+        tipo: 'COM_QTD',
+        codigo: 'ABC',
+        quantidade: 2500,
+      });
+      expect(interpretarEntradaCodigo('0.75*ABC')).toEqual({
+        tipo: 'COM_QTD',
+        codigo: 'ABC',
+        quantidade: 750,
+      });
+    });
+
+    it('com os dois lados numéricos, a direita continua sendo a quantidade', () => {
+      expect(interpretarEntradaCodigo('12*34')).toEqual({
+        tipo: 'COM_QTD',
+        codigo: '12',
+        quantidade: 34000,
+      });
+    });
+
+    it('esquerda inválida como quantidade cai em SIMPLES, sem lançar', () => {
+      // Nenhum dos lados é quantidade: o texto inteiro vira código e o ERP
+      // responde 404, que a UI já trata (`research.md`, D6).
+      expect(interpretarEntradaCodigo('abc*def')).toEqual({ tipo: 'SIMPLES', codigo: 'abc*def' });
+    });
+  });
+
   it('classifica código simples, com quantidade padrão 1 no call site', () => {
     expect(interpretarEntradaCodigo('001234')).toEqual({ tipo: 'SIMPLES', codigo: '001234' });
   });
@@ -69,8 +113,23 @@ describe('interpretarEntradaCodigo', () => {
   });
 
   it('quantidade malformada depois do "*" não vira erro de operação', () => {
-    expect(interpretarEntradaCodigo('001234*abc').tipo).toBe('SIMPLES');
+    // `0` **parece número**: é o operador digitando quantidade zero, entrada
+    // malformada — não o código `0` com 1234 unidades (AD-240).
     expect(interpretarEntradaCodigo('001234*0').tipo).toBe('SIMPLES');
+    expect(interpretarEntradaCodigo('001234*').tipo).toBe('SIMPLES');
+  });
+
+  /**
+   * **Mudou com AD-240:** `001234*abc` tem a mesma forma de `4*teste789` — a
+   * direita não é número, então a esquerda é a quantidade. Antes o par inteiro
+   * virava código e o ERP respondia 404.
+   */
+  it('com a direita não numérica, a esquerda vira quantidade mesmo parecendo código', () => {
+    expect(interpretarEntradaCodigo('001234*abc')).toEqual({
+      tipo: 'COM_QTD',
+      codigo: 'abc',
+      quantidade: 1234000,
+    });
   });
 
   it('ignora espaços em volta da entrada bipada', () => {

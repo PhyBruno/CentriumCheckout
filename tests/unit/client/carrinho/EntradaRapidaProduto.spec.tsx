@@ -493,6 +493,29 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
     });
   }
 
+  /**
+   * AD-240: o campo de quantidade é numérico — letra digitada não entra. Antes
+   * o texto era livre e só o `onBlur` avisava, depois de o operador já ter
+   * digitado o resto.
+   */
+  it('o campo de quantidade recusa letras e aceita um separador decimal só', async () => {
+    const usuario = userEvent.setup();
+    await abrirPreviaEditavel();
+    const campo = screen.getByTestId('previa-quantidade');
+
+    await usuario.clear(campo);
+    await usuario.type(campo, '1a2b');
+    expect(campo).toHaveValue('12');
+
+    await usuario.clear(campo);
+    await usuario.type(campo, '1,5,7');
+    expect(campo).toHaveValue('1,57');
+
+    await usuario.clear(campo);
+    await usuario.type(campo, 'abc');
+    expect(campo).toHaveValue('');
+  });
+
   it('quantidade vazia não deixa o foco sair do campo', async () => {
     const usuario = userEvent.setup();
     await abrirPreviaEditavel();

@@ -561,6 +561,12 @@ function TabelaDeDavs({
 function EstruturaResultados(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
     <ul aria-hidden={props['aria-hidden']}>
+      {/* A faixa do cabeçalho da tabela entra no esqueleto (correção do
+          usuário, 2026-09-16): sem ela o bloco de carregamento era 38px mais
+          curto que o carregado, e as dez linhas apareciam deslocadas para cima
+          no instante em que o resultado chegava. Mesma altura e mesmas bordas
+          de `TabelaDeDavs`. */}
+      <li className="h-[38px] border-y border-border bg-muted" aria-hidden="true" />
       {Array.from({ length: ITENS_POR_PAGINA }, (_, indice) => (
         <li
           key={indice}
