@@ -26,6 +26,11 @@ import {
   somar,
   type Centavos,
 } from '../../domain/precificacao/dinheiro';
+import {
+  AVALIACAO_LIVRE,
+  type AvaliacaoSaldo,
+  type SaldoMilesimos,
+} from '../../domain/estoque/saldoProduto';
 import { TOTAL_MINIMO_DA_LINHA } from '../../domain/precificacao/linha';
 import {
   MILESIMOS_POR_UNIDADE,
@@ -38,15 +43,19 @@ import {
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useJanelasStore } from '../../stores/janelasStore';
+import { useVendaStore } from '../../stores/vendaStore';
 // Mesma leitura que `AcoesFinaisVenda` (004) faz para travar o "Finalizar":
 // o vendedor da venda tem um hook só, e duplicar o seletor aqui abriria duas
 // respostas possíveis para "esta venda tem vendedor?".
 import { useVendedorAtual } from '../vendedor/useVendedor';
 import { ModalBuscaProduto } from './ModalBuscaProduto';
 import {
+  avaliarContraCarrinho,
   useContextoPrecificacao,
   useEdicaoDeItemExistente,
   useInsercaoDeProduto,
+  usePoliticaSaldo,
+  type ResultadoConfirmacao,
   type RevisaoProduto,
 } from './useCarrinho';
 
@@ -298,6 +307,13 @@ export function EntradaRapidaProduto({
   );
   const [precoTexto, setPrecoTexto] = useState('');
   const [descontoTexto, setDescontoTexto] = useState('0,00');
+  /**
+   * Último saldo de estoque conhecido do produto na barra (AD-236): vem da
+   * resolução (TAB, Enter, modal, câmera) e é atualizado por cada confirmação
+   * recusada. No lápis começa desconhecido — a primeira confirmação é que
+   * consulta — e a partir daí o `+`/`−` passa a reavaliar com ele.
+   */
+  const [saldoConhecido, setSaldoConhecido] = useState<SaldoMilesimos | null>(null);
 
   const campoCodigo = useRef<HTMLInputElement>(null);
   const campoQuantidade = useRef<HTMLInputElement>(null);
@@ -370,6 +386,39 @@ export function EntradaRapidaProduto({
   const precoInvalido = editavel && (precoLido === null || precoLido <= ZERO_CENTAVOS);
   const descontoInvalido = editavel && descontoManualLido === null;
 
+  /**
+   * Saldo de estoque da quantidade na barra, reavaliado **a cada render**
+   * (AD-236): o `+`/`−` e a digitação mudam o veredito na hora, com o saldo já
+   * buscado. A confirmação reconsulta o ERP antes de mutar a venda.
+   */
+  const politicaSaldo = usePoliticaSaldo();
+  const linhasDaVenda = useVendaStore((estado) => estado.linhas);
+  function avaliarQuantidade(quantidade: Milesimos | null): AvaliacaoSaldo {
+    if (snapshotAtivo === null || quantidade === null) {
+      return AVALIACAO_LIVRE;
+    }
+    return avaliarContraCarrinho(politicaSaldo, linhasDaVenda, {
+      snapshot: snapshotAtivo,
+      saldo: saldoConhecido,
+      quantidade,
+      ...(linhaEmEdicao === null ? {} : { linhaEditada: linhaEmEdicao }),
+    });
+  }
+  const avaliacaoSaldo = avaliarQuantidade(quantidadeLida);
+  const motivoSaldo = avaliacaoSaldo.veredito === 'bloqueio' ? avaliacaoSaldo.frase : null;
+
+  /**
+   * `'A'` avisa **uma vez por mudança que cruza o limite** — de livre para
+   * acima do saldo —, não a cada tecla nem a cada `+` já acima dele. Em `'B'`
+   * quem responde é o botão, que alterna o bloqueio sozinho.
+   */
+  function avisarSeCruzouSaldo(novaQuantidade: Milesimos | null): void {
+    const depois = avaliarQuantidade(novaQuantidade);
+    if (avaliacaoSaldo.veredito === 'livre' && depois.veredito === 'aviso') {
+      notificar.aviso(depois.frase);
+    }
+  }
+
   // Foco automático ao resolver (TAB) ou ao recarregar uma linha existente
   // (lápis): produto editável pousa na quantidade — primeiro campo da
   // sequência de revisão, nunca no botão de inserir; não editável não tem
@@ -379,7 +428,10 @@ export function EntradaRapidaProduto({
     if (resolvido === null) {
       return;
     }
-    if (resolvido.editavel) {
+    // Prévia bloqueada por saldo também pousa na quantidade: reduzi-la é a
+    // saída que o operador tem (AD-236), e o botão bloqueado nem está na
+    // ordem de TAB.
+    if (resolvido.editavel || resolvido.vereditoSaldo === 'bloqueio') {
       campoQuantidade.current?.focus();
       campoQuantidade.current?.select();
     } else {
@@ -394,6 +446,7 @@ export function EntradaRapidaProduto({
     // Nova revisão de inserção "vence" uma edição pendente por baixo, se
     // houver (guarda espelhada em `aplicarRevisao`).
     setResolvido(null);
+    setSaldoConhecido(null);
     setTexto(linhaEmEdicao.snapshot.codigoProduto);
     setQuantidadeTexto(formatarQuantidade(linhaEmEdicao.quantidade, 3));
     setPrecoTexto(paraTextoDecimal(linhaEmEdicao.precoUnitario));
@@ -493,13 +546,35 @@ export function EntradaRapidaProduto({
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
     setPrecoTexto('');
     setDescontoTexto('0,00');
+    setSaldoConhecido(null);
     limparEdicao();
   }
 
   function alterarQuantidade(delta: number): void {
     const atual = quantidadeLida ?? QUANTIDADE_INICIAL;
     const proxima = delta > 0 ? somarQuantidades(atual, UMA_UNIDADE) : atual - UMA_UNIDADE;
-    setQuantidadeTexto(formatarQuantidade(milesimos(Math.max(UMA_UNIDADE, proxima)), 3));
+    const nova = milesimos(Math.max(UMA_UNIDADE, proxima));
+    avisarSeCruzouSaldo(nova);
+    setQuantidadeTexto(formatarQuantidade(nova, 3));
+  }
+
+  /**
+   * Roda uma confirmação que consulta o saldo (AD-236): recusada, a barra
+   * fica como está — com o saldo novo, para o botão refletir o bloqueio —;
+   * aceita, volta ao estado vazio.
+   */
+  async function aplicarConfirmacao(acao: () => Promise<ResultadoConfirmacao>): Promise<void> {
+    setOcupado(true);
+    try {
+      const resultado = await acao();
+      if (resultado.situacao === 'bloqueado') {
+        setSaldoConhecido(resultado.saldo);
+        return;
+      }
+      resetar();
+    } finally {
+      setOcupado(false);
+    }
   }
 
   /**
@@ -546,20 +621,28 @@ export function EntradaRapidaProduto({
         // mesmo caminho de quando o TAB resolve um produto `'E'` (`FR-014`).
         // Uma edição de linha existente pendente perde para esta revisão
         // nova (mesma guarda de `aplicarRevisao`).
-        limparEdicao();
-        setResolvido({
+        aplicarRevisao({
           situacao: 'revisao',
           snapshot: resultado.snapshot,
           quantidade: resultado.quantidade,
           origem: 'MANUAL',
           editavel: true,
+          saldo: resultado.saldo,
+          // Já comunicado por `inserirPorCodigo`; aqui só decide o foco.
+          vereditoSaldo: 'livre',
         });
-        setQuantidadeTexto(formatarQuantidade(resultado.quantidade, 3));
-        setPrecoTexto(paraTextoDecimal(resultado.snapshot.precoBase));
-        setDescontoTexto('0,00');
         // O código digitado permanece visível no campo (só desabilitado)
         // enquanto o operador revisa — é o que o Pencil mostra (`data-icon-name`
         // "Código digitado" convive com o resto da linha já resolvida).
+        return;
+      }
+
+      if (resultado.situacao === 'bloqueado') {
+        // Saldo em `'B'` (AD-236): a inserção automática — Enter, leitor,
+        // câmera — não aconteceu, e o produto fica na barra como prévia
+        // bloqueada, com o código visível, para o operador reduzir a
+        // quantidade ou cancelar com Escape.
+        aplicarRevisao(resultado.revisao);
         return;
       }
 
@@ -625,6 +708,7 @@ export function EntradaRapidaProduto({
   function aplicarRevisao(revisao: RevisaoProduto): void {
     limparEdicao();
     setResolvido(revisao);
+    setSaldoConhecido(revisao.saldo);
     setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
     setPrecoTexto(paraTextoDecimal(revisao.snapshot.precoBase));
     setDescontoTexto('0,00');
@@ -672,10 +756,18 @@ export function EntradaRapidaProduto({
       }
       const veioDoModal = opcoes?.origem === 'BUSCA';
       const tipo = resultado.snapshot.pesavelEditavel;
-      if (tipo === '' || (!veioDoModal && tipo !== 'E')) {
-        confirmarPrevia(resultado, resultado.quantidade);
-        resetar();
-        return;
+      // Saldo bloqueando em `'B'` (AD-236) desvia a inserção direta para a
+      // prévia bloqueada, como no Enter.
+      const entraDireto = tipo === '' || (!veioDoModal && tipo !== 'E');
+      if (entraDireto && resultado.vereditoSaldo !== 'bloqueio') {
+        // O saldo acabou de ser consultado e o veredito já foi comunicado.
+        const confirmacao = await confirmarPrevia(resultado, resultado.quantidade, {
+          saldoRecemConsultado: true,
+        });
+        if (confirmacao.situacao === 'confirmado') {
+          resetar();
+          return;
+        }
       }
       // Mesma razão do caminho rápido: o código digitado fica visível durante
       // a revisão, só `resetar()` (confirmar/cancelar) o limpa.
@@ -744,6 +836,11 @@ export function EntradaRapidaProduto({
   }
 
   function confirmar(): void {
+    // Uma confirmação já está consultando o saldo no ERP (AD-236): o segundo
+    // Enter/clique não pode inserir por cima dela.
+    if (ocupado && !semResolucao) {
+      return;
+    }
     if (!semResolucao && !previaValida()) {
       return;
     }
@@ -758,12 +855,21 @@ export function EntradaRapidaProduto({
       if (quantidadeLida === null || precoLido === null || descontoManualLido === null) {
         return;
       }
-      confirmarEdicaoDeLinha(linhaEmEdicao, {
+      // Saldo (AD-236): a linha só muda se a reconsulta deixar; recusada, o
+      // item continua carregado aqui, com o botão já bloqueado pelo saldo novo.
+      const linha = linhaEmEdicao;
+      const ajustes = {
         quantidade: quantidadeLida,
         precoUnitario: precoLido,
         descontoManual: descontoManualLido,
-      });
-      resetar();
+      };
+      void aplicarConfirmacao(() => confirmarEdicaoDeLinha(linha, ajustes, saldoConhecido));
+      return;
+    }
+
+    if (motivoSaldo !== null) {
+      // Enter não passa por `acaoBloqueavel`; o motivo precisa ser dito aqui.
+      notificar.erro(motivoSaldo);
       return;
     }
 
@@ -782,22 +888,34 @@ export function EntradaRapidaProduto({
     if (quantidadeLida === null) {
       return;
     }
-    if (resolvido.editavel) {
+    // As duas confirmações reconsultam o saldo antes de inserir (AD-236).
+    const revisao = resolvido;
+    const quantidade = quantidadeLida;
+    if (revisao.editavel) {
       if (precoLido === null || descontoManualLido === null) {
         return;
       }
-      confirmarEdicao(
-        { situacao: 'edicao', snapshot: resolvido.snapshot, quantidade: quantidadeLida },
-        {
-          quantidade: quantidadeLida,
-          precoUnitario: precoLido,
-          descontoManual: descontoManualLido,
-        },
+      const ajustes = {
+        quantidade,
+        precoUnitario: precoLido,
+        descontoManual: descontoManualLido,
+      };
+      void aplicarConfirmacao(() =>
+        confirmarEdicao(
+          {
+            situacao: 'edicao',
+            snapshot: revisao.snapshot,
+            quantidade,
+            saldo: saldoConhecido,
+          },
+          ajustes,
+        ),
       );
     } else {
-      confirmarPrevia(resolvido, quantidadeLida);
+      void aplicarConfirmacao(() =>
+        confirmarPrevia({ ...revisao, saldo: saldoConhecido }, quantidade),
+      );
     }
-    resetar();
   }
 
   // Enter só é tratado aqui pra TAB — a inserção/confirmação por Enter é
@@ -866,7 +984,8 @@ export function EntradaRapidaProduto({
       !descontoInvalido &&
       precoLido !== null &&
       descontoTotalLido !== null &&
-      !descontoZeraItem;
+      !descontoZeraItem &&
+      motivoSaldo === null;
 
   /**
    * Por que o botão de inserir está bloqueado — a frase que o operador lê ao
@@ -916,7 +1035,11 @@ export function EntradaRapidaProduto({
                 ? AVISO_DESCONTO_INVALIDO
                 : descontoZeraItem
                   ? AVISO_DESCONTO_ZERA_ITEM
-                  : 'Revise quantidade, preço e desconto: há um valor inválido.';
+                  : // Por último, pelo mesmo motivo do desconto que zera o
+                    // item: a quantidade é válida, quem a recusa é o saldo
+                    // (AD-236). A saída é reduzi-la.
+                    (motivoSaldo ??
+                    'Revise quantidade, preço e desconto: há um valor inválido.');
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -1084,6 +1207,7 @@ export function EntradaRapidaProduto({
               data-testid="previa-quantidade"
               value={quantidadeTexto}
               onChange={(evento) => {
+                avisarSeCruzouSaldo(lerQuantidadeTexto(evento.target.value));
                 setQuantidadeTexto(evento.target.value);
               }}
               // Quantidade vazia ou zerada não sai do campo (pedido do
@@ -1275,6 +1399,23 @@ export function EntradaRapidaProduto({
       >
         {snapshotAtivo?.descricao ?? ' '}
       </p>
+
+      {/* Aviso de saldo (AD-236). O Pencil não desenha este estado; segue o
+          padrão de texto de erro já usado nos modais (`text-destructive`,
+          `ModalBuscaProduto`) para o bloqueio, e o texto neutro da barra para
+          o aviso — o toast já chamou a atenção, aqui o motivo só fica à vista
+          enquanto a quantidade exceder. Mesmo elemento nos dois layouts. */}
+      {avaliacaoSaldo.veredito !== 'livre' && (
+        <p
+          className={cn(
+            'text-sm font-semibold',
+            avaliacaoSaldo.veredito === 'bloqueio' ? 'text-destructive' : 'text-muted-foreground',
+          )}
+          data-testid="previa-aviso-saldo"
+        >
+          {avaliacaoSaldo.frase}
+        </p>
+      )}
 
       <ModalBuscaProduto
         aberto={buscaAberta}

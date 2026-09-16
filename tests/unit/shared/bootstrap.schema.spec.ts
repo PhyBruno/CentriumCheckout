@@ -132,3 +132,48 @@ describe('bootstrapPayloadSchema', () => {
     expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
   });
 });
+
+/** Política de saldo de estoque do tenant (`EmpSldPro`, AD-236). */
+describe('SessaoUsuario.FaturaProdutoSemSaldo', () => {
+  function comPolitica(valor: unknown) {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['FaturaProdutoSemSaldo'] = valor;
+    return bootstrapPayloadSchema.parse(payload).SessaoUsuario.FaturaProdutoSemSaldo;
+  }
+
+  it.each([
+    ['A', 'A'],
+    ['B', 'B'],
+    ['', ''],
+    ['b', 'B'],
+    ['Z', ''],
+  ])('"%s" vira "%s"', (valor, esperado) => {
+    expect(comPolitica(valor)).toBe(esperado);
+  });
+
+  it('é opcional: ERP antigo sem o campo não derruba o bootstrap', () => {
+    const resultado = bootstrapPayloadSchema.safeParse(payloadValido());
+
+    expect(resultado.success).toBe(true);
+    expect(resultado.data?.SessaoUsuario.FaturaProdutoSemSaldo).toBeUndefined();
+  });
+
+  it('a normalização é idempotente — o registro do Dexie é revalidado na leitura', () => {
+    const primeira = bootstrapPayloadSchema.parse({
+      ...payloadValido(),
+      SessaoUsuario: {
+        ...(payloadValido()['SessaoUsuario'] as Record<string, unknown>),
+        FaturaProdutoSemSaldo: 'x',
+      },
+    });
+
+    expect(bootstrapPayloadSchema.parse(primeira).SessaoUsuario.FaturaProdutoSemSaldo).toBe('');
+  });
+
+  it('recusa tipo que não é texto', () => {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['FaturaProdutoSemSaldo'] = 1;
+
+    expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
+  });
+});

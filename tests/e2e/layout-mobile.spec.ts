@@ -109,6 +109,51 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
   });
 
+  /**
+   * Saldo de estoque (AD-236) no wizard: a mesma barra, reflowada, mostra a
+   * prévia bloqueada e o motivo. `005000` tem saldo 0 no mock.
+   */
+  test("saldo 'B': produto sem saldo fica na barra bloqueado, com o motivo à vista", async ({
+    page,
+    request,
+  }) => {
+    await request.post(`${URL_ERP_MOCK}/__mock/config`, {
+      data: { faturaProdutoSemSaldo: 'B' },
+    });
+    await page.goto(urlSessionStart());
+    await expect(page.getByTestId('etapa-cliente-produtos')).toBeVisible();
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill('005000');
+    await campo.press('Enter');
+
+    await expect(page.getByTestId('previa-aviso-saldo')).toBeVisible();
+    await expect(page.getByTestId('previa-aviso-saldo')).toHaveText(/estoque insuficiente/i);
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    // O aviso não pode alargar a etapa além da tela.
+    const larguras = await page.evaluate(() => ({
+      pagina: document.documentElement.scrollWidth,
+      tela: window.innerWidth,
+    }));
+    expect(larguras.pagina).toBeLessThanOrEqual(larguras.tela);
+  });
+
+  test("saldo 'A': produto sem saldo avisa e entra na venda", async ({ page, request }) => {
+    await request.post(`${URL_ERP_MOCK}/__mock/config`, {
+      data: { faturaProdutoSemSaldo: 'A' },
+    });
+    await page.goto(urlSessionStart());
+    await expect(page.getByTestId('etapa-cliente-produtos')).toBeVisible();
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill('005000');
+    await campo.press('Enter');
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    await expect(page.getByText(/estoque insuficiente/i).first()).toBeVisible();
+  });
+
   test('volta livremente a uma etapa já visitada e a alteração chega na revisão', async ({
     page,
   }) => {

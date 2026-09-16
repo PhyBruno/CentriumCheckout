@@ -9,6 +9,15 @@ import {
   quantidadePesavel,
   type EntradaCodigo,
 } from '../../domain/precificacao/codigoProduto';
+import {
+  AVALIACAO_LIVRE,
+  avaliarSaldo,
+  normalizarPoliticaSaldo,
+  quantidadeDoProdutoNoCarrinho,
+  type AvaliacaoSaldo,
+  type PoliticaSaldo,
+  type SaldoMilesimos,
+} from '../../domain/estoque/saldoProduto';
 import type { Centavos } from '../../domain/precificacao/dinheiro';
 import type {
   LinhaCarrinho,
@@ -17,9 +26,11 @@ import type {
 } from '../../domain/precificacao/linha';
 import { milesimosDeUnidades, type Milesimos } from '../../domain/precificacao/quantidade';
 import { ErroProdutoSemPreco, exigirPrecoDeInsercao } from '../../domain/precificacao/tabelaPreco';
+import type { ResolucaoProduto } from '../../services/produto/produtoMapper';
 import {
   ErroProdutoNaoEncontrado,
   ErroRespostaInvalida,
+  consultarSaldoProduto,
   invalidarCacheDeProduto,
   opcoesProduto,
   type ContextoPrecificacao,
@@ -94,15 +105,123 @@ export function useTipoCodigoProduto(): string | null {
   );
 }
 
+/**
+ * `SessaoUsuario.FaturaProdutoSemSaldo` normalizada (AD-236). Sem bootstrap, ou
+ * com o ERP anterior ao contrato de 2026-09-14, vale `''` — não valida.
+ */
+export function usePoliticaSaldo(): PoliticaSaldo {
+  return useSessionStore((estado) =>
+    normalizarPoliticaSaldo(estado.registro?.SessaoUsuario.FaturaProdutoSemSaldo),
+  );
+}
+
+/** O que a regra de saldo precisa saber de uma inserção ou edição proposta. */
+export interface PropostaDeQuantidade {
+  readonly snapshot: SnapshotPrecoProduto;
+  readonly saldo: SaldoMilesimos | null;
+  readonly quantidade: Milesimos;
+  /** Presente na edição pelo lápis: sai da soma e marca o que é redução. */
+  readonly linhaEditada?: LinhaCarrinho;
+}
+
+/**
+ * Avalia a proposta contra o carrinho **atual** (AD-236).
+ *
+ * Função, e não hook, porque é chamada nos dois momentos: na renderização da
+ * barra (com as linhas do seletor) e dentro das confirmações assíncronas (com
+ * `getState()`, que não envelhece entre o clique e a resposta do ERP).
+ */
+export function avaliarContraCarrinho(
+  politica: PoliticaSaldo,
+  linhas: readonly LinhaCarrinho[],
+  proposta: PropostaDeQuantidade,
+): AvaliacaoSaldo {
+  if (politica === '') {
+    return AVALIACAO_LIVRE;
+  }
+  return avaliarSaldo({
+    politica,
+    saldo: proposta.saldo,
+    quantidadeNoCarrinho: quantidadeDoProdutoNoCarrinho(
+      linhas,
+      proposta.snapshot.codigoProduto,
+      proposta.linhaEditada?.idLinha,
+    ),
+    quantidadeProposta: proposta.quantidade,
+    ...(proposta.linhaEditada === undefined
+      ? {}
+      : { quantidadeAnterior: proposta.linhaEditada.quantidade }),
+    descricao: proposta.snapshot.descricao,
+  });
+}
+
+/** Aviso (`'A'`, ou redução em `'B'`) e bloqueio viram toast; livre, nada. */
+function comunicarSaldo(avaliacao: AvaliacaoSaldo): void {
+  if (avaliacao.veredito === 'aviso') {
+    notificar.aviso(avaliacao.frase);
+  } else if (avaliacao.veredito === 'bloqueio') {
+    notificar.erro(avaliacao.frase);
+  }
+}
+
+/**
+ * Saldo fresco para uma decisão (AD-236): reconsulta sempre, e na falha usa o
+ * **último saldo conhecido** e segue.
+ *
+ * Qualquer falha cai no último conhecido — não só a de rede — porque o ERP
+ * revalida o saldo no `FaturarNFCe` (`PNFCe_ValidaSaldoProdutos`): o Checkout
+ * é a primeira barreira, não a única, e travar a venda porque a segunda
+ * consulta do mesmo produto falhou seria pior que deixar o ERP decidir.
+ */
+async function saldoFresco(
+  contexto: ContextoPrecificacao | null,
+  codigoProduto: string,
+  ultimoConhecido: SaldoMilesimos | null,
+): Promise<SaldoMilesimos | null> {
+  if (contexto === null) {
+    return ultimoConhecido;
+  }
+  try {
+    return await consultarSaldoProduto(codigoProduto, contexto);
+  } catch {
+    return ultimoConhecido;
+  }
+}
+
 /** O produto exige revisão do operador antes de entrar na venda (`FR-014`). */
 export interface PendenteDeEdicao {
   readonly situacao: 'edicao';
   readonly snapshot: SnapshotPrecoProduto;
   readonly quantidade: Milesimos;
+  /** Saldo consultado na resolução (AD-236); `null` se desconhecido. */
+  readonly saldo: SaldoMilesimos | null;
+}
+
+/**
+ * A inserção automática (Enter, leitor, câmera) esbarrou no saldo em `'B'`
+ * (AD-236): nada entrou, e o produto volta como prévia para a barra mostrar
+ * bloqueada, com o motivo.
+ */
+export interface BloqueadoPorSaldo {
+  readonly situacao: 'bloqueado';
+  readonly revisao: RevisaoProduto;
 }
 
 export type ResultadoInsercao =
-  { readonly situacao: 'inserido' } | { readonly situacao: 'recusado' } | PendenteDeEdicao;
+  | { readonly situacao: 'inserido' }
+  | { readonly situacao: 'recusado' }
+  | PendenteDeEdicao
+  | BloqueadoPorSaldo;
+
+/**
+ * Desfecho de uma confirmação (prévia, edição de produto `'E'` ou lápis).
+ *
+ * `bloqueado` traz o saldo usado na decisão, para a barra reavaliar o `+`/`−`
+ * com ele em vez do saldo antigo.
+ */
+export type ResultadoConfirmacao =
+  | { readonly situacao: 'confirmado' }
+  | { readonly situacao: 'bloqueado'; readonly saldo: SaldoMilesimos | null };
 
 /**
  * Produto resolvido para revisão sob demanda (TAB no campo de código, barra de
@@ -117,6 +236,14 @@ export interface RevisaoProduto {
   readonly quantidade: Milesimos;
   readonly origem: OrigemInsercaoViva;
   readonly editavel: boolean;
+  /** Saldo consultado na resolução (AD-236); `null` se desconhecido. */
+  readonly saldo: SaldoMilesimos | null;
+  /**
+   * Veredito do saldo para `quantidade`, no momento da resolução — já
+   * comunicado ao operador. A barra o usa para não inserir direto um produto
+   * bloqueado.
+   */
+  readonly vereditoSaldo: AvaliacaoSaldo['veredito'];
 }
 
 export type ResultadoRevisao = RevisaoProduto | { readonly situacao: 'recusado' };
@@ -174,14 +301,30 @@ function quantidadeEOrigem(
   return { quantidade: milesimosDeUnidades(QUANTIDADE_PADRAO), origem: 'MANUAL' };
 }
 
+/** Opções de `confirmarPrevia`. */
+export interface OpcoesConfirmacaoPrevia {
+  /**
+   * A prévia acabou de sair de `revisarPorCodigo`, com o saldo fresco e o
+   * veredito já comunicado — caso da inserção direta do TAB/modal. Evita a
+   * segunda chamada ao ERP e o segundo toast (AD-236).
+   */
+  readonly saldoRecemConsultado?: boolean;
+}
+
 export interface ApiInsercao {
-  /** Resolve o produto por código e decide o fluxo pelo `ProdutoPesavelEditavel`. */
+  /**
+   * Resolve o produto por código e decide o fluxo pelo `ProdutoPesavelEditavel`.
+   * Em `'B'`, uma quantidade acima do saldo volta `bloqueado` (AD-236).
+   */
   inserirPorCodigo(texto: string): Promise<ResultadoInsercao>;
-  /** Confirma a inserção de um produto `'E'` depois da revisão do operador. */
+  /**
+   * Confirma a inserção de um produto `'E'` depois da revisão do operador.
+   * Reconsulta o saldo antes de inserir (AD-236).
+   */
   confirmarEdicao(
     pendente: PendenteDeEdicao,
     ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
-  ): void;
+  ): Promise<ResultadoConfirmacao>;
   /**
    * TAB no campo de código (ou seleção no modal de busca, que carrega o
    * código no campo e chama isto do mesmo jeito): resolve o produto **sem
@@ -203,8 +346,16 @@ export interface ApiInsercao {
     texto: string,
     opcoes?: { origem?: 'BUSCA'; tipoCodigo?: string },
   ): Promise<ResultadoRevisao>;
-  /** Confirma a prévia de um produto **não editável** — só a quantidade é ajustável. */
-  confirmarPrevia(revisao: RevisaoProduto, quantidade: Milesimos): void;
+  /**
+   * Confirma a prévia de um produto **não editável** — só a quantidade é
+   * ajustável. Reconsulta o saldo antes de inserir, salvo
+   * `saldoRecemConsultado` (AD-236).
+   */
+  confirmarPrevia(
+    revisao: RevisaoProduto,
+    quantidade: Milesimos,
+    opcoes?: OpcoesConfirmacaoPrevia,
+  ): Promise<ResultadoConfirmacao>;
 }
 
 /**
@@ -258,7 +409,42 @@ export function useEncerrarVenda(): () => void {
 export function useInsercaoDeProduto(): ApiInsercao {
   const queryClient = useQueryClient();
   const contexto = useContextoPrecificacao();
+  const politica = usePoliticaSaldo();
   const inserirItem = useVendaStore((estado) => estado.inserirItem);
+
+  /** Avalia contra as linhas **deste instante** — ver `avaliarContraCarrinho`. */
+  const avaliarAgora = useCallback(
+    (proposta: PropostaDeQuantidade): AvaliacaoSaldo =>
+      avaliarContraCarrinho(politica, useVendaStore.getState().linhas, proposta),
+    [politica],
+  );
+
+  /**
+   * Núcleo das três confirmações de inserção: reconsulta o saldo (salvo
+   * quando acabou de ser consultado), avalia, comunica e só então insere.
+   */
+  const confirmarComSaldo = useCallback(
+    async (
+      proposta: PropostaDeQuantidade,
+      inserir: () => void,
+      saldoRecemConsultado: boolean,
+    ): Promise<ResultadoConfirmacao> => {
+      const saldo =
+        politica === '' || saldoRecemConsultado
+          ? proposta.saldo
+          : await saldoFresco(contexto, proposta.snapshot.codigoProduto, proposta.saldo);
+      const avaliacao = avaliarAgora({ ...proposta, saldo });
+      if (!saldoRecemConsultado) {
+        comunicarSaldo(avaliacao);
+      }
+      if (avaliacao.veredito === 'bloqueio') {
+        return { situacao: 'bloqueado', saldo };
+      }
+      inserir();
+      return { situacao: 'confirmado' };
+    },
+    [avaliarAgora, contexto, politica],
+  );
 
   /**
    * `queryClient.query` (e não `fetchProduto` direto) é o que garante `CART-03`:
@@ -268,7 +454,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
    * `invalidarCacheDeProduto` descarta tudo (`research.md`, D5).
    */
   const resolverProduto = useCallback(
-    async (codigoProduto: string, tipoCodigo?: string): Promise<SnapshotPrecoProduto> => {
+    async (codigoProduto: string, tipoCodigo?: string): Promise<ResolucaoProduto> => {
       if (contexto === null) {
         throw new Error('Configuração do ponto de venda ainda não carregada.');
       }
@@ -280,21 +466,31 @@ export function useInsercaoDeProduto(): ApiInsercao {
       const contextoDaConsulta =
         tipoCodigo === undefined ? contexto : { ...contexto, tipoCodProduto: tipoCodigo };
 
-      const snapshot = await queryClient.query({
-        ...opcoesProduto(codigoProduto, contextoDaConsulta),
-        staleTime: 'static',
-      });
+      const opcoesDaConsulta = opcoesProduto(codigoProduto, contextoDaConsulta);
+      // Olhado **antes** da consulta: é o que diz se a resposta abaixo acabou
+      // de vir da rede (saldo fresco) ou do cache da venda (saldo velho).
+      const estavaEmCache = queryClient.getQueryData(opcoesDaConsulta.queryKey) !== undefined;
+      const resolucao = await queryClient.query({ ...opcoesDaConsulta, staleTime: 'static' });
 
       // Aqui, e não em cada chamador: é o ponto único por onde passam os dois
       // caminhos (`inserirResolvido` e `revisarResolvido`), então a recusa por
       // preço zerado vale para digitar, TAB, modal e balança sem depender de
       // ninguém lembrar de repeti-la. Os dois já traduzem o erro em
       // notificação e devolvem `'recusado'`.
-      exigirPrecoDeInsercao(contexto.tipoPreco, snapshot);
+      exigirPrecoDeInsercao(contexto.tipoPreco, resolucao.snapshot);
 
-      return snapshot;
+      // Saldo sempre fresco (AD-236): o preço vem do cache, o saldo não. Se a
+      // consulta acima foi à rede, o saldo dela já é o fresco — uma segunda
+      // chamada seria desperdício.
+      if (politica === '' || !estavaEmCache) {
+        return resolucao;
+      }
+      return {
+        snapshot: resolucao.snapshot,
+        saldo: await saldoFresco(contexto, resolucao.snapshot.codigoProduto, resolucao.saldo),
+      };
     },
-    [contexto, queryClient],
+    [contexto, politica, queryClient],
   );
 
   const inserirResolvido = useCallback(
@@ -304,8 +500,9 @@ export function useInsercaoDeProduto(): ApiInsercao {
       opcoes: OpcoesInsercao = {},
     ): Promise<ResultadoInsercao> => {
       let snapshot: SnapshotPrecoProduto;
+      let saldo: SaldoMilesimos | null;
       try {
-        snapshot = await resolverProduto(codigoProduto);
+        ({ snapshot, saldo } = await resolverProduto(codigoProduto));
       } catch (erro) {
         notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
@@ -324,19 +521,40 @@ export function useInsercaoDeProduto(): ApiInsercao {
         return { situacao: 'recusado' };
       }
 
+      // Saldo avaliado logo depois de ter o produto em mãos (AD-236): `'A'`
+      // avisa já aqui, `'B'` avisa e segura a inserção automática.
+      const avaliacao = avaliarAgora({ snapshot, saldo, quantidade });
+      comunicarSaldo(avaliacao);
+
       // `'E'` não insere agora: o foco vai para os campos editáveis e a linha só
-      // entra no botão `+` (`FR-014`). `'S'`, `'B'` e `''` inserem direto.
+      // entra no botão `+` (`FR-014`). `'S'`, `'B'` e `''` inserem direto —
+      // salvo quando o saldo bloqueia: aí o produto volta como prévia, para o
+      // operador ver o motivo e poder reduzir a quantidade.
       switch (snapshot.pesavelEditavel) {
         case 'E':
-          return { situacao: 'edicao', snapshot, quantidade };
+          return { situacao: 'edicao', snapshot, quantidade, saldo };
         case 'S':
         case 'B':
         case '':
+          if (avaliacao.veredito === 'bloqueio') {
+            return {
+              situacao: 'bloqueado',
+              revisao: {
+                situacao: 'revisao',
+                snapshot,
+                quantidade,
+                origem,
+                editavel: false,
+                saldo,
+                vereditoSaldo: avaliacao.veredito,
+              },
+            };
+          }
           inserirItem({ snapshot, quantidade, origem });
           return { situacao: 'inserido' };
       }
     },
-    [inserirItem, resolverProduto],
+    [avaliarAgora, inserirItem, resolverProduto],
   );
 
   /**
@@ -354,28 +572,36 @@ export function useInsercaoDeProduto(): ApiInsercao {
     ): Promise<ResultadoRevisao> => {
       const origemForcada = opcoes.origem;
       let snapshot: SnapshotPrecoProduto;
+      let saldo: SaldoMilesimos | null;
       try {
-        snapshot = await resolverProduto(codigoProduto, opcoes.tipoCodigo);
+        ({ snapshot, saldo } = await resolverProduto(codigoProduto, opcoes.tipoCodigo));
       } catch (erro) {
         notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
       }
 
+      let quantidade: Milesimos;
+      let origem: OrigemInsercaoViva;
       try {
-        const { quantidade, origem } = quantidadeEOrigem(entrada, snapshot);
-        return {
-          situacao: 'revisao',
-          snapshot,
-          quantidade,
-          origem: origemForcada ?? origem,
-          editavel: snapshot.pesavelEditavel === 'E',
-        };
+        ({ quantidade, origem } = quantidadeEOrigem(entrada, snapshot));
       } catch (erro) {
         notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
       }
+
+      const avaliacao = avaliarAgora({ snapshot, saldo, quantidade });
+      comunicarSaldo(avaliacao);
+      return {
+        situacao: 'revisao',
+        snapshot,
+        quantidade,
+        origem: origemForcada ?? origem,
+        editavel: snapshot.pesavelEditavel === 'E',
+        saldo,
+        vereditoSaldo: avaliacao.veredito,
+      };
     },
-    [resolverProduto],
+    [avaliarAgora, resolverProduto],
   );
 
   return {
@@ -404,23 +630,33 @@ export function useInsercaoDeProduto(): ApiInsercao {
     ),
 
     confirmarPrevia: useCallback(
-      (revisao, quantidade) => {
-        inserirItem({ snapshot: revisao.snapshot, quantidade, origem: revisao.origem });
-      },
-      [inserirItem],
+      (revisao, quantidade, opcoes = {}) =>
+        confirmarComSaldo(
+          { snapshot: revisao.snapshot, saldo: revisao.saldo, quantidade },
+          () => {
+            inserirItem({ snapshot: revisao.snapshot, quantidade, origem: revisao.origem });
+          },
+          opcoes.saldoRecemConsultado ?? false,
+        ),
+      [confirmarComSaldo, inserirItem],
     ),
 
     confirmarEdicao: useCallback(
-      (pendente, ajustes) => {
-        inserirItem({
-          snapshot: pendente.snapshot,
-          quantidade: ajustes.quantidade,
-          origem: 'MANUAL',
-          precoUnitario: ajustes.precoUnitario,
-          descontoManual: ajustes.descontoManual,
-        });
-      },
-      [inserirItem],
+      (pendente, ajustes) =>
+        confirmarComSaldo(
+          { snapshot: pendente.snapshot, saldo: pendente.saldo, quantidade: ajustes.quantidade },
+          () => {
+            inserirItem({
+              snapshot: pendente.snapshot,
+              quantidade: ajustes.quantidade,
+              origem: 'MANUAL',
+              precoUnitario: ajustes.precoUnitario,
+              descontoManual: ajustes.descontoManual,
+            });
+          },
+          false,
+        ),
+      [confirmarComSaldo, inserirItem],
     ),
   };
 }
@@ -437,24 +673,48 @@ export interface ApiEdicaoItem {
    * valor não mudou, `carrinhoSlice.ts`) e audita por campo — chamar os três
    * incondicionalmente é seguro mesmo quando só a quantidade mudou (produto
    * pesável, `'S'`/`'B'`: preço e desconto chegam inalterados).
+   *
+   * **Saldo (AD-236):** quando a quantidade muda, reconsulta o saldo e avalia
+   * sem a própria linha na soma. Aumento acima do saldo em `'B'` não altera
+   * nada; redução nunca bloqueia. `saldoConhecido` é o último saldo que a
+   * barra tem, usado se a reconsulta falhar.
    */
   confirmarEdicaoDeLinha(
     linha: LinhaCarrinho,
     ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
-  ): void;
+    saldoConhecido?: SaldoMilesimos | null,
+  ): Promise<ResultadoConfirmacao>;
 }
 
 export function useEdicaoDeItemExistente(): ApiEdicaoItem {
   const editarItem = useVendaStore((estado) => estado.editarItem);
+  const contexto = useContextoPrecificacao();
+  const politica = usePoliticaSaldo();
 
   return {
     confirmarEdicaoDeLinha: useCallback(
-      (linha, ajustes) => {
+      async (linha, ajustes, saldoConhecido = null) => {
+        // Só quantidade mexe em estoque: corrigir preço ou desconto de um item
+        // não consulta o ERP.
+        if (politica !== '' && ajustes.quantidade !== linha.quantidade) {
+          const saldo = await saldoFresco(contexto, linha.snapshot.codigoProduto, saldoConhecido);
+          const avaliacao = avaliarContraCarrinho(politica, useVendaStore.getState().linhas, {
+            snapshot: linha.snapshot,
+            saldo,
+            quantidade: ajustes.quantidade,
+            linhaEditada: linha,
+          });
+          comunicarSaldo(avaliacao);
+          if (avaliacao.veredito === 'bloqueio') {
+            return { situacao: 'bloqueado', saldo };
+          }
+        }
         editarItem(linha.idLinha, 'quantidade', ajustes.quantidade);
         editarItem(linha.idLinha, 'precoUnitario', ajustes.precoUnitario);
         editarItem(linha.idLinha, 'descontoManual', ajustes.descontoManual);
+        return { situacao: 'confirmado' };
       },
-      [editarItem],
+      [contexto, editarItem, politica],
     ),
   };
 }

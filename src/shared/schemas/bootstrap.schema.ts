@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizarPoliticaSaldo } from '../../client/domain/estoque/saldoProduto';
 import { inteiroErp } from './erpJson';
 
 /**
@@ -129,6 +130,16 @@ export const sessaoUsuarioSchema = z.looseObject({
    */
   VendedorCodigo: inteiroErp.optional(),
   VendedorNome: z.string().optional(),
+  /**
+   * Política de saldo de estoque da empresa (`EmpSldPro`, contrato de
+   * 2026-09-14, AD-236): `'A'` avisa, `'B'` bloqueia, `''` não valida.
+   *
+   * Normalizada na fronteira — valor desconhecido vira `''`, como o próprio ERP
+   * trata — e idempotente, porque o registro do Dexie é revalidado na leitura.
+   * `optional()` porque o ERP anterior a esse contrato não publica o campo, e
+   * quem lê trata a ausência como `''`.
+   */
+  FaturaProdutoSemSaldo: z.string().transform(normalizarPoliticaSaldo).optional(),
 });
 
 export const bootstrapPayloadSchema = z.looseObject({

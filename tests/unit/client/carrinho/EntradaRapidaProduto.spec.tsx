@@ -1,9 +1,11 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { PoliticaSaldo } from '../../../../src/client/domain/estoque/saldoProduto';
 import { EntradaRapidaProduto } from '../../../../src/client/features/carrinho/EntradaRapidaProduto';
+import { notificar } from '../../../../src/client/lib/notificar';
 import { useEdicaoItemStore } from '../../../../src/client/stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useJanelasStore } from '../../../../src/client/stores/janelasStore';
@@ -804,5 +806,344 @@ describe('EntradaRapidaProduto — abertura do modal de busca pelo janelasStore 
     await waitFor(() => {
       expect(useJanelasStore.getState().janela).toBe('nenhuma');
     });
+  });
+});
+
+/**
+ * Saldo de estoque (AD-236): `FaturaProdutoSemSaldo = 'B'` não deixa entrar na
+ * venda uma quantidade maior que o saldo — por **nenhum** caminho de inserção —
+ * e o produto fica na barra como prévia bloqueada; `'A'` só avisa.
+ */
+describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
+  const MOTIVO_SALDO = /estoque insuficiente/i;
+
+  function comPolitica(politica: PoliticaSaldo) {
+    const registro = registroDeBootstrap();
+    return {
+      ...registro,
+      SessaoUsuario: { ...registro.SessaoUsuario, FaturaProdutoSemSaldo: politica },
+    };
+  }
+
+  /** `GetProduto` com o saldo pedido; registra as URLs chamadas. */
+  function stubarProduto(opcoes: { saldo: string; tipo?: string; urls?: string[] }): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        opcoes.urls?.push(url);
+        if (url.includes('GetListaProdutos')) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                PaginaAtual: 1,
+                RegistrosPorPagina: 20,
+                TotalRegistros: 1,
+                TotalPaginas: 1,
+                Produtos: [
+                  {
+                    CodigoProduto: '001234',
+                    Descricao: 'PRODUTO EXEMPLO 500G',
+                    Referencia: 'REF-EX',
+                    CodigoBarras: '7890000000001',
+                    UDM: 'UN',
+                  },
+                ],
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            ),
+          );
+        }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify(
+              respostaGetProduto({
+                ProdutoPesavelEditavel: opcoes.tipo ?? '',
+                Saldo: opcoes.saldo,
+              }),
+            ),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
+      }),
+    );
+  }
+
+  function prepararVenda(politica: PoliticaSaldo): void {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica(politica) });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+  }
+
+  async function esperarPreviaBloqueada(): Promise<void> {
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-descricao-produto')).toHaveTextContent(
+        'PRODUTO EXEMPLO 500G',
+      );
+    });
+    const inserir = screen.getByTestId('previa-confirmar');
+    expect(inserir).toHaveAttribute('aria-disabled', 'true');
+    expect(inserir).toHaveAttribute('title', expect.stringMatching(MOTIVO_SALDO));
+    expect(screen.getByTestId('previa-aviso-saldo')).toHaveTextContent(MOTIVO_SALDO);
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("'B': Enter com saldo zero não insere e deixa o produto na barra como prévia bloqueada", async () => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '0.000' });
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await esperarPreviaBloqueada();
+    expect(erro).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
+
+    // Clicar no botão bloqueado explica o motivo e não insere (`lib/bloqueio.ts`).
+    erro.mockClear();
+    await usuario.click(screen.getByTestId('previa-confirmar'));
+    expect(erro).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+  });
+
+  it("'B': TAB num produto não editável também para na prévia bloqueada", async () => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '-205.000' });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
+
+    await esperarPreviaBloqueada();
+  });
+
+  it.each(['S', 'B'])("'B': TAB num pesável ('%s') também para na prévia bloqueada", async (tipo) => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '0.000', tipo });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
+
+    await esperarPreviaBloqueada();
+  });
+
+  it("'B': produto não editável escolhido no modal não entra direto", async () => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '0.000' });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.click(screen.getByTestId('abrir-busca-produto'));
+    await usuario.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+    await usuario.click(await screen.findByTestId('candidato-produto'));
+
+    await esperarPreviaBloqueada();
+  });
+
+  it("'B': código lido pela câmera não entra direto", async () => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '0.000' });
+    const usuario = userEvent.setup();
+    const Wrapper = envolverComQueryClient();
+    render(
+      <Wrapper>
+        <EntradaRapidaProduto
+          renderizarCaptura={(aoLerCodigo) => (
+            <button
+              type="button"
+              data-testid="camera-falsa"
+              onClick={() => {
+                aoLerCodigo('001234');
+              }}
+            >
+              câmera
+            </button>
+          )}
+        />
+      </Wrapper>,
+    );
+
+    await usuario.click(screen.getByTestId('camera-falsa'));
+
+    await esperarPreviaBloqueada();
+  });
+
+  it("'B': diminuir a quantidade para dentro do saldo libera o botão, e a confirmação reconsulta", async () => {
+    prepararVenda('B');
+    const urls: string[] = [];
+    stubarProduto({ saldo: '2.000', urls });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234*3{Enter}');
+    await esperarPreviaBloqueada();
+    expect(screen.getByTestId('previa-quantidade')).toHaveValue('3,000');
+
+    await usuario.click(screen.getByTestId('previa-quantidade-diminuir'));
+
+    expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled');
+    expect(screen.queryByTestId('previa-aviso-saldo')).not.toBeInTheDocument();
+    await usuario.click(screen.getByTestId('previa-confirmar'));
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(2000);
+    // Reconsulta na confirmação, pelo código interno — nunca pelo tipo da sessão.
+    expect(urls).toHaveLength(2);
+    expect(urls[1]).toContain('Tipocodproduto=R');
+    expect(urls[1]).toContain('Codigoproduto=001234');
+  });
+
+  it("'B': aumentar pelo \"+\" além do saldo bloqueia na hora", async () => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '1.000', tipo: 'E' });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    });
+    expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled');
+
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+
+    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute(
+      'title',
+      expect.stringMatching(MOTIVO_SALDO),
+    );
+  });
+
+  it("'A': avisa e insere assim mesmo", async () => {
+    prepararVenda('A');
+    stubarProduto({ saldo: '0.000' });
+    const aviso = vi.spyOn(notificar, 'aviso');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    expect(aviso).toHaveBeenCalledOnce();
+    expect(aviso).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
+  });
+
+  it("'A': na prévia editável, o \"+\" que cruza o limite avisa uma vez, sem bloquear", async () => {
+    prepararVenda('A');
+    stubarProduto({ saldo: '1.000', tipo: 'E' });
+    const aviso = vi.spyOn(notificar, 'aviso');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    });
+    expect(aviso).not.toHaveBeenCalled();
+
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+
+    // Cruzou uma vez (1 → 2); ir de 2 para 3 não cruza de novo.
+    expect(aviso).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled');
+  });
+
+  it("'': nenhuma consulta extra e nenhum aviso, mesmo com saldo zero", async () => {
+    prepararVenda('');
+    const urls: string[] = [];
+    stubarProduto({ saldo: '0.000', urls });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    expect(urls).toHaveLength(1);
+  });
+
+  it("lápis: aumentar reconsulta o saldo (Tipocodproduto=R) e, em 'B', não altera a linha", async () => {
+    prepararVenda('B');
+    const urls: string[] = [];
+    stubarProduto({ saldo: '1.000', urls });
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ pesavelEditavel: 'S', precoBase: 1000 }),
+      quantidadeEmUnidades: 1,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    act(() => {
+      useEdicaoItemStore.getState().carregarParaEdicao(linha);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveValue('1,000');
+    });
+
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+    await usuario.click(screen.getByTestId('previa-confirmar'));
+
+    await waitFor(() => {
+      expect(urls).toHaveLength(1);
+    });
+    expect(urls[0]).toContain('Tipocodproduto=R');
+    expect(urls[0]).toContain('Codigoproduto=001234');
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-confirmar')).toHaveAttribute(
+        'title',
+        expect.stringMatching(MOTIVO_SALDO),
+      );
+    });
+    expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(1000);
+    // A barra continua com o item carregado para o operador corrigir.
+    expect(useEdicaoItemStore.getState().linhaEmEdicao).not.toBeNull();
+
+    // Diminuir de volta libera — a própria linha não conta na soma.
+    await usuario.click(screen.getByTestId('previa-quantidade-diminuir'));
+    expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled');
+  });
+
+  it("lápis: diminuir nunca bloqueia, mesmo com a linha acima do saldo em 'B'", async () => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '1.000' });
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ pesavelEditavel: 'S', precoBase: 1000 }),
+      quantidadeEmUnidades: 5,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    act(() => {
+      useEdicaoItemStore.getState().carregarParaEdicao(linha);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveValue('5,000');
+    });
+
+    await usuario.click(screen.getByTestId('previa-quantidade-diminuir'));
+    await usuario.click(screen.getByTestId('previa-confirmar'));
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(4000);
+    });
+    expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
   });
 });

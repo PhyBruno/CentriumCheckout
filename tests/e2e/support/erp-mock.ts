@@ -142,6 +142,15 @@ export interface ConfigMockErp {
    */
   tipoCodigoProduto: string;
   /**
+   * `SessaoUsuario.FaturaProdutoSemSaldo` (AD-236): `'A'` avisa, `'B'` bloqueia
+   * quantidade acima do saldo, `''` não valida.
+   *
+   * **`''` por padrão**, embora o tenant de preview use `'B'`: com a política
+   * ligada, toda reinserção reconsulta o saldo, e as suítes que contam chamadas
+   * a `GetProduto` (`CART-03`) mediriam outra coisa. Quem exercita a regra liga.
+   */
+  faturaProdutoSemSaldo: 'A' | 'B' | '';
+  /**
    * `GetCliente` devolve o **SDT parcial** que o ERP real devolve hoje: só
    * `CodCliente`, `PermiteVendaCredito` e `ListaPreco` preenchidos, com
    * `nome`/`cpf`/`celular`/endereço/convênio vazios mesmo para cliente que
@@ -204,6 +213,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   atrasoPagamentoPixMs: 20_000,
   semVendedorDefault: false,
   tipoCodigoProduto: 'R',
+  faturaProdutoSemSaldo: '',
 };
 
 /**
@@ -460,6 +470,49 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     QtdMinimaPreco5: String(0),
     UDM: 'UN',
     ProdutoPesavelEditavel: '',
+  },
+  /**
+   * Produtos da regra de saldo (AD-236): um **sem** saldo e um com saldo
+   * **negativo**, como o ERP de preview devolve (`"-205.000"`). Os dois barram
+   * já a primeira unidade em `'B'`.
+   */
+  '005000': {
+    CodigoProduto: '005000',
+    Descricao: 'PRODUTO SEM SALDO',
+    Referencia: 'REF-SEM-SALDO',
+    CodigoBarras: '7890000000050',
+    PrecoVenda: String(5.0),
+    PrecoVenda1: String(5.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+    Saldo: '0.000',
+  },
+  '006000': {
+    CodigoProduto: '006000',
+    Descricao: 'PRODUTO SALDO NEGATIVO',
+    Referencia: 'REF-SALDO-NEG',
+    CodigoBarras: '7890000000060',
+    PrecoVenda: String(6.0),
+    PrecoVenda1: String(6.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+    Saldo: '-205.000',
   },
 };
 
@@ -894,6 +947,9 @@ function produtoComoOErpResponde(produto: Record<string, unknown>): Record<strin
     QtdMinimaPreco5: Number(produto['QtdMinimaPreco5'] ?? 0),
     UDM: produto['UDM'],
     ProdutoPesavelEditavel: produto['ProdutoPesavelEditavel'],
+    // Contrato de 2026-09-14 (AD-236): `double` como string, pode ser negativo.
+    // `10.000` por padrão, folgado para os cenários que não são sobre saldo.
+    Saldo: produto['Saldo'] ?? '10.000',
   };
 }
 
@@ -923,6 +979,7 @@ const PRODUTO_INEXISTENTE: Record<string, unknown> = {
   QtdMinimaPreco5: 0,
   UDM: '',
   ProdutoPesavelEditavel: '',
+  Saldo: '0.000',
 };
 
 /**
@@ -1162,6 +1219,8 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
      * igualmente válidos e agora o `GetProduto` deste mock filtra pelos três.
      */
     UsuarioTipoCodigoProduto: config.tipoCodigoProduto,
+    // `EmpSldPro` da empresa (AD-236) — `char`, vem string.
+    FaturaProdutoSemSaldo: config.faturaProdutoSemSaldo,
     ClienteDefaultCodigo: String(1), // int64
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador

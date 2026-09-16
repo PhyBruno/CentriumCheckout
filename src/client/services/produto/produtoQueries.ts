@@ -12,11 +12,12 @@ import {
   getProdutoOutputSchema,
   type CheckoutListaProdutos,
 } from '../../../shared/schemas/produto.schema';
+import type { SaldoMilesimos } from '../../domain/estoque/saldoProduto';
 import type { SnapshotPrecoProduto } from '../../domain/precificacao/linha';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
 import { ITENS_POR_PAGINA } from '../paginacao';
-import { paraSnapshotPrecoProduto } from './produtoMapper';
+import { paraResolucaoProduto, type ResolucaoProduto } from './produtoMapper';
 
 const CAMINHO_GET_PRODUTO = '/ApiCentriumOAuth/GetProduto';
 const CAMINHO_GET_LISTA_PRODUTOS = '/ApiCentriumOAuth/GetListaProdutos';
@@ -132,6 +133,19 @@ export async function fetchProduto(
   contexto: ContextoPrecificacao,
   deps: ProdutoQueriesDeps = {},
 ): Promise<SnapshotPrecoProduto> {
+  return (await fetchResolucaoProduto(codigoProduto, contexto, deps)).snapshot;
+}
+
+/**
+ * `fetchProduto` com o saldo de estoque junto (AD-236) — é o que a inserção
+ * usa. Os demais chamadores (reprecificação por cliente, importação de
+ * documento) só precisam do snapshot e seguem em `fetchProduto`.
+ */
+export async function fetchResolucaoProduto(
+  codigoProduto: string,
+  contexto: ContextoPrecificacao,
+  deps: ProdutoQueriesDeps = {},
+): Promise<ResolucaoProduto> {
   const cliente = deps.erpClient ?? criarErpClient();
   const resposta = await chamarErp(
     cliente,
@@ -168,7 +182,42 @@ export async function fetchProduto(
 
   // `validado.data` já é o SDT do produto: o schema aceita a resposta com ou
   // sem o envelope `Produto` e entrega sempre o conteúdo (AD-165).
-  return paraSnapshotPrecoProduto(validado.data);
+  return paraResolucaoProduto(validado.data);
+}
+
+/**
+ * `Tipocodproduto` da reconsulta de saldo: sempre o código **interno**
+ * (`MatCodRed`), que `PCheckout_GetProduto` aceita em `'R'`.
+ *
+ * Nunca o tipo da sessão: a linha do carrinho só guarda o `CodigoProduto`
+ * devolvido pelo ERP, e num tenant em `'B'` esse código não casa com o filtro
+ * por código de barras — a reconsulta voltaria o SDT vazio.
+ */
+const TIPO_CODIGO_INTERNO = 'R';
+
+/**
+ * Saldo de estoque **fresco** do produto (AD-236): vai à rede sempre, fora do
+ * cache do TanStack Query.
+ *
+ * O preço continua congelado pelo cache (`CART-03`); o saldo não pode, porque
+ * outro caixa vende o mesmo produto enquanto esta venda está aberta. Por isso
+ * esta chamada não usa `opcoesProduto` nem grava no cache — reaproveitar a
+ * entrada do cache traria o saldo da primeira consulta da venda.
+ *
+ * Os erros são os de `fetchProduto` (`ErroRedeErp`, `ErroSessaoEncerrada`…);
+ * quem chama decide o que fazer com eles.
+ */
+export async function consultarSaldoProduto(
+  codigoProduto: string,
+  contexto: ContextoPrecificacao,
+  deps: ProdutoQueriesDeps = {},
+): Promise<SaldoMilesimos | null> {
+  const resolucao = await fetchResolucaoProduto(
+    codigoProduto,
+    { ...contexto, tipoCodProduto: TIPO_CODIGO_INTERNO },
+    deps,
+  );
+  return resolucao.saldo;
 }
 
 /**
@@ -178,6 +227,10 @@ export async function fetchProduto(
  * (reinserir o mesmo SKU não gera chamada) e, mais importante, impede que o
  * mesmo SKU rebuscado no meio da venda produza linhas de tabelas divergentes. A
  * única fronteira de frescor é o fim da venda (`invalidarCacheDeProduto`).
+ *
+ * O dado em cache é a `ResolucaoProduto` inteira. O `saldo` que vai junto é só
+ * o **último conhecido** — usado quando a reconsulta falha na rede —, nunca a
+ * base de uma decisão de inserção (AD-236).
  */
 export function opcoesProduto(
   codigoProduto: string,
@@ -186,7 +239,7 @@ export function opcoesProduto(
 ) {
   return {
     queryKey: chaveProduto(codigoProduto, contexto),
-    queryFn: () => fetchProduto(codigoProduto, contexto, deps),
+    queryFn: () => fetchResolucaoProduto(codigoProduto, contexto, deps),
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
   } as const;
