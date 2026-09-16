@@ -884,7 +884,9 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     const inserir = screen.getByTestId('previa-confirmar');
     expect(inserir).toHaveAttribute('aria-disabled', 'true');
     expect(inserir).toHaveAttribute('title', expect.stringMatching(MOTIVO_SALDO));
-    expect(screen.getByTestId('previa-aviso-saldo')).toHaveTextContent(MOTIVO_SALDO);
+    // O motivo fica no botão bloqueado e no toast — **não** numa linha abaixo
+    // do nome do produto (pedido do usuário, 2026-09-16; AD-239).
+    expect(screen.queryByTestId('previa-aviso-saldo')).not.toBeInTheDocument();
     expect(useVendaStore.getState().linhas).toHaveLength(0);
   }
 
@@ -910,6 +912,82 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     await usuario.click(screen.getByTestId('previa-confirmar'));
     expect(erro).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
     expect(useVendaStore.getState().linhas).toHaveLength(0);
+  });
+
+  /**
+   * AD-239: a linha de aviso abaixo do nome do produto saiu, e o toast passou a
+   * ser o único canal — inclusive em `'B'`, onde antes o bloqueio só se
+   * anunciava ao confirmar.
+   */
+  it("'B': aumentar a quantidade até cruzar o saldo avisa por toast, uma vez só", async () => {
+    prepararVenda('B');
+    // `'E'` (editável) para a prévia ficar aberta: um produto `''` entraria
+    // direto no carrinho pelo TAB e não haveria `+` a exercitar.
+    stubarProduto({ saldo: '2.000', tipo: 'E' });
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveValue('1,000');
+    });
+    erro.mockClear();
+
+    // 1 → 2 ainda cabe no saldo; 2 → 3 cruza o limite.
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+    expect(erro).not.toHaveBeenCalled();
+
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+    expect(erro).toHaveBeenCalledTimes(1);
+    expect(erro).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
+
+    // O terceiro "+" já está acima do saldo: não repete o toast.
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+    expect(erro).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * AD-239: confirmar com a quantidade bloqueada **reconsulta** o ERP em vez de
+   * repetir o motivo antigo — o estoque pode ter sido reposto desde a última
+   * consulta, e antes disso o operador precisava bipar o produto de novo.
+   */
+  it("'B': confirmar com o botão bloqueado reconsulta e insere quando o saldo foi reposto", async () => {
+    prepararVenda('B');
+    const urls: string[] = [];
+    // Primeira consulta sem saldo, segunda (a reconsulta) com o estoque reposto.
+    const saldos = ['0.000', '9.000'];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        urls.push(url);
+        return Promise.resolve(
+          new Response(
+            JSON.stringify(
+              respostaGetProduto({
+                ProdutoPesavelEditavel: '',
+                Saldo: saldos.shift() ?? '9.000',
+              }),
+            ),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
+      }),
+    );
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await esperarPreviaBloqueada();
+
+    await usuario.click(screen.getByTestId('previa-confirmar'));
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    // A segunda chamada é a reconsulta por código interno (AD-236).
+    expect(urls[1]).toContain('Tipocodproduto=R');
   });
 
   it("'B': TAB num produto não editável também para na prévia bloqueada", async () => {
@@ -991,7 +1069,6 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     await usuario.click(screen.getByTestId('previa-quantidade-diminuir'));
 
     expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled');
-    expect(screen.queryByTestId('previa-aviso-saldo')).not.toBeInTheDocument();
     await usuario.click(screen.getByTestId('previa-confirmar'));
 
     await waitFor(() => {

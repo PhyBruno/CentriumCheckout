@@ -189,6 +189,7 @@ describe('falha de negócio — reenvio livre (T012, research.md D2)', () => {
 
     expect(result.current.estado).toEqual({
       tipo: 'falha-negocio',
+      operacao: 'FATURAR',
       mensagem: 'Cliente sem CPF.',
     });
   });
@@ -231,10 +232,15 @@ describe('falha de negócio — reenvio livre (T012, research.md D2)', () => {
  * Reenviar a venda com `NumeroRascunho: 0` criaria um segundo rascunho da mesma
  * compra (decisão do usuário: adotar o número devolvido).
  */
-describe('recusa com rascunho já gravado — adoção do número (AD-235)', () => {
+describe('recusa de validação com rascunho já gravado — adoção do número (AD-235, AD-239)', () => {
   it('venda nova envia 0 na primeira tentativa e o número adotado no reenvio (SUSPENDER)', async () => {
     const cenario = montarCenario([
-      { estado: 'falha-negocio', mensagem: 'Saldo insuficiente.', numeroRascunho: 6100 },
+      {
+        estado: 'venda-recusada',
+        mensagem: 'Saldo insuficiente.',
+        numeroRascunho: 6100,
+        serieRascunho: 'R01',
+      },
       { estado: 'sucesso', notaFiscal: null },
     ]);
     const { result } = renderizar(cenario);
@@ -247,6 +253,9 @@ describe('recusa com rascunho já gravado — adoção do número (AD-235)', () 
     expect(useVendaStore.getState().identidadeVenda).toEqual({
       origem: 'NOVA',
       numeroRascunho: 6100,
+      // A série vem junto do número (AD-239) — sem ela o reenvio sairia com a
+      // da sessão, vazia no tenant de preview.
+      serie: 'R01',
     });
 
     await act(async () => {
@@ -254,12 +263,13 @@ describe('recusa com rascunho já gravado — adoção do número (AD-235)', () 
     });
 
     expect(cenario.enviados[1]?.NumeroRascunho).toBe(6100);
+    expect(cenario.enviados[1]?.CadSerieNFCe).toBe('R01');
   });
 
   it('adota o número mesmo com pagamento aprovado na venda (FATURAR)', async () => {
     useVendaStore.setState({ pagamentos: [pagamentoDe()] });
     const cenario = montarCenario([
-      { estado: 'falha-negocio', mensagem: 'Saldo insuficiente.', numeroRascunho: 6100 },
+      { estado: 'venda-recusada', mensagem: 'Saldo insuficiente.', numeroRascunho: 6100 },
     ]);
     const { result } = renderizar(cenario);
 
@@ -268,15 +278,20 @@ describe('recusa com rascunho já gravado — adoção do número (AD-235)', () 
     });
 
     expect(useVendaStore.getState().identidadeVenda.numeroRascunho).toBe(6100);
+    // Recusa de validação é desfecho próprio (AD-239): não é erro na nota, e a
+    // janela diz isso com outra cópia.
     expect(result.current.estado).toEqual({
-      tipo: 'falha-negocio',
+      tipo: 'venda-recusada',
+      operacao: 'FATURAR',
       mensagem: 'Saldo insuficiente.',
     });
   });
 
   it('recusa sem número mantém a identidade como estava', async () => {
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'DAV', numeroRascunho: 6031 });
-    const cenario = montarCenario([{ estado: 'falha-negocio', mensagem: 'Cliente sem CPF.' }]);
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'DAV', numeroRascunho: 6031, serie: 'R01' });
+    const cenario = montarCenario([{ estado: 'venda-recusada', mensagem: 'Cliente sem CPF.' }]);
     const { result } = renderizar(cenario);
 
     await act(async () => {
@@ -287,7 +302,56 @@ describe('recusa com rascunho já gravado — adoção do número (AD-235)', () 
     expect(useVendaStore.getState().identidadeVenda).toEqual({
       origem: 'DAV',
       numeroRascunho: 6031,
+      serie: 'R01',
     });
+  });
+});
+
+/**
+ * Cenário tributário não encontrado (AD-239) — resposta real do ERP em
+ * 2026-09-16. Não há o que corrigir no Checkout: o caixa é liberado ao fechar,
+ * e o rascunho exibido é o da própria venda quando o ERP devolve `0`.
+ */
+describe('cenário tributário — limpa o caixa e manda o operador ao ERP', () => {
+  const RECUSA_FISCAL = {
+    estado: 'cenario-tributario',
+    mensagem: 'Busca realizada pelo seguinte Cenário Tributário não foi Encontrada',
+    numeroRascunho: null,
+    serieRascunho: null,
+  } as const;
+
+  it('usa o rascunho da venda quando o ERP devolve zerado', async () => {
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 6031, serie: 'R01' });
+    const { result } = renderizar(montarCenario([RECUSA_FISCAL]));
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(result.current.estado).toEqual({
+      tipo: 'cenario-tributario',
+      mensagem: RECUSA_FISCAL.mensagem,
+      numeroRascunho: 6031,
+      serieRascunho: 'R01',
+    });
+  });
+
+  it('libera o caixa ao fechar, como a NFCe rejeitada', async () => {
+    const { result } = renderizar(montarCenario([RECUSA_FISCAL]));
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(1);
+
+    act(() => {
+      result.current.descartar();
+    });
+
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(useVendaStore.getState().identidadeVenda.numeroRascunho).toBe(0);
   });
 });
 
@@ -299,17 +363,22 @@ describe('recusa com rascunho já gravado — adoção do número (AD-235)', () 
  * emitiria outra para a mesma compra.
  */
 describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
+  /**
+   * O ERP devolve `NotaFiscal.NumeroNota: "0"` na rejeição (medido em
+   * 2026-09-16, rascunho 6037): quem identifica o documento para a correção no
+   * ERP é o **rascunho**, na raiz da resposta (AD-239).
+   */
   const REJEICAO = {
     estado: 'nfce-rejeitada',
     mensagem: 'Rejeicao: Duplicidade de NF-e',
     codigoErro: 539,
-    numeroNota: 9001,
-    serieNota: '1',
+    numeroRascunho: 6037,
+    serieRascunho: 'R01',
     sugestaoIA: 'Confira a numeração da série.',
     urlChamadas: 'https://atendimento.exemplo.invalid/x',
   } as const;
 
-  it('leva o motivo do ERP, a sugestão da IA e a identificação da nota até a tela', async () => {
+  it('leva o motivo do ERP, a sugestão da IA e o rascunho a procurar no ERP até a tela', async () => {
     const cenario = montarCenario([REJEICAO]);
     const { result } = renderizar(cenario);
 
@@ -321,16 +390,38 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
       tipo: 'nfce-rejeitada',
       mensagem: 'Rejeicao: Duplicidade de NF-e',
       codigoErro: 539,
-      numeroNota: 9001,
-      serieNota: '1',
+      numeroRascunho: 6037,
+      serieRascunho: 'R01',
       sugestaoIA: 'Confira a numeração da série.',
       urlChamadas: 'https://atendimento.exemplo.invalid/x',
     });
   });
 
+  it('cai no rascunho da própria venda quando a resposta não o informa', async () => {
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
+    const cenario = montarCenario([
+      { ...REJEICAO, numeroRascunho: null, serieRascunho: null },
+    ]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(result.current.estado).toMatchObject({
+      tipo: 'nfce-rejeitada',
+      numeroRascunho: 4821,
+      serieRascunho: 'R01',
+    });
+  });
+
   it('não limpa nada antes de o operador fechar o aviso', async () => {
     const cenario = montarCenario([REJEICAO]);
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
     const { result } = renderizar(cenario);
 
     await act(async () => {
@@ -339,13 +430,19 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
 
     const venda = useVendaStore.getState();
     expect(venda.linhas).toHaveLength(1);
-    expect(venda.identidadeVenda).toEqual({ origem: 'RASCUNHO', numeroRascunho: 4821 });
+    expect(venda.identidadeVenda).toEqual({
+      origem: 'RASCUNHO',
+      numeroRascunho: 4821,
+      serie: 'R01',
+    });
   });
 
   it('descarta carrinho, cache de produto, auditoria e identidade ao fechar', async () => {
     const cenario = montarCenario([REJEICAO]);
     cenario.queryClient.setQueryData(CHAVE_PRODUTO_EM_CACHE, { codigoProduto: '001234' });
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
     const { result } = renderizar(cenario);
 
     await act(async () => {
@@ -357,7 +454,7 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
 
     const venda = useVendaStore.getState();
     expect(venda.linhas).toEqual([]);
-    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
+    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0, serie: '' });
     // A próxima venda já nasce com histórico aberto: sem isto o primeiro item
     // dela cairia num `Log` sem `VENDA_INICIADA` (`FR-002` da feature 001).
     expect(venda.eventos.map((evento) => evento.tipo)).toEqual(['VENDA_INICIADA']);
@@ -398,7 +495,9 @@ describe('sucesso — limpeza na mesma transação (T013, FR-012)', () => {
   it('descarta carrinho, cache de produto, auditoria e identidade da venda', async () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
     cenario.queryClient.setQueryData(CHAVE_PRODUTO_EM_CACHE, { codigoProduto: '001234' });
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
 
     const { result } = renderizar(cenario);
 
@@ -412,7 +511,7 @@ describe('sucesso — limpeza na mesma transação (T013, FR-012)', () => {
 
     const venda = useVendaStore.getState();
     expect(venda.linhas).toEqual([]);
-    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
+    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0, serie: '' });
     // O histórico da venda emitida é descartado e a próxima sessão já nasce
     // aberta: nada da venda anterior sobrevive, e a seguinte nunca começa sem
     // `VENDA_INICIADA` (`FR-012` daqui + `FR-002`/`FR-008` da feature 001).
@@ -422,7 +521,9 @@ describe('sucesso — limpeza na mesma transação (T013, FR-012)', () => {
 
   it('envia o NumeroRascunho do rascunho retomado, não 0 (FR-003)', async () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
 
     const { result } = renderizar(cenario);
 
@@ -1070,8 +1171,8 @@ describe('janela da NFCe rejeitada', () => {
     estado: 'nfce-rejeitada',
     mensagem: 'Rejeicao: Duplicidade de NF-e',
     codigoErro: 539,
-    numeroNota: 9001,
-    serieNota: '1',
+    numeroRascunho: 6037,
+    serieRascunho: 'R01',
     sugestaoIA: null,
     urlChamadas: null,
   } as const;
@@ -1087,17 +1188,21 @@ describe('janela da NFCe rejeitada', () => {
     // antes desta correção.
     const retorno = screen.getByTestId('erro-finalizacao');
     expect(retorno).toHaveTextContent('Rejeicao: Duplicidade de NF-e');
-    // Bloco "Retorno da SEFAZ" (AD-238): código em campo próprio.
-    expect(retorno).toHaveTextContent('Retorno da SEFAZ');
+    // Bloco do motivo com o código em campo próprio (AD-238).
+    expect(retorno).toHaveTextContent('Motivo da rejeição');
     expect(screen.getByTestId('codigo-sefaz')).toHaveTextContent('539');
     // Sem sugestão nem link, os dois blocos não aparecem.
     expect(screen.queryByTestId('sugestao-ia')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Abrir no ERP/i })).not.toBeInTheDocument();
-    expect(screen.getByTestId('documento-rejeitado')).toHaveTextContent('NFCe 9001 · série 1');
+    expect(
+      screen.queryByRole('link', { name: /Consultar solução detalhada/i }),
+    ).not.toBeInTheDocument();
+    // Rascunho e série, e **não** o número da nota: o ERP devolve `NumeroNota:
+    // "0"` na rejeição (AD-239).
+    expect(screen.getByTestId('rascunho-no-erp')).toHaveTextContent('Rascunho 6037 · série R01');
     expect(screen.getByRole('alertdialog')).toHaveAccessibleName('NFCe rejeitada pelo ERP');
     // A instrução é o oposto da recusa sem documento gravado: não há o que
     // corrigir e reenviar daqui.
-    expect(screen.getByText(/o caixa fica livre para uma nova NFCe/i)).toBeInTheDocument();
+    expect(screen.getByText(/o caixa fica livre para a próxima venda/i)).toBeInTheDocument();
   });
 
   it('fecha pelo botão e libera o caixa para a próxima venda', async () => {
@@ -1138,7 +1243,7 @@ describe('janela da NFCe rejeitada', () => {
     expect(texto.querySelector('b')).toBeNull();
     expect(texto).toHaveClass('whitespace-pre-line');
 
-    const link = screen.getByRole('link', { name: /Abrir no ERP/i });
+    const link = screen.getByRole('link', { name: /Consultar solução detalhada/i });
     expect(link).toHaveAttribute('href', 'https://atendimento.exemplo.invalid/chamado?id=7');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
@@ -1154,7 +1259,7 @@ describe('janela da NFCe rejeitada', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('a recusa sem documento gravado continua dizendo que a venda segue aberta', async () => {
+  it('a falha técnica continua dizendo que a venda segue aberta', async () => {
     const cenario = montarCenario([{ estado: 'falha-negocio', mensagem: 'Cliente sem CPF.' }]);
     renderizarJanela(cenario);
 
@@ -1162,6 +1267,59 @@ describe('janela da NFCe rejeitada', () => {
 
     await screen.findByTestId('dialogo-erro-faturamento');
     expect(screen.getByText(/A venda continua aberta no caixa/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('documento-rejeitado')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rascunho-no-erp')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Recusa de validação (AD-239): não é erro na nota, e a cópia precisa dizer
+   * isso — a venda continua no caixa para ser ajustada.
+   */
+  it('a recusa de validação tem cópia própria, sem falar em nota não emitida', async () => {
+    const cenario = montarCenario([
+      { estado: 'venda-recusada', mensagem: 'Quantidade maior que o Saldo do produto: 18.' },
+    ]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+
+    await screen.findByTestId('dialogo-erro-faturamento');
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleName('Venda recusada pelo ERP');
+    expect(screen.getByTestId('erro-finalizacao')).toHaveTextContent('Motivo apontado pelo ERP');
+    expect(screen.getByText(/Ajuste o que o ERP apontou/i)).toBeInTheDocument();
+    expect(screen.queryByText(/NFCe não emitida/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Cenário tributário (AD-239): manda o operador ao ERP com o rascunho, e
+   * libera o caixa ao fechar.
+   */
+  it('o cenário tributário mostra o rascunho e libera o caixa', async () => {
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 6031, serie: 'R01' });
+    const cenario = montarCenario([
+      {
+        estado: 'cenario-tributario',
+        mensagem: 'Busca realizada pelo seguinte Cenário Tributário não foi Encontrada',
+        numeroRascunho: null,
+        serieRascunho: null,
+      },
+    ]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+    await screen.findByTestId('dialogo-erro-faturamento');
+
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleName(
+      'Cenário tributário não encontrado',
+    );
+    expect(screen.getByTestId('rascunho-no-erp')).toHaveTextContent('Rascunho 6031 · série R01');
+
+    await userEvent.click(screen.getByTestId('fechar-erro-faturamento'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialogo-erro-faturamento')).not.toBeInTheDocument();
+    });
+    expect(useVendaStore.getState().linhas).toEqual([]);
   });
 });

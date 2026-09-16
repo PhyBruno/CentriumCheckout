@@ -29,7 +29,7 @@ function snapshotVendaDe(sobrescritas: Partial<SnapshotVenda> = {}): SnapshotVen
   return {
     empresa: '1',
     linhas: [linhaDe({ quantidadeEmUnidades: 3, precoUnitario: 1000 })],
-    identidade: { origem: 'NOVA', numeroRascunho: 0 },
+    identidade: { origem: 'NOVA', numeroRascunho: 0, serie: '' },
     cadSerieNFCe: '1',
     clienteCodigo: 1,
     vendedorCodigo: 42,
@@ -65,16 +65,50 @@ describe('montarRetratoVenda — identidade da venda (FR-003)', () => {
   });
 
   it.each<IdentidadeVenda>([
-    { origem: 'RASCUNHO', numeroRascunho: 4821 },
-    { origem: 'DAV', numeroRascunho: 4790 },
+    { origem: 'RASCUNHO', numeroRascunho: 4821, serie: '' },
+    { origem: 'DAV', numeroRascunho: 4790, serie: '' },
     // Venda nova cujo envio foi recusado com o rascunho já gravado (AD-235).
-    { origem: 'NOVA', numeroRascunho: 6100 },
+    { origem: 'NOVA', numeroRascunho: 6100, serie: '' },
   ])('envia o NumeroRascunho da identidade ($origem)', (identidade) => {
     for (const operacao of ['FATURAR', 'SUSPENDER', 'VALIDAR'] as const) {
       const retrato = montarRetratoVenda(snapshotVendaDe({ identidade }), operacao, []);
 
       expect(retrato.NumeroRascunho).toBe(identidade.numeroRascunho);
     }
+  });
+
+  /**
+   * AD-239: o retrato mandava sempre a série **da sessão**, que vem vazia no
+   * tenant de preview — o documento importado com `R01` era reenviado sem
+   * série (medido em 2026-09-16).
+   */
+  describe('série do rascunho', () => {
+    it('manda a série do documento importado, não a da sessão', () => {
+      const snapshot = snapshotVendaDe({
+        identidade: { origem: 'RASCUNHO', numeroRascunho: 6031, serie: 'R01' },
+        cadSerieNFCe: '1',
+      });
+
+      expect(montarRetratoVenda(snapshot, 'FATURAR', []).CadSerieNFCe).toBe('R01');
+    });
+
+    it('cai na série da sessão quando a identidade não tem série', () => {
+      const snapshot = snapshotVendaDe({
+        identidade: { origem: 'NOVA', numeroRascunho: 0, serie: '   ' },
+        cadSerieNFCe: '1',
+      });
+
+      expect(montarRetratoVenda(snapshot, 'FATURAR', []).CadSerieNFCe).toBe('1');
+    });
+
+    it('série vazia dos dois lados continua vazia — é o que o tenant de preview devolve', () => {
+      const snapshot = snapshotVendaDe({
+        identidade: { origem: 'NOVA', numeroRascunho: 0, serie: '' },
+        cadSerieNFCe: '',
+      });
+
+      expect(montarRetratoVenda(snapshot, 'SUSPENDER', []).CadSerieNFCe).toBe('');
+    });
   });
 });
 

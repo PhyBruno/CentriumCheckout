@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { notificadorDeVeredito, notificar } from '@/lib/notificar';
+import { useRecusaValidacaoStore } from './recusaValidacaoStore';
 import { criarAuditoriaSlice } from './slices/auditoriaSlice';
 import type { AuditoriaSlice } from './slices/auditoriaSlice';
 import { criarCarrinhoSlice } from './slices/carrinhoSlice';
@@ -354,7 +355,14 @@ export const validacaoDepsPadrao: ValidacaoDeps = {
     useVendaStore.getState().registrarEventoAuditoria(evento);
   },
   notificar: (veredito) => {
-    notificarVeredito(veredito, notificadorDeVeredito);
+    // A recusa abre janela (AD-239) e o resto continua em toast — ver
+    // `recusaValidacaoStore`.
+    notificarVeredito(veredito, {
+      ...notificadorDeVeredito,
+      recusa: (motivos) => {
+        useRecusaValidacaoStore.getState().abrirRecusa(motivos);
+      },
+    });
   },
 };
 
@@ -412,10 +420,10 @@ export const useVendaStore = criarVendaStore();
  * `definirIdentidadeVenda` guardada faria a abertura virar um no-op silencioso
  * assim que a feature 008 ligasse o predicado real.
  */
-export function abrirSessaoDeVenda(origem: OrigemVenda, numeroRascunho = 0): void {
+export function abrirSessaoDeVenda(origem: OrigemVenda, numeroRascunho = 0, serie = ''): void {
   const venda = useVendaStore.getState();
   venda.resetarAuditoria(origem);
-  venda.iniciarIdentidadeVenda({ origem, numeroRascunho });
+  venda.iniciarIdentidadeVenda({ origem, numeroRascunho, serie });
 
   // Pré-seleção do cliente default (feature 005, `FR-004`/AD-032): acontece
   // aqui, e não dentro de um slice, pelo mesmo motivo dos dois acima — é o

@@ -176,6 +176,27 @@ describe('mapearVendaExistente — bordas de dado de negócio', () => {
     expect(venda.linhas).toEqual([]);
   });
 
+  /**
+   * AD-239: o ERP devolve o código interno preenchido com espaços
+   * (`"50153         "`, `char` do GeneXus). Sem o corte, o `GetProduto` da
+   * descrição não achava nada e a linha exibia o código no lugar do nome —
+   * medido no ERP real em 2026-09-16.
+   */
+  it('corta os espaços do código do produto', () => {
+    const venda = mapearVendaExistente(
+      documentoValidado({ produtos: [produtoDoDav({ codigoProduto: '50153         ' })] }),
+    );
+
+    expect(venda.linhas[0]?.codigoProduto).toBe('50153');
+  });
+
+  it('leva a série do documento, para o reenvio não usar a da sessão (AD-239)', () => {
+    expect(mapearVendaExistente(documentoValidado({ CadSerieNFCe: 'R01' })).serie).toBe('R01');
+    expect(mapearVendaExistente(documentoValidado({ CadSerieNFCe: '  ' })).serie).toBe('');
+    // Ausente também vira `''` — e aí o retrato cai na série da sessão.
+    expect(mapearVendaExistente(documentoValidado({ CadSerieNFCe: undefined })).serie).toBe('');
+  });
+
   it('mantém uma linha por item, mesmo repetindo o SKU', () => {
     const documento = documentoValidado({
       produtos: [produtoDoDav(), produtoDoDav({ sequencial: 2, quantidade: 5 })],

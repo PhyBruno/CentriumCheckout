@@ -356,6 +356,9 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     expect(store.getState().identidadeVenda).toEqual({
       origem: 'DAV',
       numeroRascunho: NUMERO_NOTA,
+      // A série do documento vai junto (AD-239): o retrato a reenvia no lugar
+      // da série da sessão, que pode vir vazia.
+      serie: '1',
     });
   });
 
@@ -592,7 +595,11 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     // Recusa acontece antes até da rede: nada foi buscado, nada foi mutado.
     expect(espioes.resolverCliente).not.toHaveBeenCalled();
     expect(store.getState().linhas).toEqual(antes);
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
+    expect(store.getState().identidadeVenda).toEqual({
+      origem: 'NOVA',
+      numeroRascunho: 0,
+      serie: '',
+    });
     expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
   }
 
@@ -759,7 +766,11 @@ describe('erro de importação (D7, FR-010)', () => {
     ).rejects.toThrow();
 
     expect(store.getState().linhas).toEqual(antes);
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
+    expect(store.getState().identidadeVenda).toEqual({
+      origem: 'NOVA',
+      numeroRascunho: 0,
+      serie: '',
+    });
     expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
   });
 
@@ -962,6 +973,7 @@ describe('recusaAtual — cliente da venda, não a flag de escolha (AD-139)', ()
     expect(useVendaStore.getState().identidadeVenda).toEqual({
       origem: 'NOVA',
       numeroRascunho: 6100,
+      serie: '',
     });
     expect(recusaAtual()).toBeNull();
   });

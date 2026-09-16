@@ -33,6 +33,16 @@ export interface IdentidadeVenda {
    * III). Não é a nota fiscal: essa é `NotaFiscal.NumeroNota`, na resposta.
    */
   readonly numeroRascunho: number;
+  /**
+   * Série do rascunho no ERP (`CadSerieNFCe`, AD-239): `''` para venda nova, a
+   * série do documento quando veio de `GetDav`/`CarregarNFCe`, e a devolvida
+   * pelo `FaturarNFCe` quando um rascunho é adotado.
+   *
+   * Existe porque o retrato mandava sempre a série **da sessão**, e no tenant de
+   * preview ela é vazia: o documento importado com `R01` era reenviado sem série
+   * (medido em 2026-09-16). Vazia aqui, o retrato cai na série da sessão.
+   */
+  readonly serie: string;
 }
 
 /**
@@ -103,9 +113,10 @@ export interface IdentidadeVendaSlice {
    * em curso, e o número é o da própria venda — não a troca para outro
    * documento que `definirIdentidadeVenda` protege. Ignora silenciosamente o
    * que não for inteiro positivo (`0` é o "sem rascunho" do SDT) e é
-   * idempotente.
+   * idempotente. A série vem junto quando o ERP a informa (AD-239); vazia ou
+   * ausente, a que a venda já tinha fica.
    */
-  adotarRascunhoGravado(numeroRascunho: number): void;
+  adotarRascunhoGravado(numeroRascunho: number, serie?: string): void;
 
   /**
    * Volta à identidade de venda nova. Só pode ser chamado depois de
@@ -120,7 +131,11 @@ export interface IdentidadeVendaSlice {
 }
 
 /** Venda nova, ainda não faturada — estado inicial e alvo do reset. */
-export const IDENTIDADE_VENDA_NOVA: IdentidadeVenda = { origem: 'NOVA', numeroRascunho: 0 };
+export const IDENTIDADE_VENDA_NOVA: IdentidadeVenda = {
+  origem: 'NOVA',
+  numeroRascunho: 0,
+  serie: '',
+};
 
 /** `numeroRascunho` fora do domínio representável (não inteiro ou negativo). */
 export class ErroIdentidadeVendaInvalida extends Error {
@@ -184,15 +199,19 @@ export function criarIdentidadeVendaSlice(
       });
     },
 
-    adotarRascunhoGravado: (numeroRascunho) => {
+    adotarRascunhoGravado: (numeroRascunho, serie) => {
       // Sem exceção aqui, ao contrário das duas acima: o número já passou pela
       // fronteira Zod (`inteiroErp`), e o que sobra fora do domínio é o `0` de
       // "o ERP não informou rascunho" — ausência legítima, não defeito.
       if (!Number.isSafeInteger(numeroRascunho) || numeroRascunho <= 0) {
         return;
       }
+      const serieInformada = (serie ?? '').trim();
       set((state) => {
         state.identidadeVenda.numeroRascunho = numeroRascunho;
+        if (serieInformada !== '') {
+          state.identidadeVenda.serie = serieInformada;
+        }
       });
     },
 

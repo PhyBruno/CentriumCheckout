@@ -197,16 +197,29 @@ export const checkoutFaturarNFCeSchema = z.looseObject({
   /**
    * `inteiroErp`: o ERP serializa como string (`"6031"`, preview 2026-09-14).
    * Ver o TSDoc do schema.
+   *
+   * **Positivo, e é ele quem separa documento de recusa** (AD-239). O SDT
+   * zerado que o ERP devolve ao recusar (DAV não liberado, rascunho inexistente)
+   * traz `NumeroRascunho: "0"`; um documento importável sempre tem rascunho.
+   * Até o AD-239 essa guarda era `produtos` obrigatório — e ela reprovava um
+   * documento legítimo: o rascunho **sem itens**, que o ERP grava quando recusa
+   * a venda por cenário tributário (6030/6032–6035, medidos em 2026-09-16).
    */
-  NumeroRascunho: inteiroErp,
+  NumeroRascunho: inteiroErp.refine((numero) => numero > 0, {
+    message: 'NumeroRascunho zerado é recusa do ERP, não documento.',
+  }),
   /**
-   * **Obrigatório, e é ele quem separa documento de recusa.** Um documento
-   * importável sempre tem ao menos um item; o SDT zerado que o ERP devolve ao
-   * recusar (DAV não liberado, rascunho inexistente) nunca traz esta chave.
-   * Com `FormasDePagamento` agora opcional, `produtos` é a única guarda que
-   * impede uma recusa de virar importação silenciosa de documento vazio.
+   * Série do rascunho (`R01` no preview). Opcional: é reenviada junto do número
+   * quando existe (AD-239), e na ausência o retrato usa a série da sessão.
    */
-  produtos: z.array(produtoDoDocumentoSchema),
+  CadSerieNFCe: z.string().optional(),
+  /**
+   * **Ausente quando o documento não tem itens** — o ERP omite a chave em vez de
+   * mandar `[]` (mesmo padrão do AD-216). Medido em 2026-09-16 no
+   * `CarregarNFCe` do rascunho 6033: sem a chave, a importação inteira reprovava
+   * na fronteira. Quem lê trata a ausência como "nenhum item".
+   */
+  produtos: z.array(produtoDoDocumentoSchema).optional().default([]),
   /**
    * **Ausente quando o documento não tem pagamento lançado** — que é o estado
    * normal de um DAV, gerado antes de qualquer cobrança. O ERP não devolve

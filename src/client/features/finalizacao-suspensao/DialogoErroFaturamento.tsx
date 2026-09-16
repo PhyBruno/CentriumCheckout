@@ -1,49 +1,60 @@
 import { AlertTriangle, LinkSquare, Sparkles, XCircle } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { urlExternaSegura } from '@/lib/urlExterna';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
-import { identificacaoDaNota } from './identificacaoDaNota';
+import { identificacaoDoRascunho } from './identificacaoDaNota';
 
 /**
- * Erro de transmissão da NFCe (pedido do usuário, 2026-09-02).
+ * Desfechos ruins do envio da venda ao ERP (pedido do usuário, 2026-09-02;
+ * reorganizado em 2026-09-16, AD-239).
  *
  * Substitui o texto que antes ficava embaixo do botão de finalizar: uma venda
  * **não emitida** é o desfecho mais grave do fluxo, e uma linha de texto ao pé
- * do botão é fácil demais de não ver — o operador podia achar que finalizou.
+ * do botão é fácil demais de não ver.
  *
- * Cobre os **dois** desfechos ruins de `FaturarNFCe`, que têm a mesma anatomia
- * e instruções opostas (ver `Desfecho` abaixo). O que muda entre eles é só a
- * cópia: um diálogo separado duplicaria moldura, foco e acessibilidade para
- * trocar quatro frases, e as duas cópias divergiriam no primeiro ajuste visual.
- *
- * Distinto de `DialogoConfirmarReenvio`, que trata a falha **sem resposta** e
- * cobra confirmação explícita antes de qualquer novo envio (`FR-004`/AD-038).
+ * Um componente só para os quatro desfechos porque a anatomia é a mesma —
+ * moldura, foco, bloco de motivo, botão — e o que muda é a cópia e o que
+ * acontece ao fechar. Quatro diálogos duplicariam acessibilidade e layout para
+ * trocar frases, e divergiriam no primeiro ajuste visual.
  *
  * Mesma anatomia do "Modal pagamento aprovado TEF" (`A9MNZI`) do Pencil, na
- * família de erro. O Pencil não desenha um nó próprio para a rejeição
- * (verificado no `.pen` em 2026-09-10): a variante reusa esta moldura.
+ * família de erro. O Pencil não desenha nó próprio para nenhum destes estados
+ * (app fechado em 2026-09-16; conferido no `.pen` em 2026-09-10): a variante
+ * reusa esta moldura.
  */
 export type Desfecho =
   /**
-   * Estado `falha-negocio`: o ERP **respondeu** recusando, então a primeira
-   * tentativa provadamente não gerou NFCe e o reenvio é livre (`research.md`,
-   * D2). O operador fecha, corrige o que o ERP apontou e aciona "Finalizar
-   * venda" de novo — a venda continua intacta no carrinho (`FR-012`).
+   * Falha **técnica** com resposta do ERP (HTTP, sessão, corpo sem desfecho): a
+   * primeira tentativa provadamente não gerou NFCe (`research.md`, D2), e o
+   * reenvio é livre.
    */
   | 'NAO_EMITIDA'
   /**
-   * Estado `nfce-rejeitada`: o ERP **gravou** a NFCe e a autorização não saiu
-   * (correção do usuário, 2026-09-10). Não há o que corrigir e reenviar daqui —
-   * a nota já existe do outro lado, e fechar este aviso libera o caixa para a
-   * próxima venda. A instrução precisa dizer isso, porque é o oposto da outra.
+   * O ERP **validou e recusou** a venda — saldo, regra de NFCe (AD-239). Não é
+   * erro na nota: é a venda que, como está, não passa. Tom de aviso, e não de
+   * erro, porque nada quebrou e o operador tem o que fazer.
    */
-  | 'REJEITADA';
+  | 'VENDA_RECUSADA'
+  /**
+   * O ERP **gravou** a NFCe e a SEFAZ não autorizou. Não há o que corrigir e
+   * reenviar daqui: a nota já existe do outro lado, e fechar libera o caixa.
+   */
+  | 'REJEITADA'
+  /**
+   * Cenário tributário não encontrado (AD-239): cadastro fiscal do ERP. Como na
+   * rejeição, fechar libera o caixa — não há correção possível no Checkout.
+   */
+  | 'CENARIO_TRIBUTARIO';
 
-/** Identificação da nota que o ERP gravou — só existe em `REJEITADA`. */
-export interface DocumentoRejeitado {
-  readonly numeroNota: number | null;
-  readonly serieNota: string | null;
+/** Onde a recusa aconteceu — decide o verbo da cópia (AD-239). */
+export type ContextoDoDesfecho = 'FATURAR' | 'SUSPENDER' | 'PAGAMENTO';
+
+/** Rascunho no ERP: é por ele que o operador acha o documento lá (AD-239). */
+export interface RascunhoNoErp {
+  readonly numeroRascunho: number | null;
+  readonly serieRascunho: string | null;
 }
 
 /**
@@ -65,38 +76,85 @@ interface CopiaDoDesfecho {
   readonly subtituloCabecalho: string;
   readonly chamada: string;
   readonly explicacao: string;
+  readonly tituloDoMotivo: string;
   readonly rotuloBotao: string;
 }
 
-const COPIA: Record<Desfecho, CopiaDoDesfecho> = {
-  NAO_EMITIDA: {
-    rotuloAcessivel: 'Falha ao emitir a NFCe',
-    tituloCabecalho: 'NFCe não emitida',
-    subtituloCabecalho: 'A venda não foi transmitida',
-    chamada: 'O ERP recusou a emissão',
-    explicacao: 'A venda continua aberta no caixa. Corrija o que o ERP apontou e finalize de novo.',
-    rotuloBotao: 'Entendi',
-  },
-  REJEITADA: {
-    rotuloAcessivel: 'NFCe rejeitada pelo ERP',
-    tituloCabecalho: 'NFCe rejeitada',
-    subtituloCabecalho: 'O documento já ficou registrado no ERP',
-    chamada: 'A NFCe não foi autorizada',
-    // Anuncia a limpeza **antes** de ela acontecer: o operador precisa saber que
-    // vai perder a tela ao fechar, e que isso é o comportamento correto e não
-    // uma venda perdida por engano.
-    explicacao:
-      'A nota já está gravada no ERP como rejeitada, então esta venda não pode ser reenviada daqui. Ao fechar, o caixa fica livre para uma nova NFCe.',
-    rotuloBotao: 'Fechar e liberar o caixa',
-  },
+/** O verbo da ação que o operador repete, por contexto. */
+const TENTAR_DE_NOVO: Record<ContextoDoDesfecho, string> = {
+  FATURAR: 'finalize a venda de novo',
+  SUSPENDER: 'cancele a venda de novo',
+  PAGAMENTO: 'informe o pagamento de novo',
 };
 
+const MOTIVO_DO_ERP = 'Motivo apontado pelo ERP';
+
+function copiaDoDesfecho(desfecho: Desfecho, contexto: ContextoDoDesfecho): CopiaDoDesfecho {
+  switch (desfecho) {
+    case 'NAO_EMITIDA':
+      return {
+        rotuloAcessivel:
+          contexto === 'SUSPENDER' ? 'Falha ao suspender a venda' : 'Falha ao emitir a NFCe',
+        tituloCabecalho: contexto === 'SUSPENDER' ? 'Venda não suspensa' : 'NFCe não emitida',
+        subtituloCabecalho: 'O envio não foi concluído',
+        chamada: 'A venda continua aberta no caixa',
+        explicacao: `Confira o que o ERP respondeu e ${TENTAR_DE_NOVO[contexto]}.`,
+        tituloDoMotivo: 'Resposta do ERP',
+        rotuloBotao: 'Entendi',
+      };
+
+    case 'VENDA_RECUSADA':
+      return {
+        rotuloAcessivel:
+          contexto === 'PAGAMENTO' ? 'Pagamento recusado pelo ERP' : 'Venda recusada pelo ERP',
+        tituloCabecalho:
+          contexto === 'PAGAMENTO' ? 'Pagamento não aceito' : 'Venda não aceita pelo ERP',
+        subtituloCabecalho:
+          contexto === 'PAGAMENTO' ? 'A forma não foi aplicada' : 'A venda precisa de ajuste',
+        chamada: 'A venda continua aberta no caixa',
+        explicacao: `Ajuste o que o ERP apontou e ${TENTAR_DE_NOVO[contexto]}.`,
+        tituloDoMotivo: MOTIVO_DO_ERP,
+        rotuloBotao: 'Entendi',
+      };
+
+    case 'REJEITADA':
+      return {
+        rotuloAcessivel: 'NFCe rejeitada pelo ERP',
+        tituloCabecalho: 'NFCe rejeitada',
+        subtituloCabecalho: 'A SEFAZ não autorizou a nota',
+        chamada: 'Corrija a nota no ERP',
+        // Anuncia a limpeza **antes** de ela acontecer: o operador precisa saber
+        // que vai perder a tela ao fechar, e que isso é o comportamento correto.
+        explicacao:
+          'Localize o rascunho abaixo no ERP para corrigir e transmitir de novo. Ao fechar, o caixa fica livre para a próxima venda.',
+        tituloDoMotivo: 'Motivo da rejeição',
+        rotuloBotao: 'Fechar e liberar o caixa',
+      };
+
+    case 'CENARIO_TRIBUTARIO':
+      return {
+        rotuloAcessivel: 'Cenário tributário não encontrado',
+        tituloCabecalho: 'Cenário tributário não encontrado',
+        subtituloCabecalho: 'Correção no cadastro fiscal do ERP',
+        chamada: 'Não há o que corrigir no Checkout',
+        explicacao:
+          'O ERP precisa do cenário tributário cadastrado para emitir esta venda. Ao fechar, o caixa fica livre para a próxima venda.',
+        tituloDoMotivo: MOTIVO_DO_ERP,
+        rotuloBotao: 'Fechar e liberar o caixa',
+      };
+  }
+}
+
 export interface DialogoErroFaturamentoProps {
-  readonly mensagem: string;
+  /** Um motivo, ou vários — o ERP recusa a validação com uma lista (`FR-005` da 014). */
+  readonly mensagem: string | readonly string[];
   readonly onFechar: () => void;
-  /** Default `NAO_EMITIDA`: o desfecho que este diálogo já cobria sozinho. */
+  /** Default `NAO_EMITIDA`: o desfecho que este diálogo cobria sozinho. */
   readonly desfecho?: Desfecho;
-  readonly documento?: DocumentoRejeitado;
+  /** Default `FATURAR`. */
+  readonly contexto?: ContextoDoDesfecho;
+  /** Rascunho a procurar no ERP — só nos desfechos que mandam o operador lá. */
+  readonly rascunho?: RascunhoNoErp;
   /** Só em `REJEITADA` (AD-238). */
   readonly retorno?: RetornoDaSefaz;
 }
@@ -105,12 +163,22 @@ export function DialogoErroFaturamento({
   mensagem,
   onFechar,
   desfecho = 'NAO_EMITIDA',
-  documento,
+  contexto = 'FATURAR',
+  rascunho,
   retorno,
 }: DialogoErroFaturamentoProps): ReactElement {
-  const copia = COPIA[desfecho];
-  const identificacao = identificacaoDaNota(documento);
+  const copia = copiaDoDesfecho(desfecho, contexto);
+  const motivos = typeof mensagem === 'string' ? [mensagem] : mensagem;
+  const identificacao = identificacaoDoRascunho(rascunho);
   const rejeitada = desfecho === 'REJEITADA';
+  // Aviso, e não erro: a validação recusada é a venda que precisa de ajuste —
+  // nada quebrou, e o vermelho de falha treinaria o operador a ignorá-lo.
+  const tomDeAviso = desfecho === 'VENDA_RECUSADA';
+  const Icone = tomDeAviso ? AlertTriangle : XCircle;
+  const corDoIcone = tomDeAviso ? 'text-[var(--cc-color-accent-yellow)]' : 'text-destructive';
+  const fundoDoIcone = tomDeAviso
+    ? 'bg-[var(--cc-color-warning-soft)]'
+    : 'bg-[var(--cc-color-down-soft)]';
   const codigoErro = retorno?.codigoErro ?? null;
   const sugestao = (retorno?.sugestaoIA ?? '').trim() === '' ? null : (retorno?.sugestaoIA ?? null);
   // Segunda checagem, além da do mapper: o `href` só existe se esta função o
@@ -132,56 +200,65 @@ export function DialogoErroFaturamento({
         className="cc-modal-entra flex max-h-full w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
       >
         <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
-          <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-down-soft)]">
-            <XCircle className="size-5 text-destructive" aria-hidden="true" />
+          <span
+            className={cn(
+              'flex size-[42px] shrink-0 items-center justify-center rounded-full',
+              fundoDoIcone,
+            )}
+          >
+            <Icone className={cn('size-5', corDoIcone)} aria-hidden="true" />
           </span>
           <span className="flex flex-col gap-[2px]">
             <strong className="text-md font-semibold text-foreground">
               {copia.tituloCabecalho}
             </strong>
-            <span className="text-sm text-destructive">{copia.subtituloCabecalho}</span>
+            <span className={cn('text-sm', tomDeAviso ? 'text-[var(--cc-color-body)]' : 'text-destructive')}>
+              {copia.subtituloCabecalho}
+            </span>
           </span>
         </header>
 
         {/* Rola por dentro: a sugestão da IA pode ter vários parágrafos, e o
             rodapé com o botão de fechar não pode sair da tela. */}
         <div className="flex min-h-0 flex-col items-center gap-lg overflow-y-auto px-lg py-xl">
-          <span className="flex size-24 shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-down-soft)]">
-            <XCircle className="size-14 text-destructive" aria-hidden="true" />
+          <span
+            className={cn(
+              'flex size-24 shrink-0 items-center justify-center rounded-full',
+              fundoDoIcone,
+            )}
+          >
+            <Icone className={cn('size-14', corDoIcone)} aria-hidden="true" />
           </span>
 
           <span className="flex flex-col items-center gap-xs text-center">
             <strong className="text-lg font-semibold text-foreground">{copia.chamada}</strong>
             <span className="text-sm text-[var(--cc-color-body)]">{copia.explicacao}</span>
-            {/* Número e série da nota gravada: sem eles o operador não tem por
-                onde achar no ERP a NFCe que acabou de ser rejeitada. Em
+            {/* Rascunho e série: é por eles que o operador acha o documento no
+                ERP — a rejeição volta com `NumeroNota: 0` (AD-239). Em
                 `font-mono` como todo valor tabular do produto. */}
             {identificacao !== null && (
               <span
-                data-testid="documento-rejeitado"
-                className="font-mono text-sm text-[var(--cc-color-body)]"
+                data-testid="rascunho-no-erp"
+                className="font-mono text-sm font-semibold text-foreground"
               >
                 {identificacao}
               </span>
             )}
           </span>
 
-          {/* Bloco do motivo. Em `REJEITADA` ele ganha título e o código da
-              SEFAZ em campo próprio (AD-238); o Pencil não desenha esse estado,
-              então reaproveita a caixa de mensagem que já existia. */}
+          {/* Bloco do motivo, com o código da SEFAZ em campo próprio quando a
+              rejeição o traz (AD-238). */}
           <div
             role="alert"
             data-testid="erro-finalizacao"
             className="flex w-full items-start gap-xs rounded-2xl border border-border bg-[var(--cc-color-surface-soft)] p-base text-sm text-[var(--cc-color-body)]"
           >
             <AlertTriangle
-              className="mt-[2px] size-4 shrink-0 text-destructive"
+              className={cn('mt-[2px] size-4 shrink-0', corDoIcone)}
               aria-hidden="true"
             />
             <span className="flex min-w-0 flex-col gap-[2px]">
-              {rejeitada && (
-                <strong className="font-semibold text-foreground">Retorno da SEFAZ</strong>
-              )}
+              <strong className="font-semibold text-foreground">{copia.tituloDoMotivo}</strong>
               {codigoErro !== null && (
                 <span data-testid="codigo-sefaz" className="font-mono">
                   Código {codigoErro}
@@ -189,7 +266,11 @@ export function DialogoErroFaturamento({
               )}
               {/* Texto puro: o mapper já tirou o HTML (pendência 50), e o
                   React escapa o que sobrar. */}
-              <span className="whitespace-pre-line break-words">{mensagem}</span>
+              {motivos.map((motivo) => (
+                <span key={motivo} className="whitespace-pre-line break-words">
+                  {motivo}
+                </span>
+              ))}
             </span>
           </div>
 
@@ -220,7 +301,7 @@ export function DialogoErroFaturamento({
               className="inline-flex items-center gap-xs text-sm font-semibold text-primary underline-offset-4 hover:underline"
             >
               <LinkSquare className="size-4 shrink-0" aria-hidden="true" />
-              Abrir no ERP
+              Consultar solução detalhada
             </a>
           )}
         </div>

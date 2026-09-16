@@ -130,7 +130,7 @@ Tela principal: frame `Fundo PDV Online Web` (componente base reutilizado em tod
 | CART-07 | Cascata de reprecificação no cancelamento | - | Verified |
 | CART-08 | Cancelamento mantém linha riscada (auditoria) | - | Verified |
 | CART-09 | Bloqueio de edição/cancelamento pós-pagamento | - | Verified |
-| CART-10 | Validação de saldo/estoque na inserção e na alteração de quantidade (`'A'` avisa, `'B'` bloqueia — AD-236) | - | Verified |
+| CART-10 | Validação de saldo/estoque na inserção e na alteração de quantidade (`'A'` avisa, `'B'` bloqueia — AD-236; o motivo aparece **só em toast** e no botão bloqueado, e confirmar reconsulta o saldo mesmo com o botão bloqueado — AD-239) | - | Verified |
 
 **Atualização (2026-08-26, fase Design da feature 003 — `specs/003-carrinho-produto-precificacao/`):** dois pontos desta especificação foram corrigidos por decisão direta do usuário, após inspeção do `ApiCentriumOAuth.yaml` durante `/speckit-plan`. **AD-091:** `GetListaProdutos` não devolve `PrecoVenda` nem `ProdutoPesavelEditavel` e não aceita `Tipopreco`/`Codcliente`/`Listapreco` — o modal de lista só capta produtos para seleção, e a linha do carrinho é **sempre** resolvida por `GetProduto` (`CART-01`, `CART-04`, Edge Cases de `TipoPreco` e de `ProdutoPesavelEditavel` reescritos no ponto). **AD-092:** não existe lista de preço padrão da empresa — `TipoPreco = 9` sempre usa a lista do cliente, sem fallback, e o campo `SessaoUsuario.listaPrecoPadrao` (citado em redações anteriores) nunca existiu no contrato. Nenhuma das duas correções abre pendência nova.
 

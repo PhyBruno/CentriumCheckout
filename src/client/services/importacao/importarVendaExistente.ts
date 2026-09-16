@@ -246,6 +246,8 @@ export interface ImportacaoVendaDeps {
   definirIdentidadeVenda(identidade: {
     readonly origem: OrigemDocumentoImportado;
     readonly numeroRascunho: number;
+    /** `CadSerieNFCe` do documento, reenviada com o número (AD-239). */
+    readonly serie: string;
   }): void;
   /** Feature 003 — extensão aditiva do `CarrinhoSlice`. */
   importarLinhasCongeladas(
@@ -429,7 +431,11 @@ export async function importarVendaExistente(
   // Primeiro a identidade: a venda passa a ser a NFCe rascunho do documento, e
   // só então é populada. Trocar a ordem não muda o resultado, mas esta lê como
   // o que de fato acontece.
-  deps.definirIdentidadeVenda({ origem: fonte.origem, numeroRascunho: venda.numeroRascunho });
+  deps.definirIdentidadeVenda({
+    origem: fonte.origem,
+    numeroRascunho: venda.numeroRascunho,
+    serie: venda.serie,
+  });
   deps.importarLinhasCongeladas(venda.linhas, fonte.origem);
   await (cliente.tipo === 'cadastro'
     ? deps.selecionarCliente(cliente.cadastro)

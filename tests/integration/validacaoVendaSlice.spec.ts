@@ -104,7 +104,7 @@ const A_PRAZO = condicaoDe(2, 'A PRAZO');
 const SNAPSHOT: SnapshotVenda = {
   empresa: '1',
   linhas: [],
-  identidade: { origem: 'NOVA', numeroRascunho: 0 },
+  identidade: { origem: 'NOVA', numeroRascunho: 0, serie: '' },
   cadSerieNFCe: 'SER1',
   clienteCodigo: 4321,
   vendedorCodigo: 7,

@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
+import { useRecusaValidacaoStore } from '../../stores/recusaValidacaoStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
@@ -61,13 +62,32 @@ export function ProvedorFinalizacaoVenda({
   const api = useFinalizarOuSuspenderVenda(deps);
   const sessao = useSessionStore((s) => s.registro?.SessaoUsuario ?? null);
   const { estado, confirmarReenvio, confirmarSuspensao, descartar } = api;
+  // Recusa do gate de validação prévia (AD-239) — estado de apresentação, em
+  // store próprio (`recusaValidacaoStore`).
+  const motivosDaRecusa = useRecusaValidacaoStore((s) => s.motivos);
+  const fecharRecusa = useRecusaValidacaoStore((s) => s.fecharRecusa);
 
   return (
     <ContextoFinalizacao.Provider value={api}>
       {children}
 
       {estado.tipo === 'falha-negocio' && (
-        <DialogoErroFaturamento mensagem={estado.mensagem} onFechar={descartar} />
+        <DialogoErroFaturamento
+          mensagem={estado.mensagem}
+          contexto={estado.operacao}
+          onFechar={descartar}
+        />
+      )}
+
+      {/* O ERP validou e recusou (AD-239): não é erro na nota, então a cópia é
+          outra e o tom é de aviso. A venda continua no caixa. */}
+      {estado.tipo === 'venda-recusada' && (
+        <DialogoErroFaturamento
+          desfecho="VENDA_RECUSADA"
+          contexto={estado.operacao}
+          mensagem={estado.mensagem}
+          onFechar={descartar}
+        />
       )}
 
       {/* NFCe gravada no ERP e não autorizada (correção do usuário,
@@ -78,13 +98,42 @@ export function ProvedorFinalizacaoVenda({
         <DialogoErroFaturamento
           desfecho="REJEITADA"
           mensagem={estado.mensagem}
-          documento={{ numeroNota: estado.numeroNota, serieNota: estado.serieNota }}
+          rascunho={{
+            numeroRascunho: estado.numeroRascunho,
+            serieRascunho: estado.serieRascunho,
+          }}
           retorno={{
             codigoErro: estado.codigoErro,
             sugestaoIA: estado.sugestaoIA,
             urlChamadas: estado.urlChamadas,
           }}
           onFechar={descartar}
+        />
+      )}
+
+      {/* Cenário tributário: cadastro fiscal do ERP (AD-239). Também limpa o
+          caixa ao fechar — não há correção possível daqui. */}
+      {estado.tipo === 'cenario-tributario' && (
+        <DialogoErroFaturamento
+          desfecho="CENARIO_TRIBUTARIO"
+          mensagem={estado.mensagem}
+          rascunho={{
+            numeroRascunho: estado.numeroRascunho,
+            serieRascunho: estado.serieRascunho,
+          }}
+          onFechar={descartar}
+        />
+      )}
+
+      {/* Recusa do gate de validação prévia (feature 014, AD-239): a forma de
+          pagamento não entrou e o ERP explicou por quê. Mora aqui, no provider,
+          porque é modal de tela cheia e vale para as duas superfícies. */}
+      {motivosDaRecusa !== null && (
+        <DialogoErroFaturamento
+          desfecho="VENDA_RECUSADA"
+          contexto="PAGAMENTO"
+          mensagem={motivosDaRecusa}
+          onFechar={fecharRecusa}
         />
       )}
 

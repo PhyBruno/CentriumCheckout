@@ -79,6 +79,12 @@ export interface VendaImportada {
    * o DAV sozinho ao faturar (AD-058).
    */
   readonly numeroRascunho: number;
+  /**
+   * `CadSerieNFCe` do documento (`R01` no preview), reenviado junto do número
+   * (AD-239) — ou `''` quando o ERP não a informa, e aí o retrato cai na série
+   * da sessão.
+   */
+  readonly serie: string;
   /** Sempre sobrescreve o cliente atual da venda (`FR-007`). */
   readonly clienteCodigo: number;
   /**
@@ -218,6 +224,7 @@ export function mapearVendaExistente(
     condicaoPagamentoCodigo:
       typeof resposta.CondicaoPagamentoCodigo === 'number' ? resposta.CondicaoPagamentoCodigo : 0,
     numeroRascunho: resposta.NumeroRascunho,
+    serie: (resposta.CadSerieNFCe ?? '').trim(),
     clienteCodigo: resposta.clienteCodigo,
     clienteNome: ouNulo((resposta.ClienteNome ?? '').trim()),
     // `0` é o "sem vendedor" do SDT — e, no ERP de 2026-09-14, também o que
@@ -235,7 +242,10 @@ export function mapearVendaExistente(
     // vez de cair no comportamento de "só o código".
     vendedorNome: ouNulo(resposta.vendedorNome ?? '') ?? ouNulo(vendedorDaLista.nome ?? ''),
     linhas: resposta.produtos.map((produto) => ({
-      codigoProduto: produto.codigoProduto,
+      // Sem os espaços do `char` do ERP (`"50153         "`, medido em
+      // 2026-09-16): com eles o `GetProduto` da descrição não achava o produto e
+      // a linha ficava com o código no lugar do nome (AD-239).
+      codigoProduto: produto.codigoProduto.trim(),
       descricao: null,
       quantidade: produto.quantidade,
       precoUnitario: produto.precoUnitario,

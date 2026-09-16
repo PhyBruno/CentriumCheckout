@@ -110,7 +110,13 @@ export interface SnapshotVenda {
   readonly linhas: readonly LinhaCarrinho[];
   /** Identidade da venda no ERP (feature 004, `data-model.md` §1). */
   readonly identidade: IdentidadeVenda;
-  /** `SessaoUsuario.CadSerieNFCe` — sempre do bootstrap, nunca do operador (AD-034). */
+  /**
+   * `SessaoUsuario.CadSerieNFCe` — do bootstrap, nunca do operador (AD-034).
+   *
+   * É o **recuo**: a série da identidade da venda (documento importado ou
+   * rascunho adotado) tem precedência, porque o documento já existe no ERP com
+   * aquela série e a da sessão pode até vir vazia (AD-239).
+   */
   readonly cadSerieNFCe: string;
   /** Cliente da venda; o default do PDV quando não houve identificação (AD-032). */
   readonly clienteCodigo: number;
@@ -237,7 +243,8 @@ export function montarRetratoVenda(
     Empresa: snapshot.empresa,
     SuspenderOuFaturar: suspenderOuFaturar(operacao),
     NumeroRascunho: snapshot.identidade.numeroRascunho,
-    CadSerieNFCe: snapshot.cadSerieNFCe,
+    CadSerieNFCe:
+      snapshot.identidade.serie.trim() === '' ? snapshot.cadSerieNFCe : snapshot.identidade.serie,
     clienteCodigo: snapshot.clienteCodigo,
     vendedorCodigo: snapshot.vendedorCodigo,
     UsuarioCodigo: snapshot.usuarioCodigo,

@@ -526,6 +526,7 @@ describe('T016 — reinserir manualmente um SKU já presente numa linha congelad
     expect(useVendaStore.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
       numeroRascunho: NUMERO_NOTA,
+      serie: '1',
     });
   });
 

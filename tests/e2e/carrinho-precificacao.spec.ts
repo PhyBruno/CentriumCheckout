@@ -523,7 +523,12 @@ test.describe('Saldo de estoque (AD-236)', () => {
     await bipar(page, SKU_SEM_SALDO);
 
     await expect(page.getByTestId('previa-descricao-produto')).toHaveText('PRODUTO SEM SALDO');
-    await expect(page.getByTestId('previa-aviso-saldo')).toHaveText(MOTIVO);
+    // O motivo vive no toast e no botão bloqueado — nunca numa linha abaixo do
+    // nome do produto (AD-239).
+    await expect(page.getByTestId('previa-aviso-saldo')).toHaveCount(0);
+    await expect(page.getByRole('status').or(page.getByRole('alert')).first()).toContainText(
+      /estoque insuficiente/i,
+    );
     const inserir = page.getByTestId('previa-confirmar');
     await expect(inserir).toHaveAttribute('aria-disabled', 'true');
     await expect(inserir).toHaveAttribute('title', MOTIVO);
@@ -532,7 +537,6 @@ test.describe('Saldo de estoque (AD-236)', () => {
     // Escape desiste do item e devolve a barra vazia.
     await page.getByTestId('previa-quantidade').press('Escape');
     await expect(page.getByTestId('campo-codigo-produto')).toHaveValue('');
-    await expect(page.getByTestId('previa-aviso-saldo')).toHaveCount(0);
   });
 
   test("'B': saldo negativo barra também o TAB", async ({ page, request }) => {
@@ -543,7 +547,10 @@ test.describe('Saldo de estoque (AD-236)', () => {
     await campo.fill(SKU_SALDO_NEGATIVO);
     await campo.press('Tab');
 
-    await expect(page.getByTestId('previa-aviso-saldo')).toContainText('disponível -205,000');
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute(
+      'title',
+      /disponível -205,000/,
+    );
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
   });
 

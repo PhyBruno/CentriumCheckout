@@ -87,8 +87,10 @@ describe('getDavOutputSchema', () => {
 
   /**
    * A recusa de negócio: `200` com o SDT zerado dentro do envelope e a razão em
-   * `messages`. `produtos` é o que a discrimina — aceitá-la importaria um
-   * documento vazio, com `clienteCodigo: 0`, como se fosse sucesso.
+   * `messages`. **`NumeroRascunho: "0"` é o que a discrimina** (AD-239) —
+   * aceitá-la importaria um documento vazio, com `clienteCodigo: 0`, como se
+   * fosse sucesso. Até o AD-239 quem discriminava era `produtos`, e essa guarda
+   * reprovava um documento legítimo: o rascunho gravado sem itens.
    */
   it('reprova a recusa de negócio, que vem envelopada e com o SDT zerado', () => {
     const recusa = {
@@ -112,8 +114,21 @@ describe('getDavOutputSchema', () => {
   });
 
   it('reprova o SDT zerado também quando ele chega flat', () => {
-    expect(getDavOutputSchema.safeParse(documentoDoDav({ produtos: undefined })).success).toBe(
+    expect(getDavOutputSchema.safeParse(documentoDoDav({ NumeroRascunho: '0' })).success).toBe(
       false,
     );
+  });
+
+  /**
+   * AD-239: o ERP grava rascunho **sem itens** quando recusa a venda por
+   * cenário tributário (6030/6032–6035, medidos em 2026-09-16), e omite a chave
+   * `produtos` em vez de mandar `[]` — mesmo padrão do AD-216. Reprovar aqui
+   * deixava o operador sem conseguir sequer abrir o documento para descartá-lo.
+   */
+  it('aceita o documento sem itens, com a lista vazia por default', () => {
+    const lido = getDavOutputSchema.parse(documentoDoDav({ produtos: undefined }));
+
+    expect(lido.produtos).toEqual([]);
+    expect(lido.NumeroRascunho).toBeGreaterThan(0);
   });
 });

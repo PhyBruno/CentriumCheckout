@@ -327,6 +327,8 @@ describe('identidade da venda (J3)', () => {
     expect(store.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
       numeroRascunho: NUMERO_NOTA,
+      // Série do documento, reenviada com o número (AD-239).
+      serie: '1',
     });
   });
 });
@@ -723,6 +725,8 @@ describe('T026 — quickstart Cenário 2: retomada completa', () => {
     expect(store.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
       numeroRascunho: NUMERO_NOTA,
+      // Série do documento, reenviada com o número (AD-239).
+      serie: '1',
     });
   });
 });

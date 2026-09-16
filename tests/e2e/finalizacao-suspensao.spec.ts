@@ -186,9 +186,12 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     await page.getByTestId('botao-finalizar-venda').click();
 
     // Erro de transmissão da NFCe abre modal próprio, não um texto ao pé do
-    // botão (pedido do usuário, 2026-09-02).
+    // botão (pedido do usuário, 2026-09-02). Sem `NotaFiscal` e sem `messages`,
+    // é falha técnica: a venda continua no caixa (AD-239).
     await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
-    await expect(page.getByTestId('erro-finalizacao')).toContainText(/não autorizada/i);
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(
+      /sem a nota fiscal pronta para impressão/i,
+    );
     await expect(page.getByTestId('dialogo-confirmar-reenvio')).toHaveCount(0);
 
     await page.getByTestId('fechar-erro-faturamento').click();
@@ -225,22 +228,20 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     await expect(page.getByTestId('erro-finalizacao')).toContainText('539');
     // Retorno estruturado do contrato de 2026-09-14 (AD-238): sugestão da IA
     // como texto e link do ERP que abre em outra aba.
-    await expect(page.getByTestId('erro-finalizacao')).toContainText('Retorno da SEFAZ');
+    await expect(page.getByTestId('erro-finalizacao')).toContainText('Motivo da rejeição');
     await expect(page.getByTestId('sugestao-ia-texto')).toContainText('Confira a numeracao');
-    const link = page.getByRole('link', { name: /Abrir no ERP/i });
+    const link = page.getByRole('link', { name: /Consultar solução detalhada/i });
     await expect(link).toHaveAttribute(
       'href',
       'https://atendimento.exemplo.invalid/chamado?origem=checkout',
     );
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     await expect(link).toHaveAttribute('target', '_blank');
-    // **Nenhuma identificação de documento**, e é o comportamento correto: o ERP
-    // real devolve `NumeroNota: "0"`/`SerieNota: ""` na rejeição, mesmo tendo
-    // gravado a nota (item 51 de `PENDENCIES.md`, medido em 2026-09-10). Antes
-    // de medir, este teste exigia "NFCe 9001" — um número que o mock inventava e
-    // o ERP nunca manda. Quando o ERP passar a preencher os campos, a linha
-    // volta sozinha, e é esta asserção que deve mudar junto.
-    await expect(page.getByTestId('documento-rejeitado')).toHaveCount(0);
+    // **Rascunho e série**, e não o número da nota: o ERP devolve
+    // `NumeroNota: "0"`/`SerieNota: ""` na rejeição, mesmo tendo gravado o
+    // documento (medido em 2026-09-16, rascunho 6037 — AD-239). É pelo rascunho
+    // que o operador acha a nota no ERP para corrigir.
+    await expect(page.getByTestId('rascunho-no-erp')).toContainText(/Rascunho \d+/);
     // Não é falha de rede: nada a confirmar antes de reenviar, porque não há
     // reenvio nenhum.
     await expect(page.getByTestId('dialogo-confirmar-reenvio')).toHaveCount(0);
@@ -346,6 +347,32 @@ test.describe('User Story 2 — suspender a venda em digitação (T026)', () => 
     await expect(page.getByText(/venda suspensa/i).first()).toBeVisible();
     // `7001`: o primeiro número que o mock gera para venda que chega com 0.
     expect((await ultimoRetrato(request)).retrato?.NumeroRascunho).toBe(7001);
+  });
+
+  /**
+   * Cenário tributário não encontrado (AD-239) — resposta real do ERP em
+   * 2026-09-16. É recusa de **cadastro fiscal**: não há o que ajustar no
+   * Checkout, então o caixa é liberado ao fechar, como na NFCe rejeitada.
+   */
+  test('cenário tributário limpa o caixa e manda o operador ao ERP', async ({ page, request }) => {
+    await configurar(request, { faturarSemCenarioTributario: true });
+    await abrirTelaDeVenda(page);
+    await biparProduto(page);
+
+    await page.getByTestId('botao-cancelar-venda').click();
+
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(/Cenário Tributário/i);
+    // O ERP devolve o envelope zerado: a identificação vem da própria venda —
+    // aqui uma venda nova, que ainda não tem rascunho.
+    await expect(page.getByTestId('rascunho-no-erp')).toHaveCount(0);
+
+    await page.getByTestId('fechar-erro-faturamento').click();
+
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toHaveCount(0);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+
+    await configurar(request, { faturarSemCenarioTributario: false });
   });
 
   /**

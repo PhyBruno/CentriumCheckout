@@ -408,15 +408,24 @@ export function EntradaRapidaProduto({
   const motivoSaldo = avaliacaoSaldo.veredito === 'bloqueio' ? avaliacaoSaldo.frase : null;
 
   /**
-   * `'A'` avisa **uma vez por mudança que cruza o limite** — de livre para
-   * acima do saldo —, não a cada tecla nem a cada `+` já acima dele. Em `'B'`
-   * quem responde é o botão, que alterna o bloqueio sozinho.
+   * Avisa **uma vez por mudança que cruza o limite** — de livre para acima do
+   * saldo —, não a cada tecla nem a cada `+` já acima dele.
+   *
+   * Vale para as duas políticas desde o AD-239: com a linha de aviso removida
+   * da barra, o toast é o **único** canal, e em `'B'` o operador precisa saber
+   * por que o botão acabou de travar — antes disso o bloqueio só se anunciava
+   * ao confirmar. O botão continua carregando o motivo no `title`.
    */
   function avisarSeCruzouSaldo(novaQuantidade: Milesimos | null): void {
     const depois = avaliarQuantidade(novaQuantidade);
-    if (avaliacaoSaldo.veredito === 'livre' && depois.veredito === 'aviso') {
-      notificar.aviso(depois.frase);
+    if (avaliacaoSaldo.veredito !== 'livre' || depois.veredito === 'livre') {
+      return;
     }
+    if (depois.veredito === 'bloqueio') {
+      notificar.erro(depois.frase);
+      return;
+    }
+    notificar.aviso(depois.frase);
   }
 
   // Foco automático ao resolver (TAB) ou ao recarregar uma linha existente
@@ -867,11 +876,12 @@ export function EntradaRapidaProduto({
       return;
     }
 
-    if (motivoSaldo !== null) {
-      // Enter não passa por `acaoBloqueavel`; o motivo precisa ser dito aqui.
-      notificar.erro(motivoSaldo);
-      return;
-    }
+    // Bloqueio por saldo **não** interrompe a confirmação (AD-239): as duas
+    // confirmações abaixo reconsultam o ERP antes de decidir, e é essa
+    // reconsulta que o operador precisa quando o estoque acabou de ser
+    // reposto. Parar aqui com o saldo antigo o obrigaria a bipar de novo só
+    // para o Checkout ir perguntar. Recusada a reconsulta, o motivo volta em
+    // toast por `comunicarSaldo` e a barra fica como está.
 
     // Daqui para baixo é **inserção**, não edição de linha existente — e toda
     // inserção exige vendedor. `confirmarEntradaRapida` repete a checagem por
@@ -1369,13 +1379,21 @@ export function EntradaRapidaProduto({
           }
           data-testid="previa-confirmar"
           {...atributosDeBloqueio(bloqueioDeInsercao)}
-          // Sem vendedor o clique **não** para em `acaoBloqueavel`: quem
-          // responde é `exigirVendedor`, dentro de `confirmar`, porque além de
-          // dizer o motivo ele leva o foco ao campo do vendedor — e
-          // `acaoBloqueavel` só notifica. O motivo continua em
-          // `bloqueioDeInsercao` para o botão aparecer bloqueado e o `title`
-          // explicar sem depender do clique.
-          onClick={acaoBloqueavel(bloqueadoPorVendedor ? null : bloqueioDeInsercao, confirmar)}
+          // Duas exceções ao `acaoBloqueavel`, e as duas porque `confirmar` faz
+          // mais do que notificar:
+          // - **sem vendedor**, quem responde é `exigirVendedor`, que também
+          //   leva o foco ao campo do vendedor;
+          // - **saldo** (AD-239), porque a confirmação reconsulta o ERP: o
+          //   estoque pode ter sido reposto desde a última consulta, e repetir
+          //   o motivo antigo obrigaria o operador a bipar de novo. Recusada a
+          //   reconsulta, o motivo volta em toast por `comunicarSaldo`.
+          // Nos dois casos o motivo continua em `bloqueioDeInsercao`, para o
+          // botão aparecer bloqueado e o `title` explicar sem depender do
+          // clique.
+          onClick={acaoBloqueavel(
+            bloqueadoPorVendedor || motivoSaldo !== null ? null : bloqueioDeInsercao,
+            confirmar,
+          )}
         >
           <Plus className="size-5 shrink-0" aria-hidden="true" />
           <span className="text-md font-bold md:hidden">
@@ -1400,22 +1418,10 @@ export function EntradaRapidaProduto({
         {snapshotAtivo?.descricao ?? ' '}
       </p>
 
-      {/* Aviso de saldo (AD-236). O Pencil não desenha este estado; segue o
-          padrão de texto de erro já usado nos modais (`text-destructive`,
-          `ModalBuscaProduto`) para o bloqueio, e o texto neutro da barra para
-          o aviso — o toast já chamou a atenção, aqui o motivo só fica à vista
-          enquanto a quantidade exceder. Mesmo elemento nos dois layouts. */}
-      {avaliacaoSaldo.veredito !== 'livre' && (
-        <p
-          className={cn(
-            'text-sm font-semibold',
-            avaliacaoSaldo.veredito === 'bloqueio' ? 'text-destructive' : 'text-muted-foreground',
-          )}
-          data-testid="previa-aviso-saldo"
-        >
-          {avaliacaoSaldo.frase}
-        </p>
-      )}
+      {/* O aviso de saldo (AD-236) **não** tem linha própria abaixo do nome do
+          produto: o canal é o toast, e só ele (pedido do usuário, 2026-09-16 —
+          AD-239). O motivo continua no botão bloqueado, pelo padrão de
+          `lib/bloqueio.ts`, que é onde o operador o procura ao ser recusado. */}
 
       <ModalBuscaProduto
         aberto={buscaAberta}

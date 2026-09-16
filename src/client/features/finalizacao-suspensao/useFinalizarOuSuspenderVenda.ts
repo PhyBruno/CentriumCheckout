@@ -10,6 +10,7 @@ import {
 } from '../../domain/auditoria/eventos';
 import {
   montarRetratoVenda,
+  type CheckoutFaturarNFCe,
   type FormaDePagamentoRetrato,
   type SuspenderOuFaturar,
 } from '../../domain/venda/montarRetratoVenda';
@@ -49,7 +50,27 @@ export type EstadoEnvio =
       /** `null` em `SUSPENDER`: suspender não emite documento fiscal. */
       readonly notaFiscal: NotaFiscalResposta | null;
     }
-  | { readonly tipo: 'falha-negocio'; readonly mensagem: string }
+  /** Falha técnica com resposta do ERP (HTTP, sessão, corpo sem desfecho). */
+  | { readonly tipo: 'falha-negocio'; readonly operacao: SuspenderOuFaturar; readonly mensagem: string }
+  /**
+   * O ERP validou a venda e recusou (AD-239) — saldo, regra de NFCe. Não é erro
+   * na nota: a venda continua no caixa e o operador ajusta e tenta de novo.
+   */
+  | {
+      readonly tipo: 'venda-recusada';
+      readonly operacao: SuspenderOuFaturar;
+      readonly mensagem: string;
+    }
+  /**
+   * Cenário tributário não encontrado (AD-239): cadastro fiscal do ERP, nada a
+   * fazer no Checkout. `descartar` limpa o caixa, como na NFCe rejeitada.
+   */
+  | {
+      readonly tipo: 'cenario-tributario';
+      readonly mensagem: string;
+      readonly numeroRascunho: number | null;
+      readonly serieRascunho: string | null;
+    }
   /**
    * O ERP gravou a NFCe e a autorização não saiu (correção do usuário,
    * 2026-09-10).
@@ -170,6 +191,28 @@ const MENSAGEM_VENDA_SUSPENSA = 'Venda suspensa. O rascunho continua disponível
 const ESTADO_INICIAL: EstadoEnvio = { tipo: 'ocioso' };
 
 /**
+ * Rascunho a exibir num desfecho que manda o operador ao ERP (AD-239).
+ *
+ * A resposta tem prioridade — é a verdade mais recente do ERP —, e o retrato
+ * **enviado** é o recuo: numa venda retomada de DAV/NFCe o número já é conhecido
+ * antes da chamada, e é ele que o operador procura no ERP quando a resposta
+ * volta zerada (o que o cenário tributário faz sempre, medido em 2026-09-16).
+ * `0`/`''` do contrato viram `null`, para não mandar ninguém procurar a nota
+ * "número zero".
+ */
+function rascunhoParaExibir(
+  retrato: CheckoutFaturarNFCe,
+  resposta: { readonly numeroRascunho: number | null; readonly serieRascunho: string | null },
+): { readonly numeroRascunho: number | null; readonly serieRascunho: string | null } {
+  const serieDoRetrato = retrato.CadSerieNFCe.trim();
+  return {
+    numeroRascunho:
+      resposta.numeroRascunho ?? (retrato.NumeroRascunho > 0 ? retrato.NumeroRascunho : null),
+    serieRascunho: resposta.serieRascunho ?? (serieDoRetrato === '' ? null : serieDoRetrato),
+  };
+}
+
+/**
  * Há cartão aprovado no TEF nesta venda — feature 008, invariante I6
  * (AD-030/AD-042, recortado por AD-161).
  *
@@ -266,7 +309,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
     async (operacao: SuspenderOuFaturar): Promise<void> => {
       const registro = useSessionStore.getState().registro;
       if (registro === null) {
-        aplicarEstado({ tipo: 'falha-negocio', mensagem: ERRO_SEM_CONFIGURACAO });
+        aplicarEstado({ tipo: 'falha-negocio', operacao, mensagem: ERRO_SEM_CONFIGURACAO });
         return;
       }
 
@@ -298,6 +341,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
         console.error('[finalização] falha ao montar a parte de pagamento do retrato.', erro);
         aplicarEstado({
           tipo: 'falha-negocio',
+          operacao,
           mensagem:
             'Não foi possível montar o pagamento desta venda: revise o desconto e as formas aplicadas.',
         });
@@ -397,14 +441,17 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
             tipo: 'nfce-rejeitada',
             mensagem: resultado.mensagem,
             codigoErro: resultado.codigoErro,
-            numeroNota: resultado.numeroNota,
-            serieNota: resultado.serieNota,
             sugestaoIA: resultado.sugestaoIA,
             urlChamadas: resultado.urlChamadas,
+            // O rascunho da resposta, com o da venda como recuo: a rejeição vem
+            // com `NotaFiscal.NumeroNota: "0"` (medido em 2026-09-16), e sem
+            // esta identificação o operador não acha o documento no ERP
+            // (AD-239).
+            ...rascunhoParaExibir(retrato, resultado),
           });
           return;
 
-        case 'falha-negocio':
+        case 'venda-recusada':
           // O ERP grava o rascunho **antes** de validar a venda e devolve o
           // número na recusa (AD-235). Adotá-lo faz o reenvio — pelo operador,
           // depois de corrigir — atualizar esse rascunho em vez de criar outro
@@ -412,11 +459,28 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           // guarda de pagamento de propósito: a recusa chega com pagamento em
           // curso, e o número é o da própria venda, não de outro documento.
           if (resultado.numeroRascunho !== undefined) {
-            useVendaStore.getState().adotarRascunhoGravado(resultado.numeroRascunho);
+            useVendaStore
+              .getState()
+              .adotarRascunhoGravado(resultado.numeroRascunho, resultado.serieRascunho);
           }
           // Sem trava de confirmação: o ERP respondeu recusando, então a
           // primeira tentativa provadamente não gerou NFCe (`research.md`, D2).
-          aplicarEstado({ tipo: 'falha-negocio', mensagem: resultado.mensagem });
+          aplicarEstado({ tipo: 'venda-recusada', operacao, mensagem: resultado.mensagem });
+          return;
+
+        case 'cenario-tributario':
+          // Cadastro fiscal do ERP: não há o que ajustar aqui, e o caixa é
+          // liberado ao fechar o aviso (decisão do usuário, 2026-09-16). O
+          // rascunho exibido é o que o ERP informou, ou o da própria venda.
+          aplicarEstado({
+            tipo: 'cenario-tributario',
+            mensagem: resultado.mensagem,
+            ...rascunhoParaExibir(retrato, resultado),
+          });
+          return;
+
+        case 'falha-negocio':
+          aplicarEstado({ tipo: 'falha-negocio', operacao, mensagem: resultado.mensagem });
           return;
       }
     },
@@ -455,7 +519,8 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
       if (
         atual.tipo === 'enviando' ||
         atual.tipo === 'falha-rede' ||
-        atual.tipo === 'nfce-rejeitada'
+        atual.tipo === 'nfce-rejeitada' ||
+        atual.tipo === 'cenario-tributario'
       ) {
         return;
       }
@@ -564,7 +629,11 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
    * devolvem a venda intacta ao caixa, e `sucesso` já limpou no envio.
    */
   const descartar = useCallback((): void => {
-    if (estadoRef.current.tipo === 'nfce-rejeitada') {
+    // Os dois desfechos que mandam o operador ao ERP liberam o caixa ao fechar:
+    // a NFCe já gravada rejeitada e o cenário tributário, que não tem correção
+    // possível aqui (AD-239).
+    const tipo = estadoRef.current.tipo;
+    if (tipo === 'nfce-rejeitada' || tipo === 'cenario-tributario') {
       encerrarSessaoDeVenda();
     }
     aplicarEstado(ESTADO_INICIAL);

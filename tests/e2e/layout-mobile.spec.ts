@@ -127,8 +127,12 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await campo.fill('005000');
     await campo.press('Enter');
 
-    await expect(page.getByTestId('previa-aviso-saldo')).toBeVisible();
-    await expect(page.getByTestId('previa-aviso-saldo')).toHaveText(/estoque insuficiente/i);
+    // O motivo é toast (AD-239), e o botão bloqueado o repete no `title`.
+    await expect(page.getByTestId('previa-aviso-saldo')).toHaveCount(0);
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute(
+      'title',
+      /estoque insuficiente/i,
+    );
     await expect(page.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
     // O aviso não pode alargar a etapa além da tela.

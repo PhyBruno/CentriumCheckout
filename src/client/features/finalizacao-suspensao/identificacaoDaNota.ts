@@ -29,3 +29,31 @@ export function identificacaoDaNota(documento: DocumentoDaNota | undefined): str
 
   return partes.length === 0 ? null : partes.join(' · ');
 }
+
+/** Rascunho no ERP, como o operador o procura lá. */
+export interface RascunhoDaVenda {
+  readonly numeroRascunho: number | null | undefined;
+  readonly serieRascunho: string | null | undefined;
+}
+
+/**
+ * `Rascunho 6037 · série R01` — ou `null` quando o ERP não informou nenhum dos
+ * dois (AD-239).
+ *
+ * Separado de `identificacaoDaNota` porque nomeia outro documento: a **nota
+ * fiscal** só existe quando autorizada, e na rejeição ela volta zerada. O que
+ * sobrevive à recusa, e é o que o operador digita na busca do ERP, é o rascunho.
+ */
+export function identificacaoDoRascunho(rascunho: RascunhoDaVenda | undefined): string | null {
+  const numero = rascunho?.numeroRascunho;
+  // **O número manda**: série sozinha não identifica documento nenhum — a série
+  // do PDV acompanha todas as notas, e anunciá-la sem número mandaria o operador
+  // procurar no ERP por um dado que não filtra nada.
+  if (numero === null || numero === undefined || numero === 0) {
+    return null;
+  }
+
+  const serie = (rascunho?.serieRascunho ?? '').trim();
+  const rotulo = `Rascunho ${String(numero)}`;
+  return serie === '' ? rotulo : `${rotulo} · série ${serie}`;
+}

@@ -22,7 +22,11 @@ import {
   FRESCOR_CATALOGO_PAGAMENTO_MS,
   fetchCondicoesPagamento,
 } from '../../services/pagamento/pagamentoQueries';
-import { fetchProduto, type ContextoPrecificacao } from '../../services/produto/produtoQueries';
+import {
+  fetchProduto,
+  TIPO_CODIGO_INTERNO,
+  type ContextoPrecificacao,
+} from '../../services/produto/produtoQueries';
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
 import { useSessionStore } from '../../stores/sessionStore';
 import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores/vendaStore';
@@ -61,7 +65,11 @@ function contextoPrecificacaoAtual(): ContextoPrecificacao | null {
     return null;
   }
   return {
-    tipoCodProduto: registro.SessaoUsuario.UsuarioTipoCodigoProduto,
+    // **Código interno** (`'R'`), e não o tipo da sessão (AD-239): a linha do
+    // documento traz `codigoProduto`, que é o interno. Com o tipo da sessão
+    // (`'B'` no tenant de preview) o ERP respondia 200 com o SDT vazio e a
+    // linha ficava exibindo o código no lugar do nome — medido em 2026-09-16.
+    tipoCodProduto: TIPO_CODIGO_INTERNO,
     tipoPreco: registro.SessaoUsuario.TipoPreco,
     codigoCliente: cliente.codigoCliente,
     listaPreco: cliente.listaPreco,

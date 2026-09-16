@@ -143,12 +143,24 @@ describe('carregarNFCeOutputSchema', () => {
    * opcional (o ERP omite a chave quando nada foi pago — ver o caso abaixo),
    * então a ausência dela não distingue mais recusa de documento legítimo.
    */
-  it('reprova o documento sem produtos', () => {
-    const semProdutos = carregarNFCeOutputSchema.safeParse(
-      respostaCarregarNFCe({ produtos: undefined }),
+  /**
+   * O rascunho **sem itens** existe no ERP (AD-239): é o que sobra quando a
+   * venda é recusada por cenário tributário, e o `CarregarNFCe` dele omite a
+   * chave `produtos` (medido em 2026-09-16 no rascunho 6033). Quem discrimina
+   * documento de recusa passou a ser `NumeroRascunho > 0`.
+   */
+  it('aceita o rascunho sem itens, com a lista vazia por default', () => {
+    const lido = carregarNFCeOutputSchema.parse(respostaCarregarNFCe({ produtos: undefined }));
+
+    expect(lido.produtos).toEqual([]);
+  });
+
+  it('reprova o SDT zerado da recusa, que chega com NumeroRascunho 0', () => {
+    const recusa = carregarNFCeOutputSchema.safeParse(
+      respostaCarregarNFCe({ NumeroRascunho: '0' }),
     );
 
-    expect(semProdutos.success).toBe(false);
+    expect(recusa.success).toBe(false);
   });
 
   /**

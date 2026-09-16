@@ -85,6 +85,14 @@ export interface ConfigMockErp {
    */
   faturarRecusaComRascunho: boolean;
   /**
+   * `SUSPENDER`/`FATURAR` recusados por **cenário tributário** (AD-239): o ERP
+   * responde com o envelope **zerado** (`NumeroRascunho: "0"`) e a razão em
+   * `messages`, e ainda assim grava um rascunho vazio do outro lado. É o
+   * desfecho em que o Checkout não tem o que corrigir: limpa o caixa e manda o
+   * operador ao ERP.
+   */
+  faturarSemCenarioTributario: boolean;
+  /**
    * `GetDav` recusa o documento — é como o ERP responde quando outro operador
    * já o faturou. O Checkout não tem lock nenhum (`FR-010`/AD-052): só reage
    * ao erro devolvido.
@@ -200,6 +208,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   faturarSemNotaFiscal: false,
   faturarNFCeRejeitada: false,
   faturarRecusaComRascunho: false,
+  faturarSemCenarioTributario: false,
   davJaFaturado: false,
   getClienteSemCadastro: false,
   pixAtivo: true,
@@ -888,6 +897,32 @@ function quitacaoDoRascunho(documento: Record<string, unknown>): Record<string, 
  * `PaginaAtual`/`RegistrosPorPagina`/`TotalRegistros`/`TotalPaginas` vêm como
  * número nativo (`int32`), ao contrário dos campos de negócio do item.
  */
+/**
+ * Recusa de `GetDav`/`CarregarNFCe`: **HTTP 200**, envelope com o SDT zerado e a
+ * razão em `messages` (AD-239, medido no preview em 2026-09-16).
+ *
+ * O `NumeroRascunho: "0"` é o que separa recusa de documento na fronteira Zod —
+ * o schema exige rascunho positivo.
+ */
+function recusaDeDocumento(descricao: string): Record<string, unknown> {
+  return {
+    OutCheckoutFaturarNFCe: {
+      Empresa: 0,
+      SuspenderOuFaturar: '',
+      clienteCodigo: '0',
+      ClienteNome: '',
+      vendedorCodigo: '0',
+      vendedorNome: '',
+      CondicaoPagamentoCodigo: '0',
+      NumeroRascunho: '0',
+      CadSerieNFCe: '',
+      UsuarioCodigo: '0',
+      Log: '',
+    },
+    messages: [{ Id: '', Type: 1, Description: descricao }],
+  };
+}
+
 function respostaPaginada(
   chaveDoArray: string,
   itens: readonly unknown[],
@@ -1800,6 +1835,38 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         });
       }
 
+      // Cenário tributário não encontrado (AD-239): o ERP recusa **antes** de
+      // preencher o retrato — envelope zerado, `NumeroRascunho: "0"` — e ainda
+      // assim grava um rascunho vazio do outro lado (divergência do ERP,
+      // `PENDENCIES.md`). Texto e forma medidos no preview em 2026-09-16.
+      if (config.faturarSemCenarioTributario) {
+        return reply.type('application/json').send({
+          OutCheckoutFaturarNFCe: {
+            Empresa: 0,
+            SuspenderOuFaturar: '',
+            clienteCodigo: '0',
+            ClienteNome: '',
+            vendedorCodigo: '0',
+            vendedorNome: '',
+            CondicaoPagamentoCodigo: '0',
+            NumeroRascunho: '0',
+            CadSerieNFCe: '',
+            UsuarioCodigo: '0',
+            Log: '',
+          },
+          messages: [
+            {
+              Id: '9999',
+              Type: 1,
+              Description:
+                'Busca realizada pelo seguinte Cenário Tributário não foi Encontrada\r\n' +
+                '[ Empresa: 0, Classificação Fiscal:      , Regime Especial: NORMAL, País Origem: BRASIL, ' +
+                'País Destino: BRASIL , UF Origem: SC, UF Destino: SC, Operação: Desconhecida , Característica:  ]',
+            },
+          ],
+        });
+      }
+
       // NFCe gravada e **não** autorizada: o bloco vem completo, com o motivo
       // em `ErroMensagem`, e sem nada para imprimir.
       //
@@ -1827,26 +1894,48 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         });
       }
 
-      const notaFiscal =
-        suspendendo || config.faturarSemNotaFiscal
-          ? {}
-          : {
-              NotaFiscal: {
-                NumeroNota: String(9001), // int64
-                SerieNota: '1',
-                Autorizada: 'S',
-                ErroCodigo: 0,
-                ErroMensagem: '',
-                XMLImpressao: XML_SINTETICO,
-                PDFImpressao: PDF_SINTETICO,
-              },
-            };
+      // Sucesso — **sem envelope**, como o ERP real (medido em 2026-09-16):
+      // o retrato volta na raiz com `NotaFiscal` ao lado, e sem `messages`.
+      // A suspensão bem-sucedida também traz o bloco, com `Autorizada: 'N'` e o
+      // número do **rascunho** em `NumeroNota` — não é rejeição: suspender não
+      // transmite nada à SEFAZ.
+      if (suspendendo) {
+        return reply.type('application/json').send({
+          ...retratoGravado,
+          NotaFiscal: {
+            NumeroNota: String(numeroRascunho),
+            SerieNota: String(retrato?.['CadSerieNFCe'] ?? '') || '1',
+            Autorizada: 'N',
+            ErroCodigo: '0',
+            ErroMensagem: '',
+            RetornoMensagemIA: '',
+            UrlChamadas: '',
+            XMLImpressao: '',
+            PDFImpressao: '',
+          },
+        });
+      }
+
+      // `FATURAR` sem desfecho: o ERP responde 200, flat, **sem** `NotaFiscal` e
+      // sem `messages` (medido em 2026-09-16 no rascunho 6036). A venda fica no
+      // caixa, porque nada prova que a NFCe foi gravada.
+      if (config.faturarSemNotaFiscal) {
+        return reply.type('application/json').send({ ...retratoGravado });
+      }
 
       return reply.type('application/json').send({
-        OutCheckoutFaturarNFCe: { ...retratoGravado, ...notaFiscal },
-        messages: config.faturarSemNotaFiscal
-          ? [{ Id: 'ERR', Type: 1, Description: 'NFCe não autorizada pela SEFAZ (sintético).' }]
-          : [],
+        ...retratoGravado,
+        NotaFiscal: {
+          NumeroNota: String(9001), // int64
+          SerieNota: '1',
+          Autorizada: 'S',
+          ErroCodigo: '0',
+          ErroMensagem: '',
+          RetornoMensagemIA: '',
+          UrlChamadas: '',
+          XMLImpressao: XML_SINTETICO,
+          PDFImpressao: PDF_SINTETICO,
+        },
       });
     },
   );
@@ -2104,15 +2193,25 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.negocio += 1;
       contadores.getDav += 1;
 
-      // Documento já faturado por outra sessão: o ERP recusa e o Checkout só
-      // reage (D7/AD-052) — não há lock do lado do Checkout (`FR-010`).
+      // Recusa de negócio: **HTTP 200**, envelope zerado e a razão em
+      // `messages` — é assim que o ERP real responde (medido em 2026-09-16 nos
+      // DAVs 1000000001760 e 3000000000179; AD-239). Até então este mock
+      // devolvia `409`/`404` com `{ error }`, um caminho de código que o ERP
+      // nunca exercita: quem lê a recusa é `recusaDeNegocio`, sobre o corpo
+      // 2xx, e a suíte não cobria isso.
       if (config.davJaFaturado) {
-        return reply.code(409).send({ error: 'DAV já faturado' });
+        return reply
+          .type('application/json')
+          .send(recusaDeDocumento('Erro - DAV já faturado por outro operador.'));
       }
 
       const dav = DAVS[request.query.Numerodav ?? ''];
       if (dav === undefined) {
-        return reply.code(404).send({ error: 'DAV não encontrado' });
+        return reply
+          .type('application/json')
+          .send(
+            recusaDeDocumento('Erro - Item Liberado: S, Pedido Liberado: S, Status Digitação: N'),
+          );
       }
 
       // Sucesso vai FLAT, sem envelope e sem `messages` — medido ao vivo em
@@ -2233,7 +2332,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         );
 
       if (documento === undefined) {
-        return reply.code(404).send({ error: 'NFCe não encontrada' });
+        // Mesma forma da recusa de `GetDav` (AD-239): 200 + envelope zerado.
+        return reply
+          .type('application/json')
+          .send(recusaDeDocumento('Rascunho não encontrado ou já faturado.'));
       }
 
       return reply.send({ ...documento, FormasDePagamento: [quitacaoDoRascunho(documento)] });

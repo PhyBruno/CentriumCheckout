@@ -159,10 +159,19 @@ export const suspenderNFCeOutputSchema = z.looseObject({
  *
  * Opcional: a recusa do proxy (HTTP, sessão) ou uma resposta sem o campo não
  * tem número a adotar, e isso não é erro de fronteira.
+ *
+ * `CadSerieNFCe` veio junto no AD-239: na **rejeição da SEFAZ** o ERP devolve
+ * `NotaFiscal.NumeroNota: "0"` e `SerieNota: ""` (medido em 2026-09-16, rascunho
+ * 6037), e o par rascunho + série da raiz é a única identificação que o
+ * operador tem para corrigir o documento no ERP. `.catch(undefined)`: um valor
+ * ilegível aqui é rótulo ausente, nunca motivo para reprovar o desfecho.
  */
 export const rascunhoGravadoSchema = semEnvelope(
   'OutCheckoutFaturarNFCe',
-  z.looseObject({ NumeroRascunho: inteiroErp.optional() }),
+  z.looseObject({
+    NumeroRascunho: inteiroErp.optional().catch(undefined),
+    CadSerieNFCe: z.string().optional().catch(undefined),
+  }),
 );
 
 export type MensagemErp = z.infer<typeof mensagemErpSchema>;

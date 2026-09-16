@@ -193,7 +193,7 @@ export async function fetchResolucaoProduto(
  * devolvido pelo ERP, e num tenant em `'B'` esse código não casa com o filtro
  * por código de barras — a reconsulta voltaria o SDT vazio.
  */
-const TIPO_CODIGO_INTERNO = 'R';
+export const TIPO_CODIGO_INTERNO = 'R';
 
 /**
  * Saldo de estoque **fresco** do produto (AD-236): vai à rede sempre, fora do
