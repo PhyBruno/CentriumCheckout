@@ -657,9 +657,10 @@ describe('ScannerCamera — leitura com prévia ou edição pendente (revisão d
     instalarBarcodeDetector(CODIGO_LIDO);
 
     renderizarComProvedores(<EtapaClienteProdutos />);
-    // O campo segue acessível com o lápis ativo (AD-240) — a barra em edição é
-    // sinalizada pelo contorno pulsante, não por travar o código.
-    expect(screen.getByTestId('campo-codigo-produto')).toBeEnabled();
+    // Com o lápis ativo o campo é `disabled` (correção do usuário,
+    // 2026-09-16): o código identifica a linha em alteração e não se troca por
+    // ali. A leitura pela câmera é justamente a saída que continua valendo.
+    expect(screen.getByTestId('campo-codigo-produto')).toBeDisabled();
 
     await usuario.click(screen.getByTestId('abrir-scanner-camera'));
 

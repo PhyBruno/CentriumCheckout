@@ -3585,3 +3585,23 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx` (quatro strings) e as duas asserções de cópia em `tests/integration/finalizacaoSuspensao.spec.ts`. As menções a "Fechar e liberar o caixa" em ADs anteriores são registro do que foi visto na época e **não** se reescrevem.
 
 **Verificação (AD-242):** `tsc --noEmit`, ESLint e Prettier limpos; 68 testes de `finalizacaoSuspensao.spec.ts` passando. Nenhum E2E cita as frases (`grep` em `tests/e2e` vazio).
+
+### AD-243: o código manda na prévia — sair do campo revalida no ERP, e no lápis o código não se troca (2026-09-16)
+
+**Origem:** correção do usuário logo depois do AD-240, que devolveu o acesso ao campo de código. O acesso novo abriu um estado que antes não existia: prévia montada **e** código mexido.
+
+**1. O que estava errado.** Apagar o código e sair pelo TAB deixava na barra unidade, preço unitário, desconto e total do produto **anterior** — números coerentes entre si, sem nenhum código que os justificasse. O operador que apagou acreditando ter cancelado via um item pronto para confirmar, e o `+` o inseria. O mesmo valia para o código **trocado**: o texto novo ficava no campo enquanto a precificação continuava sendo a do produto velho, e nada nesse intervalo consultava o ERP.
+
+**2. Sair do campo com o código mexido revalida (`aoSairDoCodigo`).** No `blur`, o campo é comparado com a **entrada que produziu a revisão** — o texto cru (`entradaRevisada`, um `ref`), não o código do snapshot: `4*789` resolve o produto `789`, e comparar contra o snapshot mandaria uma consulta a cada ida e volta do foco. Igual, não consulta nada. Diferente, vai ao ERP pelo mesmo `resolverEExibir` do TAB — sem caminho próprio, porque duas regras de resolução divergiriam no primeiro ajuste.
+
+**3. Código apagado descarta a prévia inteira, e o foco fica no campo.** Unidade, preço, desconto e total saem junto com o código (`descartarPrevia` → `resetar`, o mesmo caminho do Escape e da confirmação), com a frase "Código apagado: o item saiu da barra". **Descartar, e não só recusar o gesto:** sem código não existe item, e manter os valores na tela deixaria na mão do operador um item que ele não consegue nomear. Como a prévia já não existe, o TAB seguinte volta a ser navegação para a lupa — a regra de 2026-09-04 continua inteira.
+
+**4. Código inexistente também prende o foco.** `revisarPorCodigo` já avisa ("Produto X não encontrado.") e `resolverEExibir` devolve o foco ao campo com o texto preservado, para o operador corrigir o que digitou. Vale tanto para o 404 quanto para o SDT vazio que o `PCheckout_GetProduto` devolve com 200 (AD-204).
+
+**5. Confirmar com o código apagado não insere o anterior.** O `blur` cobre quem sai do campo, mas o Enter dado de **outro** campo da barra não passa por `blur` nenhum — daí a mesma guarda em `confirmar()`.
+
+**6. No lápis, o campo é `disabled` — revoga em parte o item 8 do AD-240.** Aquele item liberou o campo em dois estados de uma vez; só um deles estava certo. Na **prévia de inserção** o campo continua livre, e digitar ali vence a revisão em curso. Na **edição de um item já lançado** o código identifica a linha que está sendo alterada: trocá-lo não viraria outro item, viraria o mesmo item com o preço e o total de outro produto. Para inserir um produto diferente o caminho é cancelar a edição (Escape) e bipar o novo código — e a câmera continua valendo, porque a leitura descarta a edição pendente (revisão da 007).
+
+**Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`entradaRevisada`, `codigoDivergeDaRevisao`, `aoSairDoCodigo`, `descartarPrevia`, `aplicarRevisao` recebendo a entrada, `onBlur`/`disabled` no campo); testes — cinco casos novos em `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (mais o do lápis e o da troca de código reescritos sobre a prévia de inserção) e a asserção do lápis em `tests/integration/scannerCamera.spec.tsx`.
+
+**Verificação (AD-243):** `tsc --noEmit`, ESLint e Prettier limpos; 1742 testes unit/integração passando em 111 arquivos. **Não verificado ao vivo** contra o ERP real — os casos novos cobrem a revalidação com `GetProduto` stubado, inclusive o SDT vazio do produto inexistente.

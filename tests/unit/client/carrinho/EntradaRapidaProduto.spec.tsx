@@ -137,10 +137,11 @@ describe('EntradaRapidaProduto — editar item já inserido (correção do usuá
     expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('10,00');
     expect(screen.getByTestId('previa-desconto-item')).toHaveValue('0,50');
     expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
-    // O campo de código continua acessível com a barra em edição (correção do
-    // usuário, 2026-09-16): era `disabled`, e o operador não voltava a ele nem
-    // por Tab nem com o mouse.
-    expect(screen.getByTestId('campo-codigo-produto')).toBeEnabled();
+    // O código **não** muda na edição de um item já lançado (correção do
+    // usuário, 2026-09-16, ajustando a correção do mesmo dia que liberou o
+    // campo na prévia de inserção): trocá-lo aqui não viraria outro item,
+    // viraria este item com o preço e o total de outro produto.
+    expect(screen.getByTestId('campo-codigo-produto')).toBeDisabled();
     // Unidade vem do cadastro, nunca editável (correção do usuário,
     // 2026-09-03) — `disabled`, não só `readOnly`.
     expect(screen.getByTestId('previa-unidade')).toBeDisabled();
@@ -526,32 +527,44 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
    * digitou. O código novo **vence** a revisão em curso, como a câmera e o
    * modal de busca já faziam.
    */
-  it('com a prévia aberta, digitar outro código no campo resolve o novo produto', async () => {
+  /**
+   * A prévia aqui é de **inserção** (TAB no código), não a do lápis que
+   * `abrirPreviaEditavel` monta: é nela que o campo de código continua livre.
+   * No item já lançado ele é `disabled` desde a correção de 2026-09-16 — o
+   * caso do lápis está no primeiro describe deste arquivo.
+   */
+  it('com a prévia de inserção aberta, digitar outro código no campo resolve o novo produto', async () => {
+    const urls: string[] = [];
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(
+      vi.fn((url: string) => {
+        urls.push(url);
+        return Promise.resolve(
           new Response(JSON.stringify(respostaGetProduto({ ProdutoPesavelEditavel: 'E' })), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           }),
-        ),
-      ),
+        );
+      }),
     );
     const usuario = userEvent.setup();
-    await abrirPreviaEditavel();
+    renderBarra();
 
     const campo = screen.getByTestId('campo-codigo-produto');
+    await usuario.type(campo, '001234');
+    await usuario.tab();
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    });
     expect(campo).toBeEnabled();
 
     await usuario.click(campo);
     await usuario.clear(campo);
     await usuario.type(campo, '002000{Enter}');
 
+    // O código novo foi ao ERP: a prévia na tela deixou de ser a do anterior.
     await waitFor(() => {
-      expect(screen.getByTestId('previa-descricao-produto')).toHaveTextContent(
-        'PRODUTO EXEMPLO 500G',
-      );
+      expect(urls.some((url) => url.includes('002000'))).toBe(true);
     });
     // A edição pendente saiu: o contorno pulsante não fica preso à barra.
     expect(screen.getByTestId('entrada-rapida-produto')).not.toHaveClass('cc-pulso-edicao');
@@ -631,6 +644,180 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
     const editada = useVendaStore.getState().linhas.find((linha) => linha.idLinha === 'linha-1');
     expect(editada?.descontoManual).toBe(0);
     expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
+  });
+});
+
+/**
+ * Sair do campo de código com o código mexido (correção do usuário,
+ * 2026-09-16).
+ *
+ * Desde que o campo voltou a ser alcançável (AD-240), dá para apagar ou trocar
+ * o código com a prévia montada — e o preço, o desconto e o total exibidos
+ * continuavam sendo os do produto **anterior**. O que estes casos travam é o
+ * par: a barra não segue com dados órfãos **e** o operador não é solto do campo
+ * sem um código que o ERP reconheça.
+ */
+describe('EntradaRapidaProduto — sair do campo de código (correção do usuário, 2026-09-16)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * `GetProduto` que responde `'E'` para qualquer código, menos `009999`: nele
+   * devolve o SDT vazio (`CodigoProduto: ''`), que é como o ERP real diz "não
+   * achei" neste procedure — 200, não 404 (AD-204).
+   */
+  function stubarProdutoPorCodigo(urls: string[]): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        urls.push(url);
+        const inexistente = url.includes('009999');
+        return Promise.resolve(
+          new Response(
+            JSON.stringify(
+              respostaGetProduto(
+                inexistente
+                  ? { CodigoProduto: '' }
+                  : { ProdutoPesavelEditavel: 'E', CodigoProduto: '001234' },
+              ),
+            ),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
+      }),
+    );
+  }
+
+  /** Prévia de inserção montada pelo TAB, como o caixa a monta. */
+  async function abrirPreviaPorTab(usuario: ReturnType<typeof userEvent.setup>): Promise<void> {
+    renderBarra();
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    });
+  }
+
+  it('apagar o código e sair pelo TAB limpa unidade, preço, desconto e total', async () => {
+    const urls: string[] = [];
+    stubarProdutoPorCodigo(urls);
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    await abrirPreviaPorTab(usuario);
+    const consultasDaPrevia = urls.length;
+    // A prévia está montada: é o estado que precisa desaparecer.
+    expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('10,00');
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    await usuario.click(campo);
+    await usuario.clear(campo);
+    await usuario.tab();
+
+    // O item some inteiro — sem código não há o que precificar (correção do
+    // usuário, 2026-09-16). Com a barra vazia os campos de dinheiro voltam ao
+    // `0,00` de repouso (não ficam em branco: são somente leitura fora de
+    // `'E'`, e exibem o valor derivado).
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('0,00');
+    });
+    expect(screen.getByTestId('previa-desconto-item')).toHaveValue('0,00');
+    expect(screen.getByTestId('previa-unidade')).toHaveValue('UN');
+    // O total é um `<strong>`, não um campo: a barra vazia mostra R$ 0,00.
+    expect(screen.getByTestId('previa-total-item')).toHaveTextContent('0,00');
+    // O foco chega a sair (o TAB de campo vazio é navegação) e volta em
+    // seguida, pelo mesmo caminho dos outros campos obrigatórios da barra.
+    await waitFor(() => {
+      expect(campo).toHaveFocus();
+    });
+    expect(erro).toHaveBeenCalledWith(expect.stringContaining('Código apagado'));
+    // Campo vazio não gasta chamada: a limpeza é local.
+    expect(urls).toHaveLength(consultasDaPrevia);
+  });
+
+  it('confirmar com o código apagado não insere o produto anterior — a prévia sai', async () => {
+    const urls: string[] = [];
+    stubarProdutoPorCodigo(urls);
+    const usuario = userEvent.setup();
+    await abrirPreviaPorTab(usuario);
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    await usuario.click(campo);
+    await usuario.clear(campo);
+    // Enter dado de outro campo da barra não passa por `blur` nenhum — é o
+    // caminho que a guarda de `confirmar` cobre.
+    await usuario.click(screen.getByTestId('previa-quantidade'));
+    await usuario.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(campo).toHaveFocus();
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('0,00');
+    expect(screen.getByTestId('previa-total-item')).toHaveTextContent('0,00');
+  });
+
+  it('trocar o código e sair com o mouse revalida no ERP', async () => {
+    const urls: string[] = [];
+    stubarProdutoPorCodigo(urls);
+    const usuario = userEvent.setup();
+    await abrirPreviaPorTab(usuario);
+    const consultasDaPrevia = urls.length;
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    await usuario.click(campo);
+    await usuario.clear(campo);
+    await usuario.type(campo, '002000');
+    // Sair pelo mouse: o TAB com código digitado já é revisão (AD-027/AD-063),
+    // então é o clique que exercita o `blur`.
+    await usuario.click(screen.getByTestId('previa-quantidade'));
+
+    await waitFor(() => {
+      expect(urls.some((url) => url.includes('002000'))).toBe(true);
+    });
+    expect(urls.length).toBeGreaterThan(consultasDaPrevia);
+  });
+
+  it('código inexistente não solta o foco do campo', async () => {
+    const urls: string[] = [];
+    stubarProdutoPorCodigo(urls);
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    await abrirPreviaPorTab(usuario);
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    await usuario.click(campo);
+    await usuario.clear(campo);
+    await usuario.type(campo, '009999');
+    await usuario.click(screen.getByTestId('previa-quantidade'));
+
+    await waitFor(() => {
+      expect(campo).toHaveFocus();
+    });
+    expect(erro).toHaveBeenCalledWith(expect.stringContaining('não encontrado'));
+  });
+
+  it('sair do campo sem mexer no código não consulta o ERP de novo', async () => {
+    const urls: string[] = [];
+    stubarProdutoPorCodigo(urls);
+    const usuario = userEvent.setup();
+    await abrirPreviaPorTab(usuario);
+    const consultasDaPrevia = urls.length;
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    await usuario.click(campo);
+    await usuario.click(screen.getByTestId('previa-quantidade'));
+
+    expect(urls).toHaveLength(consultasDaPrevia);
+    expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
   });
 });
 

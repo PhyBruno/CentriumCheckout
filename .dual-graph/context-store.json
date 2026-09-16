@@ -1,5 +1,28 @@
 [
   {
+    "id": "mem:1789567200003",
+    "kind": "decision",
+    "content": "Sair do campo de código revalida no ERP; lápis trava o código (AD-243)",
+    "tags": [
+      "carrinho",
+      "entrada-rapida",
+      "foco"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
+    ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-16",
+    "created_epoch": 1789567200,
+    "updated_at": "2026-09-16",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
     "id": "mem:1789567200001",
     "kind": "fact",
     "content": "CodeQL reprova replace de tags HTML; textoSemHtml virou varredura unica (AD-241)",

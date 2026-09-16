@@ -98,6 +98,22 @@ const AVISO_DESCONTO_INVALIDO =
   'Informe o desconto do item: digite 0,00 quando não houver desconto.';
 
 /**
+ * Código apagado com uma revisão na tela (correção do usuário, 2026-09-16).
+ *
+ * Desde que o campo de código voltou a ser alcançável (AD-240), dá para apagar
+ * o que está nele e sair — e a prévia continuava exibindo unidade, preço,
+ * desconto e total do produto **anterior**, agora sem código nenhum que os
+ * justifique. O operador confirmaria um item que ele acredita ter cancelado.
+ *
+ * Por isso a saída **descarta a prévia inteira** em vez de só recusar o gesto:
+ * sem código não existe item, e deixar os valores na tela seria manter na mão
+ * do operador um item que ele não consegue nomear. O foco fica no campo, que é
+ * onde o próximo código entra.
+ */
+const AVISO_CODIGO_OBRIGATORIO =
+  'Código apagado: o item saiu da barra. Bipe ou digite o código do produto.';
+
+/**
  * Venda sem vendedor não recebe produto (pedido do usuário, 2026-09-10).
  *
  * A trava por vendedor já existia no **fim** da venda — `AcoesFinaisVenda`
@@ -342,6 +358,16 @@ export function EntradaRapidaProduto({
   const [saldoConhecido, setSaldoConhecido] = useState<SaldoMilesimos | null>(null);
 
   const campoCodigo = useRef<HTMLInputElement>(null);
+  /**
+   * Entrada que **produziu** a revisão na tela — o texto cru, não o código
+   * canônico do produto: `4*789` resolve o produto `789`, e comparar contra o
+   * snapshot faria toda saída do campo revalidar um código que já foi revisado.
+   *
+   * `useRef` e não `useState` porque nada no render depende dela: ela só
+   * responde "o que está no campo ainda é o que foi ao ERP?" no momento em que
+   * o foco sai (`aoSairDoCodigo`) ou em que se confirma (`confirmar`).
+   */
+  const entradaRevisada = useRef<string | null>(null);
   const campoQuantidade = useRef<HTMLInputElement>(null);
   // Preço e desconto ganharam ref pelo mesmo motivo que a quantidade sempre
   // teve: sair deles com valor inválido devolve o foco ao campo (`exigirCampo`).
@@ -482,6 +508,11 @@ export function EntradaRapidaProduto({
     // houver (guarda espelhada em `aplicarRevisao`).
     setResolvido(null);
     setSaldoConhecido(null);
+    // O código do item em edição é o que já está na venda: nunca vai ao ERP
+    // de novo por este caminho — o campo fica `disabled` (correção do usuário,
+    // 2026-09-16) —, mas a marca acompanha o texto para que nenhum resto da
+    // revisão anterior sobreviva à troca.
+    entradaRevisada.current = linhaEmEdicao.snapshot.codigoProduto;
     setTexto(linhaEmEdicao.snapshot.codigoProduto);
     setQuantidadeTexto(formatarQuantidade(linhaEmEdicao.quantidade, 3));
     setPrecoTexto(paraTextoDecimal(linhaEmEdicao.precoUnitario));
@@ -577,6 +608,7 @@ export function EntradaRapidaProduto({
 
   function resetar(): void {
     setResolvido(null);
+    entradaRevisada.current = null;
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
     setPrecoTexto('');
@@ -655,16 +687,19 @@ export function EntradaRapidaProduto({
         // mesmo caminho de quando o TAB resolve um produto `'E'` (`FR-014`).
         // Uma edição de linha existente pendente perde para esta revisão
         // nova (mesma guarda de `aplicarRevisao`).
-        aplicarRevisao({
-          situacao: 'revisao',
-          snapshot: resultado.snapshot,
-          quantidade: resultado.quantidade,
-          origem: 'MANUAL',
-          editavel: true,
-          saldo: resultado.saldo,
-          // Já comunicado por `inserirPorCodigo`; aqui só decide o foco.
-          vereditoSaldo: 'livre',
-        });
+        aplicarRevisao(
+          {
+            situacao: 'revisao',
+            snapshot: resultado.snapshot,
+            quantidade: resultado.quantidade,
+            origem: 'MANUAL',
+            editavel: true,
+            saldo: resultado.saldo,
+            // Já comunicado por `inserirPorCodigo`; aqui só decide o foco.
+            vereditoSaldo: 'livre',
+          },
+          entrada,
+        );
         // O código digitado permanece visível no campo (só desabilitado)
         // enquanto o operador revisa — é o que o Pencil mostra (`data-icon-name`
         // "Código digitado" convive com o resto da linha já resolvida).
@@ -676,7 +711,7 @@ export function EntradaRapidaProduto({
         // câmera — não aconteceu, e o produto fica na barra como prévia
         // bloqueada, com o código visível, para o operador reduzir a
         // quantidade ou cancelar com Escape.
-        aplicarRevisao(resultado.revisao);
+        aplicarRevisao(resultado.revisao, entrada);
         return;
       }
 
@@ -739,8 +774,11 @@ export function EntradaRapidaProduto({
    * `capturarPorCamera`): o operador está deliberadamente resolvendo
    * outro produto.
    */
-  function aplicarRevisao(revisao: RevisaoProduto): void {
+  function aplicarRevisao(revisao: RevisaoProduto, entrada: string): void {
     limparEdicao();
+    // A entrada que foi ao ERP acompanha a revisão: é ela que `aoSairDoCodigo`
+    // compara com o campo para saber se o código mudou desde a consulta.
+    entradaRevisada.current = entrada.trim();
     setResolvido(revisao);
     setSaldoConhecido(revisao.saldo);
     setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
@@ -805,7 +843,7 @@ export function EntradaRapidaProduto({
       }
       // Mesma razão do caminho rápido: o código digitado fica visível durante
       // a revisão, só `resetar()` (confirmar/cancelar) o limpa.
-      aplicarRevisao(resultado);
+      aplicarRevisao(resultado, codigo);
     } finally {
       setOcupado(false);
     }
@@ -820,6 +858,62 @@ export function EntradaRapidaProduto({
       return;
     }
     await resolverEExibir(entrada);
+  }
+
+  /**
+   * O que está no campo ainda é o que foi ao ERP?
+   *
+   * Só faz sentido com uma **prévia de inserção** na tela (`resolvido`): sem
+   * ela não há preço nem total de produto nenhum para divergir, e o campo vazio
+   * segue sendo navegação normal — o TAB dali continua indo para a lupa
+   * (pedido do usuário, 2026-09-04). No item carregado pelo lápis o campo é
+   * `disabled`, então nunca diverge.
+   */
+  function codigoDivergeDaRevisao(): boolean {
+    return resolvido !== null && texto.trim() !== entradaRevisada.current;
+  }
+
+  /**
+   * Sair do campo com o código mexido revalida no ERP (correção do usuário,
+   * 2026-09-16).
+   *
+   * Antes disto, apagar ou trocar o código e sair pelo TAB deixava na barra o
+   * preço, o desconto e o total do produto **anterior** — dados que já não
+   * pertenciam a nada do que estava escrito. O operador via um item coerente e
+   * confirmava outro.
+   *
+   * Os dois desfechos ruins prendem o foco aqui, porque não há para onde
+   * seguir com a revisão inválida:
+   *
+   * - **Código apagado:** a prévia inteira é descartada (`resetar`) — unidade,
+   *   preço, desconto e total saem junto com o código que os justificava
+   *   (correção do usuário, 2026-09-16). É local, sem gastar chamada.
+   * - **Código inexistente:** só se descobre no ERP. `revisarPorCodigo` já
+   *   avisa ("Produto X não encontrado.") e `resolverEExibir` devolve o foco ao
+   *   campo, com o texto digitado preservado para o operador corrigir.
+   *
+   * Código igual ao que já foi revisado não consulta nada: senão, sair do campo
+   * para ajustar a quantidade custaria um `GetProduto` a cada ida e volta.
+   */
+  async function aoSairDoCodigo(): Promise<void> {
+    if (ocupado || !codigoDivergeDaRevisao()) {
+      return;
+    }
+    if (texto.trim() === '') {
+      descartarPrevia();
+      return;
+    }
+    await revisarEntrada();
+  }
+
+  /**
+   * Prévia inteira fora, foco de volta no código (correção do usuário,
+   * 2026-09-16). `resetar()` é o mesmo caminho do Escape e da confirmação: um
+   * só lugar decide o que "barra vazia" significa.
+   */
+  function descartarPrevia(): void {
+    resetar();
+    exigirCampo(campoCodigo, AVISO_CODIGO_OBRIGATORIO);
   }
 
   /**
@@ -876,6 +970,16 @@ export function EntradaRapidaProduto({
     // Uma confirmação já está consultando o saldo no ERP (AD-236): o segundo
     // Enter/clique não pode inserir por cima dela.
     if (ocupado && !semResolucao) {
+      return;
+    }
+
+    // Código apagado com a prévia na tela: confirmar inseriria o produto
+    // anterior, que o operador acabou de tirar do campo (correção do usuário,
+    // 2026-09-16). O clique no "+" já chega depois do `blur` que descartou a
+    // prévia — esta guarda é a que cobre o Enter dado de outro campo da barra,
+    // que não passa por `blur` nenhum.
+    if (resolvido !== null && texto.trim() === '') {
+      descartarPrevia();
       return;
     }
 
@@ -1179,7 +1283,7 @@ export function EntradaRapidaProduto({
           </span>
           <input
             ref={campoCodigo}
-            className="h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono md:h-11.5"
+            className="h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono disabled:cursor-not-allowed disabled:opacity-70 md:h-11.5"
             data-testid="campo-codigo-produto"
             /* Única exceção à regra de `FR-014` (decisão do usuário,
                2026-09-05): os atalhos globais F6–F9 disparam **com o foco
@@ -1192,18 +1296,38 @@ export function EntradaRapidaProduto({
             autoFocus
             placeholder="Bipe ou digite (use * p/ quantidade)"
             value={texto}
-            /* **Nunca desabilitado** (correção do usuário, 2026-09-16). Ele
-               ficava `disabled` enquanto havia prévia resolvida ou item
-               carregado pelo lápis, e o operador não voltava a ele nem por Tab
-               nem com o mouse: para trocar o código digitado errado, só
-               cancelando a prévia no Escape — que no compacto nem existe.
-               Digitar aqui agora **vence** a revisão em curso, a mesma política
-               que a câmera (`capturarPorCamera`) e o modal de busca já
-               seguiam. */
+            /* **Livre na prévia, `disabled` no lápis** (correções do usuário,
+               2026-09-16, nesta ordem no mesmo dia).
+
+               Na prévia de inserção ele ficava `disabled` e o operador não
+               voltava a ele nem por Tab nem com o mouse: para trocar o código
+               digitado errado, só cancelando no Escape — que no compacto nem
+               existe. Digitar aqui **vence** a revisão em curso, a mesma
+               política que a câmera (`capturarPorCamera`) e o modal de busca já
+               seguiam.
+
+               Na edição de um item **já lançado** (lápis da grid) é o oposto: o
+               código identifica a linha que está sendo alterada, e trocá-lo ali
+               não teria significado — não viraria outro item, viraria o mesmo
+               item com o preço e o total de outro produto. Para inserir um
+               produto diferente o caminho é cancelar a edição e bipar o novo
+               código, que é o gesto que o caixa já faz. */
+            disabled={linhaEmEdicao !== null}
+            title={
+              linhaEmEdicao === null
+                ? undefined
+                : 'O código não muda na edição de um item já lançado: cancele com Esc para inserir outro produto.'
+            }
             onChange={(evento) => {
               setTexto(evento.target.value);
             }}
             onKeyDown={aoTeclarNoCodigo}
+            /* Sair do campo com o código mexido revalida no ERP
+               (`aoSairDoCodigo`): sem isto, apagar o código e sair pelo TAB
+               deixava preço, desconto e total do produto anterior na barra. */
+            onBlur={() => {
+              void aoSairDoCodigo();
+            }}
           />
         </label>
 
