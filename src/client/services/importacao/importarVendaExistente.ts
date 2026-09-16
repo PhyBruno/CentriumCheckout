@@ -25,7 +25,7 @@
 
 import type { CheckoutFaturarNFCe } from '../../../shared/schemas/dav.schema';
 import type { ClienteCheckout } from '../../../shared/schemas/cliente.schema';
-import type { EventoAuditoriaRegistravel } from '../../domain/auditoria/eventos';
+import type { EventoAuditoriaRegistravel, OrigemVenda } from '../../domain/auditoria/eventos';
 import type { CondicaoPagamento } from '../../domain/pagamento/formaPagamento';
 import {
   mapearVendaExistente,
@@ -33,6 +33,7 @@ import {
   type LinhaImportada,
   type OrigemDocumentoImportado,
   type VendaImportada,
+  type VendedorDaLista,
 } from '../../domain/importacaoVenda/mapearVendaExistente';
 import type { ErpClient } from '../erpClient';
 
@@ -42,7 +43,7 @@ import type { ErpClient } from '../erpClient';
  * Um documento importado **substitui** a venda: traz os itens, o cliente, o
  * vendedor e as formas de pagamento já registrados no ERP, e passa a ser a
  * NFCe rascunho daquela venda. Não existe "mesclar" — `FaturarNFCe` carrega um
- * único `NumeroNota` (`montarRetratoVenda.ts`) e um único cliente. Importar
+ * único `NumeroRascunho` (`montarRetratoVenda.ts`) e um único cliente. Importar
  * sobre uma venda já em digitação misturaria dois documentos num só, e o
  * operador só descobriria na nota emitida.
  *
@@ -58,8 +59,17 @@ export type MotivoRecusaImportacao =
 
 /** Retrato mínimo da venda para decidir a recusa — sem Zustand, sem React. */
 export interface EstadoVendaParaImportacao {
-  /** `identidadeVenda.numeroNota`; `0` para venda criada do zero. */
-  readonly numeroNota: number;
+  /**
+   * `identidadeVenda.origem` — `'NOVA'` para venda criada no Checkout.
+   *
+   * É a origem, e não o número do rascunho, que diz se a venda já veio de um
+   * documento (AD-235): uma venda `NOVA` cujo envio foi recusado com o rascunho
+   * já gravado adota o número devolvido pelo ERP (`adotarRascunhoGravado`) e
+   * passa a ter `numeroRascunho ≠ 0` sem nunca ter importado nada. A guarda
+   * antiga, `numeroNota !== 0`, recusaria essa venda com "já foi iniciada a
+   * partir de um documento".
+   */
+  readonly origem: OrigemVenda;
   /**
    * Mesmo predicado de bloqueio do carrinho/cliente (AD-043). Cobre **dois** dos
    * quatro critérios do usuário: é `false` a partir da condição de pagamento
@@ -104,7 +114,7 @@ export function recusaDeImportacao(
   if (!estado.podeMutar) {
     return 'venda-bloqueada';
   }
-  if (estado.numeroNota !== 0) {
+  if (estado.origem !== 'NOVA') {
     return 'ja-importou-documento';
   }
   if (estado.linhasNaVenda > 0) {
@@ -177,17 +187,17 @@ export interface FonteDocumento {
   /** Rótulo propagado às linhas, à identidade da venda e ao cliente. */
   readonly origem: OrigemDocumentoImportado;
   /**
-   * Nome do vendedor capturado na linha da listagem, ou `null` quando a
-   * listagem não o devolve. Usado só como *fallback* de `VendaImportada.vendedorNome`
-   * — o documento tem prioridade quando o traz (AD-172).
+   * Vendedor capturado na linha da listagem — código e nome, cada um `null`
+   * quando a listagem não o traz. Usado só como *fallback* por
+   * `mapearVendaExistente`: o nome atrás do `vendedorNome` do documento
+   * (AD-172), e o código quando o documento devolve `vendedorCodigo` 0
+   * (divergência do ERP de 2026-09-14, AD-235).
    *
-   * É **obrigatório** declarar, mesmo sendo `null` para DAV: as duas listagens
-   * divergem justamente aqui — `ListaDAVs` traz o código e, desde AD-172,
-   * também o nome quando o ERP o devolve; `GetListaNFCes` sempre trouxe o nome
-   * por extenso —, e um campo opcional deixaria essa diferença passar
-   * despercebida ao escrever uma terceira fonte.
+   * É **obrigatório** declarar, mesmo com `null`: um campo opcional deixaria a
+   * diferença entre as listagens passar despercebida ao escrever uma terceira
+   * fonte.
    */
-  readonly vendedorNome: string | null;
+  readonly vendedorDaLista: VendedorDaLista;
   /** Chamada de rede que devolve o documento completo. */
   carregar(erpClient: ErpClient | undefined): Promise<CheckoutFaturarNFCe>;
   /**
@@ -217,13 +227,13 @@ export interface ImportacaoVendaDeps {
    */
   estadoDaVenda(): EstadoVendaParaImportacao;
   /**
-   * Feature 004 — grava `{ origem, numeroNota }` na identidade da venda.
+   * Feature 004 — grava `{ origem, numeroRascunho }` na identidade da venda.
    *
    * **É o elo que faz o documento fechar no ERP.** `montarRetratoVenda` monta o
-   * payload de `FaturarNFCe` lendo `NumeroNota` de `identidadeVenda`
+   * payload de `FaturarNFCe` lendo `NumeroRascunho` de `identidadeVenda`
    * (`montarRetratoVenda.ts`), e desde a remoção de `DavNum` esse número é o
-   * único vínculo com o documento de origem (AD-107). Sem esta chamada a venda
-   * importada seria faturada como venda nova, com `NumeroNota: 0`, e o
+   * único vínculo com o documento de origem (AD-107, AD-235). Sem esta chamada a
+   * venda importada seria faturada como venda nova, com `NumeroRascunho: 0`, e o
    * documento ficaria aberto no ERP — sem erro, sem aviso.
    *
    * Não é `abrirSessaoDeVenda` de propósito: aquela função **zera** o histórico
@@ -232,7 +242,7 @@ export interface ImportacaoVendaDeps {
    */
   definirIdentidadeVenda(identidade: {
     readonly origem: OrigemDocumentoImportado;
-    readonly numeroNota: number;
+    readonly numeroRascunho: number;
   }): void;
   /** Feature 003 — extensão aditiva do `CarrinhoSlice`. */
   importarLinhasCongeladas(
@@ -332,7 +342,7 @@ export async function importarVendaExistente(
   }
 
   const documento = await fonte.carregar(deps.erpClient);
-  const venda = mapearVendaExistente(documento, fonte.vendedorNome);
+  const venda = mapearVendaExistente(documento, fonte.vendedorDaLista);
   const cliente = await deps.resolverCliente(venda.clienteCodigo);
 
   // Condição do documento, ainda na fase de rede (AD-171).
@@ -367,7 +377,7 @@ export async function importarVendaExistente(
   // Primeiro a identidade: a venda passa a ser a NFCe rascunho do documento, e
   // só então é populada. Trocar a ordem não muda o resultado, mas esta lê como
   // o que de fato acontece.
-  deps.definirIdentidadeVenda({ origem: fonte.origem, numeroNota: venda.numeroNota });
+  deps.definirIdentidadeVenda({ origem: fonte.origem, numeroRascunho: venda.numeroRascunho });
   deps.importarLinhasCongeladas(venda.linhas, fonte.origem);
   await deps.selecionarCliente(cliente);
   deps.trocarVendedor({ codigo: venda.vendedorCodigo, nome: venda.vendedorNome });

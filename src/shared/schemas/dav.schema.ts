@@ -8,9 +8,10 @@ import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
  * Constitution IV — `specs/006-importacao-dav/contracts/erp-dav-api.md`).
  *
  * Os nomes e tipos abaixo saem do contrato real (`Fluxograma - Diagrama -
- * Alinhamentos/ApiCentriumOAuth.yaml`, `info.version: 20260827192357`),
- * conferidos campo a campo: nenhum campo é inventado e nenhum campo do
- * contrato é exigido além do que esta feature consome.
+ * Alinhamentos/ApiCentriumOAuth.yaml`, `info.version: 20260914191012`, conferido
+ * contra a KB e o ERP de preview — AD-235), campo a campo: nenhum campo é
+ * inventado e nenhum campo do contrato é exigido além do que esta feature
+ * consome.
  *
  * Como em `produto.schema.ts`, a conversão numérica acontece **na fronteira**:
  * nenhum `double` de preço ou quantidade atravessa para dentro do domínio
@@ -113,6 +114,14 @@ export const produtoDoDocumentoSchema = z.looseObject({
   /** Absoluto, já resolvido pelo ERP. */
   DescontoValor: valorEmCentavos,
   UDM: z.string(),
+  /**
+   * Valores da linha acrescentados ao SDT no contrato de 2026-09-14 (AD-235).
+   * `optional()` porque nada no Checkout os consome na importação — o total da
+   * linha continua sendo derivado de preço, quantidade e desconto — e um ERP
+   * que ainda não os devolva não pode derrubar a importação.
+   */
+  ValorBruto: valorEmCentavos.optional(),
+  ValorTotal: valorEmCentavos.optional(),
 });
 
 /** `CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem`. */
@@ -132,12 +141,16 @@ export const formaDePagamentoDoDocumentoSchema = z.looseObject({
 /**
  * `CheckoutFaturarNFCe` — documento completo, origem única de `VendaImportada`.
  *
- * **`NumeroNota` é obrigatório e é o único elo com o DAV de origem** (D8,
- * AD-107): o campo `DavNum` saiu do contrato em `20260827192357` e o ERP
- * reconhece sozinho, pelo rascunho identificado por este número, que a NFCe
- * nasceu de um DAV. Uma resposta sem `NumeroNota` é erro de fronteira, não
- * dado opcional — importar assim quebraria o vínculo em silêncio, e o DAV
- * jamais fecharia no ERP ao faturar.
+ * **`NumeroRascunho` é obrigatório e é o único elo com o documento de origem**
+ * (D8, AD-107, AD-235): o campo `DavNum` saiu do contrato em `20260827192357`,
+ * e no contrato de `20260914191012` o antigo `NumeroNota` do primeiro nível foi
+ * renomeado para `NumeroRascunho` (domínio `NumeroNota` na KB). `GetDav`
+ * converte o DAV num rascunho de NFCe (`PFaturarDavNFCe`) e devolve o número
+ * desse rascunho; `CarregarNFCe` devolve o do rascunho carregado. Uma resposta
+ * sem `NumeroRascunho` é erro de fronteira, não dado opcional — importar assim
+ * quebraria o vínculo em silêncio, e o documento jamais fecharia no ERP ao
+ * faturar. O `NumeroNota` que sobrou no contrato é o de **dentro** de
+ * `NotaFiscal` (a nota fiscal emitida), que este schema não modela.
  *
  * `FormaIntegracaoCartao`/`FormaFpgUtiCar`/`FormaEntrada` existem no contrato e
  * passam íntegros pelo `looseObject`, mas não são modelados: o tratamento deles
@@ -147,6 +160,20 @@ export const formaDePagamentoDoDocumentoSchema = z.looseObject({
  */
 export const checkoutFaturarNFCeSchema = z.looseObject({
   clienteCodigo: inteiroErp,
+  /**
+   * Nome do cliente do documento, acrescentado ao SDT no contrato de 2026-09-14
+   * (AD-235). `optional()`: é dado de exibição, e a resolução do cliente
+   * continua por `GetCliente` (AD-115), que traz a lista de preço e o resto do
+   * cadastro que a venda precisa.
+   */
+  ClienteNome: z.string().optional(),
+  /**
+   * **Pode vir `0` com vendedor gravado no documento** — divergência do ERP
+   * medida no preview de 2026-09-14 (`CarregarNFCe`, e por consequência
+   * `GetDav`, leem `RepCod`/`RepNom` onde a listagem lê `NfcRepCod`/`NfcRepNom`;
+   * registrada em `PENDENCIES.md`). Quem importa cai no código da linha da
+   * listagem (`mapearVendaExistente`, AD-235).
+   */
   vendedorCodigo: inteiroErp,
   /**
    * Nome do vendedor do documento (AD-172, 2026-09-08).
@@ -167,7 +194,11 @@ export const checkoutFaturarNFCeSchema = z.looseObject({
    */
   vendedorNome: z.string().optional(),
   CondicaoPagamentoCodigo: inteiroErp,
-  NumeroNota: inteiroErp,
+  /**
+   * `inteiroErp`: o ERP serializa como string (`"6031"`, preview 2026-09-14).
+   * Ver o TSDoc do schema.
+   */
+  NumeroRascunho: inteiroErp,
   /**
    * **Obrigatório, e é ele quem separa documento de recusa.** Um documento
    * importável sempre tem ao menos um item; o SDT zerado que o ERP devolve ao

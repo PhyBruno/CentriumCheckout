@@ -55,11 +55,15 @@ interface CheckoutFaturarNFCe {
   Empresa: number;
   SuspenderOuFaturar: string;   // não usado na importação — só relevante ao chamar FaturarNFCe depois
   clienteCodigo: number;
-  vendedorCodigo: number;
+  ClienteNome?: string;         // contrato 20260914191012 (AD-235) — exibição; o cliente segue resolvido por GetCliente
+  vendedorCodigo: number;       // o ERP de 2026-09-14 devolve 0 mesmo com vendedor gravado (PENDENCIES item 56):
+                                // cair no VendedorCodigo da linha de ListaDAVs (AD-235)
   CondicaoPagamentoCodigo: number;
-  NumeroNota: number;           // preservar e reenviar INTACTO em FaturarNFCe (NFCE-02, mesma regra de recuperacao-nfce).
-                                // Único elo com o DAV de origem desde a remoção de DavNum (AD-107): é por este
-                                // rascunho que o ERP reconhece a origem em DAV. Zerar/omitir quebra o vínculo.
+  NumeroRascunho: number;       // (era NumeroNota até o contrato 20260914191012, AD-235; string no ERP real, ex. "6031")
+                                // preservar e reenviar INTACTO em FaturarNFCe (NFCE-02, mesma regra de recuperacao-nfce).
+                                // GetDav converte o DAV num rascunho de NFCe (PFaturarDavNFCe) e devolve o número dele —
+                                // não é leitura. Único elo com o DAV de origem desde a remoção de DavNum (AD-107).
+                                // Zerar/omitir quebra o vínculo.
   CadSerieNFCe: string;
   UsuarioCodigo: number;
   // SEM DavNum — removido do contrato em 20260827192357 e desnecessário: o ERP identifica sozinho

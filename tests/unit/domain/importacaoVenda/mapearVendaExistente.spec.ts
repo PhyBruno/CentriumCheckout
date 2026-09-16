@@ -43,10 +43,38 @@ describe('mapearVendaExistente — documento completo', () => {
     expect(linha?.descricao).toBeNull();
   });
 
-  it('preserva NumeroNota intacto e não modela nenhum campo de DAV (D8, AD-107)', () => {
+  it('lê o NumeroRascunho do documento, mesmo serializado como string (AD-235)', () => {
+    // `GetDav` e `CarregarNFCe` devolvem `"6031"`/`"5925"` no preview de 2026-09-14.
+    const venda = mapearVendaExistente(documentoValidado({ NumeroRascunho: '6031' }));
+
+    expect(venda.numeroRascunho).toBe(6031);
+    expect(venda).not.toHaveProperty('numeroNota');
+  });
+
+  it('vendedor 0 no documento cai no código e no nome da listagem (AD-235)', () => {
+    const venda = mapearVendaExistente(
+      documentoValidado({ vendedorCodigo: '0', vendedorNome: '' }),
+      { codigo: 8, nome: 'BRUNO SANTOS' },
+    );
+
+    expect(venda.vendedorCodigo).toBe(8);
+    expect(venda.vendedorNome).toBe('BRUNO SANTOS');
+  });
+
+  it('vendedor 0 no documento e sem código na listagem continua 0', () => {
+    const venda = mapearVendaExistente(
+      documentoValidado({ vendedorCodigo: '0', vendedorNome: '' }),
+      { codigo: null, nome: null },
+    );
+
+    expect(venda.vendedorCodigo).toBe(0);
+    expect(venda.vendedorNome).toBeNull();
+  });
+
+  it('preserva NumeroRascunho intacto e não modela nenhum campo de DAV (D8, AD-107)', () => {
     const venda = mapearVendaExistente(documentoValidado());
 
-    expect(venda.numeroNota).toBe(NUMERO_NOTA);
+    expect(venda.numeroRascunho).toBe(NUMERO_NOTA);
     // `DavNum` saiu do contrato: nem o schema nem a venda importada o conhecem.
     expect(venda).not.toHaveProperty('davNum');
     expect(venda).not.toHaveProperty('numeroDav');
@@ -147,7 +175,7 @@ describe('mapearVendaExistente — bordas de dado de negócio', () => {
 });
 
 describe('mapearVendaExistente — violação de contrato', () => {
-  it.each(['NumeroNota', 'clienteCodigo', 'vendedorCodigo'])(
+  it.each(['NumeroRascunho', 'clienteCodigo', 'vendedorCodigo'])(
     'lança quando `%s` não vem na resposta',
     (campo) => {
       // Contorna o schema de propósito: o cenário é o de um caller não
@@ -162,10 +190,16 @@ describe('mapearVendaExistente — violação de contrato', () => {
   );
 
   it('o schema Zod recusa a resposta antes mesmo do mapper', () => {
-    const semNumeroNota: Record<string, unknown> = documentoDoDav();
-    delete semNumeroNota.NumeroNota;
+    const semNumeroRascunho: Record<string, unknown> = documentoDoDav();
+    delete semNumeroRascunho.NumeroRascunho;
 
-    expect(checkoutFaturarNFCeSchema.safeParse(semNumeroNota).success).toBe(false);
+    expect(checkoutFaturarNFCeSchema.safeParse(semNumeroRascunho).success).toBe(false);
+    // O nome antigo não substitui o novo: um ERP ainda na versão anterior falha
+    // alto na fronteira, em vez de faturar contra o rascunho errado.
+    expect(
+      checkoutFaturarNFCeSchema.safeParse({ ...semNumeroRascunho, NumeroNota: NUMERO_NOTA })
+        .success,
+    ).toBe(false);
   });
 });
 

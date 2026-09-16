@@ -17,6 +17,7 @@ import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice'
 import type { ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
 import { criarVendaStore, useVendaStore } from '../../src/client/stores/vendaStore';
 import { useImportacaoDav } from '../../src/client/features/dav/useImportacaoDav';
+import { montarRetratoVenda } from '../../src/client/domain/venda/montarRetratoVenda';
 import { clienteCheckoutDe } from '../support/cliente';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
@@ -134,7 +135,7 @@ function depsDe(
   const venda = store.getState();
   const deps: ImportacaoVendaDeps = {
     estadoDaVenda: () => ({
-      numeroNota: store.getState().identidadeVenda.numeroNota,
+      origem: store.getState().identidadeVenda.origem,
       podeMutar: true,
       linhasNaVenda: store.getState().linhas.length,
       clienteIdentificado: store.getState().houveEscolhaExplicita,
@@ -334,15 +335,77 @@ describe('importarVendaExistente — cliente e vendedor (T019, FR-007)', () => {
     });
   });
 
-  it('grava a identidade da venda com o NumeroNota do documento (D8, AD-107)', async () => {
+  it('grava a identidade da venda com o NumeroRascunho do documento (D8, AD-107, AD-235)', async () => {
     const store = montarStore();
     const { deps } = depsDe(store);
 
     await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
 
-    // É este campo que `montarRetratoVenda` reenvia como `NumeroNota` em
+    // É este campo que `montarRetratoVenda` reenvia como `NumeroRascunho` em
     // `FaturarNFCe` — o único elo com o DAV de origem.
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'DAV', numeroNota: NUMERO_NOTA });
+    expect(store.getState().identidadeVenda).toEqual({
+      origem: 'DAV',
+      numeroRascunho: NUMERO_NOTA,
+    });
+  });
+
+  it('SUSPENDER da venda importada envia o NumeroRascunho que o GetDav devolveu (AD-235)', async () => {
+    const store = montarStore();
+    // `GetDav` converte o DAV num rascunho de NFCe e devolve o número dele como
+    // **string** (medido no preview de 2026-09-14).
+    const { deps } = depsDe(store, {}, respostaGetDav({ NumeroRascunho: '6031' }));
+
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
+
+    const retrato = montarRetratoVenda(
+      {
+        empresa: '1',
+        linhas: store.getState().linhas,
+        identidade: store.getState().identidadeVenda,
+        cadSerieNFCe: 'R01',
+        clienteCodigo: CODIGO_CLIENTE_DAV,
+        vendedorCodigo: CODIGO_VENDEDOR_DAV,
+        usuarioCodigo: 1,
+        condicaoPagamentoCodigo: 1,
+        eventos: store.getState().eventos,
+      },
+      'SUSPENDER',
+      [],
+    );
+    expect(retrato.NumeroRascunho).toBe(6031);
+  });
+
+  it('vendedor 0 no GetDav cai no código e no nome da linha de ListaDAVs (AD-235)', async () => {
+    const store = montarStore();
+    // Divergência do ERP (`PENDENCIES.md`): `CarregarNFCe`/`GetDav` devolvem
+    // `vendedorCodigo: "0"` e `vendedorNome: ""` mesmo com vendedor gravado.
+    const { deps, espioes } = depsDe(
+      store,
+      {},
+      respostaGetDav({ vendedorCodigo: '0', vendedorNome: '' }),
+    );
+
+    await importarVendaExistente(
+      fonteDav({ numeroDav: NUMERO_DAV, vendedorCodigo: 8, vendedorNome: 'BRUNO SANTOS' }),
+      deps,
+    );
+
+    expect(espioes.trocarVendedor).toHaveBeenCalledWith({ codigo: 8, nome: 'BRUNO SANTOS' });
+  });
+
+  it('vendedor preenchido no GetDav continua prevalecendo sobre a listagem', async () => {
+    const store = montarStore();
+    const { deps, espioes } = depsDe(store);
+
+    await importarVendaExistente(
+      fonteDav({ numeroDav: NUMERO_DAV, vendedorCodigo: 8, vendedorNome: 'BRUNO SANTOS' }),
+      deps,
+    );
+
+    expect(espioes.trocarVendedor).toHaveBeenCalledWith({
+      codigo: CODIGO_VENDEDOR_DAV,
+      nome: 'BRUNO SANTOS',
+    });
   });
 
   it('repassa as formas de pagamento do documento sem reclassificar (D6)', async () => {
@@ -466,7 +529,7 @@ describe('DAV_IMPORTADO (T021, AD-114)', () => {
     expect(eventos).toHaveLength(1);
     expect(eventos[0]?.detalhes).toEqual({
       numeroDav: NUMERO_DAV,
-      numeroNota: NUMERO_NOTA,
+      numeroRascunho: NUMERO_NOTA,
       quantidadeLinhas: 2,
       quantidadeFormasDePagamento: 2,
     });
@@ -480,7 +543,7 @@ describe('DAV_IMPORTADO (T021, AD-114)', () => {
 
 describe('recusaDeImportacao — regra pura', () => {
   const vendaLimpa = {
-    numeroNota: 0,
+    origem: 'NOVA',
     podeMutar: true,
     linhasNaVenda: 0,
     clienteIdentificado: false,
@@ -494,7 +557,8 @@ describe('recusaDeImportacao — regra pura', () => {
 
   it.each([
     [{ ...vendaLimpa, podeMutar: false }, 'venda-bloqueada'],
-    [{ ...vendaLimpa, numeroNota: 90210 }, 'ja-importou-documento'],
+    [{ ...vendaLimpa, origem: 'DAV' as const }, 'ja-importou-documento'],
+    [{ ...vendaLimpa, origem: 'RASCUNHO' as const }, 'ja-importou-documento'],
     [{ ...vendaLimpa, linhasNaVenda: 1 }, 'carrinho-populado'],
     [{ ...vendaLimpa, clienteIdentificado: true }, 'cliente-identificado'],
   ])('recusa com motivo %#', (estado, motivo) => {
@@ -518,7 +582,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     // Recusa acontece antes até da rede: nada foi buscado, nada foi mutado.
     expect(espioes.resolverCliente).not.toHaveBeenCalled();
     expect(store.getState().linhas).toEqual(antes);
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroNota: 0 });
+    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
     expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
   }
 
@@ -542,22 +606,22 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     await esperarRecusa(store, 'cliente-identificado');
   });
 
-  it('recusa a segunda importação — o NumeroNota do primeiro documento não pode ser sobrescrito', async () => {
+  it('recusa a segunda importação — o NumeroRascunho do primeiro documento não pode ser sobrescrito', async () => {
     const store = montarStore();
     const { deps } = depsDe(store);
     await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
-    expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(NUMERO_NOTA);
 
-    // Segundo documento, número de nota diferente. Sem a pré-condição, este
-    // `NumeroNota` sobrescreveria o primeiro enquanto as linhas apenas se
+    // Segundo documento, número de rascunho diferente. Sem a pré-condição, este
+    // `NumeroRascunho` sobrescreveria o primeiro enquanto as linhas apenas se
     // somariam: o ERP fecharia só o segundo DAV e o primeiro ficaria aberto
     // para sempre, com os itens dele já faturados sob outro número.
-    const segundo = depsDe(store, {}, respostaGetDav({ NumeroNota: 90211 }));
+    const segundo = depsDe(store, {}, respostaGetDav({ NumeroRascunho: 90211 }));
     await expect(
       importarVendaExistente(fonteDav({ numeroDav: '004790' }), segundo.deps),
     ).rejects.toMatchObject({ motivo: 'ja-importou-documento' });
 
-    expect(store.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(NUMERO_NOTA);
     expect(store.getState().linhas).toHaveLength(1);
   });
 
@@ -572,7 +636,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
       estadoDaVenda: () => {
         leituras += 1;
         return {
-          numeroNota: 0,
+          origem: 'NOVA',
           podeMutar: leituras === 1,
           linhasNaVenda: 0,
           clienteIdentificado: false,
@@ -589,7 +653,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     // sucesso: auditoria afirmando uma importação que não aconteceu (AD-139).
     expect(leituras).toBe(2);
     expect(store.getState().linhas).toEqual([]);
-    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(0);
     expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
     expect(espioes.trocarVendedor).not.toHaveBeenCalled();
   });
@@ -598,7 +662,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     const store = montarStore();
     const { deps, espioes } = depsDe(store, {
       estadoDaVenda: () => ({
-        numeroNota: 0,
+        origem: 'NOVA',
         podeMutar: false,
         linhasNaVenda: 0,
         clienteIdentificado: false,
@@ -613,7 +677,7 @@ describe('importarVendaExistente — pré-condições (nada é mutado)', () => {
     // por `podeMutarCarrinho()`, então sem esta pré-condição a venda bloqueada
     // passaria a apontar para o rascunho de outro documento mantendo o próprio
     // conteúdo.
-    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(0);
     expect(espioes.resolverCliente).not.toHaveBeenCalled();
   });
 });
@@ -685,7 +749,7 @@ describe('erro de importação (D7, FR-010)', () => {
     ).rejects.toThrow();
 
     expect(store.getState().linhas).toEqual(antes);
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroNota: 0 });
+    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
     expect(tiposDeEvento(store)).not.toContain('DAV_IMPORTADO');
   });
 
@@ -703,7 +767,7 @@ describe('erro de importação (D7, FR-010)', () => {
         clienteCodigo: '0',
         vendedorCodigo: '0',
         CondicaoPagamentoCodigo: '0',
-        NumeroNota: '0',
+        NumeroRascunho: '0',
         CadSerieNFCe: '',
         UsuarioCodigo: '0',
         Log: '',
@@ -735,7 +799,7 @@ describe('erro de importação (D7, FR-010)', () => {
 
     // Nenhuma mutação: nem linha, nem identidade, nem vendedor, nem pagamento.
     expect(store.getState().linhas).toEqual([]);
-    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(0);
     expect(espioes.trocarVendedor).not.toHaveBeenCalled();
     expect(espioes.importarFormasDePagamento).not.toHaveBeenCalled();
   });
@@ -796,6 +860,20 @@ describe('recusaAtual — cliente da venda, não a flag de escolha (AD-139)', ()
     useVendaStore.getState().inicializarClientePadrao(registroBootstrapDe().SessaoUsuario);
 
     expect(useVendaStore.getState().clienteAtual).not.toBeNull();
+    expect(recusaAtual()).toBeNull();
+  });
+
+  it('venda nova com rascunho adotado após recusa não é tratada como documento importado (AD-235)', () => {
+    // A recusa de SUSPENDER/FATURAR grava o rascunho do lado do ERP, e o
+    // Checkout adota o número mantendo a origem `NOVA`. A guarda antiga
+    // (`numeroNota !== 0`) recusaria a importação com "já foi iniciada a partir
+    // de um documento" — falso: a venda nasceu no Checkout.
+    useVendaStore.getState().adotarRascunhoGravado(6100);
+
+    expect(useVendaStore.getState().identidadeVenda).toEqual({
+      origem: 'NOVA',
+      numeroRascunho: 6100,
+    });
     expect(recusaAtual()).toBeNull();
   });
 

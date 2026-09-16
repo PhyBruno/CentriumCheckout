@@ -21,11 +21,15 @@ CheckoutListaRascunhos:
   RegistrosPorPagina: integer
   TotalRegistros: integer
   TotalPaginas: integer
-  Rascunho:
-    - NumeroNota: integer
-      Cliente: string
-      Vendedor: string
-      Operador: string
+  Rascunho:                     # forma do contrato 20260914191012, medida no ERP de preview (AD-235)
+    - NumeroRascunho: integer   # era NumeroNota
+      Serie: string             # novo — é a série enviada a CarregarNFCe
+      ClienteCodigo: integer    # Cliente/Vendedor/Operador eram strings "<código> - <NOME>"
+      ClienteNome: string
+      VendedorCodigo: integer
+      VendedorNome: string
+      OperadorCodigo: integer
+      OperadorNome: string      # "" quando o operador não tem nome
       Emissao: string (date-time)
       Total: number (double)
 messages: GeneXus.Common.Messages_Message[]
@@ -38,8 +42,8 @@ Validado por `src/shared/schemas/recuperacaoNFCe.schema.ts` (Zod) → `RascunhoL
 | Param | Tipo | Origem/regra |
 |---|---|---|
 | `Empresa` | `int64` | injetado pelo BFF |
-| `Numeronota` | `int64` | `NumeroNota` da linha selecionada na listagem |
-| `Serienota` | `string` | `SessaoUsuario.CadSerieNFCe` (bootstrap) — nunca da listagem (`research.md` D4) |
+| `Numeronota` | `int64` | `NumeroRascunho` da linha selecionada na listagem (o parâmetro manteve o nome) |
+| `Serienota` | `string` | `Serie` da linha selecionada na listagem (AD-235, supera `research.md` D4, que usava `SessaoUsuario.CadSerieNFCe` quando a listagem não trazia série); a da sessão fica só como fallback de linha sem série. Sem série o ERP recusa com `messages` "Série é obrigatório" |
 
 **Resposta** (`CarregarNFCeOutput`):
 
@@ -48,9 +52,11 @@ OutCheckoutFaturarNFCe:  # $ref CheckoutFaturarNFCe — mesmo shape de FaturarNF
   Empresa: integer
   SuspenderOuFaturar: string   # ignorado nesta feature — não é usado para decidir nada aqui
   clienteCodigo: integer
-  vendedorCodigo: integer
+  ClienteNome: string           # novo no contrato 20260914191012 (AD-235)
+  vendedorCodigo: integer       # o ERP de preview devolve 0 mesmo com vendedor na listagem (PENDENCIES item 56) — cair no VendedorCodigo da linha
+  vendedorNome: string
   CondicaoPagamentoCodigo: integer
-  NumeroNota: integer
+  NumeroRascunho: integer       # era NumeroNota (AD-235); string no ERP real ("5925")
   CadSerieNFCe: string
   UsuarioCodigo: integer
   # SEM DavNum — campo removido do contrato em 20260827192357; o ERP identifica sozinho a origem em DAV (AD-107)

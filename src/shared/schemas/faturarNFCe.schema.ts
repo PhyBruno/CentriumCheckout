@@ -119,6 +119,24 @@ export const suspenderNFCeOutputSchema = z.looseObject({
   messages: z.array(mensagemErpSchema).optional(),
 });
 
+/**
+ * `NumeroRascunho` do primeiro nível da resposta, com ou sem envelope (AD-235).
+ *
+ * `PCheckout_FaturarNFCe` grava o rascunho e preenche este campo **antes** de
+ * rodar as validações (`PNFCe_ValidaSaldoProdutos`, `PNfeValidaRascunho`), em
+ * `SUSPENDER` e em `FATURAR`. Numa recusa dessas validações o número volta junto
+ * das `messages` — e o rascunho já existe do lado do ERP. É por este schema que o
+ * Checkout o lê para reenviar a venda contra o mesmo rascunho, em vez de criar
+ * outro.
+ *
+ * Opcional: a recusa do proxy (HTTP, sessão) ou uma resposta sem o campo não
+ * tem número a adotar, e isso não é erro de fronteira.
+ */
+export const rascunhoGravadoSchema = semEnvelope(
+  'OutCheckoutFaturarNFCe',
+  z.looseObject({ NumeroRascunho: inteiroErp.optional() }),
+);
+
 export type MensagemErp = z.infer<typeof mensagemErpSchema>;
 export type NotaFiscalResposta = z.infer<typeof notaFiscalRespostaSchema>;
 export type NotaFiscalRejeitada = z.infer<typeof notaFiscalRejeitadaSchema>;

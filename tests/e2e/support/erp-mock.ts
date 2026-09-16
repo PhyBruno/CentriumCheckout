@@ -77,6 +77,14 @@ export interface ConfigMockErp {
    */
   faturarNFCeRejeitada: boolean;
   /**
+   * `SUSPENDER` **e** `FATURAR` gravam o rascunho e são recusados por uma
+   * validação posterior (AD-235) — a forma de `PCheckout_FaturarNFCe` quando
+   * `PNFCe_ValidaSaldoProdutos` recusa: envelope com o retrato ecoado,
+   * `NumeroRascunho` já preenchido e `messages` com `Type: 1`. É o cenário em
+   * que o Checkout adota o número para o reenvio.
+   */
+  faturarRecusaComRascunho: boolean;
+  /**
    * `GetDav` recusa o documento — é como o ERP responde quando outro operador
    * já o faturou. O Checkout não tem lock nenhum (`FR-010`/AD-052): só reage
    * ao erro devolvido.
@@ -180,6 +188,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   statusValidarNFCe: 200,
   faturarSemNotaFiscal: false,
   faturarNFCeRejeitada: false,
+  faturarRecusaComRascunho: false,
   davJaFaturado: false,
   getClienteSemCadastro: false,
   pixAtivo: true,
@@ -665,12 +674,15 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         // sendo int64/double no YAML, vieram número nativo no mesmo payload —
         // provável eco do que foi enviado, não recalculo do ERP.
         clienteCodigo: String(2538),
+        // Contrato de 2026-09-14 (AD-235): nome do cliente no primeiro nível.
+        ClienteNome: 'CLIENTE CONVENIADO',
         vendedorCodigo: String(12),
         // AD-172: mesmo SDT de `GetDav` e `CarregarNFCe`, logo vale para as
         // duas importações.
         vendedorNome: 'MARIANA ALVES',
         CondicaoPagamentoCodigo: String(1),
-        NumeroNota: String(90210),
+        // `NumeroRascunho` (era `NumeroNota`), string como no preview (AD-235).
+        NumeroRascunho: String(90210),
         CadSerieNFCe: '1',
         UsuarioCodigo: String(42),
         Log: '',
@@ -731,10 +743,11 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         Empresa: 1,
         SuspenderOuFaturar: '',
         clienteCodigo: String(1255),
+        ClienteNome: 'CLIENTE VAREJO',
         vendedorCodigo: String(8),
         vendedorNome: 'BRUNO SANTOS',
         CondicaoPagamentoCodigo: String(1),
-        NumeroNota: String(90211),
+        NumeroRascunho: String(90211),
         CadSerieNFCe: '1',
         UsuarioCodigo: String(42),
         Log: '',
@@ -1433,6 +1446,13 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   /** Cadastro criado por `PostCliente` durante o teste — descartado no reset. */
   const documentosCriados: string[] = [];
   let ultimoRetratoFaturado: Record<string, unknown> | null = null;
+  /**
+   * Último número de rascunho gerado por `FaturarNFCe` para venda que chega com
+   * `NumeroRascunho: 0` (AD-235). Sequencial a partir de 7001, bem longe dos
+   * números dos documentos sintéticos (`90210`/`90211`), para o E2E distinguir
+   * "adotado" de "importado".
+   */
+  let ultimoRascunhoGerado = 7000;
   /** Último retrato submetido ao gate da 014 — para o E2E conferir a projeção (I2). */
   let ultimoRetratoValidado: Record<string, unknown> | null = null;
   /** Último `SDTCentriumPag_Post` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
@@ -1453,6 +1473,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     config = { ...CONFIG_PADRAO };
     contadores = { ...CONTADORES_ZERADOS };
     ultimoRetratoFaturado = null;
+    ultimoRascunhoGerado = 7000;
     ultimoRetratoValidado = null;
     ultimoGerarPix = null;
     geracoesPix.clear();
@@ -1472,7 +1493,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   app.get('/__mock/calls', async () => contadores);
 
-  /** Último retrato recebido — deixa o E2E afirmar `NumeroNota`, `Log` etc. */
+  /** Último retrato recebido — deixa o E2E afirmar `NumeroRascunho`, `Log` etc. */
   app.get('/__mock/ultimo-faturamento', async () => ({ retrato: ultimoRetratoFaturado }));
 
   /** Último retrato submetido ao gate da 014 — confere a projeção da candidata. */
@@ -1695,6 +1716,33 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // `NotaFiscal`, como o ERP real (`contracts/faturamento-api.md`).
       const suspendendo = retrato?.['SuspenderOuFaturar'] === 'SUSPENDER';
 
+      // `PCheckout_FaturarNFCe`: `NumeroRascunho = 0` grava um rascunho novo;
+      // `≠ 0` atualiza o existente. Em qualquer caso a resposta devolve o número
+      // **antes** das validações (AD-235) — por isso o eco abaixo leva o número
+      // resolvido, e não o que chegou.
+      const numeroRecebido = Number(retrato?.['NumeroRascunho'] ?? 0);
+      const numeroRascunho =
+        Number.isSafeInteger(numeroRecebido) && numeroRecebido > 0
+          ? numeroRecebido
+          : (ultimoRascunhoGerado += 1);
+      const retratoGravado = { ...(retrato ?? {}), NumeroRascunho: String(numeroRascunho) };
+
+      // Validação posterior à gravação recusou (saldo, regra de NFCe): envelope
+      // + `messages` e o rascunho já gravado — vale para `SUSPENDER` e `FATURAR`.
+      if (config.faturarRecusaComRascunho) {
+        return reply.type('application/json').send({
+          OutCheckoutFaturarNFCe: retratoGravado,
+          messages: [
+            {
+              Id: '9999',
+              Type: 1,
+              Description:
+                'Quantidade maior que o Saldo do produto: 001234 - PRODUTO SINTETICO! Quantidade: 2. Saldo: 1',
+            },
+          ],
+        });
+      }
+
       // NFCe gravada e **não** autorizada: o bloco vem completo, com o motivo
       // em `ErroMensagem`, e sem nada para imprimir.
       //
@@ -1705,7 +1753,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // propósito: é o que mantém o E2E exercitando a tolerância às duas.
       if (!suspendendo && config.faturarNFCeRejeitada) {
         return reply.type('application/json').send({
-          ...(retrato ?? {}),
+          ...retratoGravado,
           NotaFiscal: {
             NumeroNota: String(0), // o ERP real zera este campo na rejeição
             SerieNota: '',
@@ -1734,7 +1782,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
             };
 
       return reply.type('application/json').send({
-        OutCheckoutFaturarNFCe: { ...(retrato ?? {}), ...notaFiscal },
+        OutCheckoutFaturarNFCe: { ...retratoGravado, ...notaFiscal },
         messages: config.faturarSemNotaFiscal
           ? [{ Id: 'ERR', Type: 1, Description: 'NFCe não autorizada pela SEFAZ (sintético).' }]
           : [],
@@ -2021,12 +2069,11 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * e um DAV têm o mesmo corpo (AD-057), e duplicar as fixtures faria as duas
    * janelas do E2E divergirem sem motivo.
    *
-   * Três diferenças de contrato em relação a `ListaDAVs`, todas reais:
-   * `Vendedor` e `Operador` vêm por **nome** (a limitação de AD-095 é de
-   * `ListaDAVs`); `Emissao` é `date-time`, não `date`; e não há filtro de
-   * período — a janela de tempo é fixa no servidor (`research.md` D1). A busca
-   * casa só nome de cliente e de vendedor, nunca o número da nota, que é o que
-   * o `DataProvider` do ERP faz.
+   * Diferenças de contrato em relação a `ListaDAVs`, todas reais: a linha traz
+   * `Serie` e o operador; `Emissao` é `date-time`, não `date`. A busca casa só
+   * nome de cliente e de vendedor, nunca o número, que é o que o
+   * `DataProvider` do ERP faz. (O filtro de período que o ERP de 2026-09-14
+   * passou a aceitar é da frente C do plano de AD-235.)
    *
    * Devolve **flat na raiz, sem envelope**, como o ERP real (AD-165).
    */
@@ -2039,16 +2086,17 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
     const todos = Object.values(DAVS)
       .map((dav) => ({
-        // `int32` — número nativo, como os demais contadores da resposta.
-        NumeroNota: Number(dav.documento['NumeroNota']),
-        // **`"<código> - <NOME>"`**, não o nome solto: o ERP devolve
-        // `"999999 - CONSUMIDOR DEFAULT"`, `"8 - VENDEDOR TESTE CENTRIUM"` e
-        // `"0 -"` para o operador sem nome (medido ao vivo 2026-09-11). O mock
-        // publicava só o nome, então nada na UI jamais precisou lidar com o
-        // código colado no rótulo — nem com o `"0 -"` de operador vazio.
-        Cliente: `${String(dav.lista['ClienteCodigo'])} - ${String(dav.lista['ClienteNome'])}`,
-        Vendedor: `${String(dav.lista['VendedorCodigo'])} - ${String(dav.lista['VendedorNome'])}`,
-        Operador: '3 - CAIXA 03',
+        // Forma medida no preview de 2026-09-14 (AD-235): `NumeroRascunho`
+        // número nativo, `Serie`, e código/nome em campos separados — no lugar
+        // das antigas strings `"<código> - <NOME>"`.
+        NumeroRascunho: Number(dav.documento['NumeroRascunho']),
+        Serie: String(dav.documento['CadSerieNFCe']),
+        ClienteCodigo: dav.lista['ClienteCodigo'],
+        ClienteNome: dav.lista['ClienteNome'],
+        VendedorCodigo: dav.lista['VendedorCodigo'],
+        VendedorNome: dav.lista['VendedorNome'],
+        OperadorCodigo: 3,
+        OperadorNome: 'CAIXA 03',
         // `date-time`: o dia sai da emissão relativa do DAV, a hora é fixa —
         // nada no Checkout depende dela além da exibição.
         Emissao: `${String(dav.lista['DataEmissao'])}T14:32:00`,
@@ -2058,7 +2106,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         if (termo === '') {
           return true;
         }
-        return `${rascunho.Cliente} ${rascunho.Vendedor}`.toUpperCase().includes(termo);
+        return `${String(rascunho.ClienteNome)} ${String(rascunho.VendedorNome)}`
+          .toUpperCase()
+          .includes(termo);
       });
 
     // `Rascunho` primeiro, ausente quando nada casa, `TotalPaginas: 0`.
@@ -2069,8 +2119,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * `CarregarNFCe` — ao contrário de `GetDav`/`FaturarNFCe`, devolve o
    * documento **flat na raiz, sem envelope** (confirmado ao vivo 2026-09-04):
    * mesma SDT (`CheckoutFaturarNFCe`), padrão de wrapper diferente. Reaproveita
-   * os documentos sintéticos de `DAVS` — procurando por `NumeroNota`, que é o
-   * mesmo em `ListaNFCes`/`GetListaNFCes` (AD-057).
+   * os documentos sintéticos de `DAVS` — procurando pelo par
+   * `NumeroRascunho` + série, que é o que `GetListaNFCes` publica (AD-057,
+   * AD-235). O parâmetro continua se chamando `Numeronota`.
    *
    * **Mas devolve o documento pago**, e é aqui que ele deixa de ser um DAV
    * (AD-169). Os dois têm o mesmo corpo, e a diferença não é de shape: um DAV é
@@ -2087,9 +2138,21 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.negocio += 1;
 
       const numeroPedido = Number(request.query.Numeronota);
+      const seriePedida = request.query.Serienota ?? '';
+      // Sem série o ERP recusa com envelope + `messages` (preview 2026-09-14).
+      if (seriePedida.trim() === '') {
+        return reply.send({
+          OutCheckoutFaturarNFCe: { clienteCodigo: '0', NumeroRascunho: '0', Log: '' },
+          messages: [{ Id: '9999', Type: 1, Description: 'Série é obrigatório' }],
+        });
+      }
       const documento = Object.values(DAVS)
         .map((dav) => dav.documento)
-        .find((doc) => Number(doc['NumeroNota']) === numeroPedido);
+        .find(
+          (doc) =>
+            Number(doc['NumeroRascunho']) === numeroPedido &&
+            String(doc['CadSerieNFCe']) === seriePedida,
+        );
 
       if (documento === undefined) {
         return reply.code(404).send({ error: 'NFCe não encontrada' });

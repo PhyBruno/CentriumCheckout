@@ -15,7 +15,51 @@ describe('getDavOutputSchema', () => {
   it('aceita a resposta com envelope, como o YAML e o contrato desenham', () => {
     const lido = getDavOutputSchema.parse(respostaGetDav());
 
-    expect(lido.NumeroNota).toBe(NUMERO_NOTA);
+    expect(lido.NumeroRascunho).toBe(NUMERO_NOTA);
+  });
+
+  /**
+   * Forma medida no preview de 2026-09-14 (AD-235): `NumeroRascunho` string,
+   * `ClienteNome` no primeiro nível e `ValorBruto`/`ValorTotal` nos produtos.
+   */
+  it('lê NumeroRascunho string, ClienteNome e os valores do produto do contrato novo', () => {
+    const lido = getDavOutputSchema.parse(
+      documentoDoDav({
+        NumeroRascunho: '6031',
+        ClienteNome: 'CLIENTE DO DAV',
+        vendedorCodigo: '0',
+        vendedorNome: '',
+        produtos: [
+          {
+            sequencial: 1,
+            codigoProduto: '001234',
+            quantidade: '2',
+            precoUnitario: '7.77',
+            DescontoPercentual: 0,
+            DescontoValor: '0',
+            UDM: 'UN',
+            ValorBruto: '15.54',
+            ValorTotal: '15.54',
+          },
+        ],
+      }),
+    );
+
+    expect(lido.NumeroRascunho).toBe(6031);
+    expect(lido.ClienteNome).toBe('CLIENTE DO DAV');
+    expect(lido.vendedorCodigo).toBe(0);
+    expect(lido.produtos[0]?.ValorBruto).toBe(1554);
+    expect(lido.produtos[0]?.ValorTotal).toBe(1554);
+  });
+
+  it('reprova o documento que ainda traz só o NumeroNota antigo', () => {
+    const documentoAntigo: Record<string, unknown> = {
+      ...documentoDoDav(),
+      NumeroNota: NUMERO_NOTA,
+    };
+    delete documentoAntigo.NumeroRascunho;
+
+    expect(getDavOutputSchema.safeParse(documentoAntigo).success).toBe(false);
   });
 
   /**
@@ -26,7 +70,7 @@ describe('getDavOutputSchema', () => {
   it('aceita a resposta flat, como o ERP real devolve no sucesso', () => {
     const lido = getDavOutputSchema.parse(documentoDoDav());
 
-    expect(lido.NumeroNota).toBe(NUMERO_NOTA);
+    expect(lido.NumeroRascunho).toBe(NUMERO_NOTA);
     expect(lido.produtos.length).toBeGreaterThan(0);
   });
 
@@ -54,7 +98,7 @@ describe('getDavOutputSchema', () => {
         clienteCodigo: '0',
         vendedorCodigo: '0',
         CondicaoPagamentoCodigo: '0',
-        NumeroNota: '0',
+        NumeroRascunho: '0',
         CadSerieNFCe: '',
         UsuarioCodigo: '0',
         Log: '',

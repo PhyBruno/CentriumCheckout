@@ -224,4 +224,89 @@ describe('SUSPENDER não passa por nada disso', () => {
       notaFiscal: null,
     });
   });
+
+  it('aviso do ERP (Type 2) não transforma a suspensão em recusa', () => {
+    expect(
+      mapearRespostaFaturamento(
+        'SUSPENDER',
+        respostaDe(undefined, [{ Id: '1', Type: 2, Description: 'Rascunho gravado.' }]),
+      ),
+    ).toEqual({ estado: 'ok', notaFiscal: null });
+  });
+});
+
+/**
+ * AD-235 — `PCheckout_FaturarNFCe` grava o rascunho e preenche `NumeroRascunho`
+ * **antes** de rodar `PNFCe_ValidaSaldoProdutos`/`PNfeValidaRascunho`, em
+ * `SUSPENDER` e em `FATURAR`. Uma recusa dessas validações volta com
+ * `messages` (Type 1) e com o número do rascunho já gravado, que o Checkout
+ * adota para o reenvio não criar um segundo rascunho da mesma compra.
+ */
+describe('recusa com rascunho já gravado (AD-235)', () => {
+  const recusaDeSaldo = [
+    { Id: '9999', Type: 1, Description: 'Quantidade maior que o Saldo do produto: 1 - ARROZ!' },
+  ];
+
+  it('SUSPENDER recusado em messages é falha, com o NumeroRascunho do envelope', () => {
+    const resultado = mapearRespostaFaturamento('SUSPENDER', {
+      OutCheckoutFaturarNFCe: { SuspenderOuFaturar: 'SUSPENDER', NumeroRascunho: '6100' },
+      messages: recusaDeSaldo,
+    });
+
+    expect(resultado).toEqual({
+      estado: 'invalida',
+      mensagem: 'Quantidade maior que o Saldo do produto: 1 - ARROZ!',
+      numeroRascunho: 6100,
+    });
+  });
+
+  it('FATURAR recusado sem NotaFiscal devolve o NumeroRascunho', () => {
+    const resultado = mapearRespostaFaturamento('FATURAR', respostaDe(undefined, recusaDeSaldo));
+
+    // `respostaDe` não traz número: sem ele, nada a adotar.
+    expect(resultado).not.toHaveProperty('numeroRascunho');
+
+    const comNumero = mapearRespostaFaturamento('FATURAR', {
+      OutCheckoutFaturarNFCe: { SuspenderOuFaturar: 'FATURAR', NumeroRascunho: 6100 },
+      messages: recusaDeSaldo,
+    });
+    expect(comNumero).toMatchObject({ estado: 'invalida', numeroRascunho: 6100 });
+  });
+
+  it('lê o NumeroRascunho também da forma flat', () => {
+    const resultado = mapearRespostaFaturamento('SUSPENDER', {
+      SuspenderOuFaturar: 'SUSPENDER',
+      NumeroRascunho: '6100',
+      messages: recusaDeSaldo,
+    });
+
+    expect(resultado).toMatchObject({ estado: 'invalida', numeroRascunho: 6100 });
+  });
+
+  it('NumeroRascunho 0 não é número a adotar', () => {
+    const resultado = mapearRespostaFaturamento('SUSPENDER', {
+      OutCheckoutFaturarNFCe: { NumeroRascunho: '0' },
+      messages: recusaDeSaldo,
+    });
+
+    expect(resultado).toEqual({
+      estado: 'invalida',
+      mensagem: 'Quantidade maior que o Saldo do produto: 1 - ARROZ!',
+    });
+  });
+
+  it('bloco NotaFiscal vazio + recusa em messages não é NFCe rejeitada', () => {
+    // O SDT pode vir serializado com `NotaFiscal` em branco quando a validação
+    // recusou antes de emitir. Tratá-lo como rejeição limparia o caixa de uma
+    // venda que nunca virou documento fiscal.
+    const resultado = mapearRespostaFaturamento('FATURAR', {
+      OutCheckoutFaturarNFCe: {
+        NumeroRascunho: '6100',
+        NotaFiscal: { NumeroNota: '0', SerieNota: '', Autorizada: '', ErroMensagem: '' },
+      },
+      messages: recusaDeSaldo,
+    });
+
+    expect(resultado).toMatchObject({ estado: 'invalida', numeroRascunho: 6100 });
+  });
 });

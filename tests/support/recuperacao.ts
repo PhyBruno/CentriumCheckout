@@ -82,19 +82,31 @@ export function respostaRascunhoCompleto(
 /** `Emissao` — `format: date-time` do contrato, ISO 8601 sem fuso. */
 export const EMISSAO_RASCUNHO = '2026-09-01T14:32:00';
 
-/** `SessaoUsuario.CadSerieNFCe` — série do PDV, sempre do bootstrap (D4). */
+/**
+ * `Rascunho[].Serie` — série do rascunho, vinda da **listagem** desde o contrato
+ * de 2026-09-14 (AD-235). Antes era `SessaoUsuario.CadSerieNFCe` (D4), que no
+ * preview vem vazia.
+ */
 export const SERIE_NFCE = 'R01';
+
+/** Código do vendedor na linha da listagem — o fallback da divergência do ERP. */
+export const CODIGO_VENDEDOR_LISTA = 8;
 
 export function rascunhoDaLista(
   sobrescritas: Record<string, unknown> = {},
 ): Record<string, unknown> {
+  // Forma do preview de 2026-09-14: códigos e nomes em campos separados, no
+  // lugar das antigas strings `"<código> - <NOME>"`. `NumeroRascunho` é número
+  // nativo aqui; nos documentos (`GetDav`/`CarregarNFCe`) vem string.
   return {
-    NumeroNota: NUMERO_NOTA,
-    Cliente: 'CLIENTE TESTE 01',
-    // Este contrato devolve o vendedor por **nome**, ao contrário de
-    // `ListaDAVs`, que só traz o código (AD-095).
-    Vendedor: 'MARIANA ALVES',
-    Operador: 'CAIXA 03',
+    NumeroRascunho: NUMERO_NOTA,
+    Serie: SERIE_NFCE,
+    ClienteCodigo: 1007,
+    ClienteNome: 'CLIENTE TESTE 01',
+    VendedorCodigo: CODIGO_VENDEDOR_LISTA,
+    VendedorNome: 'MARIANA ALVES',
+    OperadorCodigo: 3,
+    OperadorNome: 'CAIXA 03',
     Emissao: EMISSAO_RASCUNHO,
     Total: 18.5,
     ...sobrescritas,

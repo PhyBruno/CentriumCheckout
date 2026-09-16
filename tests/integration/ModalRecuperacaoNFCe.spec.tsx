@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, type ReactElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { snapshotDe, unidades } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 import { CODIGO_CLIENTE_DAV, SKU_DAV } from '../support/dav';
 import {
+  CODIGO_VENDEDOR_LISTA,
   NUMERO_NOTA,
   rascunhoDaLista,
   respostaCarregarNFCe,
@@ -44,10 +45,11 @@ const OUTRA_NOTA = 90211;
 
 function rascunhoVarejo(): Record<string, unknown> {
   return rascunhoDaLista({
-    NumeroNota: OUTRA_NOTA,
-    Cliente: 'CLIENTE VAREJO',
-    Vendedor: 'BRUNO SANTOS',
-    Operador: 'CAIXA 01',
+    NumeroRascunho: OUTRA_NOTA,
+    ClienteNome: 'CLIENTE VAREJO',
+    VendedorCodigo: 12,
+    VendedorNome: 'BRUNO SANTOS',
+    OperadorNome: 'CAIXA 01',
     Total: 2840.5,
   });
 }
@@ -134,7 +136,8 @@ function instalarFetch(
         if (termo === '') {
           return true;
         }
-        const alvo = `${String(rascunho['Cliente'])} ${String(rascunho['Vendedor'])}`.toUpperCase();
+        const alvo =
+          `${String(rascunho['ClienteNome'])} ${String(rascunho['VendedorNome'])}`.toUpperCase();
         return alvo.includes(termo);
       });
 
@@ -282,6 +285,17 @@ describe('T005 — a janela lista os rascunhos suspensos', () => {
     // `Emissao` é ISO 8601 e é exibida quebrada por texto, nunca via `Date`.
     expect(linha).toHaveTextContent('01/09/2026');
     expect(linha).toHaveTextContent('14:32');
+  });
+
+  it('exibe a série de cada rascunho em coluna própria, como no Pencil (AD-235)', async () => {
+    instalarFetch({ rascunhos: [rascunhoDaLista({ Serie: 'R02' })] });
+    renderizar();
+
+    const linha = await screen.findByTestId('linha-nfce');
+
+    expect(within(linha).getByTestId('serie-nfce')).toHaveTextContent('R02');
+    expect(linha).toHaveAttribute('data-numero-rascunho', String(NUMERO_NOTA));
+    expect(screen.getByTestId('ordenar-serie')).toBeInTheDocument();
   });
 
   it('pagina: a primeira página desabilita "Anterior" e "Próxima" pede a página 2', async () => {
@@ -459,7 +473,35 @@ describe('T016 — reinserir manualmente um SKU já presente numa linha congelad
     expect(linha?.precoUnitario).toBe(1000);
     expect(useVendaStore.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
-      numeroNota: NUMERO_NOTA,
+      numeroRascunho: NUMERO_NOTA,
+    });
+  });
+
+  it('CarregarNFCe usa a série da linha da listagem, não a da sessão (AD-235)', async () => {
+    // No preview de 2026-09-14 `SessaoUsuario.CadSerieNFCe` vem vazio, e a
+    // listagem passou a trazer `Serie` por rascunho.
+    useSessionStore.setState({ registro: registroBootstrapDe({ CadSerieNFCe: '' }) });
+    const rota = instalarFetch({ rascunhos: [rascunhoDaLista({ Serie: 'R02' })] });
+    await retomarPrimeiro();
+
+    const carregar = rota.urls.find((url) => url.startsWith(CAMINHO_CARREGAR)) ?? '';
+    expect(carregar).toContain(`Numeronota=${String(NUMERO_NOTA)}`);
+    expect(carregar).toContain('Serienota=R02');
+  });
+
+  it('vendedor 0 no documento cai no código e no nome da linha da listagem (AD-235)', async () => {
+    // Divergência do ERP (`PENDENCIES.md`): `CarregarNFCe` devolve
+    // `vendedorCodigo: "0"` e `vendedorNome: ""` mesmo quando a lista mostra o
+    // vendedor 8.
+    instalarFetch({
+      rascunhos: [rascunhoDaLista()],
+      documento: respostaCarregarNFCe({ vendedorCodigo: '0', vendedorNome: '' }),
+    });
+    await retomarPrimeiro();
+
+    expect(useVendaStore.getState().vendedorAtual).toMatchObject({
+      codigo: CODIGO_VENDEDOR_LISTA,
+      nome: 'MARIANA ALVES',
     });
   });
 
@@ -554,7 +596,7 @@ describe('teclado — Enter sobre um botão não dispara a retomada', () => {
     });
     expect(rota.urls.some((url) => url.startsWith(CAMINHO_CARREGAR))).toBe(false);
     expect(useVendaStore.getState().linhas).toHaveLength(0);
-    expect(useVendaStore.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(useVendaStore.getState().identidadeVenda.numeroRascunho).toBe(0);
   });
 
   it('Enter no "X" do cabeçalho também não carrega', async () => {
@@ -589,21 +631,31 @@ describe('ordenação por coluna', () => {
   /** Notas e totais fora de ordem de propósito: sem ordenar, a tela mostra nesta sequência. */
   function tresRascunhos(): readonly Record<string, unknown>[] {
     return [
-      rascunhoDaLista({ NumeroNota: 90212, Cliente: 'ZULMIRA', Operador: 'CAIXA 03', Total: 7.25 }),
       rascunhoDaLista({
-        NumeroNota: 90210,
-        Cliente: 'ANTONIA',
-        Operador: 'CAIXA 01',
+        NumeroRascunho: 90212,
+        ClienteNome: 'ZULMIRA',
+        OperadorNome: 'CAIXA 03',
+        Total: 7.25,
+      }),
+      rascunhoDaLista({
+        NumeroRascunho: 90210,
+        ClienteNome: 'ANTONIA',
+        OperadorNome: 'CAIXA 01',
         Total: 130.4,
       }),
-      rascunhoDaLista({ NumeroNota: 90211, Cliente: 'MARCOS', Operador: 'CAIXA 02', Total: 48.9 }),
+      rascunhoDaLista({
+        NumeroRascunho: 90211,
+        ClienteNome: 'MARCOS',
+        OperadorNome: 'CAIXA 02',
+        Total: 48.9,
+      }),
     ];
   }
 
   function notasNaTela(): readonly string[] {
     return screen
       .getAllByTestId('linha-nfce')
-      .map((linha) => linha.getAttribute('data-numero-nota') ?? '');
+      .map((linha) => linha.getAttribute('data-numero-rascunho') ?? '');
   }
 
   async function ordenarPor(coluna: string): Promise<void> {

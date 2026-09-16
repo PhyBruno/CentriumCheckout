@@ -7,9 +7,11 @@
  * (`contracts/faturamento-api.md`).
  */
 
+import { recusaDeNegocio } from '../../../shared/schemas/erpJson';
 import {
   faturarNFCeOutputSchema,
   faturarNFCeRejeitadaOutputSchema,
+  rascunhoGravadoSchema,
   suspenderNFCeOutputSchema,
   type MensagemErp,
   type NotaFiscalRejeitada,
@@ -41,7 +43,16 @@ export type ResultadoMapeamento =
       readonly serieNota: string | null;
     }
   /** 2xx que não descreve uma venda concluída — tratado como falha de negócio. */
-  | { readonly estado: 'invalida'; readonly mensagem: string };
+  | {
+      readonly estado: 'invalida';
+      readonly mensagem: string;
+      /**
+       * Rascunho que o ERP gravou antes de recusar (AD-235) — presente só
+       * quando a resposta trouxe `NumeroRascunho > 0`. Quem envia adota o
+       * número para o reenvio não gerar um segundo rascunho da mesma compra.
+       */
+      readonly numeroRascunho?: number;
+    };
 
 const MENSAGEM_PADRAO_FATURAR =
   'O ERP respondeu sem a nota fiscal pronta para impressão. A venda não foi emitida.';
@@ -104,6 +115,19 @@ function mensagemDoErp(mensagens: readonly MensagemErp[] | undefined): string | 
 }
 
 /**
+ * O rascunho gravado pelo ERP, quando a resposta o informa (AD-235).
+ *
+ * Só números positivos: `0` é o "sem rascunho" do SDT, e adotá-lo não mudaria
+ * nada. Devolvido como fragmento para o `invalida` não ganhar a chave quando não
+ * há o que adotar.
+ */
+function rascunhoGravado(corpo: unknown): { readonly numeroRascunho?: number } {
+  const lido = rascunhoGravadoSchema.safeParse(corpo);
+  const numero = lido.success ? lido.data.NumeroRascunho : undefined;
+  return numero !== undefined && numero > 0 ? { numeroRascunho: numero } : {};
+}
+
+/**
  * `SUSPENDER` e `FATURAR` têm exigências diferentes na resposta: só a segunda
  * produz documento fiscal (`contracts/faturamento-api.md`, "Efeito colateral em
  * sucesso", passo 5). Validar as duas com o mesmo schema transformaria toda
@@ -125,7 +149,18 @@ export function mapearRespostaFaturamento(
     };
   }
 
+  // Recusa de negócio (`messages` com `Type: 1`) — o ERP gravou o rascunho e
+  // uma validação posterior disse não (AD-235).
+  const recusa = recusaDeNegocio(corpo);
+
   if (operacao === 'SUSPENDER') {
+    // Até o contrato de 2026-09-14 toda resposta 2xx de `SUSPENDER` era
+    // sucesso, porque o ERP não validava nada na suspensão. Agora ele roda a
+    // validação de saldo também aqui, e uma recusa lida como sucesso limparia
+    // a venda do caixa sem ela ter sido suspensa.
+    if (recusa !== null) {
+      return { estado: 'invalida', mensagem: recusa, ...rascunhoGravado(corpo) };
+    }
     return { estado: 'ok', notaFiscal: null };
   }
 
@@ -150,7 +185,13 @@ export function mapearRespostaFaturamento(
     // caminho de falha de fronteira abaixo, que preserva a venda no caixa —
     // descartá-la aqui apagaria uma venda com base numa resposta que o próprio
     // contrato não sustenta.
-    if (!foiAutorizada(nota)) {
+    // Bloco `NotaFiscal` sem nenhum desfecho (`Autorizada` vazio) **e** recusa
+    // em `messages`: é a validação que recusou antes de emitir, com o SDT
+    // serializado em branco — não uma NFCe gravada e rejeitada. Tratá-lo como
+    // rejeição limparia o caixa de uma venda que nunca virou documento fiscal
+    // (AD-235). Sem `messages`, `Autorizada` ausente continua sendo rejeição.
+    const semDesfecho = textoUtil(nota.Autorizada) === null && recusa !== null;
+    if (!foiAutorizada(nota) && !semDesfecho) {
       return {
         estado: 'rejeitada',
         // `messages` vem da **raiz** (`envelope`), não do que `semEnvelope`
@@ -169,5 +210,6 @@ export function mapearRespostaFaturamento(
   return {
     estado: 'invalida',
     mensagem: mensagemDoErp(envelope.data.messages) ?? MENSAGEM_PADRAO_FATURAR,
+    ...rascunhoGravado(corpo),
   };
 }

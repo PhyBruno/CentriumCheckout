@@ -11,11 +11,11 @@ import { quitarVendaEmDinheiro } from './support/pagamento';
  * (`contracts/impressao-local-api.md`).
  *
  * **Fora do alcance desta camada, por não existir caminho de operador:**
- * - *Venda retomada de rascunho* (`NumeroNota` ≠ 0, passo 2 do quickstart): a
- *   UI de retomada é da feature 011, ainda não implementada — não há como um
- *   operador chegar nesse estado pela tela. Coberto em
- *   `tests/integration/finalizacaoSuspensao.spec.ts`, que popula
- *   `identidadeVenda` direto.
+ * - *Venda retomada de rascunho* (`NumeroRascunho` ≠ 0, passo 2 do quickstart):
+ *   coberto em `recuperacao-nfce.spec.ts` (feature 011) e, com a identidade
+ *   populada direto, em `tests/integration/finalizacaoSuspensao.spec.ts`. O
+ *   `NumeroRascunho` ≠ 0 de venda **nova** — adotado após recusa (AD-235) — é
+ *   exercitado aqui, na User Story 2.
  * - *Bloqueio de suspensão com TEF/PIX aprovado* (passo 4): depende do
  *   predicado da feature 008, hoje um stub — não há UI de pagamento para
  *   aprovar um TEF. Coberto na mesma suíte de integração (T022).
@@ -34,7 +34,7 @@ interface ContadoresMock {
 interface RetratoFaturado {
   retrato: {
     SuspenderOuFaturar?: string;
-    NumeroNota?: number;
+    NumeroRascunho?: number;
     CadSerieNFCe?: string;
     Log?: string;
     produtos?: unknown[];
@@ -83,7 +83,7 @@ test.beforeEach(async ({ request }) => {
 });
 
 test.describe('User Story 1 — finalizar a venda (T021)', () => {
-  test('venda nova é faturada com NumeroNota = 0 e o cupom vai para a impressora (passo 1)', async ({
+  test('venda nova é faturada com NumeroRascunho = 0 e o cupom vai para a impressora (passo 1)', async ({
     page,
     request,
   }) => {
@@ -102,7 +102,9 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
 
     const { retrato } = await ultimoRetrato(request);
     expect(retrato?.SuspenderOuFaturar).toBe('FATURAR');
-    expect(retrato?.NumeroNota).toBe(0);
+    expect(retrato?.NumeroRascunho).toBe(0);
+    // O nome antigo saiu do corpo junto com o contrato de 2026-09-14 (AD-235).
+    expect(retrato).not.toHaveProperty('NumeroNota');
     expect(retrato?.CadSerieNFCe).toBe('1');
     expect(retrato?.produtos).toHaveLength(1);
 
@@ -301,6 +303,38 @@ test.describe('User Story 2 — suspender a venda em digitação (T026)', () => 
 
     const eventos: { tipo: string }[] = JSON.parse(retrato?.Log ?? '[]');
     expect(eventos.at(-1)?.tipo).toBe('VENDA_SUSPENSA');
+  });
+
+  /**
+   * AD-235 — o ERP grava o rascunho antes de validar e devolve o número mesmo
+   * recusando. A venda continua no caixa, e o reenvio aponta para o rascunho
+   * já gravado em vez de criar outro para a mesma compra.
+   */
+  test('suspensão recusada com rascunho gravado: o reenvio leva o número devolvido', async ({
+    page,
+    request,
+  }) => {
+    await configurar(request, { faturarRecusaComRascunho: true });
+    await abrirTelaDeVenda(page);
+    await biparProduto(page);
+
+    await page.getByTestId('botao-cancelar-venda').click();
+
+    // Recusa lida como recusa — antes do contrato novo toda resposta 2xx de
+    // `SUSPENDER` era sucesso, e a venda sumiria do caixa sem ter sido suspensa.
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(/maior que o Saldo/i);
+    expect((await ultimoRetrato(request)).retrato?.NumeroRascunho).toBe(0);
+
+    await page.getByTestId('fechar-erro-faturamento').click();
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    await configurar(request, { faturarRecusaComRascunho: false });
+    await page.getByTestId('botao-cancelar-venda').click();
+
+    await expect(page.getByText(/venda suspensa/i).first()).toBeVisible();
+    // `7001`: o primeiro número que o mock gera para venda que chega com 0.
+    expect((await ultimoRetrato(request)).retrato?.NumeroRascunho).toBe(7001);
   });
 
   /**

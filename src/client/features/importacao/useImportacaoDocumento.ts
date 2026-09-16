@@ -87,7 +87,9 @@ function contextoPrecificacaoAtual(): ContextoPrecificacao | null {
  */
 export function estadoParaImportacao(venda: VendaState): EstadoVendaParaImportacao {
   return {
-    numeroNota: venda.identidadeVenda.numeroNota,
+    // A origem, e não o número do rascunho (AD-235): uma venda nova com rascunho
+    // adotado após recusa continua podendo importar um documento.
+    origem: venda.identidadeVenda.origem,
     // O **mesmo** predicado que carrinho e cliente usam, lido da composição real
     // do `vendaStore` — não uma segunda regra de "quando a venda pode mudar",
     // que poderia divergir em silêncio (AD-043). Cobre condição de pagamento

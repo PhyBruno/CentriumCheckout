@@ -14,7 +14,7 @@ import { recusaDeNegocio } from '../../../src/shared/schemas/erpJson';
 describe('recusaDeNegocio', () => {
   it('extrai o motivo de CarregarNFCe quando a série não está configurada', () => {
     const resposta = {
-      OutCheckoutFaturarNFCe: { clienteCodigo: '0', NumeroNota: '0', Log: '' },
+      OutCheckoutFaturarNFCe: { clienteCodigo: '0', NumeroRascunho: '0', Log: '' },
       messages: [{ Id: '9999', Type: 1, Description: 'Série é obrigatório' }],
     };
 
@@ -24,7 +24,7 @@ describe('recusaDeNegocio', () => {
   /** O ERP encerra esta mensagem com `\r\n`, que não deve chegar à tela. */
   it('extrai o motivo de GetDav e apara o espaço em branco das pontas', () => {
     const resposta = {
-      OutCheckoutFaturarNFCe: { clienteCodigo: '0', NumeroNota: '0', Log: '' },
+      OutCheckoutFaturarNFCe: { clienteCodigo: '0', NumeroRascunho: '0', Log: '' },
       messages: [
         {
           Id: '',
@@ -40,7 +40,7 @@ describe('recusaDeNegocio', () => {
   });
 
   it('devolve null para a resposta de sucesso, que vem flat e sem messages', () => {
-    const sucesso = { Empresa: 1, clienteCodigo: '1007', NumeroNota: '5881', produtos: [] };
+    const sucesso = { Empresa: 1, clienteCodigo: '1007', NumeroRascunho: '5881', produtos: [] };
 
     expect(recusaDeNegocio(sucesso)).toBeNull();
   });

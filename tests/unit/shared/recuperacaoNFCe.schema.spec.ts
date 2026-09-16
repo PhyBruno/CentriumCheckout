@@ -29,11 +29,57 @@ describe('listaNFCesOutputSchema', () => {
    */
   it('aceita número serializado como string, do jeito que o ERP real devolve', () => {
     const lida = listaNFCesOutputSchema.parse(
-      respostaListaNFCes([rascunhoDaLista({ Total: '167.89', NumeroNota: '18452' })]),
+      respostaListaNFCes([rascunhoDaLista({ Total: '167.89', NumeroRascunho: '18452' })]),
     );
 
     expect(lida.Rascunho[0]?.Total).toBe(16789);
-    expect(lida.Rascunho[0]?.NumeroNota).toBe(18452);
+    expect(lida.Rascunho[0]?.NumeroRascunho).toBe(18452);
+  });
+
+  /**
+   * Linha do contrato de 2026-09-14 (AD-235, medida no preview): série e
+   * código/nome separados no lugar das strings `"<código> - <NOME>"`.
+   */
+  it('lê série, códigos e nomes da linha, tolerando nome vazio', () => {
+    const lida = listaNFCesOutputSchema.parse(
+      respostaListaNFCes([
+        rascunhoDaLista({
+          Serie: 'R01',
+          ClienteCodigo: '17',
+          VendedorCodigo: '0',
+          VendedorNome: '',
+          OperadorCodigo: '0',
+          OperadorNome: '',
+        }),
+      ]),
+    );
+
+    expect(lida.Rascunho[0]).toMatchObject({
+      Serie: 'R01',
+      ClienteCodigo: 17,
+      ClienteNome: 'CLIENTE TESTE 01',
+      VendedorCodigo: 0,
+      VendedorNome: '',
+      OperadorCodigo: 0,
+      OperadorNome: '',
+    });
+  });
+
+  it('reprova a linha no formato antigo, sem NumeroRascunho nem Serie', () => {
+    const invalida = listaNFCesOutputSchema.safeParse(
+      respostaListaNFCes([
+        {
+          NumeroNota: 1,
+          Cliente: '1 - X',
+          Vendedor: '8 - Y',
+          Operador: '0 -',
+          Emissao: '',
+          Total: 1,
+        },
+      ]),
+    );
+
+    expect(invalida.success).toBe(false);
   });
 
   /**
@@ -73,7 +119,7 @@ describe('carregarNFCeOutputSchema', () => {
   it('valida o documento completo, reaproveitando o shape de GetDav (AD-117)', () => {
     const lido = carregarNFCeOutputSchema.parse(respostaCarregarNFCe());
 
-    expect(lido.NumeroNota).toBe(NUMERO_NOTA);
+    expect(lido.NumeroRascunho).toBe(NUMERO_NOTA);
     // Preço e desconto chegam em reais e saem em centavos.
     expect(lido.produtos[0]?.precoUnitario).toBe(1000);
     expect(lido.produtos[0]?.DescontoValor).toBe(150);
@@ -85,7 +131,7 @@ describe('carregarNFCeOutputSchema', () => {
       respostaCarregarNFCe().OutCheckoutFaturarNFCe as Record<string, unknown>,
     );
 
-    expect(semEnvelope.NumeroNota).toBe(NUMERO_NOTA);
+    expect(semEnvelope.NumeroRascunho).toBe(NUMERO_NOTA);
   });
 
   /**

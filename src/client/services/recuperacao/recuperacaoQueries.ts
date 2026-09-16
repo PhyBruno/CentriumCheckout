@@ -50,20 +50,24 @@ export interface RecuperacaoQueriesDeps {
 }
 
 /**
- * Item da listagem de rascunhos (`data-model.md` §1).
+ * Item da listagem de rascunhos (`data-model.md` §1), na forma do contrato de
+ * 2026-09-14 (AD-235): código e nome separados, e a série do rascunho.
  *
- * Ao contrário de `DavListado`, traz `vendedor` e `operador` por **nome**: o
- * contrato de `GetListaNFCes` devolve os dois como texto, e não só o código
- * (a limitação de AD-095 é de `ListaDAVs`, não deste endpoint).
- *
- * Não há série, caixa/terminal nem status: o contrato não os tem. `emissao`
- * fica como o ERP mandou, em ISO 8601, e é formatada só na exibição.
+ * Nomes chegam como o ERP mandou, `''` inclusive (operador sem nome): quem
+ * exibe decide o texto do vazio. Não há caixa/terminal nem status: o contrato
+ * não os tem. `emissao` fica como o ERP mandou, em ISO 8601, e é formatada só
+ * na exibição.
  */
 export interface RascunhoListado {
-  readonly numeroNota: number;
-  readonly cliente: string;
-  readonly vendedor: string;
-  readonly operador: string;
+  /** Enviado a `CarregarNFCe` como `Numeronota` (o parâmetro manteve o nome). */
+  readonly numeroRascunho: number;
+  /** Enviada a `CarregarNFCe` como `Serienota`. */
+  readonly serie: string;
+  readonly clienteCodigo: number;
+  readonly clienteNome: string;
+  readonly vendedorCodigo: number;
+  readonly vendedorNome: string;
+  readonly operadorNome: string;
   /** ISO 8601 (`date-time`), cru como veio — nunca reinterpretado. */
   readonly emissao: string;
   readonly total: Centavos;
@@ -99,10 +103,9 @@ async function chamarErp(cliente: ErpClient, url: string): Promise<Response> {
  * Só os filtros preenchidos entram na query — um `Txtbusca=` vazio não é
  * "sem filtro" para o ERP.
  *
- * **Não há filtro de data aqui**, ao contrário de `ListaDAVs`: a janela de
- * tempo dos rascunhos é fixada no servidor e não é parametrizável
- * (`research.md` D1). Pelo mesmo motivo não há busca por número da nota — o
- * `DataProvider` do ERP filtra só nome de cliente e de vendedor.
+ * Não há busca por número da nota: o `DataProvider` do ERP filtra só nome de
+ * cliente e de vendedor. (O filtro de data, que o ERP de 2026-09-14 passou a
+ * aceitar, é da frente C do plano de AD-235 — ainda não enviado aqui.)
  */
 function parametrosDaLista(filtros: FiltrosRascunho): URLSearchParams {
   const parametros = new URLSearchParams({
@@ -145,10 +148,13 @@ export async function fetchListaNFCes(
     totalPaginas: lista.TotalPaginas,
     totalRegistros: lista.TotalRegistros,
     rascunhos: lista.Rascunho.map((item) => ({
-      numeroNota: item.NumeroNota,
-      cliente: item.Cliente,
-      vendedor: item.Vendedor,
-      operador: item.Operador,
+      numeroRascunho: item.NumeroRascunho,
+      serie: item.Serie,
+      clienteCodigo: item.ClienteCodigo,
+      clienteNome: item.ClienteNome,
+      vendedorCodigo: item.VendedorCodigo,
+      vendedorNome: item.VendedorNome,
+      operadorNome: item.OperadorNome,
       emissao: item.Emissao,
       total: item.Total,
     })),
@@ -191,19 +197,22 @@ export function useListaNFCes(
 /**
  * Documento completo de um rascunho — mesmo shape de `GetDav` (AD-057).
  *
- * @param serie `SessaoUsuario.CadSerieNFCe`, **sempre** do bootstrap e nunca um
- * valor vindo da listagem (`research.md` D4). Chega como parâmetro, e não lido
- * do `sessionStore` aqui, para o serviço não conhecer Zustand — quem resolve é
- * o hook da feature.
+ * @param numeroRascunho `Rascunho[].NumeroRascunho` da listagem. O parâmetro da
+ * API continua se chamando `Numeronota` no contrato de 2026-09-14; só o valor
+ * mudou de nome.
+ * @param serie `Rascunho[].Serie` da listagem (AD-235), e não mais
+ * `SessaoUsuario.CadSerieNFCe` como `research.md` D4 decidia — o contrato novo
+ * devolve a série por rascunho, e no preview a da sessão vem vazia. Chega como
+ * parâmetro para o serviço não conhecer Zustand.
  */
 export async function fetchCarregarNFCe(
-  numeroNota: number,
+  numeroRascunho: number,
   serie: string,
   deps: RecuperacaoQueriesDeps = {},
 ): Promise<CheckoutFaturarNFCe> {
   const cliente = deps.erpClient ?? criarErpClient();
   const query = new URLSearchParams({
-    Numeronota: String(numeroNota),
+    Numeronota: String(numeroRascunho),
     Serienota: serie,
   });
   const resposta = await chamarErp(cliente, `${CAMINHO_CARREGAR_NFCE}?${query.toString()}`);
@@ -220,8 +229,8 @@ export async function fetchCarregarNFCe(
 
   // Recusa de negócio lida antes da validação, e da raiz — mesmo tratamento de
   // `fetchDav`. É o caminho de "Série é obrigatório", que o ERP responde quando
-  // `SessaoUsuario.CadSerieNFCe` vem vazio: o operador precisa ler isso, não
-  // "formato inesperado" (2026-09-11).
+  // a série chega vazia: o operador precisa ler isso, não "formato inesperado"
+  // (2026-09-11).
   const recusa = recusaDeNegocio(corpo);
   if (recusa !== null) {
     throw new ErroNegocioErp('CarregarNFCe', recusa);
@@ -243,30 +252,27 @@ export async function fetchCarregarNFCe(
  * endpoint, rótulo de origem e evento de auditoria. Pré-condição, ordem dos
  * efeitos e atomicidade são o comportamento comum às duas features.
  *
- * @param rascunho Linha selecionada na listagem mais a série da sessão. O
+ * @param rascunho Linha selecionada na listagem (número, série e vendedor). O
  * `clienteCodigo` vem sempre da resposta de `CarregarNFCe`, nunca da
- * listagem, e o nome do cliente é resolvido por `resolverCliente` (AD-115),
- * não capturado aqui. `vendedor` é o nome capturado da lista — vira
- * *fallback* de `mapearVendaExistente`, atrás do nome do próprio documento
- * quando o ERP o devolve (AD-172).
+ * listagem, e o cliente é resolvido por `resolverCliente` (AD-115), não
+ * capturado aqui. O vendedor da linha vira *fallback* de `mapearVendaExistente`:
+ * o nome atrás do documento (AD-172) e o código quando `CarregarNFCe` devolve
+ * `vendedorCodigo` 0 (divergência do ERP de 2026-09-14, AD-235).
  */
-export function fonteRascunho(rascunho: {
-  readonly numeroNota: number;
-  readonly vendedor: string;
-  readonly serie: string;
-}): FonteDocumento {
+export function fonteRascunho(
+  rascunho: Pick<RascunhoListado, 'numeroRascunho' | 'serie' | 'vendedorCodigo' | 'vendedorNome'>,
+): FonteDocumento {
   return {
     origem: 'RASCUNHO',
-    // Diferente de `fonteDav`: este contrato sempre devolveu o vendedor por
-    // extenso (`GetListaNFCes`), e descartá-lo faria a venda retomada exibir
-    // um vendedor sem nome tendo o dado em mãos, enquanto o campo do próprio
-    // documento não estiver em produção (`FR-009`, AD-172). O **código**
-    // continua vindo do documento. Nome em branco é "não informado", não
-    // string vazia — mesmo tratamento de `DavListado.vendedorNome`.
-    vendedorNome: rascunho.vendedor === '' ? null : rascunho.vendedor,
+    // Nome em branco é "não informado", não string vazia, e código 0 é "sem
+    // vendedor" — nenhum dos dois serve de fallback.
+    vendedorDaLista: {
+      codigo: rascunho.vendedorCodigo === 0 ? null : rascunho.vendedorCodigo,
+      nome: rascunho.vendedorNome === '' ? null : rascunho.vendedorNome,
+    },
     carregar: (erpClient) =>
       fetchCarregarNFCe(
-        rascunho.numeroNota,
+        rascunho.numeroRascunho,
         rascunho.serie,
         erpClient === undefined ? {} : { erpClient },
       ),
@@ -274,7 +280,7 @@ export function fonteRascunho(rascunho: {
     // número+série: sozinho, o número não identifica o documento retomado.
     eventoDeImportacao: (venda) =>
       eventoNFCeRecuperada({
-        numeroNota: venda.numeroNota,
+        numeroRascunho: venda.numeroRascunho,
         serie: rascunho.serie,
         quantidadeLinhas: venda.linhas.length,
         quantidadeFormasDePagamento: venda.formasDePagamento.length,

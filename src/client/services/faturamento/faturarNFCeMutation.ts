@@ -43,7 +43,15 @@ export type ResultadoFaturamento =
       readonly serieNota: string | null;
     }
   /** O ERP respondeu (ainda que recusando): a primeira tentativa **não** gerou NFCe. */
-  | { readonly estado: 'falha-negocio'; readonly mensagem: string }
+  | {
+      readonly estado: 'falha-negocio';
+      readonly mensagem: string;
+      /**
+       * Rascunho que o ERP gravou antes de recusar, quando informado (AD-235).
+       * Não gerou NFCe, mas gerou rascunho: o reenvio precisa apontar para ele.
+       */
+      readonly numeroRascunho?: number;
+    }
   /** Nenhuma resposta chegou: pode ter sido processada do outro lado (AD-038). */
   | { readonly estado: 'falha-rede' };
 
@@ -110,7 +118,11 @@ export async function enviarFaturarNFCe(
   const mapeado = mapearRespostaFaturamento(retrato.SuspenderOuFaturar, corpo);
   switch (mapeado.estado) {
     case 'invalida':
-      return { estado: 'falha-negocio', mensagem: mapeado.mensagem };
+      return {
+        estado: 'falha-negocio',
+        mensagem: mapeado.mensagem,
+        ...(mapeado.numeroRascunho === undefined ? {} : { numeroRascunho: mapeado.numeroRascunho }),
+      };
 
     case 'rejeitada':
       return {

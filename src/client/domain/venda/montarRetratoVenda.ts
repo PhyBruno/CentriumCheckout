@@ -66,7 +66,12 @@ export interface CheckoutFaturarNFCe {
    */
   readonly Empresa: string;
   readonly SuspenderOuFaturar: SuspenderOuFaturar;
-  readonly NumeroNota: number;
+  /**
+   * Rascunho de NFCe desta venda — `0` para venda ainda não gravada no ERP
+   * (AD-235; era `NumeroNota` até o contrato de 2026-09-14). Vai igual em
+   * `SUSPENDER`, `FATURAR` e `VALIDAR`.
+   */
+  readonly NumeroRascunho: number;
   readonly CadSerieNFCe: string;
   readonly clienteCodigo: number;
   readonly vendedorCodigo: number;
@@ -231,7 +236,7 @@ export function montarRetratoVenda(
   return {
     Empresa: snapshot.empresa,
     SuspenderOuFaturar: suspenderOuFaturar(operacao),
-    NumeroNota: snapshot.identidade.numeroNota,
+    NumeroRascunho: snapshot.identidade.numeroRascunho,
     CadSerieNFCe: snapshot.cadSerieNFCe,
     clienteCodigo: snapshot.clienteCodigo,
     vendedorCodigo: snapshot.vendedorCodigo,

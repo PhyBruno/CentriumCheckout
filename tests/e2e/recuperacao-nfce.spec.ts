@@ -38,8 +38,8 @@ async function abrirJanelaDeRecuperacao(page: Page): Promise<void> {
   await expect(page.getByTestId('modal-recuperacao-nfce')).toBeVisible();
 }
 
-async function retomar(page: Page, numeroNota: number): Promise<void> {
-  await page.locator(`[data-numero-nota="${String(numeroNota)}"]`).click();
+async function retomar(page: Page, numeroRascunho: number): Promise<void> {
+  await page.locator(`[data-numero-rascunho="${String(numeroRascunho)}"]`).click();
   await page.getByTestId('confirmar-recuperacao-nfce').click();
 }
 
@@ -126,10 +126,10 @@ test.describe('User Story 2 — retomar o rascunho para o carrinho', () => {
 
   /**
    * `NFCE-02`/J3: a venda retomada mantém a identidade do rascunho. Sem isso o
-   * faturamento sairia com `NumeroNota: 0` e o ERP emitiria uma nota nova,
+   * faturamento sairia com `NumeroRascunho: 0` e o ERP emitiria uma nota nova,
    * deixando o rascunho original pendurado — sem erro e sem aviso.
    */
-  test('a finalização reenvia o NumeroNota original do rascunho', async ({ page, request }) => {
+  test('a finalização reenvia o NumeroRascunho original do rascunho', async ({ page, request }) => {
     await page.route(URL_SERVICO_IMPRESSAO, (rota) => rota.fulfill({ status: 200, body: '' }));
 
     await abrirTelaDeVenda(page);
@@ -144,7 +144,7 @@ test.describe('User Story 2 — retomar o rascunho para o carrinho', () => {
     await page.getByTestId('botao-finalizar-venda').click();
 
     await expect
-      .poll(async () => (await ultimoRetrato(request)).retrato?.['NumeroNota'])
+      .poll(async () => (await ultimoRetrato(request)).retrato?.['NumeroRascunho'])
       .toBe(NOTA_CONVENIADO);
   });
 });
@@ -155,7 +155,7 @@ test.describe('pré-condição — venda já iniciada', () => {
    * 2026-09-04): depois de retomar o primeiro, o atalho fecha para um segundo.
    *
    * O motivo que o operador lê é **o pagamento**, não a identidade da venda:
-   * `recusaDeImportacao` avalia `podeMutar` antes de `numeroNota`, e o rascunho
+   * `recusaDeImportacao` avalia `podeMutar` antes da origem, e o rascunho
    * volta pago (AD-169), então o bloqueio mais restritivo é o que responde. A
    * recusa por "já importou documento" continua coberta pela importação de DAV
    * (`importacao-dav.spec.ts` § "segundo documento é recusado"), cujo documento

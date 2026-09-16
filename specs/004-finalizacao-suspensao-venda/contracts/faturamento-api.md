@@ -18,7 +18,7 @@ Fonte dos campos: `Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml` (
 {
   "Empresa": 1,                        // injetado pelo BFF
   "SuspenderOuFaturar": "FATURAR",     // ou "SUSPENDER" — mesmo endpoint, campo decide a operação
-  "NumeroNota": 0,                     // 0 = venda nova; != 0 = rascunho/DAV pré-existente (identidadeVenda.numeroNota)
+  "NumeroRascunho": 0,                 // 0 = venda ainda não gravada; != 0 = rascunho do documento importado ou adotado após recusa (identidadeVenda.numeroRascunho, AD-235 — era NumeroNota até o contrato 20260914191012)
   "CadSerieNFCe": "1",                 // sempre SessaoUsuario.CadSerieNFCe (AD-034) — nunca escolhido pelo operador
   "vendedorCodigo": 42,                // vendedor selecionado no modal (feature 012, VEND-05) — nunca o operador logado
   "produtos": [

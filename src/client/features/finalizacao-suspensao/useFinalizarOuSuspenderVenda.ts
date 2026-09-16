@@ -406,6 +406,15 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           return;
 
         case 'falha-negocio':
+          // O ERP grava o rascunho **antes** de validar a venda e devolve o
+          // número na recusa (AD-235). Adotá-lo faz o reenvio — pelo operador,
+          // depois de corrigir — atualizar esse rascunho em vez de criar outro
+          // para a mesma compra (decisão do usuário, 2026-09-16). Fica fora da
+          // guarda de pagamento de propósito: a recusa chega com pagamento em
+          // curso, e o número é o da própria venda, não de outro documento.
+          if (resultado.numeroRascunho !== undefined) {
+            useVendaStore.getState().adotarRascunhoGravado(resultado.numeroRascunho);
+          }
           // Sem trava de confirmação: o ERP respondeu recusando, então a
           // primeira tentativa provadamente não gerou NFCe (`research.md`, D2).
           aplicarEstado({ tipo: 'falha-negocio', mensagem: resultado.mensagem });

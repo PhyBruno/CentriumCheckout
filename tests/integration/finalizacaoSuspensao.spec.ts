@@ -226,6 +226,71 @@ describe('falha de negócio — reenvio livre (T012, research.md D2)', () => {
 });
 
 /**
+ * AD-235 — o ERP grava o rascunho antes de validar e devolve o número na recusa.
+ * Reenviar a venda com `NumeroRascunho: 0` criaria um segundo rascunho da mesma
+ * compra (decisão do usuário: adotar o número devolvido).
+ */
+describe('recusa com rascunho já gravado — adoção do número (AD-235)', () => {
+  it('venda nova envia 0 na primeira tentativa e o número adotado no reenvio (SUSPENDER)', async () => {
+    const cenario = montarCenario([
+      { estado: 'falha-negocio', mensagem: 'Saldo insuficiente.', numeroRascunho: 6100 },
+      { estado: 'sucesso', notaFiscal: null },
+    ]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.suspender();
+    });
+
+    expect(cenario.enviados[0]?.NumeroRascunho).toBe(0);
+    expect(useVendaStore.getState().identidadeVenda).toEqual({
+      origem: 'NOVA',
+      numeroRascunho: 6100,
+    });
+
+    await act(async () => {
+      await result.current.suspender();
+    });
+
+    expect(cenario.enviados[1]?.NumeroRascunho).toBe(6100);
+  });
+
+  it('adota o número mesmo com pagamento aprovado na venda (FATURAR)', async () => {
+    useVendaStore.setState({ pagamentos: [pagamentoDe()] });
+    const cenario = montarCenario([
+      { estado: 'falha-negocio', mensagem: 'Saldo insuficiente.', numeroRascunho: 6100 },
+    ]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.finalizar();
+    });
+
+    expect(useVendaStore.getState().identidadeVenda.numeroRascunho).toBe(6100);
+    expect(result.current.estado).toEqual({
+      tipo: 'falha-negocio',
+      mensagem: 'Saldo insuficiente.',
+    });
+  });
+
+  it('recusa sem número mantém a identidade como estava', async () => {
+    useVendaStore.getState().definirIdentidadeVenda({ origem: 'DAV', numeroRascunho: 6031 });
+    const cenario = montarCenario([{ estado: 'falha-negocio', mensagem: 'Cliente sem CPF.' }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.suspender();
+    });
+
+    expect(cenario.enviados[0]?.NumeroRascunho).toBe(6031);
+    expect(useVendaStore.getState().identidadeVenda).toEqual({
+      origem: 'DAV',
+      numeroRascunho: 6031,
+    });
+  });
+});
+
+/**
  * NFCe rejeitada — o ERP gravou o documento (correção do usuário, 2026-09-10).
  *
  * O que separa este bloco do de cima é o destino da venda: aqui ela **não pode**
@@ -258,7 +323,7 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
 
   it('não limpa nada antes de o operador fechar o aviso', async () => {
     const cenario = montarCenario([REJEICAO]);
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroNota: 4821 });
+    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
     const { result } = renderizar(cenario);
 
     await act(async () => {
@@ -267,13 +332,13 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
 
     const venda = useVendaStore.getState();
     expect(venda.linhas).toHaveLength(1);
-    expect(venda.identidadeVenda).toEqual({ origem: 'RASCUNHO', numeroNota: 4821 });
+    expect(venda.identidadeVenda).toEqual({ origem: 'RASCUNHO', numeroRascunho: 4821 });
   });
 
   it('descarta carrinho, cache de produto, auditoria e identidade ao fechar', async () => {
     const cenario = montarCenario([REJEICAO]);
     cenario.queryClient.setQueryData(CHAVE_PRODUTO_EM_CACHE, { codigoProduto: '001234' });
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroNota: 4821 });
+    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
     const { result } = renderizar(cenario);
 
     await act(async () => {
@@ -285,7 +350,7 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
 
     const venda = useVendaStore.getState();
     expect(venda.linhas).toEqual([]);
-    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroNota: 0 });
+    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
     // A próxima venda já nasce com histórico aberto: sem isto o primeiro item
     // dela cairia num `Log` sem `VENDA_INICIADA` (`FR-002` da feature 001).
     expect(venda.eventos.map((evento) => evento.tipo)).toEqual(['VENDA_INICIADA']);
@@ -326,7 +391,7 @@ describe('sucesso — limpeza na mesma transação (T013, FR-012)', () => {
   it('descarta carrinho, cache de produto, auditoria e identidade da venda', async () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
     cenario.queryClient.setQueryData(CHAVE_PRODUTO_EM_CACHE, { codigoProduto: '001234' });
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroNota: 4821 });
+    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
 
     const { result } = renderizar(cenario);
 
@@ -340,7 +405,7 @@ describe('sucesso — limpeza na mesma transação (T013, FR-012)', () => {
 
     const venda = useVendaStore.getState();
     expect(venda.linhas).toEqual([]);
-    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroNota: 0 });
+    expect(venda.identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0 });
     // O histórico da venda emitida é descartado e a próxima sessão já nasce
     // aberta: nada da venda anterior sobrevive, e a seguinte nunca começa sem
     // `VENDA_INICIADA` (`FR-012` daqui + `FR-002`/`FR-008` da feature 001).
@@ -348,9 +413,9 @@ describe('sucesso — limpeza na mesma transação (T013, FR-012)', () => {
     expect(cenario.queryClient.getQueryData(CHAVE_PRODUTO_EM_CACHE)).toBeUndefined();
   });
 
-  it('envia o NumeroNota do rascunho retomado, não 0 (FR-003)', async () => {
+  it('envia o NumeroRascunho do rascunho retomado, não 0 (FR-003)', async () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: NOTA_FISCAL_VALIDA }]);
-    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroNota: 4821 });
+    useVendaStore.getState().definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821 });
 
     const { result } = renderizar(cenario);
 
@@ -358,7 +423,7 @@ describe('sucesso — limpeza na mesma transação (T013, FR-012)', () => {
       await result.current.finalizar();
     });
 
-    expect(cenario.enviados[0]?.NumeroNota).toBe(4821);
+    expect(cenario.enviados[0]?.NumeroRascunho).toBe(4821);
   });
 });
 

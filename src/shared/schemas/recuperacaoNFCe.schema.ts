@@ -8,10 +8,11 @@ import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
  * (T002, Constitution IV — `specs/011-recuperacao-nfce/contracts/erp-recuperacao-api.md`).
  *
  * Os nomes e tipos saem do contrato real (`Fluxograma - Diagrama -
- * Alinhamentos/ApiCentriumOAuth.yaml`, `info.version: 20260827192357`,
+ * Alinhamentos/ApiCentriumOAuth.yaml`, `info.version: 20260914191012`,
  * `CheckoutListaRascunhos` e `CheckoutListaRascunhos.Rascunho_Rascunho`),
- * conferidos campo a campo: nenhum campo é inventado e nenhum campo do contrato
- * é exigido além do que esta feature consome.
+ * conferidos campo a campo contra o ERP de preview (AD-235): nenhum campo é
+ * inventado e nenhum campo do contrato é exigido além do que esta feature
+ * consome.
  *
  * **`CarregarNFCe` não ganha um schema de documento próprio** (AD-117): o corpo
  * que ele devolve é o mesmo `CheckoutFaturarNFCe` de `GetDav`, então este
@@ -32,23 +33,33 @@ import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
 const valorEmCentavos = numeroErp.transform((valor) => centavos(Math.round(valor * 100)));
 
 /**
- * `CheckoutListaRascunhos.Rascunho_Rascunho`.
+ * `CheckoutListaRascunhos.Rascunho_Rascunho` — forma do contrato de 2026-09-14
+ * (AD-235, medida no ERP de preview).
  *
- * **Sem campo de série, de caixa/terminal ou de status**: nenhum dos três
- * existe no contrato. É por isso que a janela de recuperação não desenha as
- * colunas "Série" e "Caixa" nem os filtros de status/vendedor/série do Pencil —
- * exibi-los exigiria inventar o estado do documento, mesmo critério já aplicado
- * ao modal de DAV (AD-024/AD-095).
+ * Até então a linha trazia `NumeroNota` e três strings no formato
+ * `"<código> - <NOME>"` (`Cliente`/`Vendedor`/`Operador`). O contrato novo
+ * separa código e nome e acrescenta **`Serie`**, que passa a ser a série
+ * enviada a `CarregarNFCe` — `SessaoUsuario.CadSerieNFCe` vem vazia no preview.
  *
- * `Vendedor` e `Operador` **são** nomes aqui, ao contrário de `ListaDAVs`, que
- * só devolve o código do vendedor (AD-095). A janela de NFCe consegue exibir os
- * dois por extenso.
+ * **Sem campo de caixa/terminal ou de status**: nenhum dos dois existe no
+ * contrato. É por isso que a janela de recuperação não desenha a coluna "Caixa"
+ * nem os filtros de status/caixa do Pencil — exibi-los exigiria inventar o
+ * estado do documento, mesmo critério já aplicado ao modal de DAV
+ * (AD-024/AD-095).
+ *
+ * Nomes são `z.string()` aceitando `""`: é o default do SDT GeneXus para campo
+ * não preenchido (operador sem nome), e quem exibe trata o vazio.
  */
 export const rascunhoDaListaSchema = z.looseObject({
-  NumeroNota: inteiroErp,
-  Cliente: z.string(),
-  Vendedor: z.string(),
-  Operador: z.string(),
+  /** Número nativo na listagem; string nos documentos. `inteiroErp` cobre os dois. */
+  NumeroRascunho: inteiroErp,
+  Serie: z.string(),
+  ClienteCodigo: inteiroErp,
+  ClienteNome: z.string(),
+  VendedorCodigo: inteiroErp,
+  VendedorNome: z.string(),
+  OperadorCodigo: inteiroErp,
+  OperadorNome: z.string(),
   /**
    * `format: date-time` — repassado **cru** para dentro da aplicação e
    * formatado só na exibição. O Checkout não reinterpreta data do ERP
@@ -84,13 +95,14 @@ export const listaNFCesOutputSchema = semEnvelope(
 );
 
 /**
- * `GET /ApiCentriumOAuth/CarregarNFCe` — também **sem** envelope no ERP real
- * (AD-165), ao contrário de `GetDav`, que o mantém por devolver `messages`.
+ * `GET /ApiCentriumOAuth/CarregarNFCe` — envelope só quando há `messages`, como
+ * todo o `ApiCentriumOAuth` (AD-218); `semEnvelope` aceita as duas formas.
  *
- * `produtos` e `FormasDePagamento` seguem obrigatórios, herdados de
- * `checkoutFaturarNFCeSchema`: uma recusa de negócio do ERP volta `200` com o
- * SDT zerado, e aceitá-la retomaria um rascunho vazio, com `clienteCodigo: 0`,
- * como se fosse sucesso. Falhar na fronteira é o desfecho correto.
+ * `produtos` segue obrigatório, herdado de `checkoutFaturarNFCeSchema`: uma
+ * recusa de negócio do ERP volta `200` com o SDT zerado, e aceitá-la retomaria
+ * um rascunho vazio, com `clienteCodigo: 0`, como se fosse sucesso. Falhar na
+ * fronteira é o desfecho correto. (`FormasDePagamento` é opcional desde
+ * 2026-09-11 — ver `dav.schema.ts`.)
  */
 export const carregarNFCeOutputSchema = semEnvelope(
   'OutCheckoutFaturarNFCe',

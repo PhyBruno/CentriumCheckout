@@ -397,7 +397,7 @@ export const useVendaStore = criarVendaStore();
  * este TSDoc antecipasse que passaria: importar um documento acontece **no
  * meio** de uma venda, e `resetarAuditoria` apagaria o histórico do que o
  * operador já fez (contra `FR-009` da feature 001). A 006 grava só a identidade
- * — `definirIdentidadeVenda({ origem: 'DAV', numeroNota })` — e acrescenta
+ * — `definirIdentidadeVenda({ origem: 'DAV', numeroRascunho })` — e acrescenta
  * `DAV_IMPORTADO` à trilha existente. A feature 011 decidirá a sua por conta;
  * `abrirSessaoDeVenda` continua sendo o caminho de quem de fato **inicia** uma
  * sessão de venda do zero.
@@ -412,10 +412,10 @@ export const useVendaStore = criarVendaStore();
  * `definirIdentidadeVenda` guardada faria a abertura virar um no-op silencioso
  * assim que a feature 008 ligasse o predicado real.
  */
-export function abrirSessaoDeVenda(origem: OrigemVenda, numeroNota = 0): void {
+export function abrirSessaoDeVenda(origem: OrigemVenda, numeroRascunho = 0): void {
   const venda = useVendaStore.getState();
   venda.resetarAuditoria(origem);
-  venda.iniciarIdentidadeVenda({ origem, numeroNota });
+  venda.iniciarIdentidadeVenda({ origem, numeroRascunho });
 
   // Pré-seleção do cliente default (feature 005, `FR-004`/AD-032): acontece
   // aqui, e não dentro de um slice, pelo mesmo motivo dos dois acima — é o
