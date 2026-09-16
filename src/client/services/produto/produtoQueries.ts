@@ -126,7 +126,8 @@ async function chamarErp(
  * Resolve o produto e devolve o snapshot pronto para virar linha.
  *
  * Chamado em **todos** os caminhos de inserção — código bipado, digitado,
- * `codigo*quantidade`, código de balança e seleção no modal de busca (AD-091).
+ * `quantidade*codigo` (AD-240), código de balança e seleção no modal de busca
+ * (AD-091).
  */
 export async function fetchProduto(
   codigoProduto: string,

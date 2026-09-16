@@ -81,14 +81,6 @@ function interpretarQuantidade(texto: string): Milesimos | null {
 }
 
 /**
- * Só dígitos, com um separador decimal opcional — inclusive os que **não** são
- * quantidade válida, como `0`. Ver o uso em `interpretarEntradaCodigo`.
- */
-function pareceNumero(texto: string): boolean {
-  return /^\d+([.,]\d+)?$/.test(texto);
-}
-
-/**
  * Classifica a entrada. Nunca lança: entrada malformada cai em `SIMPLES` e o
  * ERP responde `404`, que a UI já trata — transformar um código interno legítimo
  * do tenant em erro de operação seria pior (`research.md`, D6).
@@ -98,27 +90,20 @@ export function interpretarEntradaCodigo(texto: string): EntradaCodigo {
 
   const separador = limpo.indexOf(SEPARADOR_QUANTIDADE);
   if (separador > 0) {
-    const esquerda = limpo.slice(0, separador).trim();
-    const direita = limpo.slice(separador + 1).trim();
-
-    // `codigo*quantidade` primeiro — a forma que já existia (AD-029).
-    const quantidadeADireita = interpretarQuantidade(direita);
-    if (esquerda !== '' && quantidadeADireita !== null) {
-      return { tipo: 'COM_QTD', codigo: esquerda, quantidade: quantidadeADireita };
-    }
-
-    // `quantidade*codigo`, a ordem do PDV antigo (`4*teste789`) — AD-240. Só
-    // entra quando a direita **não parece número**: com os dois lados numéricos
-    // a regra acima decide, e `001234*3` continua significando 3 unidades do
-    // 001234 (decisão do usuário, 2026-09-16). Um código do tenant pode ser
-    // numérico, então inverter a precedência mudaria vendas que já funcionam.
+    // **A quantidade é sempre o lado esquerdo** (decisão do usuário,
+    // 2026-09-16 — AD-240): `4*teste789` são 4 unidades do `teste789`, e
+    // `12*34` são 12 unidades do produto `34`. É a ordem do PDV antigo, e não
+    // admite exceção por "parecer código": um código de tenant pode ser
+    // numérico, e decidir pelo formato faria a mesma digitação significar
+    // coisas diferentes conforme o cadastro.
     //
-    // "Parece número" é mais largo que "é quantidade válida" de propósito:
-    // `001234*0` é o operador digitando quantidade zero — entrada malformada
-    // que continua caindo em `SIMPLES` —, não o código `0` com 1234 unidades.
-    const quantidadeAEsquerda = interpretarQuantidade(esquerda);
-    if (direita !== '' && !pareceNumero(direita) && quantidadeAEsquerda !== null) {
-      return { tipo: 'COM_QTD', codigo: direita, quantidade: quantidadeAEsquerda };
+    // Até 2026-09-16 a ordem era a inversa (`codigo*quantidade`, AD-029), e
+    // por isso `001234*3` mudou de sentido: passou a ser 1234 unidades do
+    // produto `3`.
+    const quantidade = interpretarQuantidade(limpo.slice(0, separador));
+    const codigo = limpo.slice(separador + 1).trim();
+    if (codigo !== '' && quantidade !== null) {
+      return { tipo: 'COM_QTD', codigo, quantidade };
     }
   }
 

@@ -168,12 +168,12 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
 });
 
 test.describe('User Story 2 — inserção direta por código conhecido (T025)', () => {
-  test('"codigo*3" insere quantidade 3 e o código simples insere quantidade 1', async ({
+  test('"3*codigo" insere quantidade 3 e o código simples insere quantidade 1', async ({
     page,
   }) => {
     await abrirTelaDeVenda(page);
 
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 30,00');
 
     await bipar(page, SKU_COM_FAIXA, 2);
@@ -341,11 +341,11 @@ test.describe('User Story 3 — faixa de quantidade (T032, TipoPreco 8)', () => 
   }) => {
     await abrirTelaDeVenda(page);
 
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
     await expect(page.getByTestId('preco-unitario')).toHaveText('R$ 10,00');
 
     // Agregado 6 ≥ limiar de 5 unidades → ambas as linhas passam a R$ 9,00.
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 2);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 2);
     await expect(page.getByTestId('preco-unitario')).toHaveText(['R$ 9,00', 'R$ 9,00']);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 54,00');
   });
@@ -360,8 +360,8 @@ test.describe('User Story 4 — item cancelado permanece rastreável (T037)', ()
     page,
   }) => {
     await abrirTelaDeVenda(page);
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 2);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 2);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 54,00');
 
     // Sem modal de confirmação e sem supervisor (FR-012, AD-065).
@@ -382,8 +382,8 @@ test.describe('User Story 4 — item cancelado permanece rastreável (T037)', ()
     await abrirTelaDeVenda(page);
     await expect(page.getByTestId('lista-itens-mobile')).toBeVisible();
 
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 2);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 2);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 54,00');
 
     await page.getByTestId('cancelar-item').last().click();
@@ -561,7 +561,7 @@ test.describe('Saldo de estoque (AD-236)', () => {
     await configurar(request, { faturaProdutoSemSaldo: 'B' });
     await abrirTelaDeVenda(page);
 
-    await bipar(page, `${SKU_COM_FAIXA}*11`);
+    await bipar(page, `11*${SKU_COM_FAIXA}`);
     await expect(page.getByTestId('previa-confirmar')).toHaveAttribute('title', MOTIVO);
     expect((await contadores(request)).getProduto).toBe(1);
 

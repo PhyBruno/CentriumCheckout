@@ -1088,7 +1088,7 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     const usuario = userEvent.setup();
     renderBarra();
 
-    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234*3{Enter}');
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '3*001234{Enter}');
     await esperarPreviaBloqueada();
     expect(screen.getByTestId('previa-quantidade')).toHaveValue('3,000');
 

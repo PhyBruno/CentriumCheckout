@@ -669,7 +669,7 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 
-  it('"codigo*3" insere com quantidade 3 e o código simples com quantidade 1', async () => {
+  it('"3*codigo" insere com quantidade 3 e o código simples com quantidade 1', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
@@ -685,7 +685,7 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     const { result } = renderHook(() => useInsercaoDeProduto(), {
       wrapper: envolverComQueryClient(),
     });
-    await result.current.inserirPorCodigo(`${SKU}*3`);
+    await result.current.inserirPorCodigo(`3*${SKU}`);
     await result.current.inserirPorCodigo(SKU);
 
     await waitFor(() => {
@@ -806,7 +806,7 @@ describe('inserção pela rede — saldo de estoque (AD-236)', () => {
     stubarSaldos([{ saldo: '4.000' }], []);
 
     const { result } = renderInsercao();
-    const resultado = await result.current.insercao.inserirPorCodigo(`${SKU}*4`);
+    const resultado = await result.current.insercao.inserirPorCodigo(`4*${SKU}`);
 
     expect(resultado.situacao).toBe('inserido');
   });
