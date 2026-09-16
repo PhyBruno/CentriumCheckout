@@ -15,6 +15,7 @@ import {
   type ResultadoImpressao,
 } from '../../services/impressao/imprimirNFCeLocal';
 import type { NotaFiscalResposta } from '../../../shared/schemas/faturarNFCe.schema';
+import { identificacaoDaNota } from './identificacaoDaNota';
 
 /**
  * Entrega do documento fiscal ao operador (T019, `FR-007` a `FR-009`).
@@ -175,6 +176,10 @@ export function DialogoDocumentoFiscal({
   }
 
   const emEspera = estado.tipo === 'imprimindo';
+  const identificacao = identificacaoDaNota({
+    numeroNota: notaFiscal.NumeroNota,
+    serieNota: notaFiscal.SerieNota,
+  });
 
   return (
     <div
@@ -242,6 +247,16 @@ export function DialogoDocumentoFiscal({
               {estado.tipo === 'pdf-bloqueado' &&
                 'A venda foi emitida normalmente. Abra o PDF pelo botão abaixo.'}
             </span>
+            {/* Número e série da nota emitida (AD-238), no mesmo formato e
+                estilo da nota rejeitada — omitida quando o ERP não os manda. */}
+            {identificacao !== null && (
+              <span
+                data-testid="documento-emitido"
+                className="font-mono text-sm text-[var(--cc-color-body)]"
+              >
+                {identificacao}
+              </span>
+            )}
           </span>
 
           {estado.tipo === 'falha-impressao' && (

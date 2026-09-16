@@ -7,6 +7,8 @@
  * (`contracts/faturamento-api.md`).
  */
 
+import { textoSemHtml } from '@/lib/textoSemHtml';
+import { urlExternaSegura } from '@/lib/urlExterna';
 import { recusaDeNegocio } from '../../../shared/schemas/erpJson';
 import {
   faturarNFCeOutputSchema,
@@ -18,6 +20,24 @@ import {
   type NotaFiscalResposta,
 } from '../../../shared/schemas/faturarNFCe.schema';
 import type { SuspenderOuFaturar } from '../../domain/venda/montarRetratoVenda';
+
+/**
+ * O que o ERP devolveu sobre uma NFCe gravada e não autorizada — estruturado
+ * desde o contrato de 2026-09-14 (AD-238).
+ */
+export interface RetornoRejeicao {
+  /** Texto do Fisco (ou de `messages[]`), já sem HTML — nunca inventado. */
+  readonly mensagem: string;
+  /** `ErroCodigo`, com o `0` do contrato como `null`. */
+  readonly codigoErro: number | null;
+  /** `NotaFiscal.NumeroNota` — por onde o operador acha a nota no ERP. */
+  readonly numeroNota: number | null;
+  readonly serieNota: string | null;
+  /** `RetornoMensagemIA`: texto puro, quebras de linha preservadas. */
+  readonly sugestaoIA: string | null;
+  /** `UrlChamadas`, só se for `http(s)` absoluta (`urlExternaSegura`). */
+  readonly urlChamadas: string | null;
+}
 
 export type ResultadoMapeamento =
   | {
@@ -34,14 +54,7 @@ export type ResultadoMapeamento =
    * já existe do lado do ERP, então reenviar a mesma venda emitiria uma
    * segunda NFCe para a mesma compra.
    */
-  | {
-      readonly estado: 'rejeitada';
-      /** O que o ERP disse, nunca texto inventado por nós. */
-      readonly mensagem: string;
-      /** `NotaFiscal.NumeroNota` — por onde o operador acha a nota no ERP. */
-      readonly numeroNota: number | null;
-      readonly serieNota: string | null;
-    }
+  | ({ readonly estado: 'rejeitada' } & RetornoRejeicao)
   /** 2xx que não descreve uma venda concluída — tratado como falha de negócio. */
   | {
       readonly estado: 'invalida';
@@ -73,24 +86,38 @@ function textoUtil(valor: string | undefined): string | null {
 }
 
 /**
- * O motivo da rejeição, na ordem em que o ERP costuma preenchê-lo.
+ * O retorno da rejeição, na ordem em que o ERP costuma preenchê-lo (AD-238).
  *
  * `ErroMensagem` primeiro porque é o campo específico do documento (traz o texto
- * da SEFAZ, "Rejeicao: …"); `messages[]` depois, que é o canal genérico da
- * procedure. `ErroCodigo` vai junto do texto quando existe: é por ele que o
- * suporte pesquisa a rejeição, e sozinho ele não diz nada ao operador.
+ * da SEFAZ, "Rejeicao: …"), com o HTML removido (pendência 50); `messages[]`
+ * depois, que é o canal genérico da procedure. O `ErroCodigo` vai em campo
+ * próprio — é por ele que o suporte pesquisa a rejeição, e o diálogo o exibe no
+ * bloco "Retorno da SEFAZ". `0` é o "sem erro" do contrato e vira `null`.
+ *
+ * O desfecho `N` (outros status de lote, `LotRetStat`/`LotRetMot`) passa pelo
+ * mesmo caminho: vem sem sugestão e sem link, e esses campos ficam `null`.
  */
-function motivoDaRejeicao(
+function retornoDaRejeicao(
   nota: NotaFiscalRejeitada,
   mensagens: readonly MensagemErp[] | undefined,
-): string {
-  const texto =
-    textoUtil(nota.ErroMensagem) ?? mensagemDoErp(mensagens) ?? MENSAGEM_PADRAO_REJEICAO;
+): RetornoRejeicao {
+  const erroMensagem = textoUtil(nota.ErroMensagem);
   const codigo = nota.ErroCodigo;
 
-  // `0` é o "sem erro" do contrato: exibi-lo ao lado de uma rejeição só
-  // confundiria quem for pesquisar o código.
-  return codigo === undefined || codigo === 0 ? texto : `${texto} (erro ${String(codigo)})`;
+  return {
+    mensagem:
+      (erroMensagem === null ? null : textoUtil(textoSemHtml(erroMensagem))) ??
+      mensagemDoErp(mensagens) ??
+      MENSAGEM_PADRAO_REJEICAO,
+    codigoErro: codigo === undefined || codigo === 0 ? null : codigo,
+    numeroNota: nota.NumeroNota ?? null,
+    serieNota: textoUtil(nota.SerieNota),
+    // Texto puro: as quebras de linha são do conteúdo e ficam; só a string
+    // inteiramente em branco vira ausência.
+    sugestaoIA:
+      textoUtil(nota.RetornoMensagemIA) === null ? null : (nota.RetornoMensagemIA ?? null),
+    urlChamadas: urlExternaSegura(nota.UrlChamadas),
+  };
 }
 
 /**
@@ -197,9 +224,7 @@ export function mapearRespostaFaturamento(
         // `messages` vem da **raiz** (`envelope`), não do que `semEnvelope`
         // devolveu: na forma real ele não existe, e na forma do YAML ele é
         // irmão do envelope, não filho.
-        mensagem: motivoDaRejeicao(nota, envelope.data.messages),
-        numeroNota: nota.NumeroNota ?? null,
-        serieNota: textoUtil(nota.SerieNota),
+        ...retornoDaRejeicao(nota, envelope.data.messages),
       };
     }
   }

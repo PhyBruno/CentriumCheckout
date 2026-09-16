@@ -133,6 +133,11 @@ export interface ConfigMockErp {
    */
   semVendedorDefault: boolean;
   /**
+   * `SessaoUsuario.ClienteDefaultContato` (AD-237). Preenchido por padrão, como
+   * no preview; `''` reproduz o cliente default sem celular cadastrado.
+   */
+  clienteDefaultContato: string;
+  /**
    * `SessaoUsuario.UsuarioTipoCodigoProduto` — o campo que a empresa configura
    * e que decide, além do filtro de `GetProduto`, o rótulo da barra de entrada
    * (`rotuloTipoCodigoProduto`). Configurável porque `''` e `'R'` produzem o
@@ -151,16 +156,13 @@ export interface ConfigMockErp {
    */
   faturaProdutoSemSaldo: 'A' | 'B' | '';
   /**
-   * `GetCliente` devolve o **SDT parcial** que o ERP real devolve hoje: só
-   * `CodCliente`, `PermiteVendaCredito` e `ListaPreco` preenchidos, com
-   * `nome`/`cpf`/`celular`/endereço/convênio vazios mesmo para cliente que
-   * existe (medido ao vivo 2026-09-11 em quatro clientes, por documento e por
-   * código; os mesmos clientes vêm completos em `GetListaClientes`).
+   * `GetCliente` devolve o **SDT parcial** que o ERP devolvia até o contrato de
+   * 2026-09-14: só `CodCliente`, `PermiteVendaCredito` e `ListaPreco`
+   * preenchidos (medido em 2026-09-11). O ERP de 2026-09-14 devolve o cadastro
+   * completo (AD-237), que é o **padrão** deste mock.
    *
-   * **Desligado por padrão**: o defeito é do procedure do ERP e o Checkout já o
-   * trata como tal (`ErroClienteIncompleto`, AD-204), então a suíte das features
-   * 005/006/011 continua afirmando o contrato prometido. Ligue para exercitar a
-   * recusa — é o único jeito de esse caminho aparecer em teste.
+   * **Desligado por padrão**; fica como regressão do caminho de recusa
+   * (`ErroClienteIncompleto`, AD-204).
    */
   getClienteSemCadastro: boolean;
 }
@@ -212,6 +214,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
   atrasoPagamentoPixMs: 20_000,
   semVendedorDefault: false,
+  clienteDefaultContato: '(99)99999-9999',
   tipoCodigoProduto: 'R',
   faturaProdutoSemSaldo: '',
 };
@@ -1026,29 +1029,21 @@ function cpfComMascara(cpf: string): string {
 }
 
 /**
- * `ClienteCheckout` do jeito que `GetCliente` **de fato responde**, medido ao
- * vivo em 2026-09-11 contra quatro clientes diferentes do ERP (`CodCliente` 1,
- * 8, 17 e 999999, por documento e por código, todos com o mesmo desfecho).
+ * `ClienteCheckout` do jeito que `GetCliente` responde.
  *
- * **O ERP preenche três campos e só três**: `CodCliente`,
- * `PermiteVendaCredito` e `ListaPreco`. `nome`, `cpf`, `email`, `celular`, o
- * endereço inteiro, `LimiteCredito` e os três de convênio voltam vazios/zerados
- * mesmo para cliente que existe e que `GetListaClientes` devolve completo —
- * `Empresa` inclusive, que volta `0` e não o `1` consultado.
+ * **Contrato de 2026-09-14 (AD-237): cadastro completo** — nome, cpf, email,
+ * celular, endereço e `ListaPreco`, por `CodCliente`, `Codcliente` ou `CPFCNPJ`
+ * (medido no preview com o cliente 17). Documento inexistente continua
+ * devolvendo `CodCliente: 0` com tudo vazio.
  *
- * Isto contradiz `specs/005-…/contracts/erp-cliente-api.md`, que documenta o
- * SDT completo — e `clienteQueries.ts` já trata o SDT parcial como **defeito do
- * ERP** a corrigir no procedure (AD-204), recusando a associação com
- * `ErroClienteIncompleto` em vez de pôr na venda um cliente sem nome.
+ * Até essa versão o ERP preenchia só `CodCliente`, `PermiteVendaCredito` e
+ * `ListaPreco` (medido em 2026-09-11, AD-216), e o Checkout recusava com
+ * `ErroClienteIncompleto` (AD-204). Os **dois modos** ficam:
  *
- * Por isso os **dois modos**, e não só o real (decisão do usuário, 2026-09-11):
- *
- * - `getClienteSemCadastro: false` (**padrão**) — cadastro completo, o que o
- *   contrato promete e o que a suíte das features 005/006/011 afirma. É o ERP
- *   com o procedure corrigido.
- * - `getClienteSemCadastro: true` — o SDT parcial, exatamente como o ERP
- *   responde hoje. É o que faz o caminho de recusa aparecer em teste, coisa que
- *   nunca acontecia enquanto o mock devolvia o cadastro inteiro sempre.
+ * - `getClienteSemCadastro: false` (**padrão**) — cadastro completo, o ERP de
+ *   2026-09-14.
+ * - `getClienteSemCadastro: true` — o SDT parcial do ERP anterior, como
+ *   regressão do caminho de recusa.
  *
  * Os tipos são os reais nos dois modos, e não os do YAML: `Empresa`/
  * `CodCliente`/`CodigoConvenio`/`DescontoConvenio`/`ListaPreco` vêm **número**
@@ -1110,6 +1105,7 @@ const SESSAO_ZERADA: Record<string, unknown> = {
   VendedorNome: '',
   ClienteDefaultCodigo: String(0),
   ClienteDefaultNome: '',
+  ClienteDefaultContato: '',
   UsuarioTipoCodigoProduto: '',
   Cliente_UtilizaSegundoNivelDeEnderecos: '',
   CadMaqCod: '',
@@ -1223,6 +1219,8 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     FaturaProdutoSemSaldo: config.faturaProdutoSemSaldo,
     ClienteDefaultCodigo: String(1), // int64
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
+    // `CliFonCel` do cliente default (contrato de 2026-09-14, AD-237).
+    ClienteDefaultContato: config.clienteDefaultContato,
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
     // logado são campos genuinamente distintos (AD-056), e valores iguais aqui
     // tornariam `FR-008`/`SC-001` indistinguível no payload de `FaturarNFCe`.
@@ -1819,6 +1817,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
             Autorizada: 'R',
             ErroCodigo: 539,
             ErroMensagem: 'Rejeicao: Duplicidade de NF-e (sintetico)',
+            // Contrato de 2026-09-14 (KB; ausentes do YAML), AD-238.
+            RetornoMensagemIA:
+              'Confira a numeracao da serie (sintetico).\nDepois gere uma nova venda.',
+            UrlChamadas: 'https://atendimento.exemplo.invalid/chamado?origem=checkout',
             XMLImpressao: '',
             PDFImpressao: '',
           },
@@ -2055,11 +2057,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     const ate = request.query.Datafinal ?? '';
 
     const todos = Object.values(DAVS)
-      // **Sem `VendedorNome`.** A linha real tem oito campos e nenhum deles é o
-      // nome do vendedor (medido ao vivo 2026-09-11) — só o código. O mock
-      // publicava o nome porque a fixture o carrega para `GetListaNFCes`, que aí
-      // sim o traz; emiti-lo aqui era oferecer um dado que a janela de DAVs
-      // nunca recebe (é a limitação de AD-095, que segue valendo).
+      // **`VendedorNome` vazio.** No contrato de 2026-09-14 a linha publica a
+      // chave, mas o ERP a devolve sempre `""` (pendência 57, AD-237). A
+      // fixture carrega o nome só para `GetListaNFCes`, que o traz de fato;
+      // emiti-lo aqui ofereceria um dado que a janela de DAVs não recebe.
       .map((dav) => ({
         NumeroDAV: dav.lista['NumeroDAV'],
         Titulo: dav.lista['Titulo'],
@@ -2068,6 +2069,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         ClienteCodigo: dav.lista['ClienteCodigo'],
         ClienteNome: dav.lista['ClienteNome'],
         VendedorCodigo: dav.lista['VendedorCodigo'],
+        // O contrato de 2026-09-14 publica a chave, mas **sempre vazia**
+        // (atribuição comentada em `DpCheckout_GetDavs`, pendência 57).
+        VendedorNome: '',
         ValorTotal: dav.lista['ValorTotal'],
       }))
       .filter((dav) => {
@@ -2131,17 +2135,28 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * Diferenças de contrato em relação a `ListaDAVs`, todas reais: a linha traz
    * `Serie` e o operador; `Emissao` é `date-time`, não `date`. A busca casa só
    * nome de cliente e de vendedor, nunca o número, que é o que o
-   * `DataProvider` do ERP faz. (O filtro de período que o ERP de 2026-09-14
-   * passou a aceitar é da frente C do plano de AD-235.)
+   * `DataProvider` do ERP faz. `Datainicial`/`Datafinal` filtram pelo dia da
+   * `Emissao` (AD-237).
    *
    * Devolve **flat na raiz, sem envelope**, como o ERP real (AD-165).
    */
   app.get<{
-    Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string };
+    Querystring: {
+      Txtbusca?: string;
+      Datainicial?: string;
+      Datafinal?: string;
+      Pagina?: string;
+      Tamanhopagina?: string;
+    };
   }>('/ApiCentriumOAuth/GetListaNFCes', async (request, reply) => {
     contadores.negocio += 1;
 
     const termo = (request.query.Txtbusca ?? '').toUpperCase();
+    // Período (AD-237): o ERP de 2026-09-14 filtra por dia de emissão. Sem as
+    // datas o ERP real usa os últimos 90 dias; aqui, sem elas, não há piso —
+    // o Checkout manda sempre as duas.
+    const de = request.query.Datainicial ?? '';
+    const ate = request.query.Datafinal ?? '';
 
     const todos = Object.values(DAVS)
       .map((dav) => ({
@@ -2162,6 +2177,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         Total: String(dav.lista['ValorTotal']),
       }))
       .filter((rascunho) => {
+        const dia = rascunho.Emissao.slice(0, 10);
+        if ((de !== '' && dia < de) || (ate !== '' && dia > ate)) {
+          return false;
+        }
         if (termo === '') {
           return true;
         }

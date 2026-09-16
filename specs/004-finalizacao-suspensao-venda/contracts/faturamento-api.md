@@ -46,8 +46,26 @@ Fonte dos campos: `Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml` (
 ```jsonc
 {
   "NotaFiscal": {
+    "NumeroNota": "1306",                   // nota fiscal emitida (MovnNum) — opcional, exibida "NFCe 1306 · série 14" (AD-238)
+    "SerieNota": "14",                      // opcional
     "PDFImpressao": "JVBERi0xLjQKJc...",   // base64 do PDF já gerado pelo ERP
     "XMLImpressao": "<NFe>...</NFe>"        // XML cru, usado só na impressão direta (contracts/impressao-local-api.md)
+  }
+}
+```
+
+### Resposta — NFCe gravada e rejeitada (2xx, `Autorizada ≠ 'S'`, AD-207/AD-238)
+
+```jsonc
+{
+  "NotaFiscal": {
+    "NumeroNota": "0", "SerieNota": "",     // a KB não preenche no 'R' (pendência 51) — opcionais
+    "Autorizada": "R",                      // 'R' = SEFAZ; outros status de lote chegam como 'N' (LotRetStat/LotRetMot)
+    "ErroCodigo": "531",                    // exibido em campo próprio no bloco "Retorno da SEFAZ"
+    "ErroMensagem": "Rejeicao: ...",        // pode vir em HTML (pendência 50) — o Checkout extrai só o texto
+    "RetornoMensagemIA": "...",             // sugestão da CentriumIA — texto puro, quebras de linha preservadas; ausente do YAML
+    "UrlChamadas": "https://...",           // link "Abrir no ERP" — só http(s) absoluto, target=_blank rel="noopener noreferrer"; ausente do YAML
+    "PDFImpressao": "", "XMLImpressao": ""
   }
 }
 ```

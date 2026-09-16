@@ -80,6 +80,19 @@ describe('mapearVendaExistente — documento completo', () => {
     expect(venda).not.toHaveProperty('numeroDav');
   });
 
+  it('lê o ClienteNome do documento (AD-237)', () => {
+    expect(
+      mapearVendaExistente(documentoValidado({ ClienteNome: 'CLIENTE SINTETICO' })).clienteNome,
+    ).toBe('CLIENTE SINTETICO');
+  });
+
+  it('ClienteNome ausente ou em branco vira null', () => {
+    expect(mapearVendaExistente(documentoValidado({ ClienteNome: '  ' })).clienteNome).toBeNull();
+    expect(
+      mapearVendaExistente(documentoValidado({ ClienteNome: undefined })).clienteNome,
+    ).toBeNull();
+  });
+
   it('tira o nome do vendedor do documento (AD-172)', () => {
     const venda = mapearVendaExistente(documentoValidado({ vendedorNome: 'MARIANA ALVES' }));
 

@@ -20,6 +20,8 @@ import type { SessaoUsuario } from '../../../shared/schemas/bootstrap.schema';
 import {
   mapClienteCheckoutParaVenda,
   mapClienteDefaultParaVenda,
+  mapClienteDoDocumentoParaVenda,
+  type ClienteDoDocumento,
 } from '../../services/cliente/clienteMapper';
 
 /**
@@ -121,6 +123,17 @@ export interface ClienteSlice extends ClienteState {
   selecionarCliente(
     cliente: ClienteCheckout,
     origem: OrigemSelecaoCliente,
+  ): Promise<ResultadoAplicacaoCliente>;
+
+  /**
+   * Associa o cliente de um documento importado **só pelo código e pelo nome
+   * que o próprio documento trouxe** (`ClienteNome` de `GetDav`/`CarregarNFCe`,
+   * AD-237) — usado quando o `GetCliente` falhou. Mesmas guardas e mesmos
+   * eventos de `selecionarCliente`; lista de preço e convênio ficam `null`.
+   */
+  selecionarClienteDoDocumento(
+    cliente: ClienteDoDocumento,
+    origem: 'DAV' | 'RASCUNHO',
   ): Promise<ResultadoAplicacaoCliente>;
 
   /**
@@ -295,6 +308,59 @@ export function criarClienteSlice(
       return true;
     }
 
+    /**
+     * Associação de um cliente já montado — o caminho comum de
+     * `selecionarCliente` (cadastro do `GetCliente`) e de
+     * `selecionarClienteDoDocumento` (só o nome do documento, AD-237). Os dois
+     * diferem apenas em **de onde** vem o `ClienteVenda`.
+     */
+    async function associar(
+      novo: ClienteVenda,
+      origem: OrigemSelecaoCliente,
+    ): Promise<ResultadoAplicacaoCliente> {
+      if (clienteBloqueado()) {
+        return 'bloqueado';
+      }
+
+      // Reescolher o cliente que já está na venda não é troca: registrar
+      // `CLIENTE_TROCADO` com anterior === novo mandaria ao ERP, no log de
+      // `FaturarNFCe`, uma troca que não aconteceu (`FR-015`), e o re-fetch
+      // rebuscaria todos os SKUs para chegar ao mesmo preço.
+      if (get().clienteAtual?.codigoCliente === novo.codigoCliente) {
+        return 'inalterado';
+      }
+
+      // A recusa por item vem **depois** da guarda acima: reescolher quem já
+      // está na venda não muda cliente nenhum, e avisar ali que "o cliente
+      // não pode mais ser trocado" alarmaria o operador por um gesto que não
+      // trocaria nada.
+      if (trocaRecusadaPorItem(origem)) {
+        return 'bloqueado';
+      }
+
+      const primeiraEscolha = !get().houveEscolhaExplicita;
+
+      await aplicar(novo, (anterior) => {
+        // Sem escolha explícita anterior, o que existia era o default
+        // silencioso (ou nada): a primeira interação do operador é uma
+        // *seleção*, não uma troca (D9).
+        if (primeiraEscolha || anterior === null) {
+          get().registrarEventoAuditoria(
+            eventoClienteSelecionado({ codigoCliente: novo.codigoCliente, nome: novo.nome }),
+          );
+          return;
+        }
+        get().registrarEventoAuditoria(
+          eventoClienteTrocado({
+            codigoClienteAnterior: anterior.codigoCliente,
+            codigoClienteNovo: novo.codigoCliente,
+          }),
+        );
+      });
+
+      return 'aplicado';
+    }
+
     return {
       clienteAtual: null,
       houveEscolhaExplicita: false,
@@ -312,51 +378,11 @@ export function criarClienteSlice(
         });
       },
 
-      selecionarCliente: async (cliente, origem) => {
-        if (clienteBloqueado()) {
-          return 'bloqueado';
-        }
+      selecionarCliente: (cliente, origem) =>
+        associar(mapClienteCheckoutParaVenda(cliente, origem), origem),
 
-        const novo = mapClienteCheckoutParaVenda(cliente, origem);
-
-        // Reescolher o cliente que já está na venda não é troca: registrar
-        // `CLIENTE_TROCADO` com anterior === novo mandaria ao ERP, no log de
-        // `FaturarNFCe`, uma troca que não aconteceu (`FR-015`), e o re-fetch
-        // rebuscaria todos os SKUs para chegar ao mesmo preço.
-        if (get().clienteAtual?.codigoCliente === novo.codigoCliente) {
-          return 'inalterado';
-        }
-
-        // A recusa por item vem **depois** da guarda acima: reescolher quem já
-        // está na venda não muda cliente nenhum, e avisar ali que "o cliente
-        // não pode mais ser trocado" alarmaria o operador por um gesto que não
-        // trocaria nada.
-        if (trocaRecusadaPorItem(origem)) {
-          return 'bloqueado';
-        }
-
-        const primeiraEscolha = !get().houveEscolhaExplicita;
-
-        await aplicar(novo, (anterior) => {
-          // Sem escolha explícita anterior, o que existia era o default
-          // silencioso (ou nada): a primeira interação do operador é uma
-          // *seleção*, não uma troca (D9).
-          if (primeiraEscolha || anterior === null) {
-            get().registrarEventoAuditoria(
-              eventoClienteSelecionado({ codigoCliente: novo.codigoCliente, nome: novo.nome }),
-            );
-            return;
-          }
-          get().registrarEventoAuditoria(
-            eventoClienteTrocado({
-              codigoClienteAnterior: anterior.codigoCliente,
-              codigoClienteNovo: novo.codigoCliente,
-            }),
-          );
-        });
-
-        return 'aplicado';
-      },
+      selecionarClienteDoDocumento: (cliente, origem) =>
+        associar(mapClienteDoDocumentoParaVenda(cliente, origem), origem),
 
       cadastrarESelecionarCliente: async (dados, criar) => {
         // A recusa vem **antes** de `criar`: cadastrar no ERP um cliente que a

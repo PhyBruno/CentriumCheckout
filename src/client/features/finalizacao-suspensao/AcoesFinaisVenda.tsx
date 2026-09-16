@@ -79,6 +79,11 @@ export function ProvedorFinalizacaoVenda({
           desfecho="REJEITADA"
           mensagem={estado.mensagem}
           documento={{ numeroNota: estado.numeroNota, serieNota: estado.serieNota }}
+          retorno={{
+            codigoErro: estado.codigoErro,
+            sugestaoIA: estado.sugestaoIA,
+            urlChamadas: estado.urlChamadas,
+          }}
           onFechar={descartar}
         />
       )}

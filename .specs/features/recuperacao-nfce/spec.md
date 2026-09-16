@@ -61,7 +61,8 @@ Frame `PDV Online Web - Modal Recuperação NFCe` em `design/CentriumCheckout.pe
 
 ## Edge Cases
 
-- WHEN o operador usa qualquer filtro além do texto de busca (cliente/vendedor) THEN ⚠️ não há suporte — `NfcStatus` e `NfcDatEmi` são hardcoded no `DataProvider` (`DpCheckout_RascunhosLista`), a listagem é sempre "só rascunhos" + "últimos 30 dias", independentemente do que o Checkout envie. Não é uma questão de o contrato aceitar ou não parâmetro adicional — é limitação real do servidor (Fato F2).
+- WHEN o operador abre a janela THEN o sistema SHALL exibir as pílulas "Data inicial"/"Data final" com os últimos 7 dias e SHALL enviar **sempre** `Datainicial`/`Datafinal` (`YYYY-MM-DD`) em `GetListaNFCes`; WHEN o operador troca uma das datas THEN a listagem SHALL ser refeita na página 1. **Corrigido em 2026-09-16 (AD-237):** o `DpCheckout_RascunhosLista` do contrato de 2026-09-14 filtra `NfcDatEmi` pelo período recebido (sem datas, usa os últimos 90 dias). A limitação registrada antes — período fixo no servidor, filtro de data ignorado (Fato F2, AD-220, pendência 53) — deixou de valer.
+- WHEN o operador usa qualquer outro filtro além do texto de busca (cliente/vendedor) e do período THEN ⚠️ não há suporte — `NfcStatus` é fixo no `DataProvider` ("só rascunhos") e não existe parâmetro de status, vendedor, caixa ou série.
 - WHEN o Checkout monta o request de `GetListaNFCes` THEN o sistema SHALL limitar `TamanhoPagina` no próprio request, não confiar no servidor para isso — mesmo bug de paginação de cap-50 anulado já encontrado em `ListaDAVs` (AD-024 em `.specs/project/STATE.md`): `&TamanhoPaginaAuxiliar` é limitado a 50 e depois sobrescrito sem teto por uma segunda atribuição quando `&TamanhoPagina` não é vazio.
 - WHEN dois operadores acessam concorrentemente o mesmo rascunho de NFCe suspenso (ex.: ambos tentam retomar o mesmo rascunho) THEN o sistema SHALL NÃO implementar nenhum mecanismo de lock otimista/pessimista — a resolução de conflito fica inteiramente a cargo do próprio ERP. **Resolvido (2026-08-25, AD-052):** decisão direta do usuário, mesma regra aplicada a `.specs/features/importacao-dav/spec.md`.
 - WHEN a venda retomada tem uma forma de pagamento removível (dinheiro/cartão manual) já aplicada e é suspensa novamente THEN esse pagamento SHALL persistir, disponível na próxima retomada — ver `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases, AD-042).
@@ -78,7 +79,7 @@ Frame `PDV Online Web - Modal Recuperação NFCe` em `design/CentriumCheckout.pe
 | NFCE-04 | Pré-seleção de vendedor salvo no rascunho | - | Verified (mesma regra de `CarregarNFCe`, AD-024) |
 | NFCE-05 | Sem lock entre operadores no mesmo rascunho | - | Verified (2026-08-25, AD-052) |
 
-**Coverage:** 5 total, 1 limitação conhecida sem solução prevista (filtros de `GetListaNFCes` restritos a nome de cliente/vendedor, sem busca por número — limitação real do `DataProvider` do ERP, não pendência a resolver).
+**Coverage:** 5 total, 1 limitação conhecida sem solução prevista (filtros de `GetListaNFCes` restritos a nome de cliente/vendedor e período de emissão, sem busca por número — limitação real do `DataProvider` do ERP, não pendência a resolver).
 
 ---
 

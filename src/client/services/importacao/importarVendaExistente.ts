@@ -35,7 +35,10 @@ import {
   type VendaImportada,
   type VendedorDaLista,
 } from '../../domain/importacaoVenda/mapearVendaExistente';
+import type { ClienteDoDocumento } from '../cliente/clienteMapper';
+import { ErroClienteNaoEncontrado } from '../cliente/clienteQueries';
 import type { ErpClient } from '../erpClient';
+import { ErroSessaoEncerrada } from '../errosErp';
 
 /**
  * Por que a venda em curso não aceita a importação de um documento.
@@ -256,6 +259,12 @@ export interface ImportacaoVendaDeps {
   /** Feature 005 — já ligada à origem correta pelo hook que monta as portas. */
   selecionarCliente(cliente: ClienteCheckout): Promise<unknown>;
   /**
+   * Feature 005 — associa o cliente só por código e `ClienteNome` do documento,
+   * quando `resolverCliente` falhou (AD-237). Mesma ligação de origem de
+   * `selecionarCliente`.
+   */
+  selecionarClienteDoDocumento(cliente: ClienteDoDocumento): Promise<unknown>;
+  /**
    * Feature 012 — sobrescreve o vendedor da venda pelo do documento.
    *
    * A **origem** (`'DAV'`/`'RASCUNHO'`) não entra aqui: quem monta a porta já
@@ -309,6 +318,47 @@ async function resolverDescricoes(venda: VendaImportada, deps: ImportacaoVendaDe
   );
 }
 
+type ClienteResolvido =
+  | { readonly tipo: 'cadastro'; readonly cadastro: ClienteCheckout }
+  | { readonly tipo: 'documento'; readonly doDocumento: ClienteDoDocumento };
+
+/**
+ * `GetCliente` do cliente do documento, com o `ClienteNome` do próprio
+ * documento como recuo (AD-237).
+ *
+ * O `GetCliente` **continua sendo chamado sempre** (decisão do plano de
+ * 2026-09-16): ele traz lista de preço, convênio, crediário e celular, que o
+ * documento não tem e de que a precificação dos itens seguintes depende.
+ *
+ * O recuo vale para falha de rede, resposta inválida e cadastro em branco
+ * (`ErroClienteIncompleto`, AD-204) — casos em que o cliente existe e o ERP só
+ * não o entregou. Não vale para:
+ * - `ErroClienteNaoEncontrado`: o ERP afirma que o código não existe, e
+ *   importar uma venda para um cliente inexistente só falharia no `FaturarNFCe`;
+ * - `ErroSessaoEncerrada`: nenhuma chamada seguinte daria certo.
+ */
+async function resolverClienteDaVenda(
+  venda: VendaImportada,
+  deps: ImportacaoVendaDeps,
+): Promise<ClienteResolvido> {
+  try {
+    return { tipo: 'cadastro', cadastro: await deps.resolverCliente(venda.clienteCodigo) };
+  } catch (erro) {
+    const nome = venda.clienteNome;
+    if (
+      nome === null ||
+      erro instanceof ErroClienteNaoEncontrado ||
+      erro instanceof ErroSessaoEncerrada
+    ) {
+      throw erro;
+    }
+    return {
+      tipo: 'documento',
+      doDocumento: { codigoCliente: venda.clienteCodigo, nome },
+    };
+  }
+}
+
 /**
  * Traz um documento existente para a venda em andamento (`DAV-02`/`NFCE-01`).
  *
@@ -317,10 +367,12 @@ async function resolverDescricoes(venda: VendaImportada, deps: ImportacaoVendaDe
  * letra: uma falha em qualquer um dos dois deixa o carrinho exatamente como
  * estava, sem meio-documento importado.
  *
- * Uma falha ao resolver o cliente aborta a importação inteira em vez de seguir
- * com o cliente anterior: `FR-007` exige que o cliente do documento substitua o
- * que estiver na venda, e importar itens sob o cliente errado produziria uma
- * NFCe com preço e destinatário divergentes do documento de origem.
+ * O cliente do documento sempre substitui o da venda (`FR-007`) — importar itens
+ * sob o cliente errado produziria uma NFCe com destinatário divergente do
+ * documento. Por isso uma falha do `GetCliente` **só não aborta** quando o
+ * próprio documento nomeia o cliente (`ClienteNome`, AD-237): aí ele entra com
+ * código e nome do documento (ver `resolverClienteDaVenda`). Sem o nome, a
+ * falha continua abortando a importação inteira.
  *
  * **A trilha de auditoria existente é preservada**, e o evento da fonte é
  * acrescentado a ela — nenhuma das duas features chama `resetarAuditoria`
@@ -343,7 +395,7 @@ export async function importarVendaExistente(
 
   const documento = await fonte.carregar(deps.erpClient);
   const venda = mapearVendaExistente(documento, fonte.vendedorDaLista);
-  const cliente = await deps.resolverCliente(venda.clienteCodigo);
+  const cliente = await resolverClienteDaVenda(venda, deps);
 
   // Condição do documento, ainda na fase de rede (AD-171).
   //
@@ -379,7 +431,9 @@ export async function importarVendaExistente(
   // o que de fato acontece.
   deps.definirIdentidadeVenda({ origem: fonte.origem, numeroRascunho: venda.numeroRascunho });
   deps.importarLinhasCongeladas(venda.linhas, fonte.origem);
-  await deps.selecionarCliente(cliente);
+  await (cliente.tipo === 'cadastro'
+    ? deps.selecionarCliente(cliente.cadastro)
+    : deps.selecionarClienteDoDocumento(cliente.doDocumento));
   deps.trocarVendedor({ codigo: venda.vendedorCodigo, nome: venda.vendedorNome });
 
   // A condição vem **depois** de linhas/cliente e **antes** das formas, e as

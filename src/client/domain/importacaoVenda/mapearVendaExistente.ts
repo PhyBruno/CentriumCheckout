@@ -82,6 +82,15 @@ export interface VendaImportada {
   /** Sempre sobrescreve o cliente atual da venda (`FR-007`). */
   readonly clienteCodigo: number;
   /**
+   * `ClienteNome` do documento (contrato de 2026-09-14, AD-237), ou `null`
+   * quando ausente/em branco.
+   *
+   * Não substitui o `GetCliente`, que continua trazendo lista de preço,
+   * convênio e celular: é o que permite importar mesmo quando essa chamada
+   * falha, exibindo o cliente pelo nome que o próprio documento dá.
+   */
+  readonly clienteNome: string | null;
+  /**
    * Sempre sobrescreve o vendedor atual da venda (`FR-007`).
    *
    * O do documento, ou — quando o ERP o devolve `0` (divergência registrada em
@@ -176,14 +185,12 @@ const SEM_VENDEDOR_DA_LISTA: VendedorDaLista = { codigo: null, nome: null };
  * sem produto): devolve arrays vazios. Lança **só** por violação de contrato —
  * `clienteCodigo`, `vendedorCodigo` ou `NumeroRascunho` ausentes.
  *
- * Não recebe o nome do cliente: `clienteCodigo` é o único dado de cliente que
- * a venda importada carrega, e quem resolve o nome de exibição é
- * `resolverCliente` (`GetCliente` por `CodCliente`, AD-115) — o mesmo caminho
- * que já roda para qualquer troca de cliente. Um campo `clienteNome` capturado
- * da linha da listagem existiu aqui até 2026-09-08 (AD-173): nasceu no design
- * original da 006, antes de `GetCliente` aceitar `CodCliente` (D4), e sobrou
- * como campo morto depois — nenhum consumidor lia `VendaImportada.clienteNome`,
- * porque `deps.selecionarCliente` já usa o nome do `ClienteCheckout` resolvido.
+ * O nome do cliente vem do **documento** (`ClienteNome`, AD-237), nunca da
+ * linha da listagem. O cadastro completo continua sendo resolvido por
+ * `resolverCliente` (`GetCliente` por `CodCliente`, AD-115); o nome do
+ * documento é o recuo quando essa chamada falha. (Um `clienteNome` capturado da
+ * **listagem** existiu aqui até 2026-09-08 e foi removido como campo morto por
+ * AD-173; o de agora tem outra fonte e um consumidor.)
  */
 export function mapearVendaExistente(
   resposta: CheckoutFaturarNFCe,
@@ -212,6 +219,7 @@ export function mapearVendaExistente(
       typeof resposta.CondicaoPagamentoCodigo === 'number' ? resposta.CondicaoPagamentoCodigo : 0,
     numeroRascunho: resposta.NumeroRascunho,
     clienteCodigo: resposta.clienteCodigo,
+    clienteNome: ouNulo((resposta.ClienteNome ?? '').trim()),
     // `0` é o "sem vendedor" do SDT — e, no ERP de 2026-09-14, também o que
     // `CarregarNFCe`/`GetDav` devolvem por engano com vendedor gravado. Cai no
     // código da listagem quando houver; sem ele, continua `0`, como antes.

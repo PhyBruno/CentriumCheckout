@@ -58,6 +58,25 @@ test.describe('User Story 1 — listar e buscar rascunhos', () => {
     await expect(page.getByTestId('nfce-pagina-proxima')).toBeDisabled();
   });
 
+  test('o período de emissão filtra a lista no ERP (AD-237)', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await abrirJanelaDeRecuperacao(page);
+    await expect(page.getByTestId('linha-nfce')).toHaveCount(2);
+
+    // Os rascunhos sintéticos foram emitidos há 1 e há 4 dias: começar há 2
+    // dias deixa só o mais recente.
+    const doisDiasAtras = new Date();
+    doisDiasAtras.setDate(doisDiasAtras.getDate() - 2);
+    const dia = String(doisDiasAtras.getDate()).padStart(2, '0');
+    const mes = String(doisDiasAtras.getMonth() + 1).padStart(2, '0');
+    const campo = page.getByTestId('nfce-data-inicial');
+    await campo.fill(`${dia}/${mes}/${String(doisDiasAtras.getFullYear())}`);
+    await campo.press('Tab');
+
+    await expect(page.getByTestId('linha-nfce')).toHaveCount(1);
+    await expect(page.getByTestId('linha-nfce')).toContainText('CLIENTE CONVENIADO');
+  });
+
   test('busca por nome de cliente filtra a lista', async ({ page }) => {
     await abrirTelaDeVenda(page);
     await abrirJanelaDeRecuperacao(page);

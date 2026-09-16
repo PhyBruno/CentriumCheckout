@@ -32,13 +32,14 @@ interface CheckoutListaDAVsResponse {
     DataEmissao: string;    // "YYYY-MM-DD"
     ClienteCodigo: number;
     ClienteNome: string;
-    VendedorCodigo: number; // sem VendedorNome correspondente — AD-095
+    VendedorCodigo: number;
+    VendedorNome?: string;  // no SDT desde AD-172, mas o ERP de 2026-09-14 devolve sempre "" (pendência 57, AD-237) — a janela cai em "Vendedor #<código>"
     ValorTotal: number;     // double do ERP — exibição, não usado em cálculo
   }>;
 }
 ```
 
-Schema Zod valida este shape 1:1 — **sem** `VendedorNome`, **sem** `Status`/`Ativo` (não existem no schema real).
+Schema Zod valida este shape — `VendedorNome` opcional e tratado como ausente quando vazio; **sem** `Status`/`Ativo` (não existem no schema real).
 
 **Filtros não suportados** (documentado, não implementado): cliente por seleção estruturada (só busca livre por nome via `Txtbusca`), status, vendedor, tipo, origem — nenhum parâmetro correspondente existe em `DpCheckout_GetDavs` (AD-024, herdado sem mudança nesta fase).
 

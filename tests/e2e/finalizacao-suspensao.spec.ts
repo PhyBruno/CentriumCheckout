@@ -223,6 +223,17 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     // se perdia quando o schema reprovava a resposta inteira por falta de PDF.
     await expect(page.getByTestId('erro-finalizacao')).toContainText(/Duplicidade de NF-e/i);
     await expect(page.getByTestId('erro-finalizacao')).toContainText('539');
+    // Retorno estruturado do contrato de 2026-09-14 (AD-238): sugestão da IA
+    // como texto e link do ERP que abre em outra aba.
+    await expect(page.getByTestId('erro-finalizacao')).toContainText('Retorno da SEFAZ');
+    await expect(page.getByTestId('sugestao-ia-texto')).toContainText('Confira a numeracao');
+    const link = page.getByRole('link', { name: /Abrir no ERP/i });
+    await expect(link).toHaveAttribute(
+      'href',
+      'https://atendimento.exemplo.invalid/chamado?origem=checkout',
+    );
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(link).toHaveAttribute('target', '_blank');
     // **Nenhuma identificação de documento**, e é o comportamento correto: o ERP
     // real devolve `NumeroNota: "0"`/`SerieNota: ""` na rejeição, mesmo tendo
     // gravado a nota (item 51 de `PENDENCIES.md`, medido em 2026-09-10). Antes

@@ -48,6 +48,18 @@ export const mensagemErpSchema = z.looseObject({
 export const notaFiscalRespostaSchema = z.looseObject({
   PDFImpressao: z.string().min(1),
   XMLImpressao: z.string().min(1),
+  /**
+   * Número e série da nota **fiscal** emitida (`MovnNum`), exibidos no diálogo
+   * do documento fiscal (AD-238). Opcionais: são identificação, não decisão —
+   * uma resposta sem eles continua sendo NFCe autorizada, e o diálogo só omite
+   * a linha. `NumeroNota` é `int64` e o ERP real o serializa como string.
+   *
+   * `.catch(undefined)`: um número malformado aqui faria uma NFCe **autorizada**
+   * cair no caminho de rejeição/falha e prender a venda no caixa. Rótulo
+   * ilegível vira rótulo ausente, e só isso.
+   */
+  NumeroNota: inteiroErp.optional().catch(undefined),
+  SerieNota: z.string().optional().catch(undefined),
 });
 
 /**
@@ -92,7 +104,23 @@ export const notaFiscalRejeitadaSchema = z.looseObject({
    */
   Autorizada: z.string().optional(),
   ErroCodigo: inteiroErp.optional(),
+  /**
+   * Texto do Fisco — que o ERP já devolveu como um documento HTML inteiro
+   * (pendência 50). O mapper extrai só o texto (`textoSemHtml`).
+   */
   ErroMensagem: z.string().optional(),
+  /**
+   * Sugestão de correção gerada pela CentriumIA (`longvarchar`, contrato de
+   * 2026-09-14 — na KB, ausente do YAML; AD-238). Exibida **como texto puro**.
+   */
+  RetornoMensagemIA: z.string().optional(),
+  /**
+   * Link do ERP para abrir um chamado (`Url` na KB, ausente do YAML; AD-238).
+   * `z.string()` e não `z.url()` de propósito: uma URL inválida não pode
+   * derrubar a rejeição inteira — o mapper a descarta (`urlExternaSegura`), e só
+   * `http:`/`https:` viram link.
+   */
+  UrlChamadas: z.string().optional(),
 });
 
 /**

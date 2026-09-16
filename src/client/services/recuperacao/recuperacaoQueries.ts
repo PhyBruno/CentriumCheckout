@@ -81,6 +81,14 @@ export interface PaginaDeRascunhos {
 }
 
 export interface FiltrosRascunho {
+  /**
+   * `YYYY-MM-DD`, **obrigatório** (AD-237). O ERP de 2026-09-14 filtra por
+   * `Datainicial`/`Datafinal` e, sem eles, usa os últimos 90 dias
+   * (`DpCheckout_RascunhosLista`) — um período que o operador não vê na tela.
+   */
+  readonly dataInicial: string;
+  /** `YYYY-MM-DD`, obrigatório pelo mesmo motivo. */
+  readonly dataFinal: string;
   readonly txtBusca?: string;
   readonly pagina?: number;
   readonly tamanhoPagina?: number;
@@ -104,8 +112,9 @@ async function chamarErp(cliente: ErpClient, url: string): Promise<Response> {
  * "sem filtro" para o ERP.
  *
  * Não há busca por número da nota: o `DataProvider` do ERP filtra só nome de
- * cliente e de vendedor. (O filtro de data, que o ERP de 2026-09-14 passou a
- * aceitar, é da frente C do plano de AD-235 — ainda não enviado aqui.)
+ * cliente e de vendedor. O período vai **sempre** (AD-237) — ver
+ * `FiltrosRascunho.dataInicial`. O YAML de 2026-09-14 não lista os dois
+ * parâmetros; o ERP de preview os aceita e filtra (precedência ERP > YAML).
  */
 function parametrosDaLista(filtros: FiltrosRascunho): URLSearchParams {
   const parametros = new URLSearchParams({
@@ -113,6 +122,8 @@ function parametrosDaLista(filtros: FiltrosRascunho): URLSearchParams {
     Tamanhopagina: String(
       Math.min(filtros.tamanhoPagina ?? ITENS_POR_PAGINA, LIMITE_TAMANHO_PAGINA),
     ),
+    Datainicial: filtros.dataInicial,
+    Datafinal: filtros.dataFinal,
   });
 
   const busca = filtros.txtBusca?.trim() ?? '';
@@ -182,9 +193,13 @@ export function useListaNFCes(
     // `FiltrosRascunho` e altera o corpo da resposta, então omiti-lo faria duas
     // consultas de tamanhos diferentes compartilharem a mesma entrada de cache
     // — a segunda receberia a página da primeira sem nem chamar o ERP.
+    // As datas entram na chave (AD-237): sem elas, trocar o período serviria a
+    // página do período anterior direto do cache.
     queryKey: [
       'lista-nfces',
       filtros.txtBusca?.trim() ?? '',
+      filtros.dataInicial,
+      filtros.dataFinal,
       filtros.pagina ?? PAGINA_INICIAL,
       Math.min(filtros.tamanhoPagina ?? ITENS_POR_PAGINA, LIMITE_TAMANHO_PAGINA),
     ] as const,

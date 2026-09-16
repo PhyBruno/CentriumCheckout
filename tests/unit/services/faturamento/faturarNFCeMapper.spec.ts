@@ -67,8 +67,117 @@ describe('FATURAR autorizado', () => {
       notaFiscal: expect.objectContaining({
         PDFImpressao: PDF_SINTETICO,
         XMLImpressao: XML_SINTETICO,
+        // AD-238: número e série da nota emitida, com o `int64` em string.
+        NumeroNota: 9001,
+        SerieNota: '1',
       }),
     });
+  });
+
+  it('número e série são opcionais no sucesso', () => {
+    const resultado = mapearRespostaFaturamento(
+      'FATURAR',
+      respostaRealDe({ Autorizada: 'S', PDFImpressao: PDF_SINTETICO, XMLImpressao: XML_SINTETICO }),
+    );
+
+    expect(resultado).toMatchObject({ estado: 'ok' });
+  });
+});
+
+/**
+ * AD-238 — retorno estruturado da rejeição no contrato de 2026-09-14:
+ * `RetornoMensagemIA` (sugestão da CentriumIA) e `UrlChamadas` (link do ERP).
+ */
+describe('NFCe rejeitada — retorno estruturado (AD-238)', () => {
+  function rejeitadaCom(campos: Record<string, unknown>): unknown {
+    return respostaRealDe({
+      NumeroNota: '1305',
+      SerieNota: '14',
+      Autorizada: 'R',
+      ErroCodigo: '531',
+      ErroMensagem: 'Rejeicao: Total da BC ICMS difere do somatorio dos itens',
+      PDFImpressao: '',
+      XMLImpressao: '',
+      ...campos,
+    });
+  }
+
+  it('separa código, mensagem, sugestão da IA e link', () => {
+    const resultado = mapearRespostaFaturamento(
+      'FATURAR',
+      rejeitadaCom({
+        RetornoMensagemIA: 'Confira a base de cálculo.\nDepois reenvie.',
+        UrlChamadas: 'https://atendimento.exemplo.invalid/chamado?id=1',
+      }),
+    );
+
+    expect(resultado).toEqual({
+      estado: 'rejeitada',
+      mensagem: 'Rejeicao: Total da BC ICMS difere do somatorio dos itens',
+      codigoErro: 531,
+      numeroNota: 1305,
+      serieNota: '14',
+      sugestaoIA: 'Confira a base de cálculo.\nDepois reenvie.',
+      urlChamadas: 'https://atendimento.exemplo.invalid/chamado?id=1',
+    });
+  });
+
+  it('sem os campos novos, sugestão e link ficam null (desfecho N, ERP antigo)', () => {
+    const resultado = mapearRespostaFaturamento('FATURAR', rejeitadaCom({ Autorizada: 'N' }));
+
+    expect(resultado).toMatchObject({
+      estado: 'rejeitada',
+      codigoErro: 531,
+      sugestaoIA: null,
+      urlChamadas: null,
+    });
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'vbscript:msgbox(1)',
+    '/relativo/sem/origem',
+    'não é url',
+    '   ',
+  ])('descarta UrlChamadas que não é http(s) absoluta: %s', (url) => {
+    const resultado = mapearRespostaFaturamento('FATURAR', rejeitadaCom({ UrlChamadas: url }));
+
+    expect(resultado).toMatchObject({ estado: 'rejeitada', urlChamadas: null });
+  });
+
+  it('aceita http além de https', () => {
+    const resultado = mapearRespostaFaturamento(
+      'FATURAR',
+      rejeitadaCom({ UrlChamadas: 'http://erp.exemplo.invalid/x' }),
+    );
+
+    expect(resultado).toMatchObject({ urlChamadas: 'http://erp.exemplo.invalid/x' });
+  });
+
+  it('extrai só o texto quando ErroMensagem vem em HTML (pendência 50)', () => {
+    const resultado = mapearRespostaFaturamento(
+      'FATURAR',
+      rejeitadaCom({
+        ErroMensagem:
+          '<div class="header-aviso-erro-nfe"><pre>531 - Rejeicao: Total &amp; BC</pre>' +
+          '<script>alert(1)</script><span style="x">Nota:1305/14</span></div>',
+      }),
+    );
+
+    expect(resultado).toMatchObject({
+      estado: 'rejeitada',
+      mensagem: '531 - Rejeicao: Total & BC\nNota:1305/14',
+    });
+  });
+
+  it('sugestão só de espaços vira null', () => {
+    const resultado = mapearRespostaFaturamento(
+      'FATURAR',
+      rejeitadaCom({ RetornoMensagemIA: '  \n ' }),
+    );
+
+    expect(resultado).toMatchObject({ sugestaoIA: null });
   });
 });
 
@@ -89,9 +198,13 @@ describe('NFCe rejeitada — o ERP gravou o documento (correção do usuário, 2
 
     expect(resultado).toEqual({
       estado: 'rejeitada',
-      mensagem: 'Rejeicao: Duplicidade de NF-e (erro 539)',
+      // O código vai em campo próprio (AD-238), não mais colado no texto.
+      mensagem: 'Rejeicao: Duplicidade de NF-e',
+      codigoErro: 539,
       numeroNota: 9001,
       serieNota: '1',
+      sugestaoIA: null,
+      urlChamadas: null,
     });
   });
 
@@ -105,10 +218,13 @@ describe('NFCe rejeitada — o ERP gravou o documento (correção do usuário, 2
 
     expect(resultado).toEqual({
       estado: 'rejeitada',
-      // Sem `(erro 0)` pendurado: zero é o "sem erro" do contrato.
       mensagem: 'Certificado digital vencido.',
+      // `0` é o "sem erro" do contrato: não vira código a exibir.
+      codigoErro: null,
       numeroNota: 9001,
       serieNota: null,
+      sugestaoIA: null,
+      urlChamadas: null,
     });
   });
 
@@ -207,6 +323,9 @@ describe('forma real do ERP — NotaFiscal na raiz, sem envelope', () => {
       // anuncia nenhum documento (item 51 de `PENDENCIES.md`).
       numeroNota: 0,
       serieNota: null,
+      codigoErro: null,
+      sugestaoIA: null,
+      urlChamadas: null,
     });
   });
 

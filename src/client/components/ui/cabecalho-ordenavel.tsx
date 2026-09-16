@@ -7,8 +7,7 @@ import { cn } from '@/lib/utils';
  *
  * **Ordena só a página carregada, e isso é o contrato — não uma limitação
  * escondida.** `ListaDAVs` e `GetListaNFCes` paginam no servidor e não aceitam
- * parâmetro de ordenação (AD-220 já mostrou que nem o filtro de data o segundo
- * endpoint respeita), então não existe informação local sobre as linhas das
+ * parâmetro de ordenação, então não existe informação local sobre as linhas das
  * outras páginas. Ordenar o que está em mãos é o máximo honesto: o operador vê
  * a página corrente reorganizada, nunca um "top 10 geral" que a tela não tem
  * como calcular.

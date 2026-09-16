@@ -14,8 +14,9 @@ Cópia dos dados relevantes de `ClienteCheckout` (ou dos campos disponíveis de 
 export interface ClienteVenda {
   readonly codigoCliente: number;          // ClienteCheckout.CodCliente / SessaoUsuario.ClienteDefaultCodigo
   readonly nome: string;
-  readonly documento: string | null;       // CPF — sempre pessoa física (AD-133); null só para origem 'DEFAULT' (GetSessao não devolve documento, ver D3)
-  readonly listaPreco: number | null;       // lista de preço do cliente — ClienteCheckout.ListaPreco, ou SessaoUsuario.ListaPrecoDefault quando origem = 'DEFAULT' (AD-108)
+  readonly documento: string | null;       // CPF — sempre pessoa física (AD-133); null para origem 'DEFAULT' (GetSessao não devolve documento, ver D3) e para cliente de documento importado sem GetCliente (AD-237)
+  readonly celular: string | null;          // ClienteCheckout.celular; para 'DEFAULT', SessaoUsuario.ClienteDefaultContato (contrato de 2026-09-14, AD-237); null quando o ERP não informa
+  readonly listaPreco: number | null;       // lista de preço do cliente — ClienteCheckout.ListaPreco, ou SessaoUsuario.ListaPrecoDefault quando origem = 'DEFAULT' (AD-108); null no cadastro simplificado e no cliente de documento sem GetCliente (AD-237)
   readonly descontoConvenio: number | null; // ClienteCheckout.DescontoConvenio — percentual 0-100; sempre 0 para origem = 'DEFAULT' (cliente default não tem convênio, AD-108)
   readonly codigoConvenio: number | null;   // ClienteCheckout.CodigoConvenio
   readonly origem: OrigemCliente;

@@ -18,6 +18,7 @@ import {
   type ResultadoFaturamento,
 } from '../../services/faturamento/faturarNFCeMutation';
 import type { NotaFiscalResposta } from '../../../shared/schemas/faturarNFCe.schema';
+import type { RetornoRejeicao } from '../../services/faturamento/faturarNFCeMapper';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
 import { useSessionStore } from '../../stores/sessionStore';
 import { abrirSessaoDeVenda, useVendaStore } from '../../stores/vendaStore';
@@ -60,12 +61,7 @@ export type EstadoEnvio =
    * recebimento da resposta, para o operador não ver a tela zerar por trás do
    * aviso antes de ter lido o motivo.
    */
-  | {
-      readonly tipo: 'nfce-rejeitada';
-      readonly mensagem: string;
-      readonly numeroNota: number | null;
-      readonly serieNota: string | null;
-    }
+  | ({ readonly tipo: 'nfce-rejeitada' } & RetornoRejeicao)
   /** Aguardando confirmação manual do operador — `FR-004`/AD-038. */
   | { readonly tipo: 'falha-rede'; readonly operacao: SuspenderOuFaturar }
   /**
@@ -400,8 +396,11 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
           aplicarEstado({
             tipo: 'nfce-rejeitada',
             mensagem: resultado.mensagem,
+            codigoErro: resultado.codigoErro,
             numeroNota: resultado.numeroNota,
             serieNota: resultado.serieNota,
+            sugestaoIA: resultado.sugestaoIA,
+            urlChamadas: resultado.urlChamadas,
           });
           return;
 

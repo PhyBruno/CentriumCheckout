@@ -259,7 +259,12 @@ export function useImportacaoDocumento(
       importarLinhasCongeladas: venda.importarLinhasCongeladas,
       editarSnapshotDescricao: venda.editarSnapshotDescricao,
       resolverCliente: (codigo) => fetchClientePorCodigo(codigo),
+      // `GetCliente` continua sendo a fonte do cliente: traz lista de preço,
+      // convênio, crediário e celular (AD-237). Só quando ele falha e o
+      // documento traz `ClienteNome` é que a porta abaixo entra.
       selecionarCliente: (cliente) => venda.selecionarCliente(cliente, origemCliente),
+      selecionarClienteDoDocumento: (cliente) =>
+        venda.selecionarClienteDoDocumento(cliente, origemCliente),
       // Feature 012, ligada ao slice real: sobrescreve `vendedorAtual` com o
       // vendedor do documento, sem evento de auditoria e sem consultar
       // `podeMutarCarrinho()` — é o início de uma venda diferente sendo montada,

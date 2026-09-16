@@ -10,7 +10,7 @@ import {
   fetchListaNFCes,
   fonteRascunho,
 } from '../../src/client/services/recuperacao/recuperacaoQueries';
-import { ErroNegocioErp } from '../../src/client/services/errosErp';
+import { ErroNegocioErp, ErroRedeErp } from '../../src/client/services/errosErp';
 import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
@@ -45,6 +45,7 @@ import {
 
 const CAMINHO_CARREGAR = '/ApiCentriumOAuth/CarregarNFCe';
 const CAMINHO_LISTA = '/ApiCentriumOAuth/GetListaNFCes';
+const PERIODO = { dataInicial: '2026-09-09', dataFinal: '2026-09-16' } as const;
 
 function respostaJson(corpo: unknown, status = 200): Response {
   return new Response(JSON.stringify(corpo), {
@@ -143,6 +144,8 @@ function depsDe(
     // A origem `'RASCUNHO'` é o que o hook da feature fixa (AD-166) — aqui ela
     // é reproduzida para o teste exercitar o mesmo caminho da UI.
     selecionarCliente: (cliente) => venda.selecionarCliente(cliente, 'RASCUNHO'),
+    selecionarClienteDoDocumento: (cliente) =>
+      venda.selecionarClienteDoDocumento(cliente, 'RASCUNHO'),
     trocarVendedor,
     // Catálogo da sessão: o documento aponta `CondicaoPagamentoCodigo: 1`, e
     // `A_VISTA` é a entrada correspondente. Devolver `null` aqui é o caminho de
@@ -196,7 +199,7 @@ describe('GetListaNFCes — parâmetros (research.md D1/D2)', () => {
     const capturadas: string[] = [];
     const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() }, capturadas);
 
-    await fetchListaNFCes({ tamanhoPagina: 500 }, { erpClient });
+    await fetchListaNFCes({ ...PERIODO, tamanhoPagina: 500 }, { erpClient });
 
     expect(capturadas[0]).toContain('Tamanhopagina=50');
   });
@@ -206,15 +209,31 @@ describe('GetListaNFCes — parâmetros (research.md D1/D2)', () => {
     const capturadas: string[] = [];
     const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() }, capturadas);
 
-    await fetchListaNFCes({ txtBusca: '   ' }, { erpClient });
+    await fetchListaNFCes({ ...PERIODO, txtBusca: '   ' }, { erpClient });
 
     expect(capturadas[0]).not.toContain('Txtbusca');
+  });
+
+  /**
+   * AD-237: o ERP de 2026-09-14 filtra por `Datainicial`/`Datafinal` e, sem
+   * eles, devolve os últimos 90 dias (`DpCheckout_RascunhosLista`). O período
+   * vai sempre — é o que a janela mostra ao operador.
+   */
+  it('envia sempre Datainicial e Datafinal (yyyy-mm-dd)', async () => {
+    const capturadas: string[] = [];
+    const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() }, capturadas);
+
+    await fetchListaNFCes(PERIODO, { erpClient });
+
+    const parametros = new URL(capturadas[0] ?? '', 'http://x').searchParams;
+    expect(parametros.get('Datainicial')).toBe('2026-09-09');
+    expect(parametros.get('Datafinal')).toBe('2026-09-16');
   });
 
   it('mapeia a linha do contrato de 2026-09-14: número, série, códigos e nomes (AD-235)', async () => {
     const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() });
 
-    const pagina = await fetchListaNFCes({}, { erpClient });
+    const pagina = await fetchListaNFCes(PERIODO, { erpClient });
 
     expect(pagina.rascunhos[0]).toEqual({
       numeroRascunho: NUMERO_NOTA,
@@ -320,6 +339,22 @@ describe('cliente e vendedor', () => {
 
     expect(store.getState().clienteAtual?.codigoCliente).toBe(CODIGO_CLIENTE_DAV);
     expect(store.getState().clienteAtual?.origem).toBe('RASCUNHO');
+  });
+
+  it('GetCliente fora do ar: usa o ClienteNome do CarregarNFCe e importa (AD-237)', async () => {
+    const { deps } = depsDe(store, respostaCarregarNFCe({ ClienteNome: 'CLIENTE DO RASCUNHO' }), {
+      resolverCliente: () => Promise.reject(new ErroRedeErp()),
+    });
+
+    await importarVendaExistente(fonte(), deps);
+
+    expect(store.getState().clienteAtual).toMatchObject({
+      codigoCliente: CODIGO_CLIENTE_DAV,
+      nome: 'CLIENTE DO RASCUNHO',
+      listaPreco: null,
+      origem: 'RASCUNHO',
+    });
+    expect(store.getState().identidadeVenda.origem).toBe('RASCUNHO');
   });
 
   it('pré-seleciona o vendedor do rascunho, com o nome vindo da listagem', async () => {

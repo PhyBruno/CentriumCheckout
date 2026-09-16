@@ -4,7 +4,16 @@ import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ClienteCheckout } from '../../src/shared/schemas/cliente.schema';
 import { fetchDav, fonteDav, useListaDavs } from '../../src/client/services/dav/davQueries';
-import { ErroNegocioErp } from '../../src/client/services/errosErp';
+import {
+  ErroNegocioErp,
+  ErroRedeErp,
+  ErroRespostaInvalida,
+  ErroSessaoEncerrada,
+} from '../../src/client/services/errosErp';
+import {
+  ErroClienteIncompleto,
+  ErroClienteNaoEncontrado,
+} from '../../src/client/services/cliente/clienteQueries';
 import {
   importarVendaExistente,
   mensagemDeRecusa,
@@ -145,6 +154,7 @@ function depsDe(
     editarSnapshotDescricao: venda.editarSnapshotDescricao,
     resolverCliente: espioes.resolverCliente as (codigo: number) => Promise<ClienteCheckout>,
     selecionarCliente: (cliente) => venda.selecionarCliente(cliente, 'DAV'),
+    selecionarClienteDoDocumento: (cliente) => venda.selecionarClienteDoDocumento(cliente, 'DAV'),
     trocarVendedor: espioes.trocarVendedor,
     resolverCondicao: (codigo) =>
       Promise.resolve(codigo === CONDICAO_DO_DOCUMENTO.codigo ? CONDICAO_DO_DOCUMENTO : null),
@@ -802,6 +812,85 @@ describe('erro de importação (D7, FR-010)', () => {
     expect(store.getState().identidadeVenda.numeroRascunho).toBe(0);
     expect(espioes.trocarVendedor).not.toHaveBeenCalled();
     expect(espioes.importarFormasDePagamento).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * AD-237 — o `GetDav` do contrato de 2026-09-14 traz `ClienteNome`. O
+ * `GetCliente` continua sendo chamado (lista de preço, convênio, celular), mas a
+ * falha dele deixa de abortar a importação quando o documento já nomeia o
+ * cliente.
+ */
+describe('importarVendaExistente — ClienteNome do documento (AD-237)', () => {
+  const COM_NOME = respostaGetDav({ ClienteNome: 'CLIENTE DO DOCUMENTO' });
+
+  it.each([
+    ['rede', new ErroRedeErp()],
+    ['cadastro em branco', new ErroClienteIncompleto(String(CODIGO_CLIENTE_DAV))],
+    ['resposta inválida', new ErroRespostaInvalida('GetCliente', 'x')],
+  ])('falha de %s no GetCliente importa com o nome do documento', async (_rotulo, erro) => {
+    const store = montarStore();
+    const { deps, espioes } = depsDe(
+      store,
+      { resolverCliente: () => Promise.reject(erro) },
+      COM_NOME,
+    );
+
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
+
+    expect(store.getState().clienteAtual).toEqual({
+      codigoCliente: CODIGO_CLIENTE_DAV,
+      nome: 'CLIENTE DO DOCUMENTO',
+      documento: null,
+      celular: null,
+      // Nada inventado: sem o cadastro, a lista de preço fica sem valor e o
+      // `GetProduto` seguinte vai só com `Codcliente`.
+      listaPreco: null,
+      descontoConvenio: null,
+      codigoConvenio: null,
+      origem: 'DAV',
+    });
+    expect(store.getState().linhas).toHaveLength(1);
+    expect(store.getState().identidadeVenda.origem).toBe('DAV');
+    expect(espioes.trocarVendedor).toHaveBeenCalledTimes(1);
+    expect(tiposDeEvento(store)).toContain('DAV_IMPORTADO');
+  });
+
+  it('GetCliente bem-sucedido continua sendo a fonte do cliente', async () => {
+    const store = montarStore();
+    const { deps } = depsDe(store, {}, COM_NOME);
+
+    await importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps);
+
+    expect(store.getState().clienteAtual?.listaPreco).toBe(5);
+    expect(store.getState().clienteAtual?.documento).not.toBeNull();
+  });
+
+  it.each([
+    ['cliente não encontrado', new ErroClienteNaoEncontrado(String(CODIGO_CLIENTE_DAV))],
+    ['sessão encerrada', new ErroSessaoEncerrada()],
+  ])('%s continua abortando, mesmo com o nome no documento', async (_rotulo, erro) => {
+    const store = montarStore();
+    const { deps } = depsDe(store, { resolverCliente: () => Promise.reject(erro) }, COM_NOME);
+
+    await expect(importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps)).rejects.toBe(
+      erro,
+    );
+    expect(store.getState().linhas).toEqual([]);
+  });
+
+  it('sem ClienteNome no documento, a falha do GetCliente continua abortando', async () => {
+    const store = montarStore();
+    const { deps } = depsDe(
+      store,
+      { resolverCliente: () => Promise.reject(new ErroRedeErp()) },
+      respostaGetDav({ ClienteNome: '' }),
+    );
+
+    await expect(importarVendaExistente(fonteDav({ numeroDav: NUMERO_DAV }), deps)).rejects.toThrow(
+      ErroRedeErp,
+    );
+    expect(store.getState().linhas).toEqual([]);
   });
 });
 

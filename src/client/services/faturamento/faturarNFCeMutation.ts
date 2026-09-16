@@ -15,7 +15,7 @@
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import type { CheckoutFaturarNFCe } from '../../domain/venda/montarRetratoVenda';
-import { mapearRespostaFaturamento } from './faturarNFCeMapper';
+import { mapearRespostaFaturamento, type RetornoRejeicao } from './faturarNFCeMapper';
 import type { NotaFiscalResposta } from '../../../shared/schemas/faturarNFCe.schema';
 
 const CAMINHO_FATURAR_NFCE = '/ApiCentriumOAuth/FaturarNFCe';
@@ -36,12 +36,7 @@ export type ResultadoFaturamento =
    * liberado para a próxima venda; lá a venda continua para ser corrigida e
    * reenviada.
    */
-  | {
-      readonly estado: 'nfce-rejeitada';
-      readonly mensagem: string;
-      readonly numeroNota: number | null;
-      readonly serieNota: string | null;
-    }
+  | ({ readonly estado: 'nfce-rejeitada' } & RetornoRejeicao)
   /** O ERP respondeu (ainda que recusando): a primeira tentativa **não** gerou NFCe. */
   | {
       readonly estado: 'falha-negocio';
@@ -128,8 +123,11 @@ export async function enviarFaturarNFCe(
       return {
         estado: 'nfce-rejeitada',
         mensagem: mapeado.mensagem,
+        codigoErro: mapeado.codigoErro,
         numeroNota: mapeado.numeroNota,
         serieNota: mapeado.serieNota,
+        sugestaoIA: mapeado.sugestaoIA,
+        urlChamadas: mapeado.urlChamadas,
       };
 
     case 'ok':

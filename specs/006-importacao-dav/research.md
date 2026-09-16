@@ -32,6 +32,8 @@ Nenhum `NEEDS CLARIFICATION` restou no Technical Context do `plan.md` — a spec
 
 ## D4 — `VendedorNome` ausente na importação (achado de contrato, AD-095)
 
+**[Superado em parte — AD-172 e AD-237]** O SDT de `ListaDAVs` ganhou `VendedorNome` (AD-172) e `GetDav` ganhou `vendedorNome`/`ClienteNome` (contrato de 2026-09-14); a janela usa o nome quando vem, mas o ERP de 2026-09-14 ainda devolve `ListaDAVs.VendedorNome` vazio (pendência 57), então o recuo "Vendedor #<código>" continua ativo. Registro original:
+
 **Decision**: Ver AD-095 em `.specs/project/STATE.md`. Resumo: `ListaDAVs`/`GetDav` só devolvem `VendedorCodigo`. O Checkout exibe "Vendedor #<código>" até o operador reabrir o modal de vendedor e resolver o nome manualmente. `ClienteNome`, ao contrário, é capturado da própria linha da lista (`ListaDAVs`) no momento da seleção, antes de `GetDav` ser chamado — nunca fica sem nome.
 **Rationale/Alternatives**: Ver AD-095 — resolver por busca de texto usando o código foi descartado por risco de correspondência errada.
 

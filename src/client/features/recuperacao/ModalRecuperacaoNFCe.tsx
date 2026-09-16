@@ -9,6 +9,8 @@ import {
   type ValoresDeColuna,
 } from '@/components/ui/cabecalho-ordenavel';
 import { ControlePaginacao } from '@/components/ui/controle-paginacao';
+import { FiltroDeData } from '@/components/ui/filtro-de-data';
+import { periodoPadrao } from '@/lib/periodoDeBusca';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -37,12 +39,13 @@ import { useRecuperacaoNFCe } from './useRecuperacaoNFCe';
  *
  * - Filtros "Status", "Vendedor", "Caixa" e "Série" — nenhum tem parâmetro
  *   correspondente. Desenhá-los produziria controles que não filtram nada.
- * - **Filtro de período**, o par de pílulas que a janela de DAV tem. Pedido
- *   para cá em 2026-09-11 e **não implementado por decisão do usuário na mesma
- *   conversa**, depois de medir o endpoint real: `GetListaNFCes` devolve os
- *   mesmos 123 registros com e sem `Datainicial`/`Datafinal` — ignora os dois
- *   parâmetros, que nem constam do contrato. As pílulas existiriam sem filtrar
- *   nada. Entra quando o ERP aceitar o período (pendência 53).
+ *
+ * **Um acréscimo em relação ao mockup: o período de emissão** (AD-237). O
+ * Pencil desenha as pílulas de data só na janela de DAV; o ERP de 2026-09-14
+ * passou a filtrar `GetListaNFCes` por `Datainicial`/`Datafinal`, e as duas
+ * janelas são um par (AD-222), então esta ganha o mesmo par de pílulas
+ * (`FiltroDeData`), com os mesmos 7 dias padrão (`periodoPadrao`).
+ *
  * - Coluna "Série" — **existe** desde o contrato de 2026-09-14 (AD-235) e volta
  *   ao lugar do Pencil, logo depois de "NFCe" (80px, Geist Mono). É a série da
  *   linha que vai a `CarregarNFCe`, e duas linhas de séries diferentes podem ter
@@ -172,6 +175,8 @@ export function ModalRecuperacaoNFCe({
 }: ModalRecuperacaoNFCeProps): ReactElement | null {
   const [termo, setTermo] = useState('');
   const [termoDebounced, setTermoDebounced] = useState('');
+  const [dataInicial, setDataInicial] = useState(() => periodoPadrao().inicial);
+  const [dataFinal, setDataFinal] = useState(() => periodoPadrao().final);
   const [pagina, setPagina] = useState(1);
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -180,8 +185,12 @@ export function ModalRecuperacaoNFCe({
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
+      const periodo = periodoPadrao();
       setTermo('');
       setTermoDebounced('');
+      // Recalculado a cada abertura — ver `periodoPadrao`.
+      setDataInicial(periodo.inicial);
+      setDataFinal(periodo.final);
       setPagina(1);
       setSelecionado(null);
     }
@@ -217,7 +226,7 @@ export function ModalRecuperacaoNFCe({
 
   // Sem piso de caracteres: termo vazio é consulta legítima — "todos os
   // rascunhos suspensos" é exatamente o que o operador vê ao abrir a janela.
-  const lista = useListaNFCes({ txtBusca: termoDebounced, pagina }, aberto);
+  const lista = useListaNFCes({ txtBusca: termoDebounced, dataInicial, dataFinal, pagina }, aberto);
 
   const { retomar } = useRecuperacaoNFCe(deps);
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
@@ -243,6 +252,18 @@ export function ModalRecuperacaoNFCe({
   const rascunhoSelecionado =
     rascunhos.find((item) => chaveDoRascunho(item) === selecionado) ?? null;
   const semResultado = lista.data !== undefined && rascunhos.length === 0;
+
+  /**
+   * Trocar qualquer uma das datas reinicia a paginação e solta a seleção, como
+   * na janela de DAV: a linha escolhida pode não existir no novo período.
+   */
+  function aoTrocarData(definir: (iso: string) => void): (iso: string) => void {
+    return (iso) => {
+      definir(iso);
+      setPagina(1);
+      setSelecionado(null);
+    };
+  }
 
   async function confirmarRecuperacao(): Promise<void> {
     if (rascunhoSelecionado === null || carregando) {
@@ -331,26 +352,47 @@ export function ModalRecuperacaoNFCe({
         </header>
 
         <div className="flex shrink-0 flex-col gap-[10px] border-b border-border px-lg py-[14px]">
-          <label className="flex h-11 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
-            <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="sr-only">Termo de busca</span>
-            <input
-              className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
-              data-testid="campo-busca-nfce"
-              ref={campoBusca}
-              autoComplete="off"
-              // O ERP filtra só nome de cliente e de vendedor: busca por número
-              // da nota não retorna nada (`research.md` D1). O texto do campo
-              // diz isso, para o operador não concluir que o rascunho sumiu.
-              placeholder="Busque por nome do cliente ou do vendedor"
-              value={termo}
-              onChange={(evento) => {
-                setTermo(evento.target.value);
-                setPagina(1);
-                setSelecionado(null);
-              }}
-            />
-          </label>
+          <div className="flex items-center gap-[10px]">
+            <label className="flex h-11 flex-1 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
+              <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Termo de busca</span>
+              <input
+                className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
+                data-testid="campo-busca-nfce"
+                ref={campoBusca}
+                autoComplete="off"
+                // O ERP filtra só nome de cliente e de vendedor: busca por número
+                // da nota não retorna nada (`research.md` D1). O texto do campo
+                // diz isso, para o operador não concluir que o rascunho sumiu.
+                placeholder="Busque por nome do cliente ou do vendedor"
+                value={termo}
+                onChange={(evento) => {
+                  setTermo(evento.target.value);
+                  setPagina(1);
+                  setSelecionado(null);
+                }}
+              />
+            </label>
+
+            {/* Mesmo par de pílulas da janela de DAV (AD-237): mesma forma,
+                mesmas etiquetas, mesmo vão de 12 entre elas. */}
+            <div className="flex shrink-0 items-center gap-sm">
+              <FiltroDeData
+                etiqueta="Data inicial"
+                rotulo="Data inicial de emissão"
+                testId="nfce-data-inicial"
+                valor={dataInicial}
+                onChange={aoTrocarData(setDataInicial)}
+              />
+              <FiltroDeData
+                etiqueta="Data final"
+                rotulo="Data final de emissão"
+                testId="nfce-data-final"
+                valor={dataFinal}
+                onChange={aoTrocarData(setDataFinal)}
+              />
+            </div>
+          </div>
 
           {lista.data === undefined ? null : (
             <p className="text-base font-semibold text-foreground" data-testid="contagem-nfce">
@@ -375,7 +417,7 @@ export function ModalRecuperacaoNFCe({
             </p>
           ) : semResultado ? (
             <p className="p-base text-md text-muted-foreground" data-testid="nfce-sem-resultados">
-              Nenhuma NFCe suspensa encontrada para a busca informada.
+              Nenhuma NFCe suspensa encontrada para os filtros informados.
             </p>
           ) : (
             <TabelaDeRascunhos

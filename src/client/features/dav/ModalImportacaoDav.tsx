@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCircle, Import, ReceiptText, Record, Search, X } from 'reicon-react';
+import { CheckCircle, Import, ReceiptText, Record, Search, X } from 'reicon-react';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,9 @@ import {
   type OrdenacaoAtiva,
   type ValoresDeColuna,
 } from '@/components/ui/cabecalho-ordenavel';
-import { CampoData, isoRelativoAHoje } from '@/components/ui/campo-data';
 import { ControlePaginacao } from '@/components/ui/controle-paginacao';
+import { FiltroDeData } from '@/components/ui/filtro-de-data';
+import { periodoPadrao } from '@/lib/periodoDeBusca';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -41,9 +42,10 @@ import { useImportacaoDav } from './useImportacaoDav';
  *   campos. Exibi-los exigiria inventar o estado do documento.
  * - Ação de reimpressão por linha — proibida por `FR-009`/AD-035, removida
  *   ainda na fase de plano.
- * - O nome do vendedor na coluna "Cliente" — o contrato só devolve o código
- *   (AD-095), então a linha exibe "Vendedor #&lt;código&gt;" até o operador
- *   reabrir o modal de vendedor.
+ * - O nome do vendedor na coluna "Cliente", **quando o ERP não o manda**: o
+ *   SDT tem `VendedorNome` (AD-172), mas o ERP de 2026-09-14 ainda o devolve
+ *   vazio (pendência 57, AD-237). A linha usa o nome assim que ele vier, e até
+ *   lá exibe "Vendedor #&lt;código&gt;".
  *
  * **Um desvio de rótulo**: o botão do rodapé é "Importar DAV", não "Faturar
  * DAV" como no desenho. Confirmar aqui **não fatura** — popula o carrinho, e a
@@ -82,20 +84,6 @@ const VALORES_DE_COLUNA_DAV: ValoresDeColuna<DavListado, ColunaDav> = {
 
 /** Identidade estável para a página ainda não carregada — sem ela o `useMemo` da ordenação reinicia a cada render. */
 const SEM_DAVS: readonly DavListado[] = [];
-
-/**
- * Período de emissão pré-aplicado ao abrir a janela (pedido do usuário,
- * 2026-09-03): dos últimos 7 dias até hoje.
- *
- * O teto é o **dia** de hoje, não um instante: `Datainicial`/`Datafinal` são
- * `format: date` no contrato (`YYYY-MM-DD`), então "hoje" já inclui tudo o que
- * foi emitido até as 23:59 — não há horário a enviar nem a exibir.
- */
-const DIAS_DO_PERIODO_PADRAO = 7;
-
-function periodoPadrao(): { readonly inicial: string; readonly final: string } {
-  return { inicial: isoRelativoAHoje(-DIAS_DO_PERIODO_PADRAO), final: isoRelativoAHoje(0) };
-}
 
 /** `YYYY-MM-DD` (contrato) → `DD/MM/AAAA` (leitura do operador). */
 function formatarDataEmissao(iso: string): string {
@@ -416,34 +404,6 @@ export function ModalImportacaoDav({
   );
 }
 
-interface FiltroDeDataProps {
-  /** Texto visível dentro da pílula ("Emissão de", "até"). */
-  readonly etiqueta: string;
-  /** Nome acessível do campo, que a etiqueta curta sozinha não daria. */
-  readonly rotulo: string;
-  readonly testId: string;
-  /** `YYYY-MM-DD`. */
-  readonly valor: string;
-  readonly onChange: (iso: string) => void;
-}
-
-/** Uma das duas pílulas de data da faixa de filtros. */
-function FiltroDeData({
-  etiqueta,
-  rotulo,
-  testId,
-  valor,
-  onChange,
-}: FiltroDeDataProps): ReactElement {
-  return (
-    <div className="flex h-9 shrink-0 items-center gap-xs rounded-full bg-secondary px-sm text-xs font-semibold text-foreground">
-      <CalendarDays className="size-[15px] shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="shrink-0">{etiqueta}</span>
-      <CampoData rotulo={rotulo} testId={testId} valor={valor} onChange={onChange} />
-    </div>
-  );
-}
-
 interface TabelaDeDavsProps {
   readonly davs: readonly DavListado[];
   readonly ordenacao: OrdenacaoAtiva<ColunaDav> | null;
@@ -567,8 +527,9 @@ function TabelaDeDavs({
                       recuo. Não é enfeite: "Vendedor #12" não distingue dois
                       DAVs para quem opera o caixa, e era o que AD-095 obrigava
                       a exibir enquanto `ListaDAVs` não tinha o campo. O recuo
-                      permanece porque o deploy do ERP ainda não saiu — e
-                      continua valendo para um DAV sem vendedor cadastrado. */}
+                      permanece porque o ERP de 2026-09-14 ainda devolve o nome
+                      vazio (pendência 57) — e continua valendo para um DAV sem
+                      vendedor cadastrado. */}
                   <span className="truncate text-xs font-medium text-muted-foreground">
                     {dav.vendedorNome === null
                       ? `Vendedor #${dav.vendedorCodigo}`

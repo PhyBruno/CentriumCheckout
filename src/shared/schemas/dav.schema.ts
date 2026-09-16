@@ -48,9 +48,10 @@ const quantidadeEmMilesimos = numeroErp.transform((valor) => milesimosDeUnidades
  * correto, e é o que faz a coluna "Status" e os filtros de status/tipo/origem
  * do Pencil ficarem de fora da UI.
  *
- * **`VendedorNome` passou a existir em 2026-09-08** (AD-172), acrescentado ao
- * SDT `CheckoutListaDAVs` na KB do ERP — o que supera a ausência que AD-095
- * registrava e fecha o "Vendedor #<código>" da janela de importação.
+ * **`VendedorNome` existe no SDT desde 2026-09-08** (AD-172), mas o ERP de
+ * 2026-09-14 ainda o devolve **sempre vazio** — a atribuição está comentada em
+ * `DpCheckout_GetDavs` (pendência 57, AD-237). A janela usa o nome quando ele
+ * vier e, até lá, exibe "Vendedor #<código>". O `ClienteNome` já vem preenchido.
  *
  * `Senha` existe no contrato e passa íntegro pelo `looseObject`, mas não é
  * modelado: nenhum requisito do Checkout o consome.
@@ -64,11 +65,10 @@ export const davDaListaSchema = z.looseObject({
   ClienteNome: z.string(),
   VendedorCodigo: inteiroErp,
   /**
-   * `optional()` **de propósito**, e não porque o contrato o permita: o campo
-   * já existe na KB mas o build/deploy do ERP ainda não saiu, então a resposta
-   * em produção segue sem ele por enquanto. Exigi-lo derrubaria a listagem
-   * inteira na fronteira — uma feature que funciona hoje pararia por causa de
-   * um dado de exibição. Quem lê trata a ausência como "não informado".
+   * `optional()` **de propósito**: um ERP anterior ao SDT de 2026-09-08 não o
+   * publica, e exigi-lo derrubaria a listagem inteira por causa de um dado de
+   * exibição. Ausência e `""` (o que o ERP de 2026-09-14 devolve sempre) são o
+   * mesmo "não informado" para quem lê.
    */
   VendedorNome: z.string().optional(),
   /** `double` do ERP → centavos; só exibição na lista, nunca entra no cálculo. */

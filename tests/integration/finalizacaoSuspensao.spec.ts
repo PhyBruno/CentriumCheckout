@@ -18,6 +18,7 @@ import {
 } from '../../src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda';
 import type { ResultadoFaturamento } from '../../src/client/services/faturamento/faturarNFCeMutation';
 import type { abrirPdfNFCe } from '../../src/client/services/impressao/abrirPdfNFCe';
+import type { NotaFiscalResposta } from '../../src/shared/schemas/faturarNFCe.schema';
 import { CHAVE_RAIZ_PRODUTO } from '../../src/client/services/produto/produtoQueries';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
@@ -300,12 +301,15 @@ describe('recusa com rascunho já gravado — adoção do número (AD-235)', () 
 describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
   const REJEICAO = {
     estado: 'nfce-rejeitada',
-    mensagem: 'Rejeicao: Duplicidade de NF-e (erro 539)',
+    mensagem: 'Rejeicao: Duplicidade de NF-e',
+    codigoErro: 539,
     numeroNota: 9001,
     serieNota: '1',
+    sugestaoIA: 'Confira a numeração da série.',
+    urlChamadas: 'https://atendimento.exemplo.invalid/x',
   } as const;
 
-  it('leva o motivo do ERP e a identificação da nota até a tela', async () => {
+  it('leva o motivo do ERP, a sugestão da IA e a identificação da nota até a tela', async () => {
     const cenario = montarCenario([REJEICAO]);
     const { result } = renderizar(cenario);
 
@@ -315,9 +319,12 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
 
     expect(result.current.estado).toEqual({
       tipo: 'nfce-rejeitada',
-      mensagem: 'Rejeicao: Duplicidade de NF-e (erro 539)',
+      mensagem: 'Rejeicao: Duplicidade de NF-e',
+      codigoErro: 539,
       numeroNota: 9001,
       serieNota: '1',
+      sugestaoIA: 'Confira a numeração da série.',
+      urlChamadas: 'https://atendimento.exemplo.invalid/x',
     });
   });
 
@@ -560,13 +567,14 @@ describe('entrega do documento fiscal (T015, FR-009; correções do usuário 202
       protocoloDaPagina?: string;
       abrirPdf?: typeof abrirPdfNFCe;
       onFechar?: () => void;
+      notaFiscal?: NotaFiscalResposta;
     } = {},
   ) {
     const fetchImpl =
       opcoes.fetchImpl ?? vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
     return render(
       createElement(DialogoDocumentoFiscal, {
-        notaFiscal: NOTA_FISCAL_VALIDA,
+        notaFiscal: opcoes.notaFiscal ?? NOTA_FISCAL_VALIDA,
         tipoImpressao,
         cadMaqHost: '127.0.0.1:4545',
         onFechar: opcoes.onFechar ?? (() => undefined),
@@ -614,6 +622,25 @@ describe('entrega do documento fiscal (T015, FR-009; correções do usuário 202
 
     expect(screen.getByTestId('dialogo-documento-fiscal')).toBeInTheDocument();
     expect(screen.getByText(/enviando para a impressora/i)).toBeInTheDocument();
+  });
+
+  it('identifica a nota emitida por número e série (AD-238)', () => {
+    const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(() => undefined));
+
+    renderizarEntrega('E', {
+      fetchImpl,
+      notaFiscal: { ...NOTA_FISCAL_VALIDA, NumeroNota: 1306, SerieNota: '14' },
+    });
+
+    expect(screen.getByTestId('documento-emitido')).toHaveTextContent('NFCe 1306 · série 14');
+  });
+
+  it('omite a identificação quando o ERP não manda número nem série', () => {
+    const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(() => undefined));
+
+    renderizarEntrega('E', { fetchImpl, notaFiscal: { ...NOTA_FISCAL_VALIDA, NumeroNota: 0 } });
+
+    expect(screen.queryByTestId('documento-emitido')).not.toBeInTheDocument();
   });
 
   it('oferece o PDF quando o serviço local não responde — nunca falha em silêncio', async () => {
@@ -1041,9 +1068,12 @@ describe('janela da NFCe rejeitada', () => {
 
   const CENARIO_REJEICAO = {
     estado: 'nfce-rejeitada',
-    mensagem: 'Rejeicao: Duplicidade de NF-e (erro 539)',
+    mensagem: 'Rejeicao: Duplicidade de NF-e',
+    codigoErro: 539,
     numeroNota: 9001,
     serieNota: '1',
+    sugestaoIA: null,
+    urlChamadas: null,
   } as const;
 
   it('mostra o motivo do ERP e diz que o caixa será liberado', async () => {
@@ -1055,9 +1085,14 @@ describe('janela da NFCe rejeitada', () => {
     expect(await screen.findByTestId('dialogo-erro-faturamento')).toBeInTheDocument();
     // O texto do ERP chega íntegro à tela — era exatamente o que se perdia
     // antes desta correção.
-    expect(screen.getByTestId('erro-finalizacao')).toHaveTextContent(
-      'Rejeicao: Duplicidade de NF-e (erro 539)',
-    );
+    const retorno = screen.getByTestId('erro-finalizacao');
+    expect(retorno).toHaveTextContent('Rejeicao: Duplicidade de NF-e');
+    // Bloco "Retorno da SEFAZ" (AD-238): código em campo próprio.
+    expect(retorno).toHaveTextContent('Retorno da SEFAZ');
+    expect(screen.getByTestId('codigo-sefaz')).toHaveTextContent('539');
+    // Sem sugestão nem link, os dois blocos não aparecem.
+    expect(screen.queryByTestId('sugestao-ia')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Abrir no ERP/i })).not.toBeInTheDocument();
     expect(screen.getByTestId('documento-rejeitado')).toHaveTextContent('NFCe 9001 · série 1');
     expect(screen.getByRole('alertdialog')).toHaveAccessibleName('NFCe rejeitada pelo ERP');
     // A instrução é o oposto da recusa sem documento gravado: não há o que
@@ -1079,6 +1114,44 @@ describe('janela da NFCe rejeitada', () => {
       expect(screen.queryByTestId('dialogo-erro-faturamento')).not.toBeInTheDocument();
     });
     expect(useVendaStore.getState().linhas).toEqual([]);
+  });
+
+  it('mostra a sugestão da IA como texto puro, com as quebras de linha, e o link do ERP', async () => {
+    const sugestao = 'Passo 1: <b>confira</b> a série.\nPasso 2: reenvie.';
+    const cenario = montarCenario([
+      {
+        ...CENARIO_REJEICAO,
+        sugestaoIA: sugestao,
+        urlChamadas: 'https://atendimento.exemplo.invalid/chamado?id=7',
+      },
+    ]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+    await screen.findByTestId('dialogo-erro-faturamento');
+
+    const bloco = screen.getByTestId('sugestao-ia');
+    expect(bloco).toHaveTextContent('Sugestão de correção');
+    // Texto, nunca HTML: a tag aparece literal e nenhum <b> é criado.
+    const texto = screen.getByTestId('sugestao-ia-texto');
+    expect(texto.textContent).toBe(sugestao);
+    expect(texto.querySelector('b')).toBeNull();
+    expect(texto).toHaveClass('whitespace-pre-line');
+
+    const link = screen.getByRole('link', { name: /Abrir no ERP/i });
+    expect(link).toHaveAttribute('href', 'https://atendimento.exemplo.invalid/chamado?id=7');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('não cria o link quando a URL não é http(s), mesmo que chegue ao diálogo', async () => {
+    const cenario = montarCenario([{ ...CENARIO_REJEICAO, urlChamadas: 'javascript:alert(1)' }]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+    await screen.findByTestId('dialogo-erro-faturamento');
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('a recusa sem documento gravado continua dizendo que a venda segue aberta', async () => {

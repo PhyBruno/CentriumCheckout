@@ -1,7 +1,9 @@
-import { AlertTriangle, XCircle } from 'reicon-react';
+import { AlertTriangle, LinkSquare, Sparkles, XCircle } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
+import { urlExternaSegura } from '@/lib/urlExterna';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
+import { identificacaoDaNota } from './identificacaoDaNota';
 
 /**
  * Erro de transmissão da NFCe (pedido do usuário, 2026-09-02).
@@ -44,6 +46,19 @@ export interface DocumentoRejeitado {
   readonly serieNota: string | null;
 }
 
+/**
+ * Retorno estruturado da rejeição (contrato de 2026-09-14, AD-238). Tudo
+ * opcional: o desfecho `N` e o ERP anterior ao contrato não trazem sugestão nem
+ * link.
+ */
+export interface RetornoDaSefaz {
+  readonly codigoErro: number | null;
+  /** Texto da CentriumIA — exibido **só como texto**, nunca como HTML. */
+  readonly sugestaoIA: string | null;
+  /** Revalidado aqui (`urlExternaSegura`) antes de virar `href`. */
+  readonly urlChamadas: string | null;
+}
+
 interface CopiaDoDesfecho {
   readonly rotuloAcessivel: string;
   readonly tituloCabecalho: string;
@@ -76,31 +91,14 @@ const COPIA: Record<Desfecho, CopiaDoDesfecho> = {
   },
 };
 
-/** `NFCe 9001 · série 1`, com o que o ERP tiver mandado — ou nada. */
-function identificacaoDaNota(documento: DocumentoRejeitado | undefined): string | null {
-  if (documento === undefined) {
-    return null;
-  }
-
-  const partes: string[] = [];
-  // `0` é o "sem número" do contrato: anunciá-lo mandaria o operador procurar
-  // uma nota que não existe com esse número no ERP.
-  if (documento.numeroNota !== null && documento.numeroNota !== 0) {
-    partes.push(`NFCe ${String(documento.numeroNota)}`);
-  }
-  if (documento.serieNota !== null) {
-    partes.push(`série ${documento.serieNota}`);
-  }
-
-  return partes.length === 0 ? null : partes.join(' · ');
-}
-
 export interface DialogoErroFaturamentoProps {
   readonly mensagem: string;
   readonly onFechar: () => void;
   /** Default `NAO_EMITIDA`: o desfecho que este diálogo já cobria sozinho. */
   readonly desfecho?: Desfecho;
   readonly documento?: DocumentoRejeitado;
+  /** Só em `REJEITADA` (AD-238). */
+  readonly retorno?: RetornoDaSefaz;
 }
 
 export function DialogoErroFaturamento({
@@ -108,9 +106,16 @@ export function DialogoErroFaturamento({
   onFechar,
   desfecho = 'NAO_EMITIDA',
   documento,
+  retorno,
 }: DialogoErroFaturamentoProps): ReactElement {
   const copia = COPIA[desfecho];
   const identificacao = identificacaoDaNota(documento);
+  const rejeitada = desfecho === 'REJEITADA';
+  const codigoErro = retorno?.codigoErro ?? null;
+  const sugestao = (retorno?.sugestaoIA ?? '').trim() === '' ? null : (retorno?.sugestaoIA ?? null);
+  // Segunda checagem, além da do mapper: o `href` só existe se esta função o
+  // aprovar aqui, qualquer que seja o caminho por onde a URL chegou.
+  const linkDoErp = urlExternaSegura(retorno?.urlChamadas);
   // `true`: sem prop de abertura — o pai só renderiza este diálogo aberto.
   const janelaRef = useFocoDeModal<HTMLDivElement>(true);
 
@@ -124,7 +129,7 @@ export function DialogoErroFaturamento({
         role="alertdialog"
         aria-modal="true"
         aria-label={copia.rotuloAcessivel}
-        className="cc-modal-entra flex w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
+        className="cc-modal-entra flex max-h-full w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
       >
         <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
           <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-down-soft)]">
@@ -138,8 +143,10 @@ export function DialogoErroFaturamento({
           </span>
         </header>
 
-        <div className="flex flex-col items-center gap-lg px-lg py-xl">
-          <span className="flex size-24 items-center justify-center rounded-full bg-[var(--cc-color-down-soft)]">
+        {/* Rola por dentro: a sugestão da IA pode ter vários parágrafos, e o
+            rodapé com o botão de fechar não pode sair da tela. */}
+        <div className="flex min-h-0 flex-col items-center gap-lg overflow-y-auto px-lg py-xl">
+          <span className="flex size-24 shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-down-soft)]">
             <XCircle className="size-14 text-destructive" aria-hidden="true" />
           </span>
 
@@ -159,7 +166,10 @@ export function DialogoErroFaturamento({
             )}
           </span>
 
-          <p
+          {/* Bloco do motivo. Em `REJEITADA` ele ganha título e o código da
+              SEFAZ em campo próprio (AD-238); o Pencil não desenha esse estado,
+              então reaproveita a caixa de mensagem que já existia. */}
+          <div
             role="alert"
             data-testid="erro-finalizacao"
             className="flex w-full items-start gap-xs rounded-2xl border border-border bg-[var(--cc-color-surface-soft)] p-base text-sm text-[var(--cc-color-body)]"
@@ -168,8 +178,51 @@ export function DialogoErroFaturamento({
               className="mt-[2px] size-4 shrink-0 text-destructive"
               aria-hidden="true"
             />
-            {mensagem}
-          </p>
+            <span className="flex min-w-0 flex-col gap-[2px]">
+              {rejeitada && (
+                <strong className="font-semibold text-foreground">Retorno da SEFAZ</strong>
+              )}
+              {codigoErro !== null && (
+                <span data-testid="codigo-sefaz" className="font-mono">
+                  Código {codigoErro}
+                </span>
+              )}
+              {/* Texto puro: o mapper já tirou o HTML (pendência 50), e o
+                  React escapa o que sobrar. */}
+              <span className="whitespace-pre-line break-words">{mensagem}</span>
+            </span>
+          </div>
+
+          {rejeitada && sugestao !== null && (
+            <section
+              data-testid="sugestao-ia"
+              aria-label="Sugestão de correção"
+              className="flex w-full items-start gap-xs rounded-2xl border border-border bg-secondary p-base text-sm text-[var(--cc-color-body)]"
+            >
+              <Sparkles className="mt-[2px] size-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="flex min-w-0 flex-col gap-[2px]">
+                <strong className="font-semibold text-foreground">Sugestão de correção</strong>
+                {/* **Nunca** `dangerouslySetInnerHTML`: o texto vem de uma IA e
+                    é exibido como texto. `whitespace-pre-line` mantém as
+                    quebras de linha que ela escreveu. */}
+                <span data-testid="sugestao-ia-texto" className="whitespace-pre-line break-words">
+                  {sugestao}
+                </span>
+              </span>
+            </section>
+          )}
+
+          {rejeitada && linkDoErp !== null && (
+            <a
+              href={linkDoErp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-xs text-sm font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              <LinkSquare className="size-4 shrink-0" aria-hidden="true" />
+              Abrir no ERP
+            </a>
+          )}
         </div>
 
         <footer className="flex h-[60px] shrink-0 items-center justify-center border-t border-border px-lg">

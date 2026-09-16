@@ -10,6 +10,8 @@ Ambos os endpoints são acessados via proxy do BFF (`/api/erp/*`, feature 002) �
 |---|---|---|
 | `Empresa` | `int64` | injetado pelo BFF |
 | `Txtbusca` | `string` | termo digitado pelo operador — filtra só nome de cliente/vendedor no servidor (`research.md` D1) |
+| `Datainicial` | `date` (`YYYY-MM-DD`) | **sempre enviado** (AD-237) — pílula "Data inicial", padrão hoje − 7 dias. Sem as datas, o ERP usa os últimos 90 dias (`DpCheckout_RascunhosLista`). Ausente do YAML de 2026-09-14; o ERP de preview aceita e filtra |
+| `Datafinal` | `date` (`YYYY-MM-DD`) | **sempre enviado** (AD-237) — pílula "Data final", padrão hoje |
 | `Pagina` | `int32` | página corrente |
 | `Tamanhopagina` | `int64` | `min(solicitado, 50)` — nunca enviado sem teto (`research.md` D2) |
 

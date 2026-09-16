@@ -18,6 +18,7 @@ import {
   respostaRascunhoSemPagamento,
 } from '../support/recuperacao';
 import { bootstrapPagamentoDe } from '../support/pagamento';
+import { periodoPadrao } from '../../src/client/lib/periodoDeBusca';
 
 /**
  * Janela de recuperação de NFCe — T005 (listagem e paginação), T006 (busca) e
@@ -330,6 +331,57 @@ describe('T005 — a janela lista os rascunhos suspensos', () => {
     expect(rota.urls.some((url) => /Tamanhopagina=(5[1-9]|[6-9]\d|\d{3,})/.test(url))).toBe(false);
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * AD-237 — período de emissão (o ERP de 2026-09-14 filtra por data)
+ * ------------------------------------------------------------------ */
+
+describe('período de emissão (AD-237)', () => {
+  function periodoDa(url: string | undefined): { inicial: string | null; final: string | null } {
+    const parametros = new URLSearchParams((url ?? '').split('?')[1] ?? '');
+    return { inicial: parametros.get('Datainicial'), final: parametros.get('Datafinal') };
+  }
+
+  it('abre com os últimos 7 dias e os envia ao ERP', async () => {
+    const rota = instalarFetch();
+    renderizar();
+
+    await screen.findByTestId('resultados-nfce');
+
+    const { inicial, final } = periodoPadrao();
+    expect(periodoDa(rota.urls.find((url) => url.startsWith(CAMINHO_LISTA)))).toEqual({
+      inicial,
+      final,
+    });
+    expect(screen.getByTestId('nfce-data-inicial')).toHaveValue(dataBr(inicial));
+    expect(screen.getByTestId('nfce-data-final')).toHaveValue(dataBr(final));
+    expect(screen.getByLabelText('Data inicial de emissão')).toBeInTheDocument();
+  });
+
+  it('trocar a data inicial refaz a consulta com o novo período, na página 1', async () => {
+    const rota = instalarFetch();
+    const usuario = userEvent.setup();
+    renderizar();
+    await screen.findByTestId('resultados-nfce');
+
+    const campo = screen.getByTestId('nfce-data-inicial');
+    await usuario.clear(campo);
+    await usuario.type(campo, '01082026');
+    await usuario.tab();
+
+    await waitFor(() => {
+      const ultima = rota.urls.filter((url) => url.startsWith(CAMINHO_LISTA)).at(-1);
+      expect(periodoDa(ultima).inicial).toBe('2026-08-01');
+      expect(ultima).toContain('Pagina=1');
+    });
+  });
+});
+
+/** `YYYY-MM-DD` → `DD/MM/AAAA`, o que a pílula exibe. */
+function dataBr(iso: string): string {
+  const [ano, mes, dia] = iso.split('-');
+  return `${dia ?? ''}/${mes ?? ''}/${ano ?? ''}`;
+}
 
 /* ------------------------------------------------------------------ *
  * T006 — busca
