@@ -3529,3 +3529,19 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** novos — `src/client/domain/venda/recusaDoErp.ts`, `src/client/stores/recusaValidacaoStore.ts`, `tests/unit/domain/venda/recusaDoErp.spec.ts`, `tests/unit/client/validacao/notificarVeredito.spec.ts`. Alterados — `faturarNFCe.schema.ts`, `dav.schema.ts`, `faturarNFCeMapper.ts`, `faturarNFCeMutation.ts`, `useFinalizarOuSuspenderVenda.ts`, `AcoesFinaisVenda.tsx`, `DialogoErroFaturamento.tsx`, `identificacaoDaNota.ts`, `identidadeVendaSlice.ts`, `vendaStore.ts`, `montarRetratoVenda.ts`, `mapearVendaExistente.ts`, `importarVendaExistente.ts`, `useImportacaoDocumento.ts`, `produtoQueries.ts`, `EntradaRapidaProduto.tsx`, `notificarVeredito.ts`, `notificar.ts`, `erp-mock.ts` e os specs correspondentes.
 
 **Verificação:** `tsc --noEmit` e ESLint limpos; 1724 testes unit/integração passando em 111 arquivos; E2E `finalizacao-suspensao` (10 passando, 1 pulado), `validacao-previa` (9), `carrinho-precificacao`, `importacao-dav` e `recuperacao-nfce` verdes; suíte E2E completa rodada com a stack derrubada antes. Contra o ERP real só o `FATURAR` autorizado do item 1 e leituras; nada de `PostCliente`.
+
+### AD-240: cancelar a venda deixa de exigir item, e ESC fecha os diálogos de desfecho (2026-09-16)
+
+**Origem:** primeira rodada do usuário no dev server contra o ERP de preview, logo depois do AD-239.
+
+**1. ESC fecha os quatro diálogos de desfecho.** `DialogoErroFaturamento` ganhou o ouvinte de `Escape` que os demais modais desta base já tinham. Vale inclusive para os dois que **limpam o caixa** (NFCe rejeitada, cenário tributário): fechar é o único desfecho possível do diálogo — não há ação destrutiva escondida atrás do botão, a limpeza está anunciada no texto, e exigir o mouse para ela não protegia ninguém. Distinto de `DialogoConfirmarReenvio`, onde a tecla continua fora porque lá há duas saídas e uma delas reenvia (`FR-004`).
+
+**2. "Cancelar venda" passou a olhar a venda inteira, não só os itens.** A regra era `linhas.length > 0`, e deixava dois becos sem saída na tela: (a) um documento importado **sem itens** — legítimo desde o AD-239 — não podia ser devolvido, embora o rascunho exista no ERP e precise ser suspenso lá; (b) uma venda com **cliente identificado** e nenhum item dizia "não há nada a cancelar" com o nome do cliente à vista, e a única saída era recarregar a página. `vendaTemAlgoACancelar` passou a somar os três termos (linhas, origem importada, cliente identificado) e é o mesmo predicado do botão, da lixeira do mobile e do F10.
+
+**3. Venda vazia nascida no Checkout não vai ao ERP.** Cancelar uma venda `NOVA` sem linhas limpa a tela e **não** chama `SUSPENDER`: o ERP gravaria um rascunho vazio que ninguém retoma e ninguém apaga — exatamente o lixo do item 59 de `PENDENCIES.md`. O toast diz "Venda cancelada. Nada foi enviado ao ERP", em vez de prometer uma retomada que não existe. Documento importado **sempre** vai ao ERP, mesmo sem itens, porque lá o rascunho existe.
+
+**4. Valor grande parava de caber.** O "Total item" da barra e as três colunas de dinheiro da grid ganharam `whitespace-nowrap` (a barra, também `overflow-hidden`): um total como `R$ 1.234.567,89` quebrava em duas linhas dentro da caixa de altura fixa e transbordava para baixo.
+
+**Fora de escopo, registrado:** o ERP vai passar a devolver número e série da nota de monitoramento na rejeição, e essa nota é corrigida e reenviada **só pelo ERP** — não entra no menu de importação de NFCe. Item 61 de `PENDENCIES.md`, a tratar quando a mudança for publicada.
+
+**Impact:** `DialogoErroFaturamento.tsx`, `AcoesFinaisVenda.tsx` (`vendaTemAlgoACancelar` exportado), `AppShell.tsx` (F10), `useFinalizarOuSuspenderVenda.ts`, `EntradaRapidaProduto.tsx`, `GridItens.tsx`; testes em `finalizacaoSuspensao.spec.ts` (ESC nos dois tons, cancelar sem item nos dois caminhos) e ajuste da frase no E2E.

@@ -1048,8 +1048,7 @@ export function EntradaRapidaProduto({
                   : // Por último, pelo mesmo motivo do desconto que zera o
                     // item: a quantidade é válida, quem a recusa é o saldo
                     // (AD-236). A saída é reduzi-la.
-                    (motivoSaldo ??
-                    'Revise quantidade, preço e desconto: há um valor inválido.');
+                    (motivoSaldo ?? 'Revise quantidade, preço e desconto: há um valor inválido.');
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -1344,7 +1343,12 @@ export function EntradaRapidaProduto({
           <span className={classeRotulo}>Total item</span>
           <strong
             className={cn(
-              'flex h-10 items-center rounded-xl bg-secondary px-sm font-mono text-lg tabular-nums md:h-11.5',
+              // `whitespace-nowrap` + `overflow-hidden`: um total grande
+              // (R$ 1.234.567,89) quebrava em duas linhas dentro da caixa de
+              // altura fixa e transbordava para baixo (correção do usuário,
+              // 2026-09-16). O rótulo já cresce com `flex-1`; quando nem assim
+              // couber, o valor é cortado à direita em vez de deformar a barra.
+              'flex h-10 items-center overflow-hidden rounded-xl bg-secondary px-sm font-mono text-lg whitespace-nowrap tabular-nums md:h-11.5',
               semResolucao ? 'text-muted-foreground' : 'text-primary',
             )}
             data-testid="previa-total-item"

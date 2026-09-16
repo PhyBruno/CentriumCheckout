@@ -185,18 +185,43 @@ export function ProvedorFinalizacaoVenda({
 }
 
 /**
- * Não há o que suspender numa venda em que nada foi lançado: `SUSPENDER`
- * criaria um rascunho vazio no ERP, que o operador teria de limpar depois
- * (pedido do usuário, 2026-09-02).
+ * Há o que cancelar nesta venda? (pedido do usuário, 2026-09-02; alargado em
+ * 2026-09-16 — AD-240).
  *
- * **Linha cancelada conta** (pedido do usuário, 2026-09-03, corrigindo a regra
- * anterior): ela permanece no array por rastreabilidade (`CART-08`) e é prova
- * de que a venda foi digitada. Uma venda cujos itens foram todos cancelados é
- * exatamente o caso em que o operador precisa desistir — travar o botão ali o
- * deixava sem saída na tela.
+ * Três coisas contam, e cada uma por um motivo:
+ *
+ * 1. **Qualquer linha**, cancelada inclusive (pedido do usuário, 2026-09-03):
+ *    ela permanece no array por rastreabilidade (`CART-08`) e é prova de que a
+ *    venda foi digitada. Um carrinho com tudo cancelado é justamente onde o
+ *    operador precisa desistir.
+ * 2. **Documento importado** (`origem !== 'NOVA'`), mesmo **sem item**: o
+ *    rascunho existe no ERP e precisa ser suspenso lá — um DAV ou NFCe sem
+ *    itens é documento legítimo (AD-239), e travar o botão prendia o operador
+ *    numa venda que ele não conseguia nem devolver.
+ * 3. **Cliente identificado**: o operador escolheu alguém e a tela já não está
+ *    limpa. Sem isto o botão dizia "não há nada a cancelar" com o nome do
+ *    cliente à vista, e a única saída era recarregar a página.
+ *
+ * Venda vazia de origem `NOVA` com cliente escolhido **não vai ao ERP**: quem
+ * trata é `useFinalizarOuSuspenderVenda`, limpando a tela — `SUSPENDER` ali
+ * criaria um rascunho vazio, exatamente o lixo que o item 59 de
+ * `PENDENCIES.md` descreve.
  */
-function useVendaTemItem(): boolean {
-  return useVendaStore((estado) => estado.linhas.length > 0);
+export function vendaTemAlgoACancelar(estado: {
+  readonly linhas: readonly unknown[];
+  readonly identidadeVenda: { readonly origem: string };
+  readonly houveEscolhaExplicita: boolean;
+  readonly clienteAtual: unknown;
+}): boolean {
+  return (
+    estado.linhas.length > 0 ||
+    estado.identidadeVenda.origem !== 'NOVA' ||
+    (estado.houveEscolhaExplicita && estado.clienteAtual !== null)
+  );
+}
+
+function useVendaTemAlgoACancelar(): boolean {
+  return useVendaStore(vendaTemAlgoACancelar);
 }
 
 /**
@@ -212,12 +237,15 @@ function useVendaTemItem(): boolean {
  * segunda cópia da regra liberaria a tecla no instante em que o botão recusa
  * (`FR-018`).
  */
-export function motivoDeBloqueioDoCancelar(travado: boolean, temItem: boolean): string | null {
+export function motivoDeBloqueioDoCancelar(
+  travado: boolean,
+  temAlgoACancelar: boolean,
+): string | null {
   if (travado) {
     return 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
   }
-  if (!temItem) {
-    return 'Não há nada a cancelar: nenhum item foi lançado nesta venda.';
+  if (!temAlgoACancelar) {
+    return 'Não há nada a cancelar: esta venda está vazia.';
   }
   return null;
 }
@@ -334,7 +362,7 @@ export interface AcaoCancelarVendaProps {
  */
 export function AcaoCancelarVenda({ compacto = false }: AcaoCancelarVendaProps = {}): ReactElement {
   const { estado, suspender } = useFinalizacaoVenda();
-  const temItem = useVendaTemItem();
+  const temAlgoACancelar = useVendaTemAlgoACancelar();
   const travado = estado.tipo === 'enviando' || estado.tipo === 'falha-rede';
 
   return (
@@ -343,7 +371,7 @@ export function AcaoCancelarVenda({ compacto = false }: AcaoCancelarVendaProps =
         void suspender();
       }}
       compacto={compacto}
-      bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
+      bloqueado={motivoDeBloqueioDoCancelar(travado, temAlgoACancelar)}
     />
   );
 }

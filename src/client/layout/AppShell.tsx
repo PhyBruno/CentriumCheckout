@@ -4,6 +4,7 @@ import {
   ProvedorFinalizacaoVenda,
   motivoDeBloqueioDoCancelar,
   useFinalizacaoVenda,
+  vendaTemAlgoACancelar,
 } from '../features/finalizacao-suspensao/AcoesFinaisVenda';
 import { useFraseDeRecusaDeImportacao } from '../features/importacao/useImportacaoDocumento';
 import { TeclasVendaRapida } from '../features/venda-rapida/TeclasVendaRapida';
@@ -257,7 +258,7 @@ function TeclasFixasDaVenda({ compacto }: TeclasFixasDaVendaProps): null {
       indisponivel: () =>
         motivoDeBloqueioDoCancelar(
           estado.tipo === 'enviando' || estado.tipo === 'falha-rede',
-          useVendaStore.getState().linhas.length > 0,
+          vendaTemAlgoACancelar(useVendaStore.getState()),
         ),
       // O `suspender` do botão "Cancelar venda", que já resolve para suspensão
       // (`research.md` D9) — inclusive a confirmação de PIX, que mora dentro da

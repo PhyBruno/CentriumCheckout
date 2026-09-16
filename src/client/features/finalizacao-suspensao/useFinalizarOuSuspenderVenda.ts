@@ -51,7 +51,11 @@ export type EstadoEnvio =
       readonly notaFiscal: NotaFiscalResposta | null;
     }
   /** Falha técnica com resposta do ERP (HTTP, sessão, corpo sem desfecho). */
-  | { readonly tipo: 'falha-negocio'; readonly operacao: SuspenderOuFaturar; readonly mensagem: string }
+  | {
+      readonly tipo: 'falha-negocio';
+      readonly operacao: SuspenderOuFaturar;
+      readonly mensagem: string;
+    }
   /**
    * O ERP validou a venda e recusou (AD-239) — saldo, regra de NFCe. Não é erro
    * na nota: a venda continua no caixa e o operador ajusta e tenta de novo.
@@ -187,6 +191,12 @@ const AVISO_SEM_VALOR_A_FATURAR =
   'Não há valor a faturar: insira ao menos um item com valor antes de finalizar.';
 
 const MENSAGEM_VENDA_SUSPENSA = 'Venda suspensa. O rascunho continua disponível para retomada.';
+
+/**
+ * Venda vazia descartada sem passar pelo ERP (AD-240) — não houve rascunho, e
+ * prometer retomada seria falso.
+ */
+const MENSAGEM_VENDA_DESCARTADA = 'Venda cancelada. Nada foi enviado ao ERP.';
 
 const ESTADO_INICIAL: EstadoEnvio = { tipo: 'ocioso' };
 
@@ -525,6 +535,26 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
         return;
       }
 
+      // Venda **vazia e nascida no Checkout**: cancelar limpa a tela e **não**
+      // chama o ERP (AD-240). O gesto é legítimo — o operador identificou um
+      // cliente e desistiu —, mas `SUSPENDER` aqui criaria um rascunho vazio no
+      // ERP, que ninguém retoma e ninguém apaga (item 59 de `PENDENCIES.md`).
+      // Um documento importado não cai neste caminho mesmo sem itens: o
+      // rascunho já existe do outro lado e precisa ser suspenso lá.
+      if (operacao === 'SUSPENDER') {
+        const venda = useVendaStore.getState();
+        if (venda.linhas.length === 0 && venda.identidadeVenda.origem === 'NOVA') {
+          encerrarSessaoDeVenda();
+          const notificar = injetadas.notificar;
+          if (notificar === undefined) {
+            toast.sucesso(MENSAGEM_VENDA_DESCARTADA);
+          } else {
+            notificar(MENSAGEM_VENDA_DESCARTADA);
+          }
+          return;
+        }
+      }
+
       // Não há NFCe a emitir sem valor. O botão já nasce desabilitado nesse
       // estado; a guarda aqui cobre o acionamento por teclado ou por código,
       // que não passa pelo `disabled` do DOM.
@@ -589,7 +619,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
 
       await despachar(operacao);
     },
-    [aplicarEstado, despachar],
+    [aplicarEstado, despachar, encerrarSessaoDeVenda],
   );
 
   /**

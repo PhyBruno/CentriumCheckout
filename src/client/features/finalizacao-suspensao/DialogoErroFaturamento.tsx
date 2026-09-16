@@ -1,5 +1,5 @@
 import { AlertTriangle, LinkSquare, Sparkles, XCircle } from 'reicon-react';
-import type { ReactElement } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { urlExternaSegura } from '@/lib/urlExterna';
@@ -187,6 +187,24 @@ export function DialogoErroFaturamento({
   // `true`: sem prop de abertura — o pai só renderiza este diálogo aberto.
   const janelaRef = useFocoDeModal<HTMLDivElement>(true);
 
+  // ESC fecha, nos quatro desfechos (pedido do usuário, 2026-09-16). Fechar é o
+  // **único** desfecho deste diálogo: não há ação destrutiva escondida atrás do
+  // botão — nos dois que liberam o caixa, a limpeza é a consequência anunciada
+  // no próprio texto, e obrigar o mouse para ela não protege ninguém. Ouvinte de
+  // `window` como nos demais modais desta base: um `onKeyDown` no backdrop só
+  // dispararia com o foco dentro da janela.
+  useEffect(() => {
+    const aoTeclar = (evento: globalThis.KeyboardEvent): void => {
+      if (evento.key === 'Escape') {
+        onFechar();
+      }
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => {
+      window.removeEventListener('keydown', aoTeclar);
+    };
+  }, [onFechar]);
+
   return (
     <div
       className="cc-backdrop-entra fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg"
@@ -212,7 +230,12 @@ export function DialogoErroFaturamento({
             <strong className="text-md font-semibold text-foreground">
               {copia.tituloCabecalho}
             </strong>
-            <span className={cn('text-sm', tomDeAviso ? 'text-[var(--cc-color-body)]' : 'text-destructive')}>
+            <span
+              className={cn(
+                'text-sm',
+                tomDeAviso ? 'text-[var(--cc-color-body)]' : 'text-destructive',
+              )}
+            >
               {copia.subtituloCabecalho}
             </span>
           </span>

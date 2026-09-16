@@ -34,7 +34,11 @@ describe('definirIdentidadeVenda — bloqueio pós-pagamento (AD-139)', () => {
     // Sem a guarda, uma venda com pagamento aprovado passaria a apontar para o
     // rascunho de outro documento mantendo o próprio conteúdo, e `FaturarNFCe`
     // fecharia o documento errado — sem erro nem aviso.
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0, serie: '' });
+    expect(store.getState().identidadeVenda).toEqual({
+      origem: 'NOVA',
+      numeroRascunho: 0,
+      serie: '',
+    });
     // No-op **com aviso**, nunca exceção — mesmo contrato de `inserirItem`
     // (003) e `selecionarCliente` (005).
     expect(avisos).toHaveLength(1);
@@ -46,7 +50,11 @@ describe('definirIdentidadeVenda — bloqueio pós-pagamento (AD-139)', () => {
 
     store.getState().definirIdentidadeVenda({ origem: 'DAV', numeroRascunho: 90210, serie: '1' });
 
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'DAV', numeroRascunho: 90210, serie: '1' });
+    expect(store.getState().identidadeVenda).toEqual({
+      origem: 'DAV',
+      numeroRascunho: 90210,
+      serie: '1',
+    });
   });
 
   it('valida o NumeroRascunho antes da guarda: payload impossível continua falhando alto', () => {
@@ -66,7 +74,9 @@ describe('início e fim de venda continuam livres com pagamento aprovado (AD-139
     const avisos: string[] = [];
     const store = storeCom(() => false, avisos);
 
-    store.getState().iniciarIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
+    store
+      .getState()
+      .iniciarIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
 
     expect(store.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
@@ -83,10 +93,16 @@ describe('início e fim de venda continuam livres com pagamento aprovado (AD-139
     // A partir daqui a venda tem pagamento aprovado: é exatamente o estado em
     // que `useFinalizarOuSuspenderVenda` limpa a venda (`FR-012`).
     const bloqueado = storeCom(() => false);
-    bloqueado.getState().iniciarIdentidadeVenda({ origem: 'DAV', numeroRascunho: 90210, serie: '1' });
+    bloqueado
+      .getState()
+      .iniciarIdentidadeVenda({ origem: 'DAV', numeroRascunho: 90210, serie: '1' });
     bloqueado.getState().resetarIdentidadeVenda();
 
-    expect(bloqueado.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0, serie: '' });
+    expect(bloqueado.getState().identidadeVenda).toEqual({
+      origem: 'NOVA',
+      numeroRascunho: 0,
+      serie: '',
+    });
     expect(store.getState().identidadeVenda.numeroRascunho).toBe(90210);
   });
 
@@ -101,7 +117,11 @@ describe('início e fim de venda continuam livres com pagamento aprovado (AD-139
     store.getState().resetarAuditoria('NOVA');
     store.getState().iniciarIdentidadeVenda({ origem: 'NOVA', numeroRascunho: 0, serie: '' });
 
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'NOVA', numeroRascunho: 0, serie: '' });
+    expect(store.getState().identidadeVenda).toEqual({
+      origem: 'NOVA',
+      numeroRascunho: 0,
+      serie: '',
+    });
   });
 
   it('a mesma sequência pela ação guardada deixaria a venda seguinte com a identidade anterior', () => {
@@ -115,7 +135,11 @@ describe('início e fim de venda continuam livres com pagamento aprovado (AD-139
 
     store.getState().definirIdentidadeVenda({ origem: 'NOVA', numeroRascunho: 0, serie: '' });
 
-    expect(store.getState().identidadeVenda).toEqual({ origem: 'DAV', numeroRascunho: 90210, serie: '1' });
+    expect(store.getState().identidadeVenda).toEqual({
+      origem: 'DAV',
+      numeroRascunho: 90210,
+      serie: '1',
+    });
   });
 });
 
@@ -167,7 +191,9 @@ describe('adotarRascunhoGravado (AD-235)', () => {
   it('não é barrada pela guarda de pagamento — a recusa chega com pagamento em curso', () => {
     const avisos: string[] = [];
     const store = storeCom(() => false, avisos);
-    store.getState().iniciarIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 5925, serie: 'R01' });
+    store
+      .getState()
+      .iniciarIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 5925, serie: 'R01' });
 
     store.getState().adotarRascunhoGravado(5925);
     store.getState().adotarRascunhoGravado(5925);

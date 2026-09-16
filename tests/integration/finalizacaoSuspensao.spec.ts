@@ -401,9 +401,7 @@ describe('NFCe rejeitada — o caixa é liberado ao fechar o aviso', () => {
     useVendaStore
       .getState()
       .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 4821, serie: 'R01' });
-    const cenario = montarCenario([
-      { ...REJEICAO, numeroRascunho: null, serieRascunho: null },
-    ]);
+    const cenario = montarCenario([{ ...REJEICAO, numeroRascunho: null, serieRascunho: null }]);
     const { result } = renderizar(cenario);
 
     await act(async () => {
@@ -809,6 +807,67 @@ function renderizarAtalhos(cenario: Cenario) {
   );
 }
 
+/**
+ * AD-240 — "Cancelar venda" existe para desfazer o que está na tela, e a tela
+ * tem mais do que itens: um documento importado e um cliente identificado também
+ * precisam de saída.
+ */
+describe('cancelar uma venda sem itens (AD-240)', () => {
+  it('venda nova com cliente identificado: libera o botão e limpa a tela sem chamar o ERP', async () => {
+    const cenario = montarCenario([]);
+    useVendaStore.getState().limparCarrinho();
+    useVendaStore.setState({
+      houveEscolhaExplicita: true,
+      clienteAtual: {
+        codigoCliente: 17,
+        nome: 'CLIENTE TESTE',
+        documento: '91199000078',
+        celular: null,
+        listaPreco: 1,
+        descontoConvenio: 0,
+        codigoConvenio: null,
+        origem: 'BUSCA_DOCUMENTO',
+      },
+    });
+
+    render(renderizarAtalhos(cenario));
+    const botao = screen.getByTestId('botao-cancelar-venda');
+    expect(botao).not.toHaveAttribute('aria-disabled');
+
+    await userEvent.click(botao);
+
+    // Nada foi ao ERP: `SUSPENDER` aqui criaria um rascunho vazio (item 59 de
+    // PENDENCIES.md), e não há documento do outro lado a suspender.
+    expect(cenario.enviados).toHaveLength(0);
+    // A tela volta ao início da próxima venda: o cliente identificado sai e o
+    // default do PDV é reaplicado por `abrirSessaoDeVenda`.
+    await waitFor(() => {
+      expect(useVendaStore.getState().houveEscolhaExplicita).toBe(false);
+    });
+    expect(useVendaStore.getState().clienteAtual?.codigoCliente).not.toBe(17);
+  });
+
+  it('documento importado sem itens: suspende no ERP, porque o rascunho existe lá', async () => {
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
+    useVendaStore.getState().limparCarrinho();
+    useVendaStore
+      .getState()
+      .definirIdentidadeVenda({ origem: 'RASCUNHO', numeroRascunho: 6033, serie: 'R01' });
+
+    render(renderizarAtalhos(cenario));
+    const botao = screen.getByTestId('botao-cancelar-venda');
+    expect(botao).not.toHaveAttribute('aria-disabled');
+
+    await userEvent.click(botao);
+
+    await waitFor(() => {
+      expect(cenario.enviados).toHaveLength(1);
+    });
+    expect(cenario.enviados[0]?.NumeroRascunho).toBe(6033);
+    expect(cenario.enviados[0]?.SuspenderOuFaturar).toBe('SUSPENDER');
+  });
+});
+
 describe('correções do usuário (2026-09-02)', () => {
   it('desabilita "Cancelar venda" enquanto a venda não tem item, com o motivo legível no botão', async () => {
     const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
@@ -822,7 +881,7 @@ describe('correções do usuário (2026-09-02)', () => {
     // notificação ao clicar é o que o E2E verifica, com o toast real na tela.
     const botao = screen.getByTestId('botao-cancelar-venda');
     expect(botao).toHaveAttribute('aria-disabled', 'true');
-    expect(botao).toHaveAttribute('title', expect.stringMatching(/nenhum item foi lançado/i));
+    expect(botao).toHaveAttribute('title', expect.stringMatching(/esta venda está vazia/i));
 
     await userEvent.click(botao);
 
@@ -1257,6 +1316,43 @@ describe('janela da NFCe rejeitada', () => {
     await screen.findByTestId('dialogo-erro-faturamento');
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  /**
+   * ESC fecha (pedido do usuário, 2026-09-16; AD-240). Vale para os quatro
+   * desfechos, inclusive os que liberam o caixa: fechar é o único desfecho
+   * deste diálogo, e a limpeza está anunciada no próprio texto.
+   */
+  it('ESC fecha a janela da rejeição e libera o caixa, como o botão', async () => {
+    const cenario = montarCenario([CENARIO_REJEICAO]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+    await screen.findByTestId('dialogo-erro-faturamento');
+
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialogo-erro-faturamento')).not.toBeInTheDocument();
+    });
+    expect(useVendaStore.getState().linhas).toEqual([]);
+  });
+
+  it('ESC fecha a janela da recusa de validação, com a venda intacta', async () => {
+    const cenario = montarCenario([
+      { estado: 'venda-recusada', mensagem: 'Quantidade maior que o Saldo do produto: 18.' },
+    ]);
+    renderizarJanela(cenario);
+
+    await userEvent.click(screen.getByTestId('disparar-finalizacao'));
+    await screen.findByTestId('dialogo-erro-faturamento');
+
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialogo-erro-faturamento')).not.toBeInTheDocument();
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(1);
   });
 
   it('a falha técnica continua dizendo que a venda segue aberta', async () => {

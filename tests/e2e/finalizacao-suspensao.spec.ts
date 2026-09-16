@@ -288,7 +288,7 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     await expect(botao).toBeDisabled();
     await botao.click({ force: true });
 
-    await expect(page.getByText(/nenhum item foi lançado/i).first()).toBeVisible();
+    await expect(page.getByText(/esta venda está vazia/i).first()).toBeVisible();
     // E nada foi suspenso: o ERP não recebeu retrato nenhum.
     expect((await contadores(request)).faturarNFCe).toBe(0);
   });

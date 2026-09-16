@@ -1002,17 +1002,20 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     await esperarPreviaBloqueada();
   });
 
-  it.each(['S', 'B'])("'B': TAB num pesável ('%s') também para na prévia bloqueada", async (tipo) => {
-    prepararVenda('B');
-    stubarProduto({ saldo: '0.000', tipo });
-    const usuario = userEvent.setup();
-    renderBarra();
+  it.each(['S', 'B'])(
+    "'B': TAB num pesável ('%s') também para na prévia bloqueada",
+    async (tipo) => {
+      prepararVenda('B');
+      stubarProduto({ saldo: '0.000', tipo });
+      const usuario = userEvent.setup();
+      renderBarra();
 
-    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
-    await usuario.tab();
+      await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+      await usuario.tab();
 
-    await esperarPreviaBloqueada();
-  });
+      await esperarPreviaBloqueada();
+    },
+  );
 
   it("'B': produto não editável escolhido no modal não entra direto", async () => {
     prepararVenda('B');
@@ -1081,7 +1084,7 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     expect(urls[1]).toContain('Codigoproduto=001234');
   });
 
-  it("'B': aumentar pelo \"+\" além do saldo bloqueia na hora", async () => {
+  it('\'B\': aumentar pelo "+" além do saldo bloqueia na hora', async () => {
     prepararVenda('B');
     stubarProduto({ saldo: '1.000', tipo: 'E' });
     const usuario = userEvent.setup();
@@ -1117,7 +1120,7 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     expect(aviso).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
   });
 
-  it("'A': na prévia editável, o \"+\" que cruza o limite avisa uma vez, sem bloquear", async () => {
+  it('\'A\': na prévia editável, o "+" que cruza o limite avisa uma vez, sem bloquear', async () => {
     prepararVenda('A');
     stubarProduto({ saldo: '1.000', tipo: 'E' });
     const aviso = vi.spyOn(notificar, 'aviso');
