@@ -3628,4 +3628,6 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 
 **Impact:** `src/client/features/finalizacao-suspensao/DialogoAutorizandoNFCe.tsx` (novo), `AcoesFinaisVenda.tsx` (renderização + `sucedeAutorizacao`), `DialogoDocumentoFiscal.tsx`, `DialogoErroFaturamento.tsx` e `DialogoConfirmarReenvio.tsx` (`fundoJaVisivel`), `src/client/styles/global.css` (`cc-giro`); testes — `tests/integration/dialogoAutorizandoNFCe.spec.tsx` (novo, 4 casos) e a espera no fluxo dourado de `tests/e2e/layout-mobile.spec.ts`.
 
-**Verificação (AD-244):** `tsc --noEmit`, ESLint e Prettier limpos; 1746 testes unit/integração passando em 112 arquivos. **E2E não executado:** a porta 3100, fixa em `playwright.config.ts`, estava ocupada por um container de outro projeto. **Não verificado ao vivo** contra o ERP real.
+**Verificação (AD-244):** `tsc --noEmit`, ESLint e Prettier limpos; 1746 testes unit/integração passando em 112 arquivos; E2E `layout-mobile.spec.ts` + `finalizacao-suspensao.spec.ts` com 17 passando (1 `skip` preexistente). Prints do modal conferidos no desktop (1440×900) e no mobile (390×844), com o `FaturarNFCe` segurado. **Não verificado ao vivo** contra o ERP real.
+
+**Pegadinha do E2E:** a porta 3100 é fixa em `playwright.config.ts` e o `reuseExistingServer` aceita **qualquer** coisa que responda `200` em `/health`. Um container de outro projeto nessa porta faz o Playwright pular a subida da stack, e todo teste cai com `ECONNREFUSED 127.0.0.1:4010` no `__mock/reset` — não é regressão.
