@@ -112,10 +112,13 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await expect(page.getByRole('dialog', { name: 'Autorizando NFCe' })).toBeVisible();
     await expect(page.getByTestId('dialogo-autorizando-nfce')).toHaveCount(0);
 
-    // Caminho feliz não tem modal (pedido do usuário, 2026-09-02): o sinal é o
-    // carrinho zerado. O wizard volta à etapa 1 pelo mesmo motivo — a venda
-    // nova começa do começo.
+    // O sinal é o carrinho zerado; o wizard volta à etapa 1 porque a venda nova
+    // começa do começo. O cupom enviado mostra "Enviado para a impressora"
+    // (AD-246), com o PDF de backup, e fecha com o ESC.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByText('Enviado para a impressora')).toBeVisible();
+    await expect(page.getByTestId('abrir-pdf-documento-fiscal')).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
   });
 

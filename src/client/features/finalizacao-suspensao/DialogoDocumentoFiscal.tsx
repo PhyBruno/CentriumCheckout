@@ -25,16 +25,23 @@ import { identificacaoDaNota } from './identificacaoDaNota';
  * cada venda (`FR-008`): `TipoImpressao = 'E'` tenta a impressão direta pelo
  * serviço local do PDV; `'P'` abre o PDF numa aba nova.
  *
- * **O caminho feliz não tem modal** (pedido do usuário, 2026-09-02). Fechar um
- * diálogo que só diz "deu certo" é trabalho que o operador de caixa faz dezenas
- * de vezes por turno sem receber nada em troca. O modal aparece só quando ele
- * precisa **decidir ou saber** de algo:
+ * **O PDF (`'P'`) segue sem modal** (pedido do usuário, 2026-09-02): fechar um
+ * diálogo que só diz "deu certo" é trabalho que o operador faz dezenas de vezes
+ * por turno. A impressão direta **passou a ter** (AD-246, abaixo), mas um que
+ * fecha sozinho. O modal aparece quando o operador precisa **decidir ou saber**
+ * de algo:
  *
- * 1. enquanto o serviço de impressão local não respondeu (a venda já foi
- *    emitida, e o operador precisa saber por que a tela ainda não liberou);
+ * 1. quando o cupom foi enviado à impressora direta (`'E'`) — ver abaixo;
  * 2. quando a impressão direta falhou — aí ele escolhe abrir o PDF
  *    (`FR-009`: nunca falhar em silêncio);
  * 3. quando o navegador recusou a aba do PDF, que exige um clique de verdade.
+ *
+ * **Enviado, não impresso** (correção do usuário, 2026-09-17, AD-246): o
+ * serviço local só aceita o XML — não devolve se o cupom de fato saiu. Por
+ * isso a impressão direta sempre mostra "Enviado para a impressora", que fecha
+ * sozinho em `FECHAMENTO_AUTOMATICO_MS` ou no ESC, e o rodapé oferece **sempre**
+ * o PDF em nova aba (no lugar do antigo "Concluir"): é o backup do cupom para
+ * o cliente quando a impressora não imprimiu.
  *
  * Erro de transmissão da própria NFCe não passa por aqui: é `falha-negocio` da
  * máquina de estados, e quem o mostra é `DialogoErroFaturamento`.
@@ -63,9 +70,15 @@ export interface DialogoDocumentoFiscalProps {
   readonly fundoJaVisivel?: boolean;
 }
 
+/** Tempo até "Enviado para a impressora" fechar sozinho (AD-246). */
+export const FECHAMENTO_AUTOMATICO_MS = 10_000;
+
 type EstadoEntrega =
-  /** Conversando com a impressora — único estado de espera com modal. */
-  | { readonly tipo: 'imprimindo' }
+  /**
+   * XML entregue (ou sendo entregue) ao serviço local. Não há confirmação de
+   * que o cupom saiu — o modal diz "enviado" e fecha sozinho (AD-246).
+   */
+  | { readonly tipo: 'enviado' }
   /** Impressão direta falhou: o operador decide se abre o PDF (`FR-009`). */
   | { readonly tipo: 'falha-impressao'; readonly mensagem: string }
   /** A aba do PDF foi recusada pelo navegador; precisa de um clique real. */
@@ -97,7 +110,7 @@ export function DialogoDocumentoFiscal({
   const janelaRef = useFocoDeModal<HTMLDivElement>(true);
 
   const [estado, setEstado] = useState<EstadoEntrega>(
-    mecanismo === 'direta' ? { tipo: 'imprimindo' } : { tipo: 'concluida' },
+    mecanismo === 'direta' ? { tipo: 'enviado' } : { tipo: 'concluida' },
   );
 
   // A entrega é um efeito colateral que só pode acontecer **uma vez** por nota:
@@ -142,15 +155,14 @@ export function DialogoDocumentoFiscal({
       }
 
       if (resultado.estado === 'impresso') {
-        // Cupom saiu: nada a decidir, nada a fechar. O aviso de host default
-        // vira toast — é informação útil de configuração, não um passo do
-        // fluxo que mereça segurar o operador.
+        // O serviço aceitou o XML — o que **não** prova que o cupom saiu
+        // (AD-246). O modal "Enviado" continua na tela e fecha sozinho. O aviso
+        // de host default vira toast: é informação de configuração, não um
+        // passo do fluxo.
         const aviso = avisoDeHostPadrao(resultado);
         if (aviso !== null) {
           notificar.aviso(aviso);
         }
-        setEstado({ tipo: 'concluida' });
-        onFechar();
         return;
       }
 
@@ -178,11 +190,26 @@ export function DialogoDocumentoFiscal({
     };
   }, [onFechar]);
 
+  // "Enviado" fecha sozinho (AD-246): sem retorno da impressora não há o que o
+  // operador confirmar. A dependência é o **tipo**, não o objeto: a falha que
+  // chegar antes do prazo troca o tipo e o cleanup cancela o fechamento — a
+  // falha precisa ficar na tela até o operador decidir.
+  const enviado = estado.tipo === 'enviado';
+  useEffect(() => {
+    if (!enviado) {
+      return;
+    }
+    const temporizador = setTimeout(onFechar, FECHAMENTO_AUTOMATICO_MS);
+    return () => {
+      clearTimeout(temporizador);
+    };
+  }, [enviado, onFechar]);
+
   if (estado.tipo === 'concluida') {
     return null;
   }
 
-  const emEspera = estado.tipo === 'imprimindo';
+  const emEspera = enviado;
   const identificacao = identificacaoDaNota({
     numeroNota: notaFiscal.NumeroNota,
     serieNota: notaFiscal.SerieNota,
@@ -246,12 +273,13 @@ export function DialogoDocumentoFiscal({
 
           <span className="flex flex-col items-center gap-xs text-center">
             <strong className="text-lg font-semibold text-foreground">
-              {estado.tipo === 'imprimindo' && 'Enviando para a impressora'}
+              {estado.tipo === 'enviado' && 'Enviado para a impressora'}
               {estado.tipo === 'falha-impressao' && 'Não foi possível imprimir'}
               {estado.tipo === 'pdf-bloqueado' && 'O navegador bloqueou a aba do PDF'}
             </strong>
             <span className="text-sm text-[var(--cc-color-body)]">
-              {estado.tipo === 'imprimindo' && 'Aguarde o cupom sair na impressora do caixa.'}
+              {estado.tipo === 'enviado' &&
+                'O cupom foi enviado à impressora do caixa. Se ele não sair, abra o PDF pelo botão abaixo. Esta janela fecha sozinha em 10 segundos.'}
               {estado.tipo === 'falha-impressao' &&
                 'A venda foi emitida normalmente. Abra o PDF para conferir ou reimprimir.'}
               {estado.tipo === 'pdf-bloqueado' &&
@@ -281,28 +309,19 @@ export function DialogoDocumentoFiscal({
               {estado.mensagem}
             </p>
           )}
-
-          {!emEspera && (
-            <button
-              type="button"
-              onClick={abrirEmNovaAba}
-              data-testid="abrir-pdf-documento-fiscal"
-              className="flex h-11 w-full items-center justify-center gap-xs rounded-full bg-primary text-md font-semibold text-primary-foreground"
-            >
-              <LinkSquare className="size-4" aria-hidden="true" />
-              Abrir o PDF em outra aba
-            </button>
-          )}
         </div>
 
+        {/* O PDF é **sempre** oferecido, no lugar do antigo "Concluir" (AD-246):
+            sem retorno da impressora, é o backup do cupom para o cliente. Sair
+            sem abrir continua sendo o ESC — e, no "Enviado", o prazo de 10s. */}
         <footer className="flex h-[60px] shrink-0 items-center justify-center border-t border-border px-lg">
           <Button
-            variant="secondary"
-            className="h-9 rounded-full px-lg"
-            onClick={onFechar}
-            data-testid="fechar-documento-fiscal"
+            className="h-9 gap-xs rounded-full px-lg"
+            onClick={abrirEmNovaAba}
+            data-testid="abrir-pdf-documento-fiscal"
           >
-            Concluir
+            <LinkSquare className="size-4" aria-hidden="true" />
+            Abrir o PDF em outra aba
           </Button>
         </footer>
       </div>

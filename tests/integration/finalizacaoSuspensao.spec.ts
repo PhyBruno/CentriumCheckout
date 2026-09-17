@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { CheckoutFaturarNFCe } from '../../src/client/domain/venda/montarRetratoVenda';
-import { DialogoDocumentoFiscal } from '../../src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal';
+import {
+  DialogoDocumentoFiscal,
+  FECHAMENTO_AUTOMATICO_MS,
+} from '../../src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal';
 import {
   AcoesFinaisVenda,
   motivoDeBloqueioDoFinalizar,
@@ -700,27 +703,74 @@ describe('entrega do documento fiscal (T015, FR-009; correções do usuário 202
     expect(onFechar).toHaveBeenCalled();
   });
 
-  it('impressão direta bem-sucedida também não mostra modal', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
-    const onFechar = vi.fn();
+  /**
+   * AD-246 (correção do usuário, 2026-09-17): o serviço local não diz se o
+   * cupom saiu. A impressão direta mostra "Enviado para a impressora", fecha
+   * sozinha em 10s e sempre oferece o PDF como backup do cupom.
+   */
+  it('impressão direta mostra "Enviado para a impressora" e fecha sozinha em 10s', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
+      const onFechar = vi.fn();
 
-    renderizarEntrega('E', { fetchImpl, onFechar });
+      renderizarEntrega('E', { fetchImpl, onFechar });
 
-    await waitFor(() => {
-      expect(onFechar).toHaveBeenCalled();
-    });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(screen.queryByTestId('dialogo-documento-fiscal')).not.toBeInTheDocument();
+      expect(screen.getByTestId('dialogo-documento-fiscal')).toBeInTheDocument();
+      expect(screen.getByText(/enviado para a impressora/i)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+      });
+      expect(onFechar).not.toHaveBeenCalled();
+
+      // Margem de 1s: com `shouldAdvanceTime` o relógio falso também anda com
+      // o tempo real gasto no `waitFor` acima.
+      act(() => {
+        vi.advanceTimersByTime(FECHAMENTO_AUTOMATICO_MS - 1000);
+      });
+      expect(onFechar).not.toHaveBeenCalled();
+
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(onFechar).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('mostra o modal enquanto conversa com a impressora', () => {
-    // `fetch` que nunca resolve: mantém a entrega no estado de espera.
-    const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(() => undefined));
+  it('no "Enviado", o rodapé abre o PDF da impressão em outra aba — no lugar de "Concluir"', async () => {
+    const abrirPdf = vi.fn<typeof abrirPdfNFCe>(() => ({ estado: 'aberto' }));
+    const onFechar = vi.fn();
 
-    renderizarEntrega('E', { fetchImpl });
+    renderizarEntrega('E', { abrirPdf, onFechar });
 
-    expect(screen.getByTestId('dialogo-documento-fiscal')).toBeInTheDocument();
-    expect(screen.getByText(/enviando para a impressora/i)).toBeInTheDocument();
+    expect(screen.queryByText('Concluir')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('abrir-pdf-documento-fiscal'));
+
+    expect(abrirPdf).toHaveBeenCalledWith(NOTA_FISCAL_VALIDA.PDFImpressao);
+    expect(onFechar).toHaveBeenCalled();
+  });
+
+  it('a falha de impressão não fecha sozinha', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetchImpl = vi.fn<typeof fetch>(() => Promise.reject(new TypeError('Failed to fetch')));
+      const onFechar = vi.fn();
+
+      await act(async () => {
+        renderizarEntrega('E', { fetchImpl, onFechar });
+        await Promise.resolve();
+      });
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(FECHAMENTO_AUTOMATICO_MS * 2);
+      });
+      expect(onFechar).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('identifica a nota emitida por número e série (AD-238)', () => {
@@ -944,8 +994,7 @@ describe('correções do usuário (2026-09-02)', () => {
 
   it('fecha o modal do documento fiscal com ESC', async () => {
     const fechado = vi.fn();
-    // `fetch` que nunca resolve: segura o modal no estado de espera, que é o
-    // único caminho em que ele fica na tela esperando o operador.
+    // `fetch` que nunca resolve: segura o modal no "Enviado" (AD-246).
     render(
       createElement(DialogoDocumentoFiscal, {
         notaFiscal: NOTA_FISCAL_VALIDA,

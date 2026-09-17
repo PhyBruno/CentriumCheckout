@@ -94,11 +94,14 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
 
     await page.getByTestId('botao-finalizar-venda').click();
 
-    // Caminho feliz não tem modal (pedido do usuário, 2026-09-02): o cupom sai
-    // na impressora e a tela volta para a próxima venda. O sinal observável é o
-    // carrinho zerado, não um diálogo a fechar.
+    // AD-246: sem retorno da impressora, o cupom enviado mostra "Enviado para a
+    // impressora" com o PDF sempre à mão, e o ESC (ou o prazo de 10s) fecha.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
-    await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
+    const dialogo = page.getByTestId('dialogo-documento-fiscal');
+    await expect(dialogo.getByText('Enviado para a impressora')).toBeVisible();
+    await expect(page.getByTestId('abrir-pdf-documento-fiscal')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogo).toHaveCount(0);
 
     const { retrato } = await ultimoRetrato(request);
     expect(retrato?.SuspenderOuFaturar).toBe('FATURAR');

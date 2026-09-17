@@ -3645,3 +3645,21 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/features/carrinho/useCarrinho.ts` (`RevisaoProduto.avaliacaoSaldo`, `OpcoesConfirmacao`, `confirmarEdicao` com opções), `EntradaRapidaProduto.tsx`; testes — 6 casos novos em `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx`.
 
 **Verificação (AD-245):** `tsc --noEmit` e ESLint limpos; 1752 testes unit/integração passando em 112 arquivos. O produto `18` foi conferido por `GetProduto` direto no ERP (leitura), mas o fluxo na tela **não foi verificado ao vivo**.
+
+### AD-246: impressão direta mostra "Enviado para a impressora", fecha em 10s, e o PDF substitui o "Concluir" (2026-09-17)
+
+**Origem:** correção do usuário. O serviço de impressão local não diz se o cupom saiu: o `POST` com o XML só confirma que foi entregue. "Enviando para a impressora" sugeria uma confirmação que nunca chega.
+
+**Esta decisão supera, para a impressão direta (`TipoImpressao = 'E'`), a regra de 2026-09-02 "o caminho feliz não tem modal".** O PDF (`'P'`) continua sem modal.
+
+**1. "Enviado para a impressora".** O estado `imprimindo` virou `enviado`, com o texto "O cupom foi enviado à impressora do caixa. Se ele não sair, abra o PDF pelo botão abaixo. Esta janela fecha sozinha em 10 segundos." A resposta positiva do serviço **não fecha mais** o modal.
+
+**2. Fecha sozinho em 10s ou no ESC** (`FECHAMENTO_AUTOMATICO_MS`). O prazo só corre em `enviado`: a falha de impressão ou a aba bloqueada trocam o estado, o fechamento é cancelado e o modal espera o operador.
+
+**3. O rodapé oferece sempre "Abrir o PDF em outra aba"**, no lugar do "Concluir", em todos os estados. É o backup do cupom para o cliente. O botão duplicado que havia no corpo dos estados de falha saiu, e o `data-testid` `abrir-pdf-documento-fiscal` passou para o do rodapé. Sair sem abrir o PDF continua sendo o ESC.
+
+**Impact:** `src/client/features/finalizacao-suspensao/DialogoDocumentoFiscal.tsx`; testes — `tests/integration/finalizacaoSuspensao.spec.ts` (3 casos novos no lugar de 2) e o caminho feliz de `tests/e2e/finalizacao-suspensao.spec.ts`, `layout-desktop.spec.ts` e `layout-mobile.spec.ts`.
+
+**Verificação (AD-246):** `tsc --noEmit`, ESLint e Prettier limpos; 1753 testes unit/integração passando em 112 arquivos. Os E2E foram ajustados **mas não rodados**: a porta 3100 está ocupada pelo container `texteaseai-pc-frontend` (ver pegadinha do AD-244).
+
+**Pegadinha de teste:** com `vi.useFakeTimers({ shouldAdvanceTime: true })` o relógio falso também anda com o tempo real gasto em `waitFor`/`findBy`, e o timer dispara alguns milissegundos antes do avanço exato. Afirme com margem. Na falha que chega por promessa rejeitada, envolva o `render` num `act` assíncrono antes de avançar: sem isso, a limpeza do efeito que cancela o fechamento ainda não rodou.
