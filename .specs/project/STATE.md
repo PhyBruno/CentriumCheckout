@@ -3631,3 +3631,17 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Verificação (AD-244):** `tsc --noEmit`, ESLint e Prettier limpos; 1746 testes unit/integração passando em 112 arquivos; E2E `layout-mobile.spec.ts` + `finalizacao-suspensao.spec.ts` com 17 passando (1 `skip` preexistente). Prints do modal conferidos no desktop (1440×900) e no mobile (390×844), com o `FaturarNFCe` segurado. **Não verificado ao vivo** contra o ERP real.
 
 **Pegadinha do E2E:** a porta 3100 é fixa em `playwright.config.ts` e o `reuseExistingServer` aceita **qualquer** coisa que responda `200` em `/health`. Um container de outro projeto nessa porta faz o Playwright pular a subida da stack, e todo teste cai com `ECONNREFUSED 127.0.0.1:4010` no `__mock/reset` — não é regressão.
+
+### AD-245: o saldo da prévia sai ao deixar a quantidade ou ao inserir, e o preço zerado vence o aviso de estoque (2026-09-17)
+
+**Origem:** correção do usuário, testando no ERP real com o produto `18` do tenant `c0lj6mvzeh`. O produto é `'E'`, tem `PrecoVenda` zerado e `Saldo -35`, e a sessão usa `FaturaProdutoSemSaldo = 'A'`. Enter no código mostrava "Estoque insuficiente" ao abrir a prévia e de novo ao inserir; o erro de preço não aparecia no lugar desse aviso, e só o `blur` do campo de preço levava o operador até ele.
+
+**1. A resolução não anuncia mais o saldo de uma prévia.** `revisarResolvido` devolve `avaliacaoSaldo` (a avaliação inteira, que substitui `vereditoSaldo`) sem comunicar. `inserirResolvido` só comunica em `'S'`/`'B'`/`''`, onde a inserção é imediata ou barrada naquele instante; em `'E'` não. Na barra, `resolverEExibir` só anuncia o bloqueio de uma inserção direta que o saldo impediu.
+
+**2. O anúncio é feito ao sair da quantidade ou na inserção, uma vez por frase.** `EntradaRapidaProduto` guarda a última frase anunciada (`saldoAnunciado`) e a repassa às confirmações (`avisoJaComunicado`). `confirmarComSaldo` não repete um **aviso** igual, mas **bloqueio** é sempre anunciado, porque explica a recusa que acabou de acontecer. O `blur` da quantidade e o cruzamento pelo `+`/digitação passam pela mesma porta (`anunciarSaldo`). A inserção direta do TAB/modal (`saldoRecemConsultado`) continua sem a segunda chamada ao ERP, mas agora anuncia o saldo ali mesmo.
+
+**3. Campo inválido vence o estoque.** O `blur` da quantidade só anuncia o saldo quando preço e desconto estão em ordem: com o preço zerado, o foco está saindo da quantidade justamente para o preço. O clique no `+` com quantidade, preço ou desconto inválido passa a ir por `confirmar` → `previaValida`, que avisa **e** leva o foco ao campo. Antes, `acaoBloqueavel` só mostrava o toast.
+
+**Impact:** `src/client/features/carrinho/useCarrinho.ts` (`RevisaoProduto.avaliacaoSaldo`, `OpcoesConfirmacao`, `confirmarEdicao` com opções), `EntradaRapidaProduto.tsx`; testes — 6 casos novos em `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx`.
+
+**Verificação (AD-245):** `tsc --noEmit` e ESLint limpos; 1752 testes unit/integração passando em 112 arquivos. O produto `18` foi conferido por `GetProduto` direto no ERP (leitura), mas o fluxo na tela **não foi verificado ao vivo**.

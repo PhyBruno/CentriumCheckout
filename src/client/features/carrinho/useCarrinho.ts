@@ -239,11 +239,12 @@ export interface RevisaoProduto {
   /** Saldo consultado na resolução (AD-236); `null` se desconhecido. */
   readonly saldo: SaldoMilesimos | null;
   /**
-   * Veredito do saldo para `quantidade`, no momento da resolução — já
-   * comunicado ao operador. A barra o usa para não inserir direto um produto
-   * bloqueado.
+   * Avaliação do saldo para `quantidade`, no momento da resolução — **ainda
+   * não comunicada** (correção do usuário, 2026-09-17): quem decide se ela vira
+   * toast é a barra, porque só ela sabe se o produto entra agora ou abre uma
+   * prévia cuja quantidade o operador ainda vai revisar.
    */
-  readonly vereditoSaldo: AvaliacaoSaldo['veredito'];
+  readonly avaliacaoSaldo: AvaliacaoSaldo;
 }
 
 export type ResultadoRevisao = RevisaoProduto | { readonly situacao: 'recusado' };
@@ -301,12 +302,23 @@ function quantidadeEOrigem(
   return { quantidade: milesimosDeUnidades(QUANTIDADE_PADRAO), origem: 'MANUAL' };
 }
 
-/** Opções de `confirmarPrevia`. */
-export interface OpcoesConfirmacaoPrevia {
+/** Opções de `confirmarEdicao`. */
+export interface OpcoesConfirmacao {
   /**
-   * A prévia acabou de sair de `revisarPorCodigo`, com o saldo fresco e o
-   * veredito já comunicado — caso da inserção direta do TAB/modal. Evita a
-   * segunda chamada ao ERP e o segundo toast (AD-236).
+   * Frase de saldo que a barra já anunciou para esta prévia (ao sair da
+   * quantidade ou ao cruzar o limite). Um **aviso** igual não é repetido na
+   * inserção (correção do usuário, 2026-09-17); um **bloqueio** é sempre
+   * anunciado, porque é a explicação da recusa que acabou de acontecer.
+   */
+  readonly avisoJaComunicado?: string | null;
+}
+
+/** Opções de `confirmarPrevia`. */
+export interface OpcoesConfirmacaoPrevia extends OpcoesConfirmacao {
+  /**
+   * A prévia acabou de sair de `revisarPorCodigo`, com o saldo fresco — caso
+   * da inserção direta do TAB/modal. Evita a segunda chamada ao ERP (AD-236);
+   * o veredito continua sendo anunciado aqui, na inserção.
    */
   readonly saldoRecemConsultado?: boolean;
 }
@@ -324,6 +336,7 @@ export interface ApiInsercao {
   confirmarEdicao(
     pendente: PendenteDeEdicao,
     ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
+    opcoes?: OpcoesConfirmacao,
   ): Promise<ResultadoConfirmacao>;
   /**
    * TAB no campo de código (ou seleção no modal de busca, que carrega o
@@ -422,19 +435,25 @@ export function useInsercaoDeProduto(): ApiInsercao {
   /**
    * Núcleo das três confirmações de inserção: reconsulta o saldo (salvo
    * quando acabou de ser consultado), avalia, comunica e só então insere.
+   *
+   * A inserção é o momento de anunciar o saldo (correção do usuário,
+   * 2026-09-17) — a resolução não anuncia mais —, salvo o aviso que a barra já
+   * deu com a mesma frase.
    */
   const confirmarComSaldo = useCallback(
     async (
       proposta: PropostaDeQuantidade,
       inserir: () => void,
-      saldoRecemConsultado: boolean,
+      opcoes: OpcoesConfirmacaoPrevia,
     ): Promise<ResultadoConfirmacao> => {
       const saldo =
-        politica === '' || saldoRecemConsultado
+        politica === '' || opcoes.saldoRecemConsultado === true
           ? proposta.saldo
           : await saldoFresco(contexto, proposta.snapshot.codigoProduto, proposta.saldo);
       const avaliacao = avaliarAgora({ ...proposta, saldo });
-      if (!saldoRecemConsultado) {
+      const avisoRepetido =
+        avaliacao.veredito === 'aviso' && avaliacao.frase === opcoes.avisoJaComunicado;
+      if (!avisoRepetido) {
         comunicarSaldo(avaliacao);
       }
       if (avaliacao.veredito === 'bloqueio') {
@@ -521,10 +540,8 @@ export function useInsercaoDeProduto(): ApiInsercao {
         return { situacao: 'recusado' };
       }
 
-      // Saldo avaliado logo depois de ter o produto em mãos (AD-236): `'A'`
-      // avisa já aqui, `'B'` avisa e segura a inserção automática.
+      // Saldo avaliado logo depois de ter o produto em mãos (AD-236).
       const avaliacao = avaliarAgora({ snapshot, saldo, quantidade });
-      comunicarSaldo(avaliacao);
 
       // `'E'` não insere agora: o foco vai para os campos editáveis e a linha só
       // entra no botão `+` (`FR-014`). `'S'`, `'B'` e `''` inserem direto —
@@ -532,10 +549,15 @@ export function useInsercaoDeProduto(): ApiInsercao {
       // operador ver o motivo e poder reduzir a quantidade.
       switch (snapshot.pesavelEditavel) {
         case 'E':
+          // **Sem toast aqui** (correção do usuário, 2026-09-17): a quantidade
+          // ainda vai ser revisada, e o aviso saía agora e de novo ao inserir.
+          // Quem anuncia é a barra, ao sair da quantidade, ou a confirmação.
           return { situacao: 'edicao', snapshot, quantidade, saldo };
         case 'S':
         case 'B':
         case '':
+          // Aqui a inserção é agora (ou foi barrada agora): é o momento certo.
+          comunicarSaldo(avaliacao);
           if (avaliacao.veredito === 'bloqueio') {
             return {
               situacao: 'bloqueado',
@@ -546,7 +568,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
                 origem,
                 editavel: false,
                 saldo,
-                vereditoSaldo: avaliacao.veredito,
+                avaliacaoSaldo: avaliacao,
               },
             };
           }
@@ -589,8 +611,8 @@ export function useInsercaoDeProduto(): ApiInsercao {
         return { situacao: 'recusado' };
       }
 
-      const avaliacao = avaliarAgora({ snapshot, saldo, quantidade });
-      comunicarSaldo(avaliacao);
+      // Avaliada, não comunicada: a barra decide se isto é inserção direta
+      // (anuncia agora) ou prévia (anuncia ao sair da quantidade/ao inserir).
       return {
         situacao: 'revisao',
         snapshot,
@@ -598,7 +620,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
         origem: origemForcada ?? origem,
         editavel: snapshot.pesavelEditavel === 'E',
         saldo,
-        vereditoSaldo: avaliacao.veredito,
+        avaliacaoSaldo: avaliarAgora({ snapshot, saldo, quantidade }),
       };
     },
     [avaliarAgora, resolverProduto],
@@ -636,13 +658,13 @@ export function useInsercaoDeProduto(): ApiInsercao {
           () => {
             inserirItem({ snapshot: revisao.snapshot, quantidade, origem: revisao.origem });
           },
-          opcoes.saldoRecemConsultado ?? false,
+          opcoes,
         ),
       [confirmarComSaldo, inserirItem],
     ),
 
     confirmarEdicao: useCallback(
-      (pendente, ajustes) =>
+      (pendente, ajustes, opcoes = {}) =>
         confirmarComSaldo(
           { snapshot: pendente.snapshot, saldo: pendente.saldo, quantidade: ajustes.quantidade },
           () => {
@@ -654,7 +676,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
               descontoManual: ajustes.descontoManual,
             });
           },
-          false,
+          opcoes,
         ),
       [confirmarComSaldo, inserirItem],
     ),

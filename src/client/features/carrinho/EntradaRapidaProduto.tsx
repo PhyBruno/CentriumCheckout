@@ -460,6 +460,26 @@ export function EntradaRapidaProduto({
   const motivoSaldo = avaliacaoSaldo.veredito === 'bloqueio' ? avaliacaoSaldo.frase : null;
 
   /**
+   * Última frase de saldo anunciada para a prévia na barra (correção do
+   * usuário, 2026-09-17): o aviso sai ao sair da quantidade **ou** ao inserir,
+   * nunca nos dois com a mesma frase. A confirmação recebe esta frase e não
+   * repete um aviso igual (`avisoJaComunicado`).
+   */
+  const saldoAnunciado = useRef<string | null>(null);
+
+  function anunciarSaldo(avaliacao: AvaliacaoSaldo): void {
+    if (avaliacao.veredito === 'livre' || avaliacao.frase === saldoAnunciado.current) {
+      return;
+    }
+    saldoAnunciado.current = avaliacao.frase;
+    if (avaliacao.veredito === 'bloqueio') {
+      notificar.erro(avaliacao.frase);
+      return;
+    }
+    notificar.aviso(avaliacao.frase);
+  }
+
+  /**
    * Avisa **uma vez por mudança que cruza o limite** — de livre para acima do
    * saldo —, não a cada tecla nem a cada `+` já acima dele.
    *
@@ -473,11 +493,7 @@ export function EntradaRapidaProduto({
     if (avaliacaoSaldo.veredito !== 'livre' || depois.veredito === 'livre') {
       return;
     }
-    if (depois.veredito === 'bloqueio') {
-      notificar.erro(depois.frase);
-      return;
-    }
-    notificar.aviso(depois.frase);
+    anunciarSaldo(depois);
   }
 
   // Foco automático ao resolver (TAB) ou ao recarregar uma linha existente
@@ -492,7 +508,7 @@ export function EntradaRapidaProduto({
     // Prévia bloqueada por saldo também pousa na quantidade: reduzi-la é a
     // saída que o operador tem (AD-236), e o botão bloqueado nem está na
     // ordem de TAB.
-    if (resolvido.editavel || resolvido.vereditoSaldo === 'bloqueio') {
+    if (resolvido.editavel || resolvido.avaliacaoSaldo.veredito === 'bloqueio') {
       campoQuantidade.current?.focus();
       campoQuantidade.current?.select();
     } else {
@@ -609,6 +625,7 @@ export function EntradaRapidaProduto({
   function resetar(): void {
     setResolvido(null);
     entradaRevisada.current = null;
+    saldoAnunciado.current = null;
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
     setPrecoTexto('');
@@ -695,8 +712,9 @@ export function EntradaRapidaProduto({
             origem: 'MANUAL',
             editavel: true,
             saldo: resultado.saldo,
-            // Já comunicado por `inserirPorCodigo`; aqui só decide o foco.
-            vereditoSaldo: 'livre',
+            // Só decide o foco: o saldo de um `'E'` é anunciado ao sair da
+            // quantidade ou ao inserir (correção do usuário, 2026-09-17).
+            avaliacaoSaldo: AVALIACAO_LIVRE,
           },
           entrada,
         );
@@ -712,6 +730,11 @@ export function EntradaRapidaProduto({
         // bloqueada, com o código visível, para o operador reduzir a
         // quantidade ou cancelar com Escape.
         aplicarRevisao(resultado.revisao, entrada);
+        // `inserirPorCodigo` já anunciou a recusa: sair da quantidade sem
+        // mexer nela não repete o mesmo toast.
+        if (resultado.revisao.avaliacaoSaldo.veredito !== 'livre') {
+          saldoAnunciado.current = resultado.revisao.avaliacaoSaldo.frase;
+        }
         return;
       }
 
@@ -779,6 +802,7 @@ export function EntradaRapidaProduto({
     // A entrada que foi ao ERP acompanha a revisão: é ela que `aoSairDoCodigo`
     // compara com o campo para saber se o código mudou desde a consulta.
     entradaRevisada.current = entrada.trim();
+    saldoAnunciado.current = null;
     setResolvido(revisao);
     setSaldoConhecido(revisao.saldo);
     setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
@@ -831,8 +855,9 @@ export function EntradaRapidaProduto({
       // Saldo bloqueando em `'B'` (AD-236) desvia a inserção direta para a
       // prévia bloqueada, como no Enter.
       const entraDireto = tipo === '' || (!veioDoModal && tipo !== 'E');
-      if (entraDireto && resultado.vereditoSaldo !== 'bloqueio') {
-        // O saldo acabou de ser consultado e o veredito já foi comunicado.
+      const bloqueado = resultado.avaliacaoSaldo.veredito === 'bloqueio';
+      if (entraDireto && !bloqueado) {
+        // O saldo acabou de ser consultado; a confirmação o anuncia.
         const confirmacao = await confirmarPrevia(resultado, resultado.quantidade, {
           saldoRecemConsultado: true,
         });
@@ -844,6 +869,12 @@ export function EntradaRapidaProduto({
       // Mesma razão do caminho rápido: o código digitado fica visível durante
       // a revisão, só `resetar()` (confirmar/cancelar) o limpa.
       aplicarRevisao(resultado, codigo);
+      // A inserção direta que o saldo barrou se explica agora. Uma prévia que o
+      // operador ainda vai revisar, não: o saldo sai ao deixar a quantidade ou
+      // ao inserir (correção do usuário, 2026-09-17).
+      if (entraDireto && bloqueado) {
+        anunciarSaldo(resultado.avaliacaoSaldo);
+      }
     } finally {
       setOcupado(false);
     }
@@ -1048,6 +1079,7 @@ export function EntradaRapidaProduto({
     // As duas confirmações reconsultam o saldo antes de inserir (AD-236).
     const revisao = resolvido;
     const quantidade = quantidadeLida;
+    const opcoesSaldo = { avisoJaComunicado: saldoAnunciado.current };
     if (revisao.editavel) {
       if (precoLido === null || descontoManualLido === null) {
         return;
@@ -1066,11 +1098,12 @@ export function EntradaRapidaProduto({
             saldo: saldoConhecido,
           },
           ajustes,
+          opcoesSaldo,
         ),
       );
     } else {
       void aplicarConfirmacao(() =>
-        confirmarPrevia({ ...revisao, saldo: saldoConhecido }, quantidade),
+        confirmarPrevia({ ...revisao, saldo: saldoConhecido }, quantidade, opcoesSaldo),
       );
     }
   }
@@ -1408,6 +1441,21 @@ export function EntradaRapidaProduto({
               onBlur={() => {
                 if (!semResolucao && quantidadeInvalida) {
                   exigirCampo(campoQuantidade, AVISO_QUANTIDADE_INVALIDA);
+                  return;
+                }
+                // Saldo da prévia de inserção é anunciado **aqui**, ao deixar a
+                // quantidade — não ao abrir a prévia (correção do usuário,
+                // 2026-09-17). Só com os demais campos em ordem: com o preço
+                // zerado, o foco está saindo daqui justamente para o preço, e o
+                // erro dele é o que o operador precisa ler, não o do estoque.
+                if (
+                  resolvido !== null &&
+                  !ocupado &&
+                  !precoInvalido &&
+                  !descontoInvalido &&
+                  !descontoZeraItem
+                ) {
+                  anunciarSaldo(avaliacaoSaldo);
                 }
               }}
             />
@@ -1570,11 +1618,19 @@ export function EntradaRapidaProduto({
           //   estoque pode ter sido reposto desde a última consulta, e repetir
           //   o motivo antigo obrigaria o operador a bipar de novo. Recusada a
           //   reconsulta, o motivo volta em toast por `comunicarSaldo`.
-          // Nos dois casos o motivo continua em `bloqueioDeInsercao`, para o
+          // - **campo obrigatório inválido** (correção do usuário, 2026-09-17):
+          //   `confirmar` passa por `previaValida`, que além de avisar leva o
+          //   foco ao campo — só o toast deixava o operador sem saber onde
+          //   corrigir o preço zerado.
+          // Nos três casos o motivo continua em `bloqueioDeInsercao`, para o
           // botão aparecer bloqueado e o `title` explicar sem depender do
           // clique.
           onClick={acaoBloqueavel(
-            bloqueadoPorVendedor || motivoSaldo !== null ? null : bloqueioDeInsercao,
+            bloqueadoPorVendedor ||
+              motivoSaldo !== null ||
+              (!semResolucao && (quantidadeInvalida || precoInvalido || descontoInvalido))
+              ? null
+              : bloqueioDeInsercao,
             confirmar,
           )}
         >

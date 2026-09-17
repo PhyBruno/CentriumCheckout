@@ -459,6 +459,80 @@ describe('EntradaRapidaProduto — seleção no modal de busca (correção do us
     });
     expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
+
+  /**
+   * Correção do usuário (2026-09-17): com o preço zerado, a tentativa de
+   * inserir a partir da quantidade precisa recusar pelo preço — e mandar o
+   * operador para o campo dele —, não só quando ele chega ao campo.
+   */
+  it.each([
+    ['Enter no código', '001234{Enter}'],
+    ['TAB no código', '001234{Tab}'],
+  ])(
+    "'E' com preço zerado: %s e Enter na quantidade recusa pelo preço",
+    async (_caminho, digitacao) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify(
+                respostaGetProduto({ ProdutoPesavelEditavel: 'E', PrecoVenda: '0.0000' }),
+              ),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            ),
+          ),
+        ),
+      );
+      const erro = vi.spyOn(notificar, 'erro');
+      const usuario = userEvent.setup();
+      renderBarra();
+
+      await usuario.type(screen.getByTestId('campo-codigo-produto'), digitacao);
+      await waitFor(() => {
+        expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+      });
+
+      await usuario.keyboard('{Enter}');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('previa-preco-unitario')).toHaveFocus();
+      });
+      expect(erro).toHaveBeenCalledWith(expect.stringMatching(/preço unitário/i));
+      expect(useVendaStore.getState().linhas).toHaveLength(0);
+      vi.restoreAllMocks();
+    },
+  );
+
+  it('\'E\' com preço zerado: o clique no "+" também leva o foco ao preço', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              respostaGetProduto({ ProdutoPesavelEditavel: 'E', PrecoVenda: '0.0000' }),
+            ),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+
+    await usuario.click(screen.getByTestId('previa-confirmar'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toHaveFocus();
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+  });
 });
 
 /**
@@ -1391,6 +1465,79 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
     // Cruzou uma vez (1 → 2); ir de 2 para 3 não cruza de novo.
     expect(aviso).toHaveBeenCalledOnce();
     expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled');
+  });
+
+  /**
+   * Correção do usuário (2026-09-17): em produto `'E'` o Enter no código só
+   * abre a prévia — a quantidade ainda vai ser revisada —, e o saldo era
+   * anunciado ali e de novo ao inserir. O aviso sai uma vez só, na inserção.
+   */
+  it("'A': Enter num 'E' não avisa ao abrir a prévia; avisa uma vez ao inserir", async () => {
+    prepararVenda('A');
+    stubarProduto({ saldo: '0.000', tipo: 'E' });
+    const aviso = vi.spyOn(notificar, 'aviso');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+    expect(aviso).not.toHaveBeenCalled();
+
+    await usuario.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    expect(aviso).toHaveBeenCalledOnce();
+    expect(aviso).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
+  });
+
+  it("'A': sair da quantidade avisa, e a inserção logo depois não repete o aviso", async () => {
+    prepararVenda('A');
+    stubarProduto({ saldo: '0.000', tipo: 'E' });
+    const aviso = vi.spyOn(notificar, 'aviso');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+
+    // O TAB segue para o "+" do stepper; o que importa é a saída do campo.
+    await usuario.tab();
+    expect(screen.getByTestId('previa-quantidade')).not.toHaveFocus();
+    expect(aviso).toHaveBeenCalledOnce();
+
+    await usuario.click(screen.getByTestId('previa-preco-unitario'));
+    await usuario.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    expect(aviso).toHaveBeenCalledOnce();
+  });
+
+  it("'B': Enter num 'E' sem saldo só recusa ao tentar inserir", async () => {
+    prepararVenda('B');
+    stubarProduto({ saldo: '0.000', tipo: 'E' });
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+    expect(erro).not.toHaveBeenCalled();
+
+    await usuario.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(erro).toHaveBeenCalledWith(expect.stringMatching(MOTIVO_SALDO));
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 
   it("'': nenhuma consulta extra e nenhum aviso, mesmo com saldo zero", async () => {
