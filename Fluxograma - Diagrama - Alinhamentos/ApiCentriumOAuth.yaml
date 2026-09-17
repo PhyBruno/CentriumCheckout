@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: "APICentriumOAuth"
   description: "APICentrium OAuth"
-  version: "20260827192357"
+  version: "20260914191012"
 servers:
   - url: http://localhost/Centrium1600Web/APICentriumOAuth
 paths:
@@ -59,6 +59,12 @@ paths:
           schema:
             type: "string"
             
+        - name: "Codcliente"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
       
       responses:
         200:
@@ -231,6 +237,12 @@ paths:
           schema:
             type: "integer"
             format: "int64"
+        - name: "Quantidade"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            format: "double"
       
       responses:
         200:
@@ -870,6 +882,9 @@ components:
         ClienteDefaultNome:
           description: "Cliente Default Nome"
           type: "string"
+        ClienteDefaultContato:
+          description: "Cliente Default Contato"
+          type: "string"
         UsuarioTipoCodigoProduto:
           description: "Usuario Tipo Codigo Produto"
           type: "string"
@@ -899,6 +914,9 @@ components:
           format: "int64"
         TipoImpressao:
           description: "Tipo Impressao"
+          type: "string"
+        FaturaProdutoSemSaldo:
+          description: "Fatura Produtos sem Saldo"
           type: "string"
         CenarioPagamento:
           description: "Cenario Pagamento"
@@ -1396,6 +1414,10 @@ components:
         ProdutoPesavelEditavel:
           description: "Material Pesável"
           type: "string"
+        Saldo:
+          description: "Saldo"
+          type: "number"
+          format: "double"
 
 
 
@@ -1451,6 +1473,9 @@ components:
           description: "Vendedor Codigo"
           type: "integer"
           format: "int64"
+        VendedorNome:
+          description: "Vendedor Nome"
+          type: "string"
         ValorTotal:
           description: "Valor Total"
           type: "number"
@@ -1472,16 +1497,22 @@ components:
           description: "cliente Codigo"
           type: "integer"
           format: "int64"
+        ClienteNome:
+          description: "Cliente Nome"
+          type: "string"
         vendedorCodigo:
           description: "vendedor Codigo"
           type: "integer"
           format: "int64"
+        vendedorNome:
+          description: "Nome Vendedor"
+          type: "string"
         CondicaoPagamentoCodigo:
           description: "Condicao Pagamento Codigo"
           type: "integer"
           format: "int64"
-        NumeroNota:
-          description: "Numero Nota"
+        NumeroRascunho:
+          description: "Numero Rascunho"
           type: "integer"
           format: "int64"
         CadSerieNFCe:
@@ -1658,18 +1689,33 @@ components:
 
     CheckoutListaRascunhos.Rascunho_Rascunho:
       properties:
-        NumeroNota:
-          description: "Numero Nota"
+        NumeroRascunho:
+          description: "Numero Rascunho"
           type: "integer"
           format: "int64"
-        Cliente:
-          description: "Cliente"
+        Serie:
+          description: "Serie"
           type: "string"
-        Vendedor:
-          description: "Vendedor"
+        ClienteCodigo:
+          description: "Cliente Codigo"
+          type: "integer"
+          format: "int64"
+        ClienteNome:
+          description: "Cliente Nome"
           type: "string"
-        Operador:
-          description: "Operador"
+        VendedorCodigo:
+          description: "Vendedor Codigo"
+          type: "integer"
+          format: "int64"
+        VendedorNome:
+          description: "Vendedor Nome"
+          type: "string"
+        OperadorCodigo:
+          description: "Operador Codigo"
+          type: "integer"
+          format: "int64"
+        OperadorNome:
+          description: "Operador Nome"
           type: "string"
         Emissao:
           description: "Emissao"

@@ -22,7 +22,11 @@ import {
   FRESCOR_CATALOGO_PAGAMENTO_MS,
   fetchCondicoesPagamento,
 } from '../../services/pagamento/pagamentoQueries';
-import { fetchProduto, type ContextoPrecificacao } from '../../services/produto/produtoQueries';
+import {
+  fetchProduto,
+  TIPO_CODIGO_INTERNO,
+  type ContextoPrecificacao,
+} from '../../services/produto/produtoQueries';
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
 import { useSessionStore } from '../../stores/sessionStore';
 import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores/vendaStore';
@@ -61,7 +65,11 @@ function contextoPrecificacaoAtual(): ContextoPrecificacao | null {
     return null;
   }
   return {
-    tipoCodProduto: registro.SessaoUsuario.UsuarioTipoCodigoProduto,
+    // **Código interno** (`'R'`), e não o tipo da sessão (AD-239): a linha do
+    // documento traz `codigoProduto`, que é o interno. Com o tipo da sessão
+    // (`'B'` no tenant de preview) o ERP respondia 200 com o SDT vazio e a
+    // linha ficava exibindo o código no lugar do nome — medido em 2026-09-16.
+    tipoCodProduto: TIPO_CODIGO_INTERNO,
     tipoPreco: registro.SessaoUsuario.TipoPreco,
     codigoCliente: cliente.codigoCliente,
     listaPreco: cliente.listaPreco,
@@ -87,7 +95,9 @@ function contextoPrecificacaoAtual(): ContextoPrecificacao | null {
  */
 export function estadoParaImportacao(venda: VendaState): EstadoVendaParaImportacao {
   return {
-    numeroNota: venda.identidadeVenda.numeroNota,
+    // A origem, e não o número do rascunho (AD-235): uma venda nova com rascunho
+    // adotado após recusa continua podendo importar um documento.
+    origem: venda.identidadeVenda.origem,
     // O **mesmo** predicado que carrinho e cliente usam, lido da composição real
     // do `vendaStore` — não uma segunda regra de "quando a venda pode mudar",
     // que poderia divergir em silêncio (AD-043). Cobre condição de pagamento
@@ -257,7 +267,12 @@ export function useImportacaoDocumento(
       importarLinhasCongeladas: venda.importarLinhasCongeladas,
       editarSnapshotDescricao: venda.editarSnapshotDescricao,
       resolverCliente: (codigo) => fetchClientePorCodigo(codigo),
+      // `GetCliente` continua sendo a fonte do cliente: traz lista de preço,
+      // convênio, crediário e celular (AD-237). Só quando ele falha e o
+      // documento traz `ClienteNome` é que a porta abaixo entra.
       selecionarCliente: (cliente) => venda.selecionarCliente(cliente, origemCliente),
+      selecionarClienteDoDocumento: (cliente) =>
+        venda.selecionarClienteDoDocumento(cliente, origemCliente),
       // Feature 012, ligada ao slice real: sobrescreve `vendedorAtual` com o
       // vendedor do documento, sem evento de auditoria e sem consultar
       // `podeMutarCarrinho()` — é o início de uma venda diferente sendo montada,

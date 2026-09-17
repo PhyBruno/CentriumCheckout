@@ -441,10 +441,21 @@ test.describe('Correções de 2026-09-03 (segunda rodada)', () => {
     await expect(page.getByTestId('campo-documento-cliente')).toHaveValue('1255');
   });
 
-  test('cliente sem contato mostra "Não informado" em cor secundária', async ({ page }) => {
-    // O cliente default não tem telefone (`GetSessao` não devolve contato), e
-    // o campo se comporta como placeholder — mesma cor do rótulo acima dele,
-    // que é o token secundário do produto.
+  test('o cliente default mostra o contato que o GetSessao devolve (AD-237)', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+    await expandirCardCliente(page);
+
+    await expect(page.getByTestId('contato-cliente')).toHaveText('(99)99999-9999');
+  });
+
+  test('cliente sem contato mostra "Não informado" em cor secundária', async ({
+    page,
+    request,
+  }) => {
+    // Cliente default sem celular (`ClienteDefaultContato` vazio), e o campo se
+    // comporta como placeholder — mesma cor do rótulo acima dele, que é o token
+    // secundário do produto.
+    await configurar(request, { clienteDefaultContato: '' });
     await abrirTelaDeVenda(page);
     await expandirCardCliente(page);
 

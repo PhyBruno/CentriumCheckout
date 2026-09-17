@@ -312,7 +312,7 @@ test.describe('Cenário 3 — a venda importada segue o fluxo normal (FR-008)', 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
   });
 
-  test('FaturarNFCe leva o NumeroNota do documento e nenhum campo de DAV (D8, AD-107)', async ({
+  test('FaturarNFCe leva o NumeroRascunho do documento e nenhum campo de DAV (D8, AD-107, AD-235)', async ({
     page,
     request,
   }) => {
@@ -333,9 +333,10 @@ test.describe('Cenário 3 — a venda importada segue o fluxo normal (FR-008)', 
     await expect.poll(async () => (await contadores(request)).faturarNFCe).toBeGreaterThan(0);
 
     const { retrato } = await ultimoRetrato(request);
-    expect(retrato?.['NumeroNota']).toBe(NUMERO_NOTA_DO_DAV);
+    expect(retrato?.['NumeroRascunho']).toBe(NUMERO_NOTA_DO_DAV);
     // O elo com o DAV é só esse número: nenhum campo de vínculo é enviado.
     expect(retrato).not.toHaveProperty('DavNum');
+    expect(retrato).not.toHaveProperty('NumeroNota');
 
     // O número do DAV aparece **exclusivamente** dentro do `Log` — é a trilha
     // de auditoria local (`DAV_IMPORTADO`, AD-114), não um campo de vínculo
@@ -492,7 +493,7 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await expect(page.getByTestId('modal-menu-importacao')).toBeVisible();
   });
 
-  test('segundo documento é recusado — o NumeroNota do primeiro não é sobrescrito', async ({
+  test('segundo documento é recusado — o NumeroRascunho do primeiro não é sobrescrito', async ({
     page,
     request,
   }) => {
@@ -517,7 +518,7 @@ test.describe('Um documento nunca entra numa venda em digitação (regra do usu�
     await expect.poll(async () => (await contadores(request)).faturarNFCe).toBeGreaterThan(0);
 
     const { retrato } = await ultimoRetrato(request);
-    expect(retrato?.['NumeroNota']).toBe(NUMERO_NOTA_DO_DAV);
+    expect(retrato?.['NumeroRascunho']).toBe(NUMERO_NOTA_DO_DAV);
   });
 });
 

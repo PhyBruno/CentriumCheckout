@@ -9,6 +9,8 @@ import {
   type ValoresDeColuna,
 } from '@/components/ui/cabecalho-ordenavel';
 import { ControlePaginacao } from '@/components/ui/controle-paginacao';
+import { FiltroDeData } from '@/components/ui/filtro-de-data';
+import { periodoPadrao } from '@/lib/periodoDeBusca';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -30,24 +32,25 @@ import { useRecuperacaoNFCe } from './useRecuperacaoNFCe';
  * janela de DAV.
  *
  * **Ausências deliberadas em relação ao mockup**, todas por falta de dado real
- * no contrato de `GetListaNFCes` (só `Txtbusca`/`Pagina`/`Tamanhopagina`
- * existem, e a linha traz `NumeroNota`/`Cliente`/`Vendedor`/`Operador`/
- * `Emissao`/`Total`) — mesmo critério já aplicado ao modal de DAV (AD-024/
- * AD-095) e ao de cliente (AD-093):
+ * no contrato de `GetListaNFCes` (a linha traz `NumeroRascunho`/`Serie`, código
+ * e nome de cliente, vendedor e operador, `Emissao` e `Total` — AD-235) — mesmo
+ * critério já aplicado ao modal de DAV (AD-024/AD-095) e ao de cliente
+ * (AD-093):
  *
  * - Filtros "Status", "Vendedor", "Caixa" e "Série" — nenhum tem parâmetro
  *   correspondente. Desenhá-los produziria controles que não filtram nada.
- * - **Filtro de período**, o par de pílulas que a janela de DAV tem. Pedido
- *   para cá em 2026-09-11 e **não implementado por decisão do usuário na mesma
- *   conversa**, depois de medir o endpoint real: `GetListaNFCes` devolve os
- *   mesmos 123 registros com e sem `Datainicial`/`Datafinal` — ignora os dois
- *   parâmetros, que nem constam do contrato. As pílulas existiriam sem filtrar
- *   nada. Entra quando o ERP aceitar o período (pendência 53).
- * - Coluna "Série" — não existe no contrato da listagem. O lugar dela exibe
- *   **Emissão**, que existe e é o que distingue dois rascunhos do mesmo
- *   cliente. (A série usada para carregar é sempre a da sessão,
- *   `SessaoUsuario.CadSerieNFCe`, `research.md` D4 — nunca uma da lista, então
- *   uma coluna de série repetiria o mesmo valor em toda linha.)
+ *
+ * **Um acréscimo em relação ao mockup: o período de emissão** (AD-237). O
+ * Pencil desenha as pílulas de data só na janela de DAV; o ERP de 2026-09-14
+ * passou a filtrar `GetListaNFCes` por `Datainicial`/`Datafinal`, e as duas
+ * janelas são um par (AD-222), então esta ganha o mesmo par de pílulas
+ * (`FiltroDeData`), com os mesmos 7 dias padrão (`periodoPadrao`).
+ *
+ * - Coluna "Série" — **existe** desde o contrato de 2026-09-14 (AD-235) e volta
+ *   ao lugar do Pencil, logo depois de "NFCe" (80px, Geist Mono). É a série da
+ *   linha que vai a `CarregarNFCe`, e duas linhas de séries diferentes podem ter
+ *   o mesmo número. **Emissão** fica também, porque distingue dois rascunhos do
+ *   mesmo cliente.
  * - Coluna "Caixa" ("PDV 03"/"Loja 01" no desenho) — não há terminal nem loja
  *   no contrato. O lugar dela exibe **Operador**, que existe e responde à
  *   mesma pergunta: quem deixou esta venda suspensa.
@@ -68,7 +71,26 @@ export interface ModalRecuperacaoNFCeProps {
 /** Mesmo debounce dos demais modais de busca desta base. */
 const DEBOUNCE_BUSCA_MS = 300;
 
-type ColunaNFCe = 'nfce' | 'cliente' | 'operador' | 'emissao' | 'total' | 'status';
+type ColunaNFCe = 'nfce' | 'serie' | 'cliente' | 'operador' | 'emissao' | 'total' | 'status';
+
+/**
+ * Identidade de uma linha: número **e** série. O rascunho só é identificado
+ * pelo par (é o que `CarregarNFCe` recebe), e duas séries podem repetir o mesmo
+ * número — selecionar só pelo número marcaria as duas linhas.
+ */
+function chaveDoRascunho(rascunho: RascunhoListado): string {
+  return `${rascunho.serie}·${String(rascunho.numeroRascunho)}`;
+}
+
+/** Nome vazio do ERP (`""`) cai no código, para a linha nunca exibir um nome em branco. */
+function nomeOuCodigo(nome: string, codigo: number): string {
+  return nome.trim() === '' ? `#${String(codigo)}` : nome;
+}
+
+/** Operador sem nome não tem código útil a exibir (o ERP devolve `0`). */
+function nomeDoOperador(rascunho: RascunhoListado): string {
+  return rascunho.operadorNome.trim() === '' ? '—' : rascunho.operadorNome;
+}
 
 /**
  * O valor que cada coluna compara ao ordenar a página (ver
@@ -81,9 +103,10 @@ type ColunaNFCe = 'nfce' | 'cliente' | 'operador' | 'emissao' | 'total' | 'statu
  * comparação lexicográfica de ISO 8601 já é cronológica.
  */
 const VALORES_DE_COLUNA_NFCE: ValoresDeColuna<RascunhoListado, ColunaNFCe> = {
-  nfce: (rascunho) => rascunho.numeroNota,
-  cliente: (rascunho) => rascunho.cliente,
-  operador: (rascunho) => rascunho.operador,
+  nfce: (rascunho) => rascunho.numeroRascunho,
+  serie: (rascunho) => rascunho.serie,
+  cliente: (rascunho) => nomeOuCodigo(rascunho.clienteNome, rascunho.clienteCodigo),
+  operador: (rascunho) => nomeDoOperador(rascunho),
   emissao: (rascunho) => rascunho.emissao,
   total: (rascunho) => rascunho.total,
   // `GetListaNFCes` só devolve rascunhos suspensos, então hoje o valor é o
@@ -134,10 +157,11 @@ function rotuloDaLinha(
 ): string {
   const quando = emissao.hora === '' ? emissao.data : `${emissao.data} às ${emissao.hora}`;
   return [
-    `NFCe ${String(rascunho.numeroNota)}`,
-    `cliente ${rascunho.cliente}`,
-    `vendedor ${rascunho.vendedor}`,
-    `operador ${rascunho.operador}`,
+    `NFCe ${String(rascunho.numeroRascunho)}`,
+    `série ${rascunho.serie}`,
+    `cliente ${nomeOuCodigo(rascunho.clienteNome, rascunho.clienteCodigo)}`,
+    `vendedor ${nomeOuCodigo(rascunho.vendedorNome, rascunho.vendedorCodigo)}`,
+    `operador ${nomeDoOperador(rascunho)}`,
     `emissão ${quando}`,
     `total ${formatarCentavos(rascunho.total)}`,
     'suspensa',
@@ -151,16 +175,22 @@ export function ModalRecuperacaoNFCe({
 }: ModalRecuperacaoNFCeProps): ReactElement | null {
   const [termo, setTermo] = useState('');
   const [termoDebounced, setTermoDebounced] = useState('');
+  const [dataInicial, setDataInicial] = useState(() => periodoPadrao().inicial);
+  const [dataFinal, setDataFinal] = useState(() => periodoPadrao().final);
   const [pagina, setPagina] = useState(1);
-  const [selecionado, setSelecionado] = useState<number | null>(null);
+  const [selecionado, setSelecionado] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
   const [abertoAnterior, setAbertoAnterior] = useState(aberto);
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
+      const periodo = periodoPadrao();
       setTermo('');
       setTermoDebounced('');
+      // Recalculado a cada abertura — ver `periodoPadrao`.
+      setDataInicial(periodo.inicial);
+      setDataFinal(periodo.final);
       setPagina(1);
       setSelecionado(null);
     }
@@ -196,7 +226,7 @@ export function ModalRecuperacaoNFCe({
 
   // Sem piso de caracteres: termo vazio é consulta legítima — "todos os
   // rascunhos suspensos" é exatamente o que o operador vê ao abrir a janela.
-  const lista = useListaNFCes({ txtBusca: termoDebounced, pagina }, aberto);
+  const lista = useListaNFCes({ txtBusca: termoDebounced, dataInicial, dataFinal, pagina }, aberto);
 
   const { retomar } = useRecuperacaoNFCe(deps);
   const { montado, saindo } = usePresenca(aberto, DURACAO_SAIDA_MODAL_MS);
@@ -219,8 +249,21 @@ export function ModalRecuperacaoNFCe({
     return null;
   }
 
-  const rascunhoSelecionado = rascunhos.find((item) => item.numeroNota === selecionado) ?? null;
+  const rascunhoSelecionado =
+    rascunhos.find((item) => chaveDoRascunho(item) === selecionado) ?? null;
   const semResultado = lista.data !== undefined && rascunhos.length === 0;
+
+  /**
+   * Trocar qualquer uma das datas reinicia a paginação e solta a seleção, como
+   * na janela de DAV: a linha escolhida pode não existir no novo período.
+   */
+  function aoTrocarData(definir: (iso: string) => void): (iso: string) => void {
+    return (iso) => {
+      definir(iso);
+      setPagina(1);
+      setSelecionado(null);
+    };
+  }
 
   async function confirmarRecuperacao(): Promise<void> {
     if (rascunhoSelecionado === null || carregando) {
@@ -309,26 +352,47 @@ export function ModalRecuperacaoNFCe({
         </header>
 
         <div className="flex shrink-0 flex-col gap-[10px] border-b border-border px-lg py-[14px]">
-          <label className="flex h-11 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
-            <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="sr-only">Termo de busca</span>
-            <input
-              className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
-              data-testid="campo-busca-nfce"
-              ref={campoBusca}
-              autoComplete="off"
-              // O ERP filtra só nome de cliente e de vendedor: busca por número
-              // da nota não retorna nada (`research.md` D1). O texto do campo
-              // diz isso, para o operador não concluir que o rascunho sumiu.
-              placeholder="Busque por nome do cliente ou do vendedor"
-              value={termo}
-              onChange={(evento) => {
-                setTermo(evento.target.value);
-                setPagina(1);
-                setSelecionado(null);
-              }}
-            />
-          </label>
+          <div className="flex items-center gap-[10px]">
+            <label className="flex h-11 flex-1 items-center gap-xs rounded-full bg-secondary px-base text-md font-medium text-foreground">
+              <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Termo de busca</span>
+              <input
+                className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
+                data-testid="campo-busca-nfce"
+                ref={campoBusca}
+                autoComplete="off"
+                // O ERP filtra só nome de cliente e de vendedor: busca por número
+                // da nota não retorna nada (`research.md` D1). O texto do campo
+                // diz isso, para o operador não concluir que o rascunho sumiu.
+                placeholder="Busque por nome do cliente ou do vendedor"
+                value={termo}
+                onChange={(evento) => {
+                  setTermo(evento.target.value);
+                  setPagina(1);
+                  setSelecionado(null);
+                }}
+              />
+            </label>
+
+            {/* Mesmo par de pílulas da janela de DAV (AD-237): mesma forma,
+                mesmas etiquetas, mesmo vão de 12 entre elas. */}
+            <div className="flex shrink-0 items-center gap-sm">
+              <FiltroDeData
+                etiqueta="Data inicial"
+                rotulo="Data inicial de emissão"
+                testId="nfce-data-inicial"
+                valor={dataInicial}
+                onChange={aoTrocarData(setDataInicial)}
+              />
+              <FiltroDeData
+                etiqueta="Data final"
+                rotulo="Data final de emissão"
+                testId="nfce-data-final"
+                valor={dataFinal}
+                onChange={aoTrocarData(setDataFinal)}
+              />
+            </div>
+          </div>
 
           {lista.data === undefined ? null : (
             <p className="text-base font-semibold text-foreground" data-testid="contagem-nfce">
@@ -353,7 +417,7 @@ export function ModalRecuperacaoNFCe({
             </p>
           ) : semResultado ? (
             <p className="p-base text-md text-muted-foreground" data-testid="nfce-sem-resultados">
-              Nenhuma NFCe suspensa encontrada para a busca informada.
+              Nenhuma NFCe suspensa encontrada para os filtros informados.
             </p>
           ) : (
             <TabelaDeRascunhos
@@ -403,9 +467,10 @@ export function ModalRecuperacaoNFCe({
 interface TabelaDeRascunhosProps {
   readonly rascunhos: readonly RascunhoListado[];
   readonly ordenacao: OrdenacaoAtiva<ColunaNFCe> | null;
-  readonly selecionado: number | null;
+  readonly selecionado: string | null;
   readonly onAlternarOrdenacao: (chave: ColunaNFCe) => void;
-  readonly onSelecionar: (numeroNota: number) => void;
+  /** Recebe `chaveDoRascunho` — número e série. */
+  readonly onSelecionar: (chave: string) => void;
   /** Enter sobre a linha já selecionada — carrega sem passar pelo rodapé. */
   readonly onConfirmar: () => void;
 }
@@ -434,6 +499,13 @@ function TabelaDeRascunhos({
           rotulo="NFCe"
           ordenacao={ordenacao}
           className="w-[90px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="serie"
+          rotulo="Série"
+          ordenacao={ordenacao}
+          className="w-[80px] shrink-0"
           onAlternar={onAlternarOrdenacao}
         />
         <CabecalhoOrdenavel
@@ -475,14 +547,16 @@ function TabelaDeRascunhos({
       </div>
       <ul>
         {rascunhos.map((rascunho) => {
-          const ativo = rascunho.numeroNota === selecionado;
+          const chave = chaveDoRascunho(rascunho);
+          const ativo = chave === selecionado;
           const emissao = formatarEmissao(rascunho.emissao);
           return (
-            <li key={rascunho.numeroNota} className="border-b border-border last:border-b-0">
+            <li key={chave} className="border-b border-border last:border-b-0">
               <button
                 type="button"
                 data-testid="linha-nfce"
-                data-numero-nota={rascunho.numeroNota}
+                data-numero-rascunho={rascunho.numeroRascunho}
+                data-serie={rascunho.serie}
                 aria-pressed={ativo}
                 aria-label={rotuloDaLinha(rascunho, emissao)}
                 className={cn(
@@ -490,7 +564,7 @@ function TabelaDeRascunhos({
                   ativo ? 'bg-secondary' : 'bg-card',
                 )}
                 onClick={() => {
-                  onSelecionar(rascunho.numeroNota);
+                  onSelecionar(chave);
                 }}
                 onKeyDown={(evento) => {
                   if (evento.key !== 'Enter') {
@@ -506,7 +580,7 @@ function TabelaDeRascunhos({
                     onConfirmar();
                     return;
                   }
-                  onSelecionar(rascunho.numeroNota);
+                  onSelecionar(chave);
                 }}
               >
                 <span className="flex w-[42px] shrink-0 items-center justify-center">
@@ -517,18 +591,26 @@ function TabelaDeRascunhos({
                   )}
                 </span>
                 <span className="w-[90px] shrink-0 px-[10px] font-mono text-xs font-bold tabular-nums">
-                  {rascunho.numeroNota}
+                  {rascunho.numeroRascunho}
+                </span>
+                {/* Série do rascunho (AD-235) — Geist Mono 12/600, 80px, como a
+                    célula do Pencil ("R01"). */}
+                <span
+                  className="w-[80px] shrink-0 px-[10px] font-mono text-xs font-semibold"
+                  data-testid="serie-nfce"
+                >
+                  {rascunho.serie}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col px-[10px]">
-                  <span className="truncate text-sm font-bold">{rascunho.cliente}</span>
-                  {/* Ao contrário de `ListaDAVs` (AD-095), este contrato devolve
-                      o nome do vendedor — não há código cru a exibir aqui. */}
+                  <span className="truncate text-sm font-bold">
+                    {nomeOuCodigo(rascunho.clienteNome, rascunho.clienteCodigo)}
+                  </span>
                   <span className="truncate text-xs font-medium text-muted-foreground">
-                    Vendedor {rascunho.vendedor}
+                    Vendedor {nomeOuCodigo(rascunho.vendedorNome, rascunho.vendedorCodigo)}
                   </span>
                 </span>
                 <span className="w-[100px] shrink-0 truncate px-[10px] text-xs font-semibold">
-                  {rascunho.operador}
+                  {nomeDoOperador(rascunho)}
                 </span>
                 <span className="flex w-[108px] shrink-0 flex-col px-[10px] font-mono tabular-nums">
                   <span className="text-xs font-semibold">{emissao.data}</span>
@@ -565,6 +647,10 @@ function TabelaDeRascunhos({
 function EstruturaResultados(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
     <ul aria-hidden={props['aria-hidden']}>
+      {/* Cabeçalho da tabela no esqueleto (correção do usuário, 2026-09-16):
+          sem ele o bloco de carregamento ficava 38px mais curto que o
+          carregado e as linhas saltavam ao chegar o resultado. */}
+      <li className="h-[38px] border-y border-border bg-muted" aria-hidden="true" />
       {Array.from({ length: ITENS_POR_PAGINA }, (_, indice) => (
         <li
           key={indice}

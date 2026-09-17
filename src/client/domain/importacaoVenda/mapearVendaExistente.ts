@@ -73,14 +73,35 @@ export interface FormaPagamentoImportada {
 
 export interface VendaImportada {
   /**
-   * Reenviado **intacto** em `FaturarNFCe` (NFCE-02). Único elo com o documento
-   * de origem desde a remoção de `DavNum` (AD-107): é por este rascunho que o
-   * ERP reconhece a origem e fecha o DAV sozinho ao faturar (AD-058).
+   * `NumeroRascunho` do documento, reenviado **intacto** em `FaturarNFCe`
+   * (NFCE-02, AD-235). Único elo com o documento de origem desde a remoção de
+   * `DavNum` (AD-107): é por este rascunho que o ERP reconhece a origem e fecha
+   * o DAV sozinho ao faturar (AD-058).
    */
-  readonly numeroNota: number;
+  readonly numeroRascunho: number;
+  /**
+   * `CadSerieNFCe` do documento (`R01` no preview), reenviado junto do número
+   * (AD-239) — ou `''` quando o ERP não a informa, e aí o retrato cai na série
+   * da sessão.
+   */
+  readonly serie: string;
   /** Sempre sobrescreve o cliente atual da venda (`FR-007`). */
   readonly clienteCodigo: number;
-  /** Sempre sobrescreve o vendedor atual da venda (`FR-007`). */
+  /**
+   * `ClienteNome` do documento (contrato de 2026-09-14, AD-237), ou `null`
+   * quando ausente/em branco.
+   *
+   * Não substitui o `GetCliente`, que continua trazendo lista de preço,
+   * convênio e celular: é o que permite importar mesmo quando essa chamada
+   * falha, exibindo o cliente pelo nome que o próprio documento dá.
+   */
+  readonly clienteNome: string | null;
+  /**
+   * Sempre sobrescreve o vendedor atual da venda (`FR-007`).
+   *
+   * O do documento, ou — quando o ERP o devolve `0` (divergência registrada em
+   * `PENDENCIES.md`, AD-235) — o código da linha da listagem de origem.
+   */
   readonly vendedorCodigo: number;
   /**
    * Nome do vendedor, ou `null` quando nenhuma das duas fontes o tem.
@@ -88,11 +109,11 @@ export interface VendaImportada {
    * Duas fontes possíveis, nesta ordem de prioridade (AD-172): o **documento**
    * (`CheckoutFaturarNFCe.vendedorNome`, campo novo no SDT — `GetDav` e
    * `CarregarNFCe` devolvem o mesmo SDT, então serve às duas features) e, na
-   * ausência dele, a **listagem de origem** (`origemLista`/`vendedorNomeDaLista`
-   * — `GetListaNFCes` já devolve o nome por extenso; `ListaDAVs` só o código,
-   * AD-095). O documento é preferido por ser a mesma fonte para as duas
-   * features; a listagem cobre o intervalo até o deploy do campo no ERP sair
-   * (`vendedorNome` é `optional()` no Zod de propósito).
+   * ausência dele, a **listagem de origem** (`VendedorDaLista.nome` —
+   * `GetListaNFCes` traz `VendedorNome`; `ListaDAVs` também, mas o ERP de
+   * 2026-09-14 ainda o devolve vazio). O documento é preferido por ser a mesma
+   * fonte para as duas features; a listagem cobre o vazio que o ERP de
+   * 2026-09-14 ainda devolve em `CarregarNFCe`/`GetDav` (AD-235).
    *
    * `null`, e nunca `''`: string vazia é o default do SDT GeneXus para campo
    * não preenchido, e propagá-la faria a UI exibir um vendedor sem nome em vez
@@ -147,35 +168,47 @@ function paraTef(item: CheckoutFaturarNFCe['FormasDePagamento'][number]): TefImp
 }
 
 /**
- * @param vendedorNomeDaLista Nome do vendedor capturado na linha da listagem de
- * origem, ou `null` quando a listagem não o devolve (`ListaDAVs`, AD-095) ou a
- * origem não veio de uma lista. Usado só como *fallback* de `vendedorNome`
- * (AD-172) — o documento tem prioridade quando o traz.
+ * Vendedor capturado na linha da listagem de origem — `codigo`/`nome` `null`
+ * quando a listagem não os traz ou a origem não veio de uma lista.
+ */
+export interface VendedorDaLista {
+  readonly codigo: number | null;
+  readonly nome: string | null;
+}
+
+const SEM_VENDEDOR_DA_LISTA: VendedorDaLista = { codigo: null, nome: null };
+
+/**
+ * @param vendedorDaLista Vendedor da linha da listagem, usado só como
+ * *fallback*:
+ * - `nome`, atrás de `vendedorNome` do documento (AD-172);
+ * - `codigo`, quando o documento traz `vendedorCodigo` **0** — o ERP de
+ *   2026-09-14 devolve 0 em `CarregarNFCe`/`GetDav` mesmo com vendedor gravado
+ *   (divergência registrada em `PENDENCIES.md`, AD-235). O documento continua
+ *   tendo prioridade sempre que traz um código.
  *
  * Nunca lança por dado de negócio ausente (documento sem forma de pagamento,
  * sem produto): devolve arrays vazios. Lança **só** por violação de contrato —
- * `clienteCodigo`, `vendedorCodigo` ou `NumeroNota` ausentes.
+ * `clienteCodigo`, `vendedorCodigo` ou `NumeroRascunho` ausentes.
  *
- * Não recebe o nome do cliente: `clienteCodigo` é o único dado de cliente que
- * a venda importada carrega, e quem resolve o nome de exibição é
- * `resolverCliente` (`GetCliente` por `CodCliente`, AD-115) — o mesmo caminho
- * que já roda para qualquer troca de cliente. Um campo `clienteNome` capturado
- * da linha da listagem existiu aqui até 2026-09-08 (AD-173): nasceu no design
- * original da 006, antes de `GetCliente` aceitar `CodCliente` (D4), e sobrou
- * como campo morto depois — nenhum consumidor lia `VendaImportada.clienteNome`,
- * porque `deps.selecionarCliente` já usa o nome do `ClienteCheckout` resolvido.
+ * O nome do cliente vem do **documento** (`ClienteNome`, AD-237), nunca da
+ * linha da listagem. O cadastro completo continua sendo resolvido por
+ * `resolverCliente` (`GetCliente` por `CodCliente`, AD-115); o nome do
+ * documento é o recuo quando essa chamada falha. (Um `clienteNome` capturado da
+ * **listagem** existiu aqui até 2026-09-08 e foi removido como campo morto por
+ * AD-173; o de agora tem outra fonte e um consumidor.)
  */
 export function mapearVendaExistente(
   resposta: CheckoutFaturarNFCe,
-  vendedorNomeDaLista: string | null = null,
+  vendedorDaLista: VendedorDaLista = SEM_VENDEDOR_DA_LISTA,
 ): VendaImportada {
   // Reforço em runtime da invariante que o schema Zod já expressa em tipo. A
   // entrada pode chegar de um caller não totalmente tipado (a resposta crua do
-  // ERP, um teste, a futura 011): sem esta checagem, um `NumeroNota` ausente
-  // viraria `undefined` no payload de `FaturarNFCe` e o DAV nunca fecharia no
-  // ERP — falha silenciosa, detectável só na conferência fiscal (D8/AD-107).
-  if (typeof resposta.NumeroNota !== 'number') {
-    throw new ErroDocumentoImportadoInvalido('NumeroNota');
+  // ERP, um teste): sem esta checagem, um `NumeroRascunho` ausente viraria
+  // `undefined` no payload de `FaturarNFCe` e o DAV nunca fecharia no ERP —
+  // falha silenciosa, detectável só na conferência fiscal (D8/AD-107).
+  if (typeof resposta.NumeroRascunho !== 'number') {
+    throw new ErroDocumentoImportadoInvalido('NumeroRascunho');
   }
   if (typeof resposta.clienteCodigo !== 'number') {
     throw new ErroDocumentoImportadoInvalido('clienteCodigo');
@@ -190,18 +223,29 @@ export function mapearVendaExistente(
     // e `0` é exatamente como o próprio ERP o representa.
     condicaoPagamentoCodigo:
       typeof resposta.CondicaoPagamentoCodigo === 'number' ? resposta.CondicaoPagamentoCodigo : 0,
-    numeroNota: resposta.NumeroNota,
+    numeroRascunho: resposta.NumeroRascunho,
+    serie: (resposta.CadSerieNFCe ?? '').trim(),
     clienteCodigo: resposta.clienteCodigo,
-    vendedorCodigo: resposta.vendedorCodigo,
+    clienteNome: ouNulo((resposta.ClienteNome ?? '').trim()),
+    // `0` é o "sem vendedor" do SDT — e, no ERP de 2026-09-14, também o que
+    // `CarregarNFCe`/`GetDav` devolvem por engano com vendedor gravado. Cai no
+    // código da listagem quando houver; sem ele, continua `0`, como antes.
+    vendedorCodigo:
+      resposta.vendedorCodigo === 0 && vendedorDaLista.codigo !== null
+        ? vendedorDaLista.codigo
+        : resposta.vendedorCodigo,
     // Documento primeiro (AD-172): ausente enquanto o deploy do ERP não sai,
     // `?? ''` cai em `ouNulo` e vira `null` — e o `??` seguinte cai para o
     // nome capturado da listagem, quando houver. Nome em branco em qualquer
     // uma das duas fontes é "não informado", não string vazia: um `''`
     // chegaria ao slice de vendedor e a UI exibiria um vendedor sem nome em
     // vez de cair no comportamento de "só o código".
-    vendedorNome: ouNulo(resposta.vendedorNome ?? '') ?? vendedorNomeDaLista,
+    vendedorNome: ouNulo(resposta.vendedorNome ?? '') ?? ouNulo(vendedorDaLista.nome ?? ''),
     linhas: resposta.produtos.map((produto) => ({
-      codigoProduto: produto.codigoProduto,
+      // Sem os espaços do `char` do ERP (`"50153         "`, medido em
+      // 2026-09-16): com eles o `GetProduto` da descrição não achava o produto e
+      // a linha ficava com o código no lugar do nome (AD-239).
+      codigoProduto: produto.codigoProduto.trim(),
       descricao: null,
       quantidade: produto.quantidade,
       precoUnitario: produto.precoUnitario,

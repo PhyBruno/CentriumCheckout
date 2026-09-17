@@ -238,13 +238,19 @@ function LinhaDaGrid({
         {formatarQuantidade(linha.quantidade, 3)}
       </td>
       <td className="px-base py-sm">{linha.snapshot.unidadeMedida}</td>
-      <td className="px-base py-sm text-right font-mono tabular-nums" data-testid="preco-unitario">
+      {/* `whitespace-nowrap` nas três colunas de dinheiro: um valor grande
+          quebrava em duas linhas e empurrava a altura da linha (correção do
+          usuário, 2026-09-16). A coluna cresce; o número não parte. */}
+      <td
+        className="px-base py-sm text-right font-mono whitespace-nowrap tabular-nums"
+        data-testid="preco-unitario"
+      >
         {formatarCentavos(linha.precoUnitario)}
       </td>
-      <td className="px-base py-sm text-right font-mono tabular-nums">
+      <td className="px-base py-sm text-right font-mono whitespace-nowrap tabular-nums">
         {formatarCentavos(somar(linha.descontoConvenio, linha.descontoManual))}
       </td>
-      <td className="px-base py-sm text-right font-mono tabular-nums">
+      <td className="px-base py-sm text-right font-mono whitespace-nowrap tabular-nums">
         {formatarCentavos(totalLinha(linha))}
       </td>
       <td className="px-base py-sm text-right">

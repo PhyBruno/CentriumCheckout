@@ -255,27 +255,33 @@ export async function fetchDav(
  *
  * @param dav Linha selecionada na listagem. `clienteCodigo` vem sempre da
  * resposta de `GetDav`, nunca da lista, e o nome do cliente é resolvido por
- * `resolverCliente` (AD-115), não capturado aqui. `vendedorNome`, quando
- * presente na linha, vira *fallback* de `mapearVendaExistente` (AD-172).
+ * `resolverCliente` (AD-115), não capturado aqui. `vendedorCodigo` e
+ * `vendedorNome` da linha viram *fallback* de `mapearVendaExistente`: o nome
+ * atrás do documento (AD-172), o código quando o `GetDav` devolve 0 (AD-235).
  */
 export function fonteDav(dav: {
   readonly numeroDav: string;
+  readonly vendedorCodigo?: number | null;
   readonly vendedorNome?: string | null;
 }): FonteDocumento {
   return {
     origem: 'DAV',
-    // `ListaDAVs` ganhou `VendedorNome` em AD-172 (`DavListado.vendedorNome`,
-    // acima) — passado como *fallback* de `mapearVendaExistente` (AD-172),
-    // atrás do campo do próprio documento. `?? null` cobre o call site que só
-    // passa `numeroDav` (nenhuma linha da listagem em mãos).
-    vendedorNome: dav.vendedorNome ?? null,
+    // `?? null` cobre o call site que só passa `numeroDav` (nenhuma linha da
+    // listagem em mãos). O código `0` da linha é "sem vendedor", não fallback.
+    vendedorDaLista: {
+      codigo:
+        dav.vendedorCodigo === undefined || dav.vendedorCodigo === null || dav.vendedorCodigo === 0
+          ? null
+          : dav.vendedorCodigo,
+      nome: dav.vendedorNome ?? null,
+    },
     carregar: (erpClient) => fetchDav(dav.numeroDav, erpClient === undefined ? {} : { erpClient }),
     // `numeroDav` existe só nesta trilha local: não é reenviado a `FaturarNFCe`
-    // (AD-107), onde o vínculo com a origem é o `NumeroNota`.
+    // (AD-107), onde o vínculo com a origem é o `NumeroRascunho`.
     eventoDeImportacao: (venda) =>
       eventoDavImportado({
         numeroDav: dav.numeroDav,
-        numeroNota: venda.numeroNota,
+        numeroRascunho: venda.numeroRascunho,
         quantidadeLinhas: venda.linhas.length,
         quantidadeFormasDePagamento: venda.formasDePagamento.length,
       }),

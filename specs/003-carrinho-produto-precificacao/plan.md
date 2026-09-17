@@ -32,7 +32,7 @@ A resolução do produto passa **sempre** por `GET /api/erp/GetProduto`: o modal
 - Linha congelada por origem de rascunho/DAV fica fora de `repricarSku` até reinserção/edição explícita (AD-067) — e, por decisão D3 de `research.md`, também fora da quantidade agregada.
 - Edição e cancelamento bloqueados a partir de qualquer pagamento aprovado (`CART-09`, AD-030); bloqueio permanente para TEF/PIX, reversível para dinheiro/cartão manual.
 - Cancelamento nunca exige supervisor ou reautenticação (`CART-12`/FR-012, AD-065).
-- Nenhuma validação de saldo/estoque na inserção (`CART-10`, AD-030) — responsabilidade do ERP.
+- Validação de saldo/estoque antes de inserir ou aumentar um item (`CART-10`/`FR-011`, **AD-236**, que supera a nota original de AD-030): `'A'` avisa, `'B'` bloqueia, `''` não valida; saldo sempre reconsultado fora do cache; pedidos em aberto e fator de conversão ficam com o ERP.
 - Termo de busca abaixo de `SessaoUsuario.QtdMinCharParaConsulta` não dispara chamada; o valor vem do ERP já com piso aplicado, nunca hardcoded (AD-024).
 
 **Scale/Scope**: 1 slice Zustand (`carrinhoSlice`) + 5 módulos de domínio puro (`dinheiro`, `quantidade`, `tabelaPreco`, `reprecificacao`, `codigoProduto`) + 1 camada de query (busca e produto) + 1 schema Zod de fronteira + 3 superfícies de UI (modal de busca, entrada rápida/grid desktop, lista mobile). Fora do escopo deste plano: as telas de pagamento (feature 008), a retomada de rascunho/DAV que **produz** linhas congeladas (features 011 e 006 — este plano só define como tratá-las), e a implementação do slice de auditoria (feature 001 — este plano só consome o dispatcher).

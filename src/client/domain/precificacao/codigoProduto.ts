@@ -90,8 +90,18 @@ export function interpretarEntradaCodigo(texto: string): EntradaCodigo {
 
   const separador = limpo.indexOf(SEPARADOR_QUANTIDADE);
   if (separador > 0) {
-    const codigo = limpo.slice(0, separador).trim();
-    const quantidade = interpretarQuantidade(limpo.slice(separador + 1));
+    // **A quantidade é sempre o lado esquerdo** (decisão do usuário,
+    // 2026-09-16 — AD-240): `4*teste789` são 4 unidades do `teste789`, e
+    // `12*34` são 12 unidades do produto `34`. É a ordem do PDV antigo, e não
+    // admite exceção por "parecer código": um código de tenant pode ser
+    // numérico, e decidir pelo formato faria a mesma digitação significar
+    // coisas diferentes conforme o cadastro.
+    //
+    // Até 2026-09-16 a ordem era a inversa (`codigo*quantidade`, AD-029), e
+    // por isso `001234*3` mudou de sentido: passou a ser 1234 unidades do
+    // produto `3`.
+    const quantidade = interpretarQuantidade(limpo.slice(0, separador));
+    const codigo = limpo.slice(separador + 1).trim();
     if (codigo !== '' && quantidade !== null) {
       return { tipo: 'COM_QTD', codigo, quantidade };
     }

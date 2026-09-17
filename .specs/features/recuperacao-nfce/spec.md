@@ -49,11 +49,11 @@ Frame `PDV Online Web - Modal Recuperação NFCe` em `design/CentriumCheckout.pe
 
 **Acceptance Criteria**:
 
-1. WHEN o operador seleciona um rascunho da lista THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/CarregarNFCe` e receber a venda completa (itens, formas de pagamento, cliente, vendedor).
-2. WHEN o rascunho é carregado THEN o sistema SHALL preservar o campo `NumeroNota` retornado, reenviando-o em `FaturarNFCe` na finalização/suspensão subsequente (`.specs/features/finalizacao-suspensao-venda/spec.md`, `FIN-03`) — nunca `NumeroNota = 0` para uma venda retomada.
+1. WHEN o operador seleciona um rascunho da lista THEN o sistema SHALL chamar `GET /ApiCentriumOAuth/CarregarNFCe` com `Numeronota` = `NumeroRascunho` da linha e `Serienota` = `Serie` da linha, e receber a venda completa (itens, formas de pagamento, cliente, vendedor). **Atualizado (2026-09-16, AD-235):** a série vem da linha da listagem (`GetListaNFCes` passou a devolver `Serie` por rascunho no contrato de `20260914191012`), não mais de `SessaoUsuario.CadSerieNFCe`, que vem vazia no ERP de preview; a da sessão sobra só como fallback de linha sem série.
+2. WHEN o rascunho é carregado THEN o sistema SHALL preservar o campo `NumeroRascunho` retornado, reenviando-o em `FaturarNFCe` na finalização/suspensão subsequente (`.specs/features/finalizacao-suspensao-venda/spec.md`, `FIN-03`) — nunca `NumeroRascunho = 0` para uma venda retomada.
 3. WHEN o rascunho é carregado THEN o sistema SHALL popular o carrinho com o preço de cada item **preservado/congelado** exatamente como salvo no rascunho — SEM disparar o motor de precificação (`.specs/features/carrinho-produto-precificacao/spec.md`) automaticamente. Reflete que o preço pode ter sido alterado manualmente pelo operador na inserção original. **Resolvido (2026-08-26, AD-067 em `.specs/project/STATE.md`):** essa linha fica explicitamente fora do escopo de `repriceSku` (`CART-06`) enquanto permanecer congelada — inclusive quando outra linha do mesmo SKU dispara reprecificação por outro motivo.
 4. WHEN o operador reinsere, depois de retomar o rascunho, um item que já está no carrinho retomado THEN o sistema SHALL disparar o recálculo normal de preço (`CART-04`/`CART-05`) para esse SKU — a preservação do preço vale só para os itens exatamente como vieram do rascunho, não para reinserções feitas depois de retomar.
-5. WHEN o rascunho carregado já traz `vendedorCodigo` preenchido THEN o sistema SHALL pré-selecionar automaticamente esse vendedor (mesmo comportamento já confirmado para `CarregarNFCe` em `.specs/features/selecao-vendedor/spec.md`, AD-024).
+5. WHEN o rascunho carregado já traz `vendedorCodigo` preenchido THEN o sistema SHALL pré-selecionar automaticamente esse vendedor (mesmo comportamento já confirmado para `CarregarNFCe` em `.specs/features/selecao-vendedor/spec.md`, AD-024); WHEN `CarregarNFCe` devolve `vendedorCodigo = 0` THEN o sistema SHALL pré-selecionar o `VendedorCodigo`/`VendedorNome` da linha da listagem. **Atualizado (2026-09-16, AD-235):** o ERP de preview devolve `0` em `CarregarNFCe` mesmo quando a listagem mostra o vendedor — divergência registrada em `.specs/project/PENDENCIES.md` (item 56).
 
 **Independent Test**: Retomar um rascunho mockado com 2 itens (preços distintos dos preços atuais de catálogo) e 1 forma de pagamento; verificar que o carrinho reflete exatamente os preços salvos, sem recálculo. Reinserir um dos dois itens já presentes e confirmar que só esse SKU dispara recálculo. Finalizar a venda e confirmar que `NumeroNota` enviado é o mesmo do rascunho.
 
@@ -61,7 +61,8 @@ Frame `PDV Online Web - Modal Recuperação NFCe` em `design/CentriumCheckout.pe
 
 ## Edge Cases
 
-- WHEN o operador usa qualquer filtro além do texto de busca (cliente/vendedor) THEN ⚠️ não há suporte — `NfcStatus` e `NfcDatEmi` são hardcoded no `DataProvider` (`DpCheckout_RascunhosLista`), a listagem é sempre "só rascunhos" + "últimos 30 dias", independentemente do que o Checkout envie. Não é uma questão de o contrato aceitar ou não parâmetro adicional — é limitação real do servidor (Fato F2).
+- WHEN o operador abre a janela THEN o sistema SHALL exibir as pílulas "Data inicial"/"Data final" com os últimos 7 dias e SHALL enviar **sempre** `Datainicial`/`Datafinal` (`YYYY-MM-DD`) em `GetListaNFCes`; WHEN o operador troca uma das datas THEN a listagem SHALL ser refeita na página 1. **Corrigido em 2026-09-16 (AD-237):** o `DpCheckout_RascunhosLista` do contrato de 2026-09-14 filtra `NfcDatEmi` pelo período recebido (sem datas, usa os últimos 90 dias). A limitação registrada antes — período fixo no servidor, filtro de data ignorado (Fato F2, AD-220, pendência 53) — deixou de valer.
+- WHEN o operador usa qualquer outro filtro além do texto de busca (cliente/vendedor) e do período THEN ⚠️ não há suporte — `NfcStatus` é fixo no `DataProvider` ("só rascunhos") e não existe parâmetro de status, vendedor, caixa ou série.
 - WHEN o Checkout monta o request de `GetListaNFCes` THEN o sistema SHALL limitar `TamanhoPagina` no próprio request, não confiar no servidor para isso — mesmo bug de paginação de cap-50 anulado já encontrado em `ListaDAVs` (AD-024 em `.specs/project/STATE.md`): `&TamanhoPaginaAuxiliar` é limitado a 50 e depois sobrescrito sem teto por uma segunda atribuição quando `&TamanhoPagina` não é vazio.
 - WHEN dois operadores acessam concorrentemente o mesmo rascunho de NFCe suspenso (ex.: ambos tentam retomar o mesmo rascunho) THEN o sistema SHALL NÃO implementar nenhum mecanismo de lock otimista/pessimista — a resolução de conflito fica inteiramente a cargo do próprio ERP. **Resolvido (2026-08-25, AD-052):** decisão direta do usuário, mesma regra aplicada a `.specs/features/importacao-dav/spec.md`.
 - WHEN a venda retomada tem uma forma de pagamento removível (dinheiro/cartão manual) já aplicada e é suspensa novamente THEN esse pagamento SHALL persistir, disponível na próxima retomada — ver `.specs/features/finalizacao-suspensao-venda/spec.md` (Edge Cases, AD-042).
@@ -73,12 +74,12 @@ Frame `PDV Online Web - Modal Recuperação NFCe` em `design/CentriumCheckout.pe
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
 | NFCE-01 | Listar rascunhos via `GetListaNFCes` (busca só por cliente/vendedor, sem número) | - | Verified (2026-08-25, AD-041 — Fato F2, verificado via KB do GenExus) |
-| NFCE-02 | Retomar rascunho completo via `CarregarNFCe`, preservando `NumeroNota` | - | Verified (2026-08-25, AD-041) |
+| NFCE-02 | Retomar rascunho completo via `CarregarNFCe`, preservando `NumeroRascunho` (série da linha, AD-235) | - | Verified (2026-08-25, AD-041) |
 | NFCE-03 | Preço preservado/congelado do rascunho, exceto reinserção de item já existente | - | Verified (2026-08-25, AD-041) |
 | NFCE-04 | Pré-seleção de vendedor salvo no rascunho | - | Verified (mesma regra de `CarregarNFCe`, AD-024) |
 | NFCE-05 | Sem lock entre operadores no mesmo rascunho | - | Verified (2026-08-25, AD-052) |
 
-**Coverage:** 5 total, 1 limitação conhecida sem solução prevista (filtros de `GetListaNFCes` restritos a nome de cliente/vendedor, sem busca por número — limitação real do `DataProvider` do ERP, não pendência a resolver).
+**Coverage:** 5 total, 1 limitação conhecida sem solução prevista (filtros de `GetListaNFCes` restritos a nome de cliente/vendedor e período de emissão, sem busca por número — limitação real do `DataProvider` do ERP, não pendência a resolver).
 
 ---
 

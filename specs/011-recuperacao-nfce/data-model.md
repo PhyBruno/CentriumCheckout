@@ -11,11 +11,15 @@ Estado desta feature vive só como efeito colateral em memória sobre slices já
 Mapeado de `CheckoutListaRascunhos.Rascunho_Rascunho` (`ApiCentriumOAuth.yaml:1608-1633`):
 
 ```ts
+// Forma do contrato 20260914191012 (AD-235): código e nome separados, e a série da linha.
 export interface RascunhoListado {
-  readonly numeroNota: number;
-  readonly cliente: string;
-  readonly vendedor: string;
-  readonly operador: string;
+  readonly numeroRascunho: number;  // "NumeroRascunho" (era NumeroNota) — vai a CarregarNFCe como Numeronota
+  readonly serie: string;           // "Serie" — vai a CarregarNFCe como Serienota
+  readonly clienteCodigo: number;
+  readonly clienteNome: string;
+  readonly vendedorCodigo: number;  // fallback do vendedor quando CarregarNFCe devolve 0
+  readonly vendedorNome: string;
+  readonly operadorNome: string;    // "" exibido como "—"
   readonly emissao: string;   // ISO 8601, vindo de "Emissao" (date-time) — exibido formatado, nunca reinterpretado
   readonly total: Centavos;   // "Total" (double) convertido na fronteira Zod, mesma regra de Centavos de 003 §1
 }
@@ -44,7 +48,7 @@ Resultado da validação Zod de `CarregarNFCeOutput.OutCheckoutFaturarNFCe` (mes
 
 ```ts
 export interface RascunhoCarregado {
-  readonly numeroNota: number;
+  readonly numeroRascunho: number; // CheckoutFaturarNFCe.NumeroRascunho (AD-235)
   readonly clienteCodigo: number;
   readonly vendedorCodigo: number;
   readonly condicaoPagamentoCodigo: number;
@@ -117,8 +121,8 @@ Além disso, `condicaoPagamentoCodigo` do rascunho seta `condicaoSelecionada` (0
 | Efeito | Mecanismo |
 |---|---|
 | Cliente | `GET /ApiCentriumOAuth/GetCliente(clienteCodigo)` (feature 005) monta `ClienteVenda` completo; `origem: 'RASCUNHO'` — extensão declarada em `research.md` D6, não aplicada por este plano ao artefato de 005 |
-| Vendedor | `trocarVendedor({ codigo: vendedorCodigo, nome: null }, 'RASCUNHO')` (`specs/012-selecao-vendedor/data-model.md` §3) — pré-seleção efetiva, `research.md` D7 |
-| Identidade da venda | `identidadeVenda = { origem: 'RASCUNHO', numeroNota }` (004 §1) — implementado por esta feature (`research.md` D9) |
+| Vendedor | `trocarVendedor({ codigo: vendedorCodigo, nome }, 'RASCUNHO')`, com código e nome da linha da listagem como fallback quando o documento traz `0`/vazio (AD-172, AD-235) (`specs/012-selecao-vendedor/data-model.md` §3) — pré-seleção efetiva, `research.md` D7 |
+| Identidade da venda | `identidadeVenda = { origem: 'RASCUNHO', numeroRascunho }` (004 §1, AD-235) — implementado por esta feature (`research.md` D9) |
 | Auditoria | `resetarAuditoria()` + `VENDA_INICIADA({ origem: 'RASCUNHO' })` (001) — implementado por esta feature (`research.md` D10) |
 
 **Ordem de aplicação** (mesmo call site, atômico do ponto de vista do operador — nenhuma tela intermediária): `resetarAuditoria` → `identidadeVenda` → carrinho (§4) → pagamentos + condição (§5) → cliente → vendedor. `VENDA_INICIADA` é o primeiro evento emitido, antes de qualquer evento de cliente/produto/pagamento gerado pela hidratação (que **não** dispara `PRODUTO_INSERIDO`/`FORMA_PAGAMENTO_APLICADA` — hidratação de retomada não é uma sequência de ações do operador, é um snapshot único; só o evento `VENDA_INICIADA` é emitido pela retomada em si).
@@ -131,7 +135,7 @@ Além disso, `condicaoPagamentoCodigo` do rascunho seta `condicaoSelecionada` (0
 |---|---|---|
 | J1 | Toda `LinhaCarrinho` criada pela retomada tem `origem = 'RASCUNHO'` e `precoCongelado = true` | `FR-005`/`FR-007`/`NFCE-03` |
 | J2 | Nenhuma chamada a `resolvePrecoUnitario`/`repricarSku` ocorre durante a hidratação | `FR-007`/`NFCE-03` |
-| J3 | `identidadeVenda.numeroNota` é sempre o `NumeroNota` do rascunho, nunca `0`, após retomada | `FR-006`/`NFCE-02` |
+| J3 | `identidadeVenda.numeroRascunho` é sempre o `NumeroRascunho` do rascunho, nunca `0`, após retomada (AD-235) | `FR-006`/`NFCE-02` |
 | J4 | Todo `PagamentoAplicado` criado pela retomada tem `status = 'APROVADO'` | `research.md` D8 |
 | J5 | O slice `auditoria` é zerado antes de `VENDA_INICIADA` ser emitido | `AUDIT-01`/`AUDIT-10` |
 | J6 | Nenhum evento de auditoria além de `VENDA_INICIADA` é emitido pela hidratação em si | `research.md` D10 |

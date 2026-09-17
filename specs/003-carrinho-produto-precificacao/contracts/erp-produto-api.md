@@ -65,7 +65,7 @@ A chamada só é feita quando `Txtbusca.length >= SessaoUsuario.QtdMinCharParaCo
 
 ## 2. `GET /api/erp/GetProduto` — resolução do produto (`CART-02`)
 
-Chamado em **todos** os caminhos de inserção: código bipado, código digitado, `codigo*quantidade`, código de balança e seleção no modal de busca.
+Chamado em **todos** os caminhos de inserção: código bipado, código digitado, `quantidade*codigo` (AD-240 — a quantidade é o lado esquerdo), código de balança e seleção no modal de busca.
 
 ### Parâmetros enviados
 

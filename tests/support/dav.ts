@@ -95,7 +95,9 @@ export function documentoDoDav(
     clienteCodigo: CODIGO_CLIENTE_DAV,
     vendedorCodigo: CODIGO_VENDEDOR_DAV,
     CondicaoPagamentoCodigo: 1,
-    NumeroNota: NUMERO_NOTA,
+    // `NumeroRascunho` desde o contrato de 2026-09-14 (AD-235): o `GetDav`
+    // converte o DAV em rascunho de NFCe e devolve o número dele.
+    NumeroRascunho: NUMERO_NOTA,
     CadSerieNFCe: '1',
     UsuarioCodigo: 7,
     Log: '',

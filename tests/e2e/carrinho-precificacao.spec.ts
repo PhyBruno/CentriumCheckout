@@ -168,12 +168,12 @@ test.describe('User Story 1 — busca de produto por termo livre (T018)', () => 
 });
 
 test.describe('User Story 2 — inserção direta por código conhecido (T025)', () => {
-  test('"codigo*3" insere quantidade 3 e o código simples insere quantidade 1', async ({
+  test('"3*codigo" insere quantidade 3 e o código simples insere quantidade 1', async ({
     page,
   }) => {
     await abrirTelaDeVenda(page);
 
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 30,00');
 
     await bipar(page, SKU_COM_FAIXA, 2);
@@ -341,11 +341,11 @@ test.describe('User Story 3 — faixa de quantidade (T032, TipoPreco 8)', () => 
   }) => {
     await abrirTelaDeVenda(page);
 
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
     await expect(page.getByTestId('preco-unitario')).toHaveText('R$ 10,00');
 
     // Agregado 6 ≥ limiar de 5 unidades → ambas as linhas passam a R$ 9,00.
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 2);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 2);
     await expect(page.getByTestId('preco-unitario')).toHaveText(['R$ 9,00', 'R$ 9,00']);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 54,00');
   });
@@ -360,8 +360,8 @@ test.describe('User Story 4 — item cancelado permanece rastreável (T037)', ()
     page,
   }) => {
     await abrirTelaDeVenda(page);
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 2);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 2);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 54,00');
 
     // Sem modal de confirmação e sem supervisor (FR-012, AD-065).
@@ -382,8 +382,8 @@ test.describe('User Story 4 — item cancelado permanece rastreável (T037)', ()
     await abrirTelaDeVenda(page);
     await expect(page.getByTestId('lista-itens-mobile')).toBeVisible();
 
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 1);
-    await bipar(page, `${SKU_COM_FAIXA}*3`, 2);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 1);
+    await bipar(page, `3*${SKU_COM_FAIXA}`, 2);
     await expect(page.getByTestId('total-venda')).toHaveText('R$ 54,00');
 
     await page.getByTestId('cancelar-item').last().click();
@@ -500,5 +500,95 @@ test.describe('Barra de entrada rápida — acertos visuais de 2026-09-03 (AD-13
 
     await expect(page.getByText(/digite ou bipe o código do produto/i).first()).toBeVisible();
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+  });
+});
+
+/**
+ * Saldo de estoque (AD-236) — `FaturaProdutoSemSaldo` da sessão decide:
+ * `'B'` bloqueia, `'A'` avisa. `005000` tem saldo 0, `006000` saldo negativo e
+ * os demais produtos do mock têm saldo 10.
+ */
+test.describe('Saldo de estoque (AD-236)', () => {
+  const SKU_SEM_SALDO = '005000';
+  const SKU_SALDO_NEGATIVO = '006000';
+  const MOTIVO = /estoque insuficiente/i;
+
+  test("'B': bipar produto sem saldo não insere e deixa a prévia bloqueada com o motivo", async ({
+    page,
+    request,
+  }) => {
+    await configurar(request, { faturaProdutoSemSaldo: 'B' });
+    await abrirTelaDeVenda(page);
+
+    await bipar(page, SKU_SEM_SALDO);
+
+    await expect(page.getByTestId('previa-descricao-produto')).toHaveText('PRODUTO SEM SALDO');
+    // O motivo vive no toast e no botão bloqueado — nunca numa linha abaixo do
+    // nome do produto (AD-239).
+    await expect(page.getByTestId('previa-aviso-saldo')).toHaveCount(0);
+    await expect(page.getByRole('status').or(page.getByRole('alert')).first()).toContainText(
+      /estoque insuficiente/i,
+    );
+    const inserir = page.getByTestId('previa-confirmar');
+    await expect(inserir).toHaveAttribute('aria-disabled', 'true');
+    await expect(inserir).toHaveAttribute('title', MOTIVO);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+
+    // Escape desiste do item e devolve a barra vazia.
+    await page.getByTestId('previa-quantidade').press('Escape');
+    await expect(page.getByTestId('campo-codigo-produto')).toHaveValue('');
+  });
+
+  test("'B': saldo negativo barra também o TAB", async ({ page, request }) => {
+    await configurar(request, { faturaProdutoSemSaldo: 'B' });
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU_SALDO_NEGATIVO);
+    await campo.press('Tab');
+
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute(
+      'title',
+      /disponível -205,000/,
+    );
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+  });
+
+  test("'B': reduzir a quantidade para dentro do saldo libera, e a confirmação reconsulta o ERP", async ({
+    page,
+    request,
+  }) => {
+    await configurar(request, { faturaProdutoSemSaldo: 'B' });
+    await abrirTelaDeVenda(page);
+
+    await bipar(page, `11*${SKU_COM_FAIXA}`);
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute('title', MOTIVO);
+    expect((await contadores(request)).getProduto).toBe(1);
+
+    await page.getByTestId('previa-quantidade-diminuir').click();
+    await expect(page.getByTestId('previa-quantidade')).toHaveValue('10,000');
+    await expect(page.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled');
+    await page.getByTestId('previa-confirmar').click();
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    // Soma igual ao saldo passa; a confirmação foi ao ERP de novo.
+    expect((await contadores(request)).getProduto).toBe(2);
+
+    // Com as 10 unidades já na venda, a próxima bipagem do mesmo produto
+    // esbarra no saldo mesmo vindo do cache — o saldo é reconsultado.
+    await bipar(page, SKU_COM_FAIXA);
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute('title', MOTIVO);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    expect((await contadores(request)).getProduto).toBe(3);
+  });
+
+  test("'A': bipar produto sem saldo avisa e insere", async ({ page, request }) => {
+    await configurar(request, { faturaProdutoSemSaldo: 'A' });
+    await abrirTelaDeVenda(page);
+
+    await bipar(page, SKU_SEM_SALDO, 1);
+
+    await expect(page.getByText(MOTIVO).first()).toBeVisible();
+    await expect(page.getByTestId('campo-codigo-produto')).toHaveValue('');
   });
 });

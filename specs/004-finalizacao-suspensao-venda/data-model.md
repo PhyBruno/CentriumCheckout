@@ -11,16 +11,16 @@ Todas as estruturas abaixo vivem **em memória**: o slice `identidadeVenda` no `
 ```ts
 interface IdentidadeVenda {
   origem: 'NOVA' | 'RASCUNHO' | 'DAV';
-  numeroNota: number; // inteiro >= 0
+  numeroRascunho: number; // inteiro >= 0 (era `numeroNota` até AD-235)
 }
 ```
 
 | Campo | Regra |
 |---|---|
-| `origem` | Mesmo enum já usado pelo evento `VENDA_INICIADA` do slice `auditoria` (`specs/001-auditoria-acoes-operador/data-model.md`) — setado uma única vez, no início/retomada da venda. |
-| `numeroNota` | `0` para venda criada do zero no Checkout (nunca faturada); valor preenhido, vindo de `CarregarNFCe` ou do fluxo de DAV, quando a venda é um rascunho/nota pré-existente (AD-023). Enviado como `NumeroNota` no payload de `FaturarNFCe` sem transformação — o Checkout nunca calcula nem infere esse número. |
+| `origem` | Mesmo enum já usado pelo evento `VENDA_INICIADA` do slice `auditoria` (`specs/001-auditoria-acoes-operador/data-model.md`) — setado uma única vez, no início/retomada da venda. É a origem, e não o número, que diz se a venda já veio de um documento (guarda de importação, AD-235). |
+| `numeroRascunho` | `0` para venda criada do zero no Checkout e ainda não gravada no ERP; o `NumeroRascunho` devolvido por `CarregarNFCe`/`GetDav` quando a venda é um documento pré-existente (AD-023); ou o `NumeroRascunho` devolvido por `FaturarNFCe` numa recusa com rascunho já gravado (`adotarRascunhoGravado`, AD-235 — mantém a `origem`, inclusive `NOVA`). Enviado como `NumeroRascunho` no payload de `FaturarNFCe`/`ValidarNFCe` sem transformação — o Checkout nunca calcula nem infere esse número. |
 
-**State transitions**: `ausente` → `definida` (setter chamado no início/retomada da venda, mesmo call site de `resetarAuditoria`) → `descartada` (após `FaturarNFCe` retornar sucesso, junto com carrinho/cache/auditoria — `FR-012`).
+**State transitions**: `ausente` → `definida` (setter chamado no início/retomada da venda, mesmo call site de `resetarAuditoria`) → `rascunho adotado` (recusa de `SUSPENDER`/`FATURAR` com `NumeroRascunho > 0`; sem guarda de pagamento, idempotente — AD-235) → `descartada` (após `FaturarNFCe` retornar sucesso, junto com carrinho/cache/auditoria — `FR-012`).
 
 ---
 
@@ -32,7 +32,7 @@ Contrato completo em `contracts/faturamento-api.md`. **Emenda de 2026-08-31 (AD-
 |---|---|---|
 | `SuspenderOuFaturar` | `"FATURAR"` \| `"SUSPENDER"` | Botão acionado (`BotaoFinalizarVenda`/`BotaoCancelarVenda`) |
 | `Empresa` | `int64` | Injetado pelo BFF (mesmo padrão de todo endpoint `/api/erp/*`) |
-| `NumeroNota` | `int64` | `identidadeVenda.numeroNota` (§1) |
+| `NumeroRascunho` | `int64` | `identidadeVenda.numeroRascunho` (§1; AD-235) |
 | `CadSerieNFCe` | `string` | `SessaoUsuario.CadSerieNFCe` (bootstrap, feature 002, AD-034) — leitura, esta feature não grava esse campo |
 | `vendedorCodigo` | `int64` | Vendedor selecionado no modal de vendedor (feature 012, `VEND-05`) — dependência lida, não escrita por esta feature |
 | `Log` | `string` | `serializarLogAuditoria(eventos)` (`specs/001-auditoria-acoes-operador/contracts/auditoria-events.md`) |

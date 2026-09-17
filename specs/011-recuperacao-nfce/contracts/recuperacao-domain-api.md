@@ -22,7 +22,7 @@ function mapearRascunhoCarregado(rascunho: RascunhoCarregado): {
   condicaoPagamentoCodigo: number;
   clienteCodigo: number;
   vendedorCodigo: number;
-  identidadeVenda: { origem: 'RASCUNHO'; numeroNota: number };
+  identidadeVenda: { origem: 'RASCUNHO'; numeroRascunho: number }; // era numeroNota (AD-235)
 };
 ```
 
@@ -35,7 +35,7 @@ Nenhuma dessas funções importa React, TanStack Query, Zustand ou `fetch` — m
 function useListaRascunhos(params: { termoBusca: string; pagina: number }): UseQueryResult<EstadoListaRascunhos>;
 // GET GetListaNFCes — staleTime curto (a listagem reflete rascunhos de outros operadores, não deve envelhecer no cache)
 
-function useCarregarRascunho(): UseMutationResult<RascunhoCarregado, unknown, { numeroNota: number }>;
+function useCarregarRascunho(): UseMutationResult<RascunhoCarregado, unknown, { numeroRascunho: number; serie: string }>; // AD-235
 // GET CarregarNFCe sob demanda (seleção de linha), não é uma query — ação única, não recacheada
 ```
 

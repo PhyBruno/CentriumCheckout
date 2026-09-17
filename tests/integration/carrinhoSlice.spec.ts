@@ -1,15 +1,25 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { centavos } from '../../src/client/domain/precificacao/dinheiro';
 import { totalVenda } from '../../src/client/domain/precificacao/linha';
 import { milesimosDeUnidades } from '../../src/client/domain/precificacao/quantidade';
-import { useInsercaoDeProduto } from '../../src/client/features/carrinho/useCarrinho';
+import {
+  useEdicaoDeItemExistente,
+  useInsercaoDeProduto,
+} from '../../src/client/features/carrinho/useCarrinho';
+import { notificar } from '../../src/client/lib/notificar';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import type { CarrinhoDeps, InserirItemInput } from '../../src/client/stores/slices/carrinhoSlice';
 import { criarVendaStore, useVendaStore } from '../../src/client/stores/vendaStore';
-import { emCentavos, respostaGetProduto, snapshotDe, unidades } from '../support/precificacao';
+import {
+  emCentavos,
+  linhaDe,
+  respostaGetProduto,
+  snapshotDe,
+  unidades,
+} from '../support/precificacao';
 
 /**
  * Invariantes de estado do carrinho (`quickstart.md`, Camada 2).
@@ -523,7 +533,7 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     if (revisao.situacao !== 'revisao') {
       throw new Error('esperava revisão bem-sucedida');
     }
-    result.current.confirmarPrevia(revisao, revisao.quantidade);
+    await result.current.confirmarPrevia(revisao, revisao.quantidade);
 
     await waitFor(() => {
       expect(useVendaStore.getState().linhas).toHaveLength(1);
@@ -659,7 +669,7 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 
-  it('"codigo*3" insere com quantidade 3 e o código simples com quantidade 1', async () => {
+  it('"3*codigo" insere com quantidade 3 e o código simples com quantidade 1', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
@@ -675,12 +685,279 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     const { result } = renderHook(() => useInsercaoDeProduto(), {
       wrapper: envolverComQueryClient(),
     });
-    await result.current.inserirPorCodigo(`${SKU}*3`);
+    await result.current.inserirPorCodigo(`3*${SKU}`);
     await result.current.inserirPorCodigo(SKU);
 
     await waitFor(() => {
       expect(useVendaStore.getState().linhas).toHaveLength(2);
     });
     expect(useVendaStore.getState().linhas.map((linha) => linha.quantidade)).toEqual([3000, 1000]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Saldo de estoque (AD-236) — a regra mora na orquestração, não no slice
+ * ------------------------------------------------------------------ */
+
+describe('inserção pela rede — saldo de estoque (AD-236)', () => {
+  type Resposta = { saldo: string } | 'falha-de-rede';
+
+  /** Cada chamada a GetProduto consome a próxima resposta da fila (a última se repete). */
+  function stubarSaldos(respostas: readonly Resposta[], urls: string[]): void {
+    let indice = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        urls.push(url);
+        const resposta = respostas[Math.min(indice, respostas.length - 1)];
+        indice += 1;
+        if (resposta === undefined || resposta === 'falha-de-rede') {
+          return Promise.reject(new TypeError('Failed to fetch'));
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify(respostaGetProduto({ Saldo: resposta.saldo })), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }),
+    );
+  }
+
+  function comPolitica(politica: 'A' | 'B' | '') {
+    const registro = registroDeBootstrap();
+    return {
+      ...registro,
+      SessaoUsuario: { ...registro.SessaoUsuario, FaturaProdutoSemSaldo: politica },
+    };
+  }
+
+  function renderInsercao() {
+    return renderHook(
+      () => ({ insercao: useInsercaoDeProduto(), edicao: useEdicaoDeItemExistente() }),
+      {
+        wrapper: envolverComQueryClient(),
+      },
+    );
+  }
+
+  beforeEach(() => {
+    useVendaStore.setState({ linhas: [] });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("'B' com saldo zero: não insere e devolve a prévia bloqueada com o saldo", async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    const urls: string[] = [];
+    stubarSaldos([{ saldo: '0.000' }], urls);
+    const erro = vi.spyOn(notificar, 'erro');
+
+    const { result } = renderInsercao();
+    const resultado = await result.current.insercao.inserirPorCodigo(SKU);
+
+    expect(resultado.situacao).toBe('bloqueado');
+    if (resultado.situacao !== 'bloqueado') {
+      throw new Error('esperava bloqueio');
+    }
+    expect(resultado.revisao.saldo).toBe(0);
+    expect(resultado.revisao.quantidade).toBe(1000);
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(erro).toHaveBeenCalledWith(expect.stringContaining('Estoque insuficiente'));
+    // Primeira resolução foi à rede: o saldo dela é reaproveitado, sem 2ª chamada.
+    expect(urls).toHaveLength(1);
+  });
+
+  it("'A' com saldo zero: avisa e insere", async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('A') });
+    stubarSaldos([{ saldo: '0.000' }], []);
+    const aviso = vi.spyOn(notificar, 'aviso');
+
+    const { result } = renderInsercao();
+    const resultado = await result.current.insercao.inserirPorCodigo(SKU);
+
+    expect(resultado.situacao).toBe('inserido');
+    expect(useVendaStore.getState().linhas).toHaveLength(1);
+    expect(aviso).toHaveBeenCalledOnce();
+  });
+
+  it('produto em cache: reconsulta o saldo por Tipocodproduto=R e soma a linha já lançada', async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    const urls: string[] = [];
+    // 1ª: resolução (saldo 1, entra); 2ª: reconsulta com o saldo ainda 1.
+    stubarSaldos([{ saldo: '1.000' }, { saldo: '1.000' }], urls);
+
+    const { result } = renderInsercao();
+    expect((await result.current.insercao.inserirPorCodigo(SKU)).situacao).toBe('inserido');
+    const segunda = await result.current.insercao.inserirPorCodigo(SKU);
+
+    expect(segunda.situacao).toBe('bloqueado');
+    expect(useVendaStore.getState().linhas).toHaveLength(1);
+    expect(urls).toHaveLength(2);
+    // A sessão deste teste usa `'I'`; a reconsulta usa sempre o código interno.
+    expect(urls[0]).toContain('Tipocodproduto=I');
+    expect(urls[1]).toContain('Tipocodproduto=R');
+    expect(urls[1]).toContain(`Codigoproduto=${SKU}`);
+  });
+
+  it('soma igual ao saldo passa', async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    stubarSaldos([{ saldo: '4.000' }], []);
+
+    const { result } = renderInsercao();
+    const resultado = await result.current.insercao.inserirPorCodigo(`4*${SKU}`);
+
+    expect(resultado.situacao).toBe('inserido');
+  });
+
+  it('linha congelada de documento entra na soma', async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    stubarSaldos([{ saldo: '3.000' }], []);
+    useVendaStore.setState({
+      linhas: [
+        linhaDe({
+          snapshot: snapshotDe({ codigoProduto: SKU }),
+          quantidadeEmUnidades: 3,
+          precoCongelado: true,
+          origem: 'DAV',
+        }),
+      ],
+    });
+
+    const { result } = renderInsercao();
+    const resultado = await result.current.insercao.inserirPorCodigo(SKU);
+
+    expect(resultado.situacao).toBe('bloqueado');
+  });
+
+  it('confirmarPrevia reconsulta e recusa quando a soma passou do saldo', async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    const urls: string[] = [];
+    // Na revisão havia 5; na confirmação o ERP diz que só restam 2.
+    stubarSaldos([{ saldo: '5.000' }, { saldo: '2.000' }], urls);
+
+    const { result } = renderInsercao();
+    const revisao = await result.current.insercao.revisarPorCodigo(SKU, { origem: 'BUSCA' });
+    if (revisao.situacao !== 'revisao') {
+      throw new Error('esperava revisão');
+    }
+    const confirmacao = await result.current.insercao.confirmarPrevia(revisao, unidades(3));
+
+    expect(confirmacao).toEqual({ situacao: 'bloqueado', saldo: 2000 });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(urls[1]).toContain('Tipocodproduto=R');
+  });
+
+  it('falha de rede na reconsulta usa o último saldo conhecido e segue', async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    stubarSaldos([{ saldo: '5.000' }, 'falha-de-rede'], []);
+
+    const { result } = renderInsercao();
+    const revisao = await result.current.insercao.revisarPorCodigo(SKU, { origem: 'BUSCA' });
+    if (revisao.situacao !== 'revisao') {
+      throw new Error('esperava revisão');
+    }
+
+    // 3 ≤ 5 (último conhecido): entra, e o ERP revalida no FaturarNFCe.
+    expect(await result.current.insercao.confirmarPrevia(revisao, unidades(3))).toEqual({
+      situacao: 'confirmado',
+    });
+    // 6 > 5: continua barrando com o último saldo conhecido.
+    expect((await result.current.insercao.confirmarPrevia(revisao, unidades(6))).situacao).toBe(
+      'bloqueado',
+    );
+  });
+
+  it("edição pelo lápis: aumento reconsulta (Tipocodproduto=R) e 'B' não altera a linha", async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    const urls: string[] = [];
+    stubarSaldos([{ saldo: '2.000' }], urls);
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ codigoProduto: SKU }),
+      quantidadeEmUnidades: 2,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+
+    const { result } = renderInsercao();
+    const confirmacao = await result.current.edicao.confirmarEdicaoDeLinha(linha, {
+      quantidade: unidades(3),
+      precoUnitario: linha.precoUnitario,
+      descontoManual: linha.descontoManual,
+    });
+
+    expect(confirmacao).toEqual({ situacao: 'bloqueado', saldo: 2000 });
+    expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(2000);
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).toContain('Tipocodproduto=R');
+    expect(urls[0]).toContain(`Codigoproduto=${SKU}`);
+  });
+
+  it('edição pelo lápis: a própria linha não conta em dobro', async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    stubarSaldos([{ saldo: '3.000' }], []);
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ codigoProduto: SKU }),
+      quantidadeEmUnidades: 2,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+
+    const { result } = renderInsercao();
+    const confirmacao = await result.current.edicao.confirmarEdicaoDeLinha(linha, {
+      quantidade: unidades(3),
+      precoUnitario: linha.precoUnitario,
+      descontoManual: linha.descontoManual,
+    });
+
+    expect(confirmacao.situacao).toBe('confirmado');
+    expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(3000);
+  });
+
+  it("edição pelo lápis: diminuir nunca bloqueia em 'B', mesmo ainda acima do saldo", async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('B') });
+    stubarSaldos([{ saldo: '1.000' }], []);
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ codigoProduto: SKU }),
+      quantidadeEmUnidades: 5,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+
+    const { result } = renderInsercao();
+    const confirmacao = await result.current.edicao.confirmarEdicaoDeLinha(linha, {
+      quantidade: unidades(4),
+      precoUnitario: linha.precoUnitario,
+      descontoManual: linha.descontoManual,
+    });
+
+    expect(confirmacao.situacao).toBe('confirmado');
+    expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(4000);
+  });
+
+  it("política '': edição não consulta o ERP", async () => {
+    useSessionStore.setState({ estado: 'pronto', registro: comPolitica('') });
+    const urls: string[] = [];
+    stubarSaldos([{ saldo: '0.000' }], urls);
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ codigoProduto: SKU }),
+      quantidadeEmUnidades: 1,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+
+    const { result } = renderInsercao();
+    await result.current.edicao.confirmarEdicaoDeLinha(linha, {
+      quantidade: unidades(9),
+      precoUnitario: linha.precoUnitario,
+      descontoManual: linha.descontoManual,
+    });
+
+    expect(urls).toHaveLength(0);
+    expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(9000);
   });
 });

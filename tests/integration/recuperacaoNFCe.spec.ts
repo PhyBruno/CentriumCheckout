@@ -10,7 +10,7 @@ import {
   fetchListaNFCes,
   fonteRascunho,
 } from '../../src/client/services/recuperacao/recuperacaoQueries';
-import { ErroNegocioErp } from '../../src/client/services/errosErp';
+import { ErroNegocioErp, ErroRedeErp } from '../../src/client/services/errosErp';
 import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
@@ -20,7 +20,9 @@ import { clienteCheckoutDe } from '../support/cliente';
 import { snapshotDe } from '../support/precificacao';
 import { CODIGO_CLIENTE_DAV, CODIGO_VENDEDOR_DAV, SKU_DAV } from '../support/dav';
 import { condicaoDe, formaDe } from '../support/pagamento';
+import { montarRetratoVenda } from '../../src/client/domain/venda/montarRetratoVenda';
 import {
+  CODIGO_VENDEDOR_LISTA,
   NUMERO_NOTA,
   SERIE_NFCE,
   SKU_SEGUNDO_ITEM,
@@ -43,6 +45,7 @@ import {
 
 const CAMINHO_CARREGAR = '/ApiCentriumOAuth/CarregarNFCe';
 const CAMINHO_LISTA = '/ApiCentriumOAuth/GetListaNFCes';
+const PERIODO = { dataInicial: '2026-09-09', dataFinal: '2026-09-16' } as const;
 
 function respostaJson(corpo: unknown, status = 200): Response {
   return new Response(JSON.stringify(corpo), {
@@ -126,7 +129,7 @@ function depsDe(
 
   const deps: ImportacaoVendaDeps = {
     estadoDaVenda: () => ({
-      numeroNota: store.getState().identidadeVenda.numeroNota,
+      origem: store.getState().identidadeVenda.origem,
       podeMutar: true,
       linhasNaVenda: store.getState().linhas.length,
       clienteIdentificado: store.getState().houveEscolhaExplicita,
@@ -141,6 +144,8 @@ function depsDe(
     // A origem `'RASCUNHO'` é o que o hook da feature fixa (AD-166) — aqui ela
     // é reproduzida para o teste exercitar o mesmo caminho da UI.
     selecionarCliente: (cliente) => venda.selecionarCliente(cliente, 'RASCUNHO'),
+    selecionarClienteDoDocumento: (cliente) =>
+      venda.selecionarClienteDoDocumento(cliente, 'RASCUNHO'),
     trocarVendedor,
     // Catálogo da sessão: o documento aponta `CondicaoPagamentoCodigo: 1`, e
     // `A_VISTA` é a entrada correspondente. Devolver `null` aqui é o caminho de
@@ -158,13 +163,19 @@ function depsDe(
   return { deps, capturadas, trocarVendedor, importarFormasDePagamento };
 }
 
-function fonte() {
-  const linha = rascunhoDaLista();
-  return fonteRascunho({
-    numeroNota: linha.NumeroNota as number,
-    vendedor: linha.Vendedor as string,
-    serie: SERIE_NFCE,
-  });
+/** A linha da listagem como o serviço a entrega (`RascunhoListado`), com sobrescritas. */
+function rascunhoListado(sobrescritas: Record<string, unknown> = {}) {
+  const linha = rascunhoDaLista(sobrescritas);
+  return {
+    numeroRascunho: linha.NumeroRascunho as number,
+    serie: linha.Serie as string,
+    vendedorCodigo: linha.VendedorCodigo as number,
+    vendedorNome: linha.VendedorNome as string,
+  };
+}
+
+function fonte(sobrescritas: Record<string, unknown> = {}) {
+  return fonteRascunho(rascunhoListado(sobrescritas));
 }
 
 function tiposDeEvento(store: ReturnType<typeof montarStore>): string[] {
@@ -188,7 +199,7 @@ describe('GetListaNFCes — parâmetros (research.md D1/D2)', () => {
     const capturadas: string[] = [];
     const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() }, capturadas);
 
-    await fetchListaNFCes({ tamanhoPagina: 500 }, { erpClient });
+    await fetchListaNFCes({ ...PERIODO, tamanhoPagina: 500 }, { erpClient });
 
     expect(capturadas[0]).toContain('Tamanhopagina=50');
   });
@@ -198,21 +209,82 @@ describe('GetListaNFCes — parâmetros (research.md D1/D2)', () => {
     const capturadas: string[] = [];
     const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() }, capturadas);
 
-    await fetchListaNFCes({ txtBusca: '   ' }, { erpClient });
+    await fetchListaNFCes({ ...PERIODO, txtBusca: '   ' }, { erpClient });
 
     expect(capturadas[0]).not.toContain('Txtbusca');
   });
+
+  /**
+   * AD-237: o ERP de 2026-09-14 filtra por `Datainicial`/`Datafinal` e, sem
+   * eles, devolve os últimos 90 dias (`DpCheckout_RascunhosLista`). O período
+   * vai sempre — é o que a janela mostra ao operador.
+   */
+  it('envia sempre Datainicial e Datafinal (yyyy-mm-dd)', async () => {
+    const capturadas: string[] = [];
+    const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() }, capturadas);
+
+    await fetchListaNFCes(PERIODO, { erpClient });
+
+    const parametros = new URL(capturadas[0] ?? '', 'http://x').searchParams;
+    expect(parametros.get('Datainicial')).toBe('2026-09-09');
+    expect(parametros.get('Datafinal')).toBe('2026-09-16');
+  });
+
+  it('mapeia a linha do contrato de 2026-09-14: número, série, códigos e nomes (AD-235)', async () => {
+    const erpClient = erpClientDe({ [CAMINHO_LISTA]: respostaListaNFCes() });
+
+    const pagina = await fetchListaNFCes(PERIODO, { erpClient });
+
+    expect(pagina.rascunhos[0]).toEqual({
+      numeroRascunho: NUMERO_NOTA,
+      serie: SERIE_NFCE,
+      clienteCodigo: 1007,
+      clienteNome: 'CLIENTE TESTE 01',
+      vendedorCodigo: CODIGO_VENDEDOR_LISTA,
+      vendedorNome: 'MARIANA ALVES',
+      operadorNome: 'CAIXA 03',
+      emissao: '2026-09-01T14:32:00',
+      total: 1850,
+    });
+  });
 });
 
-describe('CarregarNFCe — parâmetros (research.md D4)', () => {
-  it('envia sempre a série da sessão, nunca uma vinda da listagem', async () => {
+describe('CarregarNFCe — parâmetros (AD-235)', () => {
+  it('envia o NumeroRascunho e a série da linha da listagem', async () => {
     const { deps, capturadas } = depsDe(store);
 
-    await importarVendaExistente(fonte(), deps);
+    await importarVendaExistente(fonte({ Serie: 'R02' }), deps);
 
     const chamada = capturadas.find((url) => url.startsWith(CAMINHO_CARREGAR));
+    // O nome do parâmetro na API continua `Numeronota`; o valor é o rascunho.
     expect(chamada).toContain(`Numeronota=${String(NUMERO_NOTA)}`);
-    expect(chamada).toContain(`Serienota=${SERIE_NFCE}`);
+    expect(chamada).toContain('Serienota=R02');
+  });
+});
+
+describe('NumeroRascunho do CarregarNFCe (AD-235)', () => {
+  it('o SUSPENDER da venda retomada envia o número que o CarregarNFCe devolveu', async () => {
+    // `CarregarNFCe` devolve o número como string (`"5925"`, preview 2026-09-14).
+    const { deps } = depsDe(store, respostaCarregarNFCe({ NumeroRascunho: '5925' }));
+
+    await importarVendaExistente(fonte({ NumeroRascunho: 5925 }), deps);
+
+    const retrato = montarRetratoVenda(
+      {
+        empresa: '1',
+        linhas: store.getState().linhas,
+        identidade: store.getState().identidadeVenda,
+        cadSerieNFCe: SERIE_NFCE,
+        clienteCodigo: CODIGO_CLIENTE_DAV,
+        vendedorCodigo: CODIGO_VENDEDOR_DAV,
+        usuarioCodigo: 1,
+        condicaoPagamentoCodigo: 1,
+        eventos: store.getState().eventos,
+      },
+      'SUSPENDER',
+      [],
+    );
+    expect(retrato.NumeroRascunho).toBe(5925);
   });
 });
 
@@ -246,15 +318,17 @@ describe('hidratação do carrinho (J1/J2)', () => {
 });
 
 describe('identidade da venda (J3)', () => {
-  it('assume o NumeroNota do rascunho e a origem RASCUNHO, nunca 0', async () => {
+  it('assume o NumeroRascunho do rascunho e a origem RASCUNHO, nunca 0', async () => {
     const { deps } = depsDe(store);
-    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(0);
 
     await importarVendaExistente(fonte(), deps);
 
     expect(store.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
-      numeroNota: NUMERO_NOTA,
+      numeroRascunho: NUMERO_NOTA,
+      // Série do documento, reenviada com o número (AD-239).
+      serie: '1',
     });
   });
 });
@@ -267,6 +341,22 @@ describe('cliente e vendedor', () => {
 
     expect(store.getState().clienteAtual?.codigoCliente).toBe(CODIGO_CLIENTE_DAV);
     expect(store.getState().clienteAtual?.origem).toBe('RASCUNHO');
+  });
+
+  it('GetCliente fora do ar: usa o ClienteNome do CarregarNFCe e importa (AD-237)', async () => {
+    const { deps } = depsDe(store, respostaCarregarNFCe({ ClienteNome: 'CLIENTE DO RASCUNHO' }), {
+      resolverCliente: () => Promise.reject(new ErroRedeErp()),
+    });
+
+    await importarVendaExistente(fonte(), deps);
+
+    expect(store.getState().clienteAtual).toMatchObject({
+      codigoCliente: CODIGO_CLIENTE_DAV,
+      nome: 'CLIENTE DO RASCUNHO',
+      listaPreco: null,
+      origem: 'RASCUNHO',
+    });
+    expect(store.getState().identidadeVenda.origem).toBe('RASCUNHO');
   });
 
   it('pré-seleciona o vendedor do rascunho, com o nome vindo da listagem', async () => {
@@ -284,18 +374,24 @@ describe('cliente e vendedor', () => {
     });
   });
 
+  it('vendedor 0 no documento cai no código e no nome da linha (divergência do ERP, AD-235)', async () => {
+    const { deps, trocarVendedor } = depsDe(
+      store,
+      respostaCarregarNFCe({ vendedorCodigo: '0', vendedorNome: '' }),
+    );
+
+    await importarVendaExistente(fonte(), deps);
+
+    expect(trocarVendedor).toHaveBeenCalledWith({
+      codigo: CODIGO_VENDEDOR_LISTA,
+      nome: 'MARIANA ALVES',
+    });
+  });
+
   it('cai para null quando a listagem devolve o vendedor em branco', async () => {
     const { deps, trocarVendedor } = depsDe(store);
-    const linha = rascunhoDaLista({ Vendedor: '' });
 
-    await importarVendaExistente(
-      fonteRascunho({
-        numeroNota: linha.NumeroNota as number,
-        vendedor: linha.Vendedor as string,
-        serie: SERIE_NFCE,
-      }),
-      deps,
-    );
+    await importarVendaExistente(fonte({ VendedorNome: '' }), deps);
 
     // Nome em branco no ERP é "não informado", não string vazia: um `''`
     // chegaria ao slice e a UI exibiria um vendedor sem nome em vez de cair no
@@ -375,7 +471,7 @@ describe('condição de pagamento do documento (AD-171)', () => {
 
     expect(store.getState().linhas).toHaveLength(0);
     expect(store.getState().condicaoSelecionada).toBeNull();
-    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(0);
   });
 });
 
@@ -419,7 +515,7 @@ describe('auditoria (J6 e AD-166)', () => {
 
     const evento = store.getState().eventos.find((item) => item.tipo === 'NFCE_RECUPERADA');
     expect(evento?.detalhes).toEqual({
-      numeroNota: NUMERO_NOTA,
+      numeroRascunho: NUMERO_NOTA,
       serie: SERIE_NFCE,
       quantidadeLinhas: 1,
       quantidadeFormasDePagamento: 1,
@@ -457,12 +553,12 @@ describe('rascunho indisponível', () => {
     await expect(importarVendaExistente(fonte(), deps)).rejects.toThrow();
 
     expect(store.getState().linhas).toEqual([]);
-    expect(store.getState().identidadeVenda.numeroNota).toBe(0);
+    expect(store.getState().identidadeVenda.numeroRascunho).toBe(0);
     expect(tiposDeEvento(store)).not.toContain('NFCE_RECUPERADA');
   });
 
   it('não muta nada quando o documento vem fora do contrato', async () => {
-    const { deps } = depsDe(store, { OutCheckoutFaturarNFCe: { NumeroNota: NUMERO_NOTA } });
+    const { deps } = depsDe(store, { OutCheckoutFaturarNFCe: { NumeroRascunho: NUMERO_NOTA } });
 
     await expect(importarVendaExistente(fonte(), deps)).rejects.toThrow();
 
@@ -475,7 +571,7 @@ describe('pré-condição — venda já iniciada (pedido do usuário, 2026-09-04
   it('recusa a retomada quando já há item lançado', async () => {
     const { deps } = depsDe(store, respostaCarregarNFCe(), {
       estadoDaVenda: () => ({
-        numeroNota: 0,
+        origem: 'NOVA',
         podeMutar: true,
         linhasNaVenda: 1,
         clienteIdentificado: false,
@@ -491,7 +587,7 @@ describe('pré-condição — venda já iniciada (pedido do usuário, 2026-09-04
   it('recusa quando a condição de pagamento já congelou a venda', async () => {
     const { deps } = depsDe(store, respostaCarregarNFCe(), {
       estadoDaVenda: () => ({
-        numeroNota: 0,
+        origem: 'NOVA',
         // `podeMutar` é `false` a partir da condição escolhida ou da primeira
         // forma aprovada — os dois últimos dos quatro critérios do usuário.
         podeMutar: false,
@@ -509,7 +605,7 @@ describe('pré-condição — venda já iniciada (pedido do usuário, 2026-09-04
   it('recusa quando um cliente já foi identificado pelo operador', async () => {
     const { deps } = depsDe(store, respostaCarregarNFCe(), {
       estadoDaVenda: () => ({
-        numeroNota: 0,
+        origem: 'NOVA',
         podeMutar: true,
         linhasNaVenda: 0,
         clienteIdentificado: true,
@@ -628,7 +724,9 @@ describe('T026 — quickstart Cenário 2: retomada completa', () => {
     });
     expect(store.getState().identidadeVenda).toEqual({
       origem: 'RASCUNHO',
-      numeroNota: NUMERO_NOTA,
+      numeroRascunho: NUMERO_NOTA,
+      // Série do documento, reenviada com o número (AD-239).
+      serie: '1',
     });
   });
 });
@@ -726,8 +824,8 @@ describe('T026 — quickstart Cenário 6: sem lock entre operadores', () => {
 
     // As duas vendas ficam com a mesma identidade — é justamente o que a
     // ausência de lock permite, e o que o ERP resolve no faturamento.
-    expect(primeiro.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
-    expect(segundo.getState().identidadeVenda.numeroNota).toBe(NUMERO_NOTA);
+    expect(primeiro.getState().identidadeVenda.numeroRascunho).toBe(NUMERO_NOTA);
+    expect(segundo.getState().identidadeVenda.numeroRascunho).toBe(NUMERO_NOTA);
   });
 });
 
@@ -747,7 +845,7 @@ describe('recusa de negócio do ERP na retomada', () => {
         clienteCodigo: '0',
         vendedorCodigo: '0',
         CondicaoPagamentoCodigo: '0',
-        NumeroNota: '0',
+        NumeroRascunho: '0',
         CadSerieNFCe: '',
         UsuarioCodigo: '0',
         Log: '',

@@ -77,6 +77,22 @@ export interface ConfigMockErp {
    */
   faturarNFCeRejeitada: boolean;
   /**
+   * `SUSPENDER` **e** `FATURAR` gravam o rascunho e são recusados por uma
+   * validação posterior (AD-235) — a forma de `PCheckout_FaturarNFCe` quando
+   * `PNFCe_ValidaSaldoProdutos` recusa: envelope com o retrato ecoado,
+   * `NumeroRascunho` já preenchido e `messages` com `Type: 1`. É o cenário em
+   * que o Checkout adota o número para o reenvio.
+   */
+  faturarRecusaComRascunho: boolean;
+  /**
+   * `SUSPENDER`/`FATURAR` recusados por **cenário tributário** (AD-239): o ERP
+   * responde com o envelope **zerado** (`NumeroRascunho: "0"`) e a razão em
+   * `messages`, e ainda assim grava um rascunho vazio do outro lado. É o
+   * desfecho em que o Checkout não tem o que corrigir: limpa o caixa e manda o
+   * operador ao ERP.
+   */
+  faturarSemCenarioTributario: boolean;
+  /**
    * `GetDav` recusa o documento — é como o ERP responde quando outro operador
    * já o faturou. O Checkout não tem lock nenhum (`FR-010`/AD-052): só reage
    * ao erro devolvido.
@@ -125,6 +141,11 @@ export interface ConfigMockErp {
    */
   semVendedorDefault: boolean;
   /**
+   * `SessaoUsuario.ClienteDefaultContato` (AD-237). Preenchido por padrão, como
+   * no preview; `''` reproduz o cliente default sem celular cadastrado.
+   */
+  clienteDefaultContato: string;
+  /**
    * `SessaoUsuario.UsuarioTipoCodigoProduto` — o campo que a empresa configura
    * e que decide, além do filtro de `GetProduto`, o rótulo da barra de entrada
    * (`rotuloTipoCodigoProduto`). Configurável porque `''` e `'R'` produzem o
@@ -134,16 +155,22 @@ export interface ConfigMockErp {
    */
   tipoCodigoProduto: string;
   /**
-   * `GetCliente` devolve o **SDT parcial** que o ERP real devolve hoje: só
-   * `CodCliente`, `PermiteVendaCredito` e `ListaPreco` preenchidos, com
-   * `nome`/`cpf`/`celular`/endereço/convênio vazios mesmo para cliente que
-   * existe (medido ao vivo 2026-09-11 em quatro clientes, por documento e por
-   * código; os mesmos clientes vêm completos em `GetListaClientes`).
+   * `SessaoUsuario.FaturaProdutoSemSaldo` (AD-236): `'A'` avisa, `'B'` bloqueia
+   * quantidade acima do saldo, `''` não valida.
    *
-   * **Desligado por padrão**: o defeito é do procedure do ERP e o Checkout já o
-   * trata como tal (`ErroClienteIncompleto`, AD-204), então a suíte das features
-   * 005/006/011 continua afirmando o contrato prometido. Ligue para exercitar a
-   * recusa — é o único jeito de esse caminho aparecer em teste.
+   * **`''` por padrão**, embora o tenant de preview use `'B'`: com a política
+   * ligada, toda reinserção reconsulta o saldo, e as suítes que contam chamadas
+   * a `GetProduto` (`CART-03`) mediriam outra coisa. Quem exercita a regra liga.
+   */
+  faturaProdutoSemSaldo: 'A' | 'B' | '';
+  /**
+   * `GetCliente` devolve o **SDT parcial** que o ERP devolvia até o contrato de
+   * 2026-09-14: só `CodCliente`, `PermiteVendaCredito` e `ListaPreco`
+   * preenchidos (medido em 2026-09-11). O ERP de 2026-09-14 devolve o cadastro
+   * completo (AD-237), que é o **padrão** deste mock.
+   *
+   * **Desligado por padrão**; fica como regressão do caminho de recusa
+   * (`ErroClienteIncompleto`, AD-204).
    */
   getClienteSemCadastro: boolean;
 }
@@ -180,6 +207,8 @@ const CONFIG_PADRAO: ConfigMockErp = {
   statusValidarNFCe: 200,
   faturarSemNotaFiscal: false,
   faturarNFCeRejeitada: false,
+  faturarRecusaComRascunho: false,
+  faturarSemCenarioTributario: false,
   davJaFaturado: false,
   getClienteSemCadastro: false,
   pixAtivo: true,
@@ -194,7 +223,9 @@ const CONFIG_PADRAO: ConfigMockErp = {
   /** 20 segundos — o número que o usuário pediu para o teste manual (item 4). */
   atrasoPagamentoPixMs: 20_000,
   semVendedorDefault: false,
+  clienteDefaultContato: '(99)99999-9999',
   tipoCodigoProduto: 'R',
+  faturaProdutoSemSaldo: '',
 };
 
 /**
@@ -452,6 +483,49 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     UDM: 'UN',
     ProdutoPesavelEditavel: '',
   },
+  /**
+   * Produtos da regra de saldo (AD-236): um **sem** saldo e um com saldo
+   * **negativo**, como o ERP de preview devolve (`"-205.000"`). Os dois barram
+   * já a primeira unidade em `'B'`.
+   */
+  '005000': {
+    CodigoProduto: '005000',
+    Descricao: 'PRODUTO SEM SALDO',
+    Referencia: 'REF-SEM-SALDO',
+    CodigoBarras: '7890000000050',
+    PrecoVenda: String(5.0),
+    PrecoVenda1: String(5.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+    Saldo: '0.000',
+  },
+  '006000': {
+    CodigoProduto: '006000',
+    Descricao: 'PRODUTO SALDO NEGATIVO',
+    Referencia: 'REF-SALDO-NEG',
+    CodigoBarras: '7890000000060',
+    PrecoVenda: String(6.0),
+    PrecoVenda1: String(6.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: '',
+    Saldo: '-205.000',
+  },
 };
 
 /**
@@ -665,12 +739,15 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         // sendo int64/double no YAML, vieram número nativo no mesmo payload —
         // provável eco do que foi enviado, não recalculo do ERP.
         clienteCodigo: String(2538),
+        // Contrato de 2026-09-14 (AD-235): nome do cliente no primeiro nível.
+        ClienteNome: 'CLIENTE CONVENIADO',
         vendedorCodigo: String(12),
         // AD-172: mesmo SDT de `GetDav` e `CarregarNFCe`, logo vale para as
         // duas importações.
         vendedorNome: 'MARIANA ALVES',
         CondicaoPagamentoCodigo: String(1),
-        NumeroNota: String(90210),
+        // `NumeroRascunho` (era `NumeroNota`), string como no preview (AD-235).
+        NumeroRascunho: String(90210),
         CadSerieNFCe: '1',
         UsuarioCodigo: String(42),
         Log: '',
@@ -731,10 +808,11 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
         Empresa: 1,
         SuspenderOuFaturar: '',
         clienteCodigo: String(1255),
+        ClienteNome: 'CLIENTE VAREJO',
         vendedorCodigo: String(8),
         vendedorNome: 'BRUNO SANTOS',
         CondicaoPagamentoCodigo: String(1),
-        NumeroNota: String(90211),
+        NumeroRascunho: String(90211),
         CadSerieNFCe: '1',
         UsuarioCodigo: String(42),
         Log: '',
@@ -819,6 +897,32 @@ function quitacaoDoRascunho(documento: Record<string, unknown>): Record<string, 
  * `PaginaAtual`/`RegistrosPorPagina`/`TotalRegistros`/`TotalPaginas` vêm como
  * número nativo (`int32`), ao contrário dos campos de negócio do item.
  */
+/**
+ * Recusa de `GetDav`/`CarregarNFCe`: **HTTP 200**, envelope com o SDT zerado e a
+ * razão em `messages` (AD-239, medido no preview em 2026-09-16).
+ *
+ * O `NumeroRascunho: "0"` é o que separa recusa de documento na fronteira Zod —
+ * o schema exige rascunho positivo.
+ */
+function recusaDeDocumento(descricao: string): Record<string, unknown> {
+  return {
+    OutCheckoutFaturarNFCe: {
+      Empresa: 0,
+      SuspenderOuFaturar: '',
+      clienteCodigo: '0',
+      ClienteNome: '',
+      vendedorCodigo: '0',
+      vendedorNome: '',
+      CondicaoPagamentoCodigo: '0',
+      NumeroRascunho: '0',
+      CadSerieNFCe: '',
+      UsuarioCodigo: '0',
+      Log: '',
+    },
+    messages: [{ Id: '', Type: 1, Description: descricao }],
+  };
+}
+
 function respostaPaginada(
   chaveDoArray: string,
   itens: readonly unknown[],
@@ -881,6 +985,9 @@ function produtoComoOErpResponde(produto: Record<string, unknown>): Record<strin
     QtdMinimaPreco5: Number(produto['QtdMinimaPreco5'] ?? 0),
     UDM: produto['UDM'],
     ProdutoPesavelEditavel: produto['ProdutoPesavelEditavel'],
+    // Contrato de 2026-09-14 (AD-236): `double` como string, pode ser negativo.
+    // `10.000` por padrão, folgado para os cenários que não são sobre saldo.
+    Saldo: produto['Saldo'] ?? '10.000',
   };
 }
 
@@ -910,6 +1017,7 @@ const PRODUTO_INEXISTENTE: Record<string, unknown> = {
   QtdMinimaPreco5: 0,
   UDM: '',
   ProdutoPesavelEditavel: '',
+  Saldo: '0.000',
 };
 
 /**
@@ -956,29 +1064,21 @@ function cpfComMascara(cpf: string): string {
 }
 
 /**
- * `ClienteCheckout` do jeito que `GetCliente` **de fato responde**, medido ao
- * vivo em 2026-09-11 contra quatro clientes diferentes do ERP (`CodCliente` 1,
- * 8, 17 e 999999, por documento e por código, todos com o mesmo desfecho).
+ * `ClienteCheckout` do jeito que `GetCliente` responde.
  *
- * **O ERP preenche três campos e só três**: `CodCliente`,
- * `PermiteVendaCredito` e `ListaPreco`. `nome`, `cpf`, `email`, `celular`, o
- * endereço inteiro, `LimiteCredito` e os três de convênio voltam vazios/zerados
- * mesmo para cliente que existe e que `GetListaClientes` devolve completo —
- * `Empresa` inclusive, que volta `0` e não o `1` consultado.
+ * **Contrato de 2026-09-14 (AD-237): cadastro completo** — nome, cpf, email,
+ * celular, endereço e `ListaPreco`, por `CodCliente`, `Codcliente` ou `CPFCNPJ`
+ * (medido no preview com o cliente 17). Documento inexistente continua
+ * devolvendo `CodCliente: 0` com tudo vazio.
  *
- * Isto contradiz `specs/005-…/contracts/erp-cliente-api.md`, que documenta o
- * SDT completo — e `clienteQueries.ts` já trata o SDT parcial como **defeito do
- * ERP** a corrigir no procedure (AD-204), recusando a associação com
- * `ErroClienteIncompleto` em vez de pôr na venda um cliente sem nome.
+ * Até essa versão o ERP preenchia só `CodCliente`, `PermiteVendaCredito` e
+ * `ListaPreco` (medido em 2026-09-11, AD-216), e o Checkout recusava com
+ * `ErroClienteIncompleto` (AD-204). Os **dois modos** ficam:
  *
- * Por isso os **dois modos**, e não só o real (decisão do usuário, 2026-09-11):
- *
- * - `getClienteSemCadastro: false` (**padrão**) — cadastro completo, o que o
- *   contrato promete e o que a suíte das features 005/006/011 afirma. É o ERP
- *   com o procedure corrigido.
- * - `getClienteSemCadastro: true` — o SDT parcial, exatamente como o ERP
- *   responde hoje. É o que faz o caminho de recusa aparecer em teste, coisa que
- *   nunca acontecia enquanto o mock devolvia o cadastro inteiro sempre.
+ * - `getClienteSemCadastro: false` (**padrão**) — cadastro completo, o ERP de
+ *   2026-09-14.
+ * - `getClienteSemCadastro: true` — o SDT parcial do ERP anterior, como
+ *   regressão do caminho de recusa.
  *
  * Os tipos são os reais nos dois modos, e não os do YAML: `Empresa`/
  * `CodCliente`/`CodigoConvenio`/`DescontoConvenio`/`ListaPreco` vêm **número**
@@ -1040,6 +1140,7 @@ const SESSAO_ZERADA: Record<string, unknown> = {
   VendedorNome: '',
   ClienteDefaultCodigo: String(0),
   ClienteDefaultNome: '',
+  ClienteDefaultContato: '',
   UsuarioTipoCodigoProduto: '',
   Cliente_UtilizaSegundoNivelDeEnderecos: '',
   CadMaqCod: '',
@@ -1149,8 +1250,12 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
      * igualmente válidos e agora o `GetProduto` deste mock filtra pelos três.
      */
     UsuarioTipoCodigoProduto: config.tipoCodigoProduto,
+    // `EmpSldPro` da empresa (AD-236) — `char`, vem string.
+    FaturaProdutoSemSaldo: config.faturaProdutoSemSaldo,
     ClienteDefaultCodigo: String(1), // int64
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
+    // `CliFonCel` do cliente default (contrato de 2026-09-14, AD-237).
+    ClienteDefaultContato: config.clienteDefaultContato,
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
     // logado são campos genuinamente distintos (AD-056), e valores iguais aqui
     // tornariam `FR-008`/`SC-001` indistinguível no payload de `FaturarNFCe`.
@@ -1433,6 +1538,13 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   /** Cadastro criado por `PostCliente` durante o teste — descartado no reset. */
   const documentosCriados: string[] = [];
   let ultimoRetratoFaturado: Record<string, unknown> | null = null;
+  /**
+   * Último número de rascunho gerado por `FaturarNFCe` para venda que chega com
+   * `NumeroRascunho: 0` (AD-235). Sequencial a partir de 7001, bem longe dos
+   * números dos documentos sintéticos (`90210`/`90211`), para o E2E distinguir
+   * "adotado" de "importado".
+   */
+  let ultimoRascunhoGerado = 7000;
   /** Último retrato submetido ao gate da 014 — para o E2E conferir a projeção (I2). */
   let ultimoRetratoValidado: Record<string, unknown> | null = null;
   /** Último `SDTCentriumPag_Post` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
@@ -1453,6 +1565,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     config = { ...CONFIG_PADRAO };
     contadores = { ...CONTADORES_ZERADOS };
     ultimoRetratoFaturado = null;
+    ultimoRascunhoGerado = 7000;
     ultimoRetratoValidado = null;
     ultimoGerarPix = null;
     geracoesPix.clear();
@@ -1472,7 +1585,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   app.get('/__mock/calls', async () => contadores);
 
-  /** Último retrato recebido — deixa o E2E afirmar `NumeroNota`, `Log` etc. */
+  /** Último retrato recebido — deixa o E2E afirmar `NumeroRascunho`, `Log` etc. */
   app.get('/__mock/ultimo-faturamento', async () => ({ retrato: ultimoRetratoFaturado }));
 
   /** Último retrato submetido ao gate da 014 — confere a projeção da candidata. */
@@ -1695,6 +1808,65 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // `NotaFiscal`, como o ERP real (`contracts/faturamento-api.md`).
       const suspendendo = retrato?.['SuspenderOuFaturar'] === 'SUSPENDER';
 
+      // `PCheckout_FaturarNFCe`: `NumeroRascunho = 0` grava um rascunho novo;
+      // `≠ 0` atualiza o existente. Em qualquer caso a resposta devolve o número
+      // **antes** das validações (AD-235) — por isso o eco abaixo leva o número
+      // resolvido, e não o que chegou.
+      const numeroRecebido = Number(retrato?.['NumeroRascunho'] ?? 0);
+      const numeroRascunho =
+        Number.isSafeInteger(numeroRecebido) && numeroRecebido > 0
+          ? numeroRecebido
+          : (ultimoRascunhoGerado += 1);
+      const retratoGravado = { ...(retrato ?? {}), NumeroRascunho: String(numeroRascunho) };
+
+      // Validação posterior à gravação recusou (saldo, regra de NFCe): envelope
+      // + `messages` e o rascunho já gravado — vale para `SUSPENDER` e `FATURAR`.
+      if (config.faturarRecusaComRascunho) {
+        return reply.type('application/json').send({
+          OutCheckoutFaturarNFCe: retratoGravado,
+          messages: [
+            {
+              Id: '9999',
+              Type: 1,
+              Description:
+                'Quantidade maior que o Saldo do produto: 001234 - PRODUTO SINTETICO! Quantidade: 2. Saldo: 1',
+            },
+          ],
+        });
+      }
+
+      // Cenário tributário não encontrado (AD-239): o ERP recusa **antes** de
+      // preencher o retrato — envelope zerado, `NumeroRascunho: "0"` — e ainda
+      // assim grava um rascunho vazio do outro lado (divergência do ERP,
+      // `PENDENCIES.md`). Texto e forma medidos no preview em 2026-09-16.
+      if (config.faturarSemCenarioTributario) {
+        return reply.type('application/json').send({
+          OutCheckoutFaturarNFCe: {
+            Empresa: 0,
+            SuspenderOuFaturar: '',
+            clienteCodigo: '0',
+            ClienteNome: '',
+            vendedorCodigo: '0',
+            vendedorNome: '',
+            CondicaoPagamentoCodigo: '0',
+            NumeroRascunho: '0',
+            CadSerieNFCe: '',
+            UsuarioCodigo: '0',
+            Log: '',
+          },
+          messages: [
+            {
+              Id: '9999',
+              Type: 1,
+              Description:
+                'Busca realizada pelo seguinte Cenário Tributário não foi Encontrada\r\n' +
+                '[ Empresa: 0, Classificação Fiscal:      , Regime Especial: NORMAL, País Origem: BRASIL, ' +
+                'País Destino: BRASIL , UF Origem: SC, UF Destino: SC, Operação: Desconhecida , Característica:  ]',
+            },
+          ],
+        });
+      }
+
       // NFCe gravada e **não** autorizada: o bloco vem completo, com o motivo
       // em `ErroMensagem`, e sem nada para imprimir.
       //
@@ -1705,39 +1877,65 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // propósito: é o que mantém o E2E exercitando a tolerância às duas.
       if (!suspendendo && config.faturarNFCeRejeitada) {
         return reply.type('application/json').send({
-          ...(retrato ?? {}),
+          ...retratoGravado,
           NotaFiscal: {
             NumeroNota: String(0), // o ERP real zera este campo na rejeição
             SerieNota: '',
             Autorizada: 'R',
             ErroCodigo: 539,
             ErroMensagem: 'Rejeicao: Duplicidade de NF-e (sintetico)',
+            // Contrato de 2026-09-14 (KB; ausentes do YAML), AD-238.
+            RetornoMensagemIA:
+              'Confira a numeracao da serie (sintetico).\nDepois gere uma nova venda.',
+            UrlChamadas: 'https://atendimento.exemplo.invalid/chamado?origem=checkout',
             XMLImpressao: '',
             PDFImpressao: '',
           },
         });
       }
 
-      const notaFiscal =
-        suspendendo || config.faturarSemNotaFiscal
-          ? {}
-          : {
-              NotaFiscal: {
-                NumeroNota: String(9001), // int64
-                SerieNota: '1',
-                Autorizada: 'S',
-                ErroCodigo: 0,
-                ErroMensagem: '',
-                XMLImpressao: XML_SINTETICO,
-                PDFImpressao: PDF_SINTETICO,
-              },
-            };
+      // Sucesso — **sem envelope**, como o ERP real (medido em 2026-09-16):
+      // o retrato volta na raiz com `NotaFiscal` ao lado, e sem `messages`.
+      // A suspensão bem-sucedida também traz o bloco, com `Autorizada: 'N'` e o
+      // número do **rascunho** em `NumeroNota` — não é rejeição: suspender não
+      // transmite nada à SEFAZ.
+      if (suspendendo) {
+        return reply.type('application/json').send({
+          ...retratoGravado,
+          NotaFiscal: {
+            NumeroNota: String(numeroRascunho),
+            SerieNota: String(retrato?.['CadSerieNFCe'] ?? '') || '1',
+            Autorizada: 'N',
+            ErroCodigo: '0',
+            ErroMensagem: '',
+            RetornoMensagemIA: '',
+            UrlChamadas: '',
+            XMLImpressao: '',
+            PDFImpressao: '',
+          },
+        });
+      }
+
+      // `FATURAR` sem desfecho: o ERP responde 200, flat, **sem** `NotaFiscal` e
+      // sem `messages` (medido em 2026-09-16 no rascunho 6036). A venda fica no
+      // caixa, porque nada prova que a NFCe foi gravada.
+      if (config.faturarSemNotaFiscal) {
+        return reply.type('application/json').send({ ...retratoGravado });
+      }
 
       return reply.type('application/json').send({
-        OutCheckoutFaturarNFCe: { ...(retrato ?? {}), ...notaFiscal },
-        messages: config.faturarSemNotaFiscal
-          ? [{ Id: 'ERR', Type: 1, Description: 'NFCe não autorizada pela SEFAZ (sintético).' }]
-          : [],
+        ...retratoGravado,
+        NotaFiscal: {
+          NumeroNota: String(9001), // int64
+          SerieNota: '1',
+          Autorizada: 'S',
+          ErroCodigo: '0',
+          ErroMensagem: '',
+          RetornoMensagemIA: '',
+          UrlChamadas: '',
+          XMLImpressao: XML_SINTETICO,
+          PDFImpressao: PDF_SINTETICO,
+        },
       });
     },
   );
@@ -1948,11 +2146,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     const ate = request.query.Datafinal ?? '';
 
     const todos = Object.values(DAVS)
-      // **Sem `VendedorNome`.** A linha real tem oito campos e nenhum deles é o
-      // nome do vendedor (medido ao vivo 2026-09-11) — só o código. O mock
-      // publicava o nome porque a fixture o carrega para `GetListaNFCes`, que aí
-      // sim o traz; emiti-lo aqui era oferecer um dado que a janela de DAVs
-      // nunca recebe (é a limitação de AD-095, que segue valendo).
+      // **`VendedorNome` vazio.** No contrato de 2026-09-14 a linha publica a
+      // chave, mas o ERP a devolve sempre `""` (pendência 57, AD-237). A
+      // fixture carrega o nome só para `GetListaNFCes`, que o traz de fato;
+      // emiti-lo aqui ofereceria um dado que a janela de DAVs não recebe.
       .map((dav) => ({
         NumeroDAV: dav.lista['NumeroDAV'],
         Titulo: dav.lista['Titulo'],
@@ -1961,6 +2158,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         ClienteCodigo: dav.lista['ClienteCodigo'],
         ClienteNome: dav.lista['ClienteNome'],
         VendedorCodigo: dav.lista['VendedorCodigo'],
+        // O contrato de 2026-09-14 publica a chave, mas **sempre vazia**
+        // (atribuição comentada em `DpCheckout_GetDavs`, pendência 57).
+        VendedorNome: '',
         ValorTotal: dav.lista['ValorTotal'],
       }))
       .filter((dav) => {
@@ -1993,15 +2193,25 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.negocio += 1;
       contadores.getDav += 1;
 
-      // Documento já faturado por outra sessão: o ERP recusa e o Checkout só
-      // reage (D7/AD-052) — não há lock do lado do Checkout (`FR-010`).
+      // Recusa de negócio: **HTTP 200**, envelope zerado e a razão em
+      // `messages` — é assim que o ERP real responde (medido em 2026-09-16 nos
+      // DAVs 1000000001760 e 3000000000179; AD-239). Até então este mock
+      // devolvia `409`/`404` com `{ error }`, um caminho de código que o ERP
+      // nunca exercita: quem lê a recusa é `recusaDeNegocio`, sobre o corpo
+      // 2xx, e a suíte não cobria isso.
       if (config.davJaFaturado) {
-        return reply.code(409).send({ error: 'DAV já faturado' });
+        return reply
+          .type('application/json')
+          .send(recusaDeDocumento('Erro - DAV já faturado por outro operador.'));
       }
 
       const dav = DAVS[request.query.Numerodav ?? ''];
       if (dav === undefined) {
-        return reply.code(404).send({ error: 'DAV não encontrado' });
+        return reply
+          .type('application/json')
+          .send(
+            recusaDeDocumento('Erro - Item Liberado: S, Pedido Liberado: S, Status Digitação: N'),
+          );
       }
 
       // Sucesso vai FLAT, sem envelope e sem `messages` — medido ao vivo em
@@ -2021,44 +2231,61 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * e um DAV têm o mesmo corpo (AD-057), e duplicar as fixtures faria as duas
    * janelas do E2E divergirem sem motivo.
    *
-   * Três diferenças de contrato em relação a `ListaDAVs`, todas reais:
-   * `Vendedor` e `Operador` vêm por **nome** (a limitação de AD-095 é de
-   * `ListaDAVs`); `Emissao` é `date-time`, não `date`; e não há filtro de
-   * período — a janela de tempo é fixa no servidor (`research.md` D1). A busca
-   * casa só nome de cliente e de vendedor, nunca o número da nota, que é o que
-   * o `DataProvider` do ERP faz.
+   * Diferenças de contrato em relação a `ListaDAVs`, todas reais: a linha traz
+   * `Serie` e o operador; `Emissao` é `date-time`, não `date`. A busca casa só
+   * nome de cliente e de vendedor, nunca o número, que é o que o
+   * `DataProvider` do ERP faz. `Datainicial`/`Datafinal` filtram pelo dia da
+   * `Emissao` (AD-237).
    *
    * Devolve **flat na raiz, sem envelope**, como o ERP real (AD-165).
    */
   app.get<{
-    Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string };
+    Querystring: {
+      Txtbusca?: string;
+      Datainicial?: string;
+      Datafinal?: string;
+      Pagina?: string;
+      Tamanhopagina?: string;
+    };
   }>('/ApiCentriumOAuth/GetListaNFCes', async (request, reply) => {
     contadores.negocio += 1;
 
     const termo = (request.query.Txtbusca ?? '').toUpperCase();
+    // Período (AD-237): o ERP de 2026-09-14 filtra por dia de emissão. Sem as
+    // datas o ERP real usa os últimos 90 dias; aqui, sem elas, não há piso —
+    // o Checkout manda sempre as duas.
+    const de = request.query.Datainicial ?? '';
+    const ate = request.query.Datafinal ?? '';
 
     const todos = Object.values(DAVS)
       .map((dav) => ({
-        // `int32` — número nativo, como os demais contadores da resposta.
-        NumeroNota: Number(dav.documento['NumeroNota']),
-        // **`"<código> - <NOME>"`**, não o nome solto: o ERP devolve
-        // `"999999 - CONSUMIDOR DEFAULT"`, `"8 - VENDEDOR TESTE CENTRIUM"` e
-        // `"0 -"` para o operador sem nome (medido ao vivo 2026-09-11). O mock
-        // publicava só o nome, então nada na UI jamais precisou lidar com o
-        // código colado no rótulo — nem com o `"0 -"` de operador vazio.
-        Cliente: `${String(dav.lista['ClienteCodigo'])} - ${String(dav.lista['ClienteNome'])}`,
-        Vendedor: `${String(dav.lista['VendedorCodigo'])} - ${String(dav.lista['VendedorNome'])}`,
-        Operador: '3 - CAIXA 03',
+        // Forma medida no preview de 2026-09-14 (AD-235): `NumeroRascunho`
+        // número nativo, `Serie`, e código/nome em campos separados — no lugar
+        // das antigas strings `"<código> - <NOME>"`.
+        NumeroRascunho: Number(dav.documento['NumeroRascunho']),
+        Serie: String(dav.documento['CadSerieNFCe']),
+        ClienteCodigo: dav.lista['ClienteCodigo'],
+        ClienteNome: dav.lista['ClienteNome'],
+        VendedorCodigo: dav.lista['VendedorCodigo'],
+        VendedorNome: dav.lista['VendedorNome'],
+        OperadorCodigo: 3,
+        OperadorNome: 'CAIXA 03',
         // `date-time`: o dia sai da emissão relativa do DAV, a hora é fixa —
         // nada no Checkout depende dela além da exibição.
         Emissao: `${String(dav.lista['DataEmissao'])}T14:32:00`,
         Total: String(dav.lista['ValorTotal']),
       }))
       .filter((rascunho) => {
+        const dia = rascunho.Emissao.slice(0, 10);
+        if ((de !== '' && dia < de) || (ate !== '' && dia > ate)) {
+          return false;
+        }
         if (termo === '') {
           return true;
         }
-        return `${rascunho.Cliente} ${rascunho.Vendedor}`.toUpperCase().includes(termo);
+        return `${String(rascunho.ClienteNome)} ${String(rascunho.VendedorNome)}`
+          .toUpperCase()
+          .includes(termo);
       });
 
     // `Rascunho` primeiro, ausente quando nada casa, `TotalPaginas: 0`.
@@ -2069,8 +2296,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * `CarregarNFCe` — ao contrário de `GetDav`/`FaturarNFCe`, devolve o
    * documento **flat na raiz, sem envelope** (confirmado ao vivo 2026-09-04):
    * mesma SDT (`CheckoutFaturarNFCe`), padrão de wrapper diferente. Reaproveita
-   * os documentos sintéticos de `DAVS` — procurando por `NumeroNota`, que é o
-   * mesmo em `ListaNFCes`/`GetListaNFCes` (AD-057).
+   * os documentos sintéticos de `DAVS` — procurando pelo par
+   * `NumeroRascunho` + série, que é o que `GetListaNFCes` publica (AD-057,
+   * AD-235). O parâmetro continua se chamando `Numeronota`.
    *
    * **Mas devolve o documento pago**, e é aqui que ele deixa de ser um DAV
    * (AD-169). Os dois têm o mesmo corpo, e a diferença não é de shape: um DAV é
@@ -2087,12 +2315,27 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.negocio += 1;
 
       const numeroPedido = Number(request.query.Numeronota);
+      const seriePedida = request.query.Serienota ?? '';
+      // Sem série o ERP recusa com envelope + `messages` (preview 2026-09-14).
+      if (seriePedida.trim() === '') {
+        return reply.send({
+          OutCheckoutFaturarNFCe: { clienteCodigo: '0', NumeroRascunho: '0', Log: '' },
+          messages: [{ Id: '9999', Type: 1, Description: 'Série é obrigatório' }],
+        });
+      }
       const documento = Object.values(DAVS)
         .map((dav) => dav.documento)
-        .find((doc) => Number(doc['NumeroNota']) === numeroPedido);
+        .find(
+          (doc) =>
+            Number(doc['NumeroRascunho']) === numeroPedido &&
+            String(doc['CadSerieNFCe']) === seriePedida,
+        );
 
       if (documento === undefined) {
-        return reply.code(404).send({ error: 'NFCe não encontrada' });
+        // Mesma forma da recusa de `GetDav` (AD-239): 200 + envelope zerado.
+        return reply
+          .type('application/json')
+          .send(recusaDeDocumento('Rascunho não encontrado ou já faturado.'));
       }
 
       return reply.send({ ...documento, FormasDePagamento: [quitacaoDoRascunho(documento)] });

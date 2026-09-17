@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { saldoEmMilesimos } from '../../client/domain/estoque/saldoProduto';
 import { centavos } from '../../client/domain/precificacao/dinheiro';
 import { milesimosDeUnidades } from '../../client/domain/precificacao/quantidade';
 import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
@@ -57,6 +58,20 @@ export const sdtCheckoutGetProdutoSchema = z.looseObject({
   QtdMinimaPreco4: unidadesEmMilesimos,
   QtdMinimaPreco5: unidadesEmMilesimos,
   ProdutoPesavelEditavel: pesavelEditavelSchema,
+  /**
+   * Saldo de estoque do produto (contrato de 2026-09-14, AD-236), convertido em
+   * milésimos **com sinal** na fronteira — o ERP devolve `"78.000"` e também
+   * `"-205.000"`.
+   *
+   * `optional()`: o ERP anterior a esse contrato não publica o campo, e a
+   * ausência significa "saldo desconhecido", que não valida nada. O ERP
+   * preenche `0` quando a empresa não controla saldo (`EmpSldPro` fora de
+   * `'A'`/`'B'`), caso em que a política da sessão já é `''`.
+   *
+   * Não vai para `SnapshotPrecoProduto`: o snapshot é congelado na linha e no
+   * cache da venda, e o saldo precisa ser reconsultado a cada decisão.
+   */
+  Saldo: numeroErp.transform((valor) => saldoEmMilesimos(valor)).optional(),
 });
 
 /**

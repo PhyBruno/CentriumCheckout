@@ -96,6 +96,33 @@ describe('sdtCheckoutGetProdutoSchema', () => {
 
     expect(produto['CampoNovoDoErp']).toBe('valor');
   });
+
+  /** `Saldo` do contrato de 2026-09-14 (AD-236): string decimal, pode ser negativa. */
+  describe('Saldo', () => {
+    it('converte a string decimal do ERP em milésimos inteiros', () => {
+      const produto = sdtCheckoutGetProdutoSchema.parse(respostaGetProduto({ Saldo: '78.000' }));
+
+      expect(produto.Saldo).toBe(78000);
+    });
+
+    it('aceita saldo negativo', () => {
+      const produto = sdtCheckoutGetProdutoSchema.parse(respostaGetProduto({ Saldo: '-205.000' }));
+
+      expect(produto.Saldo).toBe(-205000);
+    });
+
+    it('é opcional: ERP antigo sem o campo deixa o saldo indefinido', () => {
+      const produto = sdtCheckoutGetProdutoSchema.parse(respostaGetProduto());
+
+      expect(produto.Saldo).toBeUndefined();
+    });
+
+    it('recusa saldo não numérico', () => {
+      expect(
+        sdtCheckoutGetProdutoSchema.safeParse(respostaGetProduto({ Saldo: 'muito' })).success,
+      ).toBe(false);
+    });
+  });
 });
 
 describe('checkoutListaProdutosSchema', () => {

@@ -2,20 +2,51 @@
  * Fronteira de entrada de `POST /api/erp/FaturarNFCe` (T005).
  *
  * Responsabilidade única: transformar o corpo bruto da resposta numa decisão
- * tipada — nota fiscal válida ou erro de fronteira. Não conhece React, Zustand
- * nem `fetch`; recebe o `unknown` já lido e devolve o veredito
- * (`contracts/faturamento-api.md`).
+ * tipada. Não conhece React, Zustand nem `fetch`; recebe o `unknown` já lido e
+ * devolve o veredito (`contracts/faturamento-api.md`).
  */
 
+import { textoSemHtml } from '@/lib/textoSemHtml';
+import { urlExternaSegura } from '@/lib/urlExterna';
+import { recusaDeNegocio } from '../../../shared/schemas/erpJson';
 import {
   faturarNFCeOutputSchema,
   faturarNFCeRejeitadaOutputSchema,
+  rascunhoGravadoSchema,
   suspenderNFCeOutputSchema,
   type MensagemErp,
   type NotaFiscalRejeitada,
   type NotaFiscalResposta,
 } from '../../../shared/schemas/faturarNFCe.schema';
+import { ehRecusaDeCenarioTributario } from '../../domain/venda/recusaDoErp';
 import type { SuspenderOuFaturar } from '../../domain/venda/montarRetratoVenda';
+
+/**
+ * O rascunho que o ERP informou na resposta — `null` em cada campo que não veio.
+ *
+ * É a identificação do documento para a correção no ERP (AD-239): na rejeição
+ * da SEFAZ a nota volta com `NumeroNota: "0"` e `SerieNota: ""` (medido em
+ * 2026-09-16), e o par rascunho + série da raiz é o que o operador procura lá.
+ */
+export interface RascunhoInformado {
+  readonly numeroRascunho: number | null;
+  readonly serieRascunho: string | null;
+}
+
+/**
+ * O que o ERP devolveu sobre uma NFCe gravada e não autorizada — estruturado
+ * desde o contrato de 2026-09-14 (AD-238, AD-239).
+ */
+export interface RetornoRejeicao extends RascunhoInformado {
+  /** Texto do Fisco (ou de `messages[]`), já sem HTML — nunca inventado. */
+  readonly mensagem: string;
+  /** `ErroCodigo`, com o `0` do contrato como `null`. */
+  readonly codigoErro: number | null;
+  /** `RetornoMensagemIA`: texto puro, quebras de linha preservadas. */
+  readonly sugestaoIA: string | null;
+  /** `UrlChamadas`, só se for `http(s)` absoluta (`urlExternaSegura`). */
+  readonly urlChamadas: string | null;
+}
 
 export type ResultadoMapeamento =
   | {
@@ -24,23 +55,28 @@ export type ResultadoMapeamento =
       readonly notaFiscal: NotaFiscalResposta | null;
     }
   /**
-   * O ERP **gravou** a NFCe e ela não foi autorizada (correção do usuário,
-   * 2026-09-10).
-   *
-   * Categoria própria, e não um `invalida` com texto melhor, porque o desfecho
-   * na tela é oposto: aqui a venda **não** pode continuar no caixa. O documento
-   * já existe do lado do ERP, então reenviar a mesma venda emitiria uma
-   * segunda NFCe para a mesma compra.
+   * O ERP **gravou** a NFCe e a SEFAZ não a autorizou (correção do usuário,
+   * 2026-09-10). A venda **não** pode continuar no caixa: reenviá-la emitiria
+   * uma segunda NFCe para a mesma compra.
+   */
+  | ({ readonly estado: 'rejeitada' } & RetornoRejeicao)
+  /**
+   * Recusa de validação em `messages` (saldo, regra de NFCe) — não é erro na
+   * nota (AD-239). A venda continua no caixa; o rascunho que o ERP já gravou,
+   * quando informado, é adotado para o reenvio (AD-235).
    */
   | {
-      readonly estado: 'rejeitada';
-      /** O que o ERP disse, nunca texto inventado por nós. */
+      readonly estado: 'recusada';
       readonly mensagem: string;
-      /** `NotaFiscal.NumeroNota` — por onde o operador acha a nota no ERP. */
-      readonly numeroNota: number | null;
-      readonly serieNota: string | null;
+      readonly numeroRascunho?: number;
+      readonly serieRascunho?: string;
     }
-  /** 2xx que não descreve uma venda concluída — tratado como falha de negócio. */
+  /**
+   * Cenário tributário não encontrado (AD-239): a falha é de cadastro fiscal do
+   * ERP e não há o que corrigir no Checkout. A venda sai do caixa.
+   */
+  | ({ readonly estado: 'cenario-tributario'; readonly mensagem: string } & RascunhoInformado)
+  /** 2xx que não descreve desfecho nenhum — falha de fronteira, venda no caixa. */
   | { readonly estado: 'invalida'; readonly mensagem: string };
 
 const MENSAGEM_PADRAO_FATURAR =
@@ -62,34 +98,37 @@ function textoUtil(valor: string | undefined): string | null {
 }
 
 /**
- * O motivo da rejeição, na ordem em que o ERP costuma preenchê-lo.
- *
- * `ErroMensagem` primeiro porque é o campo específico do documento (traz o texto
- * da SEFAZ, "Rejeicao: …"); `messages[]` depois, que é o canal genérico da
- * procedure. `ErroCodigo` vai junto do texto quando existe: é por ele que o
- * suporte pesquisa a rejeição, e sozinho ele não diz nada ao operador.
+ * Rascunho + série do primeiro nível, com ou sem envelope. `0` é o "sem
+ * rascunho" do SDT e vira `null`, como a série vazia.
  */
-function motivoDaRejeicao(
-  nota: NotaFiscalRejeitada,
-  mensagens: readonly MensagemErp[] | undefined,
-): string {
-  const texto =
-    textoUtil(nota.ErroMensagem) ?? mensagemDoErp(mensagens) ?? MENSAGEM_PADRAO_REJEICAO;
-  const codigo = nota.ErroCodigo;
-
-  // `0` é o "sem erro" do contrato: exibi-lo ao lado de uma rejeição só
-  // confundiria quem for pesquisar o código.
-  return codigo === undefined || codigo === 0 ? texto : `${texto} (erro ${String(codigo)})`;
+function rascunhoInformado(corpo: unknown): RascunhoInformado {
+  const lido = rascunhoGravadoSchema.safeParse(corpo);
+  const numero = lido.success ? lido.data.NumeroRascunho : undefined;
+  const serie = lido.success ? textoUtil(lido.data.CadSerieNFCe) : null;
+  return {
+    numeroRascunho: numero !== undefined && numero > 0 ? numero : null,
+    serieRascunho: serie,
+  };
 }
 
 /**
- * Texto que o ERP mandou junto, quando mandou.
- *
- * A recusa de negócio do ERP chega em `messages[]`
- * (`GeneXus.Common.Messages_Message`, YAML linha 1046), não como HTTP 4xx —
- * ignorá-la deixaria o operador com "erro inesperado" quando o ERP explicou
- * exatamente o que faltou. Lido de forma defensiva: só o que passou pelo
- * schema, e sem inventar mensagem quando não há nenhuma.
+ * O mesmo par como fragmento opcional — para a recusa de validação, que só
+ * ganha as chaves quando há o que adotar.
+ */
+function rascunhoParaAdotar(corpo: unknown): {
+  readonly numeroRascunho?: number;
+  readonly serieRascunho?: string;
+} {
+  const { numeroRascunho, serieRascunho } = rascunhoInformado(corpo);
+  return {
+    ...(numeroRascunho === null ? {} : { numeroRascunho }),
+    ...(serieRascunho === null ? {} : { serieRascunho }),
+  };
+}
+
+/**
+ * Texto que o ERP mandou junto, quando mandou — só o que passou pelo schema, e
+ * sem inventar mensagem quando não há nenhuma.
  */
 function mensagemDoErp(mensagens: readonly MensagemErp[] | undefined): string | null {
   if (mensagens === undefined) {
@@ -104,19 +143,58 @@ function mensagemDoErp(mensagens: readonly MensagemErp[] | undefined): string | 
 }
 
 /**
+ * O retorno da rejeição (AD-238, AD-239).
+ *
+ * `ErroMensagem` primeiro porque é o campo específico do documento (o texto da
+ * SEFAZ, "Rejeicao: …"), com o HTML removido (pendência 50); `messages[]`
+ * depois, que é o canal genérico da procedure. O desfecho `N` (outros status de
+ * lote) passa pelo mesmo caminho, sem sugestão e sem link.
+ */
+function retornoDaRejeicao(
+  corpo: unknown,
+  nota: NotaFiscalRejeitada,
+  mensagens: readonly MensagemErp[] | undefined,
+): RetornoRejeicao {
+  const erroMensagem = textoUtil(nota.ErroMensagem);
+  const codigo = nota.ErroCodigo;
+
+  return {
+    mensagem:
+      (erroMensagem === null ? null : textoUtil(textoSemHtml(erroMensagem))) ??
+      mensagemDoErp(mensagens) ??
+      MENSAGEM_PADRAO_REJEICAO,
+    codigoErro: codigo === undefined || codigo === 0 ? null : codigo,
+    ...rascunhoInformado(corpo),
+    // Texto puro: as quebras de linha são do conteúdo e ficam; só a string
+    // inteiramente em branco vira ausência.
+    sugestaoIA:
+      textoUtil(nota.RetornoMensagemIA) === null ? null : (nota.RetornoMensagemIA ?? null),
+    urlChamadas: urlExternaSegura(nota.UrlChamadas),
+  };
+}
+
+/**
+ * Recusa em `messages` (`Type: 1`): cenário tributário limpa o caixa, qualquer
+ * outra é validação e devolve a venda ao operador (AD-239).
+ */
+function desfechoDaRecusa(corpo: unknown, recusa: string): ResultadoMapeamento {
+  if (ehRecusaDeCenarioTributario(recusa)) {
+    return { estado: 'cenario-tributario', mensagem: recusa, ...rascunhoInformado(corpo) };
+  }
+  return { estado: 'recusada', mensagem: recusa, ...rascunhoParaAdotar(corpo) };
+}
+
+/**
  * `SUSPENDER` e `FATURAR` têm exigências diferentes na resposta: só a segunda
  * produz documento fiscal (`contracts/faturamento-api.md`, "Efeito colateral em
- * sucesso", passo 5). Validar as duas com o mesmo schema transformaria toda
- * suspensão bem-sucedida em falha de negócio.
+ * sucesso", passo 5).
  */
 export function mapearRespostaFaturamento(
   operacao: SuspenderOuFaturar,
   corpo: unknown,
 ): ResultadoMapeamento {
   // Envelope primeiro: é o que dá acesso tipado a `messages` mesmo quando a
-  // nota fiscal não veio — sem isso, a explicação do ERP só seria alcançável
-  // por type assertion sobre o corpo bruto, que é justamente o que a tipagem
-  // estrita deste projeto proíbe na fronteira.
+  // nota fiscal não veio.
   const envelope = suspenderNFCeOutputSchema.safeParse(corpo);
   if (!envelope.success) {
     return {
@@ -125,47 +203,51 @@ export function mapearRespostaFaturamento(
     };
   }
 
+  // Recusa de negócio (`messages` com `Type: 1`).
+  const recusa = recusaDeNegocio(corpo);
+
   if (operacao === 'SUSPENDER') {
-    return { estado: 'ok', notaFiscal: null };
+    // Desde o contrato de 2026-09-14 o ERP valida saldo também na suspensão, e
+    // uma recusa lida como sucesso limparia a venda sem ela ter sido suspensa.
+    // O bloco `NotaFiscal` que a suspensão real devolve (`Autorizada: 'N'`) não
+    // é rejeição: suspender não transmite nada à SEFAZ.
+    return recusa === null ? { estado: 'ok', notaFiscal: null } : desfechoDaRecusa(corpo, recusa);
   }
 
-  // Os dois schemas abaixo passam por `semEnvelope`: o ERP real entrega
-  // `NotaFiscal` na **raiz**, e só o YAML/`erp-mock` a embrulham em
-  // `OutCheckoutFaturarNFCe` (medido ao vivo em 2026-09-10 — ver o TSDoc de
-  // `faturarNFCe.schema.ts`). Por isso o acesso aqui é direto a `.NotaFiscal`,
-  // sem atravessar envelope nenhum.
+  // `semEnvelope` nos dois schemas: o ERP real entrega `NotaFiscal` na **raiz**,
+  // e só o YAML a embrulha em `OutCheckoutFaturarNFCe`.
   const comNotaFiscal = faturarNFCeOutputSchema.safeParse(corpo);
   if (comNotaFiscal.success) {
     return { estado: 'ok', notaFiscal: comNotaFiscal.data.NotaFiscal };
   }
 
-  // Sem PDF/XML, mas **com** o bloco `NotaFiscal`: o ERP chegou a gravar o
-  // documento e a autorização não saiu. É o caso que o operador vê como "NFCe
-  // rejeitada", e é o único em que a venda não pode continuar no caixa.
+  // Sem PDF/XML, mas **com** o bloco `NotaFiscal`: o ERP gravou o documento e a
+  // autorização não saiu.
   const rejeitada = faturarNFCeRejeitadaOutputSchema.safeParse(corpo);
   if (rejeitada.success) {
     const nota = rejeitada.data.NotaFiscal;
     // `Autorizada = 'S'` sem nota para imprimir é resposta contraditória, não
-    // rejeição: o ERP afirma que autorizou e não entrega o documento. Cai no
-    // caminho de falha de fronteira abaixo, que preserva a venda no caixa —
-    // descartá-la aqui apagaria uma venda com base numa resposta que o próprio
-    // contrato não sustenta.
-    if (!foiAutorizada(nota)) {
+    // rejeição — cai na falha de fronteira abaixo, que preserva a venda.
+    // Bloco `NotaFiscal` sem desfecho (`Autorizada` vazio) **e** recusa em
+    // `messages` é a validação que recusou antes de emitir, com o SDT em branco
+    // — não uma NFCe gravada e rejeitada (AD-235).
+    const semDesfecho = textoUtil(nota.Autorizada) === null && recusa !== null;
+    if (!foiAutorizada(nota) && !semDesfecho) {
       return {
         estado: 'rejeitada',
         // `messages` vem da **raiz** (`envelope`), não do que `semEnvelope`
-        // devolveu: na forma real ele não existe, e na forma do YAML ele é
-        // irmão do envelope, não filho.
-        mensagem: motivoDaRejeicao(nota, envelope.data.messages),
-        numeroNota: nota.NumeroNota ?? null,
-        serieNota: textoUtil(nota.SerieNota),
+        // devolveu.
+        ...retornoDaRejeicao(corpo, nota, envelope.data.messages),
       };
     }
   }
 
-  // Nenhum documento no corpo: a recusa veio só em `messages[]` (ou o corpo não
-  // descreve venda nenhuma). Nada garante que o ERP tenha gravado NFCe, então a
-  // venda continua aberta para o operador corrigir e reenviar.
+  if (recusa !== null) {
+    return desfechoDaRecusa(corpo, recusa);
+  }
+
+  // Nenhum documento e nenhuma recusa: nada garante que o ERP tenha gravado NFCe
+  // (medido em 2026-09-16 no rascunho 6036), então a venda continua aberta.
   return {
     estado: 'invalida',
     mensagem: mensagemDoErp(envelope.data.messages) ?? MENSAGEM_PADRAO_FATURAR,

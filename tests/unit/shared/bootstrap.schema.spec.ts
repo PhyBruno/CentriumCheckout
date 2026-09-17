@@ -132,3 +132,73 @@ describe('bootstrapPayloadSchema', () => {
     expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
   });
 });
+
+/** Contato do cliente default (`CliFonCel`, contrato de 2026-09-14, AD-237). */
+describe('SessaoUsuario.ClienteDefaultContato', () => {
+  it('aceita o celular do cliente default como texto', () => {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['ClienteDefaultContato'] =
+      '(99)99999-9999';
+
+    expect(bootstrapPayloadSchema.parse(payload).SessaoUsuario.ClienteDefaultContato).toBe(
+      '(99)99999-9999',
+    );
+  });
+
+  it('ausente é válido — o ERP anterior ao contrato não publica o campo', () => {
+    const resultado = bootstrapPayloadSchema.safeParse(payloadValido());
+    expect(resultado.success).toBe(true);
+    expect(resultado.data?.SessaoUsuario.ClienteDefaultContato).toBeUndefined();
+  });
+
+  it('recusa tipo que não é texto', () => {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['ClienteDefaultContato'] = 99;
+    expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
+  });
+});
+
+/** Política de saldo de estoque do tenant (`EmpSldPro`, AD-236). */
+describe('SessaoUsuario.FaturaProdutoSemSaldo', () => {
+  function comPolitica(valor: unknown) {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['FaturaProdutoSemSaldo'] = valor;
+    return bootstrapPayloadSchema.parse(payload).SessaoUsuario.FaturaProdutoSemSaldo;
+  }
+
+  it.each([
+    ['A', 'A'],
+    ['B', 'B'],
+    ['', ''],
+    ['b', 'B'],
+    ['Z', ''],
+  ])('"%s" vira "%s"', (valor, esperado) => {
+    expect(comPolitica(valor)).toBe(esperado);
+  });
+
+  it('é opcional: ERP antigo sem o campo não derruba o bootstrap', () => {
+    const resultado = bootstrapPayloadSchema.safeParse(payloadValido());
+
+    expect(resultado.success).toBe(true);
+    expect(resultado.data?.SessaoUsuario.FaturaProdutoSemSaldo).toBeUndefined();
+  });
+
+  it('a normalização é idempotente — o registro do Dexie é revalidado na leitura', () => {
+    const primeira = bootstrapPayloadSchema.parse({
+      ...payloadValido(),
+      SessaoUsuario: {
+        ...(payloadValido()['SessaoUsuario'] as Record<string, unknown>),
+        FaturaProdutoSemSaldo: 'x',
+      },
+    });
+
+    expect(bootstrapPayloadSchema.parse(primeira).SessaoUsuario.FaturaProdutoSemSaldo).toBe('');
+  });
+
+  it('recusa tipo que não é texto', () => {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['FaturaProdutoSemSaldo'] = 1;
+
+    expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
+  });
+});

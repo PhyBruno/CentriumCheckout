@@ -1,5 +1,74 @@
 [
   {
+    "id": "mem:1789567200003",
+    "kind": "decision",
+    "content": "Sair do campo de código revalida no ERP; lápis trava o código (AD-243)",
+    "tags": [
+      "carrinho",
+      "entrada-rapida",
+      "foco"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
+    ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-16",
+    "created_epoch": 1789567200,
+    "updated_at": "2026-09-16",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789567200001",
+    "kind": "fact",
+    "content": "CodeQL reprova replace de tags HTML; textoSemHtml virou varredura unica (AD-241)",
+    "tags": [
+      "codeql",
+      "ci",
+      "seguranca"
+    ],
+    "files": [
+      "src/client/lib/textoSemHtml.ts"
+    ],
+    "file_path": "src/client/lib/textoSemHtml.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-16",
+    "created_epoch": 1789567200,
+    "updated_at": "2026-09-16",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789567200002",
+    "kind": "decision",
+    "content": "Cópia dos desfechos diz checkout, nao caixa; botao promete nova venda (AD-242)",
+    "tags": [
+      "copy",
+      "ui",
+      "finalizacao"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx"
+    ],
+    "file_path": "src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-16",
+    "created_epoch": 1789567200,
+    "updated_at": "2026-09-16",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
     "id": "mem:1788352340011",
     "kind": "task",
     "content": "Gerado tasks.md da feature 014 (validacao-previa-nfce), 27 tarefas",

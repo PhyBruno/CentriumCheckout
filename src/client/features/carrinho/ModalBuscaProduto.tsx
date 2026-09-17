@@ -452,6 +452,9 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
 function EstruturaResultados(props: { 'aria-hidden'?: boolean }): ReactElement {
   return (
     <ul aria-hidden={props['aria-hidden']}>
+      {/* Cabeçalho da tabela no esqueleto (correção do usuário, 2026-09-16) —
+          `h-9` e `hidden md:block`, como o real desta janela. */}
+      <li className="hidden h-9 border-y border-border bg-muted md:block" aria-hidden="true" />
       {Array.from({ length: ITENS_POR_PAGINA }, (_, indice) => (
         <li
           key={indice}

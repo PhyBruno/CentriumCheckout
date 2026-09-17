@@ -48,6 +48,18 @@ export const mensagemErpSchema = z.looseObject({
 export const notaFiscalRespostaSchema = z.looseObject({
   PDFImpressao: z.string().min(1),
   XMLImpressao: z.string().min(1),
+  /**
+   * Número e série da nota **fiscal** emitida (`MovnNum`), exibidos no diálogo
+   * do documento fiscal (AD-238). Opcionais: são identificação, não decisão —
+   * uma resposta sem eles continua sendo NFCe autorizada, e o diálogo só omite
+   * a linha. `NumeroNota` é `int64` e o ERP real o serializa como string.
+   *
+   * `.catch(undefined)`: um número malformado aqui faria uma NFCe **autorizada**
+   * cair no caminho de rejeição/falha e prender a venda no caixa. Rótulo
+   * ilegível vira rótulo ausente, e só isso.
+   */
+  NumeroNota: inteiroErp.optional().catch(undefined),
+  SerieNota: z.string().optional().catch(undefined),
 });
 
 /**
@@ -92,7 +104,23 @@ export const notaFiscalRejeitadaSchema = z.looseObject({
    */
   Autorizada: z.string().optional(),
   ErroCodigo: inteiroErp.optional(),
+  /**
+   * Texto do Fisco — que o ERP já devolveu como um documento HTML inteiro
+   * (pendência 50). O mapper extrai só o texto (`textoSemHtml`).
+   */
   ErroMensagem: z.string().optional(),
+  /**
+   * Sugestão de correção gerada pela CentriumIA (`longvarchar`, contrato de
+   * 2026-09-14 — na KB, ausente do YAML; AD-238). Exibida **como texto puro**.
+   */
+  RetornoMensagemIA: z.string().optional(),
+  /**
+   * Link do ERP para abrir um chamado (`Url` na KB, ausente do YAML; AD-238).
+   * `z.string()` e não `z.url()` de propósito: uma URL inválida não pode
+   * derrubar a rejeição inteira — o mapper a descarta (`urlExternaSegura`), e só
+   * `http:`/`https:` viram link.
+   */
+  UrlChamadas: z.string().optional(),
 });
 
 /**
@@ -118,6 +146,33 @@ export const faturarNFCeRejeitadaOutputSchema = semEnvelope(
 export const suspenderNFCeOutputSchema = z.looseObject({
   messages: z.array(mensagemErpSchema).optional(),
 });
+
+/**
+ * `NumeroRascunho` do primeiro nível da resposta, com ou sem envelope (AD-235).
+ *
+ * `PCheckout_FaturarNFCe` grava o rascunho e preenche este campo **antes** de
+ * rodar as validações (`PNFCe_ValidaSaldoProdutos`, `PNfeValidaRascunho`), em
+ * `SUSPENDER` e em `FATURAR`. Numa recusa dessas validações o número volta junto
+ * das `messages` — e o rascunho já existe do lado do ERP. É por este schema que o
+ * Checkout o lê para reenviar a venda contra o mesmo rascunho, em vez de criar
+ * outro.
+ *
+ * Opcional: a recusa do proxy (HTTP, sessão) ou uma resposta sem o campo não
+ * tem número a adotar, e isso não é erro de fronteira.
+ *
+ * `CadSerieNFCe` veio junto no AD-239: na **rejeição da SEFAZ** o ERP devolve
+ * `NotaFiscal.NumeroNota: "0"` e `SerieNota: ""` (medido em 2026-09-16, rascunho
+ * 6037), e o par rascunho + série da raiz é a única identificação que o
+ * operador tem para corrigir o documento no ERP. `.catch(undefined)`: um valor
+ * ilegível aqui é rótulo ausente, nunca motivo para reprovar o desfecho.
+ */
+export const rascunhoGravadoSchema = semEnvelope(
+  'OutCheckoutFaturarNFCe',
+  z.looseObject({
+    NumeroRascunho: inteiroErp.optional().catch(undefined),
+    CadSerieNFCe: z.string().optional().catch(undefined),
+  }),
+);
 
 export type MensagemErp = z.infer<typeof mensagemErpSchema>;
 export type NotaFiscalResposta = z.infer<typeof notaFiscalRespostaSchema>;

@@ -11,11 +11,11 @@ import { quitarVendaEmDinheiro } from './support/pagamento';
  * (`contracts/impressao-local-api.md`).
  *
  * **Fora do alcance desta camada, por não existir caminho de operador:**
- * - *Venda retomada de rascunho* (`NumeroNota` ≠ 0, passo 2 do quickstart): a
- *   UI de retomada é da feature 011, ainda não implementada — não há como um
- *   operador chegar nesse estado pela tela. Coberto em
- *   `tests/integration/finalizacaoSuspensao.spec.ts`, que popula
- *   `identidadeVenda` direto.
+ * - *Venda retomada de rascunho* (`NumeroRascunho` ≠ 0, passo 2 do quickstart):
+ *   coberto em `recuperacao-nfce.spec.ts` (feature 011) e, com a identidade
+ *   populada direto, em `tests/integration/finalizacaoSuspensao.spec.ts`. O
+ *   `NumeroRascunho` ≠ 0 de venda **nova** — adotado após recusa (AD-235) — é
+ *   exercitado aqui, na User Story 2.
  * - *Bloqueio de suspensão com TEF/PIX aprovado* (passo 4): depende do
  *   predicado da feature 008, hoje um stub — não há UI de pagamento para
  *   aprovar um TEF. Coberto na mesma suíte de integração (T022).
@@ -34,7 +34,7 @@ interface ContadoresMock {
 interface RetratoFaturado {
   retrato: {
     SuspenderOuFaturar?: string;
-    NumeroNota?: number;
+    NumeroRascunho?: number;
     CadSerieNFCe?: string;
     Log?: string;
     produtos?: unknown[];
@@ -83,7 +83,7 @@ test.beforeEach(async ({ request }) => {
 });
 
 test.describe('User Story 1 — finalizar a venda (T021)', () => {
-  test('venda nova é faturada com NumeroNota = 0 e o cupom vai para a impressora (passo 1)', async ({
+  test('venda nova é faturada com NumeroRascunho = 0 e o cupom vai para a impressora (passo 1)', async ({
     page,
     request,
   }) => {
@@ -94,15 +94,20 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
 
     await page.getByTestId('botao-finalizar-venda').click();
 
-    // Caminho feliz não tem modal (pedido do usuário, 2026-09-02): o cupom sai
-    // na impressora e a tela volta para a próxima venda. O sinal observável é o
-    // carrinho zerado, não um diálogo a fechar.
+    // AD-246: sem retorno da impressora, o cupom enviado mostra "Enviado para a
+    // impressora" com o PDF sempre à mão, e o ESC (ou o prazo de 10s) fecha.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
-    await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
+    const dialogo = page.getByTestId('dialogo-documento-fiscal');
+    await expect(dialogo.getByText('Enviado para a impressora')).toBeVisible();
+    await expect(page.getByTestId('abrir-pdf-documento-fiscal')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogo).toHaveCount(0);
 
     const { retrato } = await ultimoRetrato(request);
     expect(retrato?.SuspenderOuFaturar).toBe('FATURAR');
-    expect(retrato?.NumeroNota).toBe(0);
+    expect(retrato?.NumeroRascunho).toBe(0);
+    // O nome antigo saiu do corpo junto com o contrato de 2026-09-14 (AD-235).
+    expect(retrato).not.toHaveProperty('NumeroNota');
     expect(retrato?.CadSerieNFCe).toBe('1');
     expect(retrato?.produtos).toHaveLength(1);
 
@@ -184,9 +189,12 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     await page.getByTestId('botao-finalizar-venda').click();
 
     // Erro de transmissão da NFCe abre modal próprio, não um texto ao pé do
-    // botão (pedido do usuário, 2026-09-02).
+    // botão (pedido do usuário, 2026-09-02). Sem `NotaFiscal` e sem `messages`,
+    // é falha técnica: a venda continua no caixa (AD-239).
     await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
-    await expect(page.getByTestId('erro-finalizacao')).toContainText(/não autorizada/i);
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(
+      /sem a nota fiscal pronta para impressão/i,
+    );
     await expect(page.getByTestId('dialogo-confirmar-reenvio')).toHaveCount(0);
 
     await page.getByTestId('fechar-erro-faturamento').click();
@@ -221,13 +229,22 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     // se perdia quando o schema reprovava a resposta inteira por falta de PDF.
     await expect(page.getByTestId('erro-finalizacao')).toContainText(/Duplicidade de NF-e/i);
     await expect(page.getByTestId('erro-finalizacao')).toContainText('539');
-    // **Nenhuma identificação de documento**, e é o comportamento correto: o ERP
-    // real devolve `NumeroNota: "0"`/`SerieNota: ""` na rejeição, mesmo tendo
-    // gravado a nota (item 51 de `PENDENCIES.md`, medido em 2026-09-10). Antes
-    // de medir, este teste exigia "NFCe 9001" — um número que o mock inventava e
-    // o ERP nunca manda. Quando o ERP passar a preencher os campos, a linha
-    // volta sozinha, e é esta asserção que deve mudar junto.
-    await expect(page.getByTestId('documento-rejeitado')).toHaveCount(0);
+    // Retorno estruturado do contrato de 2026-09-14 (AD-238): sugestão da IA
+    // como texto e link do ERP que abre em outra aba.
+    await expect(page.getByTestId('erro-finalizacao')).toContainText('Motivo da rejeição');
+    await expect(page.getByTestId('sugestao-ia-texto')).toContainText('Confira a numeracao');
+    const link = page.getByRole('link', { name: /Consultar solução detalhada/i });
+    await expect(link).toHaveAttribute(
+      'href',
+      'https://atendimento.exemplo.invalid/chamado?origem=checkout',
+    );
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(link).toHaveAttribute('target', '_blank');
+    // **Rascunho e série**, e não o número da nota: o ERP devolve
+    // `NumeroNota: "0"`/`SerieNota: ""` na rejeição, mesmo tendo gravado o
+    // documento (medido em 2026-09-16, rascunho 6037 — AD-239). É pelo rascunho
+    // que o operador acha a nota no ERP para corrigir.
+    await expect(page.getByTestId('rascunho-no-erp')).toContainText(/Rascunho \d+/);
     // Não é falha de rede: nada a confirmar antes de reenviar, porque não há
     // reenvio nenhum.
     await expect(page.getByTestId('dialogo-confirmar-reenvio')).toHaveCount(0);
@@ -274,7 +291,7 @@ test.describe('User Story 1 — finalizar a venda (T021)', () => {
     await expect(botao).toBeDisabled();
     await botao.click({ force: true });
 
-    await expect(page.getByText(/nenhum item foi lançado/i).first()).toBeVisible();
+    await expect(page.getByText(/esta venda está vazia/i).first()).toBeVisible();
     // E nada foi suspenso: o ERP não recebeu retrato nenhum.
     expect((await contadores(request)).faturarNFCe).toBe(0);
   });
@@ -301,6 +318,64 @@ test.describe('User Story 2 — suspender a venda em digitação (T026)', () => 
 
     const eventos: { tipo: string }[] = JSON.parse(retrato?.Log ?? '[]');
     expect(eventos.at(-1)?.tipo).toBe('VENDA_SUSPENSA');
+  });
+
+  /**
+   * AD-235 — o ERP grava o rascunho antes de validar e devolve o número mesmo
+   * recusando. A venda continua no caixa, e o reenvio aponta para o rascunho
+   * já gravado em vez de criar outro para a mesma compra.
+   */
+  test('suspensão recusada com rascunho gravado: o reenvio leva o número devolvido', async ({
+    page,
+    request,
+  }) => {
+    await configurar(request, { faturarRecusaComRascunho: true });
+    await abrirTelaDeVenda(page);
+    await biparProduto(page);
+
+    await page.getByTestId('botao-cancelar-venda').click();
+
+    // Recusa lida como recusa — antes do contrato novo toda resposta 2xx de
+    // `SUSPENDER` era sucesso, e a venda sumiria do caixa sem ter sido suspensa.
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(/maior que o Saldo/i);
+    expect((await ultimoRetrato(request)).retrato?.NumeroRascunho).toBe(0);
+
+    await page.getByTestId('fechar-erro-faturamento').click();
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    await configurar(request, { faturarRecusaComRascunho: false });
+    await page.getByTestId('botao-cancelar-venda').click();
+
+    await expect(page.getByText(/venda suspensa/i).first()).toBeVisible();
+    // `7001`: o primeiro número que o mock gera para venda que chega com 0.
+    expect((await ultimoRetrato(request)).retrato?.NumeroRascunho).toBe(7001);
+  });
+
+  /**
+   * Cenário tributário não encontrado (AD-239) — resposta real do ERP em
+   * 2026-09-16. É recusa de **cadastro fiscal**: não há o que ajustar no
+   * Checkout, então o caixa é liberado ao fechar, como na NFCe rejeitada.
+   */
+  test('cenário tributário limpa o caixa e manda o operador ao ERP', async ({ page, request }) => {
+    await configurar(request, { faturarSemCenarioTributario: true });
+    await abrirTelaDeVenda(page);
+    await biparProduto(page);
+
+    await page.getByTestId('botao-cancelar-venda').click();
+
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(/Cenário Tributário/i);
+    // O ERP devolve o envelope zerado: a identificação vem da própria venda —
+    // aqui uma venda nova, que ainda não tem rascunho.
+    await expect(page.getByTestId('rascunho-no-erp')).toHaveCount(0);
+
+    await page.getByTestId('fechar-erro-faturamento').click();
+
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toHaveCount(0);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+
+    await configurar(request, { faturarSemCenarioTributario: false });
   });
 
   /**

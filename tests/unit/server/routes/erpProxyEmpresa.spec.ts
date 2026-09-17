@@ -66,13 +66,13 @@ describe('corpoComEmpresaDaSessao', () => {
     // venda com "Empresa é obrigatório" (AD-188, confirmado ao vivo em
     // 2026-09-08). Como vinha do navegador, ficava forjável.
     const corpo = corpoComEmpresaDaSessao(
-      { CheckoutFaturarNFCe: { Empresa: '999', NumeroNota: 0 } },
+      { CheckoutFaturarNFCe: { Empresa: '999', NumeroRascunho: 0 } },
       '7',
     ) as { CheckoutFaturarNFCe: Record<string, unknown> };
 
     // Texto, não número: é o tipo do campo neste SDT, e o que o ERP aceitou.
     expect(corpo.CheckoutFaturarNFCe['Empresa']).toBe('7');
-    expect(corpo.CheckoutFaturarNFCe['NumeroNota']).toBe(0);
+    expect(corpo.CheckoutFaturarNFCe['NumeroRascunho']).toBe(0);
   });
 
   it('reescreve os dois envelopes quando ambos aparecem no mesmo corpo', () => {

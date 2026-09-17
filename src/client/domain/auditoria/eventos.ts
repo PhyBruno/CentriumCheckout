@@ -211,7 +211,8 @@ export type EventoDavImportado = EventoAuditoriaBase<
   'DAV_IMPORTADO',
   {
     readonly numeroDav: string;
-    readonly numeroNota: number;
+    /** Rascunho de NFCe em que o `GetDav` converteu o DAV (AD-235). */
+    readonly numeroRascunho: number;
     readonly quantidadeLinhas: number;
     readonly quantidadeFormasDePagamento: number;
   }
@@ -227,14 +228,15 @@ export type EventoDavImportado = EventoAuditoriaBase<
  * trilha depender de inspecionar `detalhes`.
  *
  * Não há `numeroDav` correspondente: o rascunho **é** identificado pelo próprio
- * `numeroNota`, que também é o elo reenviado a `FaturarNFCe` (`NFCE-02`).
+ * `numeroRascunho`, que também é o elo reenviado a `FaturarNFCe` (`NFCE-02`,
+ * AD-235).
  * `serie` acompanha porque `CarregarNFCe` só resolve o par número+série
  * (`research.md` D4) — sozinho, o número não identifica o documento.
  */
 export type EventoNFCeRecuperada = EventoAuditoriaBase<
   'NFCE_RECUPERADA',
   {
-    readonly numeroNota: number;
+    readonly numeroRascunho: number;
     readonly serie: string;
     readonly quantidadeLinhas: number;
     readonly quantidadeFormasDePagamento: number;

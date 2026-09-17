@@ -308,7 +308,7 @@ describe('DAV_IMPORTADO (T021)', () => {
     registrar(
       eventoDavImportado({
         numeroDav: 'DAV-000123',
-        numeroNota: 4567,
+        numeroRascunho: 4567,
         quantidadeLinhas: 3,
         quantidadeFormasDePagamento: 2,
       }),
@@ -318,7 +318,7 @@ describe('DAV_IMPORTADO (T021)', () => {
       tipo: 'DAV_IMPORTADO',
       detalhes: {
         numeroDav: 'DAV-000123',
-        numeroNota: 4567,
+        numeroRascunho: 4567,
         quantidadeLinhas: 3,
         quantidadeFormasDePagamento: 2,
       },

@@ -155,7 +155,10 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     // --- saldo zerado libera a finalização ------------------------------------
     const botaoFinalizar = page.getByTestId('botao-finalizar-venda');
     await expect(botaoFinalizar).toBeEnabled();
-    await botaoFinalizar.click();
+    // Coberta a venda, o foco já está no botão (pedido do usuário, 2026-09-16):
+    // o gesto seguinte do caixa é um Enter, sem tocar no mouse.
+    await expect(botaoFinalizar).toBeFocused();
+    await page.keyboard.press('Enter');
 
     // --- o payload é o contrato (`erp-pagamento-api.md` §3) --------------------
     await expect.poll(async () => (await ultimoRetrato(request)).retrato !== null).toBe(true);
