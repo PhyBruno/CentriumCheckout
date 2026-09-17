@@ -3663,3 +3663,17 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Verificação (AD-246):** `tsc --noEmit`, ESLint e Prettier limpos; 1753 testes unit/integração passando em 112 arquivos. Os E2E foram ajustados **mas não rodados**: a porta 3100 está ocupada pelo container `texteaseai-pc-frontend` (ver pegadinha do AD-244).
 
 **Pegadinha de teste:** com `vi.useFakeTimers({ shouldAdvanceTime: true })` o relógio falso também anda com o tempo real gasto em `waitFor`/`findBy`, e o timer dispara alguns milissegundos antes do avanço exato. Afirme com margem. Na falha que chega por promessa rejeitada, envolva o `render` num `act` assíncrono antes de avançar: sem isso, a limpeza do efeito que cancela o fechamento ainda não rodou.
+
+### AD-247: `noopener` no `window.open` anulava a detecção de pop-up bloqueado (2026-09-17)
+
+**Origem:** achado do usuário — a aba do PDF abria e o modal anunciava "O navegador bloqueou a aba do PDF".
+
+**A causa é de especificação, não de navegador.** `window.open(url, '_blank', 'noopener')` devolve **`null` sempre**: sem `opener`, não há referência a entregar. `abrirPdfNFCe` lia esse `null` como recusa do pop-up, então **todo** PDF aberto caía em `bloqueado-pelo-navegador` — e, no mesmo caminho, a `blob:` URL era revogada na hora, podendo esvaziar a aba que acabara de abrir.
+
+**Dá para fazer o controle**, e continua valendo a pena: sem `noopener`, `null` volta a significar só pop-up recusado, que é o caso real do `TipoImpressao = 'P'` (a aba abre depois da resposta do ERP, fora da janela de gesto). O que o `noopener` protegia é refeito à mão — `janela.opener = null`, em `try` —, e o destino é um `blob:` da própria origem, gerado por este código, não página de terceiro. Resta um caso que nenhum retorno distingue: o bloqueador que devolve uma janela e a fecha em seguida (extensões, Brave). Aí o desfecho é "aberto", e a saída do operador é o botão do PDF, que continua na tela.
+
+**Onde não muda nada:** `BotaoMenuGerencial` segue com `'noopener'` — ele ignora o retorno, e o destino é o ERP, de outra origem.
+
+**Impact:** `src/client/services/impressao/abrirPdfNFCe.ts`; testes — `tests/unit/client/services/abrirPdfNFCe.spec.ts` (novo, 4 casos).
+
+**Verificação (AD-247):** `tsc --noEmit`, ESLint e Prettier limpos; 1757 testes unit/integração passando em 113 arquivos. **Não verificado ao vivo** no navegador.
