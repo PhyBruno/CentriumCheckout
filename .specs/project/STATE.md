@@ -3676,4 +3676,6 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 
 **Impact:** `src/client/services/impressao/abrirPdfNFCe.ts`; testes — `tests/unit/client/services/abrirPdfNFCe.spec.ts` (novo, 4 casos).
 
-**Verificação (AD-247):** `tsc --noEmit`, ESLint e Prettier limpos; 1757 testes unit/integração passando em 113 arquivos. **Não verificado ao vivo** no navegador.
+**Verificação (AD-247):** `tsc --noEmit`, ESLint e Prettier limpos; 1757 testes unit/integração passando em 113 arquivos. **Verificado ao vivo** contra o ERP (tenant `c0lj6mvzeh`, `TipoImpressao = 'P'`, produto `18` a R$ 10,00, dinheiro à vista): NFCe 1381 série 14 autorizada em **homologação** (`SEM VALOR FISCAL`), a aba abriu sozinha e o DANFE carregou.
+
+**Como o sintoma se explicava:** medido no Chrome, `blob:` aberto **sem** gesto do usuário carrega normalmente — não era ativação que faltava. O que quebrava era a revogação imediata da URL no ramo `null`, que corria contra o carregamento da aba: o PDF de teste (poucos bytes) ganhava a corrida e aparecia; o DANFE real, maior, perdia e deixava a aba vazia. Daí "só o PDF do caminho manual funciona" — aquele vinha do mesmo `null`, mas o operador reabria clicando.
