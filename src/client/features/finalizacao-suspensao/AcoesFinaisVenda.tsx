@@ -16,6 +16,7 @@ import { DialogoConfirmacaoDestrutiva } from '../pagamento/DialogoConfirmacaoDes
 import { useVendedorAtual } from '../vendedor/useVendedor';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
+import { DialogoAutorizandoNFCe } from './DialogoAutorizandoNFCe';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
 import { DialogoDocumentoFiscal } from './DialogoDocumentoFiscal';
 import { DialogoErroFaturamento } from './DialogoErroFaturamento';
@@ -66,16 +67,23 @@ export function ProvedorFinalizacaoVenda({
   // store próprio (`recusaValidacaoStore`).
   const motivosDaRecusa = useRecusaValidacaoStore((s) => s.motivos);
   const fecharRecusa = useRecusaValidacaoStore((s) => s.fecharRecusa);
+  const fundoJaVisivel = sucedeAutorizacao(estado);
 
   return (
     <ContextoFinalizacao.Provider value={api}>
       {children}
+
+      {/* A espera do ERP ao emitir (AD-244). Só `FATURAR`: suspender não
+          espera SEFAZ e já termina num toast. Nos dois layouts — este provider
+          envolve o desktop e o wizard mobile (`AppShell.tsx`). */}
+      {estado.tipo === 'enviando' && estado.operacao === 'FATURAR' && <DialogoAutorizandoNFCe />}
 
       {estado.tipo === 'falha-negocio' && (
         <DialogoErroFaturamento
           mensagem={estado.mensagem}
           contexto={estado.operacao}
           onFechar={descartar}
+          fundoJaVisivel={fundoJaVisivel}
         />
       )}
 
@@ -87,6 +95,7 @@ export function ProvedorFinalizacaoVenda({
           contexto={estado.operacao}
           mensagem={estado.mensagem}
           onFechar={descartar}
+          fundoJaVisivel={fundoJaVisivel}
         />
       )}
 
@@ -108,6 +117,7 @@ export function ProvedorFinalizacaoVenda({
             urlChamadas: estado.urlChamadas,
           }}
           onFechar={descartar}
+          fundoJaVisivel
         />
       )}
 
@@ -122,6 +132,7 @@ export function ProvedorFinalizacaoVenda({
             serieRascunho: estado.serieRascunho,
           }}
           onFechar={descartar}
+          fundoJaVisivel
         />
       )}
 
@@ -165,6 +176,7 @@ export function ProvedorFinalizacaoVenda({
             void confirmarReenvio();
           }}
           onCancelar={descartar}
+          fundoJaVisivel={fundoJaVisivel}
         />
       )}
 
@@ -177,11 +189,27 @@ export function ProvedorFinalizacaoVenda({
           tipoImpressao={sessao.TipoImpressao}
           cadMaqHost={sessao.CadMaqHost}
           onFechar={descartar}
+          fundoJaVisivel
           {...(impressaoDeps === undefined ? {} : { impressaoDeps })}
         />
       )}
     </ContextoFinalizacao.Provider>
   );
+}
+
+/**
+ * O desfecho na tela veio de uma espera "Autorizando NFCe" (AD-244)?
+ *
+ * Todo desfecho de `FATURAR` sai de `enviando`, e a NFCe rejeitada e o cenário
+ * tributário só existem na emissão. A única exceção são as falhas de montagem
+ * (`falha-negocio` antes do envio), em que perder o fade é inofensivo — a
+ * alternativa, lembrar o estado anterior, custaria uma `ref` lida no render.
+ */
+function sucedeAutorizacao(estado: ApiFinalizacaoVenda['estado']): boolean {
+  if (estado.tipo === 'nfce-rejeitada' || estado.tipo === 'cenario-tributario') {
+    return true;
+  }
+  return 'operacao' in estado && estado.operacao === 'FATURAR';
 }
 
 /**

@@ -3,6 +3,7 @@ import { notificar } from '@/lib/notificar';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
+import { cn } from '@/lib/utils';
 import {
   decidirMecanismoImpressao,
   type TipoImpressao,
@@ -55,6 +56,11 @@ export interface DialogoDocumentoFiscalProps {
   readonly impressaoDeps?: ImpressaoDeps;
   /** Injetável para o teste não abrir aba de verdade. */
   readonly abrirPdf?: typeof abrirPdfNFCe;
+  /**
+   * O fundo escuro já está na tela — o "Autorizando NFCe" acabou de sair
+   * (AD-244). Dispensa o fade de entrada, que partiria de zero e piscaria.
+   */
+  readonly fundoJaVisivel?: boolean;
 }
 
 type EstadoEntrega =
@@ -84,6 +90,7 @@ export function DialogoDocumentoFiscal({
   onFechar,
   impressaoDeps,
   abrirPdf = abrirPdfNFCe,
+  fundoJaVisivel = false,
 }: DialogoDocumentoFiscalProps): ReactElement | null {
   const mecanismo = decidirMecanismoImpressao(tipoImpressao);
   // `true`: sem prop de abertura — o pai só renderiza este diálogo aberto.
@@ -183,7 +190,10 @@ export function DialogoDocumentoFiscal({
 
   return (
     <div
-      className="cc-backdrop-entra fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg"
+      className={cn(
+        !fundoJaVisivel && 'cc-backdrop-entra',
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg',
+      )}
       data-testid="dialogo-documento-fiscal"
     >
       <div

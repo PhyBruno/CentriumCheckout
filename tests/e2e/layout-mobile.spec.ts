@@ -98,9 +98,19 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await expect(page.getByTestId('indicador-etapa')).toContainText('3/3');
     await expect(page.getByTestId('conferencia-produtos')).toContainText('1 item');
 
+    // A emissão demora de propósito: é a janela em que "Autorizando NFCe"
+    // precisa estar na tela do wizard, como na tela única (AD-244).
+    await page.route('**/FaturarNFCe', async (rota) => {
+      await new Promise((resolver) => setTimeout(resolver, 800));
+      await rota.continue();
+    });
+
     const botaoFinalizar = page.getByTestId('botao-finalizar-venda');
     await expect(botaoFinalizar).toBeEnabled();
     await botaoFinalizar.click();
+
+    await expect(page.getByRole('dialog', { name: 'Autorizando NFCe' })).toBeVisible();
+    await expect(page.getByTestId('dialogo-autorizando-nfce')).toHaveCount(0);
 
     // Caminho feliz não tem modal (pedido do usuário, 2026-09-02): o sinal é o
     // carrinho zerado. O wizard volta à etapa 1 pelo mesmo motivo — a venda

@@ -2,6 +2,7 @@ import { AlertTriangle } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
+import { cn } from '@/lib/utils';
 import type { SuspenderOuFaturar } from '../../domain/venda/montarRetratoVenda';
 
 /**
@@ -25,6 +26,11 @@ export interface DialogoConfirmarReenvioProps {
   readonly onConfirmar: () => void;
   readonly onCancelar: () => void;
   readonly enviando?: boolean;
+  /**
+   * O fundo escuro já está na tela — o "Autorizando NFCe" acabou de sair
+   * (AD-244). Dispensa o fade de entrada, que partiria de zero e piscaria.
+   */
+  readonly fundoJaVisivel?: boolean;
 }
 
 const NOME_DA_OPERACAO: Record<SuspenderOuFaturar, string> = {
@@ -37,6 +43,7 @@ export function DialogoConfirmarReenvio({
   onConfirmar,
   onCancelar,
   enviando = false,
+  fundoJaVisivel = false,
 }: DialogoConfirmarReenvioProps): ReactElement {
   const nome = NOME_DA_OPERACAO[operacao];
   // `true`: sem prop de abertura — o pai só renderiza este diálogo aberto.
@@ -44,7 +51,10 @@ export function DialogoConfirmarReenvio({
 
   return (
     <div
-      className="cc-backdrop-entra fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg"
+      className={cn(
+        !fundoJaVisivel && 'cc-backdrop-entra',
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg',
+      )}
       data-testid="dialogo-confirmar-reenvio"
     >
       <div

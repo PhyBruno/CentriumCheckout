@@ -3605,3 +3605,27 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`entradaRevisada`, `codigoDivergeDaRevisao`, `aoSairDoCodigo`, `descartarPrevia`, `aplicarRevisao` recebendo a entrada, `onBlur`/`disabled` no campo); testes — cinco casos novos em `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (mais o do lápis e o da troca de código reescritos sobre a prévia de inserção) e a asserção do lápis em `tests/integration/scannerCamera.spec.tsx`.
 
 **Verificação (AD-243):** `tsc --noEmit`, ESLint e Prettier limpos; 1742 testes unit/integração passando em 111 arquivos. **Não verificado ao vivo** contra o ERP real — os casos novos cobrem a revalidação com `GetProduto` stubado, inclusive o SDT vazio do produto inexistente.
+
+### AD-244: finalizar abre "Autorizando NFCe" enquanto o ERP responde (2026-09-17)
+
+**Origem:** pedido do usuário. Entre o clique em "Finalizar" e a resposta do `FaturarNFCe` corre o tempo da SEFAZ, e a tela ficava parada — só o rótulo do botão mudava —, o que o operador lia como travamento.
+
+**1. Um diálogo para o estado `enviando` de `FATURAR`.** `DialogoAutorizandoNFCe` é renderizado pelo `ProvedorFinalizacaoVenda` enquanto a máquina está em `enviando` com `operacao === 'FATURAR'`, e some quando a resposta chega, dando lugar ao desfecho de sempre. Nenhum estado novo na máquina: o `enviando` já existia e já cobria exatamente essa janela. Como o provider envolve os dois layouts (`AppShell.tsx`), o diálogo vale no desktop **e** no wizard mobile sem fiação extra.
+
+**2. Os desfechos não mudaram.** Impressão direta (`TipoImpressao = 'E'`): o modal "Enviando para a impressora" continua só até o cupom sair, e só a falha da impressão oferece o PDF. PDF (`'P'`): continua sem modal nenhum, abrindo a aba direto. Erros, reenvio, NFCe rejeitada e cenário tributário seguem com os diálogos de antes.
+
+**3. Suspender não mostra a espera.** Não há SEFAZ a aguardar, e o desfecho já é um toast.
+
+**4. Sem botão e sem ESC.** O `FaturarNFCe` já partiu e não há como retirá-lo; fechar a janela devolveria a tela a um estado em que o operador acha que pode mexer na venda durante a emissão.
+
+**5. A janela recebe o foco** (`tabIndex={-1}` + `focoInicial` de `useFocoDeModal`): com o foco no botão de finalizar, uma bipagem durante a espera cairia na tela de trás. Por usar `useFocoDeModal`, `haJanelaAberta()` fica `true` e as teclas fixas da 016 recusam durante a espera.
+
+**6. Animação `cc-giro`** (`global.css`): anel em volta do ícone, com um trecho em `primary` girando. Em `prefers-reduced-motion` o giro fica **mais lento (3s)** em vez de parar, ao contrário dos outros laços: parado, o anel deixa de dizer "ainda trabalhando" e o modal volta a parecer travado.
+
+**7. A troca de modais não pisca o fundo.** `cc-backdrop-entra` parte da opacidade zero; montar o desfecho no mesmo commit em que a espera sai faria o escurecimento sumir e voltar. Os três diálogos seguintes (`DialogoDocumentoFiscal`, `DialogoErroFaturamento`, `DialogoConfirmarReenvio`) ganharam `fundoJaVisivel`, ligado pelo provider quando o desfecho é de `FATURAR` (`sucedeAutorizacao`). A própria espera nasce com o fundo sem fade, porque também sucede o diálogo de reenvio.
+
+**Anatomia:** o Pencil não desenha esta espera (confirmado pelo usuário, 2026-09-17); segue a moldura do `A9MNZI` como os demais diálogos da finalização, sem rodapé.
+
+**Impact:** `src/client/features/finalizacao-suspensao/DialogoAutorizandoNFCe.tsx` (novo), `AcoesFinaisVenda.tsx` (renderização + `sucedeAutorizacao`), `DialogoDocumentoFiscal.tsx`, `DialogoErroFaturamento.tsx` e `DialogoConfirmarReenvio.tsx` (`fundoJaVisivel`), `src/client/styles/global.css` (`cc-giro`); testes — `tests/integration/dialogoAutorizandoNFCe.spec.tsx` (novo, 4 casos) e a espera no fluxo dourado de `tests/e2e/layout-mobile.spec.ts`.
+
+**Verificação (AD-244):** `tsc --noEmit`, ESLint e Prettier limpos; 1746 testes unit/integração passando em 112 arquivos. **E2E não executado:** a porta 3100, fixa em `playwright.config.ts`, estava ocupada por um container de outro projeto. **Não verificado ao vivo** contra o ERP real.

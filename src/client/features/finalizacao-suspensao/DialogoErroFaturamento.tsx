@@ -157,6 +157,11 @@ export interface DialogoErroFaturamentoProps {
   readonly rascunho?: RascunhoNoErp;
   /** Só em `REJEITADA` (AD-238). */
   readonly retorno?: RetornoDaSefaz;
+  /**
+   * O fundo escuro já está na tela — o "Autorizando NFCe" acabou de sair
+   * (AD-244). Dispensa o fade de entrada, que partiria de zero e piscaria.
+   */
+  readonly fundoJaVisivel?: boolean;
 }
 
 export function DialogoErroFaturamento({
@@ -166,6 +171,7 @@ export function DialogoErroFaturamento({
   contexto = 'FATURAR',
   rascunho,
   retorno,
+  fundoJaVisivel = false,
 }: DialogoErroFaturamentoProps): ReactElement {
   const copia = copiaDoDesfecho(desfecho, contexto);
   const motivos = typeof mensagem === 'string' ? [mensagem] : mensagem;
@@ -207,7 +213,10 @@ export function DialogoErroFaturamento({
 
   return (
     <div
-      className="cc-backdrop-entra fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg"
+      className={cn(
+        !fundoJaVisivel && 'cc-backdrop-entra',
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg',
+      )}
       data-testid="dialogo-erro-faturamento"
     >
       <div
