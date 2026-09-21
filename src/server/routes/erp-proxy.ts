@@ -117,6 +117,51 @@ export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): u
   return corpo;
 }
 
+/**
+ * Endpoints cujo corpo é **plano** e traz `Empresa` na própria raiz.
+ *
+ * `EnvioDiretoWhatsapp` (envio da cobrança PIX, 2026-09-21) é o primeiro:
+ * `EnvioDiretoWhatsappInput` é `{ Empresa, TrnGUID, CliCod, Telefone }`, sem
+ * envelope nomeado, então a varredura de `ENVELOPES_COM_EMPRESA` — que desce um
+ * nível procurando `Cliente`/`CheckoutFaturarNFCe` — passa reto por ele.
+ *
+ * **Aqui o campo é inserido, não apenas reescrito**, e essa é a diferença que
+ * justifica uma lista por caminho em vez de uma regra por presença: o cliente
+ * não manda `Empresa` nenhuma (AD-019/AD-022 — o JS nunca monta tenant), logo
+ * não há o que reescrever, e sem a inserção o ERP receberia `Empresa = 0` e o
+ * envio morreria em silêncio, como já aconteceu com `GetProduto` em AD-205. Uma
+ * regra genérica que inserisse `Empresa` em todo corpo POST atingiria também os
+ * SDTs que não a declaram, o que é mexer em contrato alheio sem necessidade.
+ *
+ * A empresa continua vindo do cookie cifrado, que é a única fonte confiável — a
+ * mesma razão de `corpoComEmpresaDaSessao` e `corpoComUsuarioDaSessao`. Ela vai
+ * também na query, como em todo endpoint (AD-205); mandar nos dois lugares é o
+ * que cobre o método que lê do corpo e o que lê do parâmetro.
+ */
+const CAMINHOS_COM_EMPRESA_NA_RAIZ = ['/ApiCentriumOAuth/EnvioDiretoWhatsapp'];
+
+export function corpoComEmpresaNaRaiz(
+  body: unknown,
+  caminhoNoErp: string,
+  codigoEmpresa: string,
+): unknown {
+  const alvo = CAMINHOS_COM_EMPRESA_NA_RAIZ.some(
+    (caminho) => caminho.toLowerCase() === caminhoNoErp.toLowerCase(),
+  );
+  if (!alvo || !ehObjeto(body)) {
+    return body;
+  }
+
+  const empresa = Number(codigoEmpresa);
+  if (!Number.isFinite(empresa)) {
+    return body;
+  }
+
+  // `Empresa` é `integer int64` neste input — numérico, ao contrário do
+  // `CheckoutFaturarNFCe.Empresa`, que é texto (AD-188).
+  return { ...body, Empresa: empresa };
+}
+
 /** Campo do retrato que diz quem emitiu a nota (`CheckoutFaturarNFCe`, AD-221). */
 const CAMPO_USUARIO = 'UsuarioCodigo';
 
@@ -206,7 +251,11 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
     // Empresa e operador saem do cookie cifrado, nunca do corpo que o navegador
     // mandou (AD-024 e AD-224).
     const corpo = corpoComUsuarioDaSessao(
-      corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
+      corpoComEmpresaNaRaiz(
+        corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
+        caminhoNoErp,
+        sessao.codigoEmpresa,
+      ),
       sessao.usuarioCodigo,
     );
 

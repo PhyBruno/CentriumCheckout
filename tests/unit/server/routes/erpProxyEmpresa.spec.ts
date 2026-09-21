@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   corpoComEmpresaDaSessao,
+  corpoComEmpresaNaRaiz,
   queryComEmpresaDaSessao,
 } from '../../../../src/server/routes/erp-proxy';
 
@@ -102,6 +103,76 @@ describe('corpoComEmpresaDaSessao', () => {
     const original = { Cliente: 'nao-e-objeto' };
 
     expect(corpoComEmpresaDaSessao(original, '7')).toEqual(original);
+  });
+});
+
+/**
+ * `Empresa` na **raiz** do corpo, para os endpoints de payload plano.
+ *
+ * `EnvioDiretoWhatsapp` (envio da cobrança PIX, 2026-09-21) declara
+ * `{ Empresa, TrnGUID, CliCod, Telefone }` sem envelope nomeado, e o JS não
+ * manda tenant nenhum (AD-019/AD-022) — aqui o campo é **inserido**, não
+ * reescrito. Sem ele o ERP receberia `Empresa = 0` e o envio morreria em
+ * silêncio, como já aconteceu com `GetProduto` em AD-205.
+ */
+describe('corpoComEmpresaNaRaiz', () => {
+  const CORPO_ENVIO = {
+    TrnGUID: 'b3a1c2d4-0000-4000-8000-000000000001',
+    CliCod: 37,
+    Telefone: '5511900000000',
+    Nome: 'FULANO DE TAL',
+  };
+
+  it('insere Empresa na raiz do corpo do envio por WhatsApp', () => {
+    const corpo = corpoComEmpresaNaRaiz(
+      CORPO_ENVIO,
+      '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+      '7',
+    ) as Record<string, unknown>;
+
+    // Numérico: `EnvioDiretoWhatsappInput.Empresa` é `integer int64`, ao
+    // contrário do `CheckoutFaturarNFCe.Empresa`, que é texto (AD-188).
+    expect(corpo['Empresa']).toBe(7);
+    expect(corpo['TrnGUID']).toBe('b3a1c2d4-0000-4000-8000-000000000001');
+    expect(corpo['CliCod']).toBe(37);
+  });
+
+  it('sobrescreve a Empresa que o navegador tentou mandar', () => {
+    const corpo = corpoComEmpresaNaRaiz(
+      { ...CORPO_ENVIO, Empresa: 999 },
+      '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+      '7',
+    ) as Record<string, unknown>;
+
+    expect(corpo['Empresa']).toBe(7);
+  });
+
+  it('não toca no corpo de outros endpoints', () => {
+    const original = { SDTCentriumPag_Post: { TrnGUID: 'x' } };
+
+    expect(corpoComEmpresaNaRaiz(original, '/ApiCentriumOAuth/GerarPIX', '7')).toEqual(original);
+  });
+
+  it('não muta o corpo original da requisição', () => {
+    corpoComEmpresaNaRaiz(CORPO_ENVIO, '/ApiCentriumOAuth/EnvioDiretoWhatsapp', '7');
+
+    expect('Empresa' in CORPO_ENVIO).toBe(false);
+  });
+
+  it('deixa o corpo como está quando a empresa da sessão não é numérica', () => {
+    const corpo = corpoComEmpresaNaRaiz(
+      CORPO_ENVIO,
+      '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+      'acme',
+    ) as Record<string, unknown>;
+
+    expect(corpo['Empresa']).toBeUndefined();
+  });
+
+  it('repassa intacto o que não é objeto', () => {
+    expect(corpoComEmpresaNaRaiz('texto cru', '/ApiCentriumOAuth/EnvioDiretoWhatsapp', '7')).toBe(
+      'texto cru',
+    );
   });
 });
 

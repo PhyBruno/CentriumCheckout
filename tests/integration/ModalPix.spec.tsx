@@ -50,6 +50,7 @@ vi.mock('goey-toast', () => {
 
 const CAMINHO_GERAR = '/ApiCentriumOAuth/GerarPIX';
 const CAMINHO_STATUS = '/ApiCentriumOAuth/StatusPIX';
+const CAMINHO_WHATSAPP = '/ApiCentriumOAuth/EnvioDiretoWhatsapp';
 
 const COPIA_E_COLA = '00020126SINTETICO5204000053039865802BR5913CENTRIUM6304AB12';
 const COPIA_E_COLA_BASE64 = btoa(COPIA_E_COLA);
@@ -95,7 +96,17 @@ interface OpcoesErpFake {
   readonly statusSequencia?: readonly string[];
   /** Quantas primeiras chamadas de `GerarPIX` respondem 500. */
   readonly falhasDeGeracao?: number;
+  /**
+   * Desfecho de `EnvioDiretoWhatsapp`.
+   *
+   * `'recusado'` é o `200` com `Type: 1` do padrão GeneXus — recusa de negócio,
+   * não erro de transporte —, e `'erro'` é o HTTP que falha.
+   */
+  readonly respostaWhatsapp?: 'enviado' | 'recusado' | 'erro';
 }
+
+/** A frase que o ERP devolve ao recusar o envio, nos testes. */
+const RECUSA_WHATSAPP = 'Telefone de destino inválido para o WhatsApp';
 
 function erpFake(opcoes: OpcoesErpFake = {}): {
   cliente: ErpClient;
@@ -111,6 +122,23 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
       const corpo =
         typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null;
       chamadas.push({ caminho, corpo });
+
+      if (caminho.startsWith(CAMINHO_WHATSAPP)) {
+        switch (opcoes.respostaWhatsapp ?? 'enviado') {
+          case 'erro':
+            return Promise.resolve({ estado: 'ok', resposta: respostaJson({}, 500) });
+          case 'recusado':
+            return Promise.resolve({
+              estado: 'ok',
+              resposta: respostaJson({
+                messages: [{ Id: '9998', Type: 1, Description: RECUSA_WHATSAPP }],
+              }),
+            });
+          case 'enviado':
+            // Sucesso do padrão GeneXus: `200` com a coleção vazia.
+            return Promise.resolve({ estado: 'ok', resposta: respostaJson({ messages: [] }) });
+        }
+      }
 
       if (caminho.startsWith(CAMINHO_GERAR)) {
         if (falhasRestantes > 0) {
@@ -147,6 +175,23 @@ function geracoes(chamadas: readonly ChamadaCapturada[]): readonly SdtEnviado[] 
   return chamadas
     .filter((chamada) => chamada.caminho.startsWith(CAMINHO_GERAR))
     .map((chamada) => (chamada.corpo?.['SDTCentriumPag_Post'] ?? {}) as SdtEnviado);
+}
+
+interface EnvioWhatsappEnviado {
+  readonly TrnGUID: string;
+  readonly CliCod: number;
+  readonly Telefone: string;
+  readonly Nome: string;
+  /** Presente só se o cliente tivesse montado o tenant — o que ele não faz. */
+  readonly Empresa?: unknown;
+}
+
+function enviosWhatsapp(
+  chamadas: readonly ChamadaCapturada[],
+): readonly Partial<EnvioWhatsappEnviado>[] {
+  return chamadas
+    .filter((chamada) => chamada.caminho.startsWith(CAMINHO_WHATSAPP))
+    .map((chamada) => (chamada.corpo ?? {}) as Partial<EnvioWhatsappEnviado>);
 }
 
 function consultasDeStatus(chamadas: readonly ChamadaCapturada[]): number {
@@ -693,5 +738,138 @@ describe('onEstadoDisplay — o que o cliente vê na segunda tela', () => {
 
     await screen.findByTestId('pix-qrcode');
     expect(screen.getByTestId('modal-pix')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Envio da cobrança por WhatsApp (pedido do usuário, 2026-09-21).
+ *
+ * A condicionalidade do pedido está nos dois primeiros cenários: cliente
+ * identificado chega com os campos preenchidos e pode enviar direto; cliente
+ * default chega vazio e não envia enquanto nome e número não forem digitados.
+ *
+ * Nenhum valor é de produção — o número de destino é sintético.
+ */
+describe('Envio da cobrança PIX por WhatsApp', () => {
+  it('não oferece o envio antes de haver cobrança gerada', () => {
+    const { cliente } = erpFake();
+    renderizar(cliente);
+
+    // O `TrnGUID` é parâmetro obrigatório do endpoint: sem cobrança não há o
+    // que enviar, e o botão não deve existir para ser clicado.
+    expect(screen.queryByTestId('abrir-envio-whatsapp')).not.toBeInTheDocument();
+  });
+
+  it('cliente identificado: campos já preenchidos e envio com o número normalizado', async () => {
+    const usuario = userEvent.setup();
+    const { cliente, chamadas } = erpFake();
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+
+    expect(screen.getByTestId<HTMLInputElement>('campo-nome-whatsapp').value).toBe('MARIA EXEMPLO');
+    expect(screen.getByTestId<HTMLInputElement>('campo-telefone-whatsapp').value).toBe(
+      '55 47 90000-0000',
+    );
+
+    await usuario.click(screen.getByTestId('confirmar-envio-whatsapp'));
+
+    await waitFor(() => {
+      expect(enviosWhatsapp(chamadas)).toHaveLength(1);
+    });
+
+    const envio = enviosWhatsapp(chamadas)[0];
+    expect(envio?.CliCod).toBe(CLIENTE_IDENTIFICADO.codigoCliente);
+    expect(envio?.Nome).toBe('MARIA EXEMPLO');
+    // Dígitos com DDI 55, sem máscara (decisão do usuário, 2026-09-21).
+    expect(envio?.Telefone).toBe('5547900000000');
+    // O GUID é o da cobrança que está na tela, não um valor novo.
+    expect(envio?.TrnGUID).toBe(geracoes(chamadas)[0]?.TrnGUID);
+    // Tenant nunca sai do navegador (AD-019/AD-022): quem o injeta é o BFF.
+    expect(envio).not.toHaveProperty('Empresa');
+
+    await screen.findByTestId('pix-enviado-whatsapp');
+  });
+
+  it('cliente default: campos vazios, e o envio fica bloqueado com motivo até serem preenchidos', async () => {
+    const usuario = userEvent.setup();
+    const { cliente, chamadas } = erpFake();
+    renderizar(cliente, { clienteAtual: CLIENTE_DEFAULT });
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+
+    expect(screen.getByTestId<HTMLInputElement>('campo-nome-whatsapp').value).toBe('');
+    expect(screen.getByTestId<HTMLInputElement>('campo-telefone-whatsapp').value).toBe('');
+
+    // Bloqueado com `aria-disabled` e motivo, nunca `disabled` mudo.
+    const enviar = screen.getByTestId('confirmar-envio-whatsapp');
+    expect(enviar).toHaveAttribute('aria-disabled', 'true');
+
+    await usuario.click(enviar);
+    expect(enviosWhatsapp(chamadas)).toHaveLength(0);
+    expect(avisos.at(-1)).toContain('Informe o nome do cliente');
+
+    await usuario.type(screen.getByTestId('campo-nome-whatsapp'), 'JOAO DA SILVA');
+    await usuario.click(enviar);
+    expect(enviosWhatsapp(chamadas)).toHaveLength(0);
+    // Com o nome resolvido, o motivo passa a ser o número — que é exigido nos
+    // dois cenários, porque sem destino não há envio possível.
+    expect(avisos.at(-1)).toContain('número de destino');
+
+    await usuario.type(screen.getByTestId('campo-telefone-whatsapp'), '(11) 98765-4321');
+    await usuario.click(enviar);
+
+    await waitFor(() => {
+      expect(enviosWhatsapp(chamadas)).toHaveLength(1);
+    });
+    expect(enviosWhatsapp(chamadas)[0]).toMatchObject({
+      CliCod: CLIENTE_DEFAULT.codigoCliente,
+      Nome: 'JOAO DA SILVA',
+      Telefone: '5511987654321',
+    });
+  });
+
+  it('recusa do ERP mostra a frase dele e não afirma que enviou', async () => {
+    const usuario = userEvent.setup();
+    const { cliente } = erpFake({ respostaWhatsapp: 'recusado' });
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+    await usuario.click(screen.getByTestId('confirmar-envio-whatsapp'));
+
+    await waitFor(() => {
+      expect(avisos.at(-1)).toBe(RECUSA_WHATSAPP);
+    });
+    expect(screen.queryByTestId('pix-enviado-whatsapp')).not.toBeInTheDocument();
+  });
+
+  it('falha de transporte avisa e lembra que a cobrança continua válida', async () => {
+    const usuario = userEvent.setup();
+    const { cliente } = erpFake({ respostaWhatsapp: 'erro' });
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+    await usuario.click(screen.getByTestId('confirmar-envio-whatsapp'));
+
+    await waitFor(() => {
+      expect(avisos.at(-1)).toContain('A cobrança continua válida');
+    });
+    expect(screen.queryByTestId('pix-enviado-whatsapp')).not.toBeInTheDocument();
+  });
+
+  it('o envio não sobrevive à aprovação — cobrança paga não se envia', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['G', 'P'] });
+    renderizar(cliente, { atrasoFechamentoMs: 60_000 });
+
+    await screen.findByTestId('pix-qrcode');
+    await waitFor(() => {
+      expect(screen.getByTestId('pix-subtitulo')).toHaveTextContent('Pagamento aprovado');
+    });
+
+    expect(screen.queryByTestId('abrir-envio-whatsapp')).not.toBeInTheDocument();
   });
 });

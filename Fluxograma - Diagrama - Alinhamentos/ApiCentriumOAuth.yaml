@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: "APICentriumOAuth"
   description: "APICentrium OAuth"
-  version: "20260914191012"
+  version: "20260921111300"
 servers:
   - url: http://localhost/Centrium1600Web/APICentriumOAuth
 paths:
@@ -476,6 +476,18 @@ paths:
           schema:
             type: "string"
             
+        - name: "Datainicial"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "Datafinal"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
         - name: "Pagina"
           in: "query"
           required: false
@@ -631,6 +643,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetListaVendedoresOutput"
+        404:
+          description: "Not found"
+
+  /EnvioDiretoWhatsapp:
+    post:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.EnvioDiretoWhatsapp"
+      summary: "EnvioDiretoWhatsapp"
+      security: 
+        - oAuthGXGAM: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvioDiretoWhatsappInput"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeneXus.Common.Messages_Message"  
+
         404:
           description: "Not found"
 
@@ -808,6 +848,7 @@ components:
           items:
             $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
 
+
     PostClienteInput:  
       properties:
         Cliente:
@@ -848,6 +889,19 @@ components:
 
 
 
+
+    EnvioDiretoWhatsappInput:  
+      properties:
+        Empresa:
+          type: "integer"
+          format: "int64"
+        TrnGUID:
+          type: "string"
+        CliCod:
+          type: "integer"
+          format: "int64"
+        Telefone:
+          type: "string"
   
     SessaoUsuario:
       properties:
@@ -1647,9 +1701,15 @@ components:
         ErroCodigo:
           description: "Erro Codigo"
           type: "integer"
-          format: "int32"
+          format: "int64"
         ErroMensagem:
           description: "Erro Mensagem"
+          type: "string"
+        RetornoMensagemIA:
+          description: "Retorno Mensagem IA"
+          type: "string"
+        UrlChamadas:
+          description: "Url Chamadas"
           type: "string"
         XMLImpressao:
           description: "XMLImpressao"

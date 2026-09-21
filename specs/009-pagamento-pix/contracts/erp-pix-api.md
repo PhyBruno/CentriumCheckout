@@ -100,3 +100,35 @@ switch (resposta.StatusTransacao) {
 | `GET /api/bootstrap` (`ConfiguracoesPIX`, catálogo de formas) | feature 002/008 | esta feature só **lê** `ConfiguracoesPIX.MinimoPix` do cache já existente (`research.md`, D13), não busca de novo |
 | Qualquer endpoint de cancelamento de PIX | — | não existe no contrato; `research.md` D11 confirma que nenhuma chamada de cancelamento é feita, em nenhum cenário |
 | `POST /FaturarNFCe` | feature 004 | esta feature só entrega `pixGuid` opaco via `PagamentoAplicado`, não monta nem envia o payload de faturamento |
+
+---
+
+## 4. Enviar a cobrança por WhatsApp — `POST /api/erp/EnvioDiretoWhatsapp` (AD-248, 2026-09-21)
+
+Acréscimo posterior à 009 (pedido do usuário, 2026-09-21), disparado por gesto do operador dentro do `ModalPix`. Fonte: `EnvioDiretoWhatsappInput` no `ApiCentriumOAuth.yaml`.
+
+**Request** (valores sintéticos):
+
+```jsonc
+{
+  "TrnGUID": "b3a1c2d4-0000-4000-8000-000000000001", // o da cobrança na tela
+  "CliCod": 37,                                       // ClienteVenda.codigoCliente
+  "Telefone": "5511987654321",                        // dígitos com DDI 55
+  "Nome": "FULANO DE TAL"                             // ver a nota abaixo
+  // Empresa: inserida pelo BFF na raiz do corpo (corpoComEmpresaNaRaiz) — o JS
+  // não a envia, e a lista de caminhos em erp-proxy.ts é o que a habilita
+}
+```
+
+**`Nome` não está no contrato do ERP.** O input declara só `Empresa`/`TrnGUID`/`CliCod`/`Telefone`, e o nome do template é resolvido pelo `CliCod`. O campo é enviado por decisão do usuário ("o ERP só vai ignorar e fica como melhoria futura"), de modo que o dia em que a KB o aceitar não exija mexer no cliente — **enquanto isso, o nome digitado para um cliente default não alcança a mensagem**.
+
+**Response** — `GeneXus.Common.Messages_Message`, com o mesmo par de formas de `PostCliente` (o YAML desenha o array nu; o ERP real embrulha em `messages`, AD-218):
+
+```jsonc
+{ "messages": [] }                                                    // enviado
+{ "messages": [{ "Id": "9998", "Type": 1, "Description": "…" }] }     // recusa de negócio
+```
+
+Recusa chega como `200` com `Type: 1` e a frase do ERP vai ao operador como está. Rede, `401`, HTTP de erro e corpo fora do schema viram falha, nunca envio presumido — `enviarPixPorWhatsapp` não rejeita a promise em nenhum caso.
+
+**Pré-condições na tela**: cobrança já gerada (o `TrnGUID` é obrigatório), pagamento ainda não aprovado, cliente na venda (sem `CliCod` não há chamada), número normalizável por `normalizarTelefoneWhatsapp`, e nome preenchido quando o cliente é o default.
