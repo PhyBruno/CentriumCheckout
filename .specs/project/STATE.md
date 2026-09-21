@@ -3699,3 +3699,21 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/domain/pix/destinoWhatsapp.ts` (novo), `src/shared/schemas/whatsapp.schema.ts` (novo), `src/client/services/pix/envioWhatsappMutation.ts` (novo), `src/client/features/pagamento/pix/ModalPix.tsx`, `src/server/routes/erp-proxy.ts`; testes — `tests/unit/domain/pix/destinoWhatsapp.spec.ts` (novo, 10 casos), `tests/unit/server/routes/erpProxyEmpresa.spec.ts` (+6), `tests/integration/ModalPix.spec.tsx` (+6). O `/display` não foi tocado, como o pedido exige.
 
 **Verificação (AD-248):** `tsc --noEmit`, ESLint e Prettier limpos; 1779 testes unit/integração passando em 114 arquivos. **Não verificado ao vivo** contra o ERP real — o endpoint não chegou a ser exercitado, e o MCP do GenExus recusou toda leitura da KB durante a sessão (`IndexNotReady`, índice em reconstrução), inclusive depois de reiniciar o worker; o contrato veio do `ApiCentriumOAuth.yaml`. Os E2E **não foram rodados**: a porta 3100 segue ocupada pelo container `texteaseai-pc-frontend` (pegadinha do AD-244/AD-246). A altura da janela não muda porque o botão novo é idêntico ao `copiar-codigo-pix` e divide a mesma linha.
+
+### AD-249: o `GerarPIX` ia ao ERP sem empresa, e a falha aparecia ao operador como dump do Zod (2026-09-21)
+
+**Origem:** teste manual do usuário contra o prototype (tenant `HL938ZGP51`) — "Não foi possível gerar a cobrança PIX. Resposta inválida de GerarPIX: [{ "code": "too_small", "path": ["Trnbase64text"] … }]".
+
+**Medido no proxy, não suposto:** o Checkout mandou `TrnFormaPagamento="17" FPgCod=3 TrnValor=0.01`, e o ERP respondeu `200` com `{"TrnGUID":"00000000-0000-0000-0000-000000000000","Trnbase64text":"","Trnbase64image":""}` — sem `messages`. O `TrnGUID` zerado, em vez do eco do GUID enviado, diz que o ERP nem entrou no processamento: devolveu o SDT recém-criado. É a assinatura de AD-205 (`Empresa = 0` → nada encontrado → `200` com SDT vazio).
+
+**A causa estava no BFF.** `SDTCentriumPag_Post` declara `Empresa: integer int64` **dentro** do SDT; o JS não a envia (AD-019/AD-022), e o topo de `pixQueries.ts` afirmava que o BFF a injetava. Não injetava: `ENVELOPES_COM_EMPRESA` só conhecia `Cliente` e `CheckoutFaturarNFCe`. Entrou `{ raiz: 'SDTCentriumPag_Post', comoTexto: false }` — numérico, como o YAML declara. Passou despercebido desde a 009 porque a integração PIX nunca tinha sido exercitada ao vivo, fato que o próprio código registrava.
+
+**A mensagem ao operador também estava errada, fosse qual fosse a causa.** O SDT vazio reprovava no schema e a tela mostrava a saída crua do Zod. Agora `gerarCobrancaPix` lê `recusaDeNegocio` **antes** de validar (recusa com `messages` vira `ErroNegocioErp` com a frase do ERP), e o SDT vazio sem `messages` vira `ErroGeracaoPixVazia` — subclasse de `ErroRespostaInvalida`, que guarda o detalhe do Zod em `detalhe` para depuração, mas cuja `message` é "O ERP não gerou o QR Code desta cobrança. Confira a configuração do PIX da empresa no ERP.".
+
+**O que continua sem verificação:** `TrnFormaPagamento` segue indo como o código `'17'` (AD-204), que o comentário de `pixQueries.ts` marca como nunca confirmado contra o ERP. Se a geração ainda voltar vazia **com** a empresa no corpo, ele é o próximo suspeito — e o log de diagnóstico do proxy mostra os dois campos lado a lado.
+
+**Impact:** `src/server/routes/erp-proxy.ts`, `src/client/services/pix/pixQueries.ts`; testes — `tests/unit/server/routes/erpProxyEmpresa.spec.ts` (+1), `tests/integration/ModalPix.spec.tsx` (+3).
+
+**Verificação (AD-249):** `tsc --noEmit`, ESLint e Prettier limpos; 1783 testes unit/integração passando em 114 arquivos. A causa foi medida no prototype pelo proxy de dev; a correção **aguarda o reteste manual** do usuário.
+
+**Nota de processo:** os blocos de AD-248 neste arquivo, em `specs/009-pagamento-pix/contracts/erp-pix-api.md` e o último `describe` de `ModalPix.spec.tsx` foram anexados com `cat >>`, contra a regra do `CLAUDE.md` de editar só com as ferramentas do Claude Code. O conteúdo foi conferido (testes verdes, JSON e Markdown válidos); daqui em diante, `Edit`.

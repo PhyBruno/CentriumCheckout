@@ -76,6 +76,19 @@ describe('corpoComEmpresaDaSessao', () => {
     expect(corpo.CheckoutFaturarNFCe['NumeroRascunho']).toBe(0);
   });
 
+  it('injeta SDTCentriumPag_Post.Empresa no corpo do GerarPIX, como número', () => {
+    // AD-249: o envelope faltava na lista, o ERP recebia `Empresa = 0` e
+    // devolvia o SDT vazio com `TrnGUID` zerado — medido no prototype.
+    const corpo = corpoComEmpresaDaSessao(
+      { SDTCentriumPag_Post: { TrnGUID: 'b3a1c2d4-0000-4000-8000-000000000001', FPgCod: 3 } },
+      '7',
+    ) as { SDTCentriumPag_Post: Record<string, unknown> };
+
+    // `integer int64` no YAML — número, como `Cliente.Empresa`.
+    expect(corpo.SDTCentriumPag_Post['Empresa']).toBe(7);
+    expect(corpo.SDTCentriumPag_Post['FPgCod']).toBe(3);
+  });
+
   it('reescreve os dois envelopes quando ambos aparecem no mesmo corpo', () => {
     const corpo = corpoComEmpresaDaSessao(
       { Cliente: { Empresa: 999 }, CheckoutFaturarNFCe: { Empresa: '999' } },

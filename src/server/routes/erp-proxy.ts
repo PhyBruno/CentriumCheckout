@@ -83,14 +83,23 @@ function ehObjeto(valor: unknown): valor is Record<string, unknown> {
  * `{ CheckoutFaturarNFCe: … }` (`faturarNFCeMutation.ts`,
  * `validarNFCeMutation.ts`). Quem olha só a raiz não encontra campo nenhum.
  *
- * **O tipo vai declarado por envelope porque os dois SDTs divergem:**
+ * **O tipo vai declarado por envelope porque os SDTs divergem:**
  * `Cliente.Empresa` é numérico, e `CheckoutFaturarNFCe.Empresa` é **texto** —
  * essa é a forma confirmada contra o ERP real em 2026-09-08 (AD-188), e trocar
  * o tipo ali recusaria toda venda com "Empresa é obrigatório".
+ *
+ * **`SDTCentriumPag_Post` (o corpo de `GerarPIX`) faltava nesta lista** — AD-249,
+ * 2026-09-21. O SDT declara `Empresa: integer int64`, o JS não a envia (AD-019)
+ * e `pixQueries.ts` afirmava que o BFF a injetava, mas nada a injetava: o ERP
+ * recebia `Empresa = 0`, não achava a configuração do CentriumPAG e devolvia
+ * `200` com o SDT recém-criado — `TrnGUID` zerado e os dois base64 vazios. Foi
+ * medido no prototype (tenant `HL938ZGP51`), e passou despercebido porque a
+ * integração PIX nunca tinha sido exercitada ao vivo (feature 009).
  */
 const ENVELOPES_COM_EMPRESA = [
   { raiz: 'Cliente', comoTexto: false },
   { raiz: 'CheckoutFaturarNFCe', comoTexto: true },
+  { raiz: 'SDTCentriumPag_Post', comoTexto: false },
 ] as const;
 
 export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): unknown {

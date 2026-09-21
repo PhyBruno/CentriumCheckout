@@ -103,7 +103,18 @@ interface OpcoesErpFake {
    * não erro de transporte —, e `'erro'` é o HTTP que falha.
    */
   readonly respostaWhatsapp?: 'enviado' | 'recusado' | 'erro';
+  /**
+   * Como `GerarPIX` responde quando não gera a cobrança (AD-249).
+   *
+   * `'vazia'` é o que o prototype devolveu em 2026-09-21: `200`, `TrnGUID`
+   * zerado, os dois base64 em branco e **nenhum** `messages`. `'recusada'` é a
+   * recusa do padrão GeneXus, com a razão em `messages[]`.
+   */
+  readonly geracaoSemCobranca?: 'vazia' | 'recusada';
 }
+
+/** A frase do ERP ao recusar a geração, nos testes. */
+const RECUSA_GERACAO = 'Configuração do CentriumPAG não encontrada para a empresa';
 
 /** A frase que o ERP devolve ao recusar o envio, nos testes. */
 const RECUSA_WHATSAPP = 'Telefone de destino inválido para o WhatsApp';
@@ -146,6 +157,21 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
           return Promise.resolve({
             estado: 'ok',
             resposta: respostaJson({ messages: [] }, 500),
+          });
+        }
+        if (opcoes.geracaoSemCobranca !== undefined) {
+          const vazio = {
+            TrnGUID: '00000000-0000-0000-0000-000000000000',
+            Trnbase64text: '',
+            Trnbase64image: '',
+          };
+          return Promise.resolve({
+            estado: 'ok',
+            resposta: respostaJson(
+              opcoes.geracaoSemCobranca === 'vazia'
+                ? vazio
+                : { ...vazio, messages: [{ Id: '9998', Type: 1, Description: RECUSA_GERACAO }] },
+            ),
           });
         }
         const sdt = (corpo?.['SDTCentriumPag_Post'] ?? {}) as SdtEnviado;
@@ -871,5 +897,42 @@ describe('Envio da cobrança PIX por WhatsApp', () => {
     });
 
     expect(screen.queryByTestId('abrir-envio-whatsapp')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * `GerarPIX` que volta `200` sem cobrança (AD-249).
+ *
+ * Até ali a tela mostrava ao operador o dump do Zod — `too_small`, `path`,
+ * `inclusive` —, que não dizia nem que o problema estava do lado do ERP.
+ */
+describe('Geração sem cobrança — o operador lê uma frase, não o schema', () => {
+  it('SDT vazio sem messages vira a frase do caixa', async () => {
+    const { cliente } = erpFake({ geracaoSemCobranca: 'vazia' });
+    renderizar(cliente);
+
+    const painel = await screen.findByTestId('erro-geracao-pix');
+
+    expect(painel).toHaveTextContent('O ERP não gerou o QR Code desta cobrança');
+    expect(painel).not.toHaveTextContent('too_small');
+    expect(painel).not.toHaveTextContent('Trnbase64');
+  });
+
+  it('recusa com messages mostra a frase do próprio ERP', async () => {
+    const { cliente } = erpFake({ geracaoSemCobranca: 'recusada' });
+    renderizar(cliente);
+
+    const painel = await screen.findByTestId('erro-geracao-pix');
+
+    expect(painel).toHaveTextContent(RECUSA_GERACAO);
+  });
+
+  it('as duas falhas deixam o "Tentar novamente" disponível', async () => {
+    const { cliente } = erpFake({ geracaoSemCobranca: 'vazia' });
+    renderizar(cliente);
+
+    await screen.findByTestId('erro-geracao-pix');
+
+    expect(screen.getByTestId('tentar-novamente-pix')).toBeInTheDocument();
   });
 });
