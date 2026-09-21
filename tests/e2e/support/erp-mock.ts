@@ -1547,8 +1547,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   let ultimoRascunhoGerado = 7000;
   /** Último retrato submetido ao gate da 014 — para o E2E conferir a projeção (I2). */
   let ultimoRetratoValidado: Record<string, unknown> | null = null;
-  /** Último `SDTCentriumPag_Post` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
+  /** Último corpo de `GerarPIX` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
   let ultimoGerarPix: Record<string, unknown> | null = null;
+  /** Sequência dos GUIDs que o mock gera, um por cobrança (AD-251). */
+  let sequenciaGuidPix = 0;
   /**
    * Instante de geração de cada `TrnGUID`, para o status por relógio.
    *
@@ -2391,16 +2393,22 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * o navegador só precisa aceitar a `data:` URL — e `Trnbase64text` é o "copia
    * e cola" fictício codificado, para o `atob` do mapper ter o que decodificar.
    */
-  app.post<{ Body: { SDTCentriumPag_Post?: Record<string, unknown> } }>(
+  app.post<{ Body: Record<string, unknown> }>(
     '/ApiCentriumOAuth/GerarPIX',
     async (request, reply) => {
       contadores.negocio += 1;
       contadores.gerarPix += 1;
 
-      const enviado = request.body.SDTCentriumPag_Post ?? {};
+      // Corpo **plano** desde AD-251 — não há mais `SDTCentriumPag_Post` para
+      // desembrulhar, e o cliente não manda `TrnGUID`.
+      const enviado = request.body ?? {};
       ultimoGerarPix = enviado;
 
-      const guid = String(enviado['TrnGUID'] ?? '');
+      // **O mock gera o GUID**, como o ERP real: um valor estável por chamada,
+      // devolvido na resposta e usado como chave do relógio de status. Ecoar o
+      // que o cliente mandou esconderia justamente a regressão de AD-251.
+      sequenciaGuidPix += 1;
+      const guid = `e2e0${String(sequenciaGuidPix).padStart(4, '0')}-0000-4000-8000-000000000001`;
       // Marca o nascimento da cobrança — é o zero da contagem que `StatusPIX`
       // usa quando não há roteiro de transições configurado.
       geracoesPix.set(guid, Date.now());

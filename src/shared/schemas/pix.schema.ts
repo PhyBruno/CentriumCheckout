@@ -34,8 +34,24 @@ import { z } from 'zod';
  * existisse — o operador esperaria indefinidamente por um pagamento que nunca
  * foi gerado.
  */
+const GUID_NULO = '00000000-0000-0000-0000-000000000000';
+
 export const gerarPixOutputSchema = z.looseObject({
-  TrnGUID: z.string(),
+  /**
+   * Chave da cobrança, **gerada pelo ERP** (AD-251) — é com ela que o polling
+   * de `StatusPIX` pergunta pelo pagamento.
+   *
+   * O piso é mais duro que o dos base64 porque o GUID nulo é um valor que o ERP
+   * de fato devolve quando não processa: aceitá-lo produziria uma cobrança cuja
+   * consulta de status sempre responderia "Transação não localizada", e a
+   * janela fecharia sozinha sem ninguém entender por quê.
+   */
+  TrnGUID: z
+    .string()
+    .min(1)
+    .refine((valor) => valor !== GUID_NULO, {
+      message: 'TrnGUID nulo: o ERP não gerou a cobrança',
+    }),
   Trnbase64text: z.string().min(1),
   Trnbase64image: z.string().min(1),
 });

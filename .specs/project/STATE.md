@@ -3735,3 +3735,25 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/domain/pagamento/roteamentoIntegracao.ts` (predicado novo `cobradaNoTerminal`, compartilhado pelos dois ramos para cartão e PIX não divergirem em silêncio), `src/client/features/pagamento/SeletorCondicaoForma.tsx` (TSDoc de `motivoDeIndisponibilidade`); testes — `tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts` (+8 casos, 1 reescrito).
 
 **Verificação (AD-250):** RED observado antes da implementação (3 casos falhando); depois, 1792 testes unit/integração verdes em 114 arquivos, `tsc --noEmit` e ESLint limpos. **Não verificado ao vivo** — exige um tenant com `TEFAtivo` e uma forma de PIX cadastrada com `FPGNFTEFPO = '1'`, combinação que nenhum ambiente de teste disponível tem hoje.
+
+### AD-251: o `GerarPIX` quer o corpo plano, com origem e expiração, e o GUID é do ERP (2026-09-21)
+
+**Origem:** teste ao vivo contra o prototype (`HL938ZGP51`, empresa 1), com um proxy de experimento entre o BFF e o ERP reescrevendo o payload — o Checkout não foi tocado até a forma correta estar comprovada. A cobrança nasceu, e o log do proxy mostrou a segunda descoberta de graça.
+
+**Três correções, todas medidas, nenhuma suposta:**
+
+1. **Corpo plano.** O `ApiCentriumOAuth.yaml` declara `GerarPIXInput` como `{ SDTCentriumPag_Post: {...} }`, igual a `FaturarNFCeInput` e `PostClienteInput`. O ERP que responde hoje só gera a cobrança com os campos na **raiz**. O envelope some do cliente.
+2. **`TrnOrigemDocumento`, `TrnOrigemSerie` e `TrnTempoExpiracaoPIX` passaram a ser obrigatórios.** `research.md` D4/D4-bis dizia que ficavam "ausentes, nunca preenchidos com um valor sintético"; sem eles a resposta é o SDT vazio. Os dois primeiros vão como `1` e `'1'`, **provisórios e assim documentados** em `pixQueries.ts` — a semântica que o ERP espera ainda não foi definida, e na geração do PIX a venda não tem número de documento nem série (o `CadSerieNFCe` da sessão vem vazio). A expiração vem de `ConfiguracoesPIX.TempoEspera`, campo que existia no schema desde a 009 marcado como "sem uso"; zero ou ausente cai em 300s, porque o prototype devolve `"0"` e ninguém sabe se ali zero é "expira já" ou "não expira".
+3. **O `TrnGUID` é do ERP, sempre** (regra do usuário: "é sempre o ERP que gera o GUID, nunca o checkout"). O cliente parou de enviá-lo e passou a ler o da resposta.
+
+**A terceira corrige um bug que já estava em produção e ninguém tinha visto**, porque a integração PIX nunca havia sido exercitada ao vivo: `paraCobrancaPix` descartava o `TrnGUID` devolvido e guardava o gerado localmente, apoiado numa afirmação de `research.md` D3 ("o GUID devolvido é o mesmo que o cliente enviou") que o log falsificou — enviado `f6fb4836…`, devolvido `37c035d3…`. Consequência observada na tela: o polling consultava `StatusPIX` com um GUID inexistente, o ERP respondia `StatusTransacao: 'E'` ("Transação não localizada"), `interpretarStatusPix` lia falha terminal e **a janela fechava sozinha** sobre uma cobrança real, que o cliente ainda podia pagar e que ninguém mais confirmaria.
+
+**O BFF acompanhou.** `GerarPIX` saiu de `ENVELOPES_COM_EMPRESA` (onde AD-249 o tinha colocado no dia anterior) para `CAMINHOS_COM_EMPRESA_NA_RAIZ`: a injeção de `Empresa` estava certa, o envelope em volta é que não existe mais. AD-249 continua valendo no diagnóstico — o corpo ia mesmo sem empresa —, mas **a empresa sozinha não era a causa**: com ela presente e o envelope mantido, o ERP seguia devolvendo o SDT vazio.
+
+**O que ficou provado sobre o dialeto:** `TrnFormaPagamento` vai como o código `'17'` e o ERP aceita. Fecha a dúvida que `pixQueries.ts` carregava desde AD-204 como "único campo de saída não verificado".
+
+**Impact:** `src/client/services/pix/pixQueries.ts`, `src/client/services/pix/pixMapper.ts`, `src/shared/schemas/pix.schema.ts` (o `TrnGUID` nulo passa a reprovar na fronteira), `src/client/domain/pix/cobrancaPix.ts`, `src/client/services/pagamento/pagamentoMapper.ts` (`paraTempoExpiracaoPix`, novo), `src/client/services/pagamento/pagamentoQueries.ts`, `src/client/features/pagamento/pix/ModalPix.tsx`, `src/client/features/pagamento/ListaPagamentosAplicados.tsx`, `src/server/routes/erp-proxy.ts`; testes — `tests/integration/ModalPix.spec.tsx` (o ERP falso passou a **gerar** o GUID em vez de ecoá-lo, e dois casos foram reescritos), `tests/unit/server/routes/erpProxyEmpresa.spec.ts`, `tests/e2e/support/erp-mock.ts`.
+
+**Verificação (AD-251):** cobrança real gerada no prototype com o payload equivalente (duas vezes, R$ 0,01); 1793 testes unit/integração verdes em 114 arquivos, `tsc --noEmit`, ESLint e Prettier limpos. **O fluxo completo pela tela ainda não foi refeito** com o código corrigido — até aqui o acerto do payload vinha do proxy de experimento. Os E2E não foram rodados (porta 3100 ocupada, pegadinha de AD-244/AD-246).
+
+**Pendência que não é nossa:** o `ApiCentriumOAuth.yaml` do repo está defasado — lista 17 endpoints e não inclui `EnvioDiretoWhatsapp`, que o Checkout chama desde AD-248. Vale pedir o contrato atualizado junto com a definição de `TrnOrigemDocumento`/`TrnOrigemSerie`.

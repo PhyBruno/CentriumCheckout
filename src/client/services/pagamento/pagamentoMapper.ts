@@ -110,3 +110,24 @@ export function paraCapacidadesPagamento(sessao: SessaoPagamento): CapacidadesPa
 export function paraMinimoPix(sessao: SessaoPagamento): Centavos {
   return sessao.ConfiguracoesPIX?.MinimoPix ?? ZERO_CENTAVOS;
 }
+
+/**
+ * Validade do QR Code em **segundos** (`ConfiguracoesPIX.TempoEspera`), que
+ * vira `TrnTempoExpiracaoPIX` no corpo de `GerarPIX` (AD-251).
+ *
+ * O campo existia no schema desde a 009 marcado como "segue sem uso" — a
+ * sondagem é fixa em 10s por AD-026, e nada mais o lia. Passou a ter uso quando
+ * o teste ao vivo de 2026-09-21 mostrou que o ERP só gera a cobrança com a
+ * expiração no corpo.
+ *
+ * **Zero e ausência caem no padrão**, e isso é decisão, não descuido: o
+ * prototype devolve `TempoEspera: "0"`, e não se sabe se ali zero significa
+ * "expira imediatamente" ou "não expira". Mandar zero arriscaria um QR Code
+ * morto na mão do cliente; o valor que comprovadamente gerou cobrança foi 300.
+ */
+export const EXPIRACAO_PIX_PADRAO_SEGUNDOS = 300;
+
+export function paraTempoExpiracaoPix(sessao: SessaoPagamento): number {
+  const configurado = sessao.ConfiguracoesPIX?.TempoEspera ?? 0;
+  return configurado > 0 ? configurado : EXPIRACAO_PIX_PADRAO_SEGUNDOS;
+}

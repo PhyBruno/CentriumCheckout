@@ -67,6 +67,16 @@ const FORMA_PIX = formaDe({
 
 const MINIMO_PIX = centavos(500);
 const VALOR_PADRAO = centavos(6550);
+/** `TrnTempoExpiracaoPIX` enviado ao ERP (AD-251); sintético, como todo o resto. */
+const EXPIRACAO_TESTE_SEGUNDOS = 300;
+/**
+ * GUID que **o ERP** devolve (AD-251).
+ *
+ * Deliberadamente diferente de qualquer coisa que o cliente pudesse gerar: é o
+ * que trava a regressão. Quando o mapper guardava o GUID local, o polling
+ * consultava uma transação inexistente e a janela fechava sozinha.
+ */
+const GUID_DO_ERP = '9f1c7d52-0000-4000-8000-0000000000aa';
 
 interface ChamadaCapturada {
   readonly caminho: string;
@@ -174,11 +184,12 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
             ),
           });
         }
-        const sdt = (corpo?.['SDTCentriumPag_Post'] ?? {}) as SdtEnviado;
         return Promise.resolve({
           estado: 'ok',
           resposta: respostaJson({
-            TrnGUID: sdt.TrnGUID,
+            // O ERP **gera** o GUID e o devolve; nunca ecoa o que o cliente
+            // mandou — que, desde AD-251, o cliente nem manda.
+            TrnGUID: GUID_DO_ERP,
             Trnbase64text: COPIA_E_COLA_BASE64,
             Trnbase64image: QRCODE_BASE64,
           }),
@@ -197,10 +208,13 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
   return { cliente, chamadas };
 }
 
+/**
+ * Corpo **plano** desde AD-251: não há mais `SDTCentriumPag_Post` para desembrulhar.
+ */
 function geracoes(chamadas: readonly ChamadaCapturada[]): readonly SdtEnviado[] {
   return chamadas
     .filter((chamada) => chamada.caminho.startsWith(CAMINHO_GERAR))
-    .map((chamada) => (chamada.corpo?.['SDTCentriumPag_Post'] ?? {}) as SdtEnviado);
+    .map((chamada) => (chamada.corpo ?? {}) as unknown as SdtEnviado);
 }
 
 interface EnvioWhatsappEnviado {
@@ -281,6 +295,7 @@ function renderizar(cliente: ErpClient, sobrescritas: Partial<ModalPixProps> = {
     formaCodigo: FORMA_PIX.codigo,
     valor: VALOR_PADRAO,
     minimoPix: MINIMO_PIX,
+    tempoExpiracaoPix: EXPIRACAO_TESTE_SEGUNDOS,
     clienteAtual: CLIENTE_IDENTIFICADO,
     onAprovado: (pixGuid) => aprovados.push(pixGuid),
     onAbandonado: (motivo) => abandonados.push(motivo),
@@ -364,9 +379,10 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
         expect(desfechos.aprovados).toHaveLength(1);
       });
 
-      // O GUID devolvido é o mesmo que foi enviado ao ERP — é a chave de
-      // correlação que a 008 grava em `PagamentoAplicado.pixGuid`.
-      expect(desfechos.aprovados[0]).toBe(geracoes(chamadas)[0]?.TrnGUID);
+      // O GUID que sobe para a 008 (`PagamentoAplicado.pixGuid`) é o que o ERP
+      // devolveu, nunca um gerado aqui (AD-251) — é com ele que o polling de
+      // `StatusPIX` conseguiu perguntar pela cobrança.
+      expect(desfechos.aprovados[0]).toBe(GUID_DO_ERP);
       expect(desfechos.abandonados).toHaveLength(0);
 
       // J3: o polling não fica sondando uma cobrança já resolvida.
@@ -399,8 +415,14 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
     expect(geracoes(chamadas)[0]?.TrnValor).not.toBe(100);
   });
 
-  // T014 / `FR-011` (quickstart Cenário 7, `research.md` D12).
-  it('refaz a geração com um TrnGUID novo depois de uma falha', async () => {
+  // T014 / `FR-011` (quickstart Cenário 7).
+  //
+  // Reescrito em AD-251: até 2026-09-21 este caso afirmava que a segunda
+  // tentativa saía com um `TrnGUID` diferente da primeira (`research.md` D12,
+  // J4). O cliente não manda mais GUID nenhum — quem o gera é o ERP —, então o
+  // que resta de verdadeiro, e é o que importa ao operador, é que o botão
+  // "tentar novamente" refaz a chamada e a cobrança nasce.
+  it('refaz a geração depois de uma falha, e a cobrança nasce com o GUID do ERP', async () => {
     const usuario = userEvent.setup();
     const { cliente, chamadas } = erpFake({ falhasDeGeracao: 1 });
     renderizar(cliente);
@@ -414,9 +436,9 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
 
     const tentativas = geracoes(chamadas);
     expect(tentativas).toHaveLength(2);
-    // J4: reusar o GUID colidiria com uma linha que o ERP pode ter criado apesar
-    // do erro reportado ao cliente.
-    expect(tentativas[0]?.TrnGUID).not.toBe(tentativas[1]?.TrnGUID);
+    // Nenhuma das duas carrega GUID: a chave é do ERP (AD-251).
+    expect(tentativas[0]).not.toHaveProperty('TrnGUID');
+    expect(tentativas[1]).not.toHaveProperty('TrnGUID');
   });
 
   // T015 / `research.md` D7 + AD-100 (quickstart Cenário 8).
@@ -452,24 +474,39 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
 
   // `research.md` D4/D4-bis: o SDT é genérico (boleto/duplicata); só o
   // subconjunto de PIX é enviado, e os demais campos ficam **ausentes**.
-  it('não envia os campos de boleto/duplicata do SDT genérico', async () => {
+  // Reescrito em AD-251. A lista de proibidos encolheu porque três campos
+  // mudaram de lado: `TrnOrigemDocumento`, `TrnOrigemSerie` e
+  // `TrnTempoExpiracaoPIX` passaram a ser **obrigatórios** — sem eles o ERP
+  // devolve o SDT vazio, medido ao vivo. Continuam fora os de boleto/duplicata,
+  // o `CntGUID`, o `TrnStatus` e a `Empresa` (que é do BFF, AD-019/AD-022).
+  it('envia a origem e a expiração, e não os campos de boleto/duplicata', async () => {
     const { cliente, chamadas } = erpFake();
     renderizar(cliente);
 
     await screen.findByTestId('pix-qrcode');
 
-    const enviados = Object.keys(geracoes(chamadas)[0] ?? {});
+    const corpo = geracoes(chamadas)[0] ?? {};
+    const enviados = Object.keys(corpo);
+
+    expect(corpo).toMatchObject({
+      TrnOrigemDocumento: 1,
+      TrnOrigemSerie: '1',
+      TrnTempoExpiracaoPIX: EXPIRACAO_TESTE_SEGUNDOS,
+    });
+
     for (const proibido of [
       'TrnDatVen',
       'TrnValMul',
       'TrnCodBar',
       'TrnStaBol',
       'CntGUID',
-      'TrnOrigemDocumento',
-      'TrnOrigemSerie',
       'TrnStatus',
-      'TrnTempoExpiracaoPIX',
+      // O GUID é do ERP (AD-251) e a Empresa é do BFF (AD-019/AD-022): nenhum
+      // dos dois pode sair do navegador.
+      'TrnGUID',
       'Empresa',
+      // O envelope morreu: se ele voltar, este corpo deixa de ser plano.
+      'SDTCentriumPag_Post',
     ]) {
       expect(enviados).not.toContain(proibido);
     }
@@ -683,7 +720,7 @@ describe('onEstadoDisplay — o que o cliente vê na segunda tela', () => {
   // T014 / FR-010: enquanto a cobrança está em geração não há QR a mostrar, e um
   // esqueleto na tela do cliente prometeria algo que ainda pode falhar.
   it('publica repouso enquanto gera, a cobrança quando ela chega e repouso ao desmontar', async () => {
-    const { cliente, chamadas } = erpFake({ statusSequencia: ['G'] });
+    const { cliente } = erpFake({ statusSequencia: ['G'] });
     const { estados, tela } = coletar(cliente);
 
     expect(estados[0]).toEqual({ tela: 'BOAS_VINDAS' });
@@ -696,8 +733,9 @@ describe('onEstadoDisplay — o que o cliente vê na segunda tela', () => {
     const publicado = estados.at(-1);
     expect(publicado).toMatchObject({
       tela: 'PIX_AGUARDANDO',
-      // FR-008: mesma cobrança que o operador tem à frente.
-      trnGuid: geracoes(chamadas)[0]?.TrnGUID,
+      // FR-008: mesma cobrança que o operador tem à frente — e a chave é a do
+      // ERP (AD-251), não uma inventada pelo cliente.
+      trnGuid: GUID_DO_ERP,
       // Inteiro cru de centavos, nunca decimal (research D5).
       valorCentavos: 6550,
       qrCodeFonte: `data:image/jpeg;base64,${QRCODE_BASE64}`,
@@ -811,7 +849,7 @@ describe('Envio da cobrança PIX por WhatsApp', () => {
     // Dígitos com DDI 55, sem máscara (decisão do usuário, 2026-09-21).
     expect(envio?.Telefone).toBe('5547900000000');
     // O GUID é o da cobrança que está na tela, não um valor novo.
-    expect(envio?.TrnGUID).toBe(geracoes(chamadas)[0]?.TrnGUID);
+    expect(envio?.TrnGUID).toBe(GUID_DO_ERP);
     // Tenant nunca sai do navegador (AD-019/AD-022): quem o injeta é o BFF.
     expect(envio).not.toHaveProperty('Empresa');
 

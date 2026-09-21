@@ -18,21 +18,23 @@ import type { Centavos } from '../../domain/precificacao/dinheiro';
 import type { GerarPixOutput, StatusPixOutput } from '../../../shared/schemas/pix.schema';
 
 /**
- * `valor` e `trnGuid` vêm do **call site**, não da resposta.
+ * O `trnGuid` é o que o **ERP** devolveu; só o `valor` vem do call site.
  *
- * O `TrnGUID` devolvido pelo ERP é o mesmo que o cliente enviou (`research.md`
- * D3), mas quem manda continua sendo o valor gerado localmente: é ele que já
- * está sendo usado como chave de correlação do polling, e adotar o eco do
- * servidor abriria a possibilidade de as duas chamadas divergirem. O `valor`
- * simplesmente não trafega de volta.
+ * **Corrigido em 2026-09-21 (AD-251).** A redação anterior dizia que "o
+ * `TrnGUID` devolvido pelo ERP é o mesmo que o cliente enviou (`research.md`
+ * D3)" e, por isso, guardava o GUID gerado localmente. Medido ao vivo contra o
+ * prototype: o ERP **ignora** o que o cliente manda e gera o seu, devolvido
+ * aqui — regra confirmada pelo usuário ("é sempre o ERP que gera o GUID, nunca
+ * o checkout"). Guardar o local deixava a cobrança órfã: o polling consultava
+ * `StatusPIX` com um GUID que não existe, o ERP respondia `'E'` ("Transação não
+ * localizada"), `interpretarStatusPix` lia falha terminal e a janela fechava
+ * sozinha sobre uma cobrança que o cliente ainda podia pagar.
+ *
+ * O `valor` continua vindo do call site — esse, de fato, não trafega de volta.
  */
-export function paraCobrancaPix(
-  saida: GerarPixOutput,
-  trnGuid: string,
-  valor: Centavos,
-): CobrancaPix {
+export function paraCobrancaPix(saida: GerarPixOutput, valor: Centavos): CobrancaPix {
   return {
-    trnGuid,
+    trnGuid: saida.TrnGUID,
     // Os dois campos chegam **codificados** e nenhum dos dois pode confiar no
     // nome: a imagem precisa do tipo MIME real e o texto precisa da checagem de
     // "isto é mesmo base64?" antes de qualquer `atob` (pedido do usuário,

@@ -137,6 +137,15 @@ export interface ModalPixProps {
   readonly valor: Centavos;
   /** `ConfiguracoesPIX.MinimoPix` já em centavos (`research.md` D13). */
   readonly minimoPix: Centavos;
+  /**
+   * `ConfiguracoesPIX.TempoEspera` em segundos, já com o padrão aplicado —
+   * vira `TrnTempoExpiracaoPIX` no corpo de `GerarPIX` (AD-251).
+   *
+   * Vem por prop, como `minimoPix`, e não de uma leitura própria do catálogo:
+   * quem conhece a query é o call site, e o modal segue sem saber o que é
+   * TanStack Query.
+   */
+  readonly tempoExpiracaoPix: number;
   readonly clienteAtual: ClienteVenda | null;
   /** Chama `confirmarPagamentoIntegrado(idPagamento, { pixGuid })` (feature 008). */
   readonly onAprovado: (pixGuid: string) => void;
@@ -191,6 +200,7 @@ export function ModalPix({
   formaCodigo,
   valor,
   minimoPix,
+  tempoExpiracaoPix,
   clienteAtual,
   onAprovado,
   onAbandonado,
@@ -267,7 +277,12 @@ export function ModalPix({
   const emErro = status === 'erro' && cobranca === null;
 
   const gerarCobranca = useCallback((): void => {
-    void gerar({ formaCodigo, valor, pagador: montarDadosPagador(clienteAtual) })
+    void gerar({
+      formaCodigo,
+      valor,
+      pagador: montarDadosPagador(clienteAtual),
+      tempoExpiracaoSegundos: tempoExpiracaoPix,
+    })
       .then(setCobranca)
       .catch(() => {
         // O motivo já está em `erro` e vira painel + toast abaixo. Engolir aqui
@@ -275,7 +290,7 @@ export function ModalPix({
         // dela é uma tela, não uma exceção.
         notificar.erro('Não foi possível gerar a cobrança PIX. Tente novamente.');
       });
-  }, [gerar, formaCodigo, valor, clienteAtual]);
+  }, [gerar, formaCodigo, valor, clienteAtual, tempoExpiracaoPix]);
 
   /** Desistência manual e falha terminal: **um** caminho de código (T022). */
   const abandonar = useCallback(

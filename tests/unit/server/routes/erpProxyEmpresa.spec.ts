@@ -76,17 +76,14 @@ describe('corpoComEmpresaDaSessao', () => {
     expect(corpo.CheckoutFaturarNFCe['NumeroRascunho']).toBe(0);
   });
 
-  it('injeta SDTCentriumPag_Post.Empresa no corpo do GerarPIX, como número', () => {
-    // AD-249: o envelope faltava na lista, o ERP recebia `Empresa = 0` e
-    // devolvia o SDT vazio com `TrnGUID` zerado — medido no prototype.
-    const corpo = corpoComEmpresaDaSessao(
-      { SDTCentriumPag_Post: { TrnGUID: 'b3a1c2d4-0000-4000-8000-000000000001', FPgCod: 3 } },
-      '7',
-    ) as { SDTCentriumPag_Post: Record<string, unknown> };
+  it('não conhece mais o envelope do GerarPIX — ele deixou de existir', () => {
+    // AD-249 pôs `SDTCentriumPag_Post` nesta lista; AD-251 o tirou, porque o
+    // corpo do `GerarPIX` ficou plano e a `Empresa` passou a ser injetada por
+    // `corpoComEmpresaNaRaiz`. Se alguém remontar o envelope no cliente, este
+    // caso falha e aponta para o lugar certo.
+    const original = { SDTCentriumPag_Post: { FPgCod: 3 } };
 
-    // `integer int64` no YAML — número, como `Cliente.Empresa`.
-    expect(corpo.SDTCentriumPag_Post['Empresa']).toBe(7);
-    expect(corpo.SDTCentriumPag_Post['FPgCod']).toBe(3);
+    expect(corpoComEmpresaDaSessao(original, '7')).toEqual(original);
   });
 
   it('reescreve os dois envelopes quando ambos aparecem no mesmo corpo', () => {
@@ -160,10 +157,24 @@ describe('corpoComEmpresaNaRaiz', () => {
     expect(corpo['Empresa']).toBe(7);
   });
 
-  it('não toca no corpo de outros endpoints', () => {
-    const original = { SDTCentriumPag_Post: { TrnGUID: 'x' } };
+  it('injeta Empresa na raiz do corpo do GerarPIX, como número (AD-251)', () => {
+    // O corpo é plano desde AD-251, e o SDT declara `Empresa: integer int64`.
+    // Sem esta injeção o ERP recebe `Empresa = 0`, não acha a configuração do
+    // CentriumPAG e devolve o SDT vazio (AD-249).
+    const corpo = corpoComEmpresaNaRaiz(
+      { TrnValor: 0.01, FPgCod: 3 },
+      '/ApiCentriumOAuth/GerarPIX',
+      '7',
+    ) as Record<string, unknown>;
 
-    expect(corpoComEmpresaNaRaiz(original, '/ApiCentriumOAuth/GerarPIX', '7')).toEqual(original);
+    expect(corpo['Empresa']).toBe(7);
+    expect(corpo['FPgCod']).toBe(3);
+  });
+
+  it('não toca no corpo de endpoints fora da lista', () => {
+    const original = { CodigoProduto: 'X1' };
+
+    expect(corpoComEmpresaNaRaiz(original, '/ApiCentriumOAuth/GetProduto', '7')).toEqual(original);
   });
 
   it('não muta o corpo original da requisição', () => {

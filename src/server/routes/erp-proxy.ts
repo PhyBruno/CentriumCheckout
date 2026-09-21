@@ -88,18 +88,16 @@ function ehObjeto(valor: unknown): valor is Record<string, unknown> {
  * essa é a forma confirmada contra o ERP real em 2026-09-08 (AD-188), e trocar
  * o tipo ali recusaria toda venda com "Empresa é obrigatório".
  *
- * **`SDTCentriumPag_Post` (o corpo de `GerarPIX`) faltava nesta lista** — AD-249,
- * 2026-09-21. O SDT declara `Empresa: integer int64`, o JS não a envia (AD-019)
- * e `pixQueries.ts` afirmava que o BFF a injetava, mas nada a injetava: o ERP
- * recebia `Empresa = 0`, não achava a configuração do CentriumPAG e devolvia
- * `200` com o SDT recém-criado — `TrnGUID` zerado e os dois base64 vazios. Foi
- * medido no prototype (tenant `HL938ZGP51`), e passou despercebido porque a
- * integração PIX nunca tinha sido exercitada ao vivo (feature 009).
+ * **`GerarPIX` esteve aqui por um dia e saiu.** AD-249 acrescentou
+ * `SDTCentriumPag_Post` a esta lista, e a injeção estava certa — o que estava
+ * errado era o envelope em volta: AD-251 mediu que o ERP só gera a cobrança com
+ * o corpo **plano**, então o endpoint passou para `CAMINHOS_COM_EMPRESA_NA_RAIZ`
+ * logo abaixo. Deixá-lo aqui seria injetar `Empresa` dentro de um envelope que
+ * o cliente não monta mais, isto é, em lugar nenhum.
  */
 const ENVELOPES_COM_EMPRESA = [
   { raiz: 'Cliente', comoTexto: false },
   { raiz: 'CheckoutFaturarNFCe', comoTexto: true },
-  { raiz: 'SDTCentriumPag_Post', comoTexto: false },
 ] as const;
 
 export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): unknown {
@@ -147,7 +145,14 @@ export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): u
  * também na query, como em todo endpoint (AD-205); mandar nos dois lugares é o
  * que cobre o método que lê do corpo e o que lê do parâmetro.
  */
-const CAMINHOS_COM_EMPRESA_NA_RAIZ = ['/ApiCentriumOAuth/EnvioDiretoWhatsapp'];
+const CAMINHOS_COM_EMPRESA_NA_RAIZ = [
+  '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+  // `GerarPIX` entrou em 2026-09-21 (AD-251), vindo de `ENVELOPES_COM_EMPRESA`:
+  // o corpo deixou de ser envelopado, e `Empresa` passou a ser um campo de raiz
+  // como o do envio por WhatsApp. O SDT a declara `integer int64`, então vai
+  // numérica — é o que `corpoComEmpresaNaRaiz` faz.
+  '/ApiCentriumOAuth/GerarPIX',
+];
 
 export function corpoComEmpresaNaRaiz(
   body: unknown,

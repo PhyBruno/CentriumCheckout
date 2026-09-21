@@ -84,4 +84,12 @@ export interface DadosGerarPix {
   /** Sempre o valor **desta** cobrança, nunca o subtotal cheio (J6). */
   readonly valor: Centavos;
   readonly pagador: DadosPagadorPix;
+  /**
+   * Validade do QR Code em segundos — `TrnTempoExpiracaoPIX` (AD-251).
+   *
+   * Chega pronto do catálogo (`CatalogoPagamento.tempoExpiracaoPix`), já com o
+   * padrão aplicado, porque a decisão de o que fazer com `TempoEspera: 0` é da
+   * fronteira, não desta chamada.
+   */
+  readonly tempoExpiracaoSegundos: number;
 }

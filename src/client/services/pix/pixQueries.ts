@@ -38,6 +38,21 @@ const CENTAVOS_POR_REAL = 100;
 /** AD-026: intervalo fixo, sem backoff — decisão deliberada, não omissão. */
 export const INTERVALO_POLLING_PIX_MS = 10_000;
 
+/**
+ * Documento e série de origem da cobrança (AD-251).
+ *
+ * **Provisórios, e é assim que devem ser lidos.** O ERP exige os dois
+ * preenchidos para gerar o QR Code — com eles vazios a resposta é o SDT vazio —,
+ * mas a semântica que ele espera ainda não foi definida pelo time do ERP. Na
+ * geração do PIX a venda sequer tem número de documento, e o `CadSerieNFCe` da
+ * sessão vem vazio no ambiente de teste, então não há de onde derivá-los hoje.
+ *
+ * São os valores que comprovadamente fizeram a cobrança nascer em 2026-09-21.
+ * Quando a semântica for definida, troque aqui — é o único ponto que os produz.
+ */
+const ORIGEM_DOCUMENTO_PIX = 1;
+const ORIGEM_SERIE_PIX = '1';
+
 export interface PixQueriesDeps {
   readonly erpClient?: ErpClient;
   /**
@@ -101,19 +116,25 @@ async function chamarErp(
  * Exportada (não só usada pelo hook) pelo mesmo motivo de `fetchProduto`/
  * `fetchCondicoesPagamento`: o teste chama a função direto, sem montar React.
  *
- * `trnGuid` é **parâmetro**, não gerado aqui dentro: quem decide gerar um GUID
- * novo é o hook, a cada tentativa (J4/`research.md` D12) — uma função que o
- * gerasse por conta própria não teria como um teste afirmar que duas tentativas
- * usaram valores diferentes.
+ * **Corpo plano e sem `TrnGUID` desde AD-251 (2026-09-21)**, as duas coisas
+ * medidas ao vivo contra o prototype:
  *
- * Só o subconjunto de `SDTCentriumPag_Post` relevante ao PIX é enviado
- * (`research.md` D4/D4-bis): os campos de boleto/duplicata, `CntGUID`,
- * `TrnOrigemDocumento`/`TrnOrigemSerie`, `TrnStatus` e `TrnTempoExpiracaoPIX`
- * ficam ausentes — nunca preenchidos com um valor sintético.
+ * - **sem o envelope `SDTCentriumPag_Post`.** O `ApiCentriumOAuth.yaml` declara
+ *   `GerarPIXInput` envelopado, como todo endpoint de escrita, mas o ERP que
+ *   responde hoje só gera a cobrança com o corpo na raiz;
+ * - **sem `TrnGUID`.** Quem gera a chave da transação é o ERP, sempre (regra do
+ *   usuário); o GUID chega na resposta e é ele que `paraCobrancaPix` guarda.
+ *   Antes disso o hook sorteava um `crypto.randomUUID()` por tentativa
+ *   (`research.md` D12), que o ERP ignorava — e o polling ficava perguntando
+ *   por uma transação inexistente;
+ * - **com `TrnOrigemDocumento`, `TrnOrigemSerie` e `TrnTempoExpiracaoPIX`.** A
+ *   redação anterior dizia que estes ficavam "ausentes, nunca preenchidos com
+ *   um valor sintético" (`research.md` D4/D4-bis). Sem eles o ERP devolvia o SDT
+ *   vazio; preenchê-los foi o que fez a cobrança nascer. Continuam ausentes os
+ *   campos de boleto/duplicata, `CntGUID` e `TrnStatus`.
  */
 export async function gerarCobrancaPix(
   entrada: DadosGerarPix,
-  trnGuid: string,
   deps: PixQueriesDeps = {},
 ): Promise<CobrancaPix> {
   const cliente = deps.erpClient ?? criarErpClient();
@@ -122,26 +143,23 @@ export async function gerarCobrancaPix(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      SDTCentriumPag_Post: {
-        TrnGUID: trnGuid,
-        TrnValor: reaisDeCentavos(entrada.valor),
-        // `MeioPagtoNFe` da forma aplicada, não um segundo enum paralelo
-        // (`research.md` D5): o campo usa o mesmo domínio `NFCe_FormaPagto` que
-        // `FormaMeioPagtoNFe`, e portanto o **código** (`'17'`), não o nome
-        // (AD-204). Esta feature só existe para PIX dinâmico.
-        //
-        // Único campo de saída desta correção que **não** foi verificado contra
-        // o ERP real: a integração PIX não foi exercitada ao vivo (feature 009).
-        // A troca segue a afirmação que este próprio comentário já fazia — que o
-        // campo compartilha o domínio de `FormaMeioPagtoNFe`, cujo dialeto é
-        // comprovadamente o código.
-        TrnFormaPagamento: MEIO_PAGTO.Pix,
-        FPgCod: entrada.formaCodigo,
-        TrnPagadorNome: entrada.pagador.nome,
-        TrnPagadorCgc: entrada.pagador.documento,
-        TrnPagadorEmail: entrada.pagador.email,
-        TrnPagadorFone: entrada.pagador.telefone,
-      },
+      TrnValor: reaisDeCentavos(entrada.valor),
+      // `MeioPagtoNFe` da forma aplicada, não um segundo enum paralelo
+      // (`research.md` D5): o campo usa o mesmo domínio `NFCe_FormaPagto` que
+      // `FormaMeioPagtoNFe`, e portanto o **código** (`'17'`), não o nome
+      // (AD-204). Esta feature só existe para PIX dinâmico.
+      //
+      // Confirmado ao vivo em 2026-09-21: com `'17'` o ERP gerou a cobrança, o
+      // que fecha a dúvida que este comentário registrava desde AD-249.
+      TrnFormaPagamento: MEIO_PAGTO.Pix,
+      FPgCod: entrada.formaCodigo,
+      TrnPagadorNome: entrada.pagador.nome,
+      TrnPagadorCgc: entrada.pagador.documento,
+      TrnPagadorEmail: entrada.pagador.email,
+      TrnPagadorFone: entrada.pagador.telefone,
+      TrnOrigemDocumento: ORIGEM_DOCUMENTO_PIX,
+      TrnOrigemSerie: ORIGEM_SERIE_PIX,
+      TrnTempoExpiracaoPIX: entrada.tempoExpiracaoSegundos,
     }),
   });
 
@@ -170,7 +188,7 @@ export async function gerarCobrancaPix(
     throw new ErroGeracaoPixVazia(validado.error.message);
   }
 
-  return paraCobrancaPix(validado.data, trnGuid, entrada.valor);
+  return paraCobrancaPix(validado.data, entrada.valor);
 }
 
 export async function consultarStatusPix(
@@ -232,10 +250,11 @@ export function useGerarPix(deps: PixQueriesDeps = {}): GeracaoPix {
       setStatus('gerando');
       setErro(null);
 
-      // GUID novo a cada tentativa, inclusive quando a anterior falhou: o ERP
-      // pode ter criado a linha apesar do erro reportado ao cliente, e reusar o
-      // valor colidiria com ela (`research.md` D12).
-      const chamada = gerarCobrancaPix(entrada, crypto.randomUUID(), deps)
+      // Nenhum GUID é sorteado aqui desde AD-251: a chave da transação é do
+      // ERP, e vem na resposta. O `crypto.randomUUID()` por tentativa que
+      // `research.md` D12 pedia resolvia um problema que não existe — o valor
+      // nunca chegou a identificar nada, porque o ERP sempre gerou o seu.
+      const chamada = gerarCobrancaPix(entrada, deps)
         .then((cobranca) => {
           setStatus('idle');
           return cobranca;
