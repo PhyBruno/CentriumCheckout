@@ -3717,3 +3717,21 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Verificação (AD-249):** `tsc --noEmit`, ESLint e Prettier limpos; 1783 testes unit/integração passando em 114 arquivos. A causa foi medida no prototype pelo proxy de dev; a correção **aguarda o reteste manual** do usuário.
 
 **Nota de processo:** os blocos de AD-248 neste arquivo, em `specs/009-pagamento-pix/contracts/erp-pix-api.md` e o último `describe` de `ModalPix.spec.tsx` foram anexados com `cat >>`, contra a regra do `CLAUDE.md` de editar só com as ferramentas do Claude Code. O conteúdo foi conferido (testes verdes, JSON e Markdown válidos); daqui em diante, `Edit`.
+
+### AD-250: `FPGNFTEFPO` também decide o PIX — forma de meio `17` cadastrada como TEF não gera QR Code (2026-09-21)
+
+**Origem:** regra de negócio informada pelo usuário — "O PIX Qrcode deve ser gerado, apenas quando: Meio Pagamento NFe = 17, e integração com cartão 'FPGNFTEFPO' NÃO for TEF. Pois se for TEF, deve ser enviado pro endpoint do TEF que vai ser disponibilizado posteriormente."
+
+**A regra:** `resolverIntegracao` passa a aplicar ao `Pix` (meio `17`) as **mesmas duas condições** que AD-180 fixou para cartão — `tefAtivo` da empresa **e** `forma.integracaoCartao === '1'`. Quando as duas valem, o veredito é `TEF`, não `PIX_DINAMICO`: a cobrança é do terminal, e o `GerarPIX` do CentriumPAG não é chamado. Com `'2'` ou vazio (ou em empresa sem TEF), o PIX segue como sempre — QR Code pelo CentriumPAG se `pixAtivo`.
+
+**O que isto supera:** a leitura de AD-180 de que `FormaIntegracaoCartao` seria "campo do cadastro de cartão, padding do GeneXus num PIX". A observação que a sustentava continua válida (o campo nasce do cadastro de cartão); a conclusão, não — o ERP usa o mesmo campo para dizer que uma forma de PIX é cobrada pelo terminal. O teste que afirmava "`integracaoCartao` não influencia forma que não é cartão" foi reescrito, não apenas complementado.
+
+**Ordem dos testes é a regra.** No ramo do `Pix`, o terminal é consultado **antes** de `pixAtivo`. Invertido, uma empresa com TEF e CentriumPAG ligados geraria um QR Code para um dinheiro que o TEF já está cobrando — duas cobranças para a mesma venda, que é exatamente o erro que a regra existe para evitar.
+
+**`formaDisponivel` deixou de perguntar a `pixAtivo`.** Passou a perguntar ao próprio roteamento (`resolverIntegracao(...) !== 'NENHUMA'`): um PIX cadastrado como TEF numa empresa com terminal tem caminho mesmo com o CentriumPAG desligado, e o `return capacidades.pixAtivo` anterior o escondia da tela. O caso de indisponibilidade continua único — PIX que não alcança integração nenhuma —, e a frase de `motivoDeIndisponibilidade` (`SeletorCondicaoForma.tsx`) segue válida.
+
+**Consequência aceita pelo usuário, e ela é visível em produção:** o endpoint do TEF ainda não existe (feature 010 não implementada, `iniciarIntegracao` é no-op no `vendaStore`). Um PIX que roteia para `TEF` entra na venda como `PENDENTE_INTEGRACAO` e **ninguém o confirma** — não há janela, e `PENDENTE_INTEGRACAO` bloqueia a inserção da próxima forma. Na prática, a venda trava nessa forma até a 010 existir. O usuário escolheu este desfecho sobre as alternativas (bloquear a forma com motivo explicativo, ou tratá-la como pagamento avulso) em 2026-09-21, ciente do efeito: a regra fica correta no domínio desde já, e ligar a 010 é substituir o corpo do stub, sem tocar no roteamento.
+
+**Impact:** `src/client/domain/pagamento/roteamentoIntegracao.ts` (predicado novo `cobradaNoTerminal`, compartilhado pelos dois ramos para cartão e PIX não divergirem em silêncio), `src/client/features/pagamento/SeletorCondicaoForma.tsx` (TSDoc de `motivoDeIndisponibilidade`); testes — `tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts` (+8 casos, 1 reescrito).
+
+**Verificação (AD-250):** RED observado antes da implementação (3 casos falhando); depois, 1792 testes unit/integração verdes em 114 arquivos, `tsc --noEmit` e ESLint limpos. **Não verificado ao vivo** — exige um tenant com `TEFAtivo` e uma forma de PIX cadastrada com `FPGNFTEFPO = '1'`, combinação que nenhum ambiente de teste disponível tem hoje.

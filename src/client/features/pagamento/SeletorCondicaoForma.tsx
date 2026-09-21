@@ -472,11 +472,14 @@ export function SeletorFormaPagamento({
 /**
  * Por que a forma está indisponível — a frase que o operador lê ao clicar nela.
  *
- * Hoje `formaDisponivel` recusa **um** caso: `Pix` com `pixAtivo: false`
- * (`roteamentoIntegracao.ts`) — não há caminho manual para confirmar um PIX
- * dinâmico sem a integração. A frase nomeia essa causa porque é a única que
- * existe; se o domínio passar a recusar outra forma, o motivo precisa acompanhar
- * nos dois lugares, e é para isso que a função é separada e citada aqui.
+ * Hoje `formaDisponivel` recusa **um** caso: `Pix` que não alcança integração
+ * nenhuma (`roteamentoIntegracao.ts`) — não há caminho manual para confirmar um
+ * PIX dinâmico sem integração. Desde AD-250 isso deixou de ser sinônimo de
+ * `pixAtivo: false`: um PIX cadastrado como TEF (`integracaoCartao === '1'`)
+ * numa empresa com terminal continua disponível, porque quem o cobra é o TEF.
+ * A frase nomeia a causa porque é a única que existe; se o domínio passar a
+ * recusar outra forma, o motivo precisa acompanhar nos dois lugares, e é para
+ * isso que a função é separada e citada aqui.
  */
 function motivoDeIndisponibilidade(forma: FormaPagamento): string {
   return `${forma.descricao} indisponível: a integração PIX não está ativa neste ponto de venda.`;
