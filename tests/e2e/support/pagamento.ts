@@ -24,7 +24,8 @@ export async function quitarVendaEmDinheiro(page: Page): Promise<void> {
   await page.getByTestId('opcao-condicao-1').click();
 
   const blocoEscuro = page.getByTestId('total-a-pagar');
-  const origemDoTotal = (await blocoEscuro.count()) > 0 ? blocoEscuro : page.getByTestId('total-venda');
+  const origemDoTotal =
+    (await blocoEscuro.count()) > 0 ? blocoEscuro : page.getByTestId('total-venda');
   const totalTexto = (await origemDoTotal.innerText()).trim();
 
   await page.getByTestId('combobox-forma-pagamento').click();
