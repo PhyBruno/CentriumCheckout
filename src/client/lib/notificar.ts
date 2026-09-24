@@ -101,18 +101,49 @@ const CLASSE_DO_WRAPPER = {
 type TipoNotificacao = keyof typeof TITULO_POR_TIPO;
 
 /**
+ * Largura média de um caractere do título do goey (12px/700), em px.
+ * Derivada da medida de AD-195: 78 caracteres davam uma pílula de 567px,
+ * descontados ícone e folga internos.
+ */
+const PX_POR_CARACTERE_DO_TITULO = 7;
+/** Ícone, folgas internas da pílula e a distância do toaster à borda da janela. */
+const FOLGA_DO_TITULO_PX = 96;
+
+/**
+ * A frase cabe como título, numa linha só, na janela atual?
+ *
+ * Existe porque o desktop começa em 1024px de largura (`classificarLayout`), e
+ * o título do goey é uma linha que não quebra (correção do usuário,
+ * 2026-09-24: "a notificação tem que se adequar ao tamanho da tela"). Num PC
+ * de tela pequena, uma frase de validação da NFCe chegava a passar de 1000px e
+ * saía pela borda. **É estimativa, não medida**: o toast ainda não existe
+ * quando isto roda, e medir o texto num canvas só para escolher o campo seria
+ * trabalho demais para a mesma resposta. O erro possível é inofensivo: uma
+ * frase que caberia desce para o corpo e só ganha uma quebra de linha. O teto
+ * de largura em `global.css` segura o caso contrário.
+ */
+function cabeNoTitulo(mensagem: string): boolean {
+  return mensagem.length * PX_POR_CARACTERE_DO_TITULO + FOLGA_DO_TITULO_PX <= window.innerWidth;
+}
+
+/**
  * O toast desta chamada, montado para o layout que está na tela.
  *
  * `obterPlataforma` (largura da viewport, sem React) em vez de `useIsMobile`:
  * `notificar` é chamado de stores, hooks e handlers — não é componente e não
  * pode obedecer às regras de hooks. É a mesma porta que o `pagamentoSlice` já
  * usa, e o limiar continua morando só em `classificarLayout`.
+ *
+ * **No desktop, a frase que não cabe na janela desce para `description`**,
+ * como no compacto, mas sem a tremida. A tremida existe para chamar o olhar de
+ * quem está mexendo no celular; no desktop o operador está olhando a tela.
  */
 function montarToast(
   tipo: TipoNotificacao,
   mensagem: string,
 ): { readonly titulo: string; readonly opcoes: Parameters<typeof gooeyToast.error>[1] } {
-  if (obterPlataforma() === 'DESKTOP') {
+  const desktop = obterPlataforma() === 'DESKTOP';
+  if (desktop && cabeNoTitulo(mensagem)) {
     return { titulo: mensagem, opcoes: undefined };
   }
 
@@ -120,7 +151,10 @@ function montarToast(
     titulo: TITULO_POR_TIPO[tipo],
     opcoes: {
       description: mensagem,
-      classNames: { wrapper: CLASSE_DO_WRAPPER[tipo], description: CLASSE_DA_FRASE[tipo] },
+      classNames: {
+        wrapper: desktop ? undefined : CLASSE_DO_WRAPPER[tipo],
+        description: CLASSE_DA_FRASE[tipo],
+      },
     },
   };
 }

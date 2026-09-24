@@ -636,8 +636,18 @@ button:not(:disabled):not([aria-disabled='true']),
  * API — ela pertence a `description`, que o pacote renderiza no corpo expandido
  * e mede de verdade. Quem cuida disso agora é `src/client/lib/notificar.ts`, e
  * o título voltou a ser a linha única que o pacote desenha.
+ *
+ * **Vale nos dois layouts desde 2026-09-24** (correção do usuário: "a
+ * notificação tem que se adequar ao tamanho da tela"). O desktop começa em
+ * 1024px, e uma frase longa no título passava da borda num PC de tela pequena.
+ * Quem evita isso é `notificar.ts`, que desce para o corpo a frase que não cabe.
+ * Este teto é a rede de segurança se a estimativa de largura de lá errar: no
+ * pior caso o título ganha reticências em vez de sair da tela. O `:root` só
+ * mantém a especificidade em (0,2,0), a mesma do antigo `[data-layout]`: o
+ * pacote declara `max-width: 380px` em `.gooey-contentExpanded`, no mesmo
+ * elemento e numa folha que carrega depois da nossa.
  * ------------------------------------------------------------------------- */
-[data-layout='MOBILE'] .gooey-content {
+:root .gooey-content {
   max-width: calc(100vw - 2 * var(--cc-space-base));
 }
 

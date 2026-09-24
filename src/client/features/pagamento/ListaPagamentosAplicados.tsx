@@ -165,11 +165,13 @@ export function ListaPagamentosAplicados(): ReactElement | null {
    */
   return (
     <section className="flex min-h-min w-full flex-col gap-xxs" data-testid="pagamentos-aplicados">
-      <header className="flex w-full shrink-0 items-center justify-between">
-        <h3 className="text-base font-semibold text-foreground">Pagamentos aplicados</h3>
+      {/* O faltante é o valor e não quebra; quem cede na tela estreita é o
+          título (revisão de quebras de linha, 2026-09-24). */}
+      <header className="flex w-full shrink-0 items-center justify-between gap-xs">
+        <h3 className="min-w-0 text-base font-semibold text-foreground">Pagamentos aplicados</h3>
         {saldoRestante > 0 ? (
           <span
-            className="text-sm font-semibold text-destructive"
+            className="shrink-0 text-sm font-semibold whitespace-nowrap text-destructive"
             data-testid="pagamentos-saldo-restante"
           >
             Faltante {formatarCentavos(saldoRestante)}

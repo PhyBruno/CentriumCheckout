@@ -109,6 +109,40 @@ describe('notificar no desktop (como era antes do wizard)', () => {
   });
 });
 
+/**
+ * Desktop estreito (correção do usuário, 2026-09-24: "a notificação tem que se
+ * adequar ao tamanho da tela"). O layout de desktop vale a partir de 1024px, e
+ * o título do goey é uma linha que não quebra: uma frase mais larga que a
+ * janela passava da borda. Nesse caso ela desce para o corpo que quebra linha.
+ */
+describe('notificar no desktop estreito', () => {
+  const FRASE_MAIOR_QUE_A_JANELA =
+    'Não foi possível validar a NFCe: o ERP recusou a venda porque a forma de pagamento escolhida não está liberada para esta condição, revise o pagamento.';
+
+  beforeEach(() => {
+    definirLargura(1024);
+  });
+
+  it('frase que não cabe numa linha desce para `description`, sem tremer', () => {
+    notificar.erro(FRASE_MAIOR_QUE_A_JANELA);
+
+    const { titulo, opcoes } = ultimaChamada();
+    expect(titulo).toBe('Erro');
+    expect((opcoes as OpcoesDoToast).description).toBe(FRASE_MAIOR_QUE_A_JANELA);
+    expect((opcoes as OpcoesDoToast).classNames?.description).toBe(
+      'cc-toast-frase cc-toast-frase-erro',
+    );
+    // A tremida é do compacto: no desktop o operador está olhando a tela.
+    expect((opcoes as OpcoesDoToast).classNames?.wrapper).toBeUndefined();
+  });
+
+  it('frase que cabe continua sendo o título, como sempre', () => {
+    notificar.erro(FRASE_LONGA);
+
+    expect(ultimaChamada()).toEqual({ tipo: 'error', titulo: FRASE_LONGA, opcoes: undefined });
+  });
+});
+
 describe('notificar no mobile (frase em `description`, com tremida)', () => {
   beforeEach(() => {
     definirLargura(LARGURA_MOBILE);

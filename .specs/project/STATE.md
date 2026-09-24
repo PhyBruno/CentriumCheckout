@@ -3818,3 +3818,17 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/layout/mobile/MobileWizard.tsx`, `src/client/layout/mobile/CarregamentoMobile.tsx` (teste em `TelaDeCarregamento.spec.tsx`), mais comentários em `ListaItensMobile.tsx`, `ListaPagamentosAplicados.tsx` e `EtapaClienteProdutos.tsx`. Testes: `tests/integration/mobileWizard.spec.tsx` (caso novo), `tests/e2e/support/pagamento.ts` (`quitarVendaEmDinheiro` lê o total do rodapé quando não há bloco escuro) e `tests/e2e/layout-responsivo.spec.ts` (a etapa 1 compara o rodapé).
 
 **Verificação:** 1852 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. **E2E não rodado:** a porta 3100 estava ocupada pelo BFF da stack de dev em uso, e o Playwright a reaproveitaria.
+
+### AD-256: em PC de tela pequena, a notificação cabe na janela e quem quebra linha é o nome do produto (2026-09-24)
+
+**Origem:** correção do usuário: "A notificacao tem que se adequar ao tamanho da tela, se a tela for pequena, ela tem que se adequar. 2 - A qtd de itens e subtotal, em telas pequenas (PC) está quebrando para segunda linha, o que tem que quebrar na falta de espaço é o nome do produto. Também revisa essa questão de responsividade e quebras de linha por tamanho de tela." É uma correção pontual sobre 003, 008 e AD-195.
+
+1. **Notificação.** O desktop começa em 1024px (`classificarLayout`), e ali a frase era o título do goey, uma linha que não quebra e não tinha teto de largura. `notificar.ts` agora estima se a frase cabe na janela (`cabeNoTitulo`: 7px por caractere mais 96px de ícone e folgas). Se não cabe, ela desce para `description`, como no compacto, mas **sem a tremida**. O teto de largura do `global.css` saiu do `[data-layout='MOBILE']` e vale nos dois layouts, como rede de segurança. O seletor ficou `:root .gooey-content` para manter a especificidade (0,2,0), que vence o `max-width: 380px` que o pacote põe em `.gooey-contentExpanded`.
+2. **Faixa "Resumo parcial" da grid.** A contagem "N itens" e o subtotal passam a ser `shrink-0 whitespace-nowrap`. O nome do último item passa a ser `min-w-0 flex-1 line-clamp-2`. A faixa troca `h-11` por `min-h-11` com folga, porque duas linhas de nome não cabiam em 44px.
+3. **Revisão de quebras.**
+   - **Grid:** o cabeçalho inteiro não quebra, porque "Preço un." partia em duas linhas. Qtd. e UN também não quebram, e a coluna Produto é a única que quebra (com `break-words`).
+   - **Pagamentos aplicados:** no cabeçalho da lista, "Faltante R$ …" não parte mais entre a palavra e o valor.
+
+**Impact:** `src/client/lib/notificar.ts`, `src/client/styles/global.css`, `src/client/features/carrinho/GridItens.tsx` e `src/client/features/pagamento/ListaPagamentosAplicados.tsx`. Testes em `notificar.spec.ts` (desktop estreito) e `GridItens.spec.tsx`.
+
+**Verificação:** 1856 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. **Não medido no navegador**, por decisão do usuário ("não precisa, só corrija"). O contrato do layout está travado pelas classes nos testes, porque o jsdom não mede.
