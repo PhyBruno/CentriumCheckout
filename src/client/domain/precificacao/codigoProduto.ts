@@ -32,7 +32,11 @@ export class ErroPrecoIndisponivelParaPesagem extends Error {
 const SEPARADOR_QUANTIDADE = '*';
 const TAMANHO_EAN13 = 13;
 const PREFIXO_BALANCA = '2';
-/** Posições 2–7 do EAN-13 de balança: código reduzido do produto (AD-076). */
+/**
+ * Posições 2–7 do EAN-13 de balança: código reduzido do produto (AD-076), lido
+ * **como número** (AD-252) — `001234` é o `MatCodRed` `1234`, `101234` é
+ * `101234`. É o `val(Substring(2,6)).ToString()` do `WWPNFCe` (linha 1578).
+ */
 const INICIO_CODIGO_REDUZIDO = 1;
 const FIM_CODIGO_REDUZIDO = 7;
 /** Posições 8–12: valor da etiqueta, já em centavos (2 últimos dígitos). */
@@ -110,7 +114,7 @@ export function interpretarEntradaCodigo(texto: string): EntradaCodigo {
   if (ehCodigoDeBalanca(limpo)) {
     return {
       tipo: 'BALANCA',
-      codigoReduzido: limpo.slice(INICIO_CODIGO_REDUZIDO, FIM_CODIGO_REDUZIDO),
+      codigoReduzido: String(Number(limpo.slice(INICIO_CODIGO_REDUZIDO, FIM_CODIGO_REDUZIDO))),
       valorEtiqueta: centavos(Number(limpo.slice(INICIO_VALOR_ETIQUETA, FIM_VALOR_ETIQUETA))),
     };
   }

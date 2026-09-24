@@ -7,6 +7,7 @@ import {
   ErroPrecoIndisponivelParaPesagem,
   interpretarEntradaCodigo,
   quantidadePesavel,
+  TIPO_COD_PRODUTO,
   type EntradaCodigo,
 } from '../../domain/precificacao/codigoProduto';
 import {
@@ -279,18 +280,38 @@ function mensagemDeErro(erro: unknown): string {
   return 'Não foi possível consultar o produto. Tente novamente.';
 }
 
+/** Com o que consultar `GetProduto`; `tipoCodigo` ausente vale o da sessão. */
+interface ConsultaDaEntrada {
+  readonly codigo: string;
+  readonly tipoCodigo: string | undefined;
+}
+
+/**
+ * A etiqueta de balança carrega o `MatCodRed`, então é consultada sempre como
+ * `'R'`, qualquer que seja o tipo configurado na sessão (AD-252) — num tenant em
+ * `'B'` o reduzido não casaria com `MatCodBar`.
+ */
+function consultaDaEntrada(entrada: EntradaCodigo): ConsultaDaEntrada {
+  if (entrada.tipo === 'BALANCA') {
+    return { codigo: entrada.codigoReduzido, tipoCodigo: TIPO_COD_PRODUTO.Reduzido };
+  }
+  return { codigo: entrada.codigo, tipoCodigo: undefined };
+}
+
 /**
  * Quantidade e origem derivadas da classificação da entrada.
  *
- * Em produto pesável (`'S'`/`'B'`) o valor da etiqueta serve **exclusivamente**
- * para derivar a quantidade; o total da linha é recalculado depois por
- * `preço × quantidade`, como em qualquer outra linha (`data-model.md` §1).
+ * O valor da etiqueta de balança só vira quantidade em produto `'S'` (leitura
+ * na etiqueta, AD-252) — e serve **exclusivamente** para isso: o total da linha
+ * é recalculado depois por `preço × quantidade`, como em qualquer outra linha
+ * (`data-model.md` §1). Nos demais a linha entra com a quantidade padrão, como
+ * o `AddItem` do `WWPNFCe` faz quando o produto não é pesável.
  */
 function quantidadeEOrigem(
   entrada: EntradaCodigo,
   snapshot: SnapshotPrecoProduto,
 ): { quantidade: Milesimos; origem: OrigemInsercaoViva } {
-  if (entrada.tipo === 'BALANCA') {
+  if (entrada.tipo === 'BALANCA' && snapshot.pesavelEditavel === 'S') {
     return {
       quantidade: quantidadePesavel(entrada.valorEtiqueta, snapshot.precoBase),
       origem: 'BALANCA',
@@ -514,14 +535,14 @@ export function useInsercaoDeProduto(): ApiInsercao {
 
   const inserirResolvido = useCallback(
     async (
-      codigoProduto: string,
+      consulta: ConsultaDaEntrada,
       entrada: EntradaCodigo,
       opcoes: OpcoesInsercao = {},
     ): Promise<ResultadoInsercao> => {
       let snapshot: SnapshotPrecoProduto;
       let saldo: SaldoMilesimos | null;
       try {
-        ({ snapshot, saldo } = await resolverProduto(codigoProduto));
+        ({ snapshot, saldo } = await resolverProduto(consulta.codigo, consulta.tipoCodigo));
       } catch (erro) {
         notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
@@ -588,15 +609,14 @@ export function useInsercaoDeProduto(): ApiInsercao {
    */
   const revisarResolvido = useCallback(
     async (
-      codigoProduto: string,
+      consulta: ConsultaDaEntrada,
       entrada: EntradaCodigo,
-      opcoes: { origem?: 'BUSCA'; tipoCodigo?: string } = {},
+      origemForcada: 'BUSCA' | undefined,
     ): Promise<ResultadoRevisao> => {
-      const origemForcada = opcoes.origem;
       let snapshot: SnapshotPrecoProduto;
       let saldo: SaldoMilesimos | null;
       try {
-        ({ snapshot, saldo } = await resolverProduto(codigoProduto, opcoes.tipoCodigo));
+        ({ snapshot, saldo } = await resolverProduto(consulta.codigo, consulta.tipoCodigo));
       } catch (erro) {
         notificar.erro(mensagemDeErro(erro));
         return { situacao: 'recusado' };
@@ -630,11 +650,11 @@ export function useInsercaoDeProduto(): ApiInsercao {
     inserirPorCodigo: useCallback(
       async (texto) => {
         const entrada = interpretarEntradaCodigo(texto);
-        const codigo = entrada.tipo === 'BALANCA' ? entrada.codigoReduzido : entrada.codigo;
-        if (codigo === '') {
+        const consulta = consultaDaEntrada(entrada);
+        if (consulta.codigo === '') {
           return { situacao: 'recusado' };
         }
-        return inserirResolvido(codigo, entrada);
+        return inserirResolvido(consulta, entrada);
       },
       [inserirResolvido],
     ),
@@ -642,11 +662,17 @@ export function useInsercaoDeProduto(): ApiInsercao {
     revisarPorCodigo: useCallback(
       async (texto, opcoes) => {
         const entrada = interpretarEntradaCodigo(texto);
-        const codigo = entrada.tipo === 'BALANCA' ? entrada.codigoReduzido : entrada.codigo;
-        if (codigo === '') {
+        const consulta = consultaDaEntrada(entrada);
+        if (consulta.codigo === '') {
           return { situacao: 'recusado' };
         }
-        return revisarResolvido(codigo, entrada, opcoes);
+        // O tipo escolhido pela busca (AD-205) só vale para código simples: a
+        // etiqueta de balança é sempre `'R'` (AD-252).
+        return revisarResolvido(
+          { codigo: consulta.codigo, tipoCodigo: consulta.tipoCodigo ?? opcoes?.tipoCodigo },
+          entrada,
+          opcoes?.origem,
+        );
       },
       [revisarResolvido],
     ),

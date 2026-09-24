@@ -81,9 +81,22 @@ describe('interpretarEntradaCodigo', () => {
   it('classifica EAN-13 de balança válido (AD-076)', () => {
     expect(interpretarEntradaCodigo(EAN_BALANCA)).toEqual({
       tipo: 'BALANCA',
-      codigoReduzido: '001234',
+      codigoReduzido: '1234',
       valorEtiqueta: 1500,
     });
+  });
+
+  /**
+   * As posições 2–7 são o `MatCodRed` **como número** (AD-252): o ERP faz
+   * `val(Substring(2,6)).ToString()` (`WWPNFCe`, linha 1578), então os zeros à
+   * esquerda são preenchimento da etiqueta, não parte do código.
+   */
+  it.each([
+    ['2001234015004', '1234'],
+    ['2101234015001', '101234'],
+  ])('o código reduzido de %s é o MatCodRed %s, sem zeros à esquerda (AD-252)', (ean, reduzido) => {
+    const entrada = interpretarEntradaCodigo(ean);
+    expect(entrada.tipo === 'BALANCA' && entrada.codigoReduzido).toBe(reduzido);
   });
 
   it('DV inválido cai em SIMPLES — pode ser código interno legítimo do tenant (D6)', () => {

@@ -647,6 +647,87 @@ describe('inserção pela rede — GetProduto é sempre quem resolve a linha', (
     expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 
+  /**
+   * Etiqueta de balança (AD-252): o produto é **sempre** consultado pelo
+   * `MatCodRed` — `Tipocodproduto=R`, qualquer que seja o tipo da sessão (aqui
+   * `'I'`) —, e o valor da etiqueta só vira quantidade quando o produto é
+   * `'S'` (leitura na etiqueta). Nos demais a linha entra com a quantidade
+   * padrão, como o `AddItem` do `WWPNFCe` faz quando o produto não é pesável.
+   */
+  describe('etiqueta de balança (AD-252)', () => {
+    const EAN_BALANCA = '2001234015004'; // reduzido 001234 → 1234, R$ 15,00
+
+    function responderComPesavel(pesavelEditavel: string): string[] {
+      const urls: string[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string) => {
+          urls.push(url);
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                Produto: respostaGetProduto({ ProdutoPesavelEditavel: pesavelEditavel }),
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            ),
+          );
+        }),
+      );
+      return urls;
+    }
+
+    function parametrosDe(url: string | undefined): URLSearchParams {
+      return new URL(url ?? '', 'http://checkout.local').searchParams;
+    }
+
+    it("'S': consulta o MatCodRed por Tipocodproduto=R e deriva a quantidade da etiqueta", async () => {
+      const urls = responderComPesavel('S');
+      const { result } = renderHook(() => useInsercaoDeProduto(), {
+        wrapper: envolverComQueryClient(),
+      });
+
+      const resultado = await result.current.inserirPorCodigo(EAN_BALANCA);
+
+      expect(resultado.situacao).toBe('inserido');
+      expect(parametrosDe(urls[0]).get('Codigoproduto')).toBe('1234');
+      expect(parametrosDe(urls[0]).get('Tipocodproduto')).toBe('R');
+      // R$ 15,00 de etiqueta ÷ R$ 10,00/un = 1,5 un.
+      expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(1500);
+      expect(useVendaStore.getState().linhas[0]?.origem).toBe('BALANCA');
+    });
+
+    it.each(['', 'B'])(
+      '%j: mesmo MatCodRed, mas a etiqueta não vira quantidade — entra com 1',
+      async (pesavelEditavel) => {
+        const urls = responderComPesavel(pesavelEditavel);
+        const { result } = renderHook(() => useInsercaoDeProduto(), {
+          wrapper: envolverComQueryClient(),
+        });
+
+        const resultado = await result.current.inserirPorCodigo(EAN_BALANCA);
+
+        expect(resultado.situacao).toBe('inserido');
+        expect(parametrosDe(urls[0]).get('Codigoproduto')).toBe('1234');
+        expect(parametrosDe(urls[0]).get('Tipocodproduto')).toBe('R');
+        expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(1000);
+        expect(useVendaStore.getState().linhas[0]?.origem).toBe('MANUAL');
+      },
+    );
+
+    it('a prévia do TAB segue a mesma regra', async () => {
+      const urls = responderComPesavel('S');
+      const { result } = renderHook(() => useInsercaoDeProduto(), {
+        wrapper: envolverComQueryClient(),
+      });
+
+      const revisao = await result.current.revisarPorCodigo(EAN_BALANCA);
+
+      expect(revisao.situacao === 'revisao' && revisao.quantidade).toBe(1500);
+      expect(parametrosDe(urls[0]).get('Codigoproduto')).toBe('1234');
+      expect(parametrosDe(urls[0]).get('Tipocodproduto')).toBe('R');
+    });
+  });
+
   it('produto editável não entra na venda ao confirmar a entrada (FR-014)', async () => {
     vi.stubGlobal(
       'fetch',
