@@ -2,32 +2,13 @@ import { Plus, Reply } from 'reicon-react';
 import { useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { lerCentavosDigitados } from '@/lib/numeroDigitado';
+import { fecharTecladoVirtual } from '@/lib/tecladoVirtual';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
-import { ZERO_CENTAVOS, centavos, type Centavos } from '../../domain/precificacao/dinheiro';
+import { ZERO_CENTAVOS, reaisDeCentavos } from '../../domain/precificacao/dinheiro';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
-
-const CENTAVOS_POR_REAL = 100;
-
-/**
- * `"12,34"` e `"12.34"` → `1234` centavos; entrada inválida vira `null`.
- *
- * Cópia deliberada de `lerCentavos` em
- * `features/carrinho/EntradaRapidaProduto.tsx`: é **leitura de texto digitado**,
- * a fronteira onde o número do operador vira `Centavos`, não cálculo monetário
- * — daí ela viver na camada de entrada, e não no domínio, que já opera só sobre
- * inteiros. Exportada porque `ControleDescontoCapa.tsx` lê o mesmo formato no
- * modo `'VALOR'`, e o cartão de pagamento não pode ganhar um arquivo novo só
- * para uma função de três linhas (escopo fechado da tarefa).
- */
-export function lerCentavosDigitados(texto: string): Centavos | null {
-  const normalizado = texto.trim().replace(',', '.');
-  if (normalizado === '' || !/^\d+(\.\d{1,2})?$/.test(normalizado)) {
-    return null;
-  }
-  return centavos(Math.round(Number(normalizado) * CENTAVOS_POR_REAL));
-}
 
 export interface EntradaPagamentoProps {
   /**
@@ -165,10 +146,47 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
     // Lido do estado **depois** do `await`, e não de um seletor do render: o
     // saldo que interessa é o de agora, já com esta forma aplicada.
     if (useVendaStore.getState().saldo().saldoRestante === ZERO_CENTAVOS) {
+      // O teclado virtual fecha **antes** do pedido de foco (pedido do usuário,
+      // 2026-09-24): no wizard mobile o "Finalizar" mora na etapa 3, que não
+      // está montada, então o pedido não move o foco a lugar nenhum — o campo
+      // continuava focado e o teclado, aberto sobre uma etapa em que não há
+      // mais nada a digitar.
+      fecharTecladoVirtual();
       focarFinalizarVenda();
       return;
     }
     campo.current?.focus();
+  }
+
+  /**
+   * Chegar ao campo vazio já traz o **valor que falta** cobrir (pedido do
+   * usuário, 2026-09-24) — na primeira forma, na segunda ou na terceira. O
+   * texto chega selecionado inteiro (`selecionarConteudoAoFocar`), então quem
+   * quer outro valor só digita por cima, sem apagar nada.
+   *
+   * No **foco**, e não na troca da forma: é chegando ao campo que o operador
+   * decide o valor, e preencher na troca reescreveria um número que ele já
+   * tivesse digitado antes de mudar de ideia sobre a forma. Campo com texto não
+   * é tocado pelo mesmo motivo.
+   *
+   * Fora dos casos em que o campo não aceita valor: forma ainda não escolhida
+   * ou venda sem valor (`bloqueioDoCampo`), vale devolução — cujo valor é o do
+   * ticket, decidido pelo ERP — e venda já coberta, onde não falta nada.
+   */
+  function preencherComFaltante(): void {
+    if (valorTexto.trim() !== '' || bloqueioDoCampo !== null || forma === null) {
+      return;
+    }
+    if (ehFormaDeValeDevolucao(forma)) {
+      return;
+    }
+    const faltante = useVendaStore.getState().saldo().saldoRestante;
+    if (faltante === ZERO_CENTAVOS) {
+      return;
+    }
+    // Mesma vírgula decimal de `textoDoDescontoAplicado`: a conversão é do
+    // domínio (`reaisDeCentavos`), o componente só escolhe a apresentação.
+    setValorTexto(reaisDeCentavos(faltante).toFixed(2).replace('.', ','));
   }
 
   function aoTeclar(evento: KeyboardEvent<HTMLInputElement>): void {
@@ -231,6 +249,7 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
                 setValorTexto(evento.target.value);
               }
             }}
+            onFocus={preencherComFaltante}
             onKeyDown={aoTeclar}
           />
         </span>

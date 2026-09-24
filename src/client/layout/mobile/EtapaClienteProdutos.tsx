@@ -39,8 +39,12 @@ export function EtapaClienteProdutos(): ReactElement {
       {/* O código lido pela câmera entra pelo **mesmo** `inserirPorCodigo` do
           leitor físico e da digitação (`FR-007`, D5) — o slot recebe a função,
           não um caminho de inserção próprio. Fora de Chrome/Android o botão
-          nem chega a existir: `ScannerCamera` devolve `null` (`FR-011`). */}
+          nem chega a existir: `ScannerCamera` devolve `null` (`FR-011`).
+
+          `tecladoVirtual`: aqui o código é digitado no teclado do celular, que
+          passa a abrir no numérico, com o botão ABC/123 para as letras. */}
       <EntradaRapidaProduto
+        tecladoVirtual
         renderizarCaptura={(aoLerCodigo) => <ScannerCamera onCodigoLido={aoLerCodigo} />}
       />
 

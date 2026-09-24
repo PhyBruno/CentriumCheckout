@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CartShopping, User } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { notificar } from '@/lib/notificar';
+import { fecharTecladoVirtual } from '@/lib/tecladoVirtual';
 import { cn } from '@/lib/utils';
 import { AcaoCancelarVenda } from '../../features/finalizacao-suspensao/AcoesFinaisVenda';
 import { TotalDaVenda } from '../../features/pagamento/TotalDaVenda';
@@ -263,6 +264,10 @@ export function MobileWizard(): ReactElement {
       return;
     }
 
+    // O campo focado some junto com a etapa que sai, e o teclado nem sempre vai
+    // com ele (pedido do usuário, 2026-09-24): fechar aqui, com o campo ainda
+    // montado, é o que garante a etapa nova aberta sem teclado por cima.
+    fecharTecladoVirtual();
     setEtapaAtual(etapa);
     setEtapasVisitadas((visitadas) => {
       if (visitadas.has(etapa)) {

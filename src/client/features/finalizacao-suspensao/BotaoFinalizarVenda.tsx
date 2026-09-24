@@ -2,6 +2,7 @@ import { CheckCircle } from 'reicon-react';
 import { useEffect, useRef, type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { focarSemTeclado } from '@/lib/tecladoVirtual';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 
 /**
@@ -76,7 +77,9 @@ export function BotaoFinalizarVenda({
     if (pedidosDeFoco === 0) {
       return;
     }
-    botao.current?.focus();
+    // Sem teclado (pedido do usuário, 2026-09-24): o pedido nasce do Enter no
+    // valor recebido, e no botão não há mais nada a digitar.
+    focarSemTeclado(botao.current);
   }, [pedidosDeFoco]);
   const desabilitado = motivo !== null;
 

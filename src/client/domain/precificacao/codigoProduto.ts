@@ -70,11 +70,14 @@ function ehCodigoDeBalanca(texto: string): boolean {
 
 /**
  * Aceita `3`, `3,5` e `3.5` — o operador digita no teclado numérico do PDV, onde
- * o separador decimal varia com o layout do teclado.
+ * o separador decimal varia com o layout do teclado — e, desde 2026-09-24,
+ * `,5` como `0,5` (pedido do usuário; a mesma regra de `lib/numeroDigitado`
+ * para os campos numéricos, repetida aqui porque o domínio não depende da
+ * camada de entrada).
  */
 function interpretarQuantidade(texto: string): Milesimos | null {
   const normalizado = texto.trim().replace(',', '.');
-  if (normalizado === '' || !/^\d+(\.\d+)?$/.test(normalizado)) {
+  if (normalizado === '' || !/^(\d+(\.\d+)?|\.\d+)$/.test(normalizado)) {
     return null;
   }
   const unidades = Number(normalizado);

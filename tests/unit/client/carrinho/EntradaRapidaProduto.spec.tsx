@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PoliticaSaldo } from '../../../../src/client/domain/estoque/saldoProduto';
-import { EntradaRapidaProduto } from '../../../../src/client/features/carrinho/EntradaRapidaProduto';
+import {
+  EntradaRapidaProduto,
+  type EntradaRapidaProdutoProps,
+} from '../../../../src/client/features/carrinho/EntradaRapidaProduto';
 import { notificar } from '../../../../src/client/lib/notificar';
 import { useEdicaoItemStore } from '../../../../src/client/stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
@@ -60,9 +63,12 @@ function envolverComQueryClient(): (props: { children: ReactNode }) => ReactNode
   return ({ children }) => createElement(QueryClientProvider, { client: queryClient }, children);
 }
 
-function renderBarra() {
+function renderBarra(props: EntradaRapidaProdutoProps = {}) {
   const Wrapper = envolverComQueryClient();
-  return render(createElement(Wrapper, null, createElement(EntradaRapidaProduto)));
+  // JSX, e não `createElement(EntradaRapidaProduto, props)`: com todas as props
+  // opcionais, o TypeScript lê o objeto como "tipo fraco" contra `Attributes` e
+  // recusa a sobrecarga.
+  return render(createElement(Wrapper, null, <EntradaRapidaProduto {...props} />));
 }
 
 /** jsdom não implementa `ResizeObserver`, observado pelo `<Skeleton>` do
@@ -595,6 +601,25 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
     expect(campo).toHaveValue('');
   });
 
+  // Pedido do usuário, 2026-09-24: `,5` é `0,5`, sem o operador digitar o zero.
+  it('vírgula sem parte inteira vale zero à esquerda na quantidade e no desconto', async () => {
+    const usuario = userEvent.setup();
+    await abrirPreviaEditavel();
+
+    await usuario.clear(screen.getByTestId('previa-quantidade'));
+    await usuario.type(screen.getByTestId('previa-quantidade'), ',5');
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.type(screen.getByTestId('previa-desconto-item'), ',5');
+
+    // R$ 10,00 × 0,5 − R$ 0,50.
+    expect(screen.getByTestId('previa-total-item')).toHaveTextContent('R$ 4,50');
+    await usuario.keyboard('{Enter}');
+
+    const editada = useVendaStore.getState().linhas.find((linha) => linha.idLinha === 'linha-1');
+    expect(editada?.quantidade).toBe(500);
+    expect(editada?.descontoManual).toBe(50);
+  });
+
   /**
    * Correção do usuário (2026-09-16): com a prévia aberta o operador precisa
    * conseguir voltar ao campo de código — por Tab ou clique — e trocar o que
@@ -698,22 +723,20 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
     expect(useVendaStore.getState().linhas[0]?.precoUnitario).toBe(1000);
   });
 
-  it('desconto vazio não deixa o foco sair do campo, mas 0,00 é aceito', async () => {
+  // Revoga "desconto vazio não deixa o foco sair" (pedido do usuário,
+  // 2026-09-24): vazio é zero, e o operador não precisa voltar para digitar 0.
+  it('desconto vazio vale zero: sai do campo sem aviso e volta a mostrar 0,00', async () => {
     const usuario = userEvent.setup();
     await abrirPreviaEditavel();
 
     await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled', 'true');
     await usuario.tab();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('previa-desconto-item')).toHaveFocus();
-    });
-    expect(screen.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('previa-desconto-item')).not.toHaveFocus();
+    expect(screen.getByTestId('previa-desconto-item')).toHaveValue('0,00');
 
-    // Zero é o item sem desconto — segue valendo, e confirma normalmente.
-    await usuario.type(screen.getByTestId('previa-desconto-item'), '0,00');
-    expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled', 'true');
-    await usuario.keyboard('{Enter}');
+    await usuario.click(screen.getByTestId('previa-confirmar'));
 
     const editada = useVendaStore.getState().linhas.find((linha) => linha.idLinha === 'linha-1');
     expect(editada?.descontoManual).toBe(0);
@@ -1624,5 +1647,51 @@ describe('EntradaRapidaProduto — saldo de estoque (AD-236)', () => {
       expect(useVendaStore.getState().linhas[0]?.quantidade).toBe(4000);
     });
     expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
+  });
+});
+
+/**
+ * Pedido do usuário, 2026-09-24: no celular o campo de código abre o teclado
+ * numérico — a maioria dos códigos é só número —, com um botão para trocar
+ * para o de letras, que nenhum teclado numérico de celular oferece.
+ */
+describe('EntradaRapidaProduto — teclado do campo de código no celular (2026-09-24)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+  });
+
+  it('no celular o código abre o teclado numérico', () => {
+    renderBarra({ tecladoVirtual: true });
+
+    expect(screen.getByTestId('campo-codigo-produto')).toHaveAttribute('inputmode', 'numeric');
+    expect(screen.getByTestId('alternar-teclado-codigo')).toHaveTextContent('ABC');
+  });
+
+  it('o ABC troca para letras sem perder o que já foi digitado nem o cursor', async () => {
+    const usuario = userEvent.setup();
+    renderBarra({ tecladoVirtual: true });
+    const campo = screen.getByTestId<HTMLInputElement>('campo-codigo-produto');
+
+    await usuario.type(campo, '789');
+    await usuario.click(screen.getByTestId('alternar-teclado-codigo'));
+
+    expect(campo).toHaveAttribute('inputmode', 'text');
+    expect(campo).toHaveFocus();
+    expect(campo).toHaveValue('789');
+    expect([campo.selectionStart, campo.selectionEnd]).toEqual([3, 3]);
+    expect(screen.getByTestId('alternar-teclado-codigo')).toHaveTextContent('123');
+
+    await usuario.click(screen.getByTestId('alternar-teclado-codigo'));
+    expect(campo).toHaveAttribute('inputmode', 'numeric');
+  });
+
+  it('no desktop o campo não fixa teclado nem mostra o botão', () => {
+    renderBarra();
+
+    expect(screen.getByTestId('campo-codigo-produto')).not.toHaveAttribute('inputmode');
+    expect(screen.queryByTestId('alternar-teclado-codigo')).toBeNull();
   });
 });

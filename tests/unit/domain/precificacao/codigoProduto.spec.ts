@@ -74,6 +74,15 @@ describe('interpretarEntradaCodigo', () => {
     });
   });
 
+  // Pedido do usuário, 2026-09-24: `,5` é `0,5` em todo campo numérico.
+  it('vírgula sem parte inteira na quantidade vale zero à esquerda', () => {
+    expect(interpretarEntradaCodigo(',5*001234')).toEqual({
+      tipo: 'COM_QTD',
+      codigo: '001234',
+      quantidade: 500,
+    });
+  });
+
   it('classifica código simples, com quantidade padrão 1 no call site', () => {
     expect(interpretarEntradaCodigo('001234')).toEqual({ tipo: 'SIMPLES', codigo: '001234' });
   });
