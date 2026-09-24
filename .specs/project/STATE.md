@@ -3832,3 +3832,23 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/lib/notificar.ts`, `src/client/styles/global.css`, `src/client/features/carrinho/GridItens.tsx` e `src/client/features/pagamento/ListaPagamentosAplicados.tsx`. Testes em `notificar.spec.ts` (desktop estreito) e `GridItens.spec.tsx`.
 
 **Verificação:** 1856 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. **Não medido no navegador**, por decisão do usuário ("não precisa, só corrija"). O contrato do layout está travado pelas classes nos testes, porque o jsdom não mede.
+
+### AD-257: o período de busca das janelas de importação é de no máximo um ano (2026-09-24)
+
+**Origem:** pedido do usuário: "Hoje o escopo de data nos seletores permite colocar qualquer intervalo de data, tem que limitar a um ano sempre, nao pode selecionar mais que isso." É uma correção pontual sobre 006 (DAV) e 011/AD-237 (NFCe), que usam o mesmo par de filtros.
+
+**Decisão:** um ano vai do dia até o **mesmo dia** do ano vizinho, inclusive. Por exemplo, de 24/09/2025 a 24/09/2026 é permitido. 29 de fevereiro vira 28 no ano que não o tem. Cada campo é limitado pela outra data:
+- a inicial não recua mais que um ano antes da final (`umAnoAntes`);
+- a final não avança mais que um ano depois da inicial (`umAnoDepois`).
+
+Tanto a regra quanto a frase ("O período de busca é de no máximo um ano.") moram em `lib/periodoDeBusca.ts`, ao lado de `periodoPadrao`, para as duas janelas não divergirem.
+
+**Como o campo recusa:** `CampoData` ganhou `minimo`, `maximo` e `motivoForaDoLimite`.
+- **No calendário:** o dia fora do limite fica apagado e com `aria-disabled`, sem `disabled`. Ao ser clicado, ele explica o motivo (`lib/bloqueio.ts`, AD-143).
+- **Na digitação:** a data completa fora do limite é recusada na hora, com o mesmo aviso, e o campo volta ao último valor válido.
+
+**Fora do escopo:** a ordem das datas (inicial depois da final) não foi tocada.
+
+**Impact:** `src/client/lib/periodoDeBusca.ts`, `src/client/components/ui/campo-data.tsx`, `src/client/components/ui/filtro-de-data.tsx`, `src/client/features/dav/ModalImportacaoDav.tsx` e `src/client/features/recuperacao/ModalRecuperacaoNFCe.tsx`. Testes em `periodoDeBusca.spec.ts` e `campo-data.spec.tsx`.
+
+**Verificação:** 1862 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. Não verificado no navegador.

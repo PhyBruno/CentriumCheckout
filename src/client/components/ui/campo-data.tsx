@@ -9,6 +9,8 @@ import {
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { acaoBloqueavel, atributosDeBloqueio } from '@/lib/bloqueio';
+import { notificar } from '@/lib/notificar';
 import { cn } from '@/lib/utils';
 
 /**
@@ -136,7 +138,28 @@ function mesDoValor(iso: string): Date {
   return new Date(data.getFullYear(), data.getMonth(), 1);
 }
 
-export interface CampoDataProps {
+/**
+ * Limites de data aceitos pelo campo (pedido do usuário, 2026-09-24: o período
+ * de busca é de no máximo um ano). Quem os calcula é o dono do período, que
+ * conhece a outra data (`lib/periodoDeBusca.ts`): o campo só obedece.
+ */
+interface LimitesDaData {
+  /** `YYYY-MM-DD`, inclusive; `undefined` = sem piso. */
+  readonly minimo?: string | undefined;
+  /** `YYYY-MM-DD`, inclusive; `undefined` = sem teto. */
+  readonly maximo?: string | undefined;
+  /** A frase que o operador lê ao escolher uma data fora dos limites. */
+  readonly motivoForaDoLimite?: string | undefined;
+}
+
+/** A data está fora dos limites? Comparação de ISO: `YYYY-MM-DD` ordena como texto. */
+function foraDoLimite(iso: string, { minimo, maximo }: LimitesDaData): boolean {
+  return (minimo !== undefined && iso < minimo) || (maximo !== undefined && iso > maximo);
+}
+
+const MOTIVO_GENERICO_FORA_DO_LIMITE = 'Data fora do período permitido.';
+
+export interface CampoDataProps extends LimitesDaData {
   /** `YYYY-MM-DD`; string vazia = sem data. */
   readonly valor: string;
   readonly onChange: (iso: string) => void;
@@ -145,7 +168,13 @@ export interface CampoDataProps {
   readonly testId?: string;
 }
 
-export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): ReactElement {
+export function CampoData({
+  valor,
+  onChange,
+  rotulo,
+  testId,
+  ...limites
+}: CampoDataProps): ReactElement {
   const [texto, setTexto] = useState(() => paraExibicao(valor));
   const [valorAnterior, setValorAnterior] = useState(valor);
   const [aberto, setAberto] = useState(false);
@@ -225,10 +254,19 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
           const mascarado = aplicarMascaraData(evento.target.value);
           setTexto(mascarado);
           const iso = paraIso(mascarado);
-          if (iso !== null) {
-            onChange(iso);
-            setMesVisivel(mesDoValor(iso));
+          if (iso === null) {
+            return;
           }
+          // Data completa fora dos limites: recusada na hora, com o motivo, e
+          // o campo volta ao último valor válido. Esperar o `onBlur` deixaria na
+          // tela uma data que nunca virou filtro.
+          if (foraDoLimite(iso, limites)) {
+            notificar.erro(limites.motivoForaDoLimite ?? MOTIVO_GENERICO_FORA_DO_LIMITE);
+            setTexto(paraExibicao(valor));
+            return;
+          }
+          onChange(iso);
+          setMesVisivel(mesDoValor(iso));
         }}
         onFocus={abrir}
         onClick={abrir}
@@ -245,6 +283,7 @@ export function CampoData({ valor, onChange, rotulo, testId }: CampoDataProps): 
           refCaixa={popover}
           mesVisivel={mesVisivel}
           selecionado={valor}
+          limites={limites}
           onTrocarMes={setMesVisivel}
           onSelecionar={(iso) => {
             onChange(iso);
@@ -263,6 +302,7 @@ const MARGEM_DA_JANELA = 8;
 interface CalendarioDoMesProps {
   readonly mesVisivel: Date;
   readonly selecionado: string;
+  readonly limites: LimitesDaData;
   readonly onTrocarMes: (mes: Date) => void;
   readonly onSelecionar: (iso: string) => void;
 }
@@ -350,6 +390,7 @@ function CalendarioFlutuante({
 function CalendarioDoMes({
   mesVisivel,
   selecionado,
+  limites,
   onTrocarMes,
   onSelecionar,
 }: CalendarioDoMesProps): ReactElement {
@@ -406,6 +447,12 @@ function CalendarioDoMes({
           const dia = indice + 1;
           const iso = `${String(ano)}-${doisDigitos(mes + 1)}-${doisDigitos(dia)}`;
           const ativo = iso === selecionado;
+          // Dia fora do período permitido: apagado e anunciado como
+          // desabilitado, **sem `disabled`**, para o clique ainda chegar e
+          // explicar o porquê (`lib/bloqueio.ts`, AD-143).
+          const bloqueio = foraDoLimite(iso, limites)
+            ? (limites.motivoForaDoLimite ?? MOTIVO_GENERICO_FORA_DO_LIMITE)
+            : null;
           return (
             <button
               key={iso}
@@ -413,9 +460,11 @@ function CalendarioDoMes({
               data-dia={iso}
               aria-label={paraExibicao(iso)}
               aria-pressed={ativo}
+              {...atributosDeBloqueio(bloqueio)}
               className={cn(
                 'flex h-8 items-center justify-center rounded-full font-mono text-xs font-semibold',
                 'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                'aria-disabled:cursor-not-allowed aria-disabled:opacity-35 aria-disabled:hover:bg-transparent',
                 ativo
                   ? 'bg-primary text-primary-foreground'
                   : cn(
@@ -423,9 +472,9 @@ function CalendarioDoMes({
                       iso === hoje ? 'border border-primary' : '',
                     ),
               )}
-              onClick={() => {
+              onClick={acaoBloqueavel(bloqueio, () => {
                 onSelecionar(iso);
-              }}
+              })}
             >
               {dia}
             </button>
