@@ -45,6 +45,32 @@ describe('selecionarConteudoAoFocar', () => {
     expect(selecao(campo)).toEqual([0, 5]);
   });
 
+  // Achado na verificação pelo IP (2026-09-24): a primeira tecla chegava antes
+  // da seleção agendada, e `,5` num desconto de `0,00` virava `5`.
+  it('tecla que chega antes da seleção agendada seleciona na hora', () => {
+    const campo = campoCom('0,00');
+    campo.focus();
+    campo.setSelectionRange(2, 2);
+
+    campo.dispatchEvent(new KeyboardEvent('keydown', { key: ',', bubbles: true }));
+    expect(selecao(campo)).toEqual([0, 4]);
+
+    // O que a tecla escreveu não é engolido pela seleção atrasada.
+    campo.setRangeText(',', 0, 4, 'end');
+    vi.runAllTimers();
+    expect(selecao(campo)).toEqual([1, 1]);
+  });
+
+  it('TAB com a seleção pendente não seleciona antes da hora', () => {
+    const campo = campoCom('abc');
+    campo.focus();
+    campo.setSelectionRange(3, 3);
+
+    campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+
+    expect(selecao(campo)).toEqual([3, 3]);
+  });
+
   it('campo somente leitura não é selecionado', () => {
     const campo = campoCom('12,00', (c) => {
       c.readOnly = true;

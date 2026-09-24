@@ -39,6 +39,16 @@ const TIPOS_SELECIONAVEIS: ReadonlySet<string> = new Set([
   'number',
 ]);
 
+/** Teclas que não escrevem no campo — ver `aoTeclar`. */
+const TECLAS_QUE_NAO_ESCREVEM: ReadonlySet<string> = new Set([
+  'Tab',
+  'Shift',
+  'Control',
+  'Alt',
+  'Meta',
+  'CapsLock',
+]);
+
 /**
  * Campos cujo **próximo** foco não deve selecionar nada — ver
  * `preservarSelecaoNoProximoFoco`. `WeakSet` para não segurar elemento
@@ -76,6 +86,8 @@ export function selecionarConteudoAoFocar(): () => void {
    */
   let mousePressionado = false;
   let selecionadoNoFoco: HTMLInputElement | null = null;
+  /** Campo que chegou e ainda espera a seleção agendada. */
+  let pendente: HTMLInputElement | null = null;
 
   function aoPressionarMouse(): void {
     mousePressionado = true;
@@ -91,14 +103,44 @@ export function selecionarConteudoAoFocar(): () => void {
       return;
     }
     selecionadoNoFoco = mousePressionado ? campo : null;
+    pendente = campo;
     window.setTimeout(() => {
       // O foco pode ter saído no intervalo (TAB em rajada, validação que o
       // devolve a outro campo): selecionar um campo que já não é o ativo não
-      // teria efeito visível e só confundiria o próximo foco.
-      if (document.activeElement === campo) {
+      // teria efeito visível e só confundiria o próximo foco. E se a primeira
+      // tecla já chegou, `aoTeclar` selecionou antes dela — selecionar de novo
+      // agora engoliria o que ela escreveu.
+      if (pendente === campo && document.activeElement === campo) {
         campo.select();
       }
+      if (pendente === campo) {
+        pendente = null;
+      }
     }, 0);
+  }
+
+  /**
+   * Tecla que chega **antes** da seleção agendada seleciona na hora, antes de o
+   * caractere entrar (achado na verificação pelo IP, 2026-09-24).
+   *
+   * Sem isto, digitar logo depois de chegar ao campo — o leitor de código de
+   * barras, ou um toque seguido de tecla no mesmo quadro — era uma corrida: a
+   * primeira tecla entrava no texto antigo, a seleção disparava em seguida e a
+   * segunda tecla substituía tudo. `,5` num desconto de `0,00` virava `5` —
+   * R$ 5,00 no lugar de R$ 0,50.
+   *
+   * Modificadores e TAB ficam de fora: não escrevem nada, e o TAB está levando
+   * o foco embora.
+   */
+  function aoTeclar(evento: KeyboardEvent): void {
+    if (pendente === null || evento.target !== pendente) {
+      return;
+    }
+    if (TECLAS_QUE_NAO_ESCREVEM.has(evento.key)) {
+      return;
+    }
+    pendente.select();
+    pendente = null;
   }
 
   function aoSoltarMouse(evento: MouseEvent): void {
@@ -112,9 +154,11 @@ export function selecionarConteudoAoFocar(): () => void {
   document.addEventListener('mousedown', aoPressionarMouse, true);
   document.addEventListener('focusin', aoFocar);
   document.addEventListener('mouseup', aoSoltarMouse, true);
+  document.addEventListener('keydown', aoTeclar, true);
   return () => {
     document.removeEventListener('mousedown', aoPressionarMouse, true);
     document.removeEventListener('focusin', aoFocar);
     document.removeEventListener('mouseup', aoSoltarMouse, true);
+    document.removeEventListener('keydown', aoTeclar, true);
   };
 }
