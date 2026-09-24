@@ -3804,3 +3804,15 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`codigoPendenteDeConsulta`, que substitui `codigoDivergeDaRevisao`; exceção do `acaoBloqueavel` no "+"), `src/client/layout/mobile/MobileWizard.tsx` (`IndicadorDeEtapa`), `src/client/services/impressao/abrirPdfNFCe.ts` (`descartarPdfVigente`, novo; sai `agendarRevogacao`). Testes: `EntradaRapidaProduto.spec.tsx`, `tests/integration/mobileWizard.spec.tsx`, `abrirPdfNFCe.spec.ts`.
 
 **Verificação:** 1851 testes unit/integração verdes em 117 arquivos, `tsc --noEmit` e ESLint limpos. **Itens 1 e 2 verificados pelo IP da LAN** (preview rebuildado, ERP real do tenant de demonstração, Playwright emulando iPhone 13 com toque, sem pagamento nem finalização): código reduzido `0010101900010M` + toque fora → `GetProduto` 200 e CAMISETA LEVIS na barra; o mesmo código + toque direto no "+" carrega sem aviso "Aguarde"; indicador com 2 barras na etapa 2 e 1 ao voltar. **Item 3 não verificado ao vivo** — exigiria emitir uma NFCe; coberto pelos testes unitários (mesma URL nas duas aberturas, revogação só pela venda seguinte).
+
+### AD-255: no celular, o bloco escuro de total só aparece na revisão (2026-09-24)
+
+**Origem:** pedido do usuário no mesmo dia da AD-254: "Quero remover o indicador preto de 'Total a pagar', recebido e troco das telas 1 e 2 do mobile, deixar só na tela 3 mesmo." É uma correção pontual sobre a 007.
+
+**Decisão:** `TotalDaVenda` (o bloco escuro com total a pagar, recebido e faltante/troco) sai do topo fixo do wizard e passa a ser montado **só na etapa 3**, acima da conferência. Isso **diverge do Pencil**, que o repete nas três etapas (`IQloN`/`DRz06`/`V3SMF`). Nas etapas 1 e 2 ele custava altura justo onde o teclado virtual já toma metade da tela. O desktop não muda: o bloco continua no cartão de pagamento (`PainelPagamentoETotais`).
+
+**O que o operador vê nas etapas 1 e 2 no lugar dele:** o rodapé "Total da venda" da lista de itens (`ListaItensMobile`, só com item na venda) e, na etapa 2, o "Faltante" da lista de pagamentos assim que a primeira forma entra. **Consequência aceita:** o rodapé soma as linhas (`totalVenda`) e não desconta o desconto de capa; até a primeira forma entrar (quando o "Faltante" já é líquido), o total com desconto de capa só aparece na revisão.
+
+**Impact:** `src/client/layout/mobile/MobileWizard.tsx`, mais comentários em `ListaItensMobile.tsx`, `ListaPagamentosAplicados.tsx` e `EtapaClienteProdutos.tsx`. Testes: `tests/integration/mobileWizard.spec.tsx` (caso novo), `tests/e2e/support/pagamento.ts` (`quitarVendaEmDinheiro` lê o total do rodapé quando não há bloco escuro) e `tests/e2e/layout-responsivo.spec.ts` (a etapa 1 compara o rodapé).
+
+**Verificação:** 1852 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. **E2E não rodado:** a porta 3100 estava ocupada pelo BFF da stack de dev em uso, e o Playwright a reaproveitaria.

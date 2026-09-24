@@ -358,14 +358,23 @@ export function MobileWizard(): ReactElement {
           onIrPara={irPara}
         />
 
-        {/* O cartão escuro é o mesmo `TotalDaVenda` do cartão de pagamento
-            (008): o desenho o repete no topo das três etapas, e reimplementá-lo
-            aqui duplicaria a leitura de `saldo()`. */}
-        <TotalDaVenda />
-
         {etapaAtual === 1 && <EtapaClienteProdutos />}
         {etapaAtual === 2 && <EtapaPagamento />}
-        {etapaAtual === 3 && <EtapaRevisao />}
+        {etapaAtual === 3 && (
+          <>
+            {/* O cartão escuro é o mesmo `TotalDaVenda` do cartão de pagamento
+                (008) — reimplementá-lo aqui duplicaria a leitura de `saldo()`.
+
+                **Só na revisão** (pedido do usuário, 2026-09-24, AD-255), embora
+                o desenho o repita no topo das três etapas: nas etapas 1 e 2 ele
+                custava a altura de que a digitação e o pagamento precisam, com o
+                teclado virtual já tomando metade da tela. Lá o operador segue
+                vendo o total no rodapé da lista de itens, e o faltante na lista
+                de pagamentos assim que a primeira forma entra. */}
+            <TotalDaVenda />
+            <EtapaRevisao />
+          </>
+        )}
 
         {/* "Navegação etapa N mobile" (nós `HQkFS`/`pW9hW`): altura 50, gap 8.
             Na etapa 3 só resta o voltar — o avanço de lá é finalizar a venda, e

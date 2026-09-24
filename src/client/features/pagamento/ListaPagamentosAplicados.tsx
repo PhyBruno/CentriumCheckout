@@ -43,9 +43,10 @@ import { ModalPix } from './pix/ModalPix';
  *
  * 1. **Estado vazio: o bloco inteiro não é renderizado.** Sem pagamento não há
  *    o que listar, e um título com lista vazia por baixo é a "lista fantasma"
- *    que o desenho não desenha. O saldo em aberto continua visível — ele também
- *    é a métrica "Faltante" do bloco escuro (`TotalDaVenda`), então esconder
- *    este bloco não esconde informação nenhuma do operador.
+ *    que o desenho não desenha. Sem pagamento, o faltante é o próprio total da
+ *    venda — no desktop, a métrica "Faltante" do bloco escuro (`TotalDaVenda`);
+ *    na etapa 2 do celular, que não tem o bloco escuro desde AD-255, o total do
+ *    rodapé da lista de itens.
  * 2. **"Texto restante" some quando o saldo está coberto.** O nó só existe no
  *    estado "falta pagar"; escrever "Faltante R$ 0,00" seria afirmar uma falta
  *    que não existe.

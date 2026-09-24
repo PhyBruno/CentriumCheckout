@@ -14,7 +14,8 @@ import { ScannerCamera } from './ScannerCamera';
  * **A lista entra aqui de propósito**, e é o único desvio do desenho nesta
  * etapa. O Pencil compensa a ausência dela com um contador ("Itens · 5
  * produtos") no cartão escuro do topo; o cartão escuro real é `TotalDaVenda`
- * (008), que mostra total/recebido/faltante e não conta itens. Sem a lista, o
+ * (008), que não conta itens e desde AD-255 nem aparece aqui — só na revisão.
+ * Sem a lista, o
  * operador bipa e não recebe nenhuma confirmação do que entrou — justamente o
  * retorno que o contador do desenho existia para dar. Reaproveita
  * `ListaItensMobile`, a mesma da etapa 2, sem componente novo.
