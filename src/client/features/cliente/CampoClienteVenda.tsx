@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactElement, type ReactNode } from '
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { focarSemTeclado } from '@/lib/tecladoVirtual';
 import { cn } from '@/lib/utils';
 import {
   apenasDigitos,
@@ -214,7 +215,9 @@ export function CampoClienteVenda(): ReactElement {
     if (pedidosDeFocoNaLupaVendedor === 0) {
       return;
     }
-    refLupaVendedor.current?.focus();
+    // Sem teclado (pedido do usuário, 2026-09-24): o pedido vem do Enter no
+    // código de produto numa venda sem vendedor, e na lupa não há o que digitar.
+    focarSemTeclado(refLupaVendedor.current);
   }, [pedidosDeFocoNaLupaVendedor]);
 
   /**

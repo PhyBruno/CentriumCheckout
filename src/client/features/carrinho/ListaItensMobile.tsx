@@ -149,16 +149,16 @@ export function ListaItensMobile({
       )}
 
       {/* O rodapé só existe **com item na venda** (pedido do usuário,
-          2026-09-09). Vazio, ele repetia em "R$ 0,00" o que o cartão escuro do
-          topo do wizard (`TotalDaVenda`) já diz em corpo maior, e gastava 44px
-          de altura na única tela que precisa caber sem rolagem. */}
+          2026-09-09): vazio, ele só diria "R$ 0,00" e gastava 44px de altura na
+          única tela que precisa caber sem rolagem. Com item, é o **único** total
+          das etapas 1 e 2 — o cartão escuro (`TotalDaVenda`) ficou só na
+          revisão (AD-255). */}
       {linhas.length === 0 ? null : (
         <footer className="flex items-center justify-between gap-sm rounded-xl border border-border bg-background px-base py-2.5">
           <span className="text-sm text-muted-foreground">Total da venda</span>
           {/* `font-mono tabular-nums` como todo valor monetário do produto (regra
             de tipografia do projeto, `CLAUDE.md`): este total saía em Inter e
-            desalinhava com o mesmo número exibido em Geist Mono no cartão
-            escuro logo acima e na linha de cada item logo abaixo. */}
+            desalinhava com o valor de cada item logo acima, em Geist Mono. */}
           <strong className="shrink-0 font-mono text-lg tabular-nums" data-testid="total-venda">
             {formatarCentavos(totalVenda(linhas))}
           </strong>

@@ -2,6 +2,7 @@ import { ArrowRight } from 'reicon-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
 import { notificar } from '@/lib/notificar';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { lerCentavosDigitados, lerDecimalDigitado } from '@/lib/numeroDigitado';
 import { cn } from '@/lib/utils';
 import { resolverDescontoCapa } from '../../domain/pagamento/descontoCapa';
 import {
@@ -14,19 +15,9 @@ import {
 import type { DescontoCapa } from '../../domain/pagamento/descontoCapa';
 import { totalVenda } from '../../domain/precificacao/linha';
 import { useVendaStore } from '../../stores/vendaStore';
-import { lerCentavosDigitados } from './EntradaPagamento';
 
 type ModoAjuste = 'PERCENTUAL' | 'VALOR';
 
-/**
- * `"5"`, `"5,5"` ou `"5.5"` → `5.5`; entrada inválida vira `null`.
- *
- * **Uma casa decimal, não duas** (pedido do usuário, 2026-09-04): `"99,9"` é o
- * formato do produto. A segunda casa não sobrevive ao arredondamento em nenhum
- * carrinho pequeno — `aplicarPercentual` fecha em centavo inteiro, de modo que
- * `10,25%` e `10,3%` de R$ 40,00 dão o mesmo valor — e prometia uma precisão
- * que o resultado nunca teve.
- */
 /**
  * O texto que representa um desconto **já aplicado** — o que o campo mostra
  * quando reabre sobre uma venda que já tem ajuste.
@@ -56,12 +47,18 @@ function textoDoDescontoAplicado(desconto: DescontoCapa | null): string {
   return reaisDeCentavos(centavos(desconto.entrada)).toFixed(2).replace('.', ',');
 }
 
+/**
+ * `"5"`, `"5,5"`, `",5"` ou `"5.5"` → `5.5`/`0.5`; entrada inválida vira `null`
+ * (regras de digitação comuns a todo campo numérico em `lib/numeroDigitado`).
+ *
+ * **Uma casa decimal, não duas** (pedido do usuário, 2026-09-04): `"99,9"` é o
+ * formato do produto. A segunda casa não sobrevive ao arredondamento em nenhum
+ * carrinho pequeno — `aplicarPercentual` fecha em centavo inteiro, de modo que
+ * `10,25%` e `10,3%` de R$ 40,00 dão o mesmo valor — e prometia uma precisão
+ * que o resultado nunca teve.
+ */
 function lerPercentualDigitado(texto: string): number | null {
-  const normalizado = texto.trim().replace(',', '.');
-  if (normalizado === '' || !/^\d+(\.\d)?$/.test(normalizado)) {
-    return null;
-  }
-  return Number(normalizado);
+  return lerDecimalDigitado(texto, 1);
 }
 
 /**

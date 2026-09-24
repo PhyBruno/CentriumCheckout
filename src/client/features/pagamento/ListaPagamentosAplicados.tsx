@@ -43,9 +43,10 @@ import { ModalPix } from './pix/ModalPix';
  *
  * 1. **Estado vazio: o bloco inteiro não é renderizado.** Sem pagamento não há
  *    o que listar, e um título com lista vazia por baixo é a "lista fantasma"
- *    que o desenho não desenha. O saldo em aberto continua visível — ele também
- *    é a métrica "Faltante" do bloco escuro (`TotalDaVenda`), então esconder
- *    este bloco não esconde informação nenhuma do operador.
+ *    que o desenho não desenha. Sem pagamento, o faltante é o próprio total da
+ *    venda — no desktop, a métrica "Faltante" do bloco escuro (`TotalDaVenda`);
+ *    na etapa 2 do celular, que não tem o bloco escuro desde AD-255, o total do
+ *    rodapé da lista de itens.
  * 2. **"Texto restante" some quando o saldo está coberto.** O nó só existe no
  *    estado "falta pagar"; escrever "Faltante R$ 0,00" seria afirmar uma falta
  *    que não existe.
@@ -164,11 +165,13 @@ export function ListaPagamentosAplicados(): ReactElement | null {
    */
   return (
     <section className="flex min-h-min w-full flex-col gap-xxs" data-testid="pagamentos-aplicados">
-      <header className="flex w-full shrink-0 items-center justify-between">
-        <h3 className="text-base font-semibold text-foreground">Pagamentos aplicados</h3>
+      {/* O faltante é o valor e não quebra; quem cede na tela estreita é o
+          título (revisão de quebras de linha, 2026-09-24). */}
+      <header className="flex w-full shrink-0 items-center justify-between gap-xs">
+        <h3 className="min-w-0 text-base font-semibold text-foreground">Pagamentos aplicados</h3>
         {saldoRestante > 0 ? (
           <span
-            className="text-sm font-semibold text-destructive"
+            className="shrink-0 text-sm font-semibold whitespace-nowrap text-destructive"
             data-testid="pagamentos-saldo-restante"
           >
             Faltante {formatarCentavos(saldoRestante)}

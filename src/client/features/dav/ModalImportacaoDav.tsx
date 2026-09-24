@@ -10,7 +10,12 @@ import {
 } from '@/components/ui/cabecalho-ordenavel';
 import { ControlePaginacao } from '@/components/ui/controle-paginacao';
 import { FiltroDeData } from '@/components/ui/filtro-de-data';
-import { periodoPadrao } from '@/lib/periodoDeBusca';
+import {
+  MOTIVO_PERIODO_MAIOR_QUE_UM_ANO,
+  periodoPadrao,
+  umAnoAntes,
+  umAnoDepois,
+} from '@/lib/periodoDeBusca';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -323,6 +328,10 @@ export function ModalImportacaoDav({
                 testId="dav-data-inicial"
                 valor={dataInicial}
                 onChange={aoTrocarData(setDataInicial)}
+                // No máximo um ano de período (pedido do usuário, 2026-09-24):
+                // cada data limita a outra (`lib/periodoDeBusca.ts`).
+                minimo={umAnoAntes(dataFinal)}
+                motivoForaDoLimite={MOTIVO_PERIODO_MAIOR_QUE_UM_ANO}
               />
               <FiltroDeData
                 etiqueta="Data final"
@@ -330,6 +339,8 @@ export function ModalImportacaoDav({
                 testId="dav-data-final"
                 valor={dataFinal}
                 onChange={aoTrocarData(setDataFinal)}
+                maximo={umAnoDepois(dataInicial)}
+                motivoForaDoLimite={MOTIVO_PERIODO_MAIOR_QUE_UM_ANO}
               />
             </div>
           </div>

@@ -13,14 +13,20 @@ import { expect, type Page } from '@playwright/test';
  * forma que nunca depende de integração externa em nenhuma configuração de
  * flags, então o pagamento entra `APROVADO` na hora sem as features 009/010.
  *
- * O valor é lido do próprio bloco de total, e não passado pelo chamador, para o
- * helper continuar correto quando o teste mudar a composição do carrinho.
+ * O valor é lido da própria tela, e não passado pelo chamador, para o helper
+ * continuar correto quando o teste mudar a composição do carrinho. No desktop ele
+ * vem do bloco escuro; na etapa 2 do celular esse bloco não existe desde AD-255
+ * (só a revisão o mostra), e o total sai do rodapé da lista de itens — o mesmo
+ * número, porque nenhum destes testes aplica desconto de capa.
  */
 export async function quitarVendaEmDinheiro(page: Page): Promise<void> {
   await page.getByTestId('combobox-condicao-pagamento').click();
   await page.getByTestId('opcao-condicao-1').click();
 
-  const totalTexto = (await page.getByTestId('total-a-pagar').innerText()).trim();
+  const blocoEscuro = page.getByTestId('total-a-pagar');
+  const origemDoTotal =
+    (await blocoEscuro.count()) > 0 ? blocoEscuro : page.getByTestId('total-venda');
+  const totalTexto = (await origemDoTotal.innerText()).trim();
 
   await page.getByTestId('combobox-forma-pagamento').click();
   await page.getByTestId('opcao-forma-1').click();

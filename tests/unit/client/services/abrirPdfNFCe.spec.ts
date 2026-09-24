@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { abrirPdfNFCe } from '../../../../src/client/services/impressao/abrirPdfNFCe';
+import {
+  abrirPdfNFCe,
+  descartarPdfVigente,
+} from '../../../../src/client/services/impressao/abrirPdfNFCe';
 
 /** `%PDF` em base64 — o conteúdo não importa, só precisa decodificar. */
 const PDF_BASE64 = 'JVBERg==';
@@ -12,11 +15,16 @@ const PDF_BASE64 = 'JVBERg==';
  */
 describe('abrirPdfNFCe', () => {
   afterEach(() => {
+    descartarPdfVigente();
     vi.restoreAllMocks();
   });
 
   function stubarUrl() {
-    const criar = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:pdf-1');
+    let criadas = 0;
+    const criar = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
+      criadas += 1;
+      return `blob:pdf-${String(criadas)}`;
+    });
     const revogar = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     return { criar, revogar };
   }
@@ -26,44 +34,62 @@ describe('abrirPdfNFCe', () => {
     const janela = { opener: {} as unknown } as Window;
     const abrirJanela = vi.fn<typeof window.open>(() => janela);
 
-    abrirPdfNFCe(PDF_BASE64, { abrirJanela, agendarRevogacao: () => undefined });
+    abrirPdfNFCe(PDF_BASE64, { abrirJanela });
 
     const features = abrirJanela.mock.calls[0]?.[2] ?? '';
     expect(features).not.toMatch(/noopener/);
   });
 
-  it('aba aberta: responde aberto, corta o opener e só revoga a URL depois', () => {
+  it('aba aberta: responde aberto, corta o opener e mantém a URL viva', () => {
     const { revogar } = stubarUrl();
     const janela = { opener: {} as unknown } as Window;
-    const agendada: (() => void)[] = [];
 
-    const resultado = abrirPdfNFCe(PDF_BASE64, {
-      abrirJanela: () => janela,
-      agendarRevogacao: (fn) => {
-        agendada.push(fn);
-      },
-    });
+    const resultado = abrirPdfNFCe(PDF_BASE64, { abrirJanela: () => janela });
 
     expect(resultado).toEqual({ estado: 'aberto' });
     // Sem `noopener`, a proteção contra a aba mexer nesta é feita à mão.
     expect(janela.opener).toBeNull();
     expect(revogar).not.toHaveBeenCalled();
-    agendada.forEach((fn) => {
-      fn();
-    });
-    expect(revogar).toHaveBeenCalledWith('blob:pdf-1');
   });
 
-  it('pop-up recusado (retorno null): responde bloqueado e revoga a URL', () => {
+  /**
+   * Correção do usuário, 2026-09-24 (AD-254): com a aba recusada, o link do
+   * aviso de pop-up bloqueado do navegador morria na hora, e o botão do modal
+   * abria outro link. Os dois precisam ser o mesmo, e os dois válidos.
+   */
+  it('pop-up recusado: responde bloqueado e a URL continua válida', () => {
     const { revogar } = stubarUrl();
 
-    const resultado = abrirPdfNFCe(PDF_BASE64, {
-      abrirJanela: () => null,
-      agendarRevogacao: () => undefined,
-    });
+    const resultado = abrirPdfNFCe(PDF_BASE64, { abrirJanela: () => null });
 
     expect(resultado).toEqual({ estado: 'bloqueado-pelo-navegador' });
+    expect(revogar).not.toHaveBeenCalled();
+  });
+
+  it('o botão do modal abre o mesmo link que o navegador bloqueou', () => {
+    const { criar } = stubarUrl();
+    const abrirJanela = vi.fn<typeof window.open>(() => null);
+
+    abrirPdfNFCe(PDF_BASE64, { abrirJanela });
+    abrirPdfNFCe(PDF_BASE64, { abrirJanela });
+
+    expect(criar).toHaveBeenCalledTimes(1);
+    expect(abrirJanela.mock.calls.map((chamada) => chamada[0])).toEqual([
+      'blob:pdf-1',
+      'blob:pdf-1',
+    ]);
+  });
+
+  it('o PDF da venda seguinte revoga o link do anterior', () => {
+    const { revogar } = stubarUrl();
+    const abrirJanela = vi.fn<typeof window.open>(() => null);
+
+    abrirPdfNFCe(PDF_BASE64, { abrirJanela });
+    abrirPdfNFCe('JVBERi0x', { abrirJanela });
+
+    expect(revogar).toHaveBeenCalledTimes(1);
     expect(revogar).toHaveBeenCalledWith('blob:pdf-1');
+    expect(abrirJanela.mock.calls[1]?.[0]).toBe('blob:pdf-2');
   });
 
   it('base64 corrompido: responde pdf-invalido sem abrir aba', () => {

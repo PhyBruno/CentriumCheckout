@@ -116,6 +116,50 @@ describe('MobileWizard — navegação', () => {
     expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('2/3');
   });
 
+  // Correção do usuário, 2026-09-24 (AD-254): voltar apaga a barra da etapa
+  // deixada para trás — o azul é o progresso, não o histórico —, e ela segue
+  // sendo o atalho para ir de novo.
+  it('ao voltar, a barra da etapa à frente apaga e continua levando até ela', async () => {
+    const usuario = userEvent.setup();
+    renderizarWizard();
+    const barrasAzuis = (): number =>
+      screen.getByTestId('indicador-etapa').querySelectorAll('.bg-primary').length;
+
+    expect(barrasAzuis()).toBe(1);
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(barrasAzuis()).toBe(2);
+
+    await usuario.click(screen.getByTestId('ir-para-etapa-1'));
+    expect(barrasAzuis()).toBe(1);
+    expect(screen.getByTestId('ir-para-etapa-2')).toHaveAccessibleName(/^Ir para/);
+
+    await usuario.click(screen.getByTestId('ir-para-etapa-2'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(barrasAzuis()).toBe(2);
+  });
+
+  // Pedido do usuário, 2026-09-24 (AD-255): o bloco escuro de total, recebido
+  // e troco/faltante só aparece na revisão — nas etapas 1 e 2 ele ocupava a
+  // altura de que a digitação e o pagamento precisam.
+  it('o bloco escuro de total só aparece na etapa 3', async () => {
+    const usuario = userEvent.setup();
+    cobrirSaldo();
+    renderizarWizard();
+
+    expect(screen.queryByTestId('total-da-venda')).toBeNull();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(screen.queryByTestId('total-da-venda')).toBeNull();
+
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(screen.getByTestId('etapa-revisao')).toBeInTheDocument();
+    expect(screen.getByTestId('total-a-pagar')).toHaveTextContent('100,00');
+
+    await usuario.click(screen.getByTestId('ir-para-etapa-2'));
+    expect(screen.queryByTestId('total-da-venda')).toBeNull();
+  });
+
   it('não oferece atalho para uma etapa nunca visitada', () => {
     renderizarWizard();
 

@@ -7,6 +7,8 @@ import { ROTA_DISPLAY } from '../shared/display';
 import { DisplayCliente } from './features/display/DisplayCliente';
 import { sincronizarLayoutNoDocumento } from './layout/sincronizarLayoutNoDocumento';
 import { ancorarToastNaViewport } from './layout/ancorarToastNaViewport';
+import { selecionarConteudoAoFocar } from './lib/selecionarConteudoAoFocar';
+import { instalarFechamentoDoTecladoAoTocarFora } from './lib/tecladoVirtual';
 // Bones gerados por `npm run bones` (CLI do Boneyard). Sem este import,
 // `<Skeleton name="pdv-venda">` não acha a geometria capturada e cai no
 // `fallback` estático — sem shimmer nenhum (AUTH-05).
@@ -34,6 +36,13 @@ sincronizarLayoutNoDocumento();
 // razão. Inerte onde as duas viewports coincidem — desktop e celular sem
 // teclado.
 ancorarToastNaViewport();
+
+// Dois comportamentos de campo que valem para a aplicação inteira (pedido do
+// usuário, 2026-09-24): chegar a um campo seleciona o conteúdo dele, e tocar
+// fora de um campo fecha o teclado virtual. No documento, e não campo a campo,
+// pela mesma razão da ancoragem acima — nenhum componente é dono deles.
+selecionarConteudoAoFocar();
+instalarFechamentoDoTecladoAoTocarFora();
 
 /**
  * Cache do ERP durante a venda (feature 003).

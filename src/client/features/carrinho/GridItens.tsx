@@ -62,7 +62,12 @@ export function GridItens(): ReactElement {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">Itens da venda em andamento</caption>
-          <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
+          {/* `whitespace-nowrap` no cabeçalho inteiro, e a exceção é a coluna
+              Produto, que também quebra no corpo: em PC de tela pequena "Preço
+              un." partia em duas linhas e empurrava a altura do cabeçalho
+              (correção do usuário, 2026-09-24). A tabela tira a largura que
+              falta da única coluna que pode quebrar, o nome do produto. */}
+          <thead className="sticky top-0 z-10 bg-muted whitespace-nowrap text-muted-foreground">
             <tr>
               <th scope="col" className="px-base py-sm text-left font-medium">
                 Item
@@ -122,25 +127,38 @@ export function GridItens(): ReactElement {
           Renderizado **sempre**, inclusive com a venda vazia: no desenho a
           faixa é parte fixa do cartão de produtos, e some-la enquanto não há
           item faria a tabela mudar de altura na primeira inserção e tiraria da
-          tela os contadores que o operador usa para conferir a venda. */}
+          tela os contadores que o operador usa para conferir a venda.
+
+          **Na falta de espaço, quem quebra é o nome do produto** (correção do
+          usuário, 2026-09-24): em PC de tela pequena "N itens" e o subtotal
+          iam para a segunda linha. Os dois agora não quebram nem encolhem; o
+          nome encolhe (`min-w-0 flex-1`) e quebra em até duas linhas. Por isso
+          a faixa troca a altura fixa por `min-h-11` com folga vertical: duas
+          linhas de nome não cabiam em 44px. */}
       <footer
-        className="flex h-11 shrink-0 items-center justify-between gap-sm border-t border-border bg-secondary px-[20px]"
+        className="flex min-h-11 shrink-0 items-center justify-between gap-sm border-t border-border bg-secondary px-[20px] py-xxs"
         data-testid="resumo-parcial-carrinho"
       >
-        <span className="text-sm text-muted-foreground" data-testid="ultimo-item-adicionado">
+        <span
+          className="line-clamp-2 min-w-0 flex-1 text-sm break-words text-muted-foreground"
+          data-testid="ultimo-item-adicionado"
+        >
           {ultimoItem === undefined
             ? 'Nenhum item adicionado ainda'
             : `Último item adicionado: ${ultimoItem.snapshot.descricao}`}
         </span>
         <span
-          className="rounded-full bg-background px-sm py-xxs text-sm font-semibold text-foreground"
+          className="shrink-0 rounded-full bg-background px-sm py-xxs text-sm font-semibold whitespace-nowrap text-foreground"
           data-testid="quantidade-itens-carrinho"
         >
           {ativas.length} {ativas.length === 1 ? 'item' : 'itens'}
         </span>
-        <span className="flex items-center gap-sm">
+        <span
+          className="flex shrink-0 items-center gap-sm whitespace-nowrap"
+          data-testid="subtotal-carrinho"
+        >
           <span className="text-sm text-muted-foreground">Subtotal</span>
-          <strong className="font-mono text-lg" data-testid="total-venda">
+          <strong className="font-mono text-lg tabular-nums" data-testid="total-venda">
             {formatarCentavos(totalVenda(linhas))}
           </strong>
         </span>
@@ -228,16 +246,21 @@ function LinhaDaGrid({
         {String(numeroItem).padStart(2, '0')}
       </td>
       <td className="px-base py-sm">
-        <span className="block font-medium text-foreground">{linha.snapshot.descricao}</span>
+        {/* A única célula que quebra linha na falta de espaço (2026-09-24): as
+            outras colunas são `whitespace-nowrap`. `break-words` cobre a
+            descrição sem espaço nenhum, que sem ele esticaria a coluna. */}
+        <span className="block font-medium break-words text-foreground">
+          {linha.snapshot.descricao}
+        </span>
         <span className="block font-mono text-xs text-muted-foreground">
           {linha.snapshot.codigoProduto}
         </span>
         {linha.cancelada ? <span className="sr-only"> (item cancelado)</span> : null}
       </td>
-      <td className="px-base py-sm text-right font-mono tabular-nums">
+      <td className="px-base py-sm text-right font-mono whitespace-nowrap tabular-nums">
         {formatarQuantidade(linha.quantidade, 3)}
       </td>
-      <td className="px-base py-sm">{linha.snapshot.unidadeMedida}</td>
+      <td className="px-base py-sm whitespace-nowrap">{linha.snapshot.unidadeMedida}</td>
       {/* `whitespace-nowrap` nas três colunas de dinheiro: um valor grande
           quebrava em duas linhas e empurrava a altura da linha (correção do
           usuário, 2026-09-16). A coluna cresce; o número não parte. */}

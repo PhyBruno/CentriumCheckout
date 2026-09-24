@@ -152,4 +152,20 @@ describe('GridItens — faixa "Resumo parcial carrinho" (correção do usuário,
     );
     expect(screen.getByTestId('quantidade-itens-carrinho')).toHaveTextContent('1 item');
   });
+
+  // Correção do usuário, 2026-09-24: em PC de tela pequena "N itens" e o
+  // subtotal quebravam para a segunda linha. Quem cede espaço é o nome do
+  // produto. O jsdom não mede layout, então o contrato é o das classes: os
+  // contadores nunca quebram nem encolhem, e o nome encolhe e quebra.
+  it('na falta de espaço quem quebra é o nome do produto, nunca contagem e subtotal', () => {
+    useVendaStore.setState({ linhas: [linhaDe()] });
+    render(<GridItens />);
+
+    const quantidade = screen.getByTestId('quantidade-itens-carrinho');
+    const subtotal = screen.getByTestId('subtotal-carrinho');
+    for (const elemento of [quantidade, subtotal]) {
+      expect(elemento).toHaveClass('shrink-0', 'whitespace-nowrap');
+    }
+    expect(screen.getByTestId('ultimo-item-adicionado')).toHaveClass('min-w-0', 'flex-1');
+  });
 });

@@ -8,9 +8,11 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
+import { lerCentavosDigitados, lerDecimalDigitado } from '@/lib/numeroDigitado';
 import { haJanelaAberta } from '@/lib/useFocoDeModal';
 import { cn } from '@/lib/utils';
 import {
@@ -21,11 +23,11 @@ import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../hotkeys/mapaAtalhos';
 import {
   ZERO_CENTAVOS,
   calcularTotalLinha,
-  centavos,
   formatarCentavos,
   somar,
-  type Centavos,
 } from '../../domain/precificacao/dinheiro';
+import { preservarSelecaoNoProximoFoco } from '@/lib/selecionarConteudoAoFocar';
+import { focarSemTeclado } from '@/lib/tecladoVirtual';
 import {
   AVALIACAO_LIVRE,
   type AvaliacaoSaldo,
@@ -80,22 +82,28 @@ const AVISO_DESCONTO_ZERA_ITEM =
 
 /**
  * Campos obrigatórios da prévia (pedido do usuário, 2026-09-04): sair de
- * quantidade, preço ou desconto com o campo vazio — ou com quantidade/preço
- * zerados — é erro, avisado na hora e com o foco devolvido ao campo.
+ * quantidade ou preço zerados é erro, avisado na hora e com o foco devolvido ao
+ * campo.
  *
  * **Zero é recusado em quantidade e preço, mas não em desconto** (decisão do
  * usuário na mesma data): um item sem desconto é o caso normal, e o campo
  * nasce em `0,00`; exigir um desconto positivo impediria a inserção mais
- * comum do caixa. No desconto, portanto, só o campo vazio (ou um texto que
- * `lerCentavos` não entende) bloqueia — o desconto grande demais continua
- * coberto por `AVISO_DESCONTO_ZERA_ITEM`.
+ * comum do caixa. O desconto grande demais continua coberto por
+ * `AVISO_DESCONTO_ZERA_ITEM`.
+ *
+ * **Campo vazio vale zero** desde 2026-09-24 (pedido do usuário, regra de
+ * `lib/numeroDigitado`): na quantidade e no preço ele cai na mesma recusa do
+ * zero, com a mesma frase; no desconto ele **é** o zero, e sair do campo
+ * apagado deixa de prender o foco — o campo só volta a mostrar `0,00`. Ali só
+ * um texto que não é número bloqueia.
  */
 const AVISO_QUANTIDADE_INVALIDA =
   'Informe a quantidade do item: ela precisa ser um número maior que zero.';
 const AVISO_PRECO_INVALIDO =
   'Informe o preço unitário do item: ele precisa ser um valor maior que zero.';
 const AVISO_DESCONTO_INVALIDO =
-  'Informe o desconto do item: digite 0,00 quando não houver desconto.';
+  'Desconto do item inválido: use apenas números, com no máximo duas casas decimais.';
+const TEXTO_SEM_DESCONTO = '0,00';
 
 /**
  * Código apagado com uma revisão na tela (correção do usuário, 2026-09-16).
@@ -130,15 +138,6 @@ const AVISO_CODIGO_OBRIGATORIO =
 const AVISO_SEM_VENDEDOR =
   'Escolha o vendedor da venda antes de inserir produtos: use a lupa ao lado de "Vendedor NFCe".';
 
-/** `"12,34"` e `"12.34"` → `1234` centavos; entrada inválida vira `null`. */
-function lerCentavos(texto: string): Centavos | null {
-  const normalizado = texto.trim().replace(',', '.');
-  if (normalizado === '' || !/^\d+(\.\d{1,2})?$/.test(normalizado)) {
-    return null;
-  }
-  return centavos(Math.round(Number(normalizado) * CENTAVOS_POR_REAL));
-}
-
 function paraTextoDecimal(valorEmCentavos: number): string {
   return (valorEmCentavos / CENTAVOS_POR_REAL).toFixed(2).replace('.', ',');
 }
@@ -169,14 +168,13 @@ function somenteQuantidade(texto: string): string {
   return saida;
 }
 
-/** `"3"`, `"3,5"` ou `"3.5"` → `Milesimos`; inválida ou não positiva vira `null`. */
+/**
+ * `"3"`, `"3,5"`, `",5"` ou `"3.5"` → `Milesimos`; inválida ou não positiva —
+ * inclusive vazia, que vale zero (`lib/numeroDigitado`) — vira `null`.
+ */
 function lerQuantidadeTexto(texto: string): Milesimos | null {
-  const normalizado = texto.trim().replace(',', '.');
-  if (normalizado === '' || !/^\d+(\.\d{1,3})?$/.test(normalizado)) {
-    return null;
-  }
-  const unidades = Number(normalizado);
-  return unidades > 0 ? milesimosDeUnidades(unidades) : null;
+  const unidades = lerDecimalDigitado(texto, 3);
+  return unidades !== null && unidades > 0 ? milesimosDeUnidades(unidades) : null;
 }
 
 /**
@@ -313,10 +311,35 @@ export interface EntradaRapidaProdutoProps {
    * nem consegue — inventar um segundo caminho de inserção.
    */
   readonly renderizarCaptura?: (aoLerCodigo: (codigo: string) => void) => ReactNode;
+  /**
+   * A barra está no layout de toque, onde o código é digitado no teclado
+   * virtual (pedido do usuário, 2026-09-24): o campo de código abre o teclado
+   * **numérico** — a maioria dos códigos é só número — e ganha o botão ABC/123
+   * para trocar para o de letras.
+   *
+   * O botão não é enfeite: nem o teclado numérico do Android nem o do iPhone
+   * têm tecla para voltar às letras, e sem ele um código alfanumérico — ou o
+   * `*` do multiplicador de quantidade — não teria como ser digitado.
+   *
+   * Prop do layout, e não leitura de layout aqui dentro, pela mesma razão do
+   * `renderizarCaptura`: quem sabe que a tela é a do celular é o wizard. No
+   * desktop o teclado é físico e o `inputMode` não teria efeito — exceto num
+   * notebook de toque, onde abriria um teclado numérico sem o botão de volta.
+   */
+  readonly tecladoVirtual?: boolean;
 }
+
+/**
+ * Teclado virtual do campo de código: `'numeric'` por padrão, `'text'` depois
+ * do ABC. A escolha vale até a barra desmontar — quem trocou para letras
+ * provavelmente trabalha com códigos alfanuméricos, e voltar ao numérico a cada
+ * item o obrigaria a tocar no ABC toda vez.
+ */
+type TecladoDoCodigo = 'numeric' | 'text';
 
 export function EntradaRapidaProduto({
   renderizarCaptura,
+  tecladoVirtual = false,
 }: EntradaRapidaProdutoProps = {}): ReactElement {
   const { inserirPorCodigo, confirmarEdicao, revisarPorCodigo, confirmarPrevia } =
     useInsercaoDeProduto();
@@ -348,7 +371,7 @@ export function EntradaRapidaProduto({
     formatarQuantidade(QUANTIDADE_INICIAL, 3),
   );
   const [precoTexto, setPrecoTexto] = useState('');
-  const [descontoTexto, setDescontoTexto] = useState('0,00');
+  const [descontoTexto, setDescontoTexto] = useState(TEXTO_SEM_DESCONTO);
   /**
    * Último saldo de estoque conhecido do produto na barra (AD-236): vem da
    * resolução (TAB, Enter, modal, câmera) e é atualizado por cada confirmação
@@ -358,6 +381,13 @@ export function EntradaRapidaProduto({
   const [saldoConhecido, setSaldoConhecido] = useState<SaldoMilesimos | null>(null);
 
   const campoCodigo = useRef<HTMLInputElement>(null);
+  const [tecladoDoCodigo, setTecladoDoCodigo] = useState<TecladoDoCodigo>('numeric');
+  /**
+   * O ABC/123 está tirando e devolvendo o foco do campo de código — ver
+   * `alternarTecladoDoCodigo`. Enquanto dura, o `blur` não é o operador saindo
+   * do campo, e revalidar o código no ERP ali consultaria um código pela metade.
+   */
+  const trocandoTeclado = useRef(false);
   /**
    * Entrada que **produziu** a revisão na tela — o texto cru, não o código
    * canônico do produto: `4*789` resolve o produto `789`, e comparar contra o
@@ -391,10 +421,10 @@ export function EntradaRapidaProduto({
   const descontoConvenioFixo = linhaEmEdicao?.descontoConvenio ?? ZERO_CENTAVOS;
   const quantidadeLida = lerQuantidadeTexto(quantidadeTexto);
   const precoLido = editavel
-    ? lerCentavos(precoTexto)
+    ? lerCentavosDigitados(precoTexto)
     : (linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? null);
   const descontoManualLido = editavel
-    ? lerCentavos(descontoTexto)
+    ? lerCentavosDigitados(descontoTexto)
     : (linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS);
   const descontoTotalLido =
     descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
@@ -512,7 +542,10 @@ export function EntradaRapidaProduto({
       campoQuantidade.current?.focus();
       campoQuantidade.current?.select();
     } else {
-      botaoConfirmar.current?.focus();
+      // Sem teclado: no "+" não há o que digitar (pedido do usuário,
+      // 2026-09-24), e o produto escolhido no modal de busca chega aqui com o
+      // teclado da busca ainda aberto.
+      focarSemTeclado(botaoConfirmar.current);
     }
   }, [resolvido]);
 
@@ -537,7 +570,7 @@ export function EntradaRapidaProduto({
       campoQuantidade.current?.focus();
       campoQuantidade.current?.select();
     } else {
-      botaoConfirmar.current?.focus();
+      focarSemTeclado(botaoConfirmar.current);
     }
   }, [linhaEmEdicao]);
 
@@ -629,7 +662,7 @@ export function EntradaRapidaProduto({
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
     setPrecoTexto('');
-    setDescontoTexto('0,00');
+    setDescontoTexto(TEXTO_SEM_DESCONTO);
     setSaldoConhecido(null);
     limparEdicao();
   }
@@ -807,7 +840,7 @@ export function EntradaRapidaProduto({
     setSaldoConhecido(revisao.saldo);
     setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
     setPrecoTexto(paraTextoDecimal(revisao.snapshot.precoBase));
-    setDescontoTexto('0,00');
+    setDescontoTexto(TEXTO_SEM_DESCONTO);
   }
 
   /**
@@ -892,16 +925,25 @@ export function EntradaRapidaProduto({
   }
 
   /**
-   * O que está no campo ainda é o que foi ao ERP?
+   * O que está no campo precisa ir ao ERP ao sair dele?
    *
-   * Só faz sentido com uma **prévia de inserção** na tela (`resolvido`): sem
-   * ela não há preço nem total de produto nenhum para divergir, e o campo vazio
-   * segue sendo navegação normal — o TAB dali continua indo para a lupa
-   * (pedido do usuário, 2026-09-04). No item carregado pelo lápis o campo é
+   * **Com uma prévia de inserção** (`resolvido`): só se o código mudou desde a
+   * consulta — ver `aoSairDoCodigo`. No item carregado pelo lápis o campo é
    * `disabled`, então nunca diverge.
+   *
+   * **Sem prévia, só no celular** (correção do usuário, 2026-09-24, AD-254):
+   * digitar o código e sair do campo — pelo "OK"/"Ir" do teclado ou tocando
+   * fora — não carregava nada. No desktop quem consulta é o TAB, tecla que o
+   * teclado virtual não tem; sem ele, a saída do campo é o único gesto que diz
+   * "terminei de digitar". No desktop a saída sem prévia continua sendo só
+   * navegação — o TAB com o campo vazio segue indo para a lupa (pedido do
+   * usuário, 2026-09-04), e um clique fora não é pedido de consulta.
    */
-  function codigoDivergeDaRevisao(): boolean {
-    return resolvido !== null && texto.trim() !== entradaRevisada.current;
+  function codigoPendenteDeConsulta(): boolean {
+    if (resolvido !== null) {
+      return texto.trim() !== entradaRevisada.current;
+    }
+    return tecladoVirtual && linhaEmEdicao === null && texto.trim() !== '';
   }
 
   /**
@@ -925,9 +967,12 @@ export function EntradaRapidaProduto({
    *
    * Código igual ao que já foi revisado não consulta nada: senão, sair do campo
    * para ajustar a quantidade custaria um `GetProduto` a cada ida e volta.
+   *
+   * No celular, sair com um código digitado e **nenhuma** prévia também
+   * consulta (`codigoPendenteDeConsulta`, AD-254) — pelo mesmo caminho do TAB.
    */
   async function aoSairDoCodigo(): Promise<void> {
-    if (ocupado || !codigoDivergeDaRevisao()) {
+    if (trocandoTeclado.current || ocupado || !codigoPendenteDeConsulta()) {
       return;
     }
     if (texto.trim() === '') {
@@ -935,6 +980,49 @@ export function EntradaRapidaProduto({
       return;
     }
     await revisarEntrada();
+  }
+
+  /**
+   * Troca o teclado virtual do campo de código entre numérico e letras
+   * (pedido do usuário, 2026-09-24).
+   *
+   * **Tirar e devolver o foco é o que troca o teclado.** O Safari só lê o
+   * `inputmode` quando o campo ganha foco, e mudar o atributo com o teclado
+   * aberto não muda nada na tela; o `blur` + `focus` dentro do próprio toque
+   * funciona nos dois navegadores — e, sendo um gesto do operador, o iPhone
+   * aceita abrir o teclado de novo. `flushSync` porque o atributo precisa estar
+   * no DOM **antes** do novo foco.
+   *
+   * Com o campo já focado o cursor volta para onde estava: o operador está no
+   * meio do código, e a seleção automática de `selecionarConteudoAoFocar` faria
+   * a próxima tecla apagar o que ele digitou. Com o campo fora de foco é uma
+   * chegada comum, com seleção.
+   */
+  function alternarTecladoDoCodigo(): void {
+    flushSync(() => {
+      setTecladoDoCodigo((atual) => (atual === 'numeric' ? 'text' : 'numeric'));
+    });
+    const campo = campoCodigo.current;
+    if (campo === null || campo.disabled) {
+      return;
+    }
+    if (document.activeElement !== campo) {
+      campo.focus();
+      return;
+    }
+    const inicio = campo.selectionStart;
+    const fim = campo.selectionEnd;
+    trocandoTeclado.current = true;
+    try {
+      campo.blur();
+    } finally {
+      trocandoTeclado.current = false;
+    }
+    preservarSelecaoNoProximoFoco(campo);
+    campo.focus();
+    if (inicio !== null && fim !== null) {
+      campo.setSelectionRange(inicio, fim);
+    }
   }
 
   /**
@@ -1314,22 +1402,30 @@ export function EntradaRapidaProduto({
             <Barcode className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate">{rotuloCampoCodigo}</span>
           </span>
-          <input
-            ref={campoCodigo}
-            className="h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono disabled:cursor-not-allowed disabled:opacity-70 md:h-11.5"
-            data-testid="campo-codigo-produto"
-            /* Única exceção à regra de `FR-014` (decisão do usuário,
+          {/* `relative` para o ABC/123 ficar **dentro** da moldura do campo, na
+              ponta direita: a faixa de cima já tem a lupa e o Scanner, e um
+              terceiro botão ali tiraria largura do próprio código. */}
+          <span className="relative flex">
+            <input
+              ref={campoCodigo}
+              className={cn(
+                'h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono disabled:cursor-not-allowed disabled:opacity-70 md:h-11.5',
+                tecladoVirtual && 'pr-14',
+              )}
+              data-testid="campo-codigo-produto"
+              {...(tecladoVirtual ? { inputMode: tecladoDoCodigo } : {})}
+              /* Única exceção à regra de `FR-014` (decisão do usuário,
                2026-09-05): os atalhos globais F6–F9 disparam **com o foco
                aqui**. É onde o caixa passa a venda inteira, e obrigá-lo a sair
                do campo para fechar a venda transformaria um toque em três
                gestos. Seguro pelo mesmo motivo que a regra existe: o leitor de
                código de barras emite dígitos e `Enter`, nunca teclas de função. */
-            {...ATRIBUTO_ATALHOS_PERMITIDOS}
-            autoComplete="off"
-            autoFocus
-            placeholder="Bipe ou digite (use * p/ quantidade)"
-            value={texto}
-            /* **Livre na prévia, `disabled` no lápis** (correções do usuário,
+              {...ATRIBUTO_ATALHOS_PERMITIDOS}
+              autoComplete="off"
+              autoFocus
+              placeholder="Bipe ou digite (use * p/ quantidade)"
+              value={texto}
+              /* **Livre na prévia, `disabled` no lápis** (correções do usuário,
                2026-09-16, nesta ordem no mesmo dia).
 
                Na prévia de inserção ele ficava `disabled` e o operador não
@@ -1345,23 +1441,51 @@ export function EntradaRapidaProduto({
                item com o preço e o total de outro produto. Para inserir um
                produto diferente o caminho é cancelar a edição e bipar o novo
                código, que é o gesto que o caixa já faz. */
-            disabled={linhaEmEdicao !== null}
-            title={
-              linhaEmEdicao === null
-                ? undefined
-                : 'O código não muda na edição de um item já lançado: cancele com Esc para inserir outro produto.'
-            }
-            onChange={(evento) => {
-              setTexto(evento.target.value);
-            }}
-            onKeyDown={aoTeclarNoCodigo}
-            /* Sair do campo com o código mexido revalida no ERP
+              disabled={linhaEmEdicao !== null}
+              title={
+                linhaEmEdicao === null
+                  ? undefined
+                  : 'O código não muda na edição de um item já lançado: cancele com Esc para inserir outro produto.'
+              }
+              onChange={(evento) => {
+                setTexto(evento.target.value);
+              }}
+              onKeyDown={aoTeclarNoCodigo}
+              /* Sair do campo com o código mexido revalida no ERP
                (`aoSairDoCodigo`): sem isto, apagar o código e sair pelo TAB
                deixava preço, desconto e total do produto anterior na barra. */
-            onBlur={() => {
-              void aoSairDoCodigo();
-            }}
-          />
+              onBlur={() => {
+                void aoSairDoCodigo();
+              }}
+            />
+            {/* Pílula no vocabulário do "Scanner" do Pencil (`QIJKL`: fundo
+              `$surface-strong`, raio 100, texto na cor da marca) — o desenho não
+              tem controle de teclado, e este é o botão de ação pequena que ele
+              já usa na mesma barra. O rótulo diz **para qual** teclado ele leva.
+
+              `onPointerDown` com `preventDefault`: sem ele, no Android o toque
+              levaria o foco para o botão e o teclado fecharia antes de reabrir
+              no outro modo. Fica dentro do `<label>` do código, então o toque
+              também não conta como "fora do campo" para `tecladoVirtual.ts`. */}
+            {tecladoVirtual && linhaEmEdicao === null ? (
+              <button
+                type="button"
+                className="absolute top-1/2 right-1.5 flex h-7 -translate-y-1/2 items-center rounded-full bg-secondary px-2.5 font-sans text-xs font-semibold text-primary"
+                aria-label={
+                  tecladoDoCodigo === 'numeric'
+                    ? 'Usar teclado com letras'
+                    : 'Usar teclado numérico'
+                }
+                data-testid="alternar-teclado-codigo"
+                onPointerDown={(evento) => {
+                  evento.preventDefault();
+                }}
+                onClick={alternarTecladoDoCodigo}
+              >
+                {tecladoDoCodigo === 'numeric' ? 'ABC' : '123'}
+              </button>
+            ) : null}
+          </span>
         </label>
 
         <Button
@@ -1548,12 +1672,18 @@ export function EntradaRapidaProduto({
               // O texto permanece no campo para ser corrigido; quem impede a
               // inserção é `bloqueioDeInsercao`.
               //
-              // Campo vazio vem primeiro e **prende o foco**: sem número
-              // nenhum não há total a conferir, então o aviso de desconto que
-              // zera o item nem chega a fazer sentido. O desconto grande
-              // demais continua só avisando, sem tomar o foco — o valor está
-              // escrito e o operador decide se reduz ou desiste do item.
+              // Campo vazio é desconto zero (pedido do usuário, 2026-09-24):
+              // sai sem aviso e volta a mostrar `0,00`, o mesmo texto com que o
+              // campo nasce. Texto que não é número vem primeiro e **prende o
+              // foco**: sem número não há total a conferir, então o aviso de
+              // desconto que zera o item nem chega a fazer sentido. O desconto
+              // grande demais continua só avisando, sem tomar o foco — o valor
+              // está escrito e o operador decide se reduz ou desiste do item.
               onBlur={() => {
+                if (editavel && descontoTexto.trim() === '') {
+                  setDescontoTexto(TEXTO_SEM_DESCONTO);
+                  return;
+                }
                 if (descontoInvalido) {
                   exigirCampo(campoDesconto, AVISO_DESCONTO_INVALIDO);
                   return;
@@ -1622,11 +1752,18 @@ export function EntradaRapidaProduto({
           //   `confirmar` passa por `previaValida`, que além de avisar leva o
           //   foco ao campo — só o toast deixava o operador sem saber onde
           //   corrigir o preço zerado.
-          // Nos três casos o motivo continua em `bloqueioDeInsercao`, para o
+          // - **código em consulta** (AD-254): no celular, tocar aqui com um
+          //   código digitado tira o foco do campo, e é essa saída que consulta
+          //   e insere. O toque chega com a consulta em voo, e anunciar
+          //   "Aguarde" por cima de uma inserção que já está acontecendo seria
+          //   um aviso de erro para o gesto certo. `confirmar` ignora a
+          //   segunda inserção sozinho (`confirmarEntradaRapida` com `ocupado`).
+          // Nos quatro casos o motivo continua em `bloqueioDeInsercao`, para o
           // botão aparecer bloqueado e o `title` explicar sem depender do
           // clique.
           onClick={acaoBloqueavel(
             bloqueadoPorVendedor ||
+              (ocupado && semResolucao) ||
               motivoSaldo !== null ||
               (!semResolucao && (quantidadeInvalida || precoInvalido || descontoInvalido))
               ? null

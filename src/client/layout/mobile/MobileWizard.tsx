@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, CartShopping, User } from 'reicon-react';
 import { useState, type ReactElement } from 'react';
 import { atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { notificar } from '@/lib/notificar';
+import { fecharTecladoVirtual } from '@/lib/tecladoVirtual';
 import { cn } from '@/lib/utils';
 import { AcaoCancelarVenda } from '../../features/finalizacao-suspensao/AcoesFinaisVenda';
 import { TotalDaVenda } from '../../features/pagamento/TotalDaVenda';
@@ -263,6 +264,10 @@ export function MobileWizard(): ReactElement {
       return;
     }
 
+    // O campo focado some junto com a etapa que sai, e o teclado nem sempre vai
+    // com ele (pedido do usuário, 2026-09-24): fechar aqui, com o campo ainda
+    // montado, é o que garante a etapa nova aberta sem teclado por cima.
+    fecharTecladoVirtual();
     setEtapaAtual(etapa);
     setEtapasVisitadas((visitadas) => {
       if (visitadas.has(etapa)) {
@@ -353,14 +358,23 @@ export function MobileWizard(): ReactElement {
           onIrPara={irPara}
         />
 
-        {/* O cartão escuro é o mesmo `TotalDaVenda` do cartão de pagamento
-            (008): o desenho o repete no topo das três etapas, e reimplementá-lo
-            aqui duplicaria a leitura de `saldo()`. */}
-        <TotalDaVenda />
-
         {etapaAtual === 1 && <EtapaClienteProdutos />}
         {etapaAtual === 2 && <EtapaPagamento />}
-        {etapaAtual === 3 && <EtapaRevisao />}
+        {etapaAtual === 3 && (
+          <>
+            {/* O cartão escuro é o mesmo `TotalDaVenda` do cartão de pagamento
+                (008) — reimplementá-lo aqui duplicaria a leitura de `saldo()`.
+
+                **Só na revisão** (pedido do usuário, 2026-09-24, AD-255), embora
+                o desenho o repita no topo das três etapas: nas etapas 1 e 2 ele
+                custava a altura de que a digitação e o pagamento precisam, com o
+                teclado virtual já tomando metade da tela. Lá o operador segue
+                vendo o total no rodapé da lista de itens, e o faltante na lista
+                de pagamentos assim que a primeira forma entra. */}
+            <TotalDaVenda />
+            <EtapaRevisao />
+          </>
+        )}
 
         {/* "Navegação etapa N mobile" (nós `HQkFS`/`pW9hW`): altura 50, gap 8.
             Na etapa 3 só resta o voltar — o avanço de lá é finalizar a venda, e
@@ -523,10 +537,17 @@ interface IndicadorDeEtapaProps {
  * "Etapa N de 3 compacta mobile" (nós `VPzwH`/`HdFux`/`jsXLY`): título, o
  * contador `N/3` e três barras de 5px.
  *
- * As barras das etapas **já visitadas** são botões: é o gesto de navegação livre
- * que `FR-004` pede, e o desenho já as separa visualmente. A barra de uma etapa
- * ainda não visitada continua sendo um traço inerte — não há para onde voltar
- * numa etapa onde o operador nunca esteve.
+ * **O azul é o progresso, não o histórico** (correção do usuário, 2026-09-24,
+ * AD-254): a barra acende até a etapa **atual** — 1/3, 2/3, 3/3, como os três
+ * nós do desenho — e apaga ao voltar. Até então ela acendia toda etapa já
+ * visitada, e voltar da 2 para a 1 deixava duas barras azuis com o contador
+ * dizendo `1/3`.
+ *
+ * As barras das etapas **já visitadas** continuam sendo botões, inclusive a de
+ * uma etapa à frente que o operador deixou para trás: é o gesto de navegação
+ * livre que `FR-004` pede. A barra de uma etapa ainda não visitada continua
+ * sendo um traço inerte — não há para onde ir numa etapa onde o operador nunca
+ * esteve.
  */
 function IndicadorDeEtapa({
   etapaAtual,
@@ -555,7 +576,7 @@ function IndicadorDeEtapa({
           const visitada = etapasVisitadas.has(etapa);
           const classe = cn(
             'h-[5px] min-w-0 flex-1 rounded-full',
-            visitada ? 'bg-primary' : 'bg-secondary',
+            etapa <= etapaAtual ? 'bg-primary' : 'bg-secondary',
           );
 
           if (!visitada || etapa === etapaAtual) {
@@ -571,7 +592,7 @@ function IndicadorDeEtapa({
                 'cc-alvo-toque outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
               )}
               data-testid={`ir-para-etapa-${String(etapa)}`}
-              aria-label={`Voltar para ${ETAPAS[etapa].titulo}`}
+              aria-label={`${etapa < etapaAtual ? 'Voltar para' : 'Ir para'} ${ETAPAS[etapa].titulo}`}
               {...atributosDeBloqueio(bloqueioDaEtapa(etapa))}
               onClick={() => {
                 onIrPara(etapa);

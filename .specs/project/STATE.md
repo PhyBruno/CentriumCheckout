@@ -1969,7 +1969,9 @@ O `focoVendaStore` deixa de ser um canal de mão única (era só `focarCodigoPro
 
 **Impact:** `src/client/stores/focoVendaStore.ts`, `src/client/features/carrinho/EntradaRapidaProduto.tsx`, `src/client/features/cliente/CampoClienteVenda.tsx`, `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` e `tests/unit/client/cliente/CampoClienteVenda.spec.tsx` (novo — o card não tinha spec). 654 testes verdes, `tsc --noEmit` e `eslint` limpos.
 
-### AD-157: Quantidade, preço e desconto do item são obrigatórios — sair do campo vazio avisa e devolve o foco (2026-09-04)
+### AD-157: Quantidade, preço e desconto do item são obrigatórios — sair do campo vazio avisa e devolve o foco (2026-09-04) — **desconto vazio revogado por AD-253**
+
+> **Parcialmente superada por AD-253 (2026-09-24):** campo vazio passou a valer **zero** em todo campo numérico. Na quantidade e no preço o efeito é o mesmo (vazio cai na recusa do zero, com a mesma frase); no **desconto**, vazio **não prende mais o foco** — o campo volta a mostrar `0,00`, e só texto que não é número bloqueia.
 
 **Pedido do usuário:** *"Corrija na insercao do item: 1 - A quantidade está permitindo ficar zero, ou sem informacao nenhuma, não pode, ao tentar passar do campo tem que dar erro com notificacao e voltar o foco para o campo referente. 2 - o PREÇO UNITARIO está permitindo ficar zero, ou sem informacao nenhuma, não pode (…). 3 - O desconto do item está permitindo ficar zero, ou sem informacao nenhuma, não pode (…)."*
 
@@ -1977,7 +1979,7 @@ Os três campos digitáveis da prévia de item aceitavam sair vazios: `lerQuanti
 
 Agora cada campo confere o próprio valor no `blur` (`exigirCampo`): toast de erro com o motivo e foco de volta ao campo, texto preservado para correção. `previaValida()` repete a mesma sequência no Enter, e `bloqueioDeInsercao` passa a responder com **o mesmo aviso** de cada campo em vez do genérico "há um valor inválido" — o operador lê a mesma frase pelos três caminhos.
 
-**Zero é recusado em quantidade e preço, mas não em desconto** (decisão do usuário, mesma data). Um item sem desconto é o caso normal e o campo nasce em `0,00`; exigir desconto positivo tornaria impossível a inserção mais comum do caixa. No desconto, portanto, só o campo vazio (ou texto que `lerCentavos` não entende) prende o foco — o desconto grande demais continua coberto por AD-151, que avisa sem tomar o foco porque ali o valor está escrito e a decisão é do operador.
+**Zero é recusado em quantidade e preço, mas não em desconto** (decisão do usuário, mesma data). Um item sem desconto é o caso normal e o campo nasce em `0,00`; exigir desconto positivo tornaria impossível a inserção mais comum do caixa. No desconto, portanto, só texto que não é número prende o foco (**desde AD-253; até então o campo vazio também prendia**) — o desconto grande demais continua coberto por AD-151, que avisa sem tomar o foco porque ali o valor está escrito e a decisão é do operador.
 
 Dois limites deliberados, ambos para não criar beco sem saída:
 
@@ -3773,3 +3775,80 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 **Impact:** `src/client/domain/precificacao/codigoProduto.ts` (`interpretarEntradaCodigo` tira os zeros), `src/client/features/carrinho/useCarrinho.ts` (`consultaDaEntrada`, novo; `quantidadeEOrigem` exige `'S'`; `inserirResolvido`/`revisarResolvido` recebem a consulta com o tipo), `tests/unit/domain/precificacao/codigoProduto.spec.ts`, `tests/integration/carrinhoSlice.spec.ts`. Corrige no próprio texto AD-076 e o Edge Case de balança de `.specs/features/carrinho-produto-precificacao/spec.md`.
 
 **Verificação:** 1799 testes unit/integração verdes em 114 arquivos, `tsc --noEmit` e ESLint limpos. **Não verificado ao vivo** — falta bipar uma etiqueta real contra o ERP de demonstração.
+
+### AD-253: digitação no celular — teclado numérico no código, faltante pré-carregado, `,8` é `0,8`, vazio é zero, conteúdo selecionado ao chegar e teclado que fecha (2026-09-24)
+
+**Origem:** seis correções pedidas pelo usuário depois de usar o layout de toque, em Android (Chrome) e iPhone (Safari). Correção pontual sobre features já implementadas (003, 008, 007): código + testes + esta AD, sem reabrir o ciclo do Spec Kit.
+
+1. **Código de produto abre o teclado numérico, com botão ABC/123.** Só no layout de toque (prop `tecladoVirtual`, passada por `EtapaClienteProdutos`): no desktop o teclado é físico, e num notebook de toque o `inputmode` abriria um teclado numérico sem volta. **O botão não é opcional**: nem o teclado numérico do Android nem o do iPhone têm tecla para as letras — sem ele, código alfanumérico e o `*` do multiplicador ficariam impossíveis. Trocar de teclado tira e devolve o foco dentro do próprio toque (o Safari só lê o `inputmode` no foco), preservando o cursor e sem revalidar o código no ERP. A escolha vale até a barra desmontar. **Desvio do Pencil:** o desenho não tem esse controle; a pílula segue o vocabulário do "Scanner" (`QIJKL`) e fica dentro da moldura do campo. Consequência conhecida: no iPhone o teclado numérico **não tem Enter** — a inserção rápida ali é pelo botão "Adicionar ao carrinho" (ou pelo teclado ABC).
+2. **Chegar ao valor recebido vazio traz o faltante**, já selecionado — na 1ª, 2ª ou 3ª forma. No **foco**, não na troca de forma (preencher na troca reescreveria um número já digitado). Fora: forma não escolhida, venda sem valor, vale devolução (valor do ticket) e venda coberta.
+3. **`,8` é `0,8`** em valor, quantidade, desconto, percentual e no multiplicador `,5*código`. As quatro cópias do parser (`lerCentavos`, `lerCentavosDigitados`, `lerQuantidadeTexto`, `lerPercentualDigitado`) passam a usar `src/client/lib/numeroDigitado.ts`; o domínio (`interpretarQuantidade`) repete a regra no próprio padrão, porque não depende da camada de entrada.
+4. **Campo vazio é zero.** Na quantidade, no preço e no valor recebido, vazio cai na mesma recusa do zero. No desconto do item **revoga** a parte de AD-157 que prendia o foco no campo vazio: sai sem aviso e volta a mostrar `0,00`. Desconto de capa vazio já removia o desconto.
+5. **Chegar a um campo seleciona o conteúdo inteiro** — TAB, toque, clique ou foco pedido pelo código —, e a primeira tecla substitui. Instalado no documento (`src/client/lib/selecionarConteudoAoFocar.ts`, pelo `main.tsx`), não campo a campo. Seleção agendada (`setTimeout` 0) para valer depois do `onFocus` do campo e do cursor do toque; só o `mouseup` do clique que trouxe o foco é engolido (senão o Chrome recolhe a seleção), e foco por TAB não engole clique nenhum.
+6. **Teclado virtual fecha quando não há o que digitar** (`src/client/lib/tecladoVirtual.ts`). Não existe API para fechar o teclado: fecha-se tirando o foco do campo. Os três casos relatados: **(a)** Enter que termina num botão — `focarSemTeclado` antes do foco no "+", na lupa do vendedor e no "Finalizar", e `fecharTecladoVirtual` antes do pedido de foco no "Finalizar", que no wizard mora na etapa 3 **desmontada** (o pedido não movia nada e o campo seguia focado); **(b)** toque fora do campo — ouvinte de toque (`pointerType: 'touch'`) no documento, no soltar, ignorando rolagem (>10px ou `pointercancel`) e toques no `<label>` de um campo; **(c)** troca de etapa — `MobileWizard.irPara` fecha antes de trocar.
+
+**Onde mora:** `lib/`, não `layout/` — as features chamam `focarSemTeclado`, e nenhuma feature importa de `layout/` (a dependência corre `layout → features → lib`).
+
+**Impact:** `src/client/lib/{numeroDigitado,selecionarConteudoAoFocar,tecladoVirtual}.ts` (novos), `src/client/main.tsx`, `src/client/features/carrinho/EntradaRapidaProduto.tsx`, `src/client/features/pagamento/{EntradaPagamento,ControleDescontoCapa}.tsx`, `src/client/features/cliente/CampoClienteVenda.tsx`, `src/client/features/finalizacao-suspensao/BotaoFinalizarVenda.tsx`, `src/client/layout/mobile/{MobileWizard,EtapaClienteProdutos}.tsx`, `src/client/domain/precificacao/codigoProduto.ts`. Corrige no próprio texto AD-157 e o bullet de campos obrigatórios de `.specs/features/carrinho-produto-precificacao/spec.md`.
+
+**Verificação:** 1844 testes unit/integração verdes em 117 arquivos (casos novos em `tests/unit/client/lib/{numeroDigitado,selecionarConteudoAoFocar,tecladoVirtual}.spec.ts`, `EntradaPagamento.spec.tsx`, `EntradaRapidaProduto.spec.tsx`, `codigoProduto.spec.ts`), `tsc --noEmit` e ESLint limpos. **E2E não rodado** (porta 3100 ocupada pelo BFF do ERP real em uso). **Verificado pelo IP da LAN** (`vite preview --mode lan`, ERP real do tenant de demonstração, Playwright emulando iPhone 13 com toque, sem adicionar pagamento nem finalizar): teclado numérico e ABC/123 com cursor preservado, toque fora e troca de etapa tirando o foco do campo, seleção ao chegar, `,5` no desconto (R$ 100,00 → R$ 99,50), desconto vazio voltando a `0,00` e o faltante (R$ 100,00) chegando selecionado. **A verificação achou uma corrida**, corrigida no mesmo dia: a primeira tecla chegava antes da seleção agendada, e `,5` virava `5` (R$ 95,00); agora a tecla que chega com a seleção pendente seleciona antes de escrever. **Falta** conferir num aparelho físico — a emulação não abre teclado virtual de verdade, então o fechamento em si (item 6) só está provado pelo foco saindo do campo.
+
+### AD-254: no celular sair do campo de código consulta o produto; o indicador de etapas é progresso; um PDF, um link (2026-09-24)
+
+**Origem:** três correções pedidas pelo usuário no mesmo dia da AD-253, usando o layout de toque. Correção pontual sobre 003, 007 e 004.
+
+1. **No celular, sair do campo de código com um código digitado consulta o ERP** — pelo "OK"/"Ir" do teclado ou tocando fora. No desktop quem consulta é o TAB (AD-027/AD-063), e o teclado virtual não tem TAB: sem prévia na tela, sair do campo não fazia nada, e o código digitado ficava parado. Vai pelo mesmo caminho do TAB (`revisarEntrada`): `''`/`'S'`/`'B'` entram direto, `'E'` abre a prévia. **Só com `tecladoVirtual`**: no desktop a saída sem prévia continua sendo navegação. Tocar em "Adicionar ao carrinho" com o código digitado é, ele mesmo, uma saída do campo — a consulta já está em voo quando o clique chega, e o botão passa a não anunciar "Aguarde" nesse caso (`confirmar` já ignora a segunda inserção).
+2. **O azul do indicador de etapas é o progresso, não o histórico.** A barra acende até a etapa atual e apaga ao voltar; antes, acendia toda etapa já visitada, e voltar da 2 para a 1 deixava duas barras azuis com o contador em `1/3`. As etapas visitadas continuam sendo atalho (`FR-004`), inclusive a que ficou à frente — o nome acessível passa a dizer "Ir para" nela.
+3. **Um PDF, um link.** Com a aba recusada pelo navegador, o link oferecido pelo aviso de pop-up bloqueado morria na hora (a `blob:` URL era revogada no ramo `null`) e o botão "Abrir o PDF em outra aba" criava outra URL a cada clique. Agora a URL do documento é criada uma vez e reaproveitada, e só é revogada quando o PDF de outra venda a substitui — revogar por prazo (60s até então) mataria o link de quem demora a clicar no aviso, e nunca revogar acumularia um PDF por venda durante o turno.
+
+**Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx` (`codigoPendenteDeConsulta`, que substitui `codigoDivergeDaRevisao`; exceção do `acaoBloqueavel` no "+"), `src/client/layout/mobile/MobileWizard.tsx` (`IndicadorDeEtapa`), `src/client/services/impressao/abrirPdfNFCe.ts` (`descartarPdfVigente`, novo; sai `agendarRevogacao`). Testes: `EntradaRapidaProduto.spec.tsx`, `tests/integration/mobileWizard.spec.tsx`, `abrirPdfNFCe.spec.ts`.
+
+**Verificação:** 1851 testes unit/integração verdes em 117 arquivos, `tsc --noEmit` e ESLint limpos. **Itens 1 e 2 verificados pelo IP da LAN** (preview rebuildado, ERP real do tenant de demonstração, Playwright emulando iPhone 13 com toque, sem pagamento nem finalização): código reduzido `0010101900010M` + toque fora → `GetProduto` 200 e CAMISETA LEVIS na barra; o mesmo código + toque direto no "+" carrega sem aviso "Aguarde"; indicador com 2 barras na etapa 2 e 1 ao voltar. **Item 3 não verificado ao vivo** — exigiria emitir uma NFCe; coberto pelos testes unitários (mesma URL nas duas aberturas, revogação só pela venda seguinte).
+
+### AD-255: no celular, o bloco escuro de total só aparece na revisão (2026-09-24)
+
+**Origem:** pedido do usuário no mesmo dia da AD-254: "Quero remover o indicador preto de 'Total a pagar', recebido e troco das telas 1 e 2 do mobile, deixar só na tela 3 mesmo." É uma correção pontual sobre a 007.
+
+**Decisão:** `TotalDaVenda` (o bloco escuro com total a pagar, recebido e faltante/troco) sai do topo fixo do wizard e passa a ser montado **só na etapa 3**, acima da conferência. Isso **diverge do Pencil**, que o repete nas três etapas (`IQloN`/`DRz06`/`V3SMF`). Nas etapas 1 e 2 ele custava altura justo onde o teclado virtual já toma metade da tela. O desktop não muda: o bloco continua no cartão de pagamento (`PainelPagamentoETotais`).
+
+**O que o operador vê nas etapas 1 e 2 no lugar dele:** o rodapé "Total da venda" da lista de itens (`ListaItensMobile`, só com item na venda) e, na etapa 2, o "Faltante" da lista de pagamentos assim que a primeira forma entra. **Consequência aceita:** o rodapé soma as linhas (`totalVenda`) e não desconta o desconto de capa; até a primeira forma entrar (quando o "Faltante" já é líquido), o total com desconto de capa só aparece na revisão.
+
+**O esqueleto de carregamento compacto acompanha** (segundo pedido do usuário, mesmo dia): `CarregamentoMobile` imita a etapa 1 para o wizard ocupar o lugar dele sem pular, então o cartão escuro saiu dele também.
+
+**Impact:** `src/client/layout/mobile/MobileWizard.tsx`, `src/client/layout/mobile/CarregamentoMobile.tsx` (teste em `TelaDeCarregamento.spec.tsx`), mais comentários em `ListaItensMobile.tsx`, `ListaPagamentosAplicados.tsx` e `EtapaClienteProdutos.tsx`. Testes: `tests/integration/mobileWizard.spec.tsx` (caso novo), `tests/e2e/support/pagamento.ts` (`quitarVendaEmDinheiro` lê o total do rodapé quando não há bloco escuro) e `tests/e2e/layout-responsivo.spec.ts` (a etapa 1 compara o rodapé).
+
+**Verificação:** 1852 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. **E2E não rodado:** a porta 3100 estava ocupada pelo BFF da stack de dev em uso, e o Playwright a reaproveitaria.
+
+### AD-256: em PC de tela pequena, a notificação cabe na janela e quem quebra linha é o nome do produto (2026-09-24)
+
+**Origem:** correção do usuário: "A notificacao tem que se adequar ao tamanho da tela, se a tela for pequena, ela tem que se adequar. 2 - A qtd de itens e subtotal, em telas pequenas (PC) está quebrando para segunda linha, o que tem que quebrar na falta de espaço é o nome do produto. Também revisa essa questão de responsividade e quebras de linha por tamanho de tela." É uma correção pontual sobre 003, 008 e AD-195.
+
+1. **Notificação.** O desktop começa em 1024px (`classificarLayout`), e ali a frase era o título do goey, uma linha que não quebra e não tinha teto de largura. `notificar.ts` agora estima se a frase cabe na janela (`cabeNoTitulo`: 7px por caractere mais 96px de ícone e folgas). Se não cabe, ela desce para `description`, como no compacto, mas **sem a tremida**. O teto de largura do `global.css` saiu do `[data-layout='MOBILE']` e vale nos dois layouts, como rede de segurança. O seletor ficou `:root .gooey-content` para manter a especificidade (0,2,0), que vence o `max-width: 380px` que o pacote põe em `.gooey-contentExpanded`.
+2. **Faixa "Resumo parcial" da grid.** A contagem "N itens" e o subtotal passam a ser `shrink-0 whitespace-nowrap`. O nome do último item passa a ser `min-w-0 flex-1 line-clamp-2`. A faixa troca `h-11` por `min-h-11` com folga, porque duas linhas de nome não cabiam em 44px.
+3. **Revisão de quebras.**
+   - **Grid:** o cabeçalho inteiro não quebra, porque "Preço un." partia em duas linhas. Qtd. e UN também não quebram, e a coluna Produto é a única que quebra (com `break-words`).
+   - **Pagamentos aplicados:** no cabeçalho da lista, "Faltante R$ …" não parte mais entre a palavra e o valor.
+
+**Impact:** `src/client/lib/notificar.ts`, `src/client/styles/global.css`, `src/client/features/carrinho/GridItens.tsx` e `src/client/features/pagamento/ListaPagamentosAplicados.tsx`. Testes em `notificar.spec.ts` (desktop estreito) e `GridItens.spec.tsx`.
+
+**Verificação:** 1856 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. **Não medido no navegador**, por decisão do usuário ("não precisa, só corrija"). O contrato do layout está travado pelas classes nos testes, porque o jsdom não mede.
+
+### AD-257: o período de busca das janelas de importação é de no máximo um ano (2026-09-24)
+
+**Origem:** pedido do usuário: "Hoje o escopo de data nos seletores permite colocar qualquer intervalo de data, tem que limitar a um ano sempre, nao pode selecionar mais que isso." É uma correção pontual sobre 006 (DAV) e 011/AD-237 (NFCe), que usam o mesmo par de filtros.
+
+**Decisão:** um ano vai do dia até o **mesmo dia** do ano vizinho, inclusive. Por exemplo, de 24/09/2025 a 24/09/2026 é permitido. 29 de fevereiro vira 28 no ano que não o tem. Cada campo é limitado pela outra data:
+- a inicial não recua mais que um ano antes da final (`umAnoAntes`);
+- a final não avança mais que um ano depois da inicial (`umAnoDepois`).
+
+Tanto a regra quanto a frase ("O período de busca é de no máximo um ano.") moram em `lib/periodoDeBusca.ts`, ao lado de `periodoPadrao`, para as duas janelas não divergirem.
+
+**Como o campo recusa:** `CampoData` ganhou `minimo`, `maximo` e `motivoForaDoLimite`.
+- **No calendário:** o dia fora do limite fica apagado e com `aria-disabled`, sem `disabled`. Ao ser clicado, ele explica o motivo (`lib/bloqueio.ts`, AD-143).
+- **Na digitação:** a data completa fora do limite é recusada na hora, com o mesmo aviso, e o campo volta ao último valor válido.
+
+**Fora do escopo:** a ordem das datas (inicial depois da final) não foi tocada.
+
+**Impact:** `src/client/lib/periodoDeBusca.ts`, `src/client/components/ui/campo-data.tsx`, `src/client/components/ui/filtro-de-data.tsx`, `src/client/features/dav/ModalImportacaoDav.tsx` e `src/client/features/recuperacao/ModalRecuperacaoNFCe.tsx`. Testes em `periodoDeBusca.spec.ts` e `campo-data.spec.tsx`.
+
+**Verificação:** 1862 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. Não verificado no navegador.

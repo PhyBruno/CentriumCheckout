@@ -53,7 +53,9 @@ test.describe('Alternância de layout com venda em andamento', () => {
     await expect(page.getByTestId('indicador-etapa')).toContainText('1/3');
 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(ITENS.length);
-    expect((await page.getByTestId('total-a-pagar').innerText()).trim()).toBe(totalNoDesktop);
+    // Na etapa 1 do celular o total é o do rodapé da lista: o bloco escuro só
+    // existe na revisão desde AD-255.
+    expect((await page.getByTestId('total-venda').innerText()).trim()).toBe(totalNoDesktop);
 
     // --- mobile → desktop ----------------------------------------------------
     await page.setViewportSize(VIEWPORT_DESKTOP);

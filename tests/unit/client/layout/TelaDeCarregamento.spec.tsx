@@ -63,6 +63,15 @@ describe('TelaDeCarregamento', () => {
     expect(container.querySelector('[data-boneyard="pdv-venda"]')).toBeNull();
   });
 
+  // AD-255: o wizard abre na etapa 1, que não tem mais o cartão escuro de
+  // total — o esqueleto que o antecede também não pode tê-lo.
+  it('no compacto, o esqueleto não desenha o cartão escuro de total', () => {
+    usarLayout(true);
+    render(<TelaDeCarregamento />);
+
+    expect(screen.queryByText('Total a pagar')).toBeNull();
+  });
+
   it('no compacto, anuncia o carregamento a leitores de tela como no desktop', () => {
     usarLayout(true);
     render(<TelaDeCarregamento />);

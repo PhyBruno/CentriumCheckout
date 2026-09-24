@@ -14,7 +14,8 @@ import { ScannerCamera } from './ScannerCamera';
  * **A lista entra aqui de propósito**, e é o único desvio do desenho nesta
  * etapa. O Pencil compensa a ausência dela com um contador ("Itens · 5
  * produtos") no cartão escuro do topo; o cartão escuro real é `TotalDaVenda`
- * (008), que mostra total/recebido/faltante e não conta itens. Sem a lista, o
+ * (008), que não conta itens e desde AD-255 nem aparece aqui — só na revisão.
+ * Sem a lista, o
  * operador bipa e não recebe nenhuma confirmação do que entrou — justamente o
  * retorno que o contador do desenho existia para dar. Reaproveita
  * `ListaItensMobile`, a mesma da etapa 2, sem componente novo.
@@ -39,8 +40,12 @@ export function EtapaClienteProdutos(): ReactElement {
       {/* O código lido pela câmera entra pelo **mesmo** `inserirPorCodigo` do
           leitor físico e da digitação (`FR-007`, D5) — o slot recebe a função,
           não um caminho de inserção próprio. Fora de Chrome/Android o botão
-          nem chega a existir: `ScannerCamera` devolve `null` (`FR-011`). */}
+          nem chega a existir: `ScannerCamera` devolve `null` (`FR-011`).
+
+          `tecladoVirtual`: aqui o código é digitado no teclado do celular, que
+          passa a abrir no numérico, com o botão ABC/123 para as letras. */}
       <EntradaRapidaProduto
+        tecladoVirtual
         renderizarCaptura={(aoLerCodigo) => <ScannerCamera onCodigoLido={aoLerCodigo} />}
       />
 
