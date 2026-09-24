@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle, Copy, Qr, Refresh, X } from 'reicon-react';
+import { AlertTriangle, ChatRound, CheckCircle, Copy, Qr, Refresh, Send, X } from 'reicon-react';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,14 @@ import type { EstadoDisplay } from '../../../../shared/display';
 import type { ClienteVenda } from '../../../domain/cliente/clienteVenda';
 import type { CobrancaPix } from '../../../domain/pix/cobrancaPix';
 import { MENSAGEM_POR_MOTIVO_FALHA } from '../../../domain/pix/interpretarStatusPix';
+import {
+  normalizarTelefoneWhatsapp,
+  preencherDestinoWhatsapp,
+} from '../../../domain/pix/destinoWhatsapp';
 import { montarDadosPagador } from '../../../domain/pix/montarDadosPagador';
 import { validarValorMinimoPix } from '../../../domain/pix/validarValorMinimoPix';
 import { formatarCentavos, type Centavos } from '../../../domain/precificacao/dinheiro';
+import { enviarPixPorWhatsapp } from '../../../services/pix/envioWhatsappMutation';
 import { useGerarPix, useStatusPix, type PixQueriesDeps } from '../../../services/pix/pixQueries';
 import {
   AVISO_DESASSOCIACAO_MANUAL,
@@ -132,6 +137,15 @@ export interface ModalPixProps {
   readonly valor: Centavos;
   /** `ConfiguracoesPIX.MinimoPix` já em centavos (`research.md` D13). */
   readonly minimoPix: Centavos;
+  /**
+   * `ConfiguracoesPIX.TempoEspera` em segundos, já com o padrão aplicado —
+   * vira `TrnTempoExpiracaoPIX` no corpo de `GerarPIX` (AD-251).
+   *
+   * Vem por prop, como `minimoPix`, e não de uma leitura própria do catálogo:
+   * quem conhece a query é o call site, e o modal segue sem saber o que é
+   * TanStack Query.
+   */
+  readonly tempoExpiracaoPix: number;
   readonly clienteAtual: ClienteVenda | null;
   /** Chama `confirmarPagamentoIntegrado(idPagamento, { pixGuid })` (feature 008). */
   readonly onAprovado: (pixGuid: string) => void;
@@ -186,6 +200,7 @@ export function ModalPix({
   formaCodigo,
   valor,
   minimoPix,
+  tempoExpiracaoPix,
   clienteAtual,
   onAprovado,
   onAbandonado,
@@ -201,6 +216,30 @@ export function ModalPix({
   const [aprovado, setAprovado] = useState(false);
   const [confirmandoDesistencia, setConfirmandoDesistencia] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  /**
+   * Envio da cobrança por WhatsApp (pedido do usuário, 2026-09-21).
+   *
+   * O formulário nasce fechado: quem abre é o botão, e é esse gesto que o
+   * pedido descreve ("ao pressionar o botão, deverá disponibilizar dois campos
+   * para edição"). Fechado ele custa uma linha de altura, o que preserva a
+   * densidade que AD-233 conquistou para o celular.
+   */
+  const [envioAberto, setEnvioAberto] = useState(false);
+  /**
+   * Preenchimento calculado **uma vez**, na montagem.
+   *
+   * Lazy initializer, e não `useMemo` sobre `clienteAtual`: se o cliente
+   * mudasse no meio do preenchimento, um `useMemo` reescreveria por baixo o que
+   * o operador já digitou. Na prática a venda não troca de cliente com um
+   * pagamento pendente (AD-209) — o que torna a diferença invisível em
+   * produção e, exatamente por isso, o tipo de acoplamento que não se deve
+   * deixar armado.
+   */
+  const [destinoInicial] = useState(() => preencherDestinoWhatsapp(clienteAtual));
+  const [nomeDestino, setNomeDestino] = useState(destinoInicial.nome);
+  const [telefoneDestino, setTelefoneDestino] = useState(destinoInicial.telefone);
+  const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
+  const [enviadoWhatsapp, setEnviadoWhatsapp] = useState(false);
   /**
    * Substitui o laço de foco próprio desta janela (AD-170). O ouvinte local só
    * via a tecla com o foco já dentro, não devolvia o foco ao fechar, e não
@@ -238,7 +277,12 @@ export function ModalPix({
   const emErro = status === 'erro' && cobranca === null;
 
   const gerarCobranca = useCallback((): void => {
-    void gerar({ formaCodigo, valor, pagador: montarDadosPagador(clienteAtual) })
+    void gerar({
+      formaCodigo,
+      valor,
+      pagador: montarDadosPagador(clienteAtual),
+      tempoExpiracaoSegundos: tempoExpiracaoPix,
+    })
       .then(setCobranca)
       .catch(() => {
         // O motivo já está em `erro` e vira painel + toast abaixo. Engolir aqui
@@ -246,7 +290,7 @@ export function ModalPix({
         // dela é uma tela, não uma exceção.
         notificar.erro('Não foi possível gerar a cobrança PIX. Tente novamente.');
       });
-  }, [gerar, formaCodigo, valor, clienteAtual]);
+  }, [gerar, formaCodigo, valor, clienteAtual, tempoExpiracaoPix]);
 
   /** Desistência manual e falha terminal: **um** caminho de código (T022). */
   const abandonar = useCallback(
@@ -458,6 +502,74 @@ export function ModalPix({
     }
   }
 
+  const telefoneNormalizado = normalizarTelefoneWhatsapp(telefoneDestino);
+
+  /**
+   * Por que o envio pode estar barrado — sempre com a frase que diz o que
+   * fazer, nunca um `disabled` mudo (`lib/bloqueio.ts`).
+   *
+   * **O número é exigido nos dois cenários, o nome só no cliente default.** É a
+   * leitura literal do pedido: sem destino não existe envio possível, então a
+   * condicionalidade que o usuário descreveu recai sobre o nome — obrigatório
+   * quando o cliente é o default, opcional quando já veio do cadastro.
+   *
+   * Sem cliente na venda o envio não acontece de jeito nenhum: `CliCod` é
+   * parâmetro do contrato e o Checkout não tem código nenhum a pôr ali.
+   * Preencher com `0` seria inventar um cliente — a mesma armadilha que
+   * `listaPreco` recusa em `clienteVenda.ts`.
+   */
+  const bloqueioDoEnvioWhatsapp: MotivoBloqueio = enviandoWhatsapp
+    ? 'Enviando a cobrança. Aguarde a resposta do ERP.'
+    : clienteAtual === null
+      ? 'Identifique o cliente da venda para enviar a cobrança por WhatsApp.'
+      : destinoInicial.nomeObrigatorio && nomeDestino.trim() === ''
+        ? 'Informe o nome do cliente para enviar a cobrança.'
+        : telefoneNormalizado === null
+          ? 'Informe o número de destino com DDD, por exemplo (11) 98765-4321.'
+          : null;
+
+  async function enviarPorWhatsapp(): Promise<void> {
+    // As três guardas repetem o que `bloqueioDoEnvioWhatsapp` já impede na
+    // tela. Ficam aqui porque são o que estreita os tipos para o contrato do
+    // ERP — e porque um caminho novo de disparo (um atalho de teclado, um
+    // reenvio automático) não pode contornar a checagem só por não passar pelo
+    // botão.
+    if (cobranca === null || clienteAtual === null || telefoneNormalizado === null) {
+      return;
+    }
+
+    setEnviandoWhatsapp(true);
+    const resultado = await enviarPixPorWhatsapp(
+      {
+        trnGuid: cobranca.trnGuid,
+        codigoCliente: clienteAtual.codigoCliente,
+        telefone: telefoneNormalizado,
+        nome: nomeDestino.trim(),
+      },
+      deps,
+    );
+    setEnviandoWhatsapp(false);
+
+    switch (resultado.estado) {
+      case 'enviado':
+        setEnviadoWhatsapp(true);
+        // Fecha o formulário: o gesto terminou, e manter os campos abertos
+        // convidaria ao segundo envio acidental da mesma cobrança.
+        setEnvioAberto(false);
+        notificar.sucesso('Cobrança PIX enviada para o WhatsApp do cliente.');
+        return;
+      case 'recusado':
+        // A frase é do ERP — ele sabe por que recusou ("telefone inválido",
+        // "integração não configurada"), e traduzi-la para um genérico tiraria
+        // do operador a única informação acionável.
+        notificar.aviso(resultado.motivo);
+        return;
+      case 'falhou':
+        notificar.erro(`${resultado.motivo} A cobrança continua válida na tela.`);
+        return;
+    }
+  }
+
   const bloqueioDoFechar: MotivoBloqueio = aprovado ? null : MOTIVO_JANELA_TRAVADA;
 
   return (
@@ -615,6 +727,39 @@ export function ModalPix({
                 >
                   <Copy className="size-4 text-foreground" aria-hidden="true" />
                 </Button>
+                {/* Gatilho do envio por WhatsApp (pedido do usuário,
+                    2026-09-21), **dentro** da faixa e não abaixo dela.
+
+                    Não é estética: o corpo desta janela tem 41px de folga no
+                    celular — 467px de conteúdo contra 508 úteis, medidos pelo
+                    E2E de layout mobile em 2026-09-15 —, e um botão de largura
+                    inteira somaria 48px com o `gap`, devolvendo à janela a
+                    rolagem que AD-233 acabou de tirar. Ao lado do `Copiar` ele
+                    custa zero de altura, e o lugar é o certo: as duas ações
+                    fazem a mesma coisa com o mesmo código — uma entrega pela
+                    área de transferência, a outra pelo WhatsApp do cliente.
+
+                    Só aparece com cobrança **gerada**: o `TrnGUID` é parâmetro
+                    obrigatório do endpoint. E some ao aprovar, porque mandar ao
+                    cliente uma cobrança que ele acabou de pagar não é
+                    informação, é confusão. */}
+                {cobranca !== null && !aprovado && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon-sm"
+                    className="shrink-0 rounded-full"
+                    data-testid="abrir-envio-whatsapp"
+                    aria-label="Enviar por WhatsApp"
+                    title="Enviar por WhatsApp"
+                    aria-expanded={envioAberto}
+                    onClick={() => {
+                      setEnvioAberto((aberto) => !aberto);
+                    }}
+                  >
+                    <ChatRound className="size-4 text-foreground" aria-hidden="true" />
+                  </Button>
+                )}
               </div>
               {/* Confirmação do copiar: o desenho não a modela, e sem ela o
                   clique no botão não produz retorno visível nenhum — num PDV o
@@ -623,6 +768,86 @@ export function ModalPix({
                 <p className="sr-only" role="status" data-testid="pix-codigo-copiado">
                   Código PIX copiado.
                 </p>
+              )}
+
+              {/* Formulário do envio por WhatsApp (pedido do usuário,
+                  2026-09-21) — os "dois campos para edição" que o botão da
+                  faixa acima revela.
+
+                  O `.pen` não modela este bloco: é tela nova, desenhada com os
+                  tokens e as medidas do resto da janela (campos de 42px como os
+                  do cadastro de cliente, raio `lg`, botão de 36px). */}
+              {cobranca !== null && !aprovado && (
+                <div className="flex w-full flex-col gap-xs">
+                  {envioAberto && (
+                    <div
+                      className="flex w-full flex-col gap-xs rounded-lg border border-border bg-muted px-sm py-sm"
+                      data-testid="form-envio-whatsapp"
+                    >
+                      <label className="flex min-w-0 flex-col gap-[4px]">
+                        <span className="text-sm font-semibold text-foreground">
+                          Nome do cliente
+                          {destinoInicial.nomeObrigatorio && (
+                            <span className="text-muted-foreground"> (obrigatório)</span>
+                          )}
+                        </span>
+                        <input
+                          className="h-[42px] rounded-lg border border-border bg-background px-sm text-base outline-none placeholder:text-[var(--cc-color-muted)] focus-visible:border-ring"
+                          data-testid="campo-nome-whatsapp"
+                          autoComplete="off"
+                          placeholder="Para quem é a cobrança"
+                          value={nomeDestino}
+                          onChange={(evento) => {
+                            setNomeDestino(evento.target.value);
+                          }}
+                        />
+                      </label>
+
+                      <label className="flex min-w-0 flex-col gap-[4px]">
+                        <span className="text-sm font-semibold text-foreground">
+                          Número de destino <span className="text-muted-foreground">(com DDD)</span>
+                        </span>
+                        <input
+                          // `font-mono` como todo valor tabular do produto, e
+                          // `inputMode="tel"` para o teclado numérico do celular
+                          // — é lá que este campo será digitado no balcão.
+                          className="h-[42px] rounded-lg border border-border bg-background px-sm font-mono text-base tabular-nums outline-none placeholder:font-sans placeholder:text-[var(--cc-color-muted)] focus-visible:border-ring"
+                          data-testid="campo-telefone-whatsapp"
+                          autoComplete="off"
+                          inputMode="tel"
+                          placeholder="(11) 98765-4321"
+                          value={telefoneDestino}
+                          onChange={(evento) => {
+                            setTelefoneDestino(evento.target.value);
+                          }}
+                        />
+                      </label>
+
+                      <Button
+                        type="button"
+                        className="h-9 w-full gap-xs rounded-full px-base text-base font-semibold"
+                        data-testid="confirmar-envio-whatsapp"
+                        {...atributosDeBloqueio(bloqueioDoEnvioWhatsapp)}
+                        onClick={acaoBloqueavel(bloqueioDoEnvioWhatsapp, () => {
+                          void enviarPorWhatsapp();
+                        })}
+                      >
+                        <Send className="size-4" aria-hidden="true" />
+                        {enviandoWhatsapp ? 'Enviando…' : 'Enviar cobrança'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {enviadoWhatsapp && (
+                    <p
+                      className="text-sm font-medium text-[var(--cc-color-up-ink)]"
+                      role="status"
+                      data-testid="pix-enviado-whatsapp"
+                    >
+                      Cobrança enviada por WhatsApp.
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* Bloco escuro `ZgrCz` — o valor é o único número da tela e usa a

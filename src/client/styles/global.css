@@ -366,6 +366,24 @@ body {
   }
 }
 
+/**
+ * Anel que gira em volta do ícone enquanto o ERP autoriza a NFCe (AD-244).
+ *
+ * É o único sinal de que a tela está viva: a espera depende da SEFAZ e pode
+ * levar segundos, e um modal parado lia como travado — o sintoma que motivou o
+ * diálogo. Por isso, em `prefers-reduced-motion`, o giro **fica mais lento** em
+ * vez de parar como os outros laços (bloco no fim da seção de movimento).
+ */
+@utility cc-giro {
+  animation: cc-giro-volta 0.9s linear infinite;
+}
+
+@keyframes cc-giro-volta {
+  to {
+    rotate: 360deg;
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * Movimento: suavidade sem encenação (pedido do usuário, 2026-09-03).
  *
@@ -822,5 +840,15 @@ button:not(:disabled):not([aria-disabled='true']),
    */
   .gooey-wrapper.cc-toast-tremida {
     animation: none;
+  }
+
+  /*
+   * O giro da autorização é a outra exceção, no sentido oposto: não para.
+   * Parado, o anel deixa de dizer "ainda trabalhando" e o modal volta a parecer
+   * travado. Rotação lenta e constante, sem oscilação, é o mínimo que ainda
+   * informa.
+   */
+  .cc-giro {
+    animation-duration: 3s;
   }
 }

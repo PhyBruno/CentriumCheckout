@@ -83,10 +83,17 @@ function ehObjeto(valor: unknown): valor is Record<string, unknown> {
  * `{ CheckoutFaturarNFCe: … }` (`faturarNFCeMutation.ts`,
  * `validarNFCeMutation.ts`). Quem olha só a raiz não encontra campo nenhum.
  *
- * **O tipo vai declarado por envelope porque os dois SDTs divergem:**
+ * **O tipo vai declarado por envelope porque os SDTs divergem:**
  * `Cliente.Empresa` é numérico, e `CheckoutFaturarNFCe.Empresa` é **texto** —
  * essa é a forma confirmada contra o ERP real em 2026-09-08 (AD-188), e trocar
  * o tipo ali recusaria toda venda com "Empresa é obrigatório".
+ *
+ * **`GerarPIX` esteve aqui por um dia e saiu.** AD-249 acrescentou
+ * `SDTCentriumPag_Post` a esta lista, e a injeção estava certa — o que estava
+ * errado era o envelope em volta: AD-251 mediu que o ERP só gera a cobrança com
+ * o corpo **plano**, então o endpoint passou para `CAMINHOS_COM_EMPRESA_NA_RAIZ`
+ * logo abaixo. Deixá-lo aqui seria injetar `Empresa` dentro de um envelope que
+ * o cliente não monta mais, isto é, em lugar nenhum.
  */
 const ENVELOPES_COM_EMPRESA = [
   { raiz: 'Cliente', comoTexto: false },
@@ -115,6 +122,58 @@ export function corpoComEmpresaDaSessao(body: unknown, codigoEmpresa: string): u
   }
 
   return corpo;
+}
+
+/**
+ * Endpoints cujo corpo é **plano** e traz `Empresa` na própria raiz.
+ *
+ * `EnvioDiretoWhatsapp` (envio da cobrança PIX, 2026-09-21) é o primeiro:
+ * `EnvioDiretoWhatsappInput` é `{ Empresa, TrnGUID, CliCod, Telefone }`, sem
+ * envelope nomeado, então a varredura de `ENVELOPES_COM_EMPRESA` — que desce um
+ * nível procurando `Cliente`/`CheckoutFaturarNFCe` — passa reto por ele.
+ *
+ * **Aqui o campo é inserido, não apenas reescrito**, e essa é a diferença que
+ * justifica uma lista por caminho em vez de uma regra por presença: o cliente
+ * não manda `Empresa` nenhuma (AD-019/AD-022 — o JS nunca monta tenant), logo
+ * não há o que reescrever, e sem a inserção o ERP receberia `Empresa = 0` e o
+ * envio morreria em silêncio, como já aconteceu com `GetProduto` em AD-205. Uma
+ * regra genérica que inserisse `Empresa` em todo corpo POST atingiria também os
+ * SDTs que não a declaram, o que é mexer em contrato alheio sem necessidade.
+ *
+ * A empresa continua vindo do cookie cifrado, que é a única fonte confiável — a
+ * mesma razão de `corpoComEmpresaDaSessao` e `corpoComUsuarioDaSessao`. Ela vai
+ * também na query, como em todo endpoint (AD-205); mandar nos dois lugares é o
+ * que cobre o método que lê do corpo e o que lê do parâmetro.
+ */
+const CAMINHOS_COM_EMPRESA_NA_RAIZ = [
+  '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+  // `GerarPIX` entrou em 2026-09-21 (AD-251), vindo de `ENVELOPES_COM_EMPRESA`:
+  // o corpo deixou de ser envelopado, e `Empresa` passou a ser um campo de raiz
+  // como o do envio por WhatsApp. O SDT a declara `integer int64`, então vai
+  // numérica — é o que `corpoComEmpresaNaRaiz` faz.
+  '/ApiCentriumOAuth/GerarPIX',
+];
+
+export function corpoComEmpresaNaRaiz(
+  body: unknown,
+  caminhoNoErp: string,
+  codigoEmpresa: string,
+): unknown {
+  const alvo = CAMINHOS_COM_EMPRESA_NA_RAIZ.some(
+    (caminho) => caminho.toLowerCase() === caminhoNoErp.toLowerCase(),
+  );
+  if (!alvo || !ehObjeto(body)) {
+    return body;
+  }
+
+  const empresa = Number(codigoEmpresa);
+  if (!Number.isFinite(empresa)) {
+    return body;
+  }
+
+  // `Empresa` é `integer int64` neste input — numérico, ao contrário do
+  // `CheckoutFaturarNFCe.Empresa`, que é texto (AD-188).
+  return { ...body, Empresa: empresa };
 }
 
 /** Campo do retrato que diz quem emitiu a nota (`CheckoutFaturarNFCe`, AD-221). */
@@ -206,7 +265,11 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
     // Empresa e operador saem do cookie cifrado, nunca do corpo que o navegador
     // mandou (AD-024 e AD-224).
     const corpo = corpoComUsuarioDaSessao(
-      corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
+      corpoComEmpresaNaRaiz(
+        corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
+        caminhoNoErp,
+        sessao.codigoEmpresa,
+      ),
       sessao.usuarioCodigo,
     );
 

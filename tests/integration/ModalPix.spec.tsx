@@ -50,6 +50,7 @@ vi.mock('goey-toast', () => {
 
 const CAMINHO_GERAR = '/ApiCentriumOAuth/GerarPIX';
 const CAMINHO_STATUS = '/ApiCentriumOAuth/StatusPIX';
+const CAMINHO_WHATSAPP = '/ApiCentriumOAuth/EnvioDiretoWhatsapp';
 
 const COPIA_E_COLA = '00020126SINTETICO5204000053039865802BR5913CENTRIUM6304AB12';
 const COPIA_E_COLA_BASE64 = btoa(COPIA_E_COLA);
@@ -66,6 +67,16 @@ const FORMA_PIX = formaDe({
 
 const MINIMO_PIX = centavos(500);
 const VALOR_PADRAO = centavos(6550);
+/** `TrnTempoExpiracaoPIX` enviado ao ERP (AD-251); sintético, como todo o resto. */
+const EXPIRACAO_TESTE_SEGUNDOS = 300;
+/**
+ * GUID que **o ERP** devolve (AD-251).
+ *
+ * Deliberadamente diferente de qualquer coisa que o cliente pudesse gerar: é o
+ * que trava a regressão. Quando o mapper guardava o GUID local, o polling
+ * consultava uma transação inexistente e a janela fechava sozinha.
+ */
+const GUID_DO_ERP = '9f1c7d52-0000-4000-8000-0000000000aa';
 
 interface ChamadaCapturada {
   readonly caminho: string;
@@ -95,7 +106,28 @@ interface OpcoesErpFake {
   readonly statusSequencia?: readonly string[];
   /** Quantas primeiras chamadas de `GerarPIX` respondem 500. */
   readonly falhasDeGeracao?: number;
+  /**
+   * Desfecho de `EnvioDiretoWhatsapp`.
+   *
+   * `'recusado'` é o `200` com `Type: 1` do padrão GeneXus — recusa de negócio,
+   * não erro de transporte —, e `'erro'` é o HTTP que falha.
+   */
+  readonly respostaWhatsapp?: 'enviado' | 'recusado' | 'erro';
+  /**
+   * Como `GerarPIX` responde quando não gera a cobrança (AD-249).
+   *
+   * `'vazia'` é o que o prototype devolveu em 2026-09-21: `200`, `TrnGUID`
+   * zerado, os dois base64 em branco e **nenhum** `messages`. `'recusada'` é a
+   * recusa do padrão GeneXus, com a razão em `messages[]`.
+   */
+  readonly geracaoSemCobranca?: 'vazia' | 'recusada';
 }
+
+/** A frase do ERP ao recusar a geração, nos testes. */
+const RECUSA_GERACAO = 'Configuração do CentriumPAG não encontrada para a empresa';
+
+/** A frase que o ERP devolve ao recusar o envio, nos testes. */
+const RECUSA_WHATSAPP = 'Telefone de destino inválido para o WhatsApp';
 
 function erpFake(opcoes: OpcoesErpFake = {}): {
   cliente: ErpClient;
@@ -112,6 +144,23 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
         typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null;
       chamadas.push({ caminho, corpo });
 
+      if (caminho.startsWith(CAMINHO_WHATSAPP)) {
+        switch (opcoes.respostaWhatsapp ?? 'enviado') {
+          case 'erro':
+            return Promise.resolve({ estado: 'ok', resposta: respostaJson({}, 500) });
+          case 'recusado':
+            return Promise.resolve({
+              estado: 'ok',
+              resposta: respostaJson({
+                messages: [{ Id: '9998', Type: 1, Description: RECUSA_WHATSAPP }],
+              }),
+            });
+          case 'enviado':
+            // Sucesso do padrão GeneXus: `200` com a coleção vazia.
+            return Promise.resolve({ estado: 'ok', resposta: respostaJson({ messages: [] }) });
+        }
+      }
+
       if (caminho.startsWith(CAMINHO_GERAR)) {
         if (falhasRestantes > 0) {
           falhasRestantes -= 1;
@@ -120,11 +169,27 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
             resposta: respostaJson({ messages: [] }, 500),
           });
         }
-        const sdt = (corpo?.['SDTCentriumPag_Post'] ?? {}) as SdtEnviado;
+        if (opcoes.geracaoSemCobranca !== undefined) {
+          const vazio = {
+            TrnGUID: '00000000-0000-0000-0000-000000000000',
+            Trnbase64text: '',
+            Trnbase64image: '',
+          };
+          return Promise.resolve({
+            estado: 'ok',
+            resposta: respostaJson(
+              opcoes.geracaoSemCobranca === 'vazia'
+                ? vazio
+                : { ...vazio, messages: [{ Id: '9998', Type: 1, Description: RECUSA_GERACAO }] },
+            ),
+          });
+        }
         return Promise.resolve({
           estado: 'ok',
           resposta: respostaJson({
-            TrnGUID: sdt.TrnGUID,
+            // O ERP **gera** o GUID e o devolve; nunca ecoa o que o cliente
+            // mandou — que, desde AD-251, o cliente nem manda.
+            TrnGUID: GUID_DO_ERP,
             Trnbase64text: COPIA_E_COLA_BASE64,
             Trnbase64image: QRCODE_BASE64,
           }),
@@ -143,10 +208,30 @@ function erpFake(opcoes: OpcoesErpFake = {}): {
   return { cliente, chamadas };
 }
 
+/**
+ * Corpo **plano** desde AD-251: não há mais `SDTCentriumPag_Post` para desembrulhar.
+ */
 function geracoes(chamadas: readonly ChamadaCapturada[]): readonly SdtEnviado[] {
   return chamadas
     .filter((chamada) => chamada.caminho.startsWith(CAMINHO_GERAR))
-    .map((chamada) => (chamada.corpo?.['SDTCentriumPag_Post'] ?? {}) as SdtEnviado);
+    .map((chamada) => (chamada.corpo ?? {}) as unknown as SdtEnviado);
+}
+
+interface EnvioWhatsappEnviado {
+  readonly TrnGUID: string;
+  readonly CliCod: number;
+  readonly Telefone: string;
+  readonly Nome: string;
+  /** Presente só se o cliente tivesse montado o tenant — o que ele não faz. */
+  readonly Empresa?: unknown;
+}
+
+function enviosWhatsapp(
+  chamadas: readonly ChamadaCapturada[],
+): readonly Partial<EnvioWhatsappEnviado>[] {
+  return chamadas
+    .filter((chamada) => chamada.caminho.startsWith(CAMINHO_WHATSAPP))
+    .map((chamada) => (chamada.corpo ?? {}) as Partial<EnvioWhatsappEnviado>);
 }
 
 function consultasDeStatus(chamadas: readonly ChamadaCapturada[]): number {
@@ -210,6 +295,7 @@ function renderizar(cliente: ErpClient, sobrescritas: Partial<ModalPixProps> = {
     formaCodigo: FORMA_PIX.codigo,
     valor: VALOR_PADRAO,
     minimoPix: MINIMO_PIX,
+    tempoExpiracaoPix: EXPIRACAO_TESTE_SEGUNDOS,
     clienteAtual: CLIENTE_IDENTIFICADO,
     onAprovado: (pixGuid) => aprovados.push(pixGuid),
     onAbandonado: (motivo) => abandonados.push(motivo),
@@ -293,9 +379,10 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
         expect(desfechos.aprovados).toHaveLength(1);
       });
 
-      // O GUID devolvido é o mesmo que foi enviado ao ERP — é a chave de
-      // correlação que a 008 grava em `PagamentoAplicado.pixGuid`.
-      expect(desfechos.aprovados[0]).toBe(geracoes(chamadas)[0]?.TrnGUID);
+      // O GUID que sobe para a 008 (`PagamentoAplicado.pixGuid`) é o que o ERP
+      // devolveu, nunca um gerado aqui (AD-251) — é com ele que o polling de
+      // `StatusPIX` conseguiu perguntar pela cobrança.
+      expect(desfechos.aprovados[0]).toBe(GUID_DO_ERP);
       expect(desfechos.abandonados).toHaveLength(0);
 
       // J3: o polling não fica sondando uma cobrança já resolvida.
@@ -328,8 +415,14 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
     expect(geracoes(chamadas)[0]?.TrnValor).not.toBe(100);
   });
 
-  // T014 / `FR-011` (quickstart Cenário 7, `research.md` D12).
-  it('refaz a geração com um TrnGUID novo depois de uma falha', async () => {
+  // T014 / `FR-011` (quickstart Cenário 7).
+  //
+  // Reescrito em AD-251: até 2026-09-21 este caso afirmava que a segunda
+  // tentativa saía com um `TrnGUID` diferente da primeira (`research.md` D12,
+  // J4). O cliente não manda mais GUID nenhum — quem o gera é o ERP —, então o
+  // que resta de verdadeiro, e é o que importa ao operador, é que o botão
+  // "tentar novamente" refaz a chamada e a cobrança nasce.
+  it('refaz a geração depois de uma falha, e a cobrança nasce com o GUID do ERP', async () => {
     const usuario = userEvent.setup();
     const { cliente, chamadas } = erpFake({ falhasDeGeracao: 1 });
     renderizar(cliente);
@@ -343,9 +436,9 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
 
     const tentativas = geracoes(chamadas);
     expect(tentativas).toHaveLength(2);
-    // J4: reusar o GUID colidiria com uma linha que o ERP pode ter criado apesar
-    // do erro reportado ao cliente.
-    expect(tentativas[0]?.TrnGUID).not.toBe(tentativas[1]?.TrnGUID);
+    // Nenhuma das duas carrega GUID: a chave é do ERP (AD-251).
+    expect(tentativas[0]).not.toHaveProperty('TrnGUID');
+    expect(tentativas[1]).not.toHaveProperty('TrnGUID');
   });
 
   // T015 / `research.md` D7 + AD-100 (quickstart Cenário 8).
@@ -381,24 +474,39 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
 
   // `research.md` D4/D4-bis: o SDT é genérico (boleto/duplicata); só o
   // subconjunto de PIX é enviado, e os demais campos ficam **ausentes**.
-  it('não envia os campos de boleto/duplicata do SDT genérico', async () => {
+  // Reescrito em AD-251. A lista de proibidos encolheu porque três campos
+  // mudaram de lado: `TrnOrigemDocumento`, `TrnOrigemSerie` e
+  // `TrnTempoExpiracaoPIX` passaram a ser **obrigatórios** — sem eles o ERP
+  // devolve o SDT vazio, medido ao vivo. Continuam fora os de boleto/duplicata,
+  // o `CntGUID`, o `TrnStatus` e a `Empresa` (que é do BFF, AD-019/AD-022).
+  it('envia a origem e a expiração, e não os campos de boleto/duplicata', async () => {
     const { cliente, chamadas } = erpFake();
     renderizar(cliente);
 
     await screen.findByTestId('pix-qrcode');
 
-    const enviados = Object.keys(geracoes(chamadas)[0] ?? {});
+    const corpo = geracoes(chamadas)[0] ?? {};
+    const enviados = Object.keys(corpo);
+
+    expect(corpo).toMatchObject({
+      TrnOrigemDocumento: 1,
+      TrnOrigemSerie: '1',
+      TrnTempoExpiracaoPIX: EXPIRACAO_TESTE_SEGUNDOS,
+    });
+
     for (const proibido of [
       'TrnDatVen',
       'TrnValMul',
       'TrnCodBar',
       'TrnStaBol',
       'CntGUID',
-      'TrnOrigemDocumento',
-      'TrnOrigemSerie',
       'TrnStatus',
-      'TrnTempoExpiracaoPIX',
+      // O GUID é do ERP (AD-251) e a Empresa é do BFF (AD-019/AD-022): nenhum
+      // dos dois pode sair do navegador.
+      'TrnGUID',
       'Empresa',
+      // O envelope morreu: se ele voltar, este corpo deixa de ser plano.
+      'SDTCentriumPag_Post',
     ]) {
       expect(enviados).not.toContain(proibido);
     }
@@ -612,7 +720,7 @@ describe('onEstadoDisplay — o que o cliente vê na segunda tela', () => {
   // T014 / FR-010: enquanto a cobrança está em geração não há QR a mostrar, e um
   // esqueleto na tela do cliente prometeria algo que ainda pode falhar.
   it('publica repouso enquanto gera, a cobrança quando ela chega e repouso ao desmontar', async () => {
-    const { cliente, chamadas } = erpFake({ statusSequencia: ['G'] });
+    const { cliente } = erpFake({ statusSequencia: ['G'] });
     const { estados, tela } = coletar(cliente);
 
     expect(estados[0]).toEqual({ tela: 'BOAS_VINDAS' });
@@ -625,8 +733,9 @@ describe('onEstadoDisplay — o que o cliente vê na segunda tela', () => {
     const publicado = estados.at(-1);
     expect(publicado).toMatchObject({
       tela: 'PIX_AGUARDANDO',
-      // FR-008: mesma cobrança que o operador tem à frente.
-      trnGuid: geracoes(chamadas)[0]?.TrnGUID,
+      // FR-008: mesma cobrança que o operador tem à frente — e a chave é a do
+      // ERP (AD-251), não uma inventada pelo cliente.
+      trnGuid: GUID_DO_ERP,
       // Inteiro cru de centavos, nunca decimal (research D5).
       valorCentavos: 6550,
       qrCodeFonte: `data:image/jpeg;base64,${QRCODE_BASE64}`,
@@ -693,5 +802,175 @@ describe('onEstadoDisplay — o que o cliente vê na segunda tela', () => {
 
     await screen.findByTestId('pix-qrcode');
     expect(screen.getByTestId('modal-pix')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Envio da cobrança por WhatsApp (pedido do usuário, 2026-09-21).
+ *
+ * A condicionalidade do pedido está nos dois primeiros cenários: cliente
+ * identificado chega com os campos preenchidos e pode enviar direto; cliente
+ * default chega vazio e não envia enquanto nome e número não forem digitados.
+ *
+ * Nenhum valor é de produção — o número de destino é sintético.
+ */
+describe('Envio da cobrança PIX por WhatsApp', () => {
+  it('não oferece o envio antes de haver cobrança gerada', () => {
+    const { cliente } = erpFake();
+    renderizar(cliente);
+
+    // O `TrnGUID` é parâmetro obrigatório do endpoint: sem cobrança não há o
+    // que enviar, e o botão não deve existir para ser clicado.
+    expect(screen.queryByTestId('abrir-envio-whatsapp')).not.toBeInTheDocument();
+  });
+
+  it('cliente identificado: campos já preenchidos e envio com o número normalizado', async () => {
+    const usuario = userEvent.setup();
+    const { cliente, chamadas } = erpFake();
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+
+    expect(screen.getByTestId<HTMLInputElement>('campo-nome-whatsapp').value).toBe('MARIA EXEMPLO');
+    expect(screen.getByTestId<HTMLInputElement>('campo-telefone-whatsapp').value).toBe(
+      '55 47 90000-0000',
+    );
+
+    await usuario.click(screen.getByTestId('confirmar-envio-whatsapp'));
+
+    await waitFor(() => {
+      expect(enviosWhatsapp(chamadas)).toHaveLength(1);
+    });
+
+    const envio = enviosWhatsapp(chamadas)[0];
+    expect(envio?.CliCod).toBe(CLIENTE_IDENTIFICADO.codigoCliente);
+    expect(envio?.Nome).toBe('MARIA EXEMPLO');
+    // Dígitos com DDI 55, sem máscara (decisão do usuário, 2026-09-21).
+    expect(envio?.Telefone).toBe('5547900000000');
+    // O GUID é o da cobrança que está na tela, não um valor novo.
+    expect(envio?.TrnGUID).toBe(GUID_DO_ERP);
+    // Tenant nunca sai do navegador (AD-019/AD-022): quem o injeta é o BFF.
+    expect(envio).not.toHaveProperty('Empresa');
+
+    await screen.findByTestId('pix-enviado-whatsapp');
+  });
+
+  it('cliente default: campos vazios, e o envio fica bloqueado com motivo até serem preenchidos', async () => {
+    const usuario = userEvent.setup();
+    const { cliente, chamadas } = erpFake();
+    renderizar(cliente, { clienteAtual: CLIENTE_DEFAULT });
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+
+    expect(screen.getByTestId<HTMLInputElement>('campo-nome-whatsapp').value).toBe('');
+    expect(screen.getByTestId<HTMLInputElement>('campo-telefone-whatsapp').value).toBe('');
+
+    // Bloqueado com `aria-disabled` e motivo, nunca `disabled` mudo.
+    const enviar = screen.getByTestId('confirmar-envio-whatsapp');
+    expect(enviar).toHaveAttribute('aria-disabled', 'true');
+
+    await usuario.click(enviar);
+    expect(enviosWhatsapp(chamadas)).toHaveLength(0);
+    expect(avisos.at(-1)).toContain('Informe o nome do cliente');
+
+    await usuario.type(screen.getByTestId('campo-nome-whatsapp'), 'JOAO DA SILVA');
+    await usuario.click(enviar);
+    expect(enviosWhatsapp(chamadas)).toHaveLength(0);
+    // Com o nome resolvido, o motivo passa a ser o número — que é exigido nos
+    // dois cenários, porque sem destino não há envio possível.
+    expect(avisos.at(-1)).toContain('número de destino');
+
+    await usuario.type(screen.getByTestId('campo-telefone-whatsapp'), '(11) 98765-4321');
+    await usuario.click(enviar);
+
+    await waitFor(() => {
+      expect(enviosWhatsapp(chamadas)).toHaveLength(1);
+    });
+    expect(enviosWhatsapp(chamadas)[0]).toMatchObject({
+      CliCod: CLIENTE_DEFAULT.codigoCliente,
+      Nome: 'JOAO DA SILVA',
+      Telefone: '5511987654321',
+    });
+  });
+
+  it('recusa do ERP mostra a frase dele e não afirma que enviou', async () => {
+    const usuario = userEvent.setup();
+    const { cliente } = erpFake({ respostaWhatsapp: 'recusado' });
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+    await usuario.click(screen.getByTestId('confirmar-envio-whatsapp'));
+
+    await waitFor(() => {
+      expect(avisos.at(-1)).toBe(RECUSA_WHATSAPP);
+    });
+    expect(screen.queryByTestId('pix-enviado-whatsapp')).not.toBeInTheDocument();
+  });
+
+  it('falha de transporte avisa e lembra que a cobrança continua válida', async () => {
+    const usuario = userEvent.setup();
+    const { cliente } = erpFake({ respostaWhatsapp: 'erro' });
+    renderizar(cliente);
+
+    await screen.findByTestId('pix-qrcode');
+    await usuario.click(screen.getByTestId('abrir-envio-whatsapp'));
+    await usuario.click(screen.getByTestId('confirmar-envio-whatsapp'));
+
+    await waitFor(() => {
+      expect(avisos.at(-1)).toContain('A cobrança continua válida');
+    });
+    expect(screen.queryByTestId('pix-enviado-whatsapp')).not.toBeInTheDocument();
+  });
+
+  it('o envio não sobrevive à aprovação — cobrança paga não se envia', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['G', 'P'] });
+    renderizar(cliente, { atrasoFechamentoMs: 60_000 });
+
+    await screen.findByTestId('pix-qrcode');
+    await waitFor(() => {
+      expect(screen.getByTestId('pix-subtitulo')).toHaveTextContent('Pagamento aprovado');
+    });
+
+    expect(screen.queryByTestId('abrir-envio-whatsapp')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * `GerarPIX` que volta `200` sem cobrança (AD-249).
+ *
+ * Até ali a tela mostrava ao operador o dump do Zod — `too_small`, `path`,
+ * `inclusive` —, que não dizia nem que o problema estava do lado do ERP.
+ */
+describe('Geração sem cobrança — o operador lê uma frase, não o schema', () => {
+  it('SDT vazio sem messages vira a frase do caixa', async () => {
+    const { cliente } = erpFake({ geracaoSemCobranca: 'vazia' });
+    renderizar(cliente);
+
+    const painel = await screen.findByTestId('erro-geracao-pix');
+
+    expect(painel).toHaveTextContent('O ERP não gerou o QR Code desta cobrança');
+    expect(painel).not.toHaveTextContent('too_small');
+    expect(painel).not.toHaveTextContent('Trnbase64');
+  });
+
+  it('recusa com messages mostra a frase do próprio ERP', async () => {
+    const { cliente } = erpFake({ geracaoSemCobranca: 'recusada' });
+    renderizar(cliente);
+
+    const painel = await screen.findByTestId('erro-geracao-pix');
+
+    expect(painel).toHaveTextContent(RECUSA_GERACAO);
+  });
+
+  it('as duas falhas deixam o "Tentar novamente" disponível', async () => {
+    const { cliente } = erpFake({ geracaoSemCobranca: 'vazia' });
+    renderizar(cliente);
+
+    await screen.findByTestId('erro-geracao-pix');
+
+    expect(screen.getByTestId('tentar-novamente-pix')).toBeInTheDocument();
   });
 });

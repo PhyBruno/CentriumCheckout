@@ -15,7 +15,11 @@
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import type { CheckoutFaturarNFCe } from '../../domain/venda/montarRetratoVenda';
-import { mapearRespostaFaturamento } from './faturarNFCeMapper';
+import {
+  mapearRespostaFaturamento,
+  type RascunhoInformado,
+  type RetornoRejeicao,
+} from './faturarNFCeMapper';
 import type { NotaFiscalResposta } from '../../../shared/schemas/faturarNFCe.schema';
 
 const CAMINHO_FATURAR_NFCE = '/ApiCentriumOAuth/FaturarNFCe';
@@ -36,13 +40,30 @@ export type ResultadoFaturamento =
    * liberado para a próxima venda; lá a venda continua para ser corrigida e
    * reenviada.
    */
+  | ({ readonly estado: 'nfce-rejeitada' } & RetornoRejeicao)
+  /**
+   * O ERP validou a venda e recusou (saldo, regra de NFCe) — não é erro na nota
+   * (AD-239). A venda continua no caixa para ser ajustada e reenviada.
+   */
   | {
-      readonly estado: 'nfce-rejeitada';
+      readonly estado: 'venda-recusada';
       readonly mensagem: string;
-      readonly numeroNota: number | null;
-      readonly serieNota: string | null;
+      /**
+       * Rascunho que o ERP gravou antes de recusar, quando informado (AD-235).
+       * Não gerou NFCe, mas gerou rascunho: o reenvio precisa apontar para ele.
+       */
+      readonly numeroRascunho?: number;
+      readonly serieRascunho?: string;
     }
-  /** O ERP respondeu (ainda que recusando): a primeira tentativa **não** gerou NFCe. */
+  /**
+   * Cenário tributário não encontrado (AD-239): cadastro fiscal do ERP, nada a
+   * corrigir no Checkout. A venda sai do caixa.
+   */
+  | ({ readonly estado: 'cenario-tributario'; readonly mensagem: string } & RascunhoInformado)
+  /**
+   * Falha técnica com resposta (HTTP, sessão, corpo ilegível ou sem desfecho): a
+   * primeira tentativa **não** gerou NFCe, e o reenvio é livre.
+   */
   | { readonly estado: 'falha-negocio'; readonly mensagem: string }
   /** Nenhuma resposta chegou: pode ter sido processada do outro lado (AD-038). */
   | { readonly estado: 'falha-rede' };
@@ -112,13 +133,17 @@ export async function enviarFaturarNFCe(
     case 'invalida':
       return { estado: 'falha-negocio', mensagem: mapeado.mensagem };
 
+    // Os três abaixo repassam o conteúdo do mapper trocando só o rótulo do
+    // estado: a classificação é dele, e reescrever campo a campo aqui abriria
+    // espaço para os dois lados divergirem no primeiro campo novo.
+    case 'recusada':
+      return { ...mapeado, estado: 'venda-recusada' };
+
+    case 'cenario-tributario':
+      return mapeado;
+
     case 'rejeitada':
-      return {
-        estado: 'nfce-rejeitada',
-        mensagem: mapeado.mensagem,
-        numeroNota: mapeado.numeroNota,
-        serieNota: mapeado.serieNota,
-      };
+      return { ...mapeado, estado: 'nfce-rejeitada' };
 
     case 'ok':
       return { estado: 'sucesso', notaFiscal: mapeado.notaFiscal };

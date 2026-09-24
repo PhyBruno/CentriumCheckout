@@ -98,15 +98,77 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
     await expect(page.getByTestId('indicador-etapa')).toContainText('3/3');
     await expect(page.getByTestId('conferencia-produtos')).toContainText('1 item');
 
+    // A emissão demora de propósito: é a janela em que "Autorizando NFCe"
+    // precisa estar na tela do wizard, como na tela única (AD-244).
+    await page.route('**/FaturarNFCe', async (rota) => {
+      await new Promise((resolver) => setTimeout(resolver, 800));
+      await rota.continue();
+    });
+
     const botaoFinalizar = page.getByTestId('botao-finalizar-venda');
     await expect(botaoFinalizar).toBeEnabled();
     await botaoFinalizar.click();
 
-    // Caminho feliz não tem modal (pedido do usuário, 2026-09-02): o sinal é o
-    // carrinho zerado. O wizard volta à etapa 1 pelo mesmo motivo — a venda
-    // nova começa do começo.
+    await expect(page.getByRole('dialog', { name: 'Autorizando NFCe' })).toBeVisible();
+    await expect(page.getByTestId('dialogo-autorizando-nfce')).toHaveCount(0);
+
+    // O sinal é o carrinho zerado; o wizard volta à etapa 1 porque a venda nova
+    // começa do começo. O cupom enviado mostra "Enviado para a impressora"
+    // (AD-246), com o PDF de backup, e fecha com o ESC.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByText('Enviado para a impressora')).toBeVisible();
+    await expect(page.getByTestId('abrir-pdf-documento-fiscal')).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
+  });
+
+  /**
+   * Saldo de estoque (AD-236) no wizard: a mesma barra, reflowada, mostra a
+   * prévia bloqueada e o motivo. `005000` tem saldo 0 no mock.
+   */
+  test("saldo 'B': produto sem saldo fica na barra bloqueado, com o motivo à vista", async ({
+    page,
+    request,
+  }) => {
+    await request.post(`${URL_ERP_MOCK}/__mock/config`, {
+      data: { faturaProdutoSemSaldo: 'B' },
+    });
+    await page.goto(urlSessionStart());
+    await expect(page.getByTestId('etapa-cliente-produtos')).toBeVisible();
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill('005000');
+    await campo.press('Enter');
+
+    // O motivo é toast (AD-239), e o botão bloqueado o repete no `title`.
+    await expect(page.getByTestId('previa-aviso-saldo')).toHaveCount(0);
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute(
+      'title',
+      /estoque insuficiente/i,
+    );
+    await expect(page.getByTestId('previa-confirmar')).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    // O aviso não pode alargar a etapa além da tela.
+    const larguras = await page.evaluate(() => ({
+      pagina: document.documentElement.scrollWidth,
+      tela: window.innerWidth,
+    }));
+    expect(larguras.pagina).toBeLessThanOrEqual(larguras.tela);
+  });
+
+  test("saldo 'A': produto sem saldo avisa e entra na venda", async ({ page, request }) => {
+    await request.post(`${URL_ERP_MOCK}/__mock/config`, {
+      data: { faturaProdutoSemSaldo: 'A' },
+    });
+    await page.goto(urlSessionStart());
+    await expect(page.getByTestId('etapa-cliente-produtos')).toBeVisible();
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill('005000');
+    await campo.press('Enter');
+
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    await expect(page.getByText(/estoque insuficiente/i).first()).toBeVisible();
   });
 
   test('volta livremente a uma etapa já visitada e a alteração chega na revisão', async ({

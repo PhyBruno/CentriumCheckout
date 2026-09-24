@@ -32,13 +32,14 @@ interface CheckoutListaDAVsResponse {
     DataEmissao: string;    // "YYYY-MM-DD"
     ClienteCodigo: number;
     ClienteNome: string;
-    VendedorCodigo: number; // sem VendedorNome correspondente — AD-095
+    VendedorCodigo: number;
+    VendedorNome?: string;  // no SDT desde AD-172, mas o ERP de 2026-09-14 devolve sempre "" (pendência 57, AD-237) — a janela cai em "Vendedor #<código>"
     ValorTotal: number;     // double do ERP — exibição, não usado em cálculo
   }>;
 }
 ```
 
-Schema Zod valida este shape 1:1 — **sem** `VendedorNome`, **sem** `Status`/`Ativo` (não existem no schema real).
+Schema Zod valida este shape — `VendedorNome` opcional e tratado como ausente quando vazio; **sem** `Status`/`Ativo` (não existem no schema real).
 
 **Filtros não suportados** (documentado, não implementado): cliente por seleção estruturada (só busca livre por nome via `Txtbusca`), status, vendedor, tipo, origem — nenhum parâmetro correspondente existe em `DpCheckout_GetDavs` (AD-024, herdado sem mudança nesta fase).
 
@@ -55,11 +56,15 @@ interface CheckoutFaturarNFCe {
   Empresa: number;
   SuspenderOuFaturar: string;   // não usado na importação — só relevante ao chamar FaturarNFCe depois
   clienteCodigo: number;
-  vendedorCodigo: number;
+  ClienteNome?: string;         // contrato 20260914191012 (AD-235) — exibição; o cliente segue resolvido por GetCliente
+  vendedorCodigo: number;       // o ERP de 2026-09-14 devolve 0 mesmo com vendedor gravado (PENDENCIES item 56):
+                                // cair no VendedorCodigo da linha de ListaDAVs (AD-235)
   CondicaoPagamentoCodigo: number;
-  NumeroNota: number;           // preservar e reenviar INTACTO em FaturarNFCe (NFCE-02, mesma regra de recuperacao-nfce).
-                                // Único elo com o DAV de origem desde a remoção de DavNum (AD-107): é por este
-                                // rascunho que o ERP reconhece a origem em DAV. Zerar/omitir quebra o vínculo.
+  NumeroRascunho: number;       // (era NumeroNota até o contrato 20260914191012, AD-235; string no ERP real, ex. "6031")
+                                // preservar e reenviar INTACTO em FaturarNFCe (NFCE-02, mesma regra de recuperacao-nfce).
+                                // GetDav converte o DAV num rascunho de NFCe (PFaturarDavNFCe) e devolve o número dele —
+                                // não é leitura. Único elo com o DAV de origem desde a remoção de DavNum (AD-107).
+                                // Zerar/omitir quebra o vínculo.
   CadSerieNFCe: string;
   UsuarioCodigo: number;
   // SEM DavNum — removido do contrato em 20260827192357 e desnecessário: o ERP identifica sozinho

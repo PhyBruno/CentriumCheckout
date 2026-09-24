@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizarPoliticaSaldo } from '../../client/domain/estoque/saldoProduto';
 import { inteiroErp } from './erpJson';
 
 /**
@@ -118,17 +119,40 @@ export const sessaoUsuarioSchema = z.looseObject({
    */
   ClienteDefaultNome: z.string().optional(),
   /**
+   * Celular do cliente default (`CliFonCel`, contrato de 2026-09-14, AD-237),
+   * exibido no campo "Contato" do card de cliente. `optional()` pelo mesmo
+   * motivo de `ClienteDefaultNome`: é rótulo, e o ERP anterior ao contrato não o
+   * publica — quem lê trata ausência e `''` como "não informado".
+   */
+  ClienteDefaultContato: z.string().optional(),
+  /**
    * Vendedor **do PDV**, exibido na pílula do card de cliente (nó `EqzJM` do
    * Pencil). Vem de `SessaoUsuario`, não de `GetCliente`: o schema
    * `ClienteCheckout` do contrato não tem nenhum campo de vendedor — o cadastro
    * do cliente não carrega vendedor associado. A troca de vendedor durante a
    * venda é a feature 012 (`GetListaVendedores`).
    *
+   * No contrato de 2026-09-14 (AD-237) o ERP preenche os dois: é o vendedor do
+   * cadastro do cliente default (`CliRepCod`/`CliRepNom`), e, se ele não tiver,
+   * o vendedor default do usuário (`UsuRepDef`) — com **`UsuNome`**, o nome do
+   * usuário, no lugar do nome do vendedor (quirk do ERP, pendência 58). O
+   * `VendedorCodigo = 0` medido em AD-206 era do ERP anterior.
+   *
    * `optional()` pelo mesmo motivo dos demais rótulos: um cadastro sem vendedor
    * definido omite a pílula em vez de derrubar o bootstrap.
    */
   VendedorCodigo: inteiroErp.optional(),
   VendedorNome: z.string().optional(),
+  /**
+   * Política de saldo de estoque da empresa (`EmpSldPro`, contrato de
+   * 2026-09-14, AD-236): `'A'` avisa, `'B'` bloqueia, `''` não valida.
+   *
+   * Normalizada na fronteira — valor desconhecido vira `''`, como o próprio ERP
+   * trata — e idempotente, porque o registro do Dexie é revalidado na leitura.
+   * `optional()` porque o ERP anterior a esse contrato não publica o campo, e
+   * quem lê trata a ausência como `''`.
+   */
+  FaturaProdutoSemSaldo: z.string().transform(normalizarPoliticaSaldo).optional(),
 });
 
 export const bootstrapPayloadSchema = z.looseObject({

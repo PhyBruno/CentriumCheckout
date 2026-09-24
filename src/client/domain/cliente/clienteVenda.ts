@@ -35,22 +35,28 @@ export type OrigemSelecaoCliente = Exclude<OrigemCliente, 'DEFAULT' | 'CADASTRO_
 export interface ClienteVenda {
   readonly codigoCliente: number;
   readonly nome: string;
-  /** CPF/CNPJ. `null` só para `origem = 'DEFAULT'` — `GetSessao` não o devolve. */
+  /**
+   * CPF/CNPJ. `null` para `origem = 'DEFAULT'` — `GetSessao` não o devolve — e
+   * para o cliente de documento importado cujo `GetCliente` falhou (AD-237).
+   */
   readonly documento: string | null;
   /**
    * Contato exibido no campo "Contato" do card de cliente (nó `iL0FC` do
    * Pencil). Acrescentado ao `data-model.md` §1 durante a implementação: sem
-   * ele o campo desenhado ficaria permanentemente vazio. `null` para
-   * `'DEFAULT'` pelo mesmo motivo de `documento` — `GetSessao` só devolve
-   * código e nome do cliente default.
+   * ele o campo desenhado ficaria permanentemente vazio. Para `'DEFAULT'` vem
+   * de `SessaoUsuario.ClienteDefaultContato` (contrato de 2026-09-14, AD-237);
+   * `null` quando o ERP não o informa (vazio ou versão anterior do contrato) e
+   * no cliente de documento sem `GetCliente`.
    */
   readonly celular: string | null;
   /**
    * Lista de preço do cliente. Para `'DEFAULT'` vem de
    * `SessaoUsuario.ListaPrecoDefault` (AD-108), **não** `null`.
    *
-   * `null` significa "o cadastro deste cliente não define o campo" e hoje só
-   * ocorre em `'CADASTRO_SIMPLIFICADO'`. Nunca recebe fallback inventado
+   * `null` significa "o Checkout não tem o campo do cadastro deste cliente": em
+   * `'CADASTRO_SIMPLIFICADO'` (o cadastro não o define) e em `'DAV'`/`'RASCUNHO'`
+   * quando o `GetCliente` falhou e o cliente veio só do `ClienteNome` do
+   * documento (AD-237). Nunca recebe fallback inventado
    * (`0`/`1`): um valor "seguro" esconderia a ausência de dado atrás de algo
    * que parece válido, e produziria preço sutilmente errado em produção
    * (`research.md` D10).
@@ -58,8 +64,8 @@ export interface ClienteVenda {
   readonly listaPreco: number | null;
   /**
    * Percentual de convênio (`0`–`100`). Para `'DEFAULT'` é sempre `0` — o
-   * cliente default não tem convênio por regra de negócio (AD-108). `null` só
-   * em `'CADASTRO_SIMPLIFICADO'`, pelo mesmo motivo de `listaPreco`.
+   * cliente default não tem convênio por regra de negócio (AD-108). `null` nos
+   * mesmos casos de `listaPreco`.
    */
   readonly descontoConvenio: number | null;
   readonly codigoConvenio: number | null;

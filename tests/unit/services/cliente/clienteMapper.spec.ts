@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   mapClienteCheckoutParaVenda,
   mapClienteDefaultParaVenda,
+  mapClienteDoDocumentoParaVenda,
 } from '../../../../src/client/services/cliente/clienteMapper';
 import type { SessaoUsuario } from '../../../../src/shared/schemas/bootstrap.schema';
 import { clienteCheckoutDe } from '../../../support/cliente';
@@ -85,6 +86,25 @@ describe('mapClienteDefaultParaVenda', () => {
     });
   });
 
+  it('leva ClienteDefaultContato ao celular do default (AD-237)', () => {
+    const cliente = mapClienteDefaultParaVenda(
+      sessaoDe({ ClienteDefaultCodigo: 42, ClienteDefaultContato: '(99)99999-9999' }),
+    );
+    expect(cliente?.celular).toBe('(99)99999-9999');
+  });
+
+  it('contato ausente ou vazio continua null (ERP anterior ao contrato de 2026-09-14)', () => {
+    expect(
+      mapClienteDefaultParaVenda(sessaoDe({ ClienteDefaultCodigo: 42, ClienteDefaultContato: '' }))
+        ?.celular,
+    ).toBeNull();
+    expect(
+      mapClienteDefaultParaVenda(
+        sessaoDe({ ClienteDefaultCodigo: 42, ClienteDefaultContato: undefined }),
+      )?.celular,
+    ).toBeNull();
+  });
+
   it('devolve null quando a empresa não configurou cliente default (FR-005)', () => {
     expect(mapClienteDefaultParaVenda(sessaoDe({ ClienteDefaultCodigo: 0 }))).toBeNull();
   });
@@ -94,5 +114,28 @@ describe('mapClienteDefaultParaVenda', () => {
       sessaoDe({ ClienteDefaultCodigo: 42, ClienteDefaultNome: undefined }),
     );
     expect(cliente?.nome).toBe('');
+  });
+});
+
+describe('mapClienteDoDocumentoParaVenda', () => {
+  it('usa só código e nome do documento, sem inventar lista de preço nem convênio (AD-237)', () => {
+    expect(
+      mapClienteDoDocumentoParaVenda({ codigoCliente: 17, nome: 'CLIENTE SINTETICO' }, 'DAV'),
+    ).toEqual({
+      codigoCliente: 17,
+      nome: 'CLIENTE SINTETICO',
+      documento: null,
+      celular: null,
+      listaPreco: null,
+      descontoConvenio: null,
+      codigoConvenio: null,
+      origem: 'DAV',
+    });
+  });
+
+  it('mantém a origem RASCUNHO', () => {
+    expect(mapClienteDoDocumentoParaVenda({ codigoCliente: 8, nome: 'X' }, 'RASCUNHO').origem).toBe(
+      'RASCUNHO',
+    );
   });
 });

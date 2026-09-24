@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   corpoComEmpresaDaSessao,
+  corpoComEmpresaNaRaiz,
   queryComEmpresaDaSessao,
 } from '../../../../src/server/routes/erp-proxy';
 
@@ -66,13 +67,23 @@ describe('corpoComEmpresaDaSessao', () => {
     // venda com "Empresa é obrigatório" (AD-188, confirmado ao vivo em
     // 2026-09-08). Como vinha do navegador, ficava forjável.
     const corpo = corpoComEmpresaDaSessao(
-      { CheckoutFaturarNFCe: { Empresa: '999', NumeroNota: 0 } },
+      { CheckoutFaturarNFCe: { Empresa: '999', NumeroRascunho: 0 } },
       '7',
     ) as { CheckoutFaturarNFCe: Record<string, unknown> };
 
     // Texto, não número: é o tipo do campo neste SDT, e o que o ERP aceitou.
     expect(corpo.CheckoutFaturarNFCe['Empresa']).toBe('7');
-    expect(corpo.CheckoutFaturarNFCe['NumeroNota']).toBe(0);
+    expect(corpo.CheckoutFaturarNFCe['NumeroRascunho']).toBe(0);
+  });
+
+  it('não conhece mais o envelope do GerarPIX — ele deixou de existir', () => {
+    // AD-249 pôs `SDTCentriumPag_Post` nesta lista; AD-251 o tirou, porque o
+    // corpo do `GerarPIX` ficou plano e a `Empresa` passou a ser injetada por
+    // `corpoComEmpresaNaRaiz`. Se alguém remontar o envelope no cliente, este
+    // caso falha e aponta para o lugar certo.
+    const original = { SDTCentriumPag_Post: { FPgCod: 3 } };
+
+    expect(corpoComEmpresaDaSessao(original, '7')).toEqual(original);
   });
 
   it('reescreve os dois envelopes quando ambos aparecem no mesmo corpo', () => {
@@ -102,6 +113,90 @@ describe('corpoComEmpresaDaSessao', () => {
     const original = { Cliente: 'nao-e-objeto' };
 
     expect(corpoComEmpresaDaSessao(original, '7')).toEqual(original);
+  });
+});
+
+/**
+ * `Empresa` na **raiz** do corpo, para os endpoints de payload plano.
+ *
+ * `EnvioDiretoWhatsapp` (envio da cobrança PIX, 2026-09-21) declara
+ * `{ Empresa, TrnGUID, CliCod, Telefone }` sem envelope nomeado, e o JS não
+ * manda tenant nenhum (AD-019/AD-022) — aqui o campo é **inserido**, não
+ * reescrito. Sem ele o ERP receberia `Empresa = 0` e o envio morreria em
+ * silêncio, como já aconteceu com `GetProduto` em AD-205.
+ */
+describe('corpoComEmpresaNaRaiz', () => {
+  const CORPO_ENVIO = {
+    TrnGUID: 'b3a1c2d4-0000-4000-8000-000000000001',
+    CliCod: 37,
+    Telefone: '5511900000000',
+    Nome: 'FULANO DE TAL',
+  };
+
+  it('insere Empresa na raiz do corpo do envio por WhatsApp', () => {
+    const corpo = corpoComEmpresaNaRaiz(
+      CORPO_ENVIO,
+      '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+      '7',
+    ) as Record<string, unknown>;
+
+    // Numérico: `EnvioDiretoWhatsappInput.Empresa` é `integer int64`, ao
+    // contrário do `CheckoutFaturarNFCe.Empresa`, que é texto (AD-188).
+    expect(corpo['Empresa']).toBe(7);
+    expect(corpo['TrnGUID']).toBe('b3a1c2d4-0000-4000-8000-000000000001');
+    expect(corpo['CliCod']).toBe(37);
+  });
+
+  it('sobrescreve a Empresa que o navegador tentou mandar', () => {
+    const corpo = corpoComEmpresaNaRaiz(
+      { ...CORPO_ENVIO, Empresa: 999 },
+      '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+      '7',
+    ) as Record<string, unknown>;
+
+    expect(corpo['Empresa']).toBe(7);
+  });
+
+  it('injeta Empresa na raiz do corpo do GerarPIX, como número (AD-251)', () => {
+    // O corpo é plano desde AD-251, e o SDT declara `Empresa: integer int64`.
+    // Sem esta injeção o ERP recebe `Empresa = 0`, não acha a configuração do
+    // CentriumPAG e devolve o SDT vazio (AD-249).
+    const corpo = corpoComEmpresaNaRaiz(
+      { TrnValor: 0.01, FPgCod: 3 },
+      '/ApiCentriumOAuth/GerarPIX',
+      '7',
+    ) as Record<string, unknown>;
+
+    expect(corpo['Empresa']).toBe(7);
+    expect(corpo['FPgCod']).toBe(3);
+  });
+
+  it('não toca no corpo de endpoints fora da lista', () => {
+    const original = { CodigoProduto: 'X1' };
+
+    expect(corpoComEmpresaNaRaiz(original, '/ApiCentriumOAuth/GetProduto', '7')).toEqual(original);
+  });
+
+  it('não muta o corpo original da requisição', () => {
+    corpoComEmpresaNaRaiz(CORPO_ENVIO, '/ApiCentriumOAuth/EnvioDiretoWhatsapp', '7');
+
+    expect('Empresa' in CORPO_ENVIO).toBe(false);
+  });
+
+  it('deixa o corpo como está quando a empresa da sessão não é numérica', () => {
+    const corpo = corpoComEmpresaNaRaiz(
+      CORPO_ENVIO,
+      '/ApiCentriumOAuth/EnvioDiretoWhatsapp',
+      'acme',
+    ) as Record<string, unknown>;
+
+    expect(corpo['Empresa']).toBeUndefined();
+  });
+
+  it('repassa intacto o que não é objeto', () => {
+    expect(corpoComEmpresaNaRaiz('texto cru', '/ApiCentriumOAuth/EnvioDiretoWhatsapp', '7')).toBe(
+      'texto cru',
+    );
   });
 });
 

@@ -31,7 +31,12 @@ import {
 import type { Centavos } from '../../domain/precificacao/dinheiro';
 import { criarErpClient, type ErpClient } from '../erpClient';
 import { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../errosErp';
-import { paraCapacidadesPagamento, paraCondicoesPagamento, paraMinimoPix } from './pagamentoMapper';
+import {
+  paraCapacidadesPagamento,
+  paraCondicoesPagamento,
+  paraMinimoPix,
+  paraTempoExpiracaoPix,
+} from './pagamentoMapper';
 
 const ROTA_BOOTSTRAP = '/api/bootstrap';
 const CAMINHO_VALIDA_TICKET = '/ApiCentriumOAuth/ValidaTicketDevolucao';
@@ -65,6 +70,13 @@ export interface CatalogoPagamento {
    * segunda leitura da mesma rota com outro ciclo de frescor.
    */
   readonly minimoPix: Centavos;
+  /**
+   * `ConfiguracoesPIX.TempoEspera` em segundos, já com o padrão aplicado
+   * (`paraTempoExpiracaoPix`) — vira `TrnTempoExpiracaoPIX` no corpo de
+   * `GerarPIX` (AD-251). Viaja junto do catálogo pelo mesmo motivo de
+   * `minimoPix`: é o mesmo payload de `/api/bootstrap`.
+   */
+  readonly tempoExpiracaoPix: number;
 }
 
 /**
@@ -106,6 +118,7 @@ export async function fetchCondicoesPagamento(
     condicoes: paraCondicoesPagamento(validado.data.SessaoUsuario.CondicoesDePagamento),
     capacidades: paraCapacidadesPagamento(validado.data.SessaoUsuario),
     minimoPix: paraMinimoPix(validado.data.SessaoUsuario),
+    tempoExpiracaoPix: paraTempoExpiracaoPix(validado.data.SessaoUsuario),
   };
 }
 

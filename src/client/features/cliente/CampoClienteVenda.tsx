@@ -257,9 +257,9 @@ export function CampoClienteVenda(): ReactElement {
       : clienteAtual.documento;
   /**
    * Celular vazio conta como ausente, junto com `null`: o cadastro sem
-   * telefone chega das duas formas — `GetSessao` não devolve contato do
-   * cliente default e `GetCliente` devolve string vazia — e para o operador é
-   * o mesmo caso.
+   * telefone chega das duas formas — `null` (default sem
+   * `ClienteDefaultContato`, AD-237) e string vazia (`GetCliente`) — e para o
+   * operador é o mesmo caso.
    */
   const contatoDoCliente =
     clienteAtual?.celular === undefined ||

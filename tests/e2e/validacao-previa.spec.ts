@@ -105,8 +105,12 @@ test.describe('Recusa do ERP bloqueia a inserção (Cenário 1, T015)', () => {
     const inicio = Date.now();
     await aplicarDinheiro(page, '70,00');
 
-    // Texto **do ERP**, sem reescrita (`FR-007`, I11).
-    await expect(page.getByText(MENSAGEM_RECUSA_CREDITO_BLOQUEADO).first()).toBeVisible();
+    // Texto **do ERP**, sem reescrita (`FR-007`, I11), agora na janela de
+    // recusa (AD-239) e não num toast.
+    await expect(page.getByTestId('erro-finalizacao')).toContainText(
+      MENSAGEM_RECUSA_CREDITO_BLOQUEADO,
+    );
+    await expect(page.getByRole('alertdialog')).toHaveAccessibleName('Pagamento recusado pelo ERP');
     const decorrido = Date.now() - inicio;
 
     // `SC-006`: da confirmação ao desfecho visível, menos de 2s.
@@ -135,6 +139,12 @@ test.describe('Recusa do ERP bloqueia a inserção (Cenário 1, T015)', () => {
 
     await aplicarDinheiro(page, '70,00');
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+
+    // A recusa abre janela (AD-239), e o operador a fecha antes de tentar de
+    // novo — antes disso ela era um toast que passava voando.
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+    await page.getByTestId('fechar-erro-faturamento').click();
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toHaveCount(0);
 
     // O "operador corrige a causa no ERP" — aqui, o cadastro do cliente deixa
     // de bloquear. O veredito anterior **não** é reaproveitado.

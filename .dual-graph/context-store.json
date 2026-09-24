@@ -1,488 +1,5 @@
 [
   {
-    "id": "mem:1788352340011",
-    "kind": "task",
-    "content": "Gerado tasks.md da feature 014 (validacao-previa-nfce), 27 tarefas",
-    "tags": [
-      "speckit-tasks",
-      "014"
-    ],
-    "files": [
-      "specs/014-validacao-previa-nfce/tasks.md"
-    ],
-    "file_path": "specs/014-validacao-previa-nfce/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-01",
-    "created_epoch": 1788231600,
-    "updated_at": "2026-09-01",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "Barra superior le SessaoUsuario; Online via navigator.onLine",
-    "tags": [
-      "barra-superior",
-      "ui"
-    ],
-    "files": [
-      "src/client/layout/BarraSuperior.tsx"
-    ],
-    "file_path": "src/client/layout/BarraSuperior.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-127: caminho feliz sem modal; PDF em aba nova via blob; finalizar exige valor",
-    "tags": [
-      "004",
-      "ui"
-    ],
-    "files": [
-      "src/client/services/impressao/abrirPdfNFCe.ts"
-    ],
-    "file_path": "src/client/services/impressao/abrirPdfNFCe.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-126: suspensao vira toast; cancelar exige item; ESC no modal; toasts top-right",
-    "tags": [
-      "004",
-      "ui"
-    ],
-    "files": [
-      "src/client/main.tsx"
-    ],
-    "file_path": "src/client/main.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "AD-125: finalizar dentro do card de pagamento; cancelar a esquerda; resumo sempre visivel",
-    "tags": [
-      "004",
-      "ui",
-      "pencil"
-    ],
-    "files": [
-      "src/client/App.tsx"
-    ],
-    "file_path": "src/client/App.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "fact",
-    "content": "abrirSessaoDeVenda no vendaStore e o call site unico de inicio de venda",
-    "tags": [
-      "004",
-      "auditoria"
-    ],
-    "files": [
-      "src/client/stores/vendaStore.ts"
-    ],
-    "file_path": "src/client/stores/vendaStore.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "fact",
-    "content": "max-w-md/lg colidem com tokens --spacing-*; usar largura explicita em dialogos",
-    "tags": [
-      "tailwind",
-      "gotcha"
-    ],
-    "files": [
-      "src/client/styles/global.css"
-    ],
-    "file_path": "src/client/styles/global.css",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "Feature 004 implementada: 31 tarefas, 291 unit + 31 E2E verdes",
-    "tags": [
-      "004",
-      "finalizacao"
-    ],
-    "files": [
-      "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts"
-    ],
-    "file_path": "src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "PR #44: marca Pencil MCP obrigatorio nas tasks de UI em 11/13 tasks.md (001,014 sem UI)",
-    "tags": [
-      "pencil-mcp",
-      "tasks",
-      "ui",
-      "docs"
-    ],
-    "files": [
-      "specs/002-autenticacao-sessao-bootstrap/tasks.md",
-      "specs/003-carrinho-produto-precificacao/tasks.md",
-      "specs/004-finalizacao-suspensao-venda/tasks.md",
-      "specs/005-identificacao-cadastro-cliente/tasks.md",
-      "specs/006-importacao-dav/tasks.md",
-      "specs/007-layout-responsivo-mobile/tasks.md",
-      "specs/008-pagamento-geral/tasks.md",
-      "specs/009-pagamento-pix/tasks.md",
-      "specs/011-recuperacao-nfce/tasks.md",
-      "specs/012-selecao-vendedor/tasks.md",
-      "specs/013-venda-rapida-cenario-pagamento/tasks.md"
-    ],
-    "file_path": "specs/002-autenticacao-sessao-bootstrap/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "decision",
-    "content": "Feature 001 implementada: slice de auditoria, 20 eventos, serializacao do Log",
-    "tags": [
-      "speckit",
-      "001",
-      "auditoria",
-      "zustand"
-    ],
-    "files": [
-      "src/client/domain/auditoria/eventos.ts",
-      "src/client/stores/slices/auditoriaSlice.ts",
-      "src/client/stores/vendaStore.ts"
-    ],
-    "file_path": "src/client/domain/auditoria/eventos.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "decision",
-    "content": "Feature 003 implementada: dominio de precificacao, carrinhoSlice e UI",
-    "tags": [
-      "003",
-      "carrinho",
-      "precificacao"
-    ],
-    "files": [
-      "src/client/domain/precificacao/reprecificacao.ts",
-      "src/client/stores/slices/carrinhoSlice.ts"
-    ],
-    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "fact",
-    "content": "repricarSku tem 4o param opcional: desconto de convenio junto do preco",
-    "tags": [
-      "003",
-      "contrato"
-    ],
-    "files": [
-      "src/client/domain/precificacao/reprecificacao.ts"
-    ],
-    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "decision",
-    "content": "AD-119/120/121 registram os achados da implementacao da 003",
-    "tags": [
-      "003",
-      "adr",
-      "specs"
-    ],
-    "files": [
-      ".specs/project/STATE.md"
-    ],
-    "file_path": ".specs/project/STATE.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "decision",
-    "content": "Revisao code-review high da 003 achou 7 gaps/bugs; 4 subagentes Sonnet corrigiram em paralelo (commit cf42fad)",
-    "tags": [
-      "003",
-      "code-review",
-      "precificacao",
-      "carrinho"
-    ],
-    "files": [
-      "src/client/domain/precificacao/reprecificacao.ts",
-      "src/client/domain/precificacao/linha.ts",
-      "src/client/domain/precificacao/tabelaPreco.ts",
-      "src/client/stores/slices/carrinhoSlice.ts",
-      "src/client/features/carrinho/EdicaoItemEditavel.tsx",
-      "src/client/features/carrinho/ModalBuscaProduto.tsx",
-      "src/client/features/carrinho/EdicaoQuantidadeItem.tsx"
-    ],
-    "file_path": "src/client/domain/precificacao/reprecificacao.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "fact",
-    "content": "descontoLinha virou descontoConvenio + descontoManual em LinhaCarrinho; repricarSku so recalcula o de convenio",
-    "tags": [
-      "003",
-      "precificacao",
-      "desconto"
-    ],
-    "files": [
-      "src/client/domain/precificacao/linha.ts",
-      "src/client/domain/precificacao/reprecificacao.ts"
-    ],
-    "file_path": "src/client/domain/precificacao/linha.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788366372093",
-    "kind": "blocker",
-    "content": "4 subagentes paralelos editando arquivos compartilhados (carrinhoSlice/linha/EdicaoItemEditavel) deixaram tsc quebrado por instante; reconciliacao resolveu",
-    "tags": [
-      "003",
-      "subagentes",
-      "concorrencia",
-      "gotcha"
-    ],
-    "files": [
-      "src/client/stores/slices/carrinhoSlice.ts"
-    ],
-    "file_path": "src/client/stores/slices/carrinhoSlice.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02",
-    "created_epoch": 1788318000,
-    "updated_at": "2026-09-02",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788353062795",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "tests/unit/domain/auditoria/eventos.spec.ts"
-    ],
-    "file_path": "tests/unit/domain/auditoria/eventos.spec.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.795330+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.795341+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788353062770",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "src/client/stores/slices/auditoriaSlice.ts"
-    ],
-    "file_path": "src/client/stores/slices/auditoriaSlice.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.770955+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.770969+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788353062749",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "src/client/domain/auditoria/eventos.ts"
-    ],
-    "file_path": "src/client/domain/auditoria/eventos.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.749950+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.749960+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
     "id": "mem:1788353062747",
     "kind": "decision",
     "content": "Implementa feature 001 (auditoria): eventos.ts com 20 tipos + factories, auditoriaSlice, vendaStore por slices, serializarLog, 19 testes",
@@ -577,72 +94,6 @@
     "created_at": "2026-09-02T12:44:22.782496+00:00",
     "created_epoch": 1788353062,
     "updated_at": "2026-09-02T12:44:22.782508+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788353062804",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "tests/unit/domain/auditoria/serializarLog.spec.ts"
-    ],
-    "file_path": "tests/unit/domain/auditoria/serializarLog.spec.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.804285+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.804295+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788353062824",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "specs/001-auditoria-acoes-operador/tasks.md"
-    ],
-    "file_path": "specs/001-auditoria-acoes-operador/tasks.md",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.824771+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.824780+00:00",
     "stale": false,
     "stale_reason": "",
     "observed_queries": [],
@@ -1896,28 +1347,6 @@
     "tags": [
       "ui",
       "layout"
-    ],
-    "files": [
-      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
-    ],
-    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-03",
-    "created_epoch": 1788404400,
-    "updated_at": "2026-09-03",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {}
-  },
-  {
-    "id": "mem:1788458404832",
-    "kind": "decision",
-    "content": "R$ vira elemento fora do input (SimboloReal), nunca mascara no value",
-    "tags": [
-      "ui",
-      "dinheiro"
     ],
     "files": [
       "src/client/features/carrinho/EntradaRapidaProduto.tsx"
@@ -5806,6 +5235,7 @@
     "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "blocker",
     "content": "T018 e portao: parametro de abertura pode estar acoplado ao booleano do modal",
     "tags": [
@@ -5817,10 +5247,19 @@
       "src/client/features/carrinho/EntradaRapidaProduto.tsx",
       "src/client/features/cliente/CampoClienteVenda.tsx"
     ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T15:10:26.738433+00:00",
-    "created_epoch": 1789485026
+    "created_epoch": 1789485026,
+    "updated_at": "2026-09-15T15:10:26.738433+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "fact",
     "content": "T018 resolvido: nenhum parametro de abertura acoplado ao booleano dos modais",
     "tags": [
@@ -5831,38 +5270,19 @@
       "src/client/features/carrinho/EntradaRapidaProduto.tsx",
       "src/client/features/cliente/CampoClienteVenda.tsx"
     ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T16:00:00+00:00",
-    "created_epoch": 1789488000
+    "created_epoch": 1789488000,
+    "updated_at": "2026-09-15T16:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
-    "kind": "decision",
-    "content": "F1/F2 no layout compacto recusam explicando; importacao segue ausente do mobile",
-    "tags": [
-      "atalhos",
-      "mobile",
-      "016"
-    ],
-    "files": [
-      "src/client/layout/AppShell.tsx"
-    ],
-    "created_at": "2026-09-15T16:00:00+00:00",
-    "created_epoch": 1789488000
-  },
-  {
-    "kind": "decision",
-    "content": "F3/F4 fora da etapa 1 do wizard levam a etapa 1 e abrem a busca",
-    "tags": [
-      "atalhos",
-      "mobile",
-      "016"
-    ],
-    "files": [
-      "src/client/layout/mobile/MobileWizard.tsx"
-    ],
-    "created_at": "2026-09-15T16:00:00+00:00",
-    "created_epoch": 1789488000
-  },
-  {
+    "id": "mem:1790001294753",
     "kind": "fact",
     "content": "Registro F6-F9 saiu da faixa para TeclasVendaRapida montado no AppShell",
     "tags": [
@@ -5873,10 +5293,19 @@
     "files": [
       "src/client/features/venda-rapida/TeclasVendaRapida.tsx"
     ],
+    "file_path": "src/client/features/venda-rapida/TeclasVendaRapida.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T16:00:00+00:00",
-    "created_epoch": 1789488000
+    "created_epoch": 1789488000,
+    "updated_at": "2026-09-15T16:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "fact",
     "content": "Janela nascida no mesmo commit perde foco para autoFocus posterior; usar focoInicial",
     "tags": [
@@ -5887,10 +5316,19 @@
     "files": [
       "src/client/lib/useFocoDeModal.ts"
     ],
+    "file_path": "src/client/lib/useFocoDeModal.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T16:00:00+00:00",
-    "created_epoch": 1789488000
+    "created_epoch": 1789488000,
+    "updated_at": "2026-09-15T16:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "next",
     "content": "Validar C1-C4 do quickstart 016 com teclado real no Chrome",
     "tags": [
@@ -5900,10 +5338,19 @@
     "files": [
       "specs/016-atalhos-teclado-fixos/quickstart.md"
     ],
+    "file_path": "specs/016-atalhos-teclado-fixos/quickstart.md",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T16:00:00+00:00",
-    "created_epoch": 1789488000
+    "created_epoch": 1789488000,
+    "updated_at": "2026-09-15T16:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "decision",
     "content": "F6-F9 no wizard pedem etapa 2 antes de lancar e etapa 3 ao fim",
     "tags": [
@@ -5915,10 +5362,19 @@
       "src/client/stores/etapaVendaStore.ts",
       "src/client/layout/mobile/MobileWizard.tsx"
     ],
+    "file_path": "src/client/stores/etapaVendaStore.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T17:00:00+00:00",
-    "created_epoch": 1789491600
+    "created_epoch": 1789491600,
+    "updated_at": "2026-09-15T17:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "decision",
     "content": "AD-232: venda em cobranca nao volta a etapa 1 do wizard mobile",
     "tags": [
@@ -5930,10 +5386,19 @@
       "src/client/layout/mobile/MobileWizard.tsx",
       "specs/007-layout-responsivo-mobile/spec.md"
     ],
+    "file_path": "src/client/layout/mobile/MobileWizard.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T20:00:00+00:00",
-    "created_epoch": 1789502400
+    "created_epoch": 1789502400,
+    "updated_at": "2026-09-15T20:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "decision",
     "content": "AD-233: causa da falha da camera, toast rola ao topo, modal PIX compacto",
     "tags": [
@@ -5946,10 +5411,19 @@
       "src/client/layout/rolarParaOTopo.ts",
       "src/client/features/pagamento/pix/ModalPix.tsx"
     ],
+    "file_path": "src/client/domain/layout/mensagemDeFalhaDaCamera.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T20:00:00+00:00",
-    "created_epoch": 1789502400
+    "created_epoch": 1789502400,
+    "updated_at": "2026-09-15T20:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
   },
   {
+    "id": "mem:1790001294753",
     "kind": "fact",
     "content": "context-store no working tree tinha perdido 7 entradas antigas; restaurado do HEAD",
     "tags": [
@@ -5959,7 +5433,392 @@
     "files": [
       ".dual-graph/context-store.json"
     ],
+    "file_path": ".dual-graph/context-store.json",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-15T20:00:00+00:00",
-    "created_epoch": 1789502400
+    "created_epoch": 1789502400,
+    "updated_at": "2026-09-15T20:00:00+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789567200003",
+    "kind": "decision",
+    "content": "Sair do campo de c\u00f3digo revalida no ERP; l\u00e1pis trava o c\u00f3digo (AD-243)",
+    "tags": [
+      "carrinho",
+      "entrada-rapida",
+      "foco"
+    ],
+    "files": [
+      "src/client/features/carrinho/EntradaRapidaProduto.tsx"
+    ],
+    "file_path": "src/client/features/carrinho/EntradaRapidaProduto.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-16",
+    "created_epoch": 1789567200,
+    "updated_at": "2026-09-16",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789567200001",
+    "kind": "fact",
+    "content": "CodeQL reprova replace de tags HTML; textoSemHtml virou varredura unica (AD-241)",
+    "tags": [
+      "codeql",
+      "ci",
+      "seguranca"
+    ],
+    "files": [
+      "src/client/lib/textoSemHtml.ts"
+    ],
+    "file_path": "src/client/lib/textoSemHtml.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-16",
+    "created_epoch": 1789567200,
+    "updated_at": "2026-09-16",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1789567200002",
+    "kind": "decision",
+    "content": "C\u00f3pia dos desfechos diz checkout, nao caixa; botao promete nova venda (AD-242)",
+    "tags": [
+      "copy",
+      "ui",
+      "finalizacao"
+    ],
+    "files": [
+      "src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx"
+    ],
+    "file_path": "src/client/features/finalizacao-suspensao/DialogoErroFaturamento.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-16",
+    "created_epoch": 1789567200,
+    "updated_at": "2026-09-16",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1790000000003",
+    "kind": "blocker",
+    "content": "MCP genexus barrou toda leitura da KB: IndexNotReady mesmo apos reload",
+    "tags": [
+      "genexus",
+      "mcp",
+      "kb"
+    ],
+    "files": [],
+    "file_path": "",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-21",
+    "created_epoch": 1790000000,
+    "updated_at": "2026-09-21",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1790000000002",
+    "kind": "fact",
+    "content": "Empresa na raiz do corpo e inserida pelo BFF por lista de caminhos",
+    "tags": [
+      "bff",
+      "proxy",
+      "empresa",
+      "AD-248"
+    ],
+    "files": [
+      "src/server/routes/erp-proxy.ts"
+    ],
+    "file_path": "src/server/routes/erp-proxy.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-21",
+    "created_epoch": 1790000000,
+    "updated_at": "2026-09-21",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1790000000001",
+    "kind": "decision",
+    "content": "AD-248: envio do PIX por WhatsApp; Nome vai mas o ERP ignora hoje",
+    "tags": [
+      "pix",
+      "whatsapp",
+      "AD-248",
+      "erp"
+    ],
+    "files": [
+      "src/client/features/pagamento/pix/ModalPix.tsx",
+      "src/client/services/pix/envioWhatsappMutation.ts",
+      "src/client/domain/pix/destinoWhatsapp.ts"
+    ],
+    "file_path": "src/client/features/pagamento/pix/ModalPix.tsx",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-21",
+    "created_epoch": 1790000000,
+    "updated_at": "2026-09-21",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1790003726546",
+    "kind": "query_association",
+    "content": "Queried during: resolverIntegracao TEF PIX_DINAMICO",
+    "tags": [
+      "resolverintegracao",
+      "tef",
+      "pix_dinamico"
+    ],
+    "files": [
+      "src/client/stores/slices/pagamentoSlice.ts"
+    ],
+    "file_path": "src/client/stores/slices/pagamentoSlice.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T15:15:26.546580+00:00",
+    "created_epoch": 1790003726,
+    "updated_at": "2026-09-21T15:15:26.546600+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [
+      "resolverIntegracao TEF PIX_DINAMICO"
+    ],
+    "evidence": {
+      "source": "graph_read",
+      "anchor_mode": "file",
+      "session_epoch": 1790001275
+    }
+  },
+  {
+    "id": "mem:1790004497753",
+    "kind": "decision",
+    "content": "AD-250: PIX com FPGNFTEFPO '1' e TEFAtivo vai ao TEF, sem QR Code",
+    "tags": [
+      "pix",
+      "tef",
+      "AD-250",
+      "roteamento"
+    ],
+    "files": [
+      "src/client/domain/pagamento/roteamentoIntegracao.ts",
+      "tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts"
+    ],
+    "file_path": "src/client/domain/pagamento/roteamentoIntegracao.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T15:28:17.661636+00:00",
+    "created_epoch": 1790004497,
+    "updated_at": "2026-09-21T15:28:17.661636+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1790004552156",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "250",
+      "pix",
+      "com",
+      "fpgnftefpo",
+      "tefativo",
+      "roteia",
+      "para",
+      "tef"
+    ],
+    "files": [
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx::motivoDeIndisponibilidade"
+    ],
+    "file_path": "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+    "symbol_id": "src/client/features/pagamento/SeletorCondicaoForma.tsx::motivoDeIndisponibilidade",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T15:29:12.156792+00:00",
+    "created_epoch": 1790004552,
+    "updated_at": "2026-09-21T15:29:12.156857+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1790004552101",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "250",
+      "pix",
+      "com",
+      "fpgnftefpo",
+      "tefativo",
+      "roteia",
+      "para",
+      "tef"
+    ],
+    "files": [
+      "src/client/domain/pagamento/roteamentoIntegracao.ts::resolverIntegracao"
+    ],
+    "file_path": "src/client/domain/pagamento/roteamentoIntegracao.ts",
+    "symbol_id": "src/client/domain/pagamento/roteamentoIntegracao.ts::resolverIntegracao",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T15:29:12.101377+00:00",
+    "created_epoch": 1790004552,
+    "updated_at": "2026-09-21T15:29:12.101403+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1790004552090",
+    "kind": "decision",
+    "content": "AD-250: PIX com FPGNFTEFPO='1' e tefAtivo roteia para TEF, n\u00e3o gera QR Code",
+    "tags": [
+      "250",
+      "pix",
+      "com",
+      "fpgnftefpo",
+      "tefativo",
+      "roteia",
+      "para",
+      "tef"
+    ],
+    "files": [
+      "src/client/domain/pagamento/roteamentoIntegracao.ts::resolverIntegracao",
+      "src/client/domain/pagamento/roteamentoIntegracao.ts::formaDisponivel",
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx::motivoDeIndisponibilidade",
+      "tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts"
+    ],
+    "file_path": "src/client/domain/pagamento/roteamentoIntegracao.ts",
+    "symbol_id": "src/client/domain/pagamento/roteamentoIntegracao.ts::resolverIntegracao",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T15:29:12.091224+00:00",
+    "created_epoch": 1790004552,
+    "updated_at": "2026-09-21T15:29:12.091245+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "window_sec": 120,
+      "recent_action_kinds": [],
+      "recent_queries": []
+    }
+  },
+  {
+    "id": "mem:1790004552128",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "250",
+      "pix",
+      "com",
+      "fpgnftefpo",
+      "tefativo",
+      "roteia",
+      "para",
+      "tef"
+    ],
+    "files": [
+      "src/client/domain/pagamento/roteamentoIntegracao.ts::formaDisponivel"
+    ],
+    "file_path": "src/client/domain/pagamento/roteamentoIntegracao.ts",
+    "symbol_id": "src/client/domain/pagamento/roteamentoIntegracao.ts::formaDisponivel",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T15:29:12.128262+00:00",
+    "created_epoch": 1790004552,
+    "updated_at": "2026-09-21T15:29:12.128289+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "id": "mem:1790004552183",
+    "kind": "edit_observation",
+    "content": "Edited during active session",
+    "tags": [
+      "250",
+      "pix",
+      "com",
+      "fpgnftefpo",
+      "tefativo",
+      "roteia",
+      "para",
+      "tef"
+    ],
+    "files": [
+      "tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts"
+    ],
+    "file_path": "tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T15:29:12.183088+00:00",
+    "created_epoch": 1790004552,
+    "updated_at": "2026-09-21T15:29:12.183117+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {
+      "source": "graph_register_edit",
+      "recent_action_kinds": [],
+      "recent_queries": [],
+      "edited": true
+    }
+  },
+  {
+    "kind": "decision",
+    "content": "Envelope SDTCentriumPag_Post fica: retestar GerarPIX com a Empresa de AD-249 antes",
+    "tags": [
+      "pix",
+      "envelope",
+      "GerarPIX",
+      "AD-249"
+    ],
+    "files": [
+      "src/client/services/pix/pixQueries.ts",
+      "src/server/routes/erp-proxy.ts"
+    ],
+    "created_at": "2026-09-21T16:18:11.755575+00:00",
+    "created_epoch": 1790007491
   }
 ]

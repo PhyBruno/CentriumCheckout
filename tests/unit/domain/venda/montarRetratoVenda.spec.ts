@@ -29,7 +29,7 @@ function snapshotVendaDe(sobrescritas: Partial<SnapshotVenda> = {}): SnapshotVen
   return {
     empresa: '1',
     linhas: [linhaDe({ quantidadeEmUnidades: 3, precoUnitario: 1000 })],
-    identidade: { origem: 'NOVA', numeroNota: 0 },
+    identidade: { origem: 'NOVA', numeroRascunho: 0, serie: '' },
     cadSerieNFCe: '1',
     clienteCodigo: 1,
     vendedorCodigo: 42,
@@ -53,19 +53,62 @@ describe('montarRetratoVenda — identidade da venda (FR-003)', () => {
     }
   });
 
-  it('envia NumeroNota = 0 para venda criada do zero', () => {
-    const retrato = montarRetratoVenda(snapshotVendaDe(), 'FATURAR', []);
+  it('envia NumeroRascunho = 0 para venda criada do zero, nas três operações (AD-235)', () => {
+    for (const operacao of ['FATURAR', 'SUSPENDER', 'VALIDAR'] as const) {
+      const retrato = montarRetratoVenda(snapshotVendaDe(), operacao, []);
 
-    expect(retrato.NumeroNota).toBe(0);
+      expect(retrato.NumeroRascunho).toBe(0);
+      // O campo antigo saiu do SDT no contrato de 2026-09-14: mandá-lo junto
+      // seria um segundo número que o ERP ignora e que confundiria a leitura.
+      expect(retrato).not.toHaveProperty('NumeroNota');
+    }
   });
 
   it.each<IdentidadeVenda>([
-    { origem: 'RASCUNHO', numeroNota: 4821 },
-    { origem: 'DAV', numeroNota: 4790 },
-  ])('envia o NumeroNota do documento de origem ($origem)', (identidade) => {
-    const retrato = montarRetratoVenda(snapshotVendaDe({ identidade }), 'FATURAR', []);
+    { origem: 'RASCUNHO', numeroRascunho: 4821, serie: '' },
+    { origem: 'DAV', numeroRascunho: 4790, serie: '' },
+    // Venda nova cujo envio foi recusado com o rascunho já gravado (AD-235).
+    { origem: 'NOVA', numeroRascunho: 6100, serie: '' },
+  ])('envia o NumeroRascunho da identidade ($origem)', (identidade) => {
+    for (const operacao of ['FATURAR', 'SUSPENDER', 'VALIDAR'] as const) {
+      const retrato = montarRetratoVenda(snapshotVendaDe({ identidade }), operacao, []);
 
-    expect(retrato.NumeroNota).toBe(identidade.numeroNota);
+      expect(retrato.NumeroRascunho).toBe(identidade.numeroRascunho);
+    }
+  });
+
+  /**
+   * AD-239: o retrato mandava sempre a série **da sessão**, que vem vazia no
+   * tenant de preview — o documento importado com `R01` era reenviado sem
+   * série (medido em 2026-09-16).
+   */
+  describe('série do rascunho', () => {
+    it('manda a série do documento importado, não a da sessão', () => {
+      const snapshot = snapshotVendaDe({
+        identidade: { origem: 'RASCUNHO', numeroRascunho: 6031, serie: 'R01' },
+        cadSerieNFCe: '1',
+      });
+
+      expect(montarRetratoVenda(snapshot, 'FATURAR', []).CadSerieNFCe).toBe('R01');
+    });
+
+    it('cai na série da sessão quando a identidade não tem série', () => {
+      const snapshot = snapshotVendaDe({
+        identidade: { origem: 'NOVA', numeroRascunho: 0, serie: '   ' },
+        cadSerieNFCe: '1',
+      });
+
+      expect(montarRetratoVenda(snapshot, 'FATURAR', []).CadSerieNFCe).toBe('1');
+    });
+
+    it('série vazia dos dois lados continua vazia — é o que o tenant de preview devolve', () => {
+      const snapshot = snapshotVendaDe({
+        identidade: { origem: 'NOVA', numeroRascunho: 0, serie: '' },
+        cadSerieNFCe: '',
+      });
+
+      expect(montarRetratoVenda(snapshot, 'SUSPENDER', []).CadSerieNFCe).toBe('');
+    });
   });
 });
 

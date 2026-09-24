@@ -58,11 +58,13 @@ test.describe('Layout desktop (viewport larga)', () => {
     await expect(botaoFinalizar).toBeEnabled();
     await botaoFinalizar.click();
 
-    // Caminho feliz não tem modal (pedido do usuário, 2026-09-02): o cupom sai
-    // na impressora e a tela volta para a próxima venda. O sinal observável é o
-    // carrinho zerado — e ele continua sendo o mesmo depois da 007, porque quem
-    // finaliza é o mesmo `AcoesFinaisVenda` das duas árvores.
+    // O sinal observável é o carrinho zerado — e ele continua sendo o mesmo
+    // depois da 007, porque quem finaliza é o mesmo `AcoesFinaisVenda` das duas
+    // árvores. O cupom enviado mostra "Enviado para a impressora" (AD-246),
+    // que o ESC fecha.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    await expect(page.getByText('Enviado para a impressora')).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('dialogo-documento-fiscal')).toHaveCount(0);
   });
 });

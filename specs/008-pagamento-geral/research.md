@@ -54,14 +54,15 @@ Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Tr
 
 **Decision**: `resolverIntegracao(forma, capacidades)` é uma função pura que devolve `'TEF' | 'PIX_DINAMICO' | 'NENHUMA'`. As `capacidades` (`tefAtivo`, `pixAtivo`) são **injetadas**, nunca lidas de dentro do domínio. **Revisado em 2026-09-03 (AD-144):** `plataforma` saiu das capacidades — o layout deixou de ser insumo do roteamento quando o usuário revogou a exclusão de TEF no mobile. Tabela de decisão:
 
-**Refinado em 2026-09-08 (AD-180):** o ramo de cartão ganhou uma segunda condição, `forma.integracaoCartao === '1'` — ver D6, cuja decisão foi substituída.
+**Refinado em 2026-09-08 (AD-180):** o ramo de cartão ganhou uma segunda condição, `forma.integracaoCartao === '1'` — ver D6, cuja decisão foi substituída. **Estendido em 2026-09-21 (AD-250):** o ramo do `Pix` faz a **mesma** pergunta, e a faz **antes** de olhar `pixAtivo` — forma de PIX cadastrada como TEF é cobrada pelo terminal, não pelo CentriumPAG.
 
 | `FormaMeioPagtoNFe` | Condição | Resultado |
 |---|---|---|
 | `CartaoCredito`, `CartaoDebito` | `tefAtivo` **e** `integracaoCartao === '1'` | `TEF` |
 | `CartaoCredito`, `CartaoDebito` | caso contrário | `NENHUMA` |
-| `Pix` | `pixAtivo` | `PIX_DINAMICO` |
-| `Pix` | `!pixAtivo` | forma oculta/desabilitada (`FR-003`) |
+| `Pix` | `tefAtivo` **e** `integracaoCartao === '1'` | `TEF` (AD-250) |
+| `Pix` | caso contrário, com `pixAtivo` | `PIX_DINAMICO` |
+| `Pix` | caso contrário, sem `pixAtivo` | forma oculta/desabilitada (`FR-003`) |
 | `PixEstatico` | sempre | `NENHUMA` (`FR-006`) |
 | qualquer outro | sempre | `NENHUMA` |
 
@@ -71,11 +72,11 @@ Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Tr
 
 ---
 
-## D6 — `FormaIntegracaoCartao` decide, junto com `tefAtivo`, se o cartão vai ao TEF
+## D6 — `FormaIntegracaoCartao` decide, junto com `tefAtivo`, se a forma vai ao TEF
 
-**Decision (vigente desde 2026-09-08, AD-180)**: O campo `FormaIntegracaoCartao` (`FPGNFTEFPO`; `'1'` = TEF/`PagtoIntegrado`, `'2'` **ou vazio** = POS/avulso) é lido do cadastro da forma, copiado para o `PagamentoAplicado`, ecoado em `CheckoutFaturarNFCe.FormasDePagamento[].FormaIntegracaoCartao` **e** usado como segunda condição de `resolverIntegracao` no ramo de cartão: sem `'1'`, cartão nunca roteia para TEF, mesmo com `tefAtivo`.
+**Decision (vigente desde 2026-09-08, AD-180; estendida ao PIX em 2026-09-21, AD-250)**: O campo `FormaIntegracaoCartao` (`FPGNFTEFPO`; `'1'` = TEF/`PagtoIntegrado`, `'2'` **ou vazio** = POS/avulso) é lido do cadastro da forma, copiado para o `PagamentoAplicado`, ecoado em `CheckoutFaturarNFCe.FormasDePagamento[].FormaIntegracaoCartao` **e** usado como segunda condição de `resolverIntegracao` nos ramos de cartão **e de `Pix`**: sem `'1'`, nenhum dos dois roteia para TEF, mesmo com `tefAtivo`; com `'1'` + `tefAtivo`, o `Pix` vai ao terminal e **não** ao `GerarPIX`.
 
-**Rationale**: informação direta do usuário — uma empresa que usa TEF pode optar por pagar avulso em formas específicas de cartão, e mandá-las ao terminal é erro operacional. `tefAtivo` responde "a empresa tem TEF?"; `integracaoCartao` responde "esta forma passa nele?". As duas perguntas são diferentes e precisam das duas respostas.
+**Rationale**: informação direta do usuário — uma empresa que usa TEF pode optar por pagar avulso em formas específicas de cartão, e mandá-las ao terminal é erro operacional. `tefAtivo` responde "a empresa tem TEF?"; `integracaoCartao` responde "esta forma passa nele?". As duas perguntas são diferentes e precisam das duas respostas. **O nome do campo engana (AD-250):** apesar do "Cartao", ele qualifica a forma, não o meio — um PIX cadastrado como TEF é cobrado pelo terminal, e gerar o QR Code em paralelo criaria uma segunda cobrança para o mesmo dinheiro.
 
 **Decisão anterior, substituída**: até 2026-09-08 este item dizia que o campo era "ecoado, não interpretado", apoiado em AD-073 (que aceitava deliberadamente rotear todo cartão com `TEFAtivo=true` para TEF) e em AD-078 (que confirmou o campo na KB mas o deixou só disponível). A alternativa então rejeitada — "já usar `FormaIntegracaoCartao === '1'` como condição adicional" — é exatamente a regra vigente; o receio registrado ali ("quebraria empresas cujo cadastro não preenche o campo") não se aplica, porque campo vazio **significa POS**, não "sem informação".
 

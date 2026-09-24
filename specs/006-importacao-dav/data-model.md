@@ -28,7 +28,7 @@ export interface DavListado {
 
 ```ts
 export interface VendaImportada {
-  readonly numeroNota: number;              // CheckoutFaturarNFCe.NumeroNota — reenviado INTACTO em FaturarNFCe (NFCE-02).
+  readonly numeroRascunho: number;          // CheckoutFaturarNFCe.NumeroRascunho (era NumeroNota até AD-235) — reenviado INTACTO em FaturarNFCe (NFCE-02).
                                             // Único elo com o DAV de origem (AD-107): sem DavNum no contrato, é por este
                                             // rascunho que o ERP reconhece a origem em DAV e fecha o DAV (AD-058).
   readonly clienteCodigo: number;           // .clienteCodigo — sempre sobrescreve o cliente atual (FR-007)
@@ -122,7 +122,7 @@ importarVendaExistente() [orquestração, davQueries.ts]
         ├─ fetchClientePorCodigo(clienteCodigo) → clienteSlice.selecionarCliente(cliente, 'DAV')  // 005, AD-115
         ├─ vendedorSlice.trocarVendedor({codigo, nome: null})      // 012, assinatura desenhada — stub até tasqueada
         ├─ pagamentoSlice.importarFormasDePagamento(formas)        // 008, contrato definido (pula validarInsercao/checagem de dinheiro único, sempre APROVADO/NENHUMA) — stub até tasqueada
-        ├─ registrarEventoAuditoria(criarEventoDavImportado({numeroDav, numeroNota, ...}))  // 001, tipo #20, AD-114
+        ├─ registrarEventoAuditoria(criarEventoDavImportado({numeroDav, numeroRascunho, ...}))  // 001, tipo #20, AD-114
         └─ dispara em paralelo: GetProduto(codigoProduto) por SKU distinto
                  │  sucesso → atualiza snapshot.descricao da(s) linha(s) daquele SKU
                  └─ falha → mantém fallback (código no lugar do nome), sem bloquear as demais linhas
@@ -136,6 +136,6 @@ Consumidos via o dispatcher da feature 001 (`specs/001-auditoria-acoes-operador/
 
 | Ação | Evento | `detalhes` |
 |---|---|---|
-| DAV importado com sucesso | `DAV_IMPORTADO` | `{ numeroDav, numeroNota, quantidadeLinhas, quantidadeFormasDePagamento }` |
+| DAV importado com sucesso | `DAV_IMPORTADO` | `{ numeroDav, numeroRascunho, quantidadeLinhas, quantidadeFormasDePagamento }` (AD-235) |
 
 Nenhum evento de `PRODUTO_INSERIDO` é emitido pelas linhas importadas — `carrinhoSlice.importarLinhasCongeladas` é uma action distinta de `inserirItem` justamente para não confundir "inserção manual" com "importação em lote" na trilha de auditoria (mesma filosofia de `research.md` D11 da feature 003: só ação do operador gera evento próprio, não uma tradução automática de dado já existente no ERP).

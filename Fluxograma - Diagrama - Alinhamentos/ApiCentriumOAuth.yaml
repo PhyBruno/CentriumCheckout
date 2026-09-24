@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: "APICentriumOAuth"
   description: "APICentrium OAuth"
-  version: "20260827192357"
+  version: "20260921111300"
 servers:
   - url: http://localhost/Centrium1600Web/APICentriumOAuth
 paths:
@@ -59,6 +59,12 @@ paths:
           schema:
             type: "string"
             
+        - name: "Codcliente"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
       
       responses:
         200:
@@ -231,6 +237,12 @@ paths:
           schema:
             type: "integer"
             format: "int64"
+        - name: "Quantidade"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            format: "double"
       
       responses:
         200:
@@ -464,6 +476,18 @@ paths:
           schema:
             type: "string"
             
+        - name: "Datainicial"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "Datafinal"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
         - name: "Pagina"
           in: "query"
           required: false
@@ -619,6 +643,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetListaVendedoresOutput"
+        404:
+          description: "Not found"
+
+  /EnvioDiretoWhatsapp:
+    post:
+      tags:
+        - APICentriumOAuth  
+      operationId: "APICentriumOAuth.EnvioDiretoWhatsapp"
+      summary: "EnvioDiretoWhatsapp"
+      security: 
+        - oAuthGXGAM: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvioDiretoWhatsappInput"
+      
+      responses:
+        200:
+          description: "Successful operation"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeneXus.Common.Messages_Message"  
+
         404:
           description: "Not found"
 
@@ -796,6 +848,7 @@ components:
           items:
             $ref: "#/components/schemas/GeneXus.Common.Messages_Message"
 
+
     PostClienteInput:  
       properties:
         Cliente:
@@ -836,6 +889,19 @@ components:
 
 
 
+
+    EnvioDiretoWhatsappInput:  
+      properties:
+        Empresa:
+          type: "integer"
+          format: "int64"
+        TrnGUID:
+          type: "string"
+        CliCod:
+          type: "integer"
+          format: "int64"
+        Telefone:
+          type: "string"
   
     SessaoUsuario:
       properties:
@@ -870,6 +936,9 @@ components:
         ClienteDefaultNome:
           description: "Cliente Default Nome"
           type: "string"
+        ClienteDefaultContato:
+          description: "Cliente Default Contato"
+          type: "string"
         UsuarioTipoCodigoProduto:
           description: "Usuario Tipo Codigo Produto"
           type: "string"
@@ -899,6 +968,9 @@ components:
           format: "int64"
         TipoImpressao:
           description: "Tipo Impressao"
+          type: "string"
+        FaturaProdutoSemSaldo:
+          description: "Fatura Produtos sem Saldo"
           type: "string"
         CenarioPagamento:
           description: "Cenario Pagamento"
@@ -1396,6 +1468,10 @@ components:
         ProdutoPesavelEditavel:
           description: "Material Pesável"
           type: "string"
+        Saldo:
+          description: "Saldo"
+          type: "number"
+          format: "double"
 
 
 
@@ -1451,6 +1527,9 @@ components:
           description: "Vendedor Codigo"
           type: "integer"
           format: "int64"
+        VendedorNome:
+          description: "Vendedor Nome"
+          type: "string"
         ValorTotal:
           description: "Valor Total"
           type: "number"
@@ -1472,16 +1551,22 @@ components:
           description: "cliente Codigo"
           type: "integer"
           format: "int64"
+        ClienteNome:
+          description: "Cliente Nome"
+          type: "string"
         vendedorCodigo:
           description: "vendedor Codigo"
           type: "integer"
           format: "int64"
+        vendedorNome:
+          description: "Nome Vendedor"
+          type: "string"
         CondicaoPagamentoCodigo:
           description: "Condicao Pagamento Codigo"
           type: "integer"
           format: "int64"
-        NumeroNota:
-          description: "Numero Nota"
+        NumeroRascunho:
+          description: "Numero Rascunho"
           type: "integer"
           format: "int64"
         CadSerieNFCe:
@@ -1616,9 +1701,15 @@ components:
         ErroCodigo:
           description: "Erro Codigo"
           type: "integer"
-          format: "int32"
+          format: "int64"
         ErroMensagem:
           description: "Erro Mensagem"
+          type: "string"
+        RetornoMensagemIA:
+          description: "Retorno Mensagem IA"
+          type: "string"
+        UrlChamadas:
+          description: "Url Chamadas"
           type: "string"
         XMLImpressao:
           description: "XMLImpressao"
@@ -1658,18 +1749,33 @@ components:
 
     CheckoutListaRascunhos.Rascunho_Rascunho:
       properties:
-        NumeroNota:
-          description: "Numero Nota"
+        NumeroRascunho:
+          description: "Numero Rascunho"
           type: "integer"
           format: "int64"
-        Cliente:
-          description: "Cliente"
+        Serie:
+          description: "Serie"
           type: "string"
-        Vendedor:
-          description: "Vendedor"
+        ClienteCodigo:
+          description: "Cliente Codigo"
+          type: "integer"
+          format: "int64"
+        ClienteNome:
+          description: "Cliente Nome"
           type: "string"
-        Operador:
-          description: "Operador"
+        VendedorCodigo:
+          description: "Vendedor Codigo"
+          type: "integer"
+          format: "int64"
+        VendedorNome:
+          description: "Vendedor Nome"
+          type: "string"
+        OperadorCodigo:
+          description: "Operador Codigo"
+          type: "integer"
+          format: "int64"
+        OperadorNome:
+          description: "Operador Nome"
           type: "string"
         Emissao:
           description: "Emissao"

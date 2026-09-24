@@ -53,15 +53,18 @@ Teste unitário puro sobre `resolverIntegracao`, sem montar componente. Matriz m
 
 A matriz não tem mais eixo de plataforma (AD-144, 2026-09-03): o veredito é o mesmo no desktop e no mobile, inclusive para cartão com TEF ativo — a linha que esperava `NENHUMA` no mobile foi removida.
 
-A matriz ganhou a coluna `integracaoCartao` em 2026-09-08 (AD-180): no cartão, `'1'` significa TEF e `'2'`/vazio significa POS (pagamento avulso, sem integração). Fora do cartão a coluna é irrelevante.
+A matriz ganhou a coluna `integracaoCartao` em 2026-09-08 (AD-180): `'1'` significa TEF e `'2'`/vazio significa POS (pagamento avulso, sem integração). **Corrigido em 2026-09-21 (AD-250):** a coluna vale também para o `Pix`, não só para o cartão — a frase anterior, "fora do cartão a coluna é irrelevante", descrevia a leitura de AD-180 e não vale mais. Ela continua irrelevante para `PixEstatico`, `Dinheiro` e os demais meios.
 
 | `FormaMeioPagtoNFe` | `integracaoCartao` | `tefAtivo` | `pixAtivo` | Esperado |
 |---|---|---|---|---|
 | `CartaoCredito` | `'1'` | `true` | — | `TEF` (em qualquer layout) |
 | `CartaoCredito` | `'2'` ou `''` | `true` | — | `NENHUMA` ← AD-180, forma segue disponível |
 | `CartaoDebito` | `'1'` | `false` | — | `NENHUMA` |
-| `Pix` | — | — | `true` | `PIX_DINAMICO` (em qualquer layout) |
-| `Pix` | — | — | `false` | forma indisponível |
+| `Pix` | `'1'` | `true` | `true` | `TEF` ← AD-250, **não** gera QR Code |
+| `Pix` | `'1'` | `false` | `true` | `PIX_DINAMICO` (sem terminal na empresa) |
+| `Pix` | `'2'` ou `''` | — | `true` | `PIX_DINAMICO` (em qualquer layout) |
+| `Pix` | `'1'` | `true` | `false` | `TEF`, forma **disponível** ← AD-250 |
+| `Pix` | `'2'` ou `''` | — | `false` | forma indisponível |
 | `PixEstatico` | — | — | `true` | `NENHUMA` ← `FR-006` |
 | `Dinheiro` | — | `true` | `true` | `NENHUMA` |
 

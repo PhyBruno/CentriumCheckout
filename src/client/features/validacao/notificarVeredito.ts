@@ -26,6 +26,15 @@ import type { MensagemValidacao, Veredito } from '../../domain/validacaoVenda/in
 export interface NotificadorVeredito {
   warning(mensagem: string): void;
   error(mensagem: string): void;
+  /**
+   * A **recusa** do ERP, com todos os motivos de uma vez (AD-239).
+   *
+   * Canal separado de `error` porque o desfecho na tela é outro: aviso e
+   * indisponibilidade passam em toast, e a recusa abre janela — o operador
+   * acabou de pedir um pagamento que não entrou, e precisa ler por quê antes de
+   * seguir. Quem decide a superfície é o adaptador, não esta função.
+   */
+  recusa(motivos: readonly string[]): void;
 }
 
 /**
@@ -70,11 +79,10 @@ export function notificarVeredito(veredito: Veredito, toast: NotificadorVeredito
       return;
 
     case 'RECUSADA':
-      // Sempre há ao menos uma: `interpretarRespostaValidacao` já substitui a
-      // lista vazia pela mensagem genérica de `FR-008`.
-      for (const texto of textos(veredito.motivos)) {
-        toast.error(texto);
-      }
+      // Sempre há ao menos um: `interpretarRespostaValidacao` já substitui a
+      // lista vazia pela mensagem genérica de `FR-008`. Os motivos vão juntos —
+      // são independentes e o operador precisa de todos para corrigir a venda.
+      toast.recusa(textos(veredito.motivos));
       return;
 
     case 'INDISPONIVEL':

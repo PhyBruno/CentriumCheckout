@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
+import { useRecusaValidacaoStore } from '../../stores/recusaValidacaoStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { linhasAtivas, totalVenda } from '../../domain/precificacao/linha';
@@ -15,6 +16,7 @@ import { DialogoConfirmacaoDestrutiva } from '../pagamento/DialogoConfirmacaoDes
 import { useVendedorAtual } from '../vendedor/useVendedor';
 import { BotaoCancelarVenda } from './BotaoCancelarVenda';
 import { BotaoFinalizarVenda } from './BotaoFinalizarVenda';
+import { DialogoAutorizandoNFCe } from './DialogoAutorizandoNFCe';
 import { DialogoConfirmarReenvio } from './DialogoConfirmarReenvio';
 import { DialogoDocumentoFiscal } from './DialogoDocumentoFiscal';
 import { DialogoErroFaturamento } from './DialogoErroFaturamento';
@@ -61,13 +63,40 @@ export function ProvedorFinalizacaoVenda({
   const api = useFinalizarOuSuspenderVenda(deps);
   const sessao = useSessionStore((s) => s.registro?.SessaoUsuario ?? null);
   const { estado, confirmarReenvio, confirmarSuspensao, descartar } = api;
+  // Recusa do gate de validação prévia (AD-239) — estado de apresentação, em
+  // store próprio (`recusaValidacaoStore`).
+  const motivosDaRecusa = useRecusaValidacaoStore((s) => s.motivos);
+  const fecharRecusa = useRecusaValidacaoStore((s) => s.fecharRecusa);
+  const fundoJaVisivel = sucedeAutorizacao(estado);
 
   return (
     <ContextoFinalizacao.Provider value={api}>
       {children}
 
+      {/* A espera do ERP ao emitir (AD-244). Só `FATURAR`: suspender não
+          espera SEFAZ e já termina num toast. Nos dois layouts — este provider
+          envolve o desktop e o wizard mobile (`AppShell.tsx`). */}
+      {estado.tipo === 'enviando' && estado.operacao === 'FATURAR' && <DialogoAutorizandoNFCe />}
+
       {estado.tipo === 'falha-negocio' && (
-        <DialogoErroFaturamento mensagem={estado.mensagem} onFechar={descartar} />
+        <DialogoErroFaturamento
+          mensagem={estado.mensagem}
+          contexto={estado.operacao}
+          onFechar={descartar}
+          fundoJaVisivel={fundoJaVisivel}
+        />
+      )}
+
+      {/* O ERP validou e recusou (AD-239): não é erro na nota, então a cópia é
+          outra e o tom é de aviso. A venda continua no caixa. */}
+      {estado.tipo === 'venda-recusada' && (
+        <DialogoErroFaturamento
+          desfecho="VENDA_RECUSADA"
+          contexto={estado.operacao}
+          mensagem={estado.mensagem}
+          onFechar={descartar}
+          fundoJaVisivel={fundoJaVisivel}
+        />
       )}
 
       {/* NFCe gravada no ERP e não autorizada (correção do usuário,
@@ -78,8 +107,44 @@ export function ProvedorFinalizacaoVenda({
         <DialogoErroFaturamento
           desfecho="REJEITADA"
           mensagem={estado.mensagem}
-          documento={{ numeroNota: estado.numeroNota, serieNota: estado.serieNota }}
+          rascunho={{
+            numeroRascunho: estado.numeroRascunho,
+            serieRascunho: estado.serieRascunho,
+          }}
+          retorno={{
+            codigoErro: estado.codigoErro,
+            sugestaoIA: estado.sugestaoIA,
+            urlChamadas: estado.urlChamadas,
+          }}
           onFechar={descartar}
+          fundoJaVisivel
+        />
+      )}
+
+      {/* Cenário tributário: cadastro fiscal do ERP (AD-239). Também limpa o
+          caixa ao fechar — não há correção possível daqui. */}
+      {estado.tipo === 'cenario-tributario' && (
+        <DialogoErroFaturamento
+          desfecho="CENARIO_TRIBUTARIO"
+          mensagem={estado.mensagem}
+          rascunho={{
+            numeroRascunho: estado.numeroRascunho,
+            serieRascunho: estado.serieRascunho,
+          }}
+          onFechar={descartar}
+          fundoJaVisivel
+        />
+      )}
+
+      {/* Recusa do gate de validação prévia (feature 014, AD-239): a forma de
+          pagamento não entrou e o ERP explicou por quê. Mora aqui, no provider,
+          porque é modal de tela cheia e vale para as duas superfícies. */}
+      {motivosDaRecusa !== null && (
+        <DialogoErroFaturamento
+          desfecho="VENDA_RECUSADA"
+          contexto="PAGAMENTO"
+          mensagem={motivosDaRecusa}
+          onFechar={fecharRecusa}
         />
       )}
 
@@ -111,6 +176,7 @@ export function ProvedorFinalizacaoVenda({
             void confirmarReenvio();
           }}
           onCancelar={descartar}
+          fundoJaVisivel={fundoJaVisivel}
         />
       )}
 
@@ -123,6 +189,7 @@ export function ProvedorFinalizacaoVenda({
           tipoImpressao={sessao.TipoImpressao}
           cadMaqHost={sessao.CadMaqHost}
           onFechar={descartar}
+          fundoJaVisivel
           {...(impressaoDeps === undefined ? {} : { impressaoDeps })}
         />
       )}
@@ -131,18 +198,58 @@ export function ProvedorFinalizacaoVenda({
 }
 
 /**
- * Não há o que suspender numa venda em que nada foi lançado: `SUSPENDER`
- * criaria um rascunho vazio no ERP, que o operador teria de limpar depois
- * (pedido do usuário, 2026-09-02).
+ * O desfecho na tela veio de uma espera "Autorizando NFCe" (AD-244)?
  *
- * **Linha cancelada conta** (pedido do usuário, 2026-09-03, corrigindo a regra
- * anterior): ela permanece no array por rastreabilidade (`CART-08`) e é prova
- * de que a venda foi digitada. Uma venda cujos itens foram todos cancelados é
- * exatamente o caso em que o operador precisa desistir — travar o botão ali o
- * deixava sem saída na tela.
+ * Todo desfecho de `FATURAR` sai de `enviando`, e a NFCe rejeitada e o cenário
+ * tributário só existem na emissão. A única exceção são as falhas de montagem
+ * (`falha-negocio` antes do envio), em que perder o fade é inofensivo — a
+ * alternativa, lembrar o estado anterior, custaria uma `ref` lida no render.
  */
-function useVendaTemItem(): boolean {
-  return useVendaStore((estado) => estado.linhas.length > 0);
+function sucedeAutorizacao(estado: ApiFinalizacaoVenda['estado']): boolean {
+  if (estado.tipo === 'nfce-rejeitada' || estado.tipo === 'cenario-tributario') {
+    return true;
+  }
+  return 'operacao' in estado && estado.operacao === 'FATURAR';
+}
+
+/**
+ * Há o que cancelar nesta venda? (pedido do usuário, 2026-09-02; alargado em
+ * 2026-09-16 — AD-240).
+ *
+ * Três coisas contam, e cada uma por um motivo:
+ *
+ * 1. **Qualquer linha**, cancelada inclusive (pedido do usuário, 2026-09-03):
+ *    ela permanece no array por rastreabilidade (`CART-08`) e é prova de que a
+ *    venda foi digitada. Um carrinho com tudo cancelado é justamente onde o
+ *    operador precisa desistir.
+ * 2. **Documento importado** (`origem !== 'NOVA'`), mesmo **sem item**: o
+ *    rascunho existe no ERP e precisa ser suspenso lá — um DAV ou NFCe sem
+ *    itens é documento legítimo (AD-239), e travar o botão prendia o operador
+ *    numa venda que ele não conseguia nem devolver.
+ * 3. **Cliente identificado**: o operador escolheu alguém e a tela já não está
+ *    limpa. Sem isto o botão dizia "não há nada a cancelar" com o nome do
+ *    cliente à vista, e a única saída era recarregar a página.
+ *
+ * Venda vazia de origem `NOVA` com cliente escolhido **não vai ao ERP**: quem
+ * trata é `useFinalizarOuSuspenderVenda`, limpando a tela — `SUSPENDER` ali
+ * criaria um rascunho vazio, exatamente o lixo que o item 59 de
+ * `PENDENCIES.md` descreve.
+ */
+export function vendaTemAlgoACancelar(estado: {
+  readonly linhas: readonly unknown[];
+  readonly identidadeVenda: { readonly origem: string };
+  readonly houveEscolhaExplicita: boolean;
+  readonly clienteAtual: unknown;
+}): boolean {
+  return (
+    estado.linhas.length > 0 ||
+    estado.identidadeVenda.origem !== 'NOVA' ||
+    (estado.houveEscolhaExplicita && estado.clienteAtual !== null)
+  );
+}
+
+function useVendaTemAlgoACancelar(): boolean {
+  return useVendaStore(vendaTemAlgoACancelar);
 }
 
 /**
@@ -158,12 +265,15 @@ function useVendaTemItem(): boolean {
  * segunda cópia da regra liberaria a tecla no instante em que o botão recusa
  * (`FR-018`).
  */
-export function motivoDeBloqueioDoCancelar(travado: boolean, temItem: boolean): string | null {
+export function motivoDeBloqueioDoCancelar(
+  travado: boolean,
+  temAlgoACancelar: boolean,
+): string | null {
   if (travado) {
     return 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
   }
-  if (!temItem) {
-    return 'Não há nada a cancelar: nenhum item foi lançado nesta venda.';
+  if (!temAlgoACancelar) {
+    return 'Não há nada a cancelar: esta venda está vazia.';
   }
   return null;
 }
@@ -280,7 +390,7 @@ export interface AcaoCancelarVendaProps {
  */
 export function AcaoCancelarVenda({ compacto = false }: AcaoCancelarVendaProps = {}): ReactElement {
   const { estado, suspender } = useFinalizacaoVenda();
-  const temItem = useVendaTemItem();
+  const temAlgoACancelar = useVendaTemAlgoACancelar();
   const travado = estado.tipo === 'enviando' || estado.tipo === 'falha-rede';
 
   return (
@@ -289,7 +399,7 @@ export function AcaoCancelarVenda({ compacto = false }: AcaoCancelarVendaProps =
         void suspender();
       }}
       compacto={compacto}
-      bloqueado={motivoDeBloqueioDoCancelar(travado, temItem)}
+      bloqueado={motivoDeBloqueioDoCancelar(travado, temAlgoACancelar)}
     />
   );
 }

@@ -96,8 +96,10 @@ describe('AD-180 (2026-09-08) — `integracaoCartao` decide TEF junto com `tefAt
     ).toBe('NENHUMA');
   });
 
-  it('`integracaoCartao` não influencia forma que não é cartão', () => {
-    // O campo é do cadastro de cartão; num PIX ele é padding do GeneXus.
+  it('PIX com `integracaoCartao` vazio segue no CentriumPAG', () => {
+    // A leitura de AD-180 era que num PIX este campo fosse padding do GeneXus;
+    // AD-250 mostrou que não é — ele também decide o PIX. O que permanece
+    // verdadeiro é só o desfecho de `''`/`'2'`: cobrança pelo CentriumPAG.
     expect(
       resolverIntegracao(formaDe({ meioPagtoNFe: MEIO_PAGTO.Pix, integracaoCartao: '' }), {
         tefAtivo: true,
@@ -113,6 +115,66 @@ describe('AD-180 (2026-09-08) — `integracaoCartao` decide TEF junto com `tefAt
         EMPRESA_COM_TEF,
       ),
     ).toBe(true);
+  });
+});
+
+describe('AD-250 (2026-09-21) — PIX cadastrado como TEF vai ao terminal, não ao QR Code', () => {
+  const PIX_TEF = { meioPagtoNFe: MEIO_PAGTO.Pix, integracaoCartao: '1' } as const;
+
+  it('gera TEF, e não QR Code, mesmo com o CentriumPAG ligado', () => {
+    // O ponto da regra: `pixAtivo` não desempata. Uma forma de PIX cadastrada
+    // como TEF cobra pelo terminal, e gerar a cobrança no CentriumPAG criaria
+    // um segundo QR Code para um dinheiro que o TEF já está cobrando.
+    expect(resolverIntegracao(formaDe(PIX_TEF), { tefAtivo: true, pixAtivo: true })).toBe('TEF');
+  });
+
+  it('roteia para TEF também com o CentriumPAG desligado', () => {
+    expect(resolverIntegracao(formaDe(PIX_TEF), { tefAtivo: true, pixAtivo: false })).toBe('TEF');
+  });
+
+  it.each(['2', ''] as const)(
+    'PIX cadastrado como POS (integracaoCartao = "%s") continua gerando QR Code',
+    (integracaoCartao) => {
+      expect(
+        resolverIntegracao(formaDe({ meioPagtoNFe: MEIO_PAGTO.Pix, integracaoCartao }), {
+          tefAtivo: true,
+          pixAtivo: true,
+        }),
+      ).toBe('PIX_DINAMICO');
+    },
+  );
+
+  it('em empresa sem TEF, o PIX marcado como TEF volta à regra normal do PIX', () => {
+    // Mesmas duas condições do cartão (AD-180): `tefAtivo` diz que a empresa
+    // tem terminal; sem ele não há para onde mandar, e o CentriumPAG assume.
+    expect(resolverIntegracao(formaDe(PIX_TEF), { tefAtivo: false, pixAtivo: true })).toBe(
+      'PIX_DINAMICO',
+    );
+  });
+
+  it('sem TEF na empresa e sem CentriumPAG não sobra integração nenhuma', () => {
+    expect(resolverIntegracao(formaDe(PIX_TEF), { tefAtivo: false, pixAtivo: false })).toBe(
+      'NENHUMA',
+    );
+  });
+
+  it('PixEstatico marcado como TEF continua sem integrar (FR-006)', () => {
+    // `FR-006` é sobre o meio, não sobre o cadastro: PIX estático não tem
+    // cobrança a acionar em lugar nenhum.
+    expect(
+      resolverIntegracao(formaDe({ meioPagtoNFe: MEIO_PAGTO.PixEstatico, integracaoCartao: '1' }), {
+        tefAtivo: true,
+        pixAtivo: true,
+      }),
+    ).toBe('NENHUMA');
+  });
+
+  it('PIX-TEF fica disponível sem CentriumPAG — o caminho é o terminal', () => {
+    expect(formaDisponivel(formaDe(PIX_TEF), { tefAtivo: true, pixAtivo: false })).toBe(true);
+  });
+
+  it('PIX-TEF sem TEF na empresa e sem CentriumPAG fica indisponível', () => {
+    expect(formaDisponivel(formaDe(PIX_TEF), { tefAtivo: false, pixAtivo: false })).toBe(false);
   });
 });
 

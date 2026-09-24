@@ -16,24 +16,61 @@ const EAN_BALANCA = '2001234015004';
 
 /** T019 — classificação da entrada do operador (FR-004, FR-013, AD-028/029/076). */
 describe('interpretarEntradaCodigo', () => {
-  it('classifica "codigo*quantidade" como COM_QTD (AD-029)', () => {
-    expect(interpretarEntradaCodigo('001234*3')).toEqual({
+  /**
+   * **A quantidade é sempre o lado esquerdo do `*`** (decisão do usuário,
+   * 2026-09-16 — AD-240), como no PDV antigo. Até então a ordem era a inversa
+   * (`codigo*quantidade`, AD-029).
+   */
+  it('classifica "quantidade*codigo" como COM_QTD', () => {
+    expect(interpretarEntradaCodigo('3*001234')).toEqual({
       tipo: 'COM_QTD',
       codigo: '001234',
       quantidade: 3000,
     });
   });
 
+  it('o código pode ser alfanumérico', () => {
+    expect(interpretarEntradaCodigo('4*teste789')).toEqual({
+      tipo: 'COM_QTD',
+      codigo: 'teste789',
+      quantidade: 4000,
+    });
+  });
+
+  it('não olha o formato do código: com os dois lados numéricos, a esquerda é a quantidade', () => {
+    // `12*34` são 12 unidades do produto `34`. Decidir pelo formato faria a
+    // mesma digitação significar coisas diferentes conforme o cadastro — um
+    // código de tenant pode ser numérico.
+    expect(interpretarEntradaCodigo('12*34')).toEqual({
+      tipo: 'COM_QTD',
+      codigo: '34',
+      quantidade: 12000,
+    });
+  });
+
   it('aceita quantidade fracionária com vírgula ou ponto', () => {
-    expect(interpretarEntradaCodigo('001234*1,5')).toEqual({
+    expect(interpretarEntradaCodigo('1,5*001234')).toEqual({
       tipo: 'COM_QTD',
       codigo: '001234',
       quantidade: 1500,
     });
-    expect(interpretarEntradaCodigo('001234*1.5')).toEqual({
+    expect(interpretarEntradaCodigo('1.5*001234')).toEqual({
       tipo: 'COM_QTD',
       codigo: '001234',
       quantidade: 1500,
+    });
+  });
+
+  it('quantidade fracionária também vale com código alfanumérico', () => {
+    expect(interpretarEntradaCodigo('2,5*ABC')).toEqual({
+      tipo: 'COM_QTD',
+      codigo: 'ABC',
+      quantidade: 2500,
+    });
+    expect(interpretarEntradaCodigo('0.75*ABC')).toEqual({
+      tipo: 'COM_QTD',
+      codigo: 'ABC',
+      quantidade: 750,
     });
   });
 
@@ -44,9 +81,22 @@ describe('interpretarEntradaCodigo', () => {
   it('classifica EAN-13 de balança válido (AD-076)', () => {
     expect(interpretarEntradaCodigo(EAN_BALANCA)).toEqual({
       tipo: 'BALANCA',
-      codigoReduzido: '001234',
+      codigoReduzido: '1234',
       valorEtiqueta: 1500,
     });
+  });
+
+  /**
+   * As posições 2–7 são o `MatCodRed` **como número** (AD-252): o ERP faz
+   * `val(Substring(2,6)).ToString()` (`WWPNFCe`, linha 1578), então os zeros à
+   * esquerda são preenchimento da etiqueta, não parte do código.
+   */
+  it.each([
+    ['2001234015004', '1234'],
+    ['2101234015001', '101234'],
+  ])('o código reduzido de %s é o MatCodRed %s, sem zeros à esquerda (AD-252)', (ean, reduzido) => {
+    const entrada = interpretarEntradaCodigo(ean);
+    expect(entrada.tipo === 'BALANCA' && entrada.codigoReduzido).toBe(reduzido);
   });
 
   it('DV inválido cai em SIMPLES — pode ser código interno legítimo do tenant (D6)', () => {
@@ -61,16 +111,20 @@ describe('interpretarEntradaCodigo', () => {
   });
 
   it('o separador "*" tem precedência sobre o formato de balança', () => {
-    expect(interpretarEntradaCodigo(`${EAN_BALANCA}*2`)).toEqual({
+    expect(interpretarEntradaCodigo(`2*${EAN_BALANCA}`)).toEqual({
       tipo: 'COM_QTD',
       codigo: EAN_BALANCA,
       quantidade: 2000,
     });
   });
 
-  it('quantidade malformada depois do "*" não vira erro de operação', () => {
-    expect(interpretarEntradaCodigo('001234*abc').tipo).toBe('SIMPLES');
-    expect(interpretarEntradaCodigo('001234*0').tipo).toBe('SIMPLES');
+  it('quantidade malformada antes do "*" não vira erro de operação', () => {
+    // Sem quantidade legível à esquerda o texto inteiro vira código e o ERP
+    // responde 404, que a UI já trata (`research.md`, D6).
+    expect(interpretarEntradaCodigo('0*001234').tipo).toBe('SIMPLES');
+    expect(interpretarEntradaCodigo('abc*001234').tipo).toBe('SIMPLES');
+    expect(interpretarEntradaCodigo('*001234').tipo).toBe('SIMPLES');
+    expect(interpretarEntradaCodigo('3*').tipo).toBe('SIMPLES');
   });
 
   it('ignora espaços em volta da entrada bipada', () => {

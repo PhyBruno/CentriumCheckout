@@ -66,7 +66,12 @@ export interface CheckoutFaturarNFCe {
    */
   readonly Empresa: string;
   readonly SuspenderOuFaturar: SuspenderOuFaturar;
-  readonly NumeroNota: number;
+  /**
+   * Rascunho de NFCe desta venda — `0` para venda ainda não gravada no ERP
+   * (AD-235; era `NumeroNota` até o contrato de 2026-09-14). Vai igual em
+   * `SUSPENDER`, `FATURAR` e `VALIDAR`.
+   */
+  readonly NumeroRascunho: number;
   readonly CadSerieNFCe: string;
   readonly clienteCodigo: number;
   readonly vendedorCodigo: number;
@@ -105,7 +110,13 @@ export interface SnapshotVenda {
   readonly linhas: readonly LinhaCarrinho[];
   /** Identidade da venda no ERP (feature 004, `data-model.md` §1). */
   readonly identidade: IdentidadeVenda;
-  /** `SessaoUsuario.CadSerieNFCe` — sempre do bootstrap, nunca do operador (AD-034). */
+  /**
+   * `SessaoUsuario.CadSerieNFCe` — do bootstrap, nunca do operador (AD-034).
+   *
+   * É o **recuo**: a série da identidade da venda (documento importado ou
+   * rascunho adotado) tem precedência, porque o documento já existe no ERP com
+   * aquela série e a da sessão pode até vir vazia (AD-239).
+   */
   readonly cadSerieNFCe: string;
   /** Cliente da venda; o default do PDV quando não houve identificação (AD-032). */
   readonly clienteCodigo: number;
@@ -231,8 +242,9 @@ export function montarRetratoVenda(
   return {
     Empresa: snapshot.empresa,
     SuspenderOuFaturar: suspenderOuFaturar(operacao),
-    NumeroNota: snapshot.identidade.numeroNota,
-    CadSerieNFCe: snapshot.cadSerieNFCe,
+    NumeroRascunho: snapshot.identidade.numeroRascunho,
+    CadSerieNFCe:
+      snapshot.identidade.serie.trim() === '' ? snapshot.cadSerieNFCe : snapshot.identidade.serie,
     clienteCodigo: snapshot.clienteCodigo,
     vendedorCodigo: snapshot.vendedorCodigo,
     UsuarioCodigo: snapshot.usuarioCodigo,

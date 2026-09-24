@@ -169,10 +169,16 @@ export const notificar = {
 
 /**
  * Adaptador para `notificarVeredito` (feature 014), que declara a superfície
- * mínima `{ warning, error }` para não amarrar o domínio a uma lib de UI.
+ * mínima `{ warning, error, recusa }` para não amarrar o domínio a uma lib de
+ * UI.
  *
  * Fica aqui, e não repetido em cada chamador, pelo mesmo motivo do resto do
  * módulo: é a tradução entre um contrato e o outro, não uma decisão de feature.
+ *
+ * **`recusa` não fica aqui**: a recusa abre janela, não toast (AD-239), e quem a
+ * liga ao store é o `vendaStore` — `lib/` não conhece store nenhum. Este objeto
+ * cobre os dois canais de toast, e quem compõe o notificador acrescenta o
+ * terceiro.
  */
 export const notificadorDeVeredito = {
   warning: notificar.aviso,

@@ -73,11 +73,11 @@ Chega como o **código numérico da tabela da NFe**, não como nome:
 Este é o campo `FPGNFTEFPO` (`FpgNfTefPos`) do cadastro da forma de pagamento, e
 a semântica, confirmada pelo usuário em 2026-09-08 (**AD-180**), é:
 
-| Valor | Significado | Roteamento do cartão |
+| Valor | Significado | Roteamento da forma (cartão `03`/`04` e PIX `17`) |
 |---|---|---|
-| `'1'` | TEF | chama TEF **se** `ConfiguracoesTEF.TEFAtivo` |
-| `'2'` | POS | pagamento avulso — nunca chama TEF |
-| `''` (e `' '`, padding do GeneXus) | POS | pagamento avulso — nunca chama TEF |
+| `'1'` | TEF | chama TEF **se** `ConfiguracoesTEF.TEFAtivo`; no PIX, isso **substitui** o `GerarPIX` (AD-250) |
+| `'2'` | POS | pagamento avulso — nunca chama TEF; PIX segue pelo CentriumPAG |
+| `''` (e `' '`, padding do GeneXus) | POS | pagamento avulso — nunca chama TEF; PIX segue pelo CentriumPAG |
 
 Neste cadastro real ele **nunca** vem `'1'`: só aparecem `""` e `" "` nas 1305
 linhas. Sob a regra vigente isso não é ausência de sinal — é a resposta "nenhuma
@@ -155,14 +155,21 @@ manual (o operador confirma por fora), não integração.
 Três campos bastam, e as duas últimas condições precisam valer **juntas**:
 
 ```
-(meio === '03' || meio === '04')          →  esta forma é cartão
-ConfiguracoesTEF.TEFAtivo === true        →  esta empresa tem TEF
-forma.FormaIntegracaoCartao === '1'       →  esta forma passa no TEF (AD-180)
+(meio === '03' || meio === '04' || meio === '17')  →  cartão ou PIX (AD-250)
+ConfiguracoesTEF.TEFAtivo === true                 →  esta empresa tem TEF
+forma.FormaIntegracaoCartao === '1'                →  esta forma passa no TEF (AD-180)
 ```
 
 Sem qualquer uma das duas últimas, o cartão é **pagamento avulso/POS**: cobrado
 na maquininha fora do Checkout, com o operador confirmando o valor. A forma
 continua disponível na tela — o que ela não faz é acionar o terminal.
+
+**O meio `17` entrou nessa conta em 2026-09-21 (AD-250)**, por regra de negócio
+do usuário: apesar do nome, `FormaIntegracaoCartao` qualifica a **forma**, não o
+meio. Uma forma de PIX com `'1'` numa empresa com `TEFAtivo` é cobrada pelo
+terminal, e o `GerarPIX` do CentriumPAG **não** é chamado para ela — gerar o QR
+Code em paralelo criaria uma segunda cobrança para o mesmo dinheiro. Um `17` sem
+`'1'` (ou em empresa sem TEF) segue pelo CentriumPAG como sempre.
 
 Neste tenant, `TEFAtivo` está desligado e nenhuma forma traz `'1'`; logo, nenhum
 cartão daqui rotearia para TEF, pelas duas razões independentes.
@@ -185,10 +192,11 @@ empresa correspondente está desligada.
 Essa é exatamente a tabela que `resolverIntegracao`
 (`src/client/domain/pagamento/roteamentoIntegracao.ts`) implementa desde AD-180
 (2026-09-08): `meioPagtoNFe` + as duas capacidades da empresa + o
-`integracaoCartao` da forma, para o ramo de cartão. Até 2026-09-08 aquela função
-ignorava `FormaIntegracaoCartao` de propósito, e este documento chegou a
-registrar que ignorar tinha sido a escolha certa — **não era**; ver o aviso no
-topo e as seções §1 e §3.
+`integracaoCartao` da forma — para o ramo de cartão **e, desde AD-250
+(2026-09-21), também para o ramo do `Pix`**, onde o terminal é consultado antes
+de `pixAtivo`. Até 2026-09-08 aquela função ignorava `FormaIntegracaoCartao` de
+propósito, e este documento chegou a registrar que ignorar tinha sido a escolha
+certa — **não era**; ver o aviso no topo e as seções §1 e §3.
 
 ---
 

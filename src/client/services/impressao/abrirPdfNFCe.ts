@@ -22,10 +22,11 @@ export interface AberturaPdfDeps {
 export type ResultadoAberturaPdf =
   | { readonly estado: 'aberto' }
   /**
-   * O navegador recusou a aba. Acontece quando o `window.open` sai fora da
-   * janela de gesto do usuário — é o caso do `TipoImpressao = 'P'`, que abre
-   * depois de a resposta do ERP chegar. Não é erro do PDF: o chamador oferece
-   * um botão para o operador abrir com um clique de verdade.
+   * O navegador recusou a aba — `window.open` devolveu `null` de verdade.
+   * Acontece quando a chamada sai fora da janela de gesto do usuário, que é o
+   * caso do `TipoImpressao = 'P'`: abre depois de a resposta do ERP chegar. Não
+   * é erro do PDF, e o chamador oferece um botão para o operador abrir com um
+   * clique de verdade.
    */
   | { readonly estado: 'bloqueado-pelo-navegador' }
   /** Base64 corrompido — o ERP mandou algo que não é um PDF. */
@@ -55,11 +56,32 @@ export function abrirPdfNFCe(pdfBase64: string, deps: AberturaPdfDeps = {}): Res
     return { estado: 'pdf-invalido' };
   }
 
-  const janela = abrirJanela(url, '_blank', 'noopener');
+  /**
+   * **Sem `noopener` nas features** (correção do usuário, 2026-09-17, AD-247).
+   *
+   * Com ele, a especificação do HTML manda o `window.open` devolver `null`
+   * **sempre** — a aba abria e mesmo assim o retorno dizia `null`, então todo
+   * PDF aberto era anunciado como "O navegador bloqueou a aba do PDF", e a URL
+   * do blob ainda era revogada na hora, podendo esvaziar a aba recém-aberta.
+   * Sem `noopener`, `null` volta a significar só uma coisa: pop-up recusado.
+   *
+   * A proteção que o `noopener` dava é refeita à mão logo abaixo
+   * (`janela.opener = null`), e o destino aqui é um `blob:` da própria origem —
+   * conteúdo que este código acabou de gerar, não uma página de terceiro.
+   */
+  const janela = abrirJanela(url, '_blank');
 
   if (janela === null) {
     URL.revokeObjectURL(url);
     return { estado: 'bloqueado-pelo-navegador' };
+  }
+
+  // Equivalente ao que `noopener` faria, sem custar o retorno da chamada.
+  // `try`: um navegador pode recusar a escrita em janela de outra origem.
+  try {
+    janela.opener = null;
+  } catch {
+    /* a aba abriu, que é o que importa para o desfecho */
   }
 
   agendarRevogacao(() => {
