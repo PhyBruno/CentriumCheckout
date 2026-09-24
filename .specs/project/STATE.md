@@ -3813,6 +3813,8 @@ Fica registrado também o tamanho do que a regra sem exceção custaria: recusar
 
 **O que o operador vê nas etapas 1 e 2 no lugar dele:** o rodapé "Total da venda" da lista de itens (`ListaItensMobile`, só com item na venda) e, na etapa 2, o "Faltante" da lista de pagamentos assim que a primeira forma entra. **Consequência aceita:** o rodapé soma as linhas (`totalVenda`) e não desconta o desconto de capa; até a primeira forma entrar (quando o "Faltante" já é líquido), o total com desconto de capa só aparece na revisão.
 
-**Impact:** `src/client/layout/mobile/MobileWizard.tsx`, mais comentários em `ListaItensMobile.tsx`, `ListaPagamentosAplicados.tsx` e `EtapaClienteProdutos.tsx`. Testes: `tests/integration/mobileWizard.spec.tsx` (caso novo), `tests/e2e/support/pagamento.ts` (`quitarVendaEmDinheiro` lê o total do rodapé quando não há bloco escuro) e `tests/e2e/layout-responsivo.spec.ts` (a etapa 1 compara o rodapé).
+**O esqueleto de carregamento compacto acompanha** (segundo pedido do usuário, mesmo dia): `CarregamentoMobile` imita a etapa 1 para o wizard ocupar o lugar dele sem pular, então o cartão escuro saiu dele também.
+
+**Impact:** `src/client/layout/mobile/MobileWizard.tsx`, `src/client/layout/mobile/CarregamentoMobile.tsx` (teste em `TelaDeCarregamento.spec.tsx`), mais comentários em `ListaItensMobile.tsx`, `ListaPagamentosAplicados.tsx` e `EtapaClienteProdutos.tsx`. Testes: `tests/integration/mobileWizard.spec.tsx` (caso novo), `tests/e2e/support/pagamento.ts` (`quitarVendaEmDinheiro` lê o total do rodapé quando não há bloco escuro) e `tests/e2e/layout-responsivo.spec.ts` (a etapa 1 compara o rodapé).
 
 **Verificação:** 1852 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. **E2E não rodado:** a porta 3100 estava ocupada pelo BFF da stack de dev em uso, e o Playwright a reaproveitaria.

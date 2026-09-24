@@ -13,8 +13,8 @@ import {
  * O Pencil não tem um frame de carregamento compacto, então a estrutura espelha
  * os nós do wizard já traduzidos em `MobileWizard.tsx` (`IQloN`, cabeçalho
  * `fA5ib`): mesma moldura do `AppShell` (`h-screen`, `$surface-soft`) e mesmas
- * medidas do cabeçalho, do indicador de etapa, do cartão escuro do total e da
- * navegação. Quando o bootstrap termina, o wizard ocupa exatamente o lugar do
+ * medidas do cabeçalho, do indicador de etapa e da navegação da etapa 1 — sem
+ * o cartão escuro do total, que desde AD-255 só existe na revisão. Quando o bootstrap termina, o wizard ocupa exatamente o lugar do
  * esqueleto e a tela não pula.
  *
  * Existe porque o celular recebia a tela de carregamento do desktop (achado em
@@ -68,25 +68,10 @@ export function CarregamentoMobile(): ReactElement {
             </div>
           </section>
 
-          <div className="flex w-full shrink-0 flex-col gap-xs rounded-[20px] bg-[var(--cc-color-surface-dark)] p-2.5">
-            <div className="flex items-baseline justify-between gap-xs">
-              <span className="text-base font-semibold text-[var(--cc-color-on-dark-strong)]">
-                Total a pagar
-              </span>
-              <strong className="font-mono text-xl leading-8 font-semibold tabular-nums text-[var(--cc-color-on-dark)]">
-                R$ 0,00
-              </strong>
-            </div>
-            <div className="flex w-full items-start gap-xs">
-              {Array.from({ length: 2 }, (_, indice) => (
-                <div
-                  key={indice}
-                  className="h-10 flex-1 rounded-[14px] bg-[var(--cc-color-surface-dark-elevated)]"
-                />
-              ))}
-            </div>
-          </div>
-
+          {/* Sem o cartão escuro de total: o wizard abre na etapa 1, e desde
+              AD-255 ele só existe na revisão. Desenhá-lo aqui faria a tela pular
+              quando o bootstrap termina — o oposto do que este esqueleto existe
+              para evitar. */}
           {[
             { chave: 'cliente', larguras: ['30%', '75%'] },
             { chave: 'produto', larguras: ['40%', '90%'] },
