@@ -925,16 +925,25 @@ export function EntradaRapidaProduto({
   }
 
   /**
-   * O que está no campo ainda é o que foi ao ERP?
+   * O que está no campo precisa ir ao ERP ao sair dele?
    *
-   * Só faz sentido com uma **prévia de inserção** na tela (`resolvido`): sem
-   * ela não há preço nem total de produto nenhum para divergir, e o campo vazio
-   * segue sendo navegação normal — o TAB dali continua indo para a lupa
-   * (pedido do usuário, 2026-09-04). No item carregado pelo lápis o campo é
+   * **Com uma prévia de inserção** (`resolvido`): só se o código mudou desde a
+   * consulta — ver `aoSairDoCodigo`. No item carregado pelo lápis o campo é
    * `disabled`, então nunca diverge.
+   *
+   * **Sem prévia, só no celular** (correção do usuário, 2026-09-24, AD-254):
+   * digitar o código e sair do campo — pelo "OK"/"Ir" do teclado ou tocando
+   * fora — não carregava nada. No desktop quem consulta é o TAB, tecla que o
+   * teclado virtual não tem; sem ele, a saída do campo é o único gesto que diz
+   * "terminei de digitar". No desktop a saída sem prévia continua sendo só
+   * navegação — o TAB com o campo vazio segue indo para a lupa (pedido do
+   * usuário, 2026-09-04), e um clique fora não é pedido de consulta.
    */
-  function codigoDivergeDaRevisao(): boolean {
-    return resolvido !== null && texto.trim() !== entradaRevisada.current;
+  function codigoPendenteDeConsulta(): boolean {
+    if (resolvido !== null) {
+      return texto.trim() !== entradaRevisada.current;
+    }
+    return tecladoVirtual && linhaEmEdicao === null && texto.trim() !== '';
   }
 
   /**
@@ -958,9 +967,12 @@ export function EntradaRapidaProduto({
    *
    * Código igual ao que já foi revisado não consulta nada: senão, sair do campo
    * para ajustar a quantidade custaria um `GetProduto` a cada ida e volta.
+   *
+   * No celular, sair com um código digitado e **nenhuma** prévia também
+   * consulta (`codigoPendenteDeConsulta`, AD-254) — pelo mesmo caminho do TAB.
    */
   async function aoSairDoCodigo(): Promise<void> {
-    if (trocandoTeclado.current || ocupado || !codigoDivergeDaRevisao()) {
+    if (trocandoTeclado.current || ocupado || !codigoPendenteDeConsulta()) {
       return;
     }
     if (texto.trim() === '') {
@@ -1740,11 +1752,18 @@ export function EntradaRapidaProduto({
           //   `confirmar` passa por `previaValida`, que além de avisar leva o
           //   foco ao campo — só o toast deixava o operador sem saber onde
           //   corrigir o preço zerado.
-          // Nos três casos o motivo continua em `bloqueioDeInsercao`, para o
+          // - **código em consulta** (AD-254): no celular, tocar aqui com um
+          //   código digitado tira o foco do campo, e é essa saída que consulta
+          //   e insere. O toque chega com a consulta em voo, e anunciar
+          //   "Aguarde" por cima de uma inserção que já está acontecendo seria
+          //   um aviso de erro para o gesto certo. `confirmar` ignora a
+          //   segunda inserção sozinho (`confirmarEntradaRapida` com `ocupado`).
+          // Nos quatro casos o motivo continua em `bloqueioDeInsercao`, para o
           // botão aparecer bloqueado e o `title` explicar sem depender do
           // clique.
           onClick={acaoBloqueavel(
             bloqueadoPorVendedor ||
+              (ocupado && semResolucao) ||
               motivoSaldo !== null ||
               (!semResolucao && (quantidadeInvalida || precoInvalido || descontoInvalido))
               ? null

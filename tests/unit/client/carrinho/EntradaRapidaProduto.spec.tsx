@@ -1694,4 +1694,49 @@ describe('EntradaRapidaProduto — teclado do campo de código no celular (2026-
     expect(screen.getByTestId('campo-codigo-produto')).not.toHaveAttribute('inputmode');
     expect(screen.queryByTestId('alternar-teclado-codigo')).toBeNull();
   });
+
+  function stubarProdutoEditavel() {
+    const buscar = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ Produto: respostaGetProduto({ ProdutoPesavelEditavel: 'E' }) }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', buscar);
+    return buscar;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // Correção do usuário, 2026-09-24 (AD-254): no celular não há TAB, e sair do
+  // campo — pelo teclado ou tocando fora — é o gesto que carrega o produto.
+  it('no celular, sair do campo com o código digitado consulta o ERP', async () => {
+    const buscar = stubarProdutoEditavel();
+    const usuario = userEvent.setup();
+    renderBarra({ tecladoVirtual: true });
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.click(document.body);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-preco-unitario')).toBeEnabled();
+    });
+    expect(buscar).toHaveBeenCalled();
+  });
+
+  it('no desktop, sair do campo sem prévia continua sendo só navegação', async () => {
+    const buscar = stubarProdutoEditavel();
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.click(document.body);
+
+    expect(buscar).not.toHaveBeenCalled();
+    expect(screen.getByTestId('previa-preco-unitario')).toBeDisabled();
+  });
 });

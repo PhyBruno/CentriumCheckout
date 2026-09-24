@@ -116,6 +116,28 @@ describe('MobileWizard — navegação', () => {
     expect(screen.getByTestId('indicador-etapa')).toHaveTextContent('2/3');
   });
 
+  // Correção do usuário, 2026-09-24 (AD-254): voltar apaga a barra da etapa
+  // deixada para trás — o azul é o progresso, não o histórico —, e ela segue
+  // sendo o atalho para ir de novo.
+  it('ao voltar, a barra da etapa à frente apaga e continua levando até ela', async () => {
+    const usuario = userEvent.setup();
+    renderizarWizard();
+    const barrasAzuis = (): number =>
+      screen.getByTestId('indicador-etapa').querySelectorAll('.bg-primary').length;
+
+    expect(barrasAzuis()).toBe(1);
+    await usuario.click(screen.getByTestId('wizard-avancar'));
+    expect(barrasAzuis()).toBe(2);
+
+    await usuario.click(screen.getByTestId('ir-para-etapa-1'));
+    expect(barrasAzuis()).toBe(1);
+    expect(screen.getByTestId('ir-para-etapa-2')).toHaveAccessibleName(/^Ir para/);
+
+    await usuario.click(screen.getByTestId('ir-para-etapa-2'));
+    expect(screen.getByTestId('etapa-pagamento')).toBeInTheDocument();
+    expect(barrasAzuis()).toBe(2);
+  });
+
   it('não oferece atalho para uma etapa nunca visitada', () => {
     renderizarWizard();
 

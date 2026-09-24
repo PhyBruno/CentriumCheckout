@@ -9,14 +9,49 @@
  * o Chrome **bloqueia navegação de topo para `data:`** (proteção contra
  * phishing): `window.open('data:application/pdf;base64,…')` abre uma aba em
  * branco e falha em silêncio.
+ *
+ * **Um PDF, um link** (correção do usuário, 2026-09-24, AD-254). Quando o
+ * navegador recusa a aba, ele próprio oferece o link recusado no aviso de
+ * pop-up bloqueado — e o modal oferece o botão "Abrir o PDF em outra aba".
+ * Antes, a URL era revogada no instante da recusa, então o link do aviso já
+ * nascia morto; e cada clique no botão criava **outra** URL. Agora a URL do
+ * documento é criada uma vez e reaproveitada por todas as tentativas: os dois
+ * caminhos abrem o mesmo endereço, e os dois funcionam.
+ *
+ * **Revogada só quando outro PDF a substitui.** Revogar por prazo (60s, até
+ * então) matava o link de quem demorou a clicar no aviso; nunca revogar
+ * acumularia um PDF por venda na memória da aba durante o turno inteiro.
+ * Manter só o último cobre o caso real — o operador abrindo o cupom da venda
+ * que acabou de fechar — com um arquivo só na memória.
  */
-
-/** Tempo de sobrevida da URL: revogar na hora quebraria a aba recém-aberta. */
-const MS_ATE_REVOGAR = 60_000;
 
 export interface AberturaPdfDeps {
   readonly abrirJanela?: typeof window.open;
-  readonly agendarRevogacao?: (revogar: () => void) => void;
+}
+
+/** O PDF cujo link está valendo — ver "Um PDF, um link" no cabeçalho. */
+let vigente: { readonly base64: string; readonly url: string } | null = null;
+
+/**
+ * Revoga o link do PDF vigente. Chamado quando outro PDF o substitui; exportado
+ * para o teste começar cada caso sem link herdado do anterior.
+ */
+export function descartarPdfVigente(): void {
+  if (vigente !== null) {
+    URL.revokeObjectURL(vigente.url);
+    vigente = null;
+  }
+}
+
+/** A URL do documento: a mesma de antes quando o PDF é o mesmo. Lança se o base64 não decodifica. */
+function urlDoPdf(pdfBase64: string): string {
+  if (vigente?.base64 === pdfBase64) {
+    return vigente.url;
+  }
+  const url = URL.createObjectURL(blobDoBase64(pdfBase64));
+  descartarPdfVigente();
+  vigente = { base64: pdfBase64, url };
+  return url;
 }
 
 export type ResultadoAberturaPdf =
@@ -43,15 +78,10 @@ function blobDoBase64(base64: string): Blob {
 
 export function abrirPdfNFCe(pdfBase64: string, deps: AberturaPdfDeps = {}): ResultadoAberturaPdf {
   const abrirJanela = deps.abrirJanela ?? window.open.bind(window);
-  const agendarRevogacao =
-    deps.agendarRevogacao ??
-    ((revogar: () => void) => {
-      setTimeout(revogar, MS_ATE_REVOGAR);
-    });
 
   let url: string;
   try {
-    url = URL.createObjectURL(blobDoBase64(pdfBase64));
+    url = urlDoPdf(pdfBase64);
   } catch {
     return { estado: 'pdf-invalido' };
   }
@@ -71,8 +101,9 @@ export function abrirPdfNFCe(pdfBase64: string, deps: AberturaPdfDeps = {}): Res
    */
   const janela = abrirJanela(url, '_blank');
 
+  // Recusada, a URL **fica viva**: é ela que o aviso de pop-up bloqueado do
+  // navegador oferece, e é ela que o botão do modal vai abrir.
   if (janela === null) {
-    URL.revokeObjectURL(url);
     return { estado: 'bloqueado-pelo-navegador' };
   }
 
@@ -84,8 +115,5 @@ export function abrirPdfNFCe(pdfBase64: string, deps: AberturaPdfDeps = {}): Res
     /* a aba abriu, que é o que importa para o desfecho */
   }
 
-  agendarRevogacao(() => {
-    URL.revokeObjectURL(url);
-  });
   return { estado: 'aberto' };
 }

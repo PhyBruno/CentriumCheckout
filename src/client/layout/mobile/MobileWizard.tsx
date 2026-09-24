@@ -528,10 +528,17 @@ interface IndicadorDeEtapaProps {
  * "Etapa N de 3 compacta mobile" (nós `VPzwH`/`HdFux`/`jsXLY`): título, o
  * contador `N/3` e três barras de 5px.
  *
- * As barras das etapas **já visitadas** são botões: é o gesto de navegação livre
- * que `FR-004` pede, e o desenho já as separa visualmente. A barra de uma etapa
- * ainda não visitada continua sendo um traço inerte — não há para onde voltar
- * numa etapa onde o operador nunca esteve.
+ * **O azul é o progresso, não o histórico** (correção do usuário, 2026-09-24,
+ * AD-254): a barra acende até a etapa **atual** — 1/3, 2/3, 3/3, como os três
+ * nós do desenho — e apaga ao voltar. Até então ela acendia toda etapa já
+ * visitada, e voltar da 2 para a 1 deixava duas barras azuis com o contador
+ * dizendo `1/3`.
+ *
+ * As barras das etapas **já visitadas** continuam sendo botões, inclusive a de
+ * uma etapa à frente que o operador deixou para trás: é o gesto de navegação
+ * livre que `FR-004` pede. A barra de uma etapa ainda não visitada continua
+ * sendo um traço inerte — não há para onde ir numa etapa onde o operador nunca
+ * esteve.
  */
 function IndicadorDeEtapa({
   etapaAtual,
@@ -560,7 +567,7 @@ function IndicadorDeEtapa({
           const visitada = etapasVisitadas.has(etapa);
           const classe = cn(
             'h-[5px] min-w-0 flex-1 rounded-full',
-            visitada ? 'bg-primary' : 'bg-secondary',
+            etapa <= etapaAtual ? 'bg-primary' : 'bg-secondary',
           );
 
           if (!visitada || etapa === etapaAtual) {
@@ -576,7 +583,7 @@ function IndicadorDeEtapa({
                 'cc-alvo-toque outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
               )}
               data-testid={`ir-para-etapa-${String(etapa)}`}
-              aria-label={`Voltar para ${ETAPAS[etapa].titulo}`}
+              aria-label={`${etapa < etapaAtual ? 'Voltar para' : 'Ir para'} ${ETAPAS[etapa].titulo}`}
               {...atributosDeBloqueio(bloqueioDaEtapa(etapa))}
               onClick={() => {
                 onIrPara(etapa);
