@@ -81,6 +81,16 @@ export interface ModalBuscaProdutoProps {
  */
 const DEBOUNCE_BUSCA_MS = 300;
 
+/**
+ * O modal abre filtrando `saldo >= 0` (pedido do usuário, 2026-10-01, AD-258):
+ * o caso comum é procurar o que tem estoque, e os negativos ficam a um apagar
+ * de distância. O texto, e não o número, porque é o que o campo exibe.
+ */
+const FILTRO_SALDO_INICIAL: { readonly operador: OperadorSaldo; readonly quantidade: string } = {
+  operador: '>=',
+  quantidade: '0',
+};
+
 export function ModalBuscaProduto({
   aberto,
   onFechar,
@@ -89,8 +99,8 @@ export function ModalBuscaProduto({
   const [termo, setTermo] = useState('');
   const [termoDebounced, setTermoDebounced] = useState('');
   const [pagina, setPagina] = useState(1);
-  const [operadorSaldo, setOperadorSaldo] = useState<OperadorSaldo>('>=');
-  const [quantidadeSaldo, setQuantidadeSaldo] = useState('');
+  const [operadorSaldo, setOperadorSaldo] = useState<OperadorSaldo>(FILTRO_SALDO_INICIAL.operador);
+  const [quantidadeSaldo, setQuantidadeSaldo] = useState(FILTRO_SALDO_INICIAL.quantidade);
   const qtdMinChar = useQtdMinCharParaConsulta();
   const tipoCodigoProduto = useTipoCodigoProduto();
 
@@ -108,8 +118,8 @@ export function ModalBuscaProduto({
       setTermo('');
       setTermoDebounced('');
       setPagina(1);
-      setOperadorSaldo('>=');
-      setQuantidadeSaldo('');
+      setOperadorSaldo(FILTRO_SALDO_INICIAL.operador);
+      setQuantidadeSaldo(FILTRO_SALDO_INICIAL.quantidade);
     }
   }
 

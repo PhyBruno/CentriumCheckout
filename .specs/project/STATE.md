@@ -3871,7 +3871,7 @@ Tanto a regra quanto a frase ("O período de busca é de no máximo um ano.") mo
 **3. `GetProduto` — `UFCliente` sempre, e recusa por `CenarioValido: false` antes da inserção.**
 - `UFCliente` vai em **toda** consulta, mesmo vazio. A regra mora em `ufParaConsultaDeProduto`: a UF do cliente da venda (`uf` do `GetCliente`, agora guardada em `ClienteVenda.uf`); sem cliente, `ClienteDefaultUF` da sessão. O default já nasce com a UF da sessão.
 - O cliente de documento cujo `GetCliente` falhou fica com `uf: null` e vai **vazio** — nunca a UF do default no lugar, que seria pedir o cenário de outro estado.
-- `ufCliente` entrou na chave de cache do produto: o mesmo SKU pode ter cenário numa UF e não em outra.
+- `codigoCliente` e `ufCliente` entraram na chave de cache do produto (pedido do usuário): o veredito é do **cliente**, e a UF é só uma das características que o ERP pesquisa. Trocar de cliente — mesmo por outro da mesma UF — sempre refaz o `GetProduto`, inclusive para um produto que já teve cenário válido com o cliente anterior.
 - Com cenário inválido, o ERP responde `200` com o SDT **dentro de `Produto`** e `messages` (`Type: 1`): "Cenário não encontrado!" e "Cenário pesquisado: Empresa=…, UF Destino=…, Operação=…". É a regra de AD-218 — `semEnvelope` absorve. O nome do parâmetro foi confirmado pela UF ecoada em "UF Destino".
 - **Decisão:** `resolverProduto` (`useCarrinho.ts`), o ponto único de todos os caminhos de inserção (Enter, TAB, modal, balança), recusa com `ErroCenarioTributarioInvalido`. O produto não entra, e o operador vê uma **janela** (pedido do usuário) com o nome do produto e as mensagens do ERP: `DialogoErroFaturamento`, desfecho `PRODUTO_SEM_CENARIO`, em tom de aviso, montado no provider que vale para os dois layouts e aberto pelo `cenarioProdutoStore`.
 - A resposta recusada **sai do cache**: o cadastro fiscal pode ser corrigido com a venda aberta, e o `staleTime` infinito serviria a recusa velha para sempre.
@@ -3884,8 +3884,9 @@ Tanto a regra quanto a frase ("O período de busca é de no máximo um ano.") mo
 
 **5. Filtro local de saldo no modal de produto.** `GetListaProdutos` devolve `Estoque` (`"-1.000"`), agora convertido em milésimos com sinal na fronteira.
 - O modal ganhou a coluna "Saldo" e a pílula de filtro do Pencil (nó `pTSJu`): operadores `>=`, `<=`, `=` e uma quantidade.
-- O filtro age **sobre a página carregada**, porque o endpoint não tem parâmetro de estoque. A contagem diz isso ("N de M produto(s) desta página com saldo ≥ X").
-- Campo vazio **desliga** o filtro — aqui vazio não vale zero, ao contrário de `lerDecimalDigitado`, senão "saldo ≥ 0" esconderia os negativos sem pedido. Produto sem saldo informado não passa em filtro ativo (`domain/estoque/filtroSaldo.ts`).
+- O modal **abre filtrando `saldo >= 0`** (pedido do usuário). O filtro age **sobre a página carregada**, porque o endpoint não tem parâmetro de estoque. A contagem diz isso ("N de M produto(s) desta página com saldo >= X").
+- Apagar a quantidade **desliga** o filtro: aqui vazio não vale zero, ao contrário de `lerDecimalDigitado`.
+- Produto **sem saldo informado continua visível** (com "—"): o filtro só julga o saldo que conhece. Escondê-lo faria a busca abrir vazia contra um ERP que não publique `Estoque`, já que o filtro nasce ligado (`domain/estoque/filtroSaldo.ts`).
 
 **6. `GerarPIX` enxuto.** Isto **substitui** o corpo de AD-251. O corpo agora tem só `Empresa` (inserida pelo BFF), `clienteCodigo`, `TrnValor`, `TrnFormaPagamento` e `FpgCod`, na grafia do pedido.
 - Saíram os dados do pagador (`montarDadosPagador` removido) e `TrnOrigemDocumento`/`TrnOrigemSerie`/`TrnTempoExpiracaoPIX` (com `paraTempoExpiracaoPix` e o `tempoExpiracaoPix` do catálogo).

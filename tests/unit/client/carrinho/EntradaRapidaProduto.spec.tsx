@@ -1186,6 +1186,41 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
     expect(erro).not.toHaveBeenCalled();
   });
 
+  it('trocar de cliente, mesmo na mesma UF, refaz o GetProduto em vez de usar o cache', async () => {
+    const buscar = vi.fn((_url: string) => Promise.resolve(respostaDeCenario(true)));
+    vi.stubGlobal('fetch', buscar);
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+
+    // Outro cliente, mesma UF do default: só o código distingue a consulta.
+    act(() => {
+      useVendaStore.setState({
+        clienteAtual: {
+          codigoCliente: 1255,
+          nome: 'CLIENTE SINTETICO',
+          documento: null,
+          celular: null,
+          listaPreco: 3,
+          descontoConvenio: 0,
+          codigoConvenio: null,
+          uf: 'SC',
+          origem: 'BUSCA_DOCUMENTO',
+        },
+      });
+    });
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(buscar).toHaveBeenCalledTimes(2);
+    });
+    expect(String(buscar.mock.calls[1]?.[0])).toContain('Codcliente=1255');
+  });
+
   it('a recusa não fica no cache: bipar de novo volta ao ERP', async () => {
     const buscar = vi.fn(() => Promise.resolve(respostaDeCenario(false)));
     vi.stubGlobal('fetch', buscar);

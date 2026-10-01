@@ -26,16 +26,18 @@ export function filtroSaldoAtivo(filtro: FiltroSaldo): boolean {
 }
 
 /**
- * O saldo passa no filtro? Produto **sem saldo informado** (`null`) nunca passa
- * num filtro ativo: não dá para afirmar que ele tem pelo menos, no máximo ou
- * exatamente a quantidade pedida — e mostrá-lo seria responder "sim" sem dado.
+ * O saldo passa no filtro? Produto **sem saldo informado** (`null`) **sempre
+ * passa**: o filtro só julga o saldo que conhece, e a célula mostra "—".
+ *
+ * Esconder o desconhecido parecia o mais rigoroso, mas o modal abre com o
+ * filtro já ligado (`>= 0`, pedido do usuário em 2026-10-01): contra um ERP
+ * que não publique `Estoque`, a busca abriria vazia e o operador não acharia
+ * produto nenhum sem saber por quê. Quem decide inserção é o saldo fresco do
+ * `GetProduto` (AD-236), não este filtro de exibição.
  */
 export function saldoAtendeFiltro(saldo: SaldoMilesimos | null, filtro: FiltroSaldo): boolean {
-  if (filtro.quantidade === null) {
+  if (filtro.quantidade === null || saldo === null) {
     return true;
-  }
-  if (saldo === null) {
-    return false;
   }
   switch (filtro.operador) {
     case '>=':

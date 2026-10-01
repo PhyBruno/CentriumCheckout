@@ -32,9 +32,11 @@ describe('saldoAtendeFiltro', () => {
     expect(saldoAtendeFiltro(saldo(-1), filtro('>=', 0))).toBe(false);
   });
 
-  it('produto sem saldo informado nunca passa num filtro ativo', () => {
-    expect(saldoAtendeFiltro(null, filtro('>=', 0))).toBe(false);
-    expect(saldoAtendeFiltro(null, filtro('<=', 999))).toBe(false);
+  it('produto sem saldo informado não é escondido — o filtro só julga o que conhece', () => {
+    // O modal abre com `>= 0` ligado: esconder o desconhecido deixaria a busca
+    // vazia contra um ERP que não publique `Estoque`.
+    expect(saldoAtendeFiltro(null, filtro('>=', 0))).toBe(true);
+    expect(saldoAtendeFiltro(null, filtro('=', 5))).toBe(true);
   });
 
   it('filtro desligado deixa passar tudo, inclusive sem saldo', () => {
@@ -50,10 +52,10 @@ describe('filtrarPorSaldo', () => {
     { codigo: 'C', saldo: null },
   ];
 
-  it('mantém a ordem da página e só os que passam', () => {
+  it('mantém a ordem da página e só os que passam (sem saldo fica)', () => {
     expect(
       filtrarPorSaldo(itens, (item) => item.saldo, filtro('>=', 1)).map((i) => i.codigo),
-    ).toEqual(['B']);
+    ).toEqual(['B', 'C']);
   });
 
   it('desligado devolve a mesma lista', () => {

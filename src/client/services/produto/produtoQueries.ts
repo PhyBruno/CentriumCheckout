@@ -95,8 +95,12 @@ export { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../erros
  * muda o preço do mesmo código (`FR-018`, AD-043) — sem isso o cache devolveria
  * o preço do cliente anterior (`research.md`, D5).
  *
- * `ufCliente` entrou pelo mesmo motivo (AD-258): o veredito `CenarioValido`
- * depende da UF, e o mesmo SKU pode ter cenário em SC e não ter em SP.
+ * `codigoCliente` e `ufCliente` entraram pelo mesmo motivo (AD-258, pedido do
+ * usuário em 2026-10-01): o veredito `CenarioValido` é do **cliente** — a UF
+ * é só uma das características que o ERP pesquisa ("Característica
+ * Cliente=…" aparece na mensagem). Sem o código, trocar por outro cliente da
+ * mesma UF servia do cache o produto validado para o cliente anterior, sem
+ * novo `GetProduto`. Com ele, cliente novo é sempre consulta nova.
  */
 export function chaveProduto(
   codigoProduto: string,
@@ -108,6 +112,7 @@ export function chaveProduto(
     contexto.tipoCodProduto,
     contexto.tipoPreco,
     contexto.listaPreco ?? null,
+    contexto.codigoCliente,
     contexto.ufCliente,
   ];
 }
