@@ -53,12 +53,31 @@ const quantidadeEmMilesimos = numeroErp.transform((valor) => milesimosDeUnidades
  * `DpCheckout_GetDavs` (pendência 57, AD-237). A janela usa o nome quando ele
  * vier e, até lá, exibe "Vendedor #<código>". O `ClienteNome` já vem preenchido.
  *
- * `Senha` existe no contrato e passa íntegro pelo `looseObject`, mas não é
- * modelado: nenhum requisito do Checkout o consome.
+ * **`Senha` passou a ser consumida em 2026-10-01** (AD-258): virou coluna da
+ * janela, e o `Txtbusca` do ERP passou a casar por ela. Até ali passava íntegra
+ * pelo `looseObject` sem ser modelada.
+ *
+ * **`Titulo` é o tipo do documento que originou o DAV** — `PEDIDO`,
+ * `ORCAMENTO` ou `ORDEM SERVICO`, os três valores medidos nas 284 linhas do
+ * tenant `c0lj6mvzeh` em 2026-10-01. Vira badge na coluna "Documento de Origem"
+ * (`domain/dav/documentoOrigem.ts`).
  */
 export const davDaListaSchema = z.looseObject({
   NumeroDAV: z.string(),
   Titulo: z.string(),
+  /**
+   * Número do documento que originou o DAV (AD-258). **A grafia com "cc" é a do
+   * ERP** — `DoccumentoOrigemNumero`, medido ao vivo em 2026-10-01 —, e corrigi-la
+   * aqui faria o campo nunca casar.
+   *
+   * `optional()` como `VendedorNome`: é dado de exibição, e um ERP anterior ao
+   * campo não pode derrubar a listagem inteira.
+   */
+  DoccumentoOrigemNumero: z.string().optional(),
+  /** Série do documento de origem. Vem vazia em orçamento e O.S. */
+  DocumentoOrigemSerie: z.string().optional(),
+  /** Senha do documento (AD-258); `""` quando não há. */
+  Senha: z.string().optional(),
   /** `format: date` — `YYYY-MM-DD`. */
   DataEmissao: z.string(),
   ClienteCodigo: inteiroErp,

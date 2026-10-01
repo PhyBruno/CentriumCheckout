@@ -27,6 +27,7 @@ import {
   TIPO_CODIGO_INTERNO,
   type ContextoPrecificacao,
 } from '../../services/produto/produtoQueries';
+import { ufParaConsultaDeProduto } from '../../domain/cliente/clienteVenda';
 import { ErroDocumentoImportadoInvalido } from '../../domain/importacaoVenda/mapearVendaExistente';
 import { useSessionStore } from '../../stores/sessionStore';
 import { carrinhoDepsPadrao, useVendaStore, type VendaState } from '../../stores/vendaStore';
@@ -73,6 +74,7 @@ function contextoPrecificacaoAtual(): ContextoPrecificacao | null {
     tipoPreco: registro.SessaoUsuario.TipoPreco,
     codigoCliente: cliente.codigoCliente,
     listaPreco: cliente.listaPreco,
+    ufCliente: ufParaConsultaDeProduto(cliente, registro.SessaoUsuario.ClienteDefaultUF),
   };
 }
 

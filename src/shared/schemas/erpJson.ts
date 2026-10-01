@@ -125,17 +125,31 @@ const respostaComMensagensSchema = z.looseObject({
  * recusa transformaria sucesso em erro.
  */
 export function recusaDeNegocio(corpo: unknown): string | null {
+  return mensagensDeErro(corpo)[0] ?? null;
+}
+
+/**
+ * **Todas** as descrições de erro (`Type: 1`) de `messages[]`, na ordem do ERP,
+ * sem as vazias.
+ *
+ * `recusaDeNegocio` fica com a primeira porque é a frase da recusa; esta existe
+ * para quem precisa do detalhe que o ERP manda em seguida — o `GetProduto` de
+ * cenário inválido devolve "Cenário não encontrado!" **e** a linha "Cenário
+ * pesquisado: …" com a UF e a classificação fiscal que ele procurou (medido em
+ * 2026-10-01, AD-258), e é a segunda que diz ao operador o que corrigir no ERP.
+ */
+export function mensagensDeErro(corpo: unknown): readonly string[] {
   const lido = respostaComMensagensSchema.safeParse(corpo);
   if (!lido.success) {
-    return null;
+    return [];
   }
 
+  const descricoes: string[] = [];
   for (const mensagem of lido.data.messages ?? []) {
     const descricao = mensagem.Description?.trim() ?? '';
     if (mensagem.Type === TIPO_MENSAGEM_ERRO && descricao !== '') {
-      return descricao;
+      descricoes.push(descricao);
     }
   }
-
-  return null;
+  return descricoes;
 }

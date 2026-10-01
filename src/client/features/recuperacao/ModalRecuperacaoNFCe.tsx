@@ -16,6 +16,7 @@ import {
   umAnoAntes,
   umAnoDepois,
 } from '@/lib/periodoDeBusca';
+import { dataHoraUtcParaLocal, type DataHoraLocal } from '@/lib/dataHoraUtc';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
@@ -125,24 +126,16 @@ const VALORES_DE_COLUNA_NFCE: ValoresDeColuna<RascunhoListado, ColunaNFCe> = {
 const SEM_RASCUNHOS: readonly RascunhoListado[] = [];
 
 /**
- * `Emissao` chega em ISO 8601 (`2026-09-01T14:32:00`) e é quebrada **por
- * texto**, nunca por `new Date()`.
+ * `Emissao` chega em ISO 8601 **em UTC** (`2026-09-29T19:30:30`, sem sufixo) e
+ * é exibida no fuso do navegador do PDV (AD-258).
  *
- * Construir um `Date` aplicaria o fuso do navegador do PDV a um instante que o
- * servidor já resolveu, e um rascunho suspenso às 23:40 apareceria no dia
- * seguinte. O Checkout não reinterpreta data do ERP (Constitution III) —
- * formato inesperado é exibido cru, em vez de escondido.
+ * Isto **substitui** a leitura por texto que vigorou até 2026-10-01: ela partia
+ * da premissa de que o ERP já mandava a hora local, e por isso evitava `Date`.
+ * A premissa era falsa — o operador via a emissão 3h à frente do relógio de
+ * Brasília. A ordenação da coluna continua no ISO cru: UTC também é cronológico.
  */
-function formatarEmissao(iso: string): { readonly data: string; readonly hora: string } {
-  const [dataParte = '', horaParte = ''] = iso.split('T');
-  const partes = dataParte.split('-');
-  const [ano, mes, dia] = partes;
-
-  if (partes.length !== 3 || ano === undefined || mes === undefined || dia === undefined) {
-    return { data: iso, hora: '' };
-  }
-
-  return { data: `${dia}/${mes}/${ano}`, hora: horaParte.slice(0, 5) };
+function formatarEmissao(iso: string): DataHoraLocal {
+  return dataHoraUtcParaLocal(iso);
 }
 
 /**

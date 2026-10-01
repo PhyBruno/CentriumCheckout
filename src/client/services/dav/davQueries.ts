@@ -55,7 +55,7 @@ export interface DavQueriesDeps {
 /**
  * Item da listagem (`data-model.md` §1).
  *
- * `Senha` existe no contrato e não é modelado — nenhum requisito o consome.
+ * `senha` e o documento de origem entraram em 2026-10-01 (AD-258).
  * `valorTotal` fica em **centavos**, não no `double` que o data-model
  * rascunhou: valor monetário não circula como decimal dentro da aplicação
  * (Constitution V), e é a conversão de fronteira do schema que garante isso
@@ -63,7 +63,13 @@ export interface DavQueriesDeps {
  */
 export interface DavListado {
   readonly numeroDav: string;
+  /** Tipo do documento de origem, cru do ERP (`PEDIDO`, `ORCAMENTO`, `ORDEM SERVICO`). */
   readonly titulo: string;
+  /** `DoccumentoOrigemNumero` — `''` quando o ERP não informa. */
+  readonly documentoOrigemNumero: string;
+  readonly documentoOrigemSerie: string;
+  /** `''` quando o documento não tem senha. */
+  readonly senha: string;
   /** `YYYY-MM-DD`, como o ERP devolve. */
   readonly dataEmissao: string;
   readonly clienteCodigo: number;
@@ -165,6 +171,9 @@ export async function fetchListaDavs(
     davs: lista.DAV.map((item) => ({
       numeroDav: item.NumeroDAV,
       titulo: item.Titulo,
+      documentoOrigemNumero: item.DoccumentoOrigemNumero ?? '',
+      documentoOrigemSerie: item.DocumentoOrigemSerie ?? '',
+      senha: item.Senha ?? '',
       dataEmissao: item.DataEmissao,
       clienteCodigo: item.ClienteCodigo,
       clienteNome: item.ClienteNome,

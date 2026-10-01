@@ -158,6 +158,32 @@ describe('SessaoUsuario.ClienteDefaultContato', () => {
   });
 });
 
+/** UF do cliente default e envio do PIX por WhatsApp (AD-258). */
+describe('SessaoUsuario.ClienteDefaultUF e isWhatsappEnabled', () => {
+  it('aceita os dois na forma medida no ERP real (texto e booleano nativo)', () => {
+    const payload = payloadValido();
+    const sessao = payload['SessaoUsuario'] as Record<string, unknown>;
+    sessao['ClienteDefaultUF'] = 'SC';
+    sessao['isWhatsappEnabled'] = true;
+
+    const lido = bootstrapPayloadSchema.parse(payload).SessaoUsuario;
+    expect(lido.ClienteDefaultUF).toBe('SC');
+    expect(lido.isWhatsappEnabled).toBe(true);
+  });
+
+  it('ausentes são válidos — o ERP anterior ao campo não os publica', () => {
+    const lido = bootstrapPayloadSchema.parse(payloadValido()).SessaoUsuario;
+    expect(lido.ClienteDefaultUF).toBeUndefined();
+    expect(lido.isWhatsappEnabled).toBeUndefined();
+  });
+
+  it('recusa isWhatsappEnabled que não é booleano', () => {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['isWhatsappEnabled'] = 'S';
+    expect(bootstrapPayloadSchema.safeParse(payload).success).toBe(false);
+  });
+});
+
 /** Política de saldo de estoque do tenant (`EmpSldPro`, AD-236). */
 describe('SessaoUsuario.FaturaProdutoSemSaldo', () => {
   function comPolitica(valor: unknown) {

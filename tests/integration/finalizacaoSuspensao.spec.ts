@@ -876,6 +876,7 @@ describe('cancelar uma venda sem itens (AD-240)', () => {
         listaPreco: 1,
         descontoConvenio: 0,
         codigoConvenio: null,
+        uf: 'SC',
         origem: 'BUSCA_DOCUMENTO',
       },
     });

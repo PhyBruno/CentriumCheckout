@@ -96,6 +96,7 @@ describe('inicializarClientePadrao (T009)', () => {
       listaPreco: 3,
       descontoConvenio: 0,
       codigoConvenio: null,
+      uf: null,
       origem: 'DEFAULT',
     });
     // A pré-seleção automática não é ação do operador (I3, `research.md` D9).

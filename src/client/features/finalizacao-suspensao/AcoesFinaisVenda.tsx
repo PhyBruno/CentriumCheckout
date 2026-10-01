@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
+import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useRecusaValidacaoStore } from '../../stores/recusaValidacaoStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
@@ -67,6 +68,8 @@ export function ProvedorFinalizacaoVenda({
   // store próprio (`recusaValidacaoStore`).
   const motivosDaRecusa = useRecusaValidacaoStore((s) => s.motivos);
   const fecharRecusa = useRecusaValidacaoStore((s) => s.fecharRecusa);
+  const recusaPorCenario = useCenarioProdutoStore((s) => s.recusa);
+  const fecharRecusaPorCenario = useCenarioProdutoStore((s) => s.fecharRecusaPorCenario);
   const fundoJaVisivel = sucedeAutorizacao(estado);
 
   return (
@@ -145,6 +148,18 @@ export function ProvedorFinalizacaoVenda({
           contexto="PAGAMENTO"
           mensagem={motivosDaRecusa}
           onFechar={fecharRecusa}
+        />
+      )}
+
+      {/* Produto recusado por cenário tributário na inserção (AD-258). Mora
+          aqui pelo mesmo motivo da recusa acima: é modal de tela cheia e a
+          inserção acontece nos dois layouts. O nome do produto abre o bloco do
+          motivo — a bipagem já passou, e o operador precisa saber qual foi. */}
+      {recusaPorCenario !== null && (
+        <DialogoErroFaturamento
+          desfecho="PRODUTO_SEM_CENARIO"
+          mensagem={[`Produto: ${recusaPorCenario.descricaoProduto}`, ...recusaPorCenario.motivos]}
+          onFechar={fecharRecusaPorCenario}
         />
       )}
 

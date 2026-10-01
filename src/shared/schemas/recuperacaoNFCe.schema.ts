@@ -61,10 +61,9 @@ export const rascunhoDaListaSchema = z.looseObject({
   OperadorCodigo: inteiroErp,
   OperadorNome: z.string(),
   /**
-   * `format: date-time` — repassado **cru** para dentro da aplicação e
-   * formatado só na exibição. O Checkout não reinterpreta data do ERP
-   * (Constitution III): converter para `Date` aqui aplicaria o fuso do
-   * navegador do PDV a um instante que o servidor já resolveu.
+   * `format: date-time` **em UTC**, sem sufixo de fuso (`2026-09-29T19:30:30`)
+   * — repassado cru para dentro da aplicação e convertido para o fuso do
+   * navegador só na exibição (`lib/dataHoraUtc.ts`, AD-258).
    */
   Emissao: z.string(),
   Total: valorEmCentavos,

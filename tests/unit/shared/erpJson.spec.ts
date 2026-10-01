@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recusaDeNegocio } from '../../../src/shared/schemas/erpJson';
+import { mensagensDeErro, recusaDeNegocio } from '../../../src/shared/schemas/erpJson';
 
 /**
  * `recusaDeNegocio` — o motivo que o ERP escreve em `messages[]` quando recusa
@@ -73,5 +73,27 @@ describe('recusaDeNegocio', () => {
     expect(recusaDeNegocio(null)).toBeNull();
     expect(recusaDeNegocio('texto solto')).toBeNull();
     expect(recusaDeNegocio({ messages: 'não é lista' })).toBeNull();
+  });
+});
+
+/** Todas as descrições de erro, na ordem — o detalhe do cenário (AD-258). */
+describe('mensagensDeErro', () => {
+  it('devolve todos os Type 1 com texto, na ordem do ERP, ignorando avisos e vazios', () => {
+    expect(
+      mensagensDeErro({
+        Produto: {},
+        messages: [
+          { Id: '', Type: 1, Description: 'Cenário não encontrado!' },
+          { Id: '', Type: 2, Description: 'aviso que não é recusa' },
+          { Id: '', Type: 1, Description: '   ' },
+          { Id: '', Type: 1, Description: 'Cenário pesquisado: Empresa=1, UF Destino=SC' },
+        ],
+      }),
+    ).toEqual(['Cenário não encontrado!', 'Cenário pesquisado: Empresa=1, UF Destino=SC']);
+  });
+
+  it('sem messages, ou com corpo fora do formato, devolve lista vazia', () => {
+    expect(mensagensDeErro({ CodigoProduto: '18' })).toEqual([]);
+    expect(mensagensDeErro(null)).toEqual([]);
   });
 });

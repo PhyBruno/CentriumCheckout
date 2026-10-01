@@ -35,6 +35,9 @@ export function mapClienteCheckoutParaVenda(
     listaPreco: recemCriado ? null : cliente.ListaPreco,
     descontoConvenio: recemCriado ? null : cliente.DescontoConvenio,
     codigoConvenio: recemCriado ? null : cliente.CodigoConvenio,
+    // Vale também para o recém-criado: a UF é do cadastro que o operador acabou
+    // de preencher, e o `GetCliente` seguinte a devolve (AD-258).
+    uf: textoOuNulo(cliente.uf),
     origem,
   };
 }
@@ -67,6 +70,7 @@ export function mapClienteDefaultParaVenda(sessaoUsuario: SessaoUsuario): Client
     listaPreco: sessaoUsuario.ListaPrecoDefault,
     descontoConvenio: 0,
     codigoConvenio: null,
+    uf: textoOuNulo(sessaoUsuario.ClienteDefaultUF),
     origem: 'DEFAULT',
   };
 }
@@ -103,6 +107,7 @@ export function mapClienteDoDocumentoParaVenda(
     listaPreco: null,
     descontoConvenio: null,
     codigoConvenio: null,
+    uf: null,
     origem,
   };
 }

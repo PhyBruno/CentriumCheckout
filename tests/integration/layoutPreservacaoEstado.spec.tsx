@@ -44,6 +44,7 @@ const CLIENTE_IDENTIFICADO = {
   listaPreco: 3,
   descontoConvenio: 0,
   codigoConvenio: null,
+  uf: 'SC',
   origem: 'BUSCA_DOCUMENTO' as const,
 };
 

@@ -61,35 +61,23 @@ export interface CobrancaPix {
 }
 
 /**
- * Dados do pagador enviados em `GerarPIX` (`research.md` D7, AD-100).
+ * Entrada de `useGerarPix().gerar` (`contracts/pix-domain-api.md` §2).
  *
- * Os quatro campos são `string` **não anulável** de propósito: o contrato do ERP
- * espera texto, e um `null` bruto no JSON seria um valor que o SDT não sabe ler.
- * Ausência vira `''`, sempre — ver `montarDadosPagador`.
+ * **Só o que o ERP passou a ler, desde AD-258 (2026-10-01):** forma, valor e
+ * cliente. Os dados do pagador (`research.md` D7, AD-100) e a origem/expiração
+ * de AD-251 saíram do corpo por pedido do usuário — o ERP resolve o pagador a
+ * partir do `clienteCodigo`, e foi a ausência desse código que passou a ser
+ * recusada ("Cliente não localizado", medido no prototype em 2026-10-01).
  */
-export interface DadosPagadorPix {
-  readonly nome: string;
-  /** `''` quando `ClienteVenda.documento` é `null` (só ocorre em `origem: 'DEFAULT'`). */
-  readonly documento: string;
-  /** Sempre `''` nesta versão — gap de escopo documentado, não omissão (`research.md` D7). */
-  readonly email: string;
-  /** Sempre `''` nesta versão, mesmo motivo de `email`. */
-  readonly telefone: string;
-}
-
-/** Entrada de `useGerarPix().gerar` (`contracts/pix-domain-api.md` §2). */
 export interface DadosGerarPix {
-  /** `PagamentoAplicado.formaCodigo` — vira `FPgCod` no corpo do SDT. */
+  /** `PagamentoAplicado.formaCodigo` — vira `FpgCod` no corpo. */
   readonly formaCodigo: number;
   /** Sempre o valor **desta** cobrança, nunca o subtotal cheio (J6). */
   readonly valor: Centavos;
-  readonly pagador: DadosPagadorPix;
   /**
-   * Validade do QR Code em segundos — `TrnTempoExpiracaoPIX` (AD-251).
-   *
-   * Chega pronto do catálogo (`CatalogoPagamento.tempoExpiracaoPix`), já com o
-   * padrão aplicado, porque a decisão de o que fazer com `TempoEspera: 0` é da
-   * fronteira, não desta chamada.
+   * `clienteCodigo` do corpo: o cliente da venda, inclusive o default.
+   * `null` quando a venda não tem cliente — a geração é recusada localmente,
+   * sem ir ao ERP, em vez de mandar um código inventado.
    */
-  readonly tempoExpiracaoSegundos: number;
+  readonly codigoCliente: number | null;
 }

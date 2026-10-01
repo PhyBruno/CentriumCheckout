@@ -12,7 +12,6 @@ import {
   normalizarTelefoneWhatsapp,
   preencherDestinoWhatsapp,
 } from '../../../domain/pix/destinoWhatsapp';
-import { montarDadosPagador } from '../../../domain/pix/montarDadosPagador';
 import { validarValorMinimoPix } from '../../../domain/pix/validarValorMinimoPix';
 import { formatarCentavos, type Centavos } from '../../../domain/precificacao/dinheiro';
 import { enviarPixPorWhatsapp } from '../../../services/pix/envioWhatsappMutation';
@@ -138,14 +137,13 @@ export interface ModalPixProps {
   /** `ConfiguracoesPIX.MinimoPix` já em centavos (`research.md` D13). */
   readonly minimoPix: Centavos;
   /**
-   * `ConfiguracoesPIX.TempoEspera` em segundos, já com o padrão aplicado —
-   * vira `TrnTempoExpiracaoPIX` no corpo de `GerarPIX` (AD-251).
+   * `SessaoUsuario.isWhatsappEnabled` (AD-258): a empresa contratou o envio da
+   * cobrança por WhatsApp? O botão aparece de qualquer jeito; com `false` ele
+   * explica que o recurso está desabilitado em vez de abrir o envio.
    *
-   * Vem por prop, como `minimoPix`, e não de uma leitura própria do catálogo:
-   * quem conhece a query é o call site, e o modal segue sem saber o que é
-   * TanStack Query.
+   * Vem por prop, como `minimoPix`: o modal segue sem ler store nenhum.
    */
-  readonly tempoExpiracaoPix: number;
+  readonly whatsappHabilitado: boolean;
   readonly clienteAtual: ClienteVenda | null;
   /** Chama `confirmarPagamentoIntegrado(idPagamento, { pixGuid })` (feature 008). */
   readonly onAprovado: (pixGuid: string) => void;
@@ -194,13 +192,21 @@ export const MS_FECHAMENTO_APOS_APROVACAO = 10_000;
 const MOTIVO_JANELA_TRAVADA =
   'Aguarde a confirmação do pagamento. Se o cliente desistiu, use "Desistir da operação".';
 
+/**
+ * Frase do botão de WhatsApp quando a empresa não contratou o recurso
+ * (`isWhatsappEnabled: false`, AD-258) — diz o que fazer, no sentido que o
+ * usuário pediu: desabilitado, procure o comercial.
+ */
+export const MOTIVO_WHATSAPP_DESABILITADO =
+  'Envio do PIX por WhatsApp desabilitado. Entre em contato com o comercial para habilitar.';
+
 const DEPS_VAZIAS: PixQueriesDeps = {};
 
 export function ModalPix({
   formaCodigo,
   valor,
   minimoPix,
-  tempoExpiracaoPix,
+  whatsappHabilitado,
   clienteAtual,
   onAprovado,
   onAbandonado,
@@ -280,8 +286,7 @@ export function ModalPix({
     void gerar({
       formaCodigo,
       valor,
-      pagador: montarDadosPagador(clienteAtual),
-      tempoExpiracaoSegundos: tempoExpiracaoPix,
+      codigoCliente: clienteAtual?.codigoCliente ?? null,
     })
       .then(setCobranca)
       .catch(() => {
@@ -290,7 +295,7 @@ export function ModalPix({
         // dela é uma tela, não uma exceção.
         notificar.erro('Não foi possível gerar a cobrança PIX. Tente novamente.');
       });
-  }, [gerar, formaCodigo, valor, clienteAtual, tempoExpiracaoPix]);
+  }, [gerar, formaCodigo, valor, clienteAtual]);
 
   /** Desistência manual e falha terminal: **um** caminho de código (T022). */
   const abandonar = useCallback(
@@ -504,6 +509,11 @@ export function ModalPix({
 
   const telefoneNormalizado = normalizarTelefoneWhatsapp(telefoneDestino);
 
+  /** Recurso não contratado pela empresa (`isWhatsappEnabled: false`, AD-258). */
+  const bloqueioDoWhatsapp: MotivoBloqueio = whatsappHabilitado
+    ? null
+    : MOTIVO_WHATSAPP_DESABILITADO;
+
   /**
    * Por que o envio pode estar barrado — sempre com a frase que diz o que
    * fazer, nunca um `disabled` mudo (`lib/bloqueio.ts`).
@@ -518,15 +528,17 @@ export function ModalPix({
    * Preencher com `0` seria inventar um cliente — a mesma armadilha que
    * `listaPreco` recusa em `clienteVenda.ts`.
    */
-  const bloqueioDoEnvioWhatsapp: MotivoBloqueio = enviandoWhatsapp
-    ? 'Enviando a cobrança. Aguarde a resposta do ERP.'
-    : clienteAtual === null
-      ? 'Identifique o cliente da venda para enviar a cobrança por WhatsApp.'
-      : destinoInicial.nomeObrigatorio && nomeDestino.trim() === ''
-        ? 'Informe o nome do cliente para enviar a cobrança.'
-        : telefoneNormalizado === null
-          ? 'Informe o número de destino com DDD, por exemplo (11) 98765-4321.'
-          : null;
+  const bloqueioDoEnvioWhatsapp: MotivoBloqueio = !whatsappHabilitado
+    ? MOTIVO_WHATSAPP_DESABILITADO
+    : enviandoWhatsapp
+      ? 'Enviando a cobrança. Aguarde a resposta do ERP.'
+      : clienteAtual === null
+        ? 'Identifique o cliente da venda para enviar a cobrança por WhatsApp.'
+        : destinoInicial.nomeObrigatorio && nomeDestino.trim() === ''
+          ? 'Informe o nome do cliente para enviar a cobrança.'
+          : telefoneNormalizado === null
+            ? 'Informe o número de destino com DDD, por exemplo (11) 98765-4321.'
+            : null;
 
   async function enviarPorWhatsapp(): Promise<void> {
     // As três guardas repetem o que `bloqueioDoEnvioWhatsapp` já impede na
@@ -753,9 +765,13 @@ export function ModalPix({
                     aria-label="Enviar por WhatsApp"
                     title="Enviar por WhatsApp"
                     aria-expanded={envioAberto}
-                    onClick={() => {
+                    // O botão aparece sempre; `isWhatsappEnabled` do `GetSessao`
+                    // decide se ele abre o envio ou explica que o recurso não foi
+                    // contratado (AD-258) — padrão de `lib/bloqueio.ts`.
+                    {...atributosDeBloqueio(bloqueioDoWhatsapp)}
+                    onClick={acaoBloqueavel(bloqueioDoWhatsapp, () => {
                       setEnvioAberto((aberto) => !aberto);
-                    }}
+                    })}
                   >
                     <ChatRound className="size-4 text-foreground" aria-hidden="true" />
                   </Button>

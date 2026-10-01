@@ -8,6 +8,7 @@ import {
   ModalPix,
   MOTIVO_ABAIXO_DO_MINIMO,
   MOTIVO_FECHADO_PELO_OPERADOR,
+  MOTIVO_WHATSAPP_DESABILITADO,
   type ModalPixProps,
 } from '../../src/client/features/pagamento/pix/ModalPix';
 import { resolverIntegracao } from '../../src/client/domain/pagamento/roteamentoIntegracao';
@@ -67,8 +68,6 @@ const FORMA_PIX = formaDe({
 
 const MINIMO_PIX = centavos(500);
 const VALOR_PADRAO = centavos(6550);
-/** `TrnTempoExpiracaoPIX` enviado ao ERP (AD-251); sintético, como todo o resto. */
-const EXPIRACAO_TESTE_SEGUNDOS = 300;
 /**
  * GUID que **o ERP** devolve (AD-251).
  *
@@ -84,14 +83,11 @@ interface ChamadaCapturada {
 }
 
 interface SdtEnviado {
-  readonly TrnGUID: string;
+  readonly TrnGUID?: string;
+  readonly clienteCodigo: number;
   readonly TrnValor: number;
   readonly TrnFormaPagamento: string;
-  readonly FPgCod: number;
-  readonly TrnPagadorNome: string;
-  readonly TrnPagadorCgc: string;
-  readonly TrnPagadorEmail: string;
-  readonly TrnPagadorFone: string;
+  readonly FpgCod: number;
 }
 
 function respostaJson(corpo: unknown, status = 200): Response {
@@ -259,6 +255,7 @@ const CLIENTE_IDENTIFICADO: ClienteVenda = {
   listaPreco: 5,
   descontoConvenio: 10,
   codigoConvenio: 7,
+  uf: 'SC',
   origem: 'BUSCA_DOCUMENTO',
 };
 
@@ -270,6 +267,7 @@ const CLIENTE_DEFAULT: ClienteVenda = {
   listaPreco: 3,
   descontoConvenio: 0,
   codigoConvenio: null,
+  uf: 'SC',
   origem: 'DEFAULT',
 };
 
@@ -295,7 +293,7 @@ function renderizar(cliente: ErpClient, sobrescritas: Partial<ModalPixProps> = {
     formaCodigo: FORMA_PIX.codigo,
     valor: VALOR_PADRAO,
     minimoPix: MINIMO_PIX,
-    tempoExpiracaoPix: EXPIRACAO_TESTE_SEGUNDOS,
+    whatsappHabilitado: true,
     clienteAtual: CLIENTE_IDENTIFICADO,
     onAprovado: (pixGuid) => aprovados.push(pixGuid),
     onAbandonado: (motivo) => abandonados.push(motivo),
@@ -441,45 +439,49 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
     expect(tentativas[1]).not.toHaveProperty('TrnGUID');
   });
 
-  // T015 / `research.md` D7 + AD-100 (quickstart Cenário 8).
-  it('monta os dados do pagador a partir do cliente identificado', async () => {
+  // AD-258 (2026-10-01): o corpo passou a ter só forma, valor e cliente — o
+  // ERP resolve o pagador pelo `clienteCodigo`. Substitui os testes de pagador
+  // (`research.md` D7, AD-100) e de origem/expiração (AD-251).
+  it('envia o cliente da venda, a forma e o valor desta cobrança', async () => {
     const { cliente, chamadas } = erpFake();
     renderizar(cliente, { clienteAtual: CLIENTE_IDENTIFICADO });
 
     await screen.findByTestId('pix-qrcode');
 
-    expect(geracoes(chamadas)[0]).toMatchObject({
+    expect(geracoes(chamadas)[0]).toEqual({
+      clienteCodigo: CLIENTE_IDENTIFICADO.codigoCliente,
+      TrnValor: 65.5,
       TrnFormaPagamento: MEIO_PAGTO.Pix,
-      FPgCod: FORMA_PIX.codigo,
-      TrnPagadorNome: 'MARIA EXEMPLO',
-      TrnPagadorCgc: '11122233344',
-      TrnPagadorEmail: '',
-      TrnPagadorFone: '',
+      FpgCod: FORMA_PIX.codigo,
     });
   });
 
-  it('envia documento vazio, nunca nulo, para o cliente default', async () => {
+  it('envia o código do cliente default quando a venda está nele', async () => {
     const { cliente, chamadas } = erpFake();
     renderizar(cliente, { clienteAtual: CLIENTE_DEFAULT });
 
     await screen.findByTestId('pix-qrcode');
 
-    const enviado = geracoes(chamadas)[0];
-    expect(enviado?.TrnPagadorNome).toBe('CONSUMIDOR FINAL');
-    expect(enviado?.TrnPagadorCgc).toBe('');
-    // O JSON precisa carregar a string vazia, não `null` nem a ausência do campo:
-    // é a diferença entre o SDT ler "sem documento" e não conseguir ler nada.
-    expect(Object.keys(enviado ?? {})).toContain('TrnPagadorCgc');
+    expect(geracoes(chamadas)[0]?.clienteCodigo).toBe(CLIENTE_DEFAULT.codigoCliente);
+  });
+
+  it('não chama o ERP quando a venda não tem cliente, e explica o motivo', async () => {
+    const { cliente, chamadas } = erpFake();
+    renderizar(cliente, { clienteAtual: null });
+
+    await screen.findByTestId('erro-geracao-pix');
+
+    expect(geracoes(chamadas)).toHaveLength(0);
+    expect(screen.getByTestId('erro-geracao-pix').textContent).toContain(
+      'Identifique o cliente da venda',
+    );
   });
 
   // `research.md` D4/D4-bis: o SDT é genérico (boleto/duplicata); só o
-  // subconjunto de PIX é enviado, e os demais campos ficam **ausentes**.
-  // Reescrito em AD-251. A lista de proibidos encolheu porque três campos
-  // mudaram de lado: `TrnOrigemDocumento`, `TrnOrigemSerie` e
-  // `TrnTempoExpiracaoPIX` passaram a ser **obrigatórios** — sem eles o ERP
-  // devolve o SDT vazio, medido ao vivo. Continuam fora os de boleto/duplicata,
-  // o `CntGUID`, o `TrnStatus` e a `Empresa` (que é do BFF, AD-019/AD-022).
-  it('envia a origem e a expiração, e não os campos de boleto/duplicata', async () => {
+  // subconjunto de PIX é enviado. Desde AD-258 saem também os dados do pagador
+  // e a origem/expiração de AD-251. A `Empresa` continua sendo do BFF
+  // (AD-019/AD-022), que a insere na raiz.
+  it('não envia pagador, origem, expiração nem campos de boleto/duplicata', async () => {
     const { cliente, chamadas } = erpFake();
     renderizar(cliente);
 
@@ -488,13 +490,14 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
     const corpo = geracoes(chamadas)[0] ?? {};
     const enviados = Object.keys(corpo);
 
-    expect(corpo).toMatchObject({
-      TrnOrigemDocumento: 1,
-      TrnOrigemSerie: '1',
-      TrnTempoExpiracaoPIX: EXPIRACAO_TESTE_SEGUNDOS,
-    });
-
     for (const proibido of [
+      'TrnPagadorNome',
+      'TrnPagadorCgc',
+      'TrnPagadorEmail',
+      'TrnPagadorFone',
+      'TrnOrigemDocumento',
+      'TrnOrigemSerie',
+      'TrnTempoExpiracaoPIX',
       'TrnDatVen',
       'TrnValMul',
       'TrnCodBar',
@@ -822,6 +825,25 @@ describe('Envio da cobrança PIX por WhatsApp', () => {
     // O `TrnGUID` é parâmetro obrigatório do endpoint: sem cobrança não há o
     // que enviar, e o botão não deve existir para ser clicado.
     expect(screen.queryByTestId('abrir-envio-whatsapp')).not.toBeInTheDocument();
+  });
+
+  // AD-258: `isWhatsappEnabled: false` — o botão continua na tela, mas explica
+  // que o recurso não foi contratado em vez de abrir o envio.
+  it('recurso desabilitado: o botão aparece, não abre o envio e manda procurar o comercial', async () => {
+    avisos.length = 0;
+    const usuario = userEvent.setup();
+    const { cliente, chamadas } = erpFake();
+    renderizar(cliente, { whatsappHabilitado: false });
+
+    await screen.findByTestId('pix-qrcode');
+    const botao = screen.getByTestId('abrir-envio-whatsapp');
+    expect(botao).toHaveAttribute('aria-disabled', 'true');
+
+    await usuario.click(botao);
+
+    expect(screen.queryByTestId('form-envio-whatsapp')).not.toBeInTheDocument();
+    expect(avisos).toContain(MOTIVO_WHATSAPP_DESABILITADO);
+    expect(enviosWhatsapp(chamadas)).toHaveLength(0);
   });
 
   it('cliente identificado: campos já preenchidos e envio com o número normalizado', async () => {

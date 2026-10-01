@@ -38,21 +38,6 @@ const CENTAVOS_POR_REAL = 100;
 /** AD-026: intervalo fixo, sem backoff — decisão deliberada, não omissão. */
 export const INTERVALO_POLLING_PIX_MS = 10_000;
 
-/**
- * Documento e série de origem da cobrança (AD-251).
- *
- * **Provisórios, e é assim que devem ser lidos.** O ERP exige os dois
- * preenchidos para gerar o QR Code — com eles vazios a resposta é o SDT vazio —,
- * mas a semântica que ele espera ainda não foi definida pelo time do ERP. Na
- * geração do PIX a venda sequer tem número de documento, e o `CadSerieNFCe` da
- * sessão vem vazio no ambiente de teste, então não há de onde derivá-los hoje.
- *
- * São os valores que comprovadamente fizeram a cobrança nascer em 2026-09-21.
- * Quando a semântica for definida, troque aqui — é o único ponto que os produz.
- */
-const ORIGEM_DOCUMENTO_PIX = 1;
-const ORIGEM_SERIE_PIX = '1';
-
 export interface PixQueriesDeps {
   readonly erpClient?: ErpClient;
   /**
@@ -93,6 +78,21 @@ export class ErroGeracaoPixVazia extends ErroRespostaInvalida {
   }
 }
 
+/**
+ * A venda não tem cliente, e o `GerarPIX` exige um (AD-258). Recusada aqui,
+ * sem rede: mandar `0` seria inventar um cliente, e o ERP responderia "Cliente
+ * não localizado" depois de uma viagem inútil. Na prática a ordem da venda
+ * (AD-209) já garante cliente antes do pagamento — esta é a rede de segurança.
+ */
+export class ErroPixSemCliente extends Error {
+  constructor() {
+    super(
+      'Identifique o cliente da venda antes de gerar o PIX: o ERP exige o cliente na cobrança.',
+    );
+    this.name = 'ErroPixSemCliente';
+  }
+}
+
 async function chamarErp(
   cliente: ErpClient,
   caminho: string,
@@ -116,50 +116,42 @@ async function chamarErp(
  * Exportada (não só usada pelo hook) pelo mesmo motivo de `fetchProduto`/
  * `fetchCondicoesPagamento`: o teste chama a função direto, sem montar React.
  *
- * **Corpo plano e sem `TrnGUID` desde AD-251 (2026-09-21)**, as duas coisas
- * medidas ao vivo contra o prototype:
+ * **Corpo plano e sem `TrnGUID` desde AD-251 (2026-09-21):** sem o envelope
+ * `SDTCentriumPag_Post` (o ERP só gera a cobrança com o corpo na raiz) e sem
+ * `TrnGUID` (a chave da transação é do ERP, e chega na resposta).
  *
- * - **sem o envelope `SDTCentriumPag_Post`.** O `ApiCentriumOAuth.yaml` declara
- *   `GerarPIXInput` envelopado, como todo endpoint de escrita, mas o ERP que
- *   responde hoje só gera a cobrança com o corpo na raiz;
- * - **sem `TrnGUID`.** Quem gera a chave da transação é o ERP, sempre (regra do
- *   usuário); o GUID chega na resposta e é ele que `paraCobrancaPix` guarda.
- *   Antes disso o hook sorteava um `crypto.randomUUID()` por tentativa
- *   (`research.md` D12), que o ERP ignorava — e o polling ficava perguntando
- *   por uma transação inexistente;
- * - **com `TrnOrigemDocumento`, `TrnOrigemSerie` e `TrnTempoExpiracaoPIX`.** A
- *   redação anterior dizia que estes ficavam "ausentes, nunca preenchidos com
- *   um valor sintético" (`research.md` D4/D4-bis). Sem eles o ERP devolvia o SDT
- *   vazio; preenchê-los foi o que fez a cobrança nascer. Continuam ausentes os
- *   campos de boleto/duplicata, `CntGUID` e `TrnStatus`.
+ * **Só cinco campos desde AD-258 (2026-10-01, pedido do usuário):** `Empresa`,
+ * `clienteCodigo`, `TrnValor`, `TrnFormaPagamento` e `FpgCod`. Isto **substitui**
+ * o corpo de AD-251, que levava os dados do pagador e `TrnOrigemDocumento`/
+ * `TrnOrigemSerie`/`TrnTempoExpiracaoPIX` — o ERP agora resolve o pagador pelo
+ * cliente e recusa o corpo sem `clienteCodigo` ("Cliente não localizado",
+ * medido no prototype). `Empresa` não sai daqui: o BFF a insere na raiz a
+ * partir do cookie (`CAMINHOS_COM_EMPRESA_NA_RAIZ`, AD-019/AD-022).
+ *
+ * Os nomes seguem a grafia que o usuário passou (`clienteCodigo`, `FpgCod`).
  */
 export async function gerarCobrancaPix(
   entrada: DadosGerarPix,
   deps: PixQueriesDeps = {},
 ): Promise<CobrancaPix> {
+  if (entrada.codigoCliente === null) {
+    throw new ErroPixSemCliente();
+  }
+
   const cliente = deps.erpClient ?? criarErpClient();
 
   const resposta = await chamarErp(cliente, CAMINHO_GERAR_PIX, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      clienteCodigo: entrada.codigoCliente,
       TrnValor: reaisDeCentavos(entrada.valor),
       // `MeioPagtoNFe` da forma aplicada, não um segundo enum paralelo
       // (`research.md` D5): o campo usa o mesmo domínio `NFCe_FormaPagto` que
       // `FormaMeioPagtoNFe`, e portanto o **código** (`'17'`), não o nome
-      // (AD-204). Esta feature só existe para PIX dinâmico.
-      //
-      // Confirmado ao vivo em 2026-09-21: com `'17'` o ERP gerou a cobrança, o
-      // que fecha a dúvida que este comentário registrava desde AD-249.
+      // (AD-204) — confirmado ao vivo em 2026-09-21 (AD-251).
       TrnFormaPagamento: MEIO_PAGTO.Pix,
-      FPgCod: entrada.formaCodigo,
-      TrnPagadorNome: entrada.pagador.nome,
-      TrnPagadorCgc: entrada.pagador.documento,
-      TrnPagadorEmail: entrada.pagador.email,
-      TrnPagadorFone: entrada.pagador.telefone,
-      TrnOrigemDocumento: ORIGEM_DOCUMENTO_PIX,
-      TrnOrigemSerie: ORIGEM_SERIE_PIX,
-      TrnTempoExpiracaoPIX: entrada.tempoExpiracaoSegundos,
+      FpgCod: entrada.formaCodigo,
     }),
   });
 

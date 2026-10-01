@@ -7,6 +7,34 @@ import {
 } from '../../../src/shared/schemas/produto.schema';
 import { respostaGetProduto } from '../../support/precificacao';
 
+/**
+ * `CenarioValido` (AD-258), na forma medida no prototype em 2026-10-01: com
+ * cenário inválido o ERP manda `messages` e o SDT volta para dentro de
+ * `Produto` (regra de AD-218).
+ */
+describe('GetProduto — CenarioValido', () => {
+  it('lê CenarioValido false de dentro do envelope que acompanha messages', () => {
+    const lido = getProdutoOutputSchema.parse({
+      Produto: respostaGetProduto({ CenarioValido: false }),
+      messages: [{ Id: '', Type: 1, Description: 'Cenário não encontrado!' }],
+    });
+    expect(lido.CenarioValido).toBe(false);
+  });
+
+  it('lê CenarioValido true na resposta flat', () => {
+    expect(
+      getProdutoOutputSchema.parse(respostaGetProduto({ CenarioValido: true })).CenarioValido,
+    ).toBe(true);
+  });
+
+  it('ausente é válido (ERP anterior ao campo) e recusa tipo que não é booleano', () => {
+    expect(getProdutoOutputSchema.parse(respostaGetProduto()).CenarioValido).toBeUndefined();
+    expect(
+      getProdutoOutputSchema.safeParse(respostaGetProduto({ CenarioValido: 'N' })).success,
+    ).toBe(false);
+  });
+});
+
 /** T012 — validação de fronteira e conversão double → Centavos/Milesimos. */
 describe('sdtCheckoutGetProdutoSchema', () => {
   it('aceita a resposta completa de GetProduto', () => {
@@ -152,6 +180,21 @@ describe('checkoutListaProdutosSchema', () => {
     expect(checkoutListaProdutosSchema.safeParse({ ...listaValida(), Produtos: [] }).success).toBe(
       true,
     );
+  });
+
+  it('converte Estoque (string com sinal) em milésimos — coluna e filtro de saldo (AD-258)', () => {
+    const comEstoque = (estoque: unknown) => ({
+      ...listaValida(),
+      Produtos: [{ ...(listaValida()['Produtos'] as object[])[0], Estoque: estoque }],
+    });
+
+    expect(checkoutListaProdutosSchema.parse(comEstoque('-1.000')).Produtos[0]?.Estoque).toBe(
+      -1000,
+    );
+    expect(checkoutListaProdutosSchema.parse(comEstoque('18.500')).Produtos[0]?.Estoque).toBe(
+      18500,
+    );
+    expect(checkoutListaProdutosSchema.parse(listaValida()).Produtos[0]?.Estoque).toBeUndefined();
   });
 
   it('recusa candidato sem CodigoProduto — é o único campo que a busca precisa entregar', () => {

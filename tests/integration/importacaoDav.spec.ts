@@ -859,6 +859,8 @@ describe('importarVendaExistente — ClienteNome do documento (AD-237)', () => {
       listaPreco: null,
       descontoConvenio: null,
       codigoConvenio: null,
+      // Sem cadastro também não há UF — e nunca a do default no lugar (AD-258).
+      uf: null,
       origem: 'DAV',
     });
     expect(store.getState().linhas).toHaveLength(1);

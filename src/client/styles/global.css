@@ -125,6 +125,13 @@
      do marcador e do traço, e usá-lo como texto sobre o fundo claro derruba o
      contraste abaixo do mínimo legível. O desenho separa os dois de propósito. */
   --cc-color-up-ink: #04794a;
+  /* `$info-soft`/`$info-ink` e `$warning-ink` do Pencil, mesma lógica do par
+     acima: fundo claro + texto escuro da mesma família. Entraram com as badges de
+     tipo de documento do DAV (AD-258) — `$warning` (#F4B000) como texto sobre
+     `$warning-soft` ficaria ilegível. */
+  --cc-color-info-soft: #e8f0fe;
+  --cc-color-info-ink: #1d4ed8;
+  --cc-color-warning-ink: #946800;
 
   /* --- Tipografia ------------------------------------------------------- */
   /* Inter é o substituto documentado de CoinbaseSans/CoinbaseDisplay

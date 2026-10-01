@@ -72,6 +72,18 @@ export const sdtCheckoutGetProdutoSchema = z.looseObject({
    * cache da venda, e o saldo precisa ser reconsultado a cada decisão.
    */
   Saldo: numeroErp.transform((valor) => saldoEmMilesimos(valor)).optional(),
+  /**
+   * Se o produto tem cenário tributário para a venda (AD-258) — calculado pelo
+   * ERP a partir do `UFCliente` enviado. Booleano **nativo** no JSON, medido em
+   * 2026-10-01; com `false` o ERP acrescenta `messages` (`Type: 1`) e a
+   * resposta ganha o envelope `Produto` (regra de AD-218, que `semEnvelope`
+   * absorve).
+   *
+   * `optional()`: um ERP anterior ao campo não o publica, e a ausência vale
+   * "válido" — é o comportamento de antes, em que o cenário só era checado no
+   * `FaturarNFCe`. Recusar por ausência travaria toda inserção.
+   */
+  CenarioValido: z.boolean().optional(),
 });
 
 /**
@@ -99,6 +111,14 @@ export const produtoDaListaSchema = z.looseObject({
   Referencia: z.string(),
   CodigoBarras: z.string(),
   UDM: z.string(),
+  /**
+   * Saldo de estoque (`"-1.000"`, `"78.000"`), em milésimos com sinal — exibido
+   * na coluna "Saldo" e filtrado localmente pelo modal (AD-258). Não decide
+   * inserção: quem decide é o `Saldo` fresco de `GetProduto` (AD-236).
+   *
+   * `optional()` pelo mesmo motivo de `Saldo` acima.
+   */
+  Estoque: numeroErp.transform((valor) => saldoEmMilesimos(valor)).optional(),
 });
 
 export const checkoutListaProdutosSchema = z.looseObject({

@@ -1,11 +1,24 @@
-import { BoxSearch, CheckCircle, ChevronLeft, ChevronRight, Search, X } from 'reicon-react';
+import { Box, BoxSearch, CheckCircle, ChevronLeft, ChevronRight, Search, X } from 'reicon-react';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import { Button } from '@/components/ui/button';
+import { lerDecimalDigitado } from '@/lib/numeroDigitado';
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
 import { notificar } from '@/lib/notificar';
+import {
+  filtrarPorSaldo,
+  filtroSaldoAtivo,
+  OPERADORES_SALDO,
+  type FiltroSaldo,
+  type OperadorSaldo,
+} from '../../domain/estoque/filtroSaldo';
+import {
+  formatarSaldo,
+  saldoEmMilesimos,
+  type SaldoMilesimos,
+} from '../../domain/estoque/saldoProduto';
 import {
   codigoParaConsulta,
   type ConsultaDeProduto,
@@ -26,6 +39,8 @@ interface ProdutoDaBusca {
   readonly Referencia: string;
   readonly CodigoBarras: string;
   readonly UDM: string;
+  /** Saldo em milésimos com sinal; ausente quando o ERP não o publica. */
+  readonly Estoque?: SaldoMilesimos | undefined;
 }
 
 /**
@@ -33,12 +48,14 @@ interface ProdutoDaBusca {
  * frame "PDV Online Web - Modal produto" do Pencil (`design/CentriumCheckout.pen`,
  * nó `UM0Ej`, confirmado via MCP do Pencil).
  *
- * O mockup do Pencil também desenha colunas "Saldo" e "Preço" e filtros de
- * grupo/estoque na barra de busca — **omitidos aqui de propósito**:
- * `GetListaProdutos` não devolve `PrecoVenda` nem estoque (comentário em
- * `produto.schema.ts`, AD-091) e não existe parâmetro de filtro por grupo no
- * contrato consumido por este componente. Mostrar essas colunas exigiria
- * inventar dado que o ERP não manda — exatamente o que este projeto proíbe.
+ * **Coluna "Saldo" e filtro de estoque desde 2026-10-01** (AD-258, pedido do
+ * usuário): `GetListaProdutos` devolve `Estoque`, e o filtro do desenho (nó
+ * `pTSJu` — `>=`, `<=`, `=` e uma quantidade) age **localmente** sobre a página
+ * carregada, porque o endpoint não tem parâmetro de estoque.
+ *
+ * Seguem omitidos a coluna "Preço" e o filtro de grupo: a lista traz preços
+ * crus por faixa, não o preço resolvido para o cliente (AD-091), e não existe
+ * parâmetro de grupo no contrato. Mostrá-los exigiria inventar dado.
  *
  * O modal é **só um seletor de código** — não resolve, não revisa e não
  * insere nada sozinho. Escolher um candidato só devolve a consulta
@@ -72,6 +89,8 @@ export function ModalBuscaProduto({
   const [termo, setTermo] = useState('');
   const [termoDebounced, setTermoDebounced] = useState('');
   const [pagina, setPagina] = useState(1);
+  const [operadorSaldo, setOperadorSaldo] = useState<OperadorSaldo>('>=');
+  const [quantidadeSaldo, setQuantidadeSaldo] = useState('');
   const qtdMinChar = useQtdMinCharParaConsulta();
   const tipoCodigoProduto = useTipoCodigoProduto();
 
@@ -89,6 +108,8 @@ export function ModalBuscaProduto({
       setTermo('');
       setTermoDebounced('');
       setPagina(1);
+      setOperadorSaldo('>=');
+      setQuantidadeSaldo('');
     }
   }
 
@@ -124,6 +145,24 @@ export function ModalBuscaProduto({
 
   const termoLimpo = termo.trim();
   const abaixoDoMinimo = termoLimpo.length < minimo;
+
+  // Campo vazio desliga o filtro — aqui vazio **não** vale zero, ao contrário
+  // da regra de `lerDecimalDigitado`: "saldo >= 0" esconderia os negativos sem
+  // o operador ter pedido filtro nenhum. Texto inválido também desliga, e o
+  // campo é marcado como inválido.
+  const quantidadeDigitada =
+    quantidadeSaldo.trim() === '' ? null : lerDecimalDigitado(quantidadeSaldo, 3);
+  const quantidadeInvalida = quantidadeSaldo.trim() !== '' && quantidadeDigitada === null;
+  const filtroSaldo: FiltroSaldo = {
+    operador: operadorSaldo,
+    quantidade: quantidadeDigitada === null ? null : saldoEmMilesimos(quantidadeDigitada),
+  };
+  const produtosDaPagina = busca.data?.Produtos ?? [];
+  const produtosFiltrados = filtrarPorSaldo(
+    produtosDaPagina,
+    (produto) => produto.Estoque ?? null,
+    filtroSaldo,
+  );
 
   /**
    * O candidato inteiro entra, **uma consulta** sai — código e o
@@ -214,28 +253,42 @@ export function ModalBuscaProduto({
         </header>
 
         <div className="flex flex-col gap-sm border-b border-border px-base py-2.5 md:px-lg md:py-base">
-          <label className="flex h-11 items-center gap-sm rounded-full bg-secondary px-base text-sm font-medium text-foreground">
-            <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="sr-only">Termo de busca</span>
-            <input
-              className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
-              data-testid="campo-busca-produto"
-              ref={campoBusca}
-              autoComplete="off"
-              placeholder="Busque por código, descrição, SKU ou referência"
-              value={termo}
-              onChange={(evento) => {
-                setTermo(evento.target.value);
-                // Nova busca sempre começa na página 1 — trocar o termo com a
-                // página em 3, por exemplo, não deve reconsultar a página 3 do
-                // resultado novo (que pode nem existir).
-                setPagina(1);
-              }}
+          {/* Busca e filtro de saldo na mesma linha no desktop (nó `m738u`, vão
+              de 10); no compacto o filtro desce para a linha de baixo — em
+              390px os dois juntos espremeriam o campo de busca. */}
+          <div className="flex flex-col gap-sm md:flex-row md:items-center md:gap-[10px]">
+            <label className="flex h-11 items-center gap-sm rounded-full bg-secondary px-base text-sm font-medium text-foreground md:flex-1">
+              <Search className="size-4.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Termo de busca</span>
+              <input
+                className="h-full w-full bg-transparent outline-none placeholder:text-muted-foreground"
+                data-testid="campo-busca-produto"
+                ref={campoBusca}
+                autoComplete="off"
+                placeholder="Busque por código, descrição, SKU ou referência"
+                value={termo}
+                onChange={(evento) => {
+                  setTermo(evento.target.value);
+                  // Nova busca sempre começa na página 1 — trocar o termo com a
+                  // página em 3, por exemplo, não deve reconsultar a página 3 do
+                  // resultado novo (que pode nem existir).
+                  setPagina(1);
+                }}
+              />
+            </label>
+            <FiltroDeSaldo
+              operador={operadorSaldo}
+              quantidade={quantidadeSaldo}
+              invalida={quantidadeInvalida}
+              onTrocarOperador={setOperadorSaldo}
+              onTrocarQuantidade={setQuantidadeSaldo}
             />
-          </label>
+          </div>
           {busca.data === undefined || abaixoDoMinimo ? null : (
-            <p className="text-sm font-semibold text-foreground">
-              {busca.data.TotalRegistros} produto(s) encontrado(s)
+            <p className="text-sm font-semibold text-foreground" data-testid="contagem-produtos">
+              {filtroSaldoAtivo(filtroSaldo)
+                ? `${String(produtosFiltrados.length)} de ${String(produtosDaPagina.length)} produto(s) desta página com saldo ${operadorSaldo} ${quantidadeSaldo.trim()}`
+                : `${String(busca.data.TotalRegistros)} produto(s) encontrado(s)`}
             </p>
           )}
         </div>
@@ -267,7 +320,8 @@ export function ModalBuscaProduto({
             </p>
           ) : (
             <ResultadosDaBusca
-              produtos={busca.data?.Produtos ?? []}
+              produtos={produtosFiltrados}
+              filtradoPorSaldo={filtroSaldoAtivo(filtroSaldo) && produtosDaPagina.length > 0}
               onSelecionar={(candidato) => {
                 selecionar(candidato);
               }}
@@ -324,8 +378,97 @@ export function ModalBuscaProduto({
   );
 }
 
+interface FiltroDeSaldoProps {
+  readonly operador: OperadorSaldo;
+  /** Texto digitado, cru — a leitura numérica é de quem monta o filtro. */
+  readonly quantidade: string;
+  readonly invalida: boolean;
+  readonly onTrocarOperador: (operador: OperadorSaldo) => void;
+  readonly onTrocarQuantidade: (texto: string) => void;
+}
+
+/** Nome lido em voz alta para cada operador — `>=` sozinho não diz nada a um leitor de tela. */
+const NOME_DO_OPERADOR: Readonly<Record<OperadorSaldo, string>> = {
+  '>=': 'Saldo maior ou igual a',
+  '<=': 'Saldo menor ou igual a',
+  '=': 'Saldo igual a',
+};
+
+/**
+ * Pílula "Saldo" do Pencil (nó `pTSJu`): 36 de altura, `$surface-strong`,
+ * ícone `boxes` (o `Box` do reicon) de 15, rótulo Inter 12/600, o grupo de
+ * operadores (pílula branca de 30 com três discos de 26 — o ativo em
+ * `$cb-blue` com texto branco) e a quantidade num campo branco de 44×26, raio
+ * 8, hairline.
+ */
+function FiltroDeSaldo({
+  operador,
+  quantidade,
+  invalida,
+  onTrocarOperador,
+  onTrocarQuantidade,
+}: FiltroDeSaldoProps): ReactElement {
+  return (
+    <div
+      className="flex h-9 shrink-0 items-center gap-xs self-start rounded-full bg-secondary pr-[10px] pl-sm md:self-auto"
+      data-testid="filtro-saldo"
+    >
+      <Box className="size-[15px] shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="text-sm font-semibold text-foreground">Saldo</span>
+      <div
+        role="radiogroup"
+        aria-label="Comparação do saldo"
+        className="flex h-[30px] items-center gap-[2px] rounded-full bg-card p-[2px]"
+      >
+        {OPERADORES_SALDO.map((opcao) => {
+          const ativo = opcao === operador;
+          return (
+            <button
+              key={opcao}
+              type="button"
+              role="radio"
+              aria-checked={ativo}
+              aria-label={NOME_DO_OPERADOR[opcao]}
+              data-testid={`operador-saldo-${opcao}`}
+              className={cn(
+                'flex size-[26px] items-center justify-center rounded-full text-sm font-semibold',
+                ativo
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent',
+              )}
+              onClick={() => {
+                onTrocarOperador(opcao);
+              }}
+            >
+              {opcao}
+            </button>
+          );
+        })}
+      </div>
+      <input
+        className={cn(
+          'h-[26px] w-11 rounded-sm border bg-card px-[6px] text-center font-mono text-sm font-semibold text-foreground outline-none',
+          invalida ? 'border-destructive' : 'border-border',
+        )}
+        data-testid="quantidade-filtro-saldo"
+        aria-label={NOME_DO_OPERADOR[operador]}
+        aria-invalid={invalida}
+        inputMode="decimal"
+        autoComplete="off"
+        placeholder="—"
+        value={quantidade}
+        onChange={(evento) => {
+          onTrocarQuantidade(evento.target.value);
+        }}
+      />
+    </div>
+  );
+}
+
 interface ResultadosDaBuscaProps {
   readonly produtos: readonly ProdutoDaBusca[];
+  /** A página veio com produtos e o filtro de saldo escondeu todos — muda a frase do vazio. */
+  readonly filtradoPorSaldo: boolean;
   /**
    * Recebe o **candidato inteiro**, não um código: qual dos três códigos dele é
    * o utilizável depende do `Tipocodproduto` da sessão, e essa decisão mora em
@@ -364,11 +507,17 @@ const classeRotuloSempre = 'font-semibold text-foreground md:font-normal md:text
  * próprias, e no `md:` voltam a ser a caixa em coluna com a sub-linha embaixo da
  * descrição. Sem isso a alternativa seria escrever a linha duas vezes.
  */
-function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): ReactElement {
+function ResultadosDaBusca({
+  produtos,
+  filtradoPorSaldo,
+  onSelecionar,
+}: ResultadosDaBuscaProps): ReactElement {
   if (produtos.length === 0) {
     return (
       <p className="p-base text-sm text-muted-foreground" data-testid="busca-sem-resultados">
-        Nenhum produto encontrado para o termo informado.
+        {filtradoPorSaldo
+          ? 'Nenhum produto desta página atende ao filtro de saldo.'
+          : 'Nenhum produto encontrado para o termo informado.'}
       </p>
     );
   }
@@ -380,6 +529,7 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
         <span className={cn(classeCelulaCabecalho, 'w-11')} />
         <span className={cn(classeCelulaCabecalho, 'w-32')}>Código</span>
         <span className={cn(classeCelulaCabecalho, 'flex-1')}>Produto</span>
+        <span className={cn(classeCelulaCabecalho, 'w-[108px]')}>Saldo</span>
         <span className={cn(classeCelulaCabecalho, 'w-24')}>Unidade</span>
       </div>
       <ul>
@@ -428,6 +578,17 @@ function ResultadosDaBusca({ produtos, onSelecionar }: ResultadosDaBuscaProps): 
                     <span className={classeRotuloSempre}>EAN: </span>
                     <span className="font-mono">{produto.CodigoBarras}</span>
                   </span>
+                </span>
+              </span>
+              {/* Saldo (AD-258), Geist Mono como no desenho. No compacto entra
+                  depois do EAN (`order-2`), numa faixa própria. */}
+              <span
+                className="order-2 min-w-0 truncate text-sm text-muted-foreground md:order-none md:w-[108px] md:shrink-0 md:px-sm md:text-foreground"
+                data-testid="saldo-candidato"
+              >
+                <span className={classeRotuloCompacto}>Saldo: </span>
+                <span className="font-mono font-semibold tabular-nums">
+                  {produto.Estoque === undefined ? '—' : formatarSaldo(produto.Estoque)}
                 </span>
               </span>
               <span className="min-w-0 truncate text-sm text-muted-foreground md:w-24 md:shrink-0 md:px-sm md:text-foreground">
