@@ -39,13 +39,10 @@ const MINIMO_PIX_REAIS = 5;
 interface SdtPixCapturado {
   sdt: {
     TrnGUID?: string;
+    clienteCodigo?: number;
     TrnValor?: number;
     TrnFormaPagamento?: string;
-    FPgCod?: number;
-    TrnPagadorNome?: string;
-    TrnPagadorCgc?: string;
-    TrnPagadorEmail?: string;
-    TrnPagadorFone?: string;
+    FpgCod?: number;
   } | null;
 }
 
@@ -127,17 +124,17 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     const areaDeTransferencia = await page.evaluate(() => navigator.clipboard.readText());
     expect(areaDeTransferencia).toBe(await copiaECola.innerText());
 
-    // --- corpo enviado ao ERP (`FR-010`, `research.md` D5/D7) ----------------
+    // --- corpo enviado ao ERP (AD-258: só cliente, valor, meio e forma) -------
+    // A `Empresa` entra no BFF, então o mock a recebe; o navegador não a manda.
     const { sdt } = await ultimoPix(request);
-    expect(sdt?.TrnValor).toBe(10);
-    expect(sdt?.TrnFormaPagamento).toBe('17');
-    expect(sdt?.FPgCod).toBe(3);
-    // Cliente default da sessão sintética: nome preenchido, documento vazio —
-    // `GetSessao` não devolve o CPF/CNPJ dele (AD-100).
-    expect(sdt?.TrnPagadorNome).toBe('CONSUMIDOR FINAL');
-    expect(sdt?.TrnPagadorCgc).toBe('');
-    expect(sdt?.TrnPagadorEmail).toBe('');
-    expect(sdt?.TrnPagadorFone).toBe('');
+    expect(sdt).toEqual({
+      Empresa: 1,
+      // Cliente default da sessão sintética — o ERP resolve o pagador por ele.
+      clienteCodigo: 1,
+      TrnValor: 10,
+      TrnFormaPagamento: '17',
+      FpgCod: 3,
+    });
 
     // --- aprovação detectada pela sondagem (`FR-001`/`FR-002`) ---------------
     // A janela **não** desmonta na aprovação: ela mostra o estado aprovado e só

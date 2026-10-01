@@ -48,9 +48,12 @@ describe('avaliarSaldo — política × posição em relação ao saldo', () => 
     ['', 10, 0, 5, 'livre'],
     ['', 10, 5, 5, 'livre'],
     ['', 10, 5, 600, 'livre'],
-  ])('política "%s", saldo %d, carrinho %d + proposta %d → %s', (politica, saldo, carrinho, proposta, veredito) => {
-    expect(avaliar(politica, saldo, carrinho, proposta).veredito).toBe(veredito);
-  });
+  ])(
+    'política "%s", saldo %d, carrinho %d + proposta %d → %s',
+    (politica, saldo, carrinho, proposta, veredito) => {
+      expect(avaliar(politica, saldo, carrinho, proposta).veredito).toBe(veredito);
+    },
+  );
 
   it('saldo negativo é válido e já barra a primeira unidade em "B"', () => {
     expect(avaliar('B', -205, 0, 1).veredito).toBe('bloqueio');

@@ -20,8 +20,11 @@ export const SKU_DAV = '001234';
 export function davDaLista(sobrescritas: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     NumeroDAV: NUMERO_DAV,
-    Titulo: 'PV-11842',
-    // Presente no contrato, sem uso no Checkout — passa íntegro pelo `loose`.
+    // Tipo do documento de origem e o próprio documento (AD-258). A grafia
+    // `DoccumentoOrigemNumero`, com "cc", é a do ERP.
+    Titulo: 'PEDIDO',
+    DoccumentoOrigemNumero: '1287',
+    DocumentoOrigemSerie: '99',
     Senha: '',
     DataEmissao: DATA_EMISSAO,
     ClienteCodigo: CODIGO_CLIENTE_DAV,

@@ -283,9 +283,10 @@ describe('T005 — a janela lista os rascunhos suspensos', () => {
     expect(linha).toHaveTextContent('MARIANA ALVES');
     expect(linha).toHaveTextContent('CAIXA 03');
     expect(linha).toHaveTextContent('R$ 18,50');
-    // `Emissao` é ISO 8601 e é exibida quebrada por texto, nunca via `Date`.
+    // `Emissao` chega em UTC (`2026-09-01T14:32:00`) e é exibida no fuso do
+    // navegador (AD-258) — a suíte roda em America/Sao_Paulo, UTC−3.
     expect(linha).toHaveTextContent('01/09/2026');
-    expect(linha).toHaveTextContent('14:32');
+    expect(linha).toHaveTextContent('11:32');
   });
 
   it('exibe a série de cada rascunho em coluna própria, como no Pencil (AD-235)', async () => {

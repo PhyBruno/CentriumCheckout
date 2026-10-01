@@ -46,7 +46,14 @@ export type Desfecho =
    * Cenário tributário não encontrado (AD-239): cadastro fiscal do ERP. Como na
    * rejeição, fechar libera o caixa — não há correção possível no Checkout.
    */
-  | 'CENARIO_TRIBUTARIO';
+  | 'CENARIO_TRIBUTARIO'
+  /**
+   * O **produto** não tem cenário tributário para o cliente da venda
+   * (`GetProduto.CenarioValido: false`, AD-258): a recusa antecipada do mesmo
+   * cadastro fiscal, no momento da inserção. Nada entrou e a venda segue —
+   * fechar só devolve o caixa à barra de produto.
+   */
+  | 'PRODUTO_SEM_CENARIO';
 
 /** Onde a recusa aconteceu — decide o verbo da cópia (AD-239). */
 export type ContextoDoDesfecho = 'FATURAR' | 'SUSPENDER' | 'PAGAMENTO';
@@ -142,6 +149,18 @@ function copiaDoDesfecho(desfecho: Desfecho, contexto: ContextoDoDesfecho): Copi
         tituloDoMotivo: MOTIVO_DO_ERP,
         rotuloBotao: 'Fechar e iniciar uma nova venda',
       };
+
+    case 'PRODUTO_SEM_CENARIO':
+      return {
+        rotuloAcessivel: 'Produto sem cenário tributário',
+        tituloCabecalho: 'Produto não inserido',
+        subtituloCabecalho: 'Sem cenário tributário para este cliente',
+        chamada: 'Este produto não pode entrar na venda',
+        explicacao:
+          'O ERP não encontrou cenário tributário para este produto e o cliente da venda. Corrija o cadastro fiscal no ERP ou escolha outro produto.',
+        tituloDoMotivo: MOTIVO_DO_ERP,
+        rotuloBotao: 'Entendi',
+      };
   }
 }
 
@@ -178,8 +197,9 @@ export function DialogoErroFaturamento({
   const identificacao = identificacaoDoRascunho(rascunho);
   const rejeitada = desfecho === 'REJEITADA';
   // Aviso, e não erro: a validação recusada é a venda que precisa de ajuste —
-  // nada quebrou, e o vermelho de falha treinaria o operador a ignorá-lo.
-  const tomDeAviso = desfecho === 'VENDA_RECUSADA';
+  // nada quebrou, e o vermelho de falha treinaria o operador a ignorá-lo. O
+  // produto sem cenário é o mesmo caso: a venda segue, só aquele item não entra.
+  const tomDeAviso = desfecho === 'VENDA_RECUSADA' || desfecho === 'PRODUTO_SEM_CENARIO';
   const Icone = tomDeAviso ? AlertTriangle : XCircle;
   const corDoIcone = tomDeAviso ? 'text-[var(--cc-color-accent-yellow)]' : 'text-destructive';
   const fundoDoIcone = tomDeAviso

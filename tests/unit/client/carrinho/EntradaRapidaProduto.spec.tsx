@@ -9,6 +9,7 @@ import {
   type EntradaRapidaProdutoProps,
 } from '../../../../src/client/features/carrinho/EntradaRapidaProduto';
 import { notificar } from '../../../../src/client/lib/notificar';
+import { useCenarioProdutoStore } from '../../../../src/client/stores/cenarioProdutoStore';
 import { useEdicaoItemStore } from '../../../../src/client/stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useJanelasStore } from '../../../../src/client/stores/janelasStore';
@@ -1102,6 +1103,141 @@ describe('EntradaRapidaProduto — venda sem vendedor (correção do usuário, 2
     );
 
     vi.unstubAllGlobals();
+  });
+});
+
+/**
+ * `CenarioValido` no `GetProduto` (AD-258, pedido do usuário em 2026-10-01).
+ * As respostas imitam o prototype medido nesse dia: com cenário inválido o SDT
+ * vem dentro de `Produto`, com o motivo em `messages`.
+ */
+describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', () => {
+  const MOTIVOS = [
+    'Cenário não encontrado!',
+    'Cenário pesquisado: Empresa=1, UF Destino=SC, Operação=Desconhecida',
+  ];
+
+  function respostaDeCenario(valido: boolean): Response {
+    const corpo = valido
+      ? respostaGetProduto({ CenarioValido: true })
+      : {
+          Produto: respostaGetProduto({ CenarioValido: false }),
+          messages: MOTIVOS.map((Description) => ({ Id: '', Type: 1, Description })),
+        };
+    return new Response(JSON.stringify(corpo), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  beforeEach(() => {
+    const registro = registroDeBootstrap();
+    useSessionStore.setState({
+      estado: 'pronto',
+      registro: {
+        ...registro,
+        SessaoUsuario: { ...registro.SessaoUsuario, ClienteDefaultUF: 'SC' },
+      },
+    });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE, clienteAtual: null });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+    useCenarioProdutoStore.setState({ recusa: null });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('não envia UFCliente, mesmo com a UF do default na sessão (ideia abandonada, AD-258)', async () => {
+    const buscar = vi.fn((_url: string) => Promise.resolve(respostaDeCenario(true)));
+    vi.stubGlobal('fetch', buscar);
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    expect(String(buscar.mock.calls[0]?.[0])).not.toMatch(/UFCliente/i);
+  });
+
+  it('cenário inválido: nada entra no carrinho e a janela explica com o motivo do ERP', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(respostaDeCenario(false))),
+    );
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(useCenarioProdutoStore.getState().recusa).not.toBeNull();
+    });
+    expect(useCenarioProdutoStore.getState().recusa).toEqual({
+      descricaoProduto: 'PRODUTO EXEMPLO 500G',
+      motivos: MOTIVOS,
+    });
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    // Janela, não toast: a recusa por cenário não pode passar voando.
+    expect(erro).not.toHaveBeenCalled();
+  });
+
+  it('trocar de cliente refaz o GetProduto em vez de usar o cache', async () => {
+    const buscar = vi.fn((_url: string) => Promise.resolve(respostaDeCenario(true)));
+    vi.stubGlobal('fetch', buscar);
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+
+    // Outro cliente, mesma lista de preço: só o código distingue a consulta.
+    act(() => {
+      useVendaStore.setState({
+        clienteAtual: {
+          codigoCliente: 1255,
+          nome: 'CLIENTE SINTETICO',
+          documento: null,
+          celular: null,
+          listaPreco: 3,
+          descontoConvenio: 0,
+          codigoConvenio: null,
+          origem: 'BUSCA_DOCUMENTO',
+        },
+      });
+    });
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+
+    await waitFor(() => {
+      expect(buscar).toHaveBeenCalledTimes(2);
+    });
+    expect(String(buscar.mock.calls[1]?.[0])).toContain('Codcliente=1255');
+  });
+
+  it('a recusa não fica no cache: bipar de novo volta ao ERP', async () => {
+    const buscar = vi.fn(() => Promise.resolve(respostaDeCenario(false)));
+    vi.stubGlobal('fetch', buscar);
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(useCenarioProdutoStore.getState().recusa).not.toBeNull();
+    });
+    useCenarioProdutoStore.setState({ recusa: null });
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234{Enter}');
+    await waitFor(() => {
+      expect(useCenarioProdutoStore.getState().recusa).not.toBeNull();
+    });
+
+    expect(buscar).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -1,141 +1,24 @@
 [
   {
-    "id": "mem:1788353062747",
-    "kind": "decision",
-    "content": "Implementa feature 001 (auditoria): eventos.ts com 20 tipos + factories, auditoriaSlice, vendaStore por slices, serializarLog, 19 testes",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "src/client/domain/auditoria/eventos.ts",
-      "src/client/domain/auditoria/serializarLog.ts",
-      "src/client/stores/slices/auditoriaSlice.ts",
-      "src/client/stores/vendaStore.ts",
-      "tests/unit/domain/auditoria/eventos.spec.ts",
-      "tests/unit/domain/auditoria/serializarLog.spec.ts",
-      ".specs/project/PENDENCIES.md",
-      "specs/001-auditoria-acoes-operador/tasks.md"
-    ],
-    "file_path": "src/client/domain/auditoria/eventos.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.747831+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.747838+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "window_sec": 120,
-      "recent_action_kinds": [],
-      "recent_queries": []
-    }
+    "type": "decision",
+    "content": "AD-258: contrato ERP de outubro aplicado (DAV origem, UTC, cenário, UF, WhatsApp, GerarPIX)",
+    "tags": ["erp", "contrato", "ad-258"],
+    "files": [".specs/project/STATE.md", "src/client/features/carrinho/useCarrinho.ts"],
+    "date": "2026-10-01"
   },
   {
-    "id": "mem:1788353062759",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "src/client/domain/auditoria/serializarLog.ts"
-    ],
-    "file_path": "src/client/domain/auditoria/serializarLog.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.759682+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.759696+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
+    "type": "blocker",
+    "content": "GerarPIX novo não gera cobrança no c0lj6mvzeh; default 999999 dá HTTP 500",
+    "tags": ["pix", "erp", "pendencia-62"],
+    "files": ["src/client/services/pix/pixQueries.ts"],
+    "date": "2026-10-01"
   },
   {
-    "id": "mem:1788353062782",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "implementa",
-      "feature",
-      "001",
-      "auditoria",
-      "eventos",
-      "com",
-      "tipos",
-      "factories"
-    ],
-    "files": [
-      "src/client/stores/vendaStore.ts"
-    ],
-    "file_path": "src/client/stores/vendaStore.ts",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T12:44:22.782496+00:00",
-    "created_epoch": 1788353062,
-    "updated_at": "2026-09-02T12:44:22.782508+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
-  },
-  {
-    "id": "mem:1788366372233",
-    "kind": "edit_observation",
-    "content": "Edited during active session",
-    "tags": [
-      "corrige",
-      "achados",
-      "revisao",
-      "code",
-      "review",
-      "high",
-      "feature",
-      "003"
-    ],
-    "files": [
-      "src/client/features/carrinho/EdicaoQuantidadeItem.tsx"
-    ],
-    "file_path": "src/client/features/carrinho/EdicaoQuantidadeItem.tsx",
-    "symbol_id": "",
-    "symbol_hash": "",
-    "created_at": "2026-09-02T16:26:12.233365+00:00",
-    "created_epoch": 1788366372,
-    "updated_at": "2026-09-02T16:26:12.233377+00:00",
-    "stale": false,
-    "stale_reason": "",
-    "observed_queries": [],
-    "evidence": {
-      "source": "graph_register_edit",
-      "recent_action_kinds": [],
-      "recent_queries": [],
-      "edited": true
-    }
+    "type": "fact",
+    "content": "CenarioValido sempre false no c0lj6mvzeh; classificação fiscal vazia na mensagem",
+    "tags": ["produto", "cenario", "pendencia-63"],
+    "files": ["src/client/services/produto/produtoQueries.ts"],
+    "date": "2026-10-01"
   },
   {
     "id": "mem:1788366372209",
@@ -5660,9 +5543,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-21T15:29:12.156792+00:00",
     "created_epoch": 1790004552,
-    "updated_at": "2026-09-21T15:29:12.156857+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-24T16:35:14.561081+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -5693,9 +5576,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-21T15:29:12.101377+00:00",
     "created_epoch": 1790004552,
-    "updated_at": "2026-09-21T15:29:12.101403+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-24T16:35:14.561075+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -5729,9 +5612,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-21T15:29:12.091224+00:00",
     "created_epoch": 1790004552,
-    "updated_at": "2026-09-21T15:29:12.091245+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-24T16:35:14.561067+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "window_sec": 120,
@@ -5761,9 +5644,9 @@
     "symbol_hash": "",
     "created_at": "2026-09-21T15:29:12.128262+00:00",
     "created_epoch": 1790004552,
-    "updated_at": "2026-09-21T15:29:12.128289+00:00",
-    "stale": false,
-    "stale_reason": "",
+    "updated_at": "2026-09-24T16:35:14.561047+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
     "observed_queries": [],
     "evidence": {
       "source": "graph_register_edit",
@@ -5806,6 +5689,7 @@
     }
   },
   {
+    "id": "mem:1790007491796",
     "kind": "decision",
     "content": "Envelope SDTCentriumPag_Post fica: retestar GerarPIX com a Empresa de AD-249 antes",
     "tags": [
@@ -5818,7 +5702,107 @@
       "src/client/services/pix/pixQueries.ts",
       "src/server/routes/erp-proxy.ts"
     ],
+    "file_path": "src/client/services/pix/pixQueries.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
     "created_at": "2026-09-21T16:18:11.755575+00:00",
-    "created_epoch": 1790007491
+    "created_epoch": 1790007491,
+    "updated_at": "2026-09-21T16:18:11.755575+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1790267714560",
+    "kind": "decision",
+    "content": "AD-251: GerarPIX plano, com origem e expiracao; TrnGUID e gerado pelo ERP",
+    "tags": [
+      "pix",
+      "AD-251",
+      "GerarPIX",
+      "guid"
+    ],
+    "files": [
+      "src/client/services/pix/pixQueries.ts",
+      "src/client/services/pix/pixMapper.ts",
+      "src/server/routes/erp-proxy.ts"
+    ],
+    "file_path": "src/client/services/pix/pixQueries.ts",
+    "symbol_id": "",
+    "symbol_hash": "",
+    "created_at": "2026-09-21T17:10:31.241398+00:00",
+    "created_epoch": 1790010631,
+    "updated_at": "2026-09-21T17:10:31.241398+00:00",
+    "stale": false,
+    "stale_reason": "",
+    "observed_queries": [],
+    "evidence": {}
+  },
+  {
+    "id": "mem:1790267714592",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx::motivoDeIndisponibilidade"
+    ],
+    "file_path": "src/client/features/pagamento/SeletorCondicaoForma.tsx",
+    "symbol_id": "src/client/features/pagamento/SeletorCondicaoForma.tsx::motivoDeIndisponibilidade",
+    "symbol_hash": "",
+    "created_at": "2026-09-24T16:35:14.561083+00:00",
+    "created_epoch": 1790267714,
+    "updated_at": "2026-09-24T16:35:14.561085+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1790267714571",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/client/domain/pagamento/roteamentoIntegracao.ts::resolverIntegracao",
+      "src/client/domain/pagamento/roteamentoIntegracao.ts::formaDisponivel",
+      "src/client/features/pagamento/SeletorCondicaoForma.tsx::motivoDeIndisponibilidade",
+      "tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts"
+    ],
+    "file_path": "src/client/domain/pagamento/roteamentoIntegracao.ts",
+    "symbol_id": "src/client/domain/pagamento/roteamentoIntegracao.ts::resolverIntegracao",
+    "symbol_hash": "",
+    "created_at": "2026-09-24T16:35:14.561070+00:00",
+    "created_epoch": 1790267714,
+    "updated_at": "2026-09-24T16:35:14.561079+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
+  },
+  {
+    "id": "mem:1790267714562",
+    "kind": "stale_marker",
+    "content": "Marked stale because symbol removed",
+    "tags": [],
+    "files": [
+      "src/client/domain/pagamento/roteamentoIntegracao.ts::formaDisponivel"
+    ],
+    "file_path": "src/client/domain/pagamento/roteamentoIntegracao.ts",
+    "symbol_id": "src/client/domain/pagamento/roteamentoIntegracao.ts::formaDisponivel",
+    "symbol_hash": "",
+    "created_at": "2026-09-24T16:35:14.561059+00:00",
+    "created_epoch": 1790267714,
+    "updated_at": "2026-09-24T16:35:14.561063+00:00",
+    "stale": true,
+    "stale_reason": "symbol removed",
+    "observed_queries": [],
+    "evidence": {
+      "source_kind": "edit_observation"
+    }
   }
 ]

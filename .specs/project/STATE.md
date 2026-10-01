@@ -3852,3 +3852,46 @@ Tanto a regra quanto a frase ("O período de busca é de no máximo um ano.") mo
 **Impact:** `src/client/lib/periodoDeBusca.ts`, `src/client/components/ui/campo-data.tsx`, `src/client/components/ui/filtro-de-data.tsx`, `src/client/features/dav/ModalImportacaoDav.tsx` e `src/client/features/recuperacao/ModalRecuperacaoNFCe.tsx`. Testes em `periodoDeBusca.spec.ts` e `campo-data.spec.tsx`.
 
 **Verificação:** 1862 testes unit/integração verdes, `tsc --noEmit` e ESLint limpos. Não verificado no navegador.
+
+### AD-258: contrato de outubro do ERP — documento de origem do DAV, emissão em UTC, cenário tributário no `GetProduto`, WhatsApp contratado e `GerarPIX` enxuto (2026-10-01)
+
+**Origem:** pedido do usuário com seis alterações de contrato, a validar primeiro contra o ERP real (prototype do tenant `c0lj6mvzeh`) e só depois contra a KB. É correção sobre features já implementadas (003, 005, 006, 009, 011), então foi direto a código, testes e este AD, sem reabrir o ciclo do Spec Kit. As formas abaixo foram **medidas ao vivo em 2026-10-01**, não tiradas do YAML. A KB local (`CentriumDEVU6`) ainda tem a `PCheckout_GetProduto` anterior ao `CenarioValido`, e o índice do MCP GenExus estava frio — o ERP real foi a única fonte.
+
+**1. `ListaDAVs` — documento de origem, tipo em badge e senha.**
+- O ERP devolve `DoccumentoOrigemNumero` (**com "cc"**, grafia do ERP — corrigi-la faria o campo nunca casar) e `DocumentoOrigemSerie`. `Titulo` é o **tipo** do documento de origem: nas 284 linhas do tenant só há `PEDIDO`, `ORCAMENTO` e `ORDEM SERVICO`. Orçamento e O.S. vêm **sem série**.
+- A coluna "Documento" virou **"Documento de Origem"**: `Numero/Serie` em mono seguido da badge do tipo — sem série, só o número, sem barra pendurada. Cores pelas famílias do Pencil: Pedido `info`, Orçamento `warning`, O.S `success`; tipo desconhecido fica neutro com o texto do ERP (`domain/dav/documentoOrigem.ts`).
+- A badge é o componente "Badge" do Pencil (nó `hKvqW`), agora `components/ui/badge.tsx`. Entraram três tokens que o Pencil já tinha (`$info-soft`, `$info-ink`, `$warning-ink`).
+- `Senha` virou coluna, e a busca por senha foi confirmada: `Txtbusca=123456` devolveu exatamente o DAV dessa senha. Nada mudou na chamada, só o placeholder do campo.
+
+**2. `GetListaNFCes.Emissao` vem em UTC.** Isto **substitui** a regra que vigorava desde a 011: "quebrar `Emissao` por texto, nunca por `Date`, porque o servidor já resolveu o fuso". O texto chega sem sufixo (`2026-09-29T19:30:30`), mas é UTC, e a janela mostrava a hora 3h adiantada.
+- A exibição agora converte para o fuso **do navegador**, e não para um `-03:00` fixo — o Brasil tem quatro fusos (`lib/dataHoraUtc.ts`). Um texto que já traga `Z`/offset é respeitado.
+- A ordenação segue no ISO cru, porque UTC também é cronológico.
+- A suíte Vitest passou a rodar em `TZ=America/Sao_Paulo` (`vitest.config.ts`), para o resultado não depender da máquina.
+
+**3. `GetProduto` — recusa por `CenarioValido: false` antes da inserção. Sem `UFCliente`.**
+- **O `GetProduto` não envia UF.** O pedido original mandava enviar `UFCliente` (a UF do `GetCliente`, ou `ClienteDefaultUF` no default), e isso chegou a ser implementado e publicado nesta branch. O usuário **desistiu da ideia no mesmo dia**: o parâmetro, a UF guardada no cliente da venda e a função que a escolhia foram removidos. A `ClienteDefaultUF` continua sendo validada e guardada com a sessão (item 4), sem consumidor.
+- `codigoCliente` entrou na chave de cache do produto (pedido do usuário): o veredito é do **cliente**. Trocar de cliente sempre refaz o `GetProduto`, inclusive para um produto que já teve cenário válido com o cliente anterior.
+- Com cenário inválido, o ERP responde `200` com o SDT **dentro de `Produto`** e `messages` (`Type: 1`): "Cenário não encontrado!" e "Cenário pesquisado: Empresa=…, UF Destino=…, Operação=…". É a regra de AD-218 — `semEnvelope` absorve.
+- **Decisão:** `resolverProduto` (`useCarrinho.ts`), o ponto único de todos os caminhos de inserção (Enter, TAB, modal, balança), recusa com `ErroCenarioTributarioInvalido`. O produto não entra, e o operador vê uma **janela** (pedido do usuário) com o nome do produto e as mensagens do ERP: `DialogoErroFaturamento`, desfecho `PRODUTO_SEM_CENARIO`, em tom de aviso, montado no provider que vale para os dois layouts e aberto pelo `cenarioProdutoStore`.
+- A resposta recusada **sai do cache**: o cadastro fiscal pode ser corrigido com a venda aberta, e o `staleTime` infinito serviria a recusa velha para sempre.
+- A reconsulta de saldo e a descrição de item importado **não** recusam por cenário: a decisão é da inserção, não da camada de rede.
+- `CenarioValido` ausente vale **válido** — é o comportamento anterior, em que o cenário só era checado no `FaturarNFCe`.
+
+**4. `GetSessao` — `ClienteDefaultUF` e `isWhatsappEnabled`.** Os dois foram medidos no prototype (`"SC"` e `true`, booleano **nativo**) e entram como `optional()`. A `ClienteDefaultUF` é só guardada com a sessão (pedido do usuário), sem uso no `GetProduto` — ver item 3.
+- O botão de WhatsApp do modal de PIX **aparece sempre**. Com `isWhatsappEnabled: false` (ou ausente) ele fica bloqueado com motivo (`lib/bloqueio.ts`) e, ao ser clicado, avisa: "Envio do PIX por WhatsApp desabilitado. Entre em contato com o comercial para habilitar."
+- Habilitado, abre o envio que já existia (`EnvioDiretoWhatsapp`). O flag chega ao `ModalPix` por prop, lido em `ListaPagamentosAplicados`.
+
+**5. Filtro local de saldo no modal de produto.** `GetListaProdutos` devolve `Estoque` (`"-1.000"`), agora convertido em milésimos com sinal na fronteira.
+- O modal ganhou a coluna "Saldo" e a pílula de filtro do Pencil (nó `pTSJu`): operadores `>=`, `<=`, `=` e uma quantidade.
+- O modal **abre filtrando `saldo >= 0`** (pedido do usuário). O filtro age **sobre a página carregada**, porque o endpoint não tem parâmetro de estoque. A contagem diz isso ("N de M produto(s) desta página com saldo >= X").
+- Apagar a quantidade **desliga** o filtro: aqui vazio não vale zero, ao contrário de `lerDecimalDigitado`.
+- Produto **sem saldo informado continua visível** (com "—"): o filtro só julga o saldo que conhece. Escondê-lo faria a busca abrir vazia contra um ERP que não publique `Estoque`, já que o filtro nasce ligado (`domain/estoque/filtroSaldo.ts`).
+
+**6. `GerarPIX` enxuto.** Isto **substitui** o corpo de AD-251. O corpo agora tem só `Empresa` (inserida pelo BFF), `clienteCodigo`, `TrnValor`, `TrnFormaPagamento` e `FpgCod`, na grafia do pedido.
+- Saíram os dados do pagador (`montarDadosPagador` removido) e `TrnOrigemDocumento`/`TrnOrigemSerie`/`TrnTempoExpiracaoPIX` (com `paraTempoExpiracaoPix` e o `tempoExpiracaoPix` do catálogo).
+- Venda sem cliente é recusada **localmente** (`ErroPixSemCliente`), sem ir ao ERP — mandar `0` seria inventar um cliente.
+- Medido no prototype: o corpo **antigo** agora é recusado com "Cliente não localizado". O corpo novo passa dessa etapa com cliente identificado, mas neste tenant a transação não é gerada ("Erro na Geração da Transação", formas 39 e 40), e com o cliente default (999999) o ERP responde **HTTP 500**. O usuário avisou que o `GerarPIX` não funciona neste ambiente e que testa depois — pendência 62.
+
+**Impact:** `src/shared/schemas/{dav,produto,bootstrap,recuperacaoNFCe,erpJson}.ts`; `src/client/domain/{dav/documentoOrigem,estoque/filtroSaldo,pix/cobrancaPix}.ts`; `src/client/lib/dataHoraUtc.ts`; `src/client/components/ui/badge.tsx`; `src/client/stores/cenarioProdutoStore.ts`; `src/client/services/{dav/davQueries,produto/produtoQueries,produto/produtoMapper,cliente/clienteMapper,pix/pixQueries,pagamento/pagamentoQueries,pagamento/pagamentoMapper}.ts`; `src/client/features/{dav/ModalImportacaoDav,recuperacao/ModalRecuperacaoNFCe,carrinho/ModalBuscaProduto,carrinho/useCarrinho,pagamento/pix/ModalPix,pagamento/ListaPagamentosAplicados,finalizacao-suspensao/DialogoErroFaturamento,finalizacao-suspensao/AcoesFinaisVenda,importacao/useImportacaoDocumento}.tsx?`; `src/client/stores/vendaStore.ts`; `tests/e2e/support/erp-mock.ts`.
+
+**Verificação:** 1901 testes unit/integração verdes em 120 arquivos, com specs novos para a data UTC, o documento de origem, o filtro de saldo, a janela de DAV, o filtro do modal de produto, a recusa por cenário na barra (inclusive que o `GetProduto` não leva `UFCliente` e que trocar de cliente refaz a consulta) e o WhatsApp desabilitado. `tsc --noEmit` e ESLint limpos. Não verificado no navegador.

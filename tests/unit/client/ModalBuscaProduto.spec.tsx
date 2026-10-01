@@ -8,6 +8,7 @@ import type { CheckoutListaProdutos } from '../../../src/shared/schemas/produto.
 import type * as ProdutoQueries from '../../../src/client/services/produto/produtoQueries';
 import { ModalBuscaProduto } from '../../../src/client/features/carrinho/ModalBuscaProduto';
 import type { ConsultaDeProduto } from '../../../src/client/domain/precificacao/codigoProduto';
+import { saldoEmMilesimos } from '../../../src/client/domain/estoque/saldoProduto';
 import { useSessionStore } from '../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../src/client/stores/vendaStore';
 
@@ -352,6 +353,144 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
 
     expect(onProdutoSelecionado).toHaveBeenCalledWith({ codigo: '001', tipoCodigo: 'R' });
     expect(onFechar).toHaveBeenCalledOnce();
+  });
+
+  describe('filtro local de saldo (AD-258)', () => {
+    /**
+     * Página com saldos sintéticos: 0, 18, −1 e — salvo `semDesconhecido` — um
+     * produto sem `Estoque`, como o ERP anterior ao campo devolve.
+     */
+    function configurarSaldos(semDesconhecido = false): void {
+      const comSaldo = [
+        { ...produtoDe('001'), Estoque: saldoEmMilesimos(0) },
+        { ...produtoDe('002'), Estoque: saldoEmMilesimos(18) },
+        { ...produtoDe('003'), Estoque: saldoEmMilesimos(-1) },
+      ];
+      const produtos = semDesconhecido ? comSaldo : [...comSaldo, produtoDe('004')];
+      mockUseBuscaProdutos.mockImplementation(
+        () =>
+          ({
+            isPending: false,
+            isFetching: false,
+            isError: false,
+            data: {
+              PaginaAtual: 1,
+              RegistrosPorPagina: 10,
+              TotalRegistros: produtos.length,
+              TotalPaginas: 1,
+              Produtos: produtos,
+            },
+          }) as UseQueryResult<CheckoutListaProdutos, Error>,
+      );
+    }
+
+    function codigosVisiveis(): string[] {
+      return screen
+        .queryAllByTestId('candidato-produto')
+        .map((linha) => linha.getAttribute('data-codigo-produto') ?? '');
+    }
+
+    async function buscar(): Promise<void> {
+      await userEvent.type(screen.getByTestId('campo-busca-produto'), 'caneta');
+      await waitFor(() => {
+        expect(screen.getByTestId('contagem-produtos')).toBeInTheDocument();
+      });
+    }
+
+    /** Troca a quantidade do filtro — apagando o `0` com que o modal abre. */
+    async function quantidade(texto: string): Promise<void> {
+      await userEvent.clear(screen.getByTestId('quantidade-filtro-saldo'));
+      if (texto !== '') {
+        await userEvent.type(screen.getByTestId('quantidade-filtro-saldo'), texto);
+      }
+    }
+
+    it('exibe a coluna Saldo, com traço quando o ERP não informa', async () => {
+      configurarSaldos();
+      renderModal();
+      await buscar();
+      await quantidade('');
+
+      const saldos = screen.getAllByTestId('saldo-candidato').map((c) => c.textContent);
+      expect(saldos[1]).toContain('18,000');
+      expect(saldos[2]).toContain('-1,000');
+      expect(saldos[3]).toContain('—');
+    });
+
+    it('abre filtrando saldo >= 0 (pedido do usuário, 2026-10-01)', async () => {
+      configurarSaldos();
+      renderModal();
+      await buscar();
+
+      expect(screen.getByTestId('operador-saldo->=')).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByTestId('quantidade-filtro-saldo')).toHaveValue('0');
+      // Saldo 0 e 18 passam e o negativo sai. O sem saldo **fica**: o filtro
+      // só julga o que conhece, senão um ERP sem `Estoque` abriria a busca vazia.
+      expect(codigosVisiveis()).toEqual(['001', '002', '004']);
+      expect(screen.getByTestId('contagem-produtos')).toHaveTextContent('3 de 4');
+    });
+
+    it('apagar a quantidade desliga o filtro', async () => {
+      configurarSaldos();
+      renderModal();
+      await buscar();
+
+      await quantidade('');
+
+      expect(codigosVisiveis()).toEqual(['001', '002', '003', '004']);
+    });
+
+    it('reabrir o modal volta ao filtro inicial', async () => {
+      configurarSaldos();
+      const { rerenderComAberto } = renderModal();
+      await buscar();
+      await quantidade('5');
+      await userEvent.click(screen.getByTestId('operador-saldo-<='));
+
+      rerenderComAberto(false);
+      rerenderComAberto(true);
+
+      expect(screen.getByTestId('quantidade-filtro-saldo')).toHaveValue('0');
+      expect(screen.getByTestId('operador-saldo->=')).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('filtra a página pelos três operadores', async () => {
+      configurarSaldos();
+      renderModal();
+      await buscar();
+
+      await quantidade('1');
+      expect(codigosVisiveis()).toEqual(['002', '004']);
+      expect(screen.getByTestId('contagem-produtos')).toHaveTextContent('2 de 4');
+
+      await userEvent.click(screen.getByTestId('operador-saldo-<='));
+      expect(codigosVisiveis()).toEqual(['001', '003', '004']);
+
+      await quantidade('18');
+      await userEvent.click(screen.getByTestId('operador-saldo-='));
+      expect(codigosVisiveis()).toEqual(['002', '004']);
+    });
+
+    it('nenhum produto da página atende: diz que é o filtro, não a busca', async () => {
+      configurarSaldos(true);
+      renderModal();
+      await buscar();
+
+      await quantidade('1000');
+
+      expect(screen.getByTestId('busca-sem-resultados')).toHaveTextContent('filtro de saldo');
+    });
+
+    it('quantidade inválida marca o campo e não filtra', async () => {
+      configurarSaldos();
+      renderModal();
+      await buscar();
+
+      await quantidade('abc');
+
+      expect(screen.getByTestId('quantidade-filtro-saldo')).toHaveAttribute('aria-invalid', 'true');
+      expect(codigosVisiveis()).toHaveLength(4);
+    });
   });
 
   it('Esc fecha o modal', async () => {

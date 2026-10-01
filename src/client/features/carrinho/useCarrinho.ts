@@ -29,6 +29,7 @@ import { milesimosDeUnidades, type Milesimos } from '../../domain/precificacao/q
 import { ErroProdutoSemPreco, exigirPrecoDeInsercao } from '../../domain/precificacao/tabelaPreco';
 import type { ResolucaoProduto } from '../../services/produto/produtoMapper';
 import {
+  ErroCenarioTributarioInvalido,
   ErroProdutoNaoEncontrado,
   ErroRespostaInvalida,
   consultarSaldoProduto,
@@ -36,6 +37,7 @@ import {
   opcoesProduto,
   type ContextoPrecificacao,
 } from '../../services/produto/produtoQueries';
+import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 
@@ -280,6 +282,25 @@ function mensagemDeErro(erro: unknown): string {
   return 'Não foi possível consultar o produto. Tente novamente.';
 }
 
+/**
+ * Comunica por que um produto não pôde ser resolvido: cenário tributário vira
+ * **janela** (AD-258), o resto continua em toast.
+ *
+ * Um ponto só para os dois caminhos (`inserirResolvido` e `revisarResolvido`):
+ * se cada um decidisse por conta própria, um deles acabaria anunciando a recusa
+ * por cenário num toast que passa voando.
+ */
+function comunicarFalhaDeResolucao(erro: unknown): void {
+  if (erro instanceof ErroCenarioTributarioInvalido) {
+    useCenarioProdutoStore.getState().abrirRecusaPorCenario({
+      descricaoProduto: erro.descricaoProduto,
+      motivos: erro.motivos,
+    });
+    return;
+  }
+  notificar.erro(mensagemDeErro(erro));
+}
+
 /** Com o que consultar `GetProduto`; `tipoCodigo` ausente vale o da sessão. */
 interface ConsultaDaEntrada {
   readonly codigo: string;
@@ -512,6 +533,21 @@ export function useInsercaoDeProduto(): ApiInsercao {
       const estavaEmCache = queryClient.getQueryData(opcoesDaConsulta.queryKey) !== undefined;
       const resolucao = await queryClient.query({ ...opcoesDaConsulta, staleTime: 'static' });
 
+      // Cenário tributário antes de tudo (AD-258): sem ele a NFCe não sai, e
+      // deixar o produto entrar só adiaria a recusa para o `FaturarNFCe`,
+      // depois da venda inteira bipada — que era exatamente o problema.
+      //
+      // A resposta sai do cache antes da recusa: o cadastro fiscal pode ser
+      // corrigido no ERP com a venda aberta, e o `staleTime` infinito serviria a
+      // recusa velha para sempre a quem bipasse o produto de novo.
+      if (!resolucao.cenarioValido) {
+        queryClient.removeQueries({ queryKey: opcoesDaConsulta.queryKey, exact: true });
+        throw new ErroCenarioTributarioInvalido(
+          resolucao.snapshot.descricao,
+          resolucao.motivosDoErp,
+        );
+      }
+
       // Aqui, e não em cada chamador: é o ponto único por onde passam os dois
       // caminhos (`inserirResolvido` e `revisarResolvido`), então a recusa por
       // preço zerado vale para digitar, TAB, modal e balança sem depender de
@@ -526,7 +562,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
         return resolucao;
       }
       return {
-        snapshot: resolucao.snapshot,
+        ...resolucao,
         saldo: await saldoFresco(contexto, resolucao.snapshot.codigoProduto, resolucao.saldo),
       };
     },
@@ -544,7 +580,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
       try {
         ({ snapshot, saldo } = await resolverProduto(consulta.codigo, consulta.tipoCodigo));
       } catch (erro) {
-        notificar.erro(mensagemDeErro(erro));
+        comunicarFalhaDeResolucao(erro);
         return { situacao: 'recusado' };
       }
 
@@ -618,7 +654,7 @@ export function useInsercaoDeProduto(): ApiInsercao {
       try {
         ({ snapshot, saldo } = await resolverProduto(consulta.codigo, consulta.tipoCodigo));
       } catch (erro) {
-        notificar.erro(mensagemDeErro(erro));
+        comunicarFalhaDeResolucao(erro);
         return { situacao: 'recusado' };
       }
 

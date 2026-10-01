@@ -173,6 +173,11 @@ export interface ConfigMockErp {
    * (`ErroClienteIncompleto`, AD-204).
    */
   getClienteSemCadastro: boolean;
+  /**
+   * `SessaoUsuario.isWhatsappEnabled` (AD-258). Ligado por padrão, como no
+   * prototype; desligado reproduz a empresa que não contratou o envio.
+   */
+  whatsappHabilitado: boolean;
 }
 
 export interface ContadoresMockErp {
@@ -226,6 +231,7 @@ const CONFIG_PADRAO: ConfigMockErp = {
   clienteDefaultContato: '(99)99999-9999',
   tipoCodigoProduto: 'R',
   faturaProdutoSemSaldo: '',
+  whatsappHabilitado: true,
 };
 
 /**
@@ -717,7 +723,11 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
     '004821': {
       lista: {
         NumeroDAV: '004821',
-        Titulo: 'PV-11842',
+        // AD-258: `Titulo` é o tipo do documento de origem, e o documento vem
+        // em `DoccumentoOrigemNumero` (com "cc", grafia do ERP) e série.
+        Titulo: 'PEDIDO',
+        DoccumentoOrigemNumero: '11842',
+        DocumentoOrigemSerie: '99',
         Senha: '',
         DataEmissao: emissaoRelativa(DIAS_DE_EMISSAO.conveniado),
         // `ClienteCodigo`/`VendedorCodigo` são `int64` no YAML mas vêm como
@@ -795,8 +805,12 @@ const DAVS: Record<string, { lista: Record<string, unknown>; documento: Record<s
     '004790': {
       lista: {
         NumeroDAV: '004790',
-        Titulo: 'ORC-00915',
-        Senha: '',
+        Titulo: 'ORCAMENTO',
+        DoccumentoOrigemNumero: '915',
+        // Orçamento vem sem série no ERP real.
+        DocumentoOrigemSerie: '',
+        // Senha preenchida: a busca de `ListaDAVs` casa por ela (AD-258).
+        Senha: '4321',
         DataEmissao: emissaoRelativa(DIAS_DE_EMISSAO.varejo),
         ClienteCodigo: 1255,
         ClienteNome: 'CLIENTE VAREJO',
@@ -988,6 +1002,10 @@ function produtoComoOErpResponde(produto: Record<string, unknown>): Record<strin
     // Contrato de 2026-09-14 (AD-236): `double` como string, pode ser negativo.
     // `10.000` por padrão, folgado para os cenários que não são sobre saldo.
     Saldo: produto['Saldo'] ?? '10.000',
+    // AD-258: veredito de cenário tributário do produto para o cliente.
+    // Booleano nativo; `true` por padrão — quem exercita a recusa liga
+    // `CenarioValido: false` no produto (e aí o mock acrescenta `messages`).
+    CenarioValido: produto['CenarioValido'] ?? true,
   };
 }
 
@@ -1256,6 +1274,11 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
     // `CliFonCel` do cliente default (contrato de 2026-09-14, AD-237).
     ClienteDefaultContato: config.clienteDefaultContato,
+    // AD-258 (2026-10-01): UF do default (guardada, sem consumidor) e o envio
+    // do PIX por WhatsApp contratado — booleano **nativo**, como o prototype
+    // devolve.
+    ClienteDefaultUF: 'SC',
+    isWhatsappEnabled: config.whatsappHabilitado,
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
     // logado são campos genuinamente distintos (AD-056), e valores iguais aqui
     // tornariam `FR-008`/`SC-001` indistinguível no payload de `FaturarNFCe`.
@@ -1547,7 +1570,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   let ultimoRascunhoGerado = 7000;
   /** Último retrato submetido ao gate da 014 — para o E2E conferir a projeção (I2). */
   let ultimoRetratoValidado: Record<string, unknown> | null = null;
-  /** Último corpo de `GerarPIX` recebido — deixa o E2E afirmar `TrnValor`, pagador etc. */
+  /** Último corpo de `GerarPIX` recebido — deixa o E2E afirmar cliente, valor e forma. */
   let ultimoGerarPix: Record<string, unknown> | null = null;
   /** Sequência dos GUIDs que o mock gera, um por cobrança (AD-251). */
   let sequenciaGuidPix = 0;
@@ -1593,7 +1616,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   /** Último retrato submetido ao gate da 014 — confere a projeção da candidata. */
   app.get('/__mock/ultima-validacao', async () => ({ retrato: ultimoRetratoValidado }));
 
-  /** Último corpo de `GerarPIX` — `TrnValor`, `FPgCod` e os dados do pagador. */
+  /** Último corpo de `GerarPIX` — `clienteCodigo`, `TrnValor`, `FpgCod` (AD-258). */
   app.get('/__mock/ultimo-pix', async () => ({ sdt: ultimoGerarPix }));
 
   // --- Contrato do ERP ----------------------------------------------------
@@ -1644,49 +1667,65 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     return reply.send(payloadGetSessao(config));
   });
 
-  app.get<{ Querystring: { Codigoproduto?: string; Tipocodproduto?: string } }>(
-    '/ApiCentriumOAuth/GetProduto',
-    async (request, reply) => {
-      contadores.negocio += 1;
-      contadores.getProduto += 1;
+  app.get<{
+    Querystring: { Codigoproduto?: string; Tipocodproduto?: string };
+  }>('/ApiCentriumOAuth/GetProduto', async (request, reply) => {
+    contadores.negocio += 1;
+    contadores.getProduto += 1;
 
-      if (config.respostas401Pendentes > 0) {
-        config.respostas401Pendentes -= 1;
-        return reply.code(401).send({ error: 'token expirado' });
-      }
+    if (config.respostas401Pendentes > 0) {
+      config.respostas401Pendentes -= 1;
+      return reply.code(401).send({ error: 'token expirado' });
+    }
 
-      // **`Tipocodproduto` escolhe o campo filtrado**, e o mock ignorava isso:
-      // buscava sempre pela chave do catálogo (o reduzido). Ao vivo (2026-09-11)
-      // `'B'` filtra por código de barras, `'R'`/`''` pelo reduzido e `'M'` pela
-      // referência — e um tipo fora desses três não filtra nada, caso em que o
-      // ERP devolve o **primeiro produto da empresa** (confirmado com
-      // `Tipocodproduto=D`), que é como uma linha errada entra na venda sem
-      // nenhum erro aparecer.
-      const codigo = request.query.Codigoproduto ?? '';
-      const tipo = request.query.Tipocodproduto ?? '';
-      const catalogo = Object.values(CATALOGO);
-      const campoFiltrado: Record<string, string> = {
-        B: 'CodigoBarras',
-        M: 'Referencia',
-        R: 'CodigoProduto',
-        '': 'CodigoProduto',
-      };
-      const campo = campoFiltrado[tipo];
+    // **`Tipocodproduto` escolhe o campo filtrado**, e o mock ignorava isso:
+    // buscava sempre pela chave do catálogo (o reduzido). Ao vivo (2026-09-11)
+    // `'B'` filtra por código de barras, `'R'`/`''` pelo reduzido e `'M'` pela
+    // referência — e um tipo fora desses três não filtra nada, caso em que o
+    // ERP devolve o **primeiro produto da empresa** (confirmado com
+    // `Tipocodproduto=D`), que é como uma linha errada entra na venda sem
+    // nenhum erro aparecer.
+    const codigo = request.query.Codigoproduto ?? '';
+    const tipo = request.query.Tipocodproduto ?? '';
+    const catalogo = Object.values(CATALOGO);
+    const campoFiltrado: Record<string, string> = {
+      B: 'CodigoBarras',
+      M: 'Referencia',
+      R: 'CodigoProduto',
+      '': 'CodigoProduto',
+    };
+    const campo = campoFiltrado[tipo];
 
-      const produto =
-        campo === undefined
-          ? catalogo[0]
-          : catalogo.find((candidato) => String(candidato[campo]) === codigo);
+    const produto =
+      campo === undefined
+        ? catalogo[0]
+        : catalogo.find((candidato) => String(candidato[campo]) === codigo);
 
-      // **Nunca `404`.** Não encontrou é `200` com o SDT todo zerado
-      // (`CodigoProduto: ''`) — o `404` que este mock devolvia não existe no ERP
-      // e fazia a suíte exercitar um caminho de erro que produção não produz.
-      // Real: flat na raiz, sem envelope `Produto` nem `messages` (AD-165).
-      return reply.send(
-        produto === undefined ? PRODUTO_INEXISTENTE : produtoComoOErpResponde(produto),
-      );
-    },
-  );
+    // **Nunca `404`.** Não encontrou é `200` com o SDT todo zerado
+    // (`CodigoProduto: ''`) — o `404` que este mock devolvia não existe no ERP
+    // e fazia a suíte exercitar um caminho de erro que produção não produz.
+    // Real: flat na raiz, sem envelope `Produto` nem `messages` (AD-165).
+    if (produto === undefined) {
+      return reply.send(PRODUTO_INEXISTENTE);
+    }
+    const sdt = produtoComoOErpResponde(produto);
+    // Cenário inválido (AD-258): com `messages` a devolver, o SDT volta para
+    // dentro de `Produto` — a forma medida no prototype em 2026-10-01.
+    if (sdt['CenarioValido'] === false) {
+      return reply.send({
+        Produto: sdt,
+        messages: [
+          { Id: '', Type: 1, Description: 'Cenário não encontrado!' },
+          {
+            Id: '',
+            Type: 1,
+            Description: 'Cenário pesquisado: Empresa=1, Operação=Desconhecida',
+          },
+        ],
+      });
+    }
+    return reply.send(sdt);
+  });
 
   app.get<{ Querystring: { Txtbusca?: string; Pagina?: string; Tamanhopagina?: string } }>(
     '/ApiCentriumOAuth/GetListaProdutos',
@@ -2154,6 +2193,8 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // emiti-lo aqui ofereceria um dado que a janela de DAVs não recebe.
       .map((dav) => ({
         NumeroDAV: dav.lista['NumeroDAV'],
+        DoccumentoOrigemNumero: dav.lista['DoccumentoOrigemNumero'],
+        DocumentoOrigemSerie: dav.lista['DocumentoOrigemSerie'],
         Titulo: dav.lista['Titulo'],
         Senha: dav.lista['Senha'],
         DataEmissao: dav.lista['DataEmissao'],
@@ -2166,9 +2207,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         ValorTotal: dav.lista['ValorTotal'],
       }))
       .filter((dav) => {
+        // A senha entrou na busca do ERP em 2026-10-01 (AD-258).
         const alvo = `${String(dav['NumeroDAV'])} ${String(dav['Titulo'])} ${String(
           dav['ClienteNome'],
-        )}`.toUpperCase();
+        )} ${String(dav['Senha'])}`.toUpperCase();
         if (termo !== '' && !alvo.includes(termo)) {
           return false;
         }
@@ -2384,10 +2426,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   /**
    * `GerarPIX` (feature 009, `contracts/erp-pix-api.md` §1).
    *
-   * Devolve o `TrnGUID` que o **cliente** enviou — é assim que o ERP real se
-   * comporta: o GUID é gerado no Checkout e é a chave primária lógica da
-   * transação (`research.md` D3). O mock ecoá-lo é o que deixa o E2E provar que
-   * o mesmo valor volta como `FormaPixGUID` no retrato de `FaturarNFCe`.
+   * O GUID é **gerado aqui**, como o ERP real faz desde AD-251, e o corpo é o de
+   * AD-258: `Empresa` (inserida pelo BFF), `clienteCodigo`, `TrnValor`,
+   * `TrnFormaPagamento` e `FpgCod`. O mock não valida o corpo — quem o confere é
+   * o E2E, via `/__mock/ultimo-pix`.
    *
    * Os dois base64 são sintéticos: `Trnbase64image` não é um JPEG de verdade —
    * o navegador só precisa aceitar a `data:` URL — e `Trnbase64text` é o "copia

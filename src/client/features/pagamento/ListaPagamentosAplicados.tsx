@@ -8,7 +8,7 @@ import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useCanalDisplay } from '../../services/display/useCanalDisplay';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
-import { EXPIRACAO_PIX_PADRAO_SEGUNDOS } from '../../services/pagamento/pagamentoMapper';
+import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { iconeDoPagamento } from './iconePorMeio';
 import {
@@ -323,10 +323,11 @@ function usePixPendente(): ReactElement | null {
   // que deixar o próprio ERP recusá-la.
   const catalogo = useCondicoesPagamento();
   const minimoPix = catalogo.data?.minimoPix ?? ZERO_CENTAVOS;
-  // Sem catálogo carregado vale o padrão da fronteira (AD-251): mandar zero de
-  // expiração arriscaria um QR Code morto, e é o mesmo raciocínio do piso acima
-  // — não recusar nem sabotar a cobrança por um dado que ainda não chegou.
-  const tempoExpiracaoPix = catalogo.data?.tempoExpiracaoPix ?? EXPIRACAO_PIX_PADRAO_SEGUNDOS;
+  // Envio por WhatsApp contratado pela empresa (`isWhatsappEnabled`, AD-258).
+  // Sem bootstrap, ou com o ERP anterior ao campo, vale desabilitado.
+  const whatsappHabilitado = useSessionStore(
+    (estado) => estado.registro?.SessaoUsuario.isWhatsappEnabled === true,
+  );
 
   /**
    * Ponte para a tela do cliente (feature 015). Fica aqui, e não dentro do
@@ -374,7 +375,7 @@ function usePixPendente(): ReactElement | null {
       formaCodigo={exibido.formaCodigo}
       valor={exibido.valorAplicado}
       minimoPix={minimoPix}
-      tempoExpiracaoPix={tempoExpiracaoPix}
+      whatsappHabilitado={whatsappHabilitado}
       clienteAtual={clienteAtual}
       onAprovado={(pixGuid) => {
         confirmarPagamentoIntegrado(exibido.idPagamento, { pixGuid });

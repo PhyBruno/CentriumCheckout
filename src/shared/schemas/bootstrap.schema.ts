@@ -126,6 +126,26 @@ export const sessaoUsuarioSchema = z.looseObject({
    */
   ClienteDefaultContato: z.string().optional(),
   /**
+   * UF do cliente default (AD-258, `"SC"` no tenant `c0lj6mvzeh` em
+   * 2026-10-01). Validada e guardada com a sessão, **sem consumidor por
+   * enquanto**: a ideia de enviá-la como `UFCliente` no `GetProduto` foi
+   * abandonada pelo usuário no mesmo dia, mas o campo continua vindo e o usuário
+   * pediu para mantê-lo salvo.
+   *
+   * `optional()`: um ERP anterior ao campo não pode derrubar o bootstrap.
+   */
+  ClienteDefaultUF: z.string().optional(),
+  /**
+   * Se a empresa contratou o envio da cobrança PIX por WhatsApp (AD-258).
+   * Booleano **nativo** no JSON (`true`, medido em 2026-10-01).
+   *
+   * O botão do modal de PIX aparece sempre; este campo decide se ele envia
+   * (`EnvioDiretoWhatsapp`) ou explica que o recurso está desabilitado.
+   * Ausente vale `false`: sem o ERP dizer que o recurso foi contratado, oferecer
+   * o envio seria prometer uma integração que pode não existir.
+   */
+  isWhatsappEnabled: z.boolean().optional(),
+  /**
    * Vendedor **do PDV**, exibido na pílula do card de cliente (nó `EqzJM` do
    * Pencil). Vem de `SessaoUsuario`, não de `GetCliente`: o schema
    * `ClienteCheckout` do contrato não tem nenhum campo de vendedor — o cadastro

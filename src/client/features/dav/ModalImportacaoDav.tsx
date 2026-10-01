@@ -1,6 +1,7 @@
 import { CheckCircle, Import, ReceiptText, Record, Search, X } from 'reicon-react';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Skeleton } from 'boneyard-js/react';
+import { Badge, type TomBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   CabecalhoOrdenavel,
@@ -19,6 +20,11 @@ import {
 import { cn } from '@/lib/utils';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { DURACAO_SAIDA_MODAL_MS, usePresenca } from '@/lib/usePresenca';
+import {
+  classificarDocumentoOrigem,
+  formatarNumeroDocumentoOrigem,
+  type TipoDocumentoOrigem,
+} from '../../domain/dav/documentoOrigem';
 import { formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useListaDavs, type DavListado } from '../../services/dav/davQueries';
 import type { ImportacaoVendaDeps } from '../../services/importacao/importarVendaExistente';
@@ -43,8 +49,10 @@ import { useImportacaoDav } from './useImportacaoDav';
  * - Filtros "Status", "Vendedor", "Tipo" e "Origem" — `ListaDAVs` não tem
  *   nenhum parâmetro correspondente; só `Txtbusca` e o período de emissão
  *   existem. Desenhá-los produziria controles que não filtram nada.
- * - Colunas "Origem" e "Status" — `CheckoutListaDAVs.DAV_DAV` não tem esses
- *   campos. Exibi-los exigiria inventar o estado do documento.
+ * - Coluna "Status" — `CheckoutListaDAVs.DAV_DAV` não tem o campo. Exibi-la
+ *   exigiria inventar o estado do documento. A "Origem" existe desde 2026-10-01
+ *   (AD-258): é a coluna "Documento de Origem", com número/série e o tipo do
+ *   documento em badge, e a "Senha" virou coluna no mesmo pedido.
  * - Ação de reimpressão por linha — proibida por `FR-009`/AD-035, removida
  *   ainda na fase de plano.
  * - O nome do vendedor na coluna "Cliente", **quando o ERP não o manda**: o
@@ -68,7 +76,22 @@ export interface ModalImportacaoDavProps {
 /** Mesmo debounce dos demais modais de busca desta base. */
 const DEBOUNCE_BUSCA_MS = 300;
 
-type ColunaDav = 'dav' | 'documento' | 'cliente' | 'emissao' | 'total';
+type ColunaDav = 'dav' | 'documento' | 'senha' | 'cliente' | 'emissao' | 'total';
+
+/**
+ * Cor da badge por tipo de documento de origem (pedido do usuário,
+ * 2026-10-01 — "cores distintas", AD-258). As três famílias são as do Pencil
+ * (`$info`, `$warning`, `$success`); um tipo desconhecido fica neutro.
+ */
+const TOM_DO_DOCUMENTO: Readonly<Record<TipoDocumentoOrigem, TomBadge>> = {
+  PEDIDO: 'info',
+  ORCAMENTO: 'aviso',
+  ORDEM_SERVICO: 'sucesso',
+  OUTRO: 'neutro',
+};
+
+/** Largura do número no texto de ordenação — agrupa por tipo e ordena o número como número. */
+const DIGITOS_ORDENACAO_DOCUMENTO = 15;
 
 /**
  * O valor que cada coluna compara ao ordenar a página (ver
@@ -81,7 +104,12 @@ type ColunaDav = 'dav' | 'documento' | 'cliente' | 'emissao' | 'total';
  */
 const VALORES_DE_COLUNA_DAV: ValoresDeColuna<DavListado, ColunaDav> = {
   dav: (dav) => dav.numeroDav,
-  documento: (dav) => dav.titulo,
+  // Tipo primeiro, número com zeros à esquerda depois: ordenar pela coluna
+  // agrupa pedidos, orçamentos e O.S., e dentro de cada grupo `1287` vem depois
+  // de `999` — a comparação crua de texto inverteria os dois.
+  documento: (dav) =>
+    `${classificarDocumentoOrigem(dav.titulo).rotulo} ${dav.documentoOrigemNumero.padStart(DIGITOS_ORDENACAO_DOCUMENTO, '0')}`,
+  senha: (dav) => dav.senha,
   cliente: (dav) => dav.clienteNome,
   emissao: (dav) => dav.dataEmissao,
   total: (dav) => dav.valorTotal,
@@ -294,7 +322,7 @@ export function ModalImportacaoDav({
                 data-testid="campo-busca-dav"
                 ref={campoBusca}
                 autoComplete="off"
-                placeholder="Busque por número, título ou cliente"
+                placeholder="Busque por número, título, cliente ou senha"
                 value={termo}
                 onChange={(evento) => {
                   setTermo(evento.target.value);
@@ -453,9 +481,16 @@ function TabelaDeDavs({
         />
         <CabecalhoOrdenavel
           chaveDaColuna="documento"
-          rotulo="Documento"
+          rotulo="Documento de Origem"
           ordenacao={ordenacao}
-          className="w-[116px] shrink-0"
+          className="w-[200px] shrink-0"
+          onAlternar={onAlternarOrdenacao}
+        />
+        <CabecalhoOrdenavel
+          chaveDaColuna="senha"
+          rotulo="Senha"
+          ordenacao={ordenacao}
+          className="w-[104px] shrink-0"
           onAlternar={onAlternarOrdenacao}
         />
         <CabecalhoOrdenavel
@@ -529,8 +564,12 @@ function TabelaDeDavs({
                 <span className="w-[124px] shrink-0 truncate px-[10px] font-mono text-xs font-bold tabular-nums">
                   {dav.numeroDav}
                 </span>
-                <span className="w-[116px] shrink-0 truncate px-[10px] font-mono text-xs font-semibold">
-                  {dav.titulo}
+                <CelulaDocumentoOrigem dav={dav} />
+                <span
+                  className="w-[104px] shrink-0 truncate px-[10px] font-mono text-xs font-semibold tabular-nums"
+                  data-testid="senha-dav"
+                >
+                  {dav.senha.trim() === '' ? '—' : dav.senha}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col px-[10px]">
                   <span className="truncate text-sm font-bold">{dav.clienteNome}</span>
@@ -559,6 +598,36 @@ function TabelaDeDavs({
         })}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Coluna "Documento de Origem" (AD-258, pedido do usuário em 2026-10-01):
+ * `Numero/Serie` em mono, seguido do tipo do documento numa badge colorida.
+ *
+ * A badge vem depois do número, e não antes, como o pedido descreve
+ * ("Numero/Serie . Badge"): o número é o que o operador procura com os olhos, e
+ * alinhado à esquerda ele fica na mesma vertical em todas as linhas.
+ */
+function CelulaDocumentoOrigem({ dav }: { readonly dav: DavListado }): ReactElement {
+  const { tipo, rotulo } = classificarDocumentoOrigem(dav.titulo);
+  const numero = formatarNumeroDocumentoOrigem(dav.documentoOrigemNumero, dav.documentoOrigemSerie);
+  return (
+    <span
+      className="flex w-[200px] shrink-0 items-center gap-xs overflow-hidden px-[10px]"
+      data-testid="documento-origem-dav"
+    >
+      {numero === null ? null : (
+        <span className="min-w-0 truncate font-mono text-xs font-semibold tabular-nums">
+          {numero}
+        </span>
+      )}
+      {rotulo === '' ? null : (
+        <Badge tom={TOM_DO_DOCUMENTO[tipo]} testId="badge-tipo-documento">
+          {rotulo}
+        </Badge>
+      )}
+    </span>
   );
 }
 

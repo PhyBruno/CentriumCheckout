@@ -2,8 +2,10 @@ import { CalendarDays } from 'reicon-react';
 import type { ReactElement } from 'react';
 import { CampoData, type CampoDataProps } from '@/components/ui/campo-data';
 
-export interface FiltroDeDataProps
-  extends Pick<CampoDataProps, 'minimo' | 'maximo' | 'motivoForaDoLimite'> {
+export interface FiltroDeDataProps extends Pick<
+  CampoDataProps,
+  'minimo' | 'maximo' | 'motivoForaDoLimite'
+> {
   /** Texto visível dentro da pílula ("Data inicial", "Data final"). */
   readonly etiqueta: string;
   /** Nome acessível do campo, que a etiqueta curta sozinha não daria. */
@@ -35,13 +37,7 @@ export function FiltroDeData({
     <div className="flex h-9 shrink-0 items-center gap-xs rounded-full bg-secondary px-sm text-xs font-semibold text-foreground">
       <CalendarDays className="size-[15px] shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="shrink-0">{etiqueta}</span>
-      <CampoData
-        rotulo={rotulo}
-        testId={testId}
-        valor={valor}
-        onChange={onChange}
-        {...limites}
-      />
+      <CampoData rotulo={rotulo} testId={testId} valor={valor} onChange={onChange} {...limites} />
     </div>
   );
 }

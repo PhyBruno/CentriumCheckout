@@ -12,6 +12,7 @@ import {
   getProdutoOutputSchema,
   type CheckoutListaProdutos,
 } from '../../../shared/schemas/produto.schema';
+import { mensagensDeErro } from '../../../shared/schemas/erpJson';
 import type { SaldoMilesimos } from '../../domain/estoque/saldoProduto';
 import type { SnapshotPrecoProduto } from '../../domain/precificacao/linha';
 import { criarErpClient, type ErpClient } from '../erpClient';
@@ -60,6 +61,21 @@ export class ErroProdutoNaoEncontrado extends Error {
 }
 
 /**
+ * O ERP achou o produto, mas sem cenário tributário para o cliente da venda
+ * (`CenarioValido: false`, AD-258). Antes deste campo a recusa só aparecia no
+ * `FaturarNFCe`, depois de o operador ter bipado a venda inteira.
+ */
+export class ErroCenarioTributarioInvalido extends Error {
+  constructor(
+    readonly descricaoProduto: string,
+    readonly motivos: readonly string[],
+  ) {
+    super(`Produto ${descricaoProduto} sem cenário tributário para o cliente da venda.`);
+    this.name = 'ErroCenarioTributarioInvalido';
+  }
+}
+
+/**
  * Erros de transporte: declarados em `services/errosErp.ts` desde a feature
  * 005, que passou a precisar dos mesmos no serviço de cliente. Reexportados
  * daqui porque `useCarrinho.ts` e os testes da 003 já os importam deste módulo
@@ -72,6 +88,11 @@ export { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../erros
  * `listaPreco` faz parte da chave porque, em `TipoPreco = 9`, trocar o cliente
  * muda o preço do mesmo código (`FR-018`, AD-043) — sem isso o cache devolveria
  * o preço do cliente anterior (`research.md`, D5).
+ *
+ * `codigoCliente` entrou pelo mesmo motivo (AD-258, pedido do usuário em
+ * 2026-10-01): o veredito `CenarioValido` é do **cliente**. Sem ele, trocar de
+ * cliente servia do cache o produto validado para o cliente anterior, sem novo
+ * `GetProduto`. Com ele, cliente novo é sempre consulta nova.
  */
 export function chaveProduto(
   codigoProduto: string,
@@ -83,6 +104,7 @@ export function chaveProduto(
     contexto.tipoCodProduto,
     contexto.tipoPreco,
     contexto.listaPreco ?? null,
+    contexto.codigoCliente,
   ];
 }
 
@@ -161,7 +183,8 @@ export async function fetchResolucaoProduto(
     throw new ErroRedeErp();
   }
 
-  const validado = getProdutoOutputSchema.safeParse(await resposta.json());
+  const corpo: unknown = await resposta.json();
+  const validado = getProdutoOutputSchema.safeParse(corpo);
   if (!validado.success) {
     throw new ErroRespostaInvalida('GetProduto', validado.error.message);
   }
@@ -183,7 +206,13 @@ export async function fetchResolucaoProduto(
 
   // `validado.data` já é o SDT do produto: o schema aceita a resposta com ou
   // sem o envelope `Produto` e entrega sempre o conteúdo (AD-165).
-  return paraResolucaoProduto(validado.data);
+  //
+  // As `messages` ficam na raiz, ao lado do envelope — é por isso que são
+  // lidas do corpo cru. Com cenário inválido o ERP manda o motivo e a linha
+  // "Cenário pesquisado: …" (AD-258), que viram o texto do aviso ao operador.
+  // A decisão de recusar a inserção não é desta camada: a reconsulta de saldo e
+  // a descrição de item importado passam por aqui e não podem falhar por isso.
+  return paraResolucaoProduto(validado.data, mensagensDeErro(corpo));
 }
 
 /**

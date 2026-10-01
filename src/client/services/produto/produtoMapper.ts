@@ -23,6 +23,16 @@ export interface ResolucaoProduto {
   readonly snapshot: SnapshotPrecoProduto;
   /** `null` quando o ERP não devolveu `Saldo`. */
   readonly saldo: SaldoMilesimos | null;
+  /**
+   * Veredito de cenário tributário do ERP para a UF enviada (AD-258).
+   * `true` quando o ERP não publica o campo — ver `CenarioValido` no schema.
+   */
+  readonly cenarioValido: boolean;
+  /**
+   * O que o ERP explicou em `messages` (`Type: 1`), na ordem dele. Vazio no
+   * caso feliz; com cenário inválido traz o motivo e o cenário pesquisado.
+   */
+  readonly motivosDoErp: readonly string[];
 }
 
 export function paraSnapshotPrecoProduto(produto: SdtCheckoutGetProduto): SnapshotPrecoProduto {
@@ -48,9 +58,14 @@ export function paraSnapshotPrecoProduto(produto: SdtCheckoutGetProduto): Snapsh
   };
 }
 
-export function paraResolucaoProduto(produto: SdtCheckoutGetProduto): ResolucaoProduto {
+export function paraResolucaoProduto(
+  produto: SdtCheckoutGetProduto,
+  motivosDoErp: readonly string[] = [],
+): ResolucaoProduto {
   return {
     snapshot: paraSnapshotPrecoProduto(produto),
     saldo: produto.Saldo ?? null,
+    cenarioValido: produto.CenarioValido ?? true,
+    motivosDoErp,
   };
 }

@@ -18,6 +18,13 @@ export default defineConfig({
     restoreMocks: true,
     unstubGlobals: true,
     /**
+     * Fuso fixo da suíte (AD-258): a emissão das NFCe chega em UTC e é exibida
+     * no fuso do navegador, então o resultado depende da máquina. Brasília é o
+     * fuso do PDV típico e torna a conversão visível (UTC−3); sem isto o mesmo
+     * teste passaria aqui e falharia num CI em UTC, ou o contrário.
+     */
+    env: { TZ: 'America/Sao_Paulo' },
+    /**
      * Folga sobre o default de 5s, por causa do custo de import do vitest 5.
      *
      * O **primeiro** teste de cada arquivo paga a avaliação dos módulos daquele
