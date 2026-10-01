@@ -255,7 +255,6 @@ const CLIENTE_IDENTIFICADO: ClienteVenda = {
   listaPreco: 5,
   descontoConvenio: 10,
   codigoConvenio: 7,
-  uf: 'SC',
   origem: 'BUSCA_DOCUMENTO',
 };
 
@@ -267,7 +266,6 @@ const CLIENTE_DEFAULT: ClienteVenda = {
   listaPreco: 3,
   descontoConvenio: 0,
   codigoConvenio: null,
-  uf: 'SC',
   origem: 'DEFAULT',
 };
 

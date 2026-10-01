@@ -1107,9 +1107,9 @@ describe('EntradaRapidaProduto — venda sem vendedor (correção do usuário, 2
 });
 
 /**
- * `UFCliente` e `CenarioValido` no `GetProduto` (AD-258, pedido do usuário em
- * 2026-10-01). As respostas imitam o prototype medido nesse dia: com cenário
- * inválido o SDT vem dentro de `Produto`, com o motivo em `messages`.
+ * `CenarioValido` no `GetProduto` (AD-258, pedido do usuário em 2026-10-01).
+ * As respostas imitam o prototype medido nesse dia: com cenário inválido o SDT
+ * vem dentro de `Produto`, com o motivo em `messages`.
  */
 describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', () => {
   const MOTIVOS = [
@@ -1149,7 +1149,7 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
     vi.unstubAllGlobals();
   });
 
-  it('envia UFCliente do cliente default em toda consulta', async () => {
+  it('não envia UFCliente, mesmo com a UF do default na sessão (ideia abandonada, AD-258)', async () => {
     const buscar = vi.fn((_url: string) => Promise.resolve(respostaDeCenario(true)));
     vi.stubGlobal('fetch', buscar);
     const usuario = userEvent.setup();
@@ -1160,7 +1160,7 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
     await waitFor(() => {
       expect(useVendaStore.getState().linhas).toHaveLength(1);
     });
-    expect(String(buscar.mock.calls[0]?.[0])).toContain('UFCliente=SC');
+    expect(String(buscar.mock.calls[0]?.[0])).not.toMatch(/UFCliente/i);
   });
 
   it('cenário inválido: nada entra no carrinho e a janela explica com o motivo do ERP', async () => {
@@ -1186,7 +1186,7 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
     expect(erro).not.toHaveBeenCalled();
   });
 
-  it('trocar de cliente, mesmo na mesma UF, refaz o GetProduto em vez de usar o cache', async () => {
+  it('trocar de cliente refaz o GetProduto em vez de usar o cache', async () => {
     const buscar = vi.fn((_url: string) => Promise.resolve(respostaDeCenario(true)));
     vi.stubGlobal('fetch', buscar);
     const usuario = userEvent.setup();
@@ -1197,7 +1197,7 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
       expect(useVendaStore.getState().linhas).toHaveLength(1);
     });
 
-    // Outro cliente, mesma UF do default: só o código distingue a consulta.
+    // Outro cliente, mesma lista de preço: só o código distingue a consulta.
     act(() => {
       useVendaStore.setState({
         clienteAtual: {
@@ -1208,7 +1208,6 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
           listaPreco: 3,
           descontoConvenio: 0,
           codigoConvenio: null,
-          uf: 'SC',
           origem: 'BUSCA_DOCUMENTO',
         },
       });

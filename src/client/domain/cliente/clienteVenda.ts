@@ -69,31 +69,7 @@ export interface ClienteVenda {
    */
   readonly descontoConvenio: number | null;
   readonly codigoConvenio: number | null;
-  /**
-   * UF do cliente (AD-258), enviada como `UFCliente` em todo `GetProduto` —
-   * é com ela que o ERP decide o cenário tributário do produto.
-   *
-   * Para `'DEFAULT'` vem de `SessaoUsuario.ClienteDefaultUF`; para os demais, do
-   * `uf` do `GetCliente`. `null` quando o ERP não a informa e no cliente de
-   * documento sem `GetCliente` (AD-237) — nunca a UF do default no lugar: seria
-   * pedir ao ERP o cenário de outro estado.
-   */
-  readonly uf: string | null;
   readonly origem: OrigemCliente;
-}
-
-/**
- * `UFCliente` de `GetProduto` (AD-258): a UF do cliente da venda, e a do
- * cliente default quando a venda ainda não tem cliente nenhum (empresa sem
- * default configurado, `FR-005` da 005). Sem UF conhecida vai `''` — o
- * parâmetro é enviado sempre, como o ERP pede.
- */
-export function ufParaConsultaDeProduto(
-  cliente: Pick<ClienteVenda, 'uf'> | null,
-  ufClienteDefault: string | undefined,
-): string {
-  const uf = cliente === null ? ufClienteDefault : cliente.uf;
-  return (uf ?? '').trim().toUpperCase();
 }
 
 /** Entrada do formulário de cadastro simplificado (`data-model.md` §4). */

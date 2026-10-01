@@ -127,13 +127,12 @@ export const sessaoUsuarioSchema = z.looseObject({
   ClienteDefaultContato: z.string().optional(),
   /**
    * UF do cliente default (AD-258, `"SC"` no tenant `c0lj6mvzeh` em
-   * 2026-10-01). Vai como `UFCliente` em **todo** `GetProduto` enquanto a venda
-   * está no default — é com ela que o ERP decide o cenário tributário do produto
-   * (`CenarioValido`).
+   * 2026-10-01). Validada e guardada com a sessão, **sem consumidor por
+   * enquanto**: a ideia de enviá-la como `UFCliente` no `GetProduto` foi
+   * abandonada pelo usuário no mesmo dia, mas o campo continua vindo e o usuário
+   * pediu para mantê-lo salvo.
    *
-   * `optional()`: um ERP anterior ao campo não pode derrubar o bootstrap. Sem
-   * ele o Checkout manda `UFCliente` vazio, e o ERP responde o cenário que achar
-   * para UF nenhuma — a mesma resposta que dava antes do parâmetro existir.
+   * `optional()`: um ERP anterior ao campo não pode derrubar o bootstrap.
    */
   ClienteDefaultUF: z.string().optional(),
   /**

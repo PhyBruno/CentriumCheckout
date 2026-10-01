@@ -32,21 +32,8 @@ describe('mapClienteCheckoutParaVenda', () => {
       listaPreco: 5,
       descontoConvenio: 10,
       codigoConvenio: 7,
-      uf: 'MT',
       origem: 'BUSCA_DOCUMENTO',
     });
-  });
-
-  it('leva a UF do cadastro ao cliente da venda, também no recém-criado (AD-258)', () => {
-    expect(mapClienteCheckoutParaVenda(clienteCheckoutDe({ uf: 'sc' }), 'BUSCA_LIVRE').uf).toBe(
-      'sc',
-    );
-    expect(
-      mapClienteCheckoutParaVenda(clienteCheckoutDe({ uf: 'PR' }), 'CADASTRO_SIMPLIFICADO').uf,
-    ).toBe('PR');
-    expect(
-      mapClienteCheckoutParaVenda(clienteCheckoutDe({ uf: ' ' }), 'BUSCA_LIVRE').uf,
-    ).toBeNull();
   });
 
   it('mantém a origem BUSCA_LIVRE quando o candidato veio da lista', () => {
@@ -95,16 +82,8 @@ describe('mapClienteDefaultParaVenda', () => {
       listaPreco: 3,
       descontoConvenio: 0,
       codigoConvenio: null,
-      uf: null,
       origem: 'DEFAULT',
     });
-  });
-
-  it('leva ClienteDefaultUF à UF do default (AD-258)', () => {
-    const cliente = mapClienteDefaultParaVenda(
-      sessaoDe({ ClienteDefaultCodigo: 42, ClienteDefaultUF: 'SC' }),
-    );
-    expect(cliente?.uf).toBe('SC');
   });
 
   it('leva ClienteDefaultContato ao celular do default (AD-237)', () => {
@@ -150,7 +129,6 @@ describe('mapClienteDoDocumentoParaVenda', () => {
       listaPreco: null,
       descontoConvenio: null,
       codigoConvenio: null,
-      uf: null,
       origem: 'DAV',
     });
   });

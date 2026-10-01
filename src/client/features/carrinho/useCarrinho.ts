@@ -28,7 +28,6 @@ import type {
 import { milesimosDeUnidades, type Milesimos } from '../../domain/precificacao/quantidade';
 import { ErroProdutoSemPreco, exigirPrecoDeInsercao } from '../../domain/precificacao/tabelaPreco';
 import type { ResolucaoProduto } from '../../services/produto/produtoMapper';
-import { ufParaConsultaDeProduto } from '../../domain/cliente/clienteVenda';
 import {
   ErroCenarioTributarioInvalido,
   ErroProdutoNaoEncontrado,
@@ -86,7 +85,6 @@ export function useContextoPrecificacao(): ContextoPrecificacao | null {
     tipoPreco: sessao.TipoPreco,
     codigoCliente: cliente?.codigoCliente ?? sessao.ClienteDefaultCodigo,
     listaPreco: sessao.TipoPreco === TIPO_PRECO_POR_LISTA ? listaPreco : null,
-    ufCliente: ufParaConsultaDeProduto(cliente, sessao.ClienteDefaultUF),
   };
 }
 

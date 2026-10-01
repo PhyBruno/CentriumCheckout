@@ -74,7 +74,7 @@ export const sdtCheckoutGetProdutoSchema = z.looseObject({
   Saldo: numeroErp.transform((valor) => saldoEmMilesimos(valor)).optional(),
   /**
    * Se o produto tem cenário tributário para a venda (AD-258) — calculado pelo
-   * ERP a partir do `UFCliente` enviado. Booleano **nativo** no JSON, medido em
+   * ERP a partir do cliente (`Codcliente`). Booleano **nativo** no JSON, medido em
    * 2026-10-01; com `false` o ERP acrescenta `messages` (`Type: 1`) e a
    * resposta ganha o envelope `Produto` (regra de AD-218, que `semEnvelope`
    * absorve).

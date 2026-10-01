@@ -91,7 +91,6 @@ function popularVenda(): void {
       listaPreco: 3,
       descontoConvenio: 0,
       codigoConvenio: null,
-      uf: 'SC',
       origem: 'BUSCA_DOCUMENTO',
     },
     houveEscolhaExplicita: true,

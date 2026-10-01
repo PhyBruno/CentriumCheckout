@@ -48,7 +48,7 @@ export type Desfecho =
    */
   | 'CENARIO_TRIBUTARIO'
   /**
-   * O **produto** não tem cenário tributário para a UF do cliente
+   * O **produto** não tem cenário tributário para o cliente da venda
    * (`GetProduto.CenarioValido: false`, AD-258): a recusa antecipada do mesmo
    * cadastro fiscal, no momento da inserção. Nada entrou e a venda segue —
    * fechar só devolve o caixa à barra de produto.
@@ -157,7 +157,7 @@ function copiaDoDesfecho(desfecho: Desfecho, contexto: ContextoDoDesfecho): Copi
         subtituloCabecalho: 'Sem cenário tributário para este cliente',
         chamada: 'Este produto não pode entrar na venda',
         explicacao:
-          'O ERP não encontrou cenário tributário para este produto na UF do cliente. Corrija o cadastro fiscal no ERP ou escolha outro produto.',
+          'O ERP não encontrou cenário tributário para este produto e o cliente da venda. Corrija o cadastro fiscal no ERP ou escolha outro produto.',
         tituloDoMotivo: MOTIVO_DO_ERP,
         rotuloBotao: 'Entendi',
       };

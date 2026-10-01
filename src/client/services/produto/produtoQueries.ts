@@ -47,12 +47,6 @@ export interface ContextoPrecificacao {
    * lista padrão da empresa e não há fallback (AD-092/AD-108).
    */
   readonly listaPreco: number | null;
-  /**
-   * `UFCliente` (AD-258): UF do cliente da venda, ou do default. Enviada
-   * **sempre**, mesmo vazia — é com ela que o ERP decide `CenarioValido`.
-   * Montada por `ufParaConsultaDeProduto` (`domain/cliente/clienteVenda.ts`).
-   */
-  readonly ufCliente: string;
 }
 
 export interface ProdutoQueriesDeps {
@@ -67,7 +61,7 @@ export class ErroProdutoNaoEncontrado extends Error {
 }
 
 /**
- * O ERP achou o produto, mas sem cenário tributário para a UF do cliente
+ * O ERP achou o produto, mas sem cenário tributário para o cliente da venda
  * (`CenarioValido: false`, AD-258). Antes deste campo a recusa só aparecia no
  * `FaturarNFCe`, depois de o operador ter bipado a venda inteira.
  */
@@ -95,12 +89,10 @@ export { ErroRedeErp, ErroRespostaInvalida, ErroSessaoEncerrada } from '../erros
  * muda o preço do mesmo código (`FR-018`, AD-043) — sem isso o cache devolveria
  * o preço do cliente anterior (`research.md`, D5).
  *
- * `codigoCliente` e `ufCliente` entraram pelo mesmo motivo (AD-258, pedido do
- * usuário em 2026-10-01): o veredito `CenarioValido` é do **cliente** — a UF
- * é só uma das características que o ERP pesquisa ("Característica
- * Cliente=…" aparece na mensagem). Sem o código, trocar por outro cliente da
- * mesma UF servia do cache o produto validado para o cliente anterior, sem
- * novo `GetProduto`. Com ele, cliente novo é sempre consulta nova.
+ * `codigoCliente` entrou pelo mesmo motivo (AD-258, pedido do usuário em
+ * 2026-10-01): o veredito `CenarioValido` é do **cliente**. Sem ele, trocar de
+ * cliente servia do cache o produto validado para o cliente anterior, sem novo
+ * `GetProduto`. Com ele, cliente novo é sempre consulta nova.
  */
 export function chaveProduto(
   codigoProduto: string,
@@ -113,7 +105,6 @@ export function chaveProduto(
     contexto.tipoPreco,
     contexto.listaPreco ?? null,
     contexto.codigoCliente,
-    contexto.ufCliente,
   ];
 }
 
@@ -126,9 +117,6 @@ function parametrosDeProduto(
     Tipocodproduto: contexto.tipoCodProduto,
     Tipopreco: String(contexto.tipoPreco),
     Codcliente: String(contexto.codigoCliente),
-    // Sempre, mesmo vazia (AD-258) — o nome é o que o ERP lê (`UFCliente`),
-    // medido em 2026-10-01: a UF volta ecoada em "UF Destino=" da mensagem.
-    UFCliente: contexto.ufCliente,
   });
 
   // Para `TipoPreco ≠ 9` o parâmetro é **omitido**, não enviado vazio (AD-092).

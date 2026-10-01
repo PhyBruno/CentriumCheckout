@@ -13,7 +13,6 @@ const CLIENTE_BASE: ClienteVenda = {
   listaPreco: 1,
   descontoConvenio: 0,
   codigoConvenio: null,
-  uf: 'SP',
   origem: 'BUSCA_DOCUMENTO',
 };
 

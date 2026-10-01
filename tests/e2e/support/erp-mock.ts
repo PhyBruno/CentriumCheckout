@@ -1002,7 +1002,7 @@ function produtoComoOErpResponde(produto: Record<string, unknown>): Record<strin
     // Contrato de 2026-09-14 (AD-236): `double` como string, pode ser negativo.
     // `10.000` por padrão, folgado para os cenários que não são sobre saldo.
     Saldo: produto['Saldo'] ?? '10.000',
-    // AD-258: veredito de cenário tributário para o `UFCliente` enviado.
+    // AD-258: veredito de cenário tributário do produto para o cliente.
     // Booleano nativo; `true` por padrão — quem exercita a recusa liga
     // `CenarioValido: false` no produto (e aí o mock acrescenta `messages`).
     CenarioValido: produto['CenarioValido'] ?? true,
@@ -1274,9 +1274,9 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     ClienteDefaultNome: 'CONSUMIDOR FINAL',
     // `CliFonCel` do cliente default (contrato de 2026-09-14, AD-237).
     ClienteDefaultContato: config.clienteDefaultContato,
-    // AD-258 (2026-10-01): UF do default, enviada como `UFCliente` em todo
-    // `GetProduto`, e o envio do PIX por WhatsApp contratado — booleano
-    // **nativo**, como o prototype devolve.
+    // AD-258 (2026-10-01): UF do default (guardada, sem consumidor) e o envio
+    // do PIX por WhatsApp contratado — booleano **nativo**, como o prototype
+    // devolve.
     ClienteDefaultUF: 'SC',
     isWhatsappEnabled: config.whatsappHabilitado,
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
@@ -1668,7 +1668,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
   });
 
   app.get<{
-    Querystring: { Codigoproduto?: string; Tipocodproduto?: string; UFCliente?: string };
+    Querystring: { Codigoproduto?: string; Tipocodproduto?: string };
   }>('/ApiCentriumOAuth/GetProduto', async (request, reply) => {
     contadores.negocio += 1;
     contadores.getProduto += 1;
@@ -1712,7 +1712,6 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     // Cenário inválido (AD-258): com `messages` a devolver, o SDT volta para
     // dentro de `Produto` — a forma medida no prototype em 2026-10-01.
     if (sdt['CenarioValido'] === false) {
-      const uf = request.query.UFCliente ?? '';
       return reply.send({
         Produto: sdt,
         messages: [
@@ -1720,7 +1719,7 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
           {
             Id: '',
             Type: 1,
-            Description: `Cenário pesquisado: Empresa=1, UF Destino=${uf}, Operação=Desconhecida`,
+            Description: 'Cenário pesquisado: Empresa=1, Operação=Desconhecida',
           },
         ],
       });

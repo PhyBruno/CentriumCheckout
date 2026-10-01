@@ -23,7 +23,6 @@ import type { LinhaRateavel } from '../domain/pagamento/descontoCapa';
 import type { SnapshotVenda } from '../domain/venda/montarRetratoVenda';
 import { notificarVeredito } from '../features/validacao/notificarVeredito';
 import { enviarValidarNFCe } from '../services/validacao/validarNFCeMutation';
-import { ufParaConsultaDeProduto } from '../domain/cliente/clienteVenda';
 import { linhasAtivas, totalLinha, totalVenda } from '../domain/precificacao/linha';
 import { fetchProduto } from '../services/produto/produtoQueries';
 import { validarTicket } from '../services/pagamento/pagamentoQueries';
@@ -153,7 +152,6 @@ export function clienteDepsPadrao(depsCarrinho: CarrinhoDeps): ClienteDeps {
         tipoPreco: depsCarrinho.tipoPrecoAtual(),
         codigoCliente: cliente.codigoCliente,
         listaPreco: cliente.listaPreco,
-        ufCliente: ufParaConsultaDeProduto(cliente, undefined),
       }),
     ...(depsCarrinho.avisar ? { avisar: depsCarrinho.avisar } : {}),
   };
