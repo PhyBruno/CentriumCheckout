@@ -3895,3 +3895,38 @@ Tanto a regra quanto a frase ("O período de busca é de no máximo um ano.") mo
 **Impact:** `src/shared/schemas/{dav,produto,bootstrap,recuperacaoNFCe,erpJson}.ts`; `src/client/domain/{dav/documentoOrigem,estoque/filtroSaldo,pix/cobrancaPix}.ts`; `src/client/lib/dataHoraUtc.ts`; `src/client/components/ui/badge.tsx`; `src/client/stores/cenarioProdutoStore.ts`; `src/client/services/{dav/davQueries,produto/produtoQueries,produto/produtoMapper,cliente/clienteMapper,pix/pixQueries,pagamento/pagamentoQueries,pagamento/pagamentoMapper}.ts`; `src/client/features/{dav/ModalImportacaoDav,recuperacao/ModalRecuperacaoNFCe,carrinho/ModalBuscaProduto,carrinho/useCarrinho,pagamento/pix/ModalPix,pagamento/ListaPagamentosAplicados,finalizacao-suspensao/DialogoErroFaturamento,finalizacao-suspensao/AcoesFinaisVenda,importacao/useImportacaoDocumento}.tsx?`; `src/client/stores/vendaStore.ts`; `tests/e2e/support/erp-mock.ts`.
 
 **Verificação:** 1901 testes unit/integração verdes em 120 arquivos, com specs novos para a data UTC, o documento de origem, o filtro de saldo, a janela de DAV, o filtro do modal de produto, a recusa por cenário na barra (inclusive que o `GetProduto` não leva `UFCliente` e que trocar de cliente refaz a consulta) e o WhatsApp desabilitado. `tsc --noEmit` e ESLint limpos. Não verificado no navegador.
+
+### AD-259: o TEF fala com o ERP pela SmartTEF — três endpoints, nove status, estorno confirmado por `EST`, e o retrato da NFCe passa a levar `TEFPagId` (2026-10-02)
+
+**Origem:** `/speckit-plan` da feature 010, com um pedido do usuário em oito pontos: `UsuarioGAM` novo na raiz do `GetSessao`; janela do TEF aberta enquanto o ERP cria a cobrança na maquininha, com confirmação ao desistir e o aviso de que a transação em voo **não** é cancelada; polling como o do PIX; exclusão de TEF aprovado por **estorno**, efetivada só com resposta devida do ERP; várias formas TEF por venda; e os endpoints `CriarCardPagamento`, `ConsultarStatusCard` e `EstornarPagamento`. O contrato foi lido na KB `CentriumDEVU6` (bloco `//SmartTEF` da API `ApiCentriumOAuth`), **não** no `ApiCentriumOAuth.yaml`, que é anterior a ele. Desenho completo em `specs/010-pagamento-tef/` (`research.md` D1–D18).
+
+**1. Os endpoints existem — fecha o item 41.** Os três respondem `SDTSmartTefResposta` (`Sucesso`, `CodigoStatusHttp`, `MensagemErro`, `RespostaJson`). `Sucesso` é "HTTP 2xx da SmartTEF", não veredito de pagamento; o dado de negócio vem como **texto JSON** em `RespostaJson`, e a recusa vem por `Sucesso: false` + `MensagemErro` — não há `messages[]`. A fronteira Zod passa a ter dois estágios.
+
+**2. Corrige a leitura de AD-162 sobre o "endpoint de confirmação".** AD-162 previa dois endpoints dedicados ao cancelamento (pedido e confirmação). No contrato real, o pedido é `EstornarPagamento` e a confirmação vem pela **mesma** `ConsultarStatusCard` da cobrança. O resto de AD-162 continua valendo: pedido + polling, e a forma não sai da venda antes da confirmação.
+
+**3. Nove status reais (`SmartTefStatusPagamento`).** `PDT`, `PROC_PAG`, `CNC`, `CAN_ERP`, `REJ_PAG`, `SOL_EST`, `PROC_EST`, `EST`, `REJ_EST`. Só `CNC` aprova a cobrança; só `EST` conclui o estorno. Literal desconhecido nunca aprova: mantém a espera.
+- O polling não é só para a tela. `ConsultarStatusCard` grava o status na `TransacaoTEF` do ERP (`PSmartTEF_AtualizaRetorno`), e `PCheckout_FaturarNFCe` só aceita a forma se ela estiver em `CNC`.
+
+**4. Exclusão de TEF aprovado = estorno, efetivado só com `EST` (decisão do usuário nesta sessão).** `Sucesso: true` de `EstornarPagamento` é só o pedido aceito (`SOL_EST`). A forma fica riscada (AD-163) só quando o status chega a `EST`, por uma action nova, `confirmarEstornoTef`. `REJ_EST`, erro ou desistência de esperar mantêm o TEF aprovado e a venda bloqueada para suspensão. `removerPagamento` continua recusando TEF aprovado: a remoção **direta** segue proibida (I6), e o estorno é a única saída.
+
+**5. `UsuarioGAM` vem do BFF, não do navegador.** Ele decide em qual maquininha a cobrança aparece (`PSmartTEF` escolhe o `serial_pos` por ele), então segue o princípio de AD-224:
+- `/session/start` lê o `UsuarioGAM` do `GetSessao`, grava no cookie como campo **opcional** (sem bump de versão) e o proxy o insere em `CriarCardPagamento`, junto com `EmpCod`.
+- O navegador só sabe **se** ele existe. Sem ele, o TEF é recusado antes da rede, com o motivo explicado.
+- O campo ainda não existe no `SessaoUsuario` da KB — item 64.
+
+**6. Parcelas = `CondicaoPrazo` no crédito, `1` no débito e no PIX (decisão do usuário nesta sessão).** Na KB, `PCheckout_GetSessao` preenche `CondicaoPrazo = PraNumPar`, o número de parcelas da condição. O `PSmartTEF` recusa parcelamento fora do `CREDIT`.
+
+**7. O retrato da NFCe estava defasado em relação à KB.** `CheckoutFaturarNFCe.FormasDePagamento[]` hoje tem `TEFPagId`, `TEFBandeira` e `TEFTipoIntegracao`, e não tem mais `TEFidentificacao`, `TEFCNPJ` nem `TEFNumeroAutorizacao`. O ERP lê autorização, CNPJ do adquirente e bandeira da `TransacaoTEF` pelo `TEFPagId`. Mudam junto:
+- `DadosTEF` (`saldoPagamento.ts`);
+- `formaParaRetrato.ts`;
+- a leitura de documento importado (`dav.schema.ts`, `mapearVendaExistente.ts`).
+Tornar estornável uma forma TEF **importada** fica fora — item 65.
+
+**8. Desenho igual ao do PIX, sem código compartilhado.** A janela nasce do estado (AD-158), `iniciarIntegracao` segue no-op, a criação é uma por montagem e o fechamento automático acontece 10s depois da aprovação. O rodapé diz "Desistir da operação" em vez do "Cancelar operação" do Pencil, pelo mesmo motivo do PIX. O módulo TEF não importa o do PIX.
+
+**Ainda por medir (primeira tarefa da implementação, só com o usuário, porque cobra e estorna de verdade):**
+- o envelope do corpo de `CriarCardPagamento` e a grafia `FPgCod` (KB) × `FpgCod` (pedido);
+- o envelope da saída;
+- a forma real de `RespostaJson`.
+
+**Impact:** `specs/010-pagamento-tef/` (plan, research, data-model, contracts, quickstart; `spec.md` com a emenda `FR-010`–`FR-016` e as Assumptions reescritas), `.specs/project/PENDENCIES.md` (item 41 fechado; 64, 65 e 66 abertos). Sem mudança de código.
