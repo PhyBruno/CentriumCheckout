@@ -12,7 +12,7 @@ TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal 
 
 ## Bloqueio deliberado
 
-**Protocolo de comunicação com o TEF (2026-08-25, AD-037 em `.specs/project/STATE.md`):** o mecanismo técnico de comunicação com o terminal TEF — protocolo de invocação, formato de mensagem, tratamento de timeout/erro — fica deliberadamente como bloqueio, **não especificado nesta rodada**. Decisão direta do usuário: o parceiro de TEF atual será trocado, então desenhar o contrato para o parceiro atual seria retrabalho. Este documento **não infere nem inventa** esse comportamento — ver item 25 em `.specs/project/PENDENCIES.md`.
+**Superado para o Checkout em 2026-10-02 (AD-259):** o Checkout não fala com o terminal — quem cria a cobrança na maquininha, consulta e estorna é o ERP, pela integração SmartTEF, e o Checkout só chama três endpoints HTTP do ERP (`CriarCardPagamento`, `ConsultarStatusCard`, `EstornarPagamento`). O bloqueio abaixo continua descrevendo o parceiro de TEF, mas não restringe mais esta feature. Texto original: **Protocolo de comunicação com o TEF (2026-08-25, AD-037 em `.specs/project/STATE.md`):** o mecanismo técnico de comunicação com o terminal TEF — protocolo de invocação, formato de mensagem, tratamento de timeout/erro — fica deliberadamente como bloqueio, **não especificado nesta rodada**. Decisão direta do usuário: o parceiro de TEF atual será trocado, então desenhar o contrato para o parceiro atual seria retrabalho. Este documento **não infere nem inventa** esse comportamento — ver item 25 em `.specs/project/PENDENCIES.md`.
 
 ---
 
@@ -48,7 +48,7 @@ TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal 
 
 **Definido (2026-09-04, AD-162):** decisão direta do usuário — corrige a leitura de AD-023 abaixo, que concluía não existir nenhum caminho de reversão pelo Checkout. Os **nomes e contratos dos dois endpoints não estão especificados** nesta rodada — ver item 41 de `.specs/project/PENDENCIES.md`. O mecanismo técnico de comunicação com o terminal físico (protocolo de invocação da própria operação de venda) continua bloqueado por AD-037, na seção "Bloqueio deliberado" abaixo — são pontos distintos: este item é sobre o Checkout falar com o **ERP**, não com o terminal.
 
-**Independent Test**: Bloqueado até a feature 010 (TEF) e os dois endpoints existirem no contrato — ver item 41 de `.specs/project/PENDENCIES.md`.
+**Independent Test**: aprovar um TEF, pedir a remoção, e confirmar que a forma só fica riscada quando o ERP reporta o estorno como concluído (`EST`). **Desbloqueado em 2026-10-02 (AD-259):** o pedido é `EstornarPagamento` e a confirmação vem por `ConsultarStatusCard` — a mesma consulta de status da cobrança, não um segundo endpoint dedicado como o parágrafo "Definido" acima supunha. Item 41 de `.specs/project/PENDENCIES.md` fechado; desenho em `specs/010-pagamento-tef/`.
 
 ---
 
@@ -67,9 +67,9 @@ TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
 | PAY-02 | Ocultar TEF quando `TEFAtivo=false`; não acionar TEF quando a forma é POS (`FormaIntegracaoCartao` ≠ `'1'`) | - | Verified (a segunda condição é de 2026-09-08, AD-180) |
-| PAY-12 | Cancelar transação TEF aprovada via endpoint do ERP, com polling de confirmação | - | Design (2026-09-04, AD-162) — bloqueada por dois endpoints ainda não especificados no contrato (item 41 de `.specs/project/PENDENCIES.md`) |
+| PAY-12 | Cancelar transação TEF aprovada via endpoint do ERP, com polling de confirmação | - | Design (2026-10-02, AD-259) — `EstornarPagamento` + polling de `ConsultarStatusCard` até `EST`; desenho em `specs/010-pagamento-tef/` |
 
-**Coverage:** 2 total, 1 verificado e 1 em Design — 2 bloqueios deliberados do usuário: protocolo/timeout do TEF com o terminal físico (AD-037, item 25 de `.specs/project/PENDENCIES.md`) e os endpoints de cancelamento/confirmação com o ERP (AD-162, item 41 de `.specs/project/PENDENCIES.md`) — os dois distintos entre si, ver Edge Cases.
+**Coverage:** 2 total, 1 verificado e 1 em Design. **Atualizado em 2026-10-02 (AD-259):** o bloqueio dos endpoints de cancelamento (item 41) foi fechado, e o de protocolo com o terminal (AD-037, item 25) deixou de alcançar o Checkout — quem fala com a maquininha é o ERP, pela integração SmartTEF; o Checkout só chama HTTP do ERP.
 
 ---
 
