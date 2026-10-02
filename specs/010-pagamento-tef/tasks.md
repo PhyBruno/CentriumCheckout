@@ -58,14 +58,14 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 **Purpose**: fechar os três pontos de contrato que a KB não responde e preparar a árvore.
 
-- [ ] T001 **Medir o contrato SmartTEF com o usuário** (`research.md` D17), no prototype de `c0lj6mvzeh` ou no ambiente que o usuário indicar, com terminal de homologação. Use a receita de `erp-prototype-contrato-20260914` (proxy oauth→apps). **Nunca** chame `CriarCardPagamento`/`EstornarPagamento` sem o usuário presente e de acordo. Responda e registre num novo AD em `.specs/project/STATE.md`:
+- [X] T001 **Medir o contrato SmartTEF com o usuário** — **não medido (2026-10-02, AD-260):** o usuário ainda não tem a maquininha; a não-medição foi registrada e o código seguiu as formas do contrato, como a própria tarefa prevê. A medição virou o item 67 de `PENDENCIES.md`. (`research.md` D17), no prototype de `c0lj6mvzeh` ou no ambiente que o usuário indicar, com terminal de homologação. Use a receita de `erp-prototype-contrato-20260914` (proxy oauth→apps). **Nunca** chame `CriarCardPagamento`/`EstornarPagamento` sem o usuário presente e de acordo. Responda e registre num novo AD em `.specs/project/STATE.md`:
   - (a) `CriarCardPagamento` aceita corpo plano ou só `{ "CriarCardReq": { … } }`? O ERP lê `FPgCod` (KB) ou `FpgCod` (pedido)?
   - (b) A saída dos três endpoints vem plana ou em `{ "RespostaSmartTEF": … }`?
   - (c) A forma real de `RespostaJson` em cada operação. Em especial: a consulta devolve lista ou objeto? Os campos `payment_status`, `card_brand`, `nsu_host` e `autorization_code` vêm com essa grafia?
   - (d) O `GetSessao` já devolve `UsuarioGAM` na raiz? Se sim, feche o item 64 de `PENDENCIES.md`.
 
   Se algum resultado contradisser `contracts/erp-tef-api.md`, corrija o contrato **antes** de seguir. Se o usuário não puder medir agora, registre isso no AD e siga com as formas do contrato: elas estão isoladas em `montarCorpoCriarCard` (T014) e no schema (T010), então trocar depois custa uma linha.
-- [ ] T002 Criar os diretórios `src/client/domain/tef/`, `src/client/services/tef/`, `src/client/features/pagamento/tef/`, `tests/unit/domain/tef/`, `tests/unit/services/tef/`.
+- [X] T002 Criar os diretórios `src/client/domain/tef/`, `src/client/services/tef/`, `src/client/features/pagamento/tef/`, `tests/unit/domain/tef/`, `tests/unit/services/tef/`.
 
 **Checkpoint**: contrato confirmado (ou a não-medição registrada) e árvore pronta.
 
@@ -79,18 +79,18 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### Domínio puro (TDD)
 
-- [ ] T003 [P] Escrever `tests/unit/domain/tef/interpretarStatusTef.spec.ts` (RED). Cobrir os nove literais **nas duas fases** com a tabela de `research.md` D4: `interpretarStatusCobrancaTef` (só `CNC` → `APROVADO`; `PDT`/`PROC_PAG` → `PENDENTE`; `CAN_ERP`, `REJ_PAG`, `SOL_EST`, `PROC_EST`, `EST` e `REJ_EST` → `FALHA` com o motivo certo) e `interpretarStatusEstornoTef` (só `EST` → `ESTORNADO`; `REJ_EST`/`CAN_ERP`/`REJ_PAG` → `ESTORNO_REJEITADO`; `CNC`, `PDT`, `PROC_PAG`, `SOL_EST` e `PROC_EST` → `ESTORNO_PENDENTE`). Incluir `''`, `'cnc'` minúsculo e `'XYZ'`: nunca aprovam nem estornam (invariante T1). Verificar também que `MENSAGEM_POR_MOTIVO_FALHA_TEF` tem frase para os três motivos.
-- [ ] T004 [P] Implementar `src/client/domain/tef/interpretarStatusTef.ts` conforme `contracts/tef-domain-api.md` §1: tipos `StatusSmartTef`, `MotivoFalhaTef`, `ResultadoCobrancaTef` e `ResultadoEstornoTef`, as duas funções com `switch` e ramo `default` explícito, e `MENSAGEM_POR_MOTIVO_FALHA_TEF`. TSDoc com a origem dos literais (domínio `SmartTefStatusPagamento` da KB, AD-259) e o porquê de só `CNC` aprovar (`PCheckout_FaturarNFCe` filtra `TEFSmartSt = CNC`). T003 fica verde.
-- [ ] T005 [P] Escrever `tests/unit/domain/tef/parcelasDoTef.spec.ts` e `tests/unit/domain/tef/pagadorTef.spec.ts` (RED).
+- [X] T003 [P] Escrever `tests/unit/domain/tef/interpretarStatusTef.spec.ts` (RED). Cobrir os nove literais **nas duas fases** com a tabela de `research.md` D4: `interpretarStatusCobrancaTef` (só `CNC` → `APROVADO`; `PDT`/`PROC_PAG` → `PENDENTE`; `CAN_ERP`, `REJ_PAG`, `SOL_EST`, `PROC_EST`, `EST` e `REJ_EST` → `FALHA` com o motivo certo) e `interpretarStatusEstornoTef` (só `EST` → `ESTORNADO`; `REJ_EST`/`CAN_ERP`/`REJ_PAG` → `ESTORNO_REJEITADO`; `CNC`, `PDT`, `PROC_PAG`, `SOL_EST` e `PROC_EST` → `ESTORNO_PENDENTE`). Incluir `''`, `'cnc'` minúsculo e `'XYZ'`: nunca aprovam nem estornam (invariante T1). Verificar também que `MENSAGEM_POR_MOTIVO_FALHA_TEF` tem frase para os três motivos.
+- [X] T004 [P] Implementar `src/client/domain/tef/interpretarStatusTef.ts` conforme `contracts/tef-domain-api.md` §1: tipos `StatusSmartTef`, `MotivoFalhaTef`, `ResultadoCobrancaTef` e `ResultadoEstornoTef`, as duas funções com `switch` e ramo `default` explícito, e `MENSAGEM_POR_MOTIVO_FALHA_TEF`. TSDoc com a origem dos literais (domínio `SmartTefStatusPagamento` da KB, AD-259) e o porquê de só `CNC` aprovar (`PCheckout_FaturarNFCe` filtra `TEFSmartSt = CNC`). T003 fica verde.
+- [X] T005 [P] Escrever `tests/unit/domain/tef/parcelasDoTef.spec.ts` e `tests/unit/domain/tef/pagadorTef.spec.ts` (RED).
   - `parcelasDoTef`: crédito com prazo `1`/`2`/`4` → igual; `0`, `0.5` e `NaN` → `1`; `2.9` → `2`; débito e PIX com prazo `4` → `1` (T9).
   - `montarPagadorTef`: identificado com CPF formatado `123.456.789-09` → `'12345678909'`; CNPJ → só dígitos; `documento: null` (default) → `cpf: ''` e o nome do cliente; `null` → `null`.
-- [ ] T006 [P] Implementar `src/client/domain/tef/parcelasDoTef.ts` (`research.md` D8) e `src/client/domain/tef/pagadorTef.ts` (`research.md` D9, `data-model.md` §2.5). T005 fica verde.
-- [ ] T007 [P] Implementar `src/client/domain/tef/cobrancaTef.ts`: só os tipos `CobrancaTef`, `DadosCriarCardTef` e `ConsultaTef` (`contracts/tef-domain-api.md` §1). `DadosCriarCardTef` **não** tem `EmpCod` nem `UsuarioGAM`, e um comentário TSDoc diz por quê (invariante T8, AD-224).
+- [X] T006 [P] Implementar `src/client/domain/tef/parcelasDoTef.ts` (`research.md` D8) e `src/client/domain/tef/pagadorTef.ts` (`research.md` D9, `data-model.md` §2.5). T005 fica verde.
+- [X] T007 [P] Implementar `src/client/domain/tef/cobrancaTef.ts`: só os tipos `CobrancaTef`, `DadosCriarCardTef` e `ConsultaTef` (`contracts/tef-domain-api.md` §1). `DadosCriarCardTef` **não** tem `EmpCod` nem `UsuarioGAM`, e um comentário TSDoc diz por quê (invariante T8, AD-224).
 
 ### `DadosTEF` e textos compartilhados
 
-- [ ] T008 Reescrever `DadosTEF` em `src/client/domain/pagamento/saldoPagamento.ts` para `{ pagId, bandeira, nsu, autorizacao, tipoIntegracao: '1' }` (`data-model.md` §1), apagando `identificacao`, `cnpj` e `numeroAutorizacao`. Rodar `npx tsc --noEmit` e corrigir **só** os erros de compilação que a troca causar. `formaParaRetrato.ts` ganha a lógica nova em T025; aqui ele só precisa compilar.
-- [ ] T009 [P] Criar `src/client/features/pagamento/tef/avisosTef.ts` com os textos de `contracts/tef-domain-api.md` §3:
+- [X] T008 Reescrever `DadosTEF` em `src/client/domain/pagamento/saldoPagamento.ts` para `{ pagId, bandeira, nsu, autorizacao, tipoIntegracao: '1' }` (`data-model.md` §1), apagando `identificacao`, `cnpj` e `numeroAutorizacao`. Rodar `npx tsc --noEmit` e corrigir **só** os erros de compilação que a troca causar. `formaParaRetrato.ts` ganha a lógica nova em T025; aqui ele só precisa compilar.
+- [X] T009 [P] Criar `src/client/features/pagamento/tef/avisosTef.ts` com os textos de `contracts/tef-domain-api.md` §3:
   - aviso de desistência com transação em voo, com a frase "o Checkout não cancela automaticamente a transação em voo no TEF" (`FR-010`);
   - aviso de estorno solicitado e não confirmado;
   - motivo do `X` travado;
@@ -101,14 +101,14 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### Fronteira Zod e rede (TDD)
 
-- [ ] T010 [P] Escrever `tests/unit/shared/tef.schema.spec.ts` (RED) e implementar `src/shared/schemas/tef.schema.ts` (`data-model.md` §3). Depende de T001.
+- [X] T010 [P] Escrever `tests/unit/shared/tef.schema.spec.ts` (RED) e implementar `src/shared/schemas/tef.schema.ts` (`data-model.md` §3). Depende de T001.
   - `respostaSmartTefSchema` com `semEnvelope` aceita a forma plana e `{ RespostaSmartTEF: … }`, e `CodigoStatusHttp` como texto ou número (`inteiroErp`).
   - `criarCardRespSchema` reprova `payment_identifier` vazio.
   - `consultaCardRespSchema` aceita lista ou objeto único e normaliza para lista.
   - `estornoRespSchema` aceita a forma documentada.
   - Os quatro schemas são `looseObject`, e campos extras da SmartTEF passam.
-- [ ] T011 [P] Acrescentar `UsuarioGAM: z.string().optional()` na raiz da sessão em `src/shared/schemas/bootstrap.schema.ts`, com TSDoc: só presença, nunca enviado pelo JS (`research.md` D7). Cobrir em `tests/unit/shared/bootstrap.schema.spec.ts` presente, ausente e `''`.
-- [ ] T012 Escrever `tests/unit/services/tef/tefQueries.spec.ts` (RED), com um `erpClient` falso. Depende de T001 e T010. Cobrir:
+- [X] T011 [P] Acrescentar `UsuarioGAM: z.string().optional()` na raiz da sessão em `src/shared/schemas/bootstrap.schema.ts`, com TSDoc: só presença, nunca enviado pelo JS (`research.md` D7). Cobrir em `tests/unit/shared/bootstrap.schema.spec.ts` presente, ausente e `''`.
+- [X] T012 Escrever `tests/unit/services/tef/tefQueries.spec.ts` (RED), com um `erpClient` falso. Depende de T001 e T010. Cobrir:
   - (a) o corpo de `criarCardTef` tem `PagamentoValor` em reais com 2 casas (`8329` centavos → `83.29`, T10), `PagamentoParcelas`, CPF, nome e `FPgCod`, e **não** tem `EmpCod` nem `UsuarioGAM` (T8);
   - (b) `Sucesso: false` → `ErroNegocioErp` com a `MensagemErro` íntegra, e `MensagemErro` vazia → frase padrão;
   - (c) `RespostaJson` não-JSON ou sem `payment_identifier` → `ErroRespostaInvalida`;
@@ -118,8 +118,8 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
   - (g) `ConsultarStatusCard` vai por `GET` com `SmartTefPaymentIdentifier` na query, e `EstornarPagamento` por `POST` com `{ SmartTefPaymentIdentifier }`;
   - (h) `useCriarCardTef` com duas chamadas simultâneas faz **uma** requisição (T2);
   - (i) `useStatusTef` desligado não consulta e não fica em `isLoading`.
-- [ ] T013 Implementar `src/client/services/tef/tefMapper.ts`. Depende de T001. Ele faz a validação em dois estágios (envelope → `JSON.parse(RespostaJson)` → schema interno, `contracts/erp-tef-api.md` §4) e o mapeamento para `CobrancaTef`/`ConsultaTef`/`string`.
-- [ ] T014 Implementar `src/client/services/tef/tefQueries.ts` conforme `contracts/tef-domain-api.md` §2. Depende de T001 e T013. T012 fica verde. Conteúdo:
+- [X] T013 Implementar `src/client/services/tef/tefMapper.ts`. Depende de T001. Ele faz a validação em dois estágios (envelope → `JSON.parse(RespostaJson)` → schema interno, `contracts/erp-tef-api.md` §4) e o mapeamento para `CobrancaTef`/`ConsultaTef`/`string`.
+- [X] T014 Implementar `src/client/services/tef/tefQueries.ts` conforme `contracts/tef-domain-api.md` §2. Depende de T001 e T013. T012 fica verde. Conteúdo:
   - `INTERVALO_POLLING_TEF_MS = 10_000`;
   - `ErroTefSemCliente`, `ErroTefSemUsuarioGam`;
   - `montarCorpoCriarCard`: único ponto que conhece a forma do corpo — plana ou envelopada, conforme T001;
@@ -131,10 +131,10 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### BFF (TDD)
 
-- [ ] T015 [P] Em `tests/unit/server/session/getSessao.spec.ts`, escrever os casos de `extrairUsuarioGam` (RED): raiz com valor → valor; ausente, `''` ou não-string → `null`. Implementar em `src/server/session/getSessao.ts`. `buscarUsuarioCodigo` passa a devolver também `usuarioGam`, **sem** mudar o desfecho: operador sem `UsuarioGAM` continua `identificado`.
-- [ ] T016 [P] Acrescentar o campo **opcional** `usuarioGam?: string` em `src/server/session/cookie.ts`, fora de `CAMPOS_OBRIGATORIOS` e **sem** bump de versão. O TSDoc explica que o bump só é obrigatório para campo obrigatório. Cobrir em `tests/unit/server/session/cookie.spec.ts`: cookie atual sem o campo continua decifrando, e cookie com o campo faz ida e volta intacto.
-- [ ] T017 Em `src/server/routes/session-start.ts`, gravar `usuarioGam` no cookie quando o `GetSessao` o devolver. **Não** recusar a entrada sem ele: o operador sem TEF continua vendendo. Cobrir em `tests/unit/server/routes/sessionStartUsuario.spec.ts`. Depende de T015 e T016.
-- [ ] T018 Criar `tests/unit/server/routes/erpProxyTef.spec.ts` (RED) e implementar em `src/server/routes/erp-proxy.ts` (`contracts/erp-tef-api.md` §5). Depende de T001 e T016.
+- [X] T015 [P] Em `tests/unit/server/session/getSessao.spec.ts`, escrever os casos de `extrairUsuarioGam` (RED): raiz com valor → valor; ausente, `''` ou não-string → `null`. Implementar em `src/server/session/getSessao.ts`. `buscarUsuarioCodigo` passa a devolver também `usuarioGam`, **sem** mudar o desfecho: operador sem `UsuarioGAM` continua `identificado`.
+- [X] T016 [P] Acrescentar o campo **opcional** `usuarioGam?: string` em `src/server/session/cookie.ts`, fora de `CAMPOS_OBRIGATORIOS` e **sem** bump de versão. O TSDoc explica que o bump só é obrigatório para campo obrigatório. Cobrir em `tests/unit/server/session/cookie.spec.ts`: cookie atual sem o campo continua decifrando, e cookie com o campo faz ida e volta intacto.
+- [X] T017 Em `src/server/routes/session-start.ts`, gravar `usuarioGam` no cookie quando o `GetSessao` o devolver. **Não** recusar a entrada sem ele: o operador sem TEF continua vendendo. Cobrir em `tests/unit/server/routes/sessionStartUsuario.spec.ts`. Depende de T015 e T016.
+- [X] T018 Criar `tests/unit/server/routes/erpProxyTef.spec.ts` (RED) e implementar em `src/server/routes/erp-proxy.ts` (`contracts/erp-tef-api.md` §5). Depende de T001 e T016.
   - (a) `EstornarPagamento` entra em `CAMINHOS_COM_EMPRESA_NA_RAIZ`.
   - (b) Nova `corpoComOperadorTef(body, caminhoNoErp, sessao)`, só para `CriarCardPagamento`. Ela insere `EmpCod` (numérico) e `UsuarioGAM` (texto; `''` sem o campo no cookie) na raiz **e**, se existir, dentro de `CriarCardReq`, sobrescrevendo valores forjados pelo navegador (T8).
   - (c) A composição no handler chama a função nova junto das já existentes.
@@ -143,7 +143,7 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### Mock
 
-- [ ] T019 Estender `tests/e2e/support/erp-mock.ts` (`contracts/erp-tef-api.md` §5). Depende de T001.
+- [X] T019 Estender `tests/e2e/support/erp-mock.ts` (`contracts/erp-tef-api.md` §5). Depende de T001.
   - `GetSessao` devolve `UsuarioGAM` na raiz, com uma flag para omiti-lo.
   - Os três endpoints, na forma **medida** em T001: `RespostaJson` como string.
   - Uma `TransacaoTEF` em memória por `payment_identifier`. A cobrança anda `PDT → PROC_PAG → CNC` conforme o número de consultas, com flags para `REJ_PAG` e para `Sucesso: false` na criação ("Serial do POS (serial_pos) nao localizado para o usuario informado"). O estorno anda `CNC → SOL_EST → PROC_EST → EST`, com flag para `REJ_EST`.
@@ -162,8 +162,8 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### Tests for User Story 1 ⚠️ (escrever primeiro, garantir RED)
 
-- [ ] T020 [P] [US1] Criar `tests/unit/domain/pagamento/formaParaRetrato.spec.ts` (RED): forma TEF aprovada → `TEFPagId` = `dadosTEF.pagId`, `TEFBandeira`, `TEFTipoIntegracao: '1'`, e **ausência** de `TEFidentificacao`/`TEFCNPJ`/`TEFNumeroAutorizacao` (T11); forma sem TEF → nenhum campo `TEF*`.
-- [ ] T021 [P] [US1] Criar `tests/integration/ModalTef.spec.tsx` (RED), com o mesmo arranjo de `tests/integration/ModalPix.spec.tsx`: `intervaloMs` e `atrasoFechamentoMs` injetados e `erpClient` falso. Cobrir a máquina de `data-model.md` §4.1:
+- [X] T020 [P] [US1] Criar `tests/unit/domain/pagamento/formaParaRetrato.spec.ts` (RED): forma TEF aprovada → `TEFPagId` = `dadosTEF.pagId`, `TEFBandeira`, `TEFTipoIntegracao: '1'`, e **ausência** de `TEFidentificacao`/`TEFCNPJ`/`TEFNumeroAutorizacao` (T11); forma sem TEF → nenhum campo `TEF*`.
+- [X] T021 [P] [US1] Criar `tests/integration/ModalTef.spec.tsx` (RED), com o mesmo arranjo de `tests/integration/ModalPix.spec.tsx`: `intervaloMs` e `atrasoFechamentoMs` injetados e `erpClient` falso. Cobrir a máquina de `data-model.md` §4.1:
   - (a) montagem em `StrictMode` → **uma** chamada de `CriarCardPagamento` (T2);
   - (b) consultas `PDT → PROC_PAG → CNC` → `onAprovado` chamado no tick do `CNC`, **antes** de passar o atraso (T3), com `DadosTEF` montado do item consultado; tela aprovada mostra NSU, Autorização e Bandeira (`FR-015`), e "—" em campo ausente;
   - (c) fechamento automático após `atrasoFechamentoMs`; botão "Fechar", `X` e ESC liberados só depois de aprovado;
@@ -174,23 +174,23 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
   - (h) `usuarioGamPresente: false` ou `clienteAtual: null` → nenhuma requisição, `onAbandonado` com o motivo (`FR-014`);
   - (i) o corpo leva `PagamentoParcelas: 2` para crédito com prazo 2 e `1` para débito (`FR-013`);
   - (j) desmontar com o polling ligado não deixa requisição pendente.
-- [ ] T022 [P] [US1] Em `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, acrescentar (RED):
+- [X] T022 [P] [US1] Em `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, acrescentar (RED):
   - (a) pagamento `PENDENTE_INTEGRACAO` com `integracao: 'TEF'` monta a janela TEF, e com `PIX_DINAMICO` continua montando a do PIX;
   - (b) a janela segue montada no estado aprovado (segue o `idPagamento`);
   - (c) dois TEFs em sequência na mesma venda → duas janelas recriadas (a `key` muda), sem reuso das travas (`FR-012`);
   - (d) com a janela TEF aberta, tentar inserir outra forma (botão "Adicionar pagamento" e atalho de venda rápida) não insere nada (T7).
-- [ ] T023 [P] [US1] Atualizar `tests/unit/shared/dav.schema.spec.ts` e `tests/unit/domain/importacaoVenda/mapearVendaExistente.spec.ts` (RED): documento com `TEFPagId` → preservado até o retrato; documento sem os três campos antigos → aceito; documento antigo com eles → aceito e ignorado.
+- [X] T023 [P] [US1] Atualizar `tests/unit/shared/dav.schema.spec.ts` e `tests/unit/domain/importacaoVenda/mapearVendaExistente.spec.ts` (RED): documento com `TEFPagId` → preservado até o retrato; documento sem os três campos antigos → aceito; documento antigo com eles → aceito e ignorado.
 
 ### Implementation for User Story 1
 
-- [ ] T024 [US1] Ajustar `src/shared/schemas/dav.schema.ts` e `src/client/domain/importacaoVenda/mapearVendaExistente.ts` (`research.md` D16, `contracts/erp-tef-api.md` §6). Depende de T008.
+- [X] T024 [US1] Ajustar `src/shared/schemas/dav.schema.ts` e `src/client/domain/importacaoVenda/mapearVendaExistente.ts` (`research.md` D16, `contracts/erp-tef-api.md` §6). Depende de T008.
   - `TEFPagId` entra opcional; `TEFidentificacao`, `TEFCNPJ` e `TEFNumeroAutorizacao` passam a opcionais e deixam de ser lidos.
   - `TefImportado`/`paraTef` passam a reconhecer TEF por `TEFPagId` não vazio, e o `pagId` chega ao `dadosTEF` do pagamento importado para ser **reenviado** ao faturar.
   - A forma importada continua com `integracao: 'NENHUMA'` (item 65 de `PENDENCIES.md`).
 
   T023 fica verde.
-- [ ] T025 [US1] Reescrever o bloco TEF de `src/client/domain/pagamento/formaParaRetrato.ts`: envia `TEFPagId`, `TEFBandeira` e `TEFTipoIntegracao`, e deixa de enviar os três campos removidos. Ajustar o tipo `FormaDePagamentoRetrato` em `src/client/domain/venda/montarRetratoVenda.ts` se ele declarar os campos antigos. T020 fica verde e `tests/integration/validacaoVendaSlice.spec.ts` continua verde.
-- [ ] T026 [US1] Implementar `src/client/features/pagamento/tef/ModalTef.tsx` — **consultar o Pencil MCP antes de implementar**: frames `Y0ka3`/`uHAyW` e `xWrzX`/`A9MNZI`, além dos nós `H4DCf`, `xObO3`, `hEB6G`, `ELWs2`, `SJmhL`, `CDhv3`, `mz2gp`, `vjHCo` e `xpon7`. Seguir `contracts/tef-domain-api.md` §3 (`ModalTefProps`) e a estrutura do `ModalPix.tsx`:
+- [X] T025 [US1] Reescrever o bloco TEF de `src/client/domain/pagamento/formaParaRetrato.ts`: envia `TEFPagId`, `TEFBandeira` e `TEFTipoIntegracao`, e deixa de enviar os três campos removidos. Ajustar o tipo `FormaDePagamentoRetrato` em `src/client/domain/venda/montarRetratoVenda.ts` se ele declarar os campos antigos. T020 fica verde e `tests/integration/validacaoVendaSlice.spec.ts` continua verde.
+- [X] T026 [US1] Implementar `src/client/features/pagamento/tef/ModalTef.tsx` — **consultar o Pencil MCP antes de implementar**: frames `Y0ka3`/`uHAyW` e `xWrzX`/`A9MNZI`, além dos nós `H4DCf`, `xObO3`, `hEB6G`, `ELWs2`, `SJmhL`, `CDhv3`, `mz2gp`, `vjHCo` e `xpon7`. Seguir `contracts/tef-domain-api.md` §3 (`ModalTefProps`) e a estrutura do `ModalPix.tsx`:
   - `useFocoDeModal`;
   - trava `desfechoEmitido` e `criacaoIniciada`;
   - um único `abandonar()` para desistência e falha;
@@ -198,7 +198,7 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
   - fechamento automático em `MS_FECHAMENTO_APOS_APROVACAO_TEF = 10_000`.
 
   Rótulo do rodapé: **"Desistir da operação"** (`research.md` D12). Estados sem nó (criando, erro de criação) reusam a moldura (item 66). Tokens de cor e raio de `src/client/styles/global.css`; valor em `font-mono`. **Não importar `vendaStore`.** T021 fica verde.
-- [ ] T027 [US1] Em `src/client/features/pagamento/ListaPagamentosAplicados.tsx`, criar `useTefPendente()`, espelho de `usePixPendente`: `find` do pagamento `PENDENTE_INTEGRACAO` com `integracao === 'TEF'`, `idExibido` acompanhando o pagamento exibido, `key={idPagamento}`. As props vêm do store:
+- [X] T027 [US1] Em `src/client/features/pagamento/ListaPagamentosAplicados.tsx`, criar `useTefPendente()`, espelho de `usePixPendente`: `find` do pagamento `PENDENTE_INTEGRACAO` com `integracao === 'TEF'`, `idExibido` acompanhando o pagamento exibido, `key={idPagamento}`. As props vêm do store:
   - `prazoDaCondicao` de `condicaoSelecionada.prazo`;
   - `meioPagtoNFe`, `formaCodigo` e `valorAplicado` do pagamento;
   - `clienteAtual`;
@@ -218,8 +218,8 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### Tests for User Story 2
 
-- [ ] T028 [P] [US2] Conferir `tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts` e acrescentar só os casos que faltarem: `tefAtivo: false` → cartão `NENHUMA`; `integracaoCartao` `''`/`'2'` → `NENHUMA`; PIX com `'1'` e `tefAtivo` → `TEF`, mesmo com `pixAtivo`. Sem mudança de código esperada; se algum falhar, é regressão a investigar, não a contornar.
-- [ ] T029 [P] [US2] Em `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, acrescentar: forma de cartão aplicada com `integracao: 'NENHUMA'` entra `APROVADO`, não monta a janela TEF e não faz nenhuma requisição SmartTEF.
+- [X] T028 [P] [US2] Conferir `tests/unit/domain/pagamento/roteamentoIntegracao.spec.ts` e acrescentar só os casos que faltarem: `tefAtivo: false` → cartão `NENHUMA`; `integracaoCartao` `''`/`'2'` → `NENHUMA`; PIX com `'1'` e `tefAtivo` → `TEF`, mesmo com `pixAtivo`. Sem mudança de código esperada; se algum falhar, é regressão a investigar, não a contornar.
+- [X] T029 [P] [US2] Em `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, acrescentar: forma de cartão aplicada com `integracao: 'NENHUMA'` entra `APROVADO`, não monta a janela TEF e não faz nenhuma requisição SmartTEF.
 
 **Checkpoint**: US2 provada sem código novo.
 
@@ -233,13 +233,13 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### Tests for User Story 3 ⚠️ (escrever primeiro, garantir RED)
 
-- [ ] T030 [P] [US3] Em `tests/integration/pagamentoSlice.spec.ts`, acrescentar os casos de `confirmarEstornoTef` (RED):
+- [X] T030 [P] [US3] Em `tests/integration/pagamentoSlice.spec.ts`, acrescentar os casos de `confirmarEstornoTef` (RED):
   - (a) TEF `APROVADO` → `EXCLUIDO`, saldo volta, evento `FORMA_PAGAMENTO_REMOVIDA` e `invalidarVeredito` chamado (T5);
   - (b) no-op para PIX, dinheiro, TEF `PENDENTE_INTEGRACAO` e TEF já `EXCLUIDO`, sem evento;
   - (c) `removerPagamento` **continua** recusando TEF aprovado com `AVISO_TEF_IRREVERSIVEL` (`FR-003`);
   - (d) depois de `confirmarEstornoTef`, `descartarPagamento` e `podeMutarCarrinho` voltam a liberar (`FR-009`);
   - (e) com dois TEFs aprovados, estornar um mantém o outro bloqueando.
-- [ ] T031 [P] [US3] Criar `tests/integration/JanelaEstornoTef.spec.tsx` (RED). Cobrir a máquina de `data-model.md` §4.2:
+- [X] T031 [P] [US3] Criar `tests/integration/JanelaEstornoTef.spec.tsx` (RED). Cobrir a máquina de `data-model.md` §4.2:
   - (a) consulta inicial `EST` → `onEstornado` **sem** chamar `EstornarPagamento`;
   - (b) consulta inicial `SOL_EST` → só sonda, sem segundo pedido;
   - (c) consulta `CNC` → `EstornarPagamento` → `SOL_EST` → polling → `EST` → `onEstornado`;
@@ -249,7 +249,7 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
   - (g) "Desistir de esperar" → confirmação com o aviso de estorno solicitado → `onFechar` sem `onEstornado`;
   - (h) ESC e `X` inertes enquanto aguarda;
   - (i) `StrictMode` → um único `EstornarPagamento`.
-- [ ] T032 [P] [US3] Em `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, acrescentar (RED):
+- [X] T032 [P] [US3] Em `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, acrescentar (RED):
   - (a) o botão remover de TEF aprovado **não** tem mais `aria-disabled` e abre a confirmação "Estornar o pagamento no cartão?";
   - (b) cancelar a confirmação não chama nada;
   - (c) confirmar monta `JanelaEstornoTef` com o `pagId` do pagamento;
@@ -258,21 +258,21 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Em `src/client/stores/slices/pagamentoSlice.ts`, implementar `confirmarEstornoTef(idPagamento)` (`data-model.md` §5, `contracts/tef-domain-api.md` §4) com os mesmos efeitos de `removerPagamento` (riscado, evento, `invalidarVeredito`), restrita a TEF `APROVADO`. `removerPagamento` mantém a guarda. Reescrever a frase e o TSDoc de `AVISO_TEF_IRREVERSIVEL`: a saída agora é o estorno pelo botão Remover, não "cancele no terminal". Atualizar o TSDoc de I6. T030 fica verde.
-- [ ] T034 [US3] Implementar `src/client/features/pagamento/tef/JanelaEstornoTef.tsx` (`contracts/tef-domain-api.md` §3) — **consultar o Pencil MCP antes de implementar**: não há nó próprio (item 66), então reusar a moldura do `ModalTef` (cabeçalho `H4DCf`, bloco de valor `SJmhL`, rodapé `Ttsy4`) com título e estados de estorno. Comportamento:
+- [X] T033 [US3] Em `src/client/stores/slices/pagamentoSlice.ts`, implementar `confirmarEstornoTef(idPagamento)` (`data-model.md` §5, `contracts/tef-domain-api.md` §4) com os mesmos efeitos de `removerPagamento` (riscado, evento, `invalidarVeredito`), restrita a TEF `APROVADO`. `removerPagamento` mantém a guarda. Reescrever a frase e o TSDoc de `AVISO_TEF_IRREVERSIVEL`: a saída agora é o estorno pelo botão Remover, não "cancele no terminal". Atualizar o TSDoc de I6. T030 fica verde.
+- [X] T034 [US3] Implementar `src/client/features/pagamento/tef/JanelaEstornoTef.tsx` (`contracts/tef-domain-api.md` §3) — **consultar o Pencil MCP antes de implementar**: não há nó próprio (item 66), então reusar a moldura do `ModalTef` (cabeçalho `H4DCf`, bloco de valor `SJmhL`, rodapé `Ttsy4`) com título e estados de estorno. Comportamento:
   - consulta inicial por `consultarStatusTef`;
   - `estornarTef` só quando o status é `CNC` ou desconhecido;
   - polling por `useStatusTef`, interpretado com `interpretarStatusEstornoTef`;
   - travas de desfecho único e de "um pedido de estorno por montagem".
 
   T031 fica verde.
-- [ ] T035 [US3] Em `src/client/features/pagamento/ListaPagamentosAplicados.tsx`:
+- [X] T035 [US3] Em `src/client/features/pagamento/ListaPagamentosAplicados.tsx`:
   - `motivoBloqueioRemocao` deixa de bloquear TEF aprovado;
   - `pedirRemocao` passa a abrir uma `DialogoConfirmacaoDestrutiva` de estorno (`testId="confirmar-estorno-tef"`, textos de `avisosTef.ts`) para TEF aprovado;
   - confirmar monta `JanelaEstornoTef`, e `onEstornado` chama `confirmarEstornoTef`.
 
   Depende de T033 e T034. T032 fica verde.
-- [ ] T036 [US3] Revisar os textos de bloqueio por TEF aprovado fora da lista, para apontarem para o estorno em vez de "cancele no terminal":
+- [X] T036 [US3] Revisar os textos de bloqueio por TEF aprovado fora da lista, para apontarem para o estorno em vez de "cancele no terminal":
   - `temTefAprovado` e o motivo de suspensão em `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts`;
   - o motivo em `src/client/features/pagamento/ConfiguracaoPagamento.tsx`, linha do `integracao === 'TEF' && status === 'APROVADO'`.
 
@@ -284,18 +284,18 @@ tests/unit/{domain/tef,services/tef,shared,server}/ | tests/integration/ | tests
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T037 Criar `tests/e2e/pagamento-tef.spec.ts` com o fluxo dourado do `quickstart.md`, nos projetos desktop e mobile (cenário 18): dois TEFs aprovados (débito e crédito `'2 VEZES'`), estorno de um, finalizar, e afirmar o corpo do `FaturarNFCe` (um `TEFPagId`, sem campos TEF antigos). Incluir também desistência (cenário 6) e estorno rejeitado (cenário 14). Antes de rodar, derrubar o que estiver na porta 3100 (`e2e-porta-3100-ocupada-por-outro-projeto`).
-- [ ] T038 [P] Atualizar a documentação de domínio:
+- [X] T037 Criar `tests/e2e/pagamento-tef.spec.ts` com o fluxo dourado do `quickstart.md`, nos projetos desktop e mobile (cenário 18): dois TEFs aprovados (débito e crédito `'2 VEZES'`), estorno de um, finalizar, e afirmar o corpo do `FaturarNFCe` (um `TEFPagId`, sem campos TEF antigos). Incluir também desistência (cenário 6) e estorno rejeitado (cenário 14). Antes de rodar, derrubar o que estiver na porta 3100 (`e2e-porta-3100-ocupada-por-outro-projeto`).
+- [X] T038 [P] Atualizar a documentação de domínio:
   - `.specs/features/pagamento-tef/spec.md`: Requirement Traceability `PAY-12` → Verified;
   - `.specs/codebase/CONTRATO-PAGAMENTO-ERP-REAL.md`: seção SmartTEF com o que T001 mediu;
   - `.specs/project/STATE.md`: um AD de implementação com os desvios de contrato decididos no caminho.
 
   Corrigir decisão superada **no lugar**, nunca anexando no fim (`docs/agents/domain.md`).
-- [ ] T039 Rodar os gates e corrigir até ficarem limpos:
+- [X] T039 Rodar os gates e corrigir até ficarem limpos:
   - `npm run test`, `npx tsc --noEmit`, `npm run lint` e o formatador do projeto;
   - a skill `typescript-strict` sobre os arquivos novos (sem `any`/`as` na fronteira, `import type`) — obrigatória antes do push;
   - a skill `owasp-security` sobre o diff do BFF (`erp-proxy.ts`, `cookie.ts`, `session-start.ts`) — injeção de `UsuarioGAM`/`EmpCod`, A01/A04.
-- [ ] T040 **Validação ao vivo com o usuário** (`quickstart.md`, pré-requisito 4): cenários 1, 2, 10, 13 e 14 contra o ERP real, com terminal de homologação, depois de o ERP publicar `UsuarioGAM` (item 64). Registrar o resultado no AD de T038. Se o ERP ainda não tiver publicado, deixar a tarefa aberta e dizer isso no fechamento — não marcar como feita.
+- [ ] T040 **Validação ao vivo com o usuário** — **aberta (2026-10-02, AD-260, item 67):** o usuário ainda não tem o terminal de homologação, e o ERP ainda não publica `UsuarioGAM` (item 64). (`quickstart.md`, pré-requisito 4): cenários 1, 2, 10, 13 e 14 contra o ERP real, com terminal de homologação, depois de o ERP publicar `UsuarioGAM` (item 64). Registrar o resultado no AD de T038. Se o ERP ainda não tiver publicado, deixar a tarefa aberta e dizer isso no fechamento — não marcar como feita.
 
 ---
 

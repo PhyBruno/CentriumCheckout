@@ -8,6 +8,7 @@ import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useCanalDisplay } from '../../services/display/useCanalDisplay';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { iconeDoPagamento } from './iconePorMeio';
@@ -23,6 +24,14 @@ import {
 } from './pix/avisosPix';
 import { DialogoConfirmacaoDestrutiva } from './DialogoConfirmacaoDestrutiva';
 import { ModalPix } from './pix/ModalPix';
+import { ModalTef } from './tef/ModalTef';
+import { JanelaEstornoTef } from './tef/JanelaEstornoTef';
+import {
+  CHAMADA_ESTORNO,
+  DESTAQUE_ESTORNO,
+  EXPLICACAO_ESTORNO,
+  TITULO_CONFIRMAR_ESTORNO,
+} from './tef/avisosTef';
 
 /**
  * Bloco "Pagamentos aplicados" do cartão de pagamento (T028, `FR-011`/`FR-012`)
@@ -60,6 +69,7 @@ import { ModalPix } from './pix/ModalPix';
 export function ListaPagamentosAplicados(): ReactElement | null {
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const removerPagamento = useVendaStore((estado) => estado.removerPagamento);
+  const confirmarEstornoTef = useVendaStore((estado) => estado.confirmarEstornoTef);
   // Só o campo, não o objeto `SaldoPagamento`: `saldo()` monta um objeto novo a
   // cada chamada, e devolvê-lo do seletor daria uma referência diferente por
   // render — o Zustand v5 trataria como mudança e o componente entraria em laço.
@@ -74,7 +84,17 @@ export function ListaPagamentosAplicados(): ReactElement | null {
    */
   const [idAConfirmar, setIdAConfirmar] = useState<string | null>(null);
 
+  /**
+   * Estorno de TEF aprovado (feature 010, US3): primeiro a confirmação, depois
+   * a janela. Dois estados, e não um, porque cancelar a confirmação não pode
+   * deixar rastro, e a janela só existe depois do "sim". Guardam o `id` pelo
+   * mesmo motivo de `idAConfirmar`.
+   */
+  const [idAEstornar, setIdAEstornar] = useState<string | null>(null);
+  const [idEstornando, setIdEstornando] = useState<string | null>(null);
+
   const cobrancaPix = usePixPendente();
+  const cobrancaTef = useTefPendente();
 
   /**
    * A lista salta para a forma recém-inserida (pedido do usuário, 2026-09-04).
@@ -136,6 +156,11 @@ export function ListaPagamentosAplicados(): ReactElement | null {
   // Qual das duas confirmações abrir: a do valor já recebido tem precedência
   // sobre a do PIX, mas na prática as duas nunca coincidem — o que vem do
   // documento entra com `integracao: 'NENHUMA'`.
+  const estornando =
+    idEstornando === null
+      ? undefined
+      : pagamentos.find((pagamento) => pagamento.idPagamento === idEstornando);
+
   const aConfirmarVeioDeDocumento =
     idAConfirmar !== null &&
     (pagamentos.find((pagamento) => pagamento.idPagamento === idAConfirmar)?.veioDeDocumento ??
@@ -144,6 +169,13 @@ export function ListaPagamentosAplicados(): ReactElement | null {
   function pedirRemocao(idPagamento: string): void {
     const alvo = pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
     if (alvo === undefined) {
+      return;
+    }
+    // TEF aprovado não sai por `removerPagamento` — o slice o recusa (I6,
+    // `FR-003`). A saída é o estorno pelo ERP, que pergunta antes e só risca a
+    // forma quando a SmartTEF devolve `EST` (feature 010, `research.md` D14).
+    if (alvo.integracao === 'TEF' && alvo.status === 'APROVADO') {
+      setIdAEstornar(idPagamento);
       return;
     }
     if (alvo.veioDeDocumento || alvo.integracao === 'PIX_DINAMICO') {
@@ -230,6 +262,40 @@ export function ListaPagamentosAplicados(): ReactElement | null {
       </ul>
 
       {cobrancaPix}
+      {cobrancaTef}
+
+      {idAEstornar !== null && (
+        <DialogoConfirmacaoDestrutiva
+          testId="confirmar-estorno-tef"
+          titulo={TITULO_CONFIRMAR_ESTORNO}
+          subtitulo="O pagamento já foi aprovado no TEF"
+          chamada={CHAMADA_ESTORNO}
+          explicacao={EXPLICACAO_ESTORNO}
+          destaque={DESTAQUE_ESTORNO}
+          rotuloConfirmar="Estornar"
+          onConfirmar={() => {
+            setIdEstornando(idAEstornar);
+            setIdAEstornar(null);
+          }}
+          onCancelar={() => {
+            setIdAEstornar(null);
+          }}
+        />
+      )}
+
+      {estornando !== undefined && estornando.dadosTEF !== null && (
+        <JanelaEstornoTef
+          key={estornando.idPagamento}
+          paymentIdentifier={estornando.dadosTEF.pagId}
+          valor={estornando.valorAplicado}
+          onEstornado={() => {
+            confirmarEstornoTef(estornando.idPagamento);
+          }}
+          onFechar={() => {
+            setIdEstornando(null);
+          }}
+        />
+      )}
 
       {idAConfirmar !== null &&
         (aConfirmarVeioDeDocumento ? (
@@ -309,6 +375,27 @@ export function ListaPagamentosAplicados(): ReactElement | null {
  * segundo estado de "aberto" capaz de discordar do slice — se o pagamento sumir
  * da lista (recusa, remoção), a janela some junto, sem gesto nenhum.
  */
+/**
+ * Saída de uma janela de integração (PIX ou TEF) com a venda já coberta: o
+ * foco vai para "Finalizar venda" (pedido do usuário, 2026-10-02, AD-262).
+ *
+ * É a mesma regra do Enter no valor recebido (`EntradaPagamento`), que não
+ * alcança estas formas: o pagamento entra `PENDENTE_INTEGRACAO`, que não conta
+ * no saldo (`FR-004`), então no instante da inserção ainda falta valor e o foco
+ * volta ao campo. A cobrança só se encerra quando a janela aprovada fecha.
+ *
+ * Chamado **junto** do `setIdExibido(null)`, no mesmo lote: o React roda a
+ * limpeza do modal que sai — `useFocoDeModal` devolve o foco ao campo de valor —
+ * antes dos efeitos novos, e o do `BotaoFinalizarVenda` vem por último e fica
+ * com o foco. A desistência e a recusa passam por aqui também, mas com saldo
+ * restante: aí nada é pedido e a devolução ao campo prevalece.
+ */
+function focarFinalizacaoSeVendaCoberta(): void {
+  if (useVendaStore.getState().saldo().saldoRestante === ZERO_CENTAVOS) {
+    useFocoVendaStore.getState().focarFinalizarVenda();
+  }
+}
+
 function usePixPendente(): ReactElement | null {
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
@@ -388,8 +475,80 @@ function usePixPendente(): ReactElement | null {
         // aprovação, o `X`, o ESC (só com o pagamento aprovado) e a desistência
         // confirmada convergem todos aqui.
         setIdExibido(null);
+        focarFinalizacaoSeVendaCoberta();
       }}
       onEstadoDisplay={publicarNoDisplay}
+    />
+  );
+}
+
+/**
+ * Ponto de disparo da cobrança no TEF (T027, feature 010) — espelho de
+ * `usePixPendente`, com o mesmo raciocínio de AD-158: a janela é **função** do
+ * pagamento `PENDENTE_INTEGRACAO` com `integracao === 'TEF'`, seguido pelo
+ * `idPagamento` exibido para continuar de pé durante os 10s do estado aprovado.
+ * `iniciarIntegracao` segue no-op; não há segundo gatilho.
+ *
+ * `find`, não `filter`: há no máximo uma janela de integração aberta por vez —
+ * ela é modal e travada (`research.md` D15). Vários TEFs na mesma venda entram
+ * em sequência, cada um com a sua janela, recriada pela `key`.
+ *
+ * Copiado, não generalizado com o do PIX: as duas janelas recebem props sem
+ * nada em comum além dos callbacks, e uma abstração "integração pendente"
+ * acoplaria duas features que divergem exatamente no estorno.
+ */
+function useTefPendente(): ReactElement | null {
+  const pagamentos = useVendaStore((estado) => estado.pagamentos);
+  const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
+  // `CondicaoPrazo` (= `PraNumPar`, o número de parcelas da condição). A condição
+  // não muda com pagamento vivo na venda (I9 da 008), então é estável aqui.
+  const prazoDaCondicao = useVendaStore((estado) => estado.condicaoSelecionada?.prazo ?? 0);
+  const confirmarPagamentoIntegrado = useVendaStore((estado) => estado.confirmarPagamentoIntegrado);
+  const recusarPagamentoIntegrado = useVendaStore((estado) => estado.recusarPagamentoIntegrado);
+  // Só a presença: o valor do `UsuarioGAM` fica no cookie do BFF, que o insere
+  // no corpo de `CriarCardPagamento` (AD-224, invariante T8).
+  const usuarioGamPresente = useSessionStore(
+    (estado) => (estado.registro?.SessaoUsuario.UsuarioGAM?.trim() ?? '') !== '',
+  );
+  const [idExibido, setIdExibido] = useState<string | null>(null);
+
+  const pendente = pagamentos.find(
+    (pagamento) => pagamento.status === 'PENDENTE_INTEGRACAO' && pagamento.integracao === 'TEF',
+  );
+
+  // Entrada em cena durante o render, pelo mesmo motivo de `usePixPendente`.
+  if (pendente !== undefined && pendente.idPagamento !== idExibido) {
+    setIdExibido(pendente.idPagamento);
+  }
+
+  const exibido =
+    idExibido === null
+      ? undefined
+      : pagamentos.find((pagamento) => pagamento.idPagamento === idExibido);
+
+  if (exibido === undefined) {
+    return null;
+  }
+
+  return (
+    <ModalTef
+      key={exibido.idPagamento}
+      formaCodigo={exibido.formaCodigo}
+      meioPagtoNFe={exibido.meioPagtoNFe}
+      valor={exibido.valorAplicado}
+      prazoDaCondicao={prazoDaCondicao}
+      clienteAtual={clienteAtual}
+      usuarioGamPresente={usuarioGamPresente}
+      onAprovado={(dadosTEF) => {
+        confirmarPagamentoIntegrado(exibido.idPagamento, { dadosTEF });
+      }}
+      onAbandonado={(motivo) => {
+        recusarPagamentoIntegrado(exibido.idPagamento, motivo);
+      }}
+      onFechar={() => {
+        setIdExibido(null);
+        focarFinalizacaoSeVendaCoberta();
+      }}
     />
   );
 }
@@ -465,11 +624,11 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
             pagamento (`FpgUtiCar = 'VDV'`), inserida pelo modal que abre ao
             escolher essa forma. O ticket aparece nesta faixa como a anotação
             "Vale <código>", ao lado do nome. */}
-        {/* Bloqueio explicativo, nunca `disabled` nativo (`lib/bloqueio.ts`):
-            remover um TEF já aprovado é impossível (I6), e o operador precisa
-            ouvir **por quê** ao clicar — no `disabled` o clique não produz
-            evento nenhum e o motivo morre no `title`. O PIX não é bloqueado:
-            ele passa pela confirmação de `pedirRemocao`. */}
+        {/* Bloqueio explicativo, nunca `disabled` nativo (`lib/bloqueio.ts`).
+            Desde a feature 010 nenhuma forma aprovada é bloqueada aqui: o PIX
+            e o TEF passam pela confirmação de `pedirRemocao` — o TEF abre o
+            estorno. Só sobra o TEF aprovado sem `dadosTEF`, que não tem com
+            que estornar (`motivoBloqueioRemocao`). */}
         {excluido ? null : (
           <Button
             type="button"
@@ -492,26 +651,31 @@ function ItemPagamentoAplicado({ pagamento, onRemover }: ItemPagamentoAplicadoPr
 }
 
 /**
- * I6, reescrita pelo usuário em 2026-09-04: **só o TEF aprovado** bloqueia a
- * remoção.
+ * I6, reescrita duas vezes.
  *
- * A regra anterior bloqueava as duas integrações. Ela partia da ideia de que
- * "dinheiro já movimentado não sai da venda" — verdade para o TEF, cuja
- * transação vive num terminal físico que precisa ser cancelado antes, e falsa
- * para o PIX: o Checkout nunca teve como cancelar uma cobrança PIX (invariante
- * J5 — não existe endpoint), então travar a forma na tela não protegia o
- * dinheiro de ninguém, só prendia o operador. Hoje o PIX sai da venda mediante
- * confirmação explícita, e é a confirmação que informa que a cobrança segue viva
- * no banco.
+ * - **2026-09-04 (usuário):** só o TEF aprovado bloqueava a remoção; o PIX passou
+ *   a sair com confirmação, porque o Checkout nunca soube cancelá-lo (J5) e
+ *   travar a forma não protegia dinheiro nenhum.
+ * - **Feature 010 (AD-259):** o TEF aprovado também deixou de ser bloqueio. A
+ *   remoção **direta** continua proibida — `removerPagamento` a recusa —, mas o
+ *   botão agora abre a confirmação de estorno, e a forma só é riscada quando a
+ *   SmartTEF devolve `EST` (`confirmarEstornoTef`). A frase que este bloqueio
+ *   exibia ("cancele a transação no terminal") mandava o operador para uma
+ *   saída que deixou de ser a do Checkout.
  *
- * Bloqueio explicativo, nunca `disabled` mudo (`lib/bloqueio.ts`): é o motivo
- * que impede o operador de descobrir a regra clicando no vazio.
+ * O único bloqueio que sobra é o TEF aprovado **sem** `dadosTEF`: sem o
+ * `pagId` não há o que consultar nem estornar. Não deveria existir — a 010
+ * sempre grava os dados ao aprovar —, e por isso o motivo manda para o ERP.
  */
 function motivoBloqueioRemocao(pagamento: PagamentoAplicado): MotivoBloqueio {
-  if (pagamento.status !== 'APROVADO' || pagamento.integracao !== 'TEF') {
+  if (
+    pagamento.status !== 'APROVADO' ||
+    pagamento.integracao !== 'TEF' ||
+    pagamento.dadosTEF !== null
+  ) {
     return null;
   }
-  return 'Cartão já aprovado no TEF não pode ser removido da venda: cancele a transação no terminal antes.';
+  return 'Este cartão aprovado no TEF não tem a identificação da transação para estornar: confira o estorno no ERP.';
 }
 
 /**

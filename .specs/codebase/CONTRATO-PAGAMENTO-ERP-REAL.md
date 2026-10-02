@@ -184,6 +184,47 @@ listava como limitação real do cadastro a impossibilidade de distinguir TEF de
 POS. As duas afirmações caíram: o campo existe, sempre veio no payload, e
 distingue exatamente isso.
 
+### TEF — a cobrança na maquininha (SmartTEF): contrato da KB, **medido só na recusa** (2026-10-02)
+
+Quando o roteamento acima decide `TEF`, a feature 010 fala com três endpoints
+do bloco `//SmartTEF` da API `ApiCentriumOAuth` (`CriarCardPagamento`,
+`ConsultarStatusCard`, `EstornarPagamento`). O contrato completo está em
+`specs/010-pagamento-tef/contracts/erp-tef-api.md` e foi lido **na KB**
+`CentriumDEVU6` (AD-259), não neste payload nem em chamada ao vivo.
+
+**Só o caminho de recusa foi medido contra o ERP real, em 2026-10-02.** Os três
+endpoints foram chamados no `prototype` do tenant `c0lj6mvzeh`, pelo BFF do
+Checkout e com a sessão real, a pedido e com aval do usuário. O tenant tem
+`TEFAtivo:false`, nenhuma URL da SmartTEF e nenhum `UsuarioGAM`, então nada chegou
+a terminal nenhum:
+
+- `ConsultarStatusCard` (`GET ?Empresa=1&SmartTefPaymentIdentifier=…`, com
+  identificadores inexistentes, vazio ou sem o parâmetro) e `EstornarPagamento`
+  (`{SmartTefPaymentIdentifier, Empresa:1}`, com identificador falso):
+  `200` + `{"Sucesso":false,"CodigoStatusHttp":0,"MensagemErro":"1.00 - Invalid URI: The hostname could not be parsed.","RespostaJson":""}`.
+- `CriarCardPagamento` (corpo plano de `montarCorpoCriarCard`, R$ 0,01, forma 19,
+  com `EmpCod:1` e `UsuarioGAM:""` injetados pelo BFF): `200` +
+  `{"Sucesso":false,"CodigoStatusHttp":0,"MensagemErro":"Serial do POS (serial_pos) nao localizado para o usuario informado","RespostaJson":""}`.
+- Passado pela fronteira (`consultarStatusTef` com o corpo real), vira
+  `ErroNegocioErp`, e o operador lê a `MensagemErro` íntegra.
+
+O caminho de **sucesso** (o `RespostaJson` preenchido, com status, NSU e bandeira)
+continua sem medição. A medição de `research.md` D17 cobra e estorna dinheiro de
+verdade, então só acontece com o usuário num terminal de homologação, que ele
+ainda não tem (item 67 de `PENDENCIES.md`). O código seguiu as formas da KB e as
+isolou onde a medição pode desmenti-las:
+
+| Ponto | Situação | O que o código assume | Onde troca |
+|---|---|---|---|
+| Envelope da saída (`RespostaSmartTEF`) | **medido (recusa):** SDT plano na raiz, sem `messages`, nos três endpoints | as duas formas | `respostaSmartTefSchema` (`semEnvelope`) |
+| `CodigoStatusHttp` | **medido (recusa):** número (`0`), não string | número ou string | `respostaSmartTefSchema` |
+| Recusa de negócio | **medido:** `Sucesso:false` + `MensagemErro`, `RespostaJson:""`, HTTP `200` | idem | `lerRespostaSmartTef` (`services/tef/tefMapper.ts`) |
+| Envelope do corpo de `CriarCardPagamento` | não medido. O plano foi aceito sem erro de desserialização, mas a recusa ("Serial do POS … usuario informado") sairia igual com o corpo envelopado, porque o `UsuarioGAM` estava vazio | plano | `montarCorpoCriarCard` (`services/tef/tefQueries.ts`); o BFF já injeta nas duas formas |
+| Grafia `FPgCod` × `FpgCod` | não medido (a validação do POS vem antes da forma) | `FPgCod` (KB) | `montarCorpoCriarCard` |
+| Forma de `RespostaJson` da consulta | não medido | lista; objeto único aceito | `consultaCardRespSchema` |
+| Grafia `card_brand`/`nsu_host`/`autorization_code` | não medido | a da KB | `consultaCardItemSchema` |
+| `UsuarioGAM` na raiz do `GetSessao` | **medido:** ausente no `c0lj6mvzeh` (item 64) | ausente hoje | `extrairUsuarioGam` |
+
 ### Nenhuma integração — é o resto
 
 Todo meio fora de `03`/`04`/`17`, e também `03`/`04`/`17` quando a flag da

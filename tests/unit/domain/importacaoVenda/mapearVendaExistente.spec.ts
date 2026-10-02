@@ -136,7 +136,40 @@ describe('mapearVendaExistente — documento completo', () => {
     ]);
   });
 
-  it('agrupa os campos TEF só quando o item de fato é TEF', () => {
+  /**
+   * T023, AD-259: TEF é reconhecido por `TEFPagId`, o vínculo com a
+   * `TransacaoTEF` do ERP. O `pagId` precisa chegar ao `dadosTEF` do pagamento
+   * importado para ser **reenviado** ao faturar — sem ele o ERP fatura o cartão
+   * sem o vínculo e a NFCe sai sem a autorização do adquirente (`research.md` D16).
+   */
+  it('reconhece TEF por TEFPagId e preserva o vínculo para o retrato', () => {
+    const documento = documentoValidado({
+      FormasDePagamento: [
+        {
+          FormaCodigo: 3,
+          FormaMeioPagtoNFe: '04',
+          FormaValor: 18.5,
+          TEFPagId: 'pay_exemplo_0001',
+          TEFBandeira: 'VISA',
+          TEFTipoIntegracao: '1',
+          FormaPixGUID: '',
+          TicketDevolucao: '',
+        },
+      ],
+    });
+
+    const venda = mapearVendaExistente(documento);
+
+    expect(venda.formasDePagamento[0]?.tef).toEqual({
+      pagId: 'pay_exemplo_0001',
+      bandeira: 'VISA',
+      nsu: '',
+      autorizacao: '',
+      tipoIntegracao: '1',
+    });
+  });
+
+  it('item sem TEFPagId não é TEF, mesmo que traga os campos antigos preenchidos', () => {
     const documento = documentoValidado({
       FormasDePagamento: [
         formaDePagamentoDoDav({
@@ -150,15 +183,7 @@ describe('mapearVendaExistente — documento completo', () => {
       ],
     });
 
-    const venda = mapearVendaExistente(documento);
-
-    expect(venda.formasDePagamento[0]?.tef).toEqual({
-      identificacao: 55,
-      cnpj: '00000000000191',
-      bandeira: 'VISA',
-      numeroAutorizacao: 'A1B2C3',
-      tipoIntegracao: 'POS',
-    });
+    expect(mapearVendaExistente(documento).formasDePagamento[0]?.tef).toBeNull();
   });
 });
 

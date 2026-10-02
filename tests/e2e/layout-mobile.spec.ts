@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
-import { quitarVendaEmDinheiro } from './support/pagamento';
+import { informarValorRecebido, quitarVendaEmDinheiro } from './support/pagamento';
 
 /**
  * T020 — fluxo dourado do mobile (feature 007, `US2`): entrar, etapa 1 → 2 → 3,
@@ -246,7 +246,7 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
       await page.getByTestId('opcao-condicao-1').click();
       await page.getByTestId('combobox-forma-pagamento').click();
       await page.getByTestId('opcao-forma-3').click();
-      await page.getByTestId('campo-valor-recebido').fill('10,00');
+      await informarValorRecebido(page, '10,00');
       await page.getByTestId('adicionar-pagamento').click();
 
       await expect(page.getByTestId('modal-pix')).toBeVisible();

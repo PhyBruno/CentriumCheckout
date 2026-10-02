@@ -4,6 +4,7 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
   type CifradorDeSessao,
+  type SessaoOperador,
 } from '../session/cookie';
 import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
 import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
@@ -64,6 +65,49 @@ export function queryComEmpresaDaSessao(queryString: string, codigoEmpresa: stri
 
 function ehObjeto(valor: unknown): valor is Record<string, unknown> {
   return typeof valor === 'object' && valor !== null && !Array.isArray(valor);
+}
+
+/**
+ * O caminho como o ERP o resolveria, para **comparar** com as listas de
+ * injeção — nunca para reescrever o que é repassado.
+ *
+ * Achado da revisão OWASP da feature 010 (A01, 2026-10-02): as listas por
+ * caminho comparavam só ignorando a caixa. Uma barra final, uma barra dupla ou
+ * uma letra em `%XX` chegam ao mesmo método no servidor do ERP e escapavam da
+ * comparação — o corpo forjado (com `EmpCod`/`UsuarioGAM`/`Empresa` de outro
+ * operador ou empresa) seguia intacto. Aqui o caminho é decodificado, as barras
+ * repetidas colapsam e a final sai. Codificação malformada fica crua: o ERP
+ * também não a entenderia como o método.
+ */
+function caminhoComparavel(caminho: string): string {
+  let decodificado = caminho;
+  try {
+    decodificado = decodeURIComponent(caminho);
+  } catch {
+    // `%` sem dois hexadecimais: compara como veio.
+  }
+  return decodificado
+    .replace(/\/{2,}/g, '/')
+    .replace(/\/+$/, '')
+    .toLowerCase();
+}
+
+/**
+ * O corpo sem nenhuma chave que, ignorando a caixa, seja uma das `chaves`.
+ *
+ * Inserir `EmpCod` ao lado de um `empcod` forjado deixaria as duas no corpo, e
+ * não está confirmado se o desserializador GeneXus diferencia caixa (pendência
+ * 62): a forjada poderia vencer. Removê-las antes de inserir fecha a dúvida sem
+ * depender da resposta.
+ */
+function semVariantesDeCaixa(
+  objeto: Record<string, unknown>,
+  chaves: readonly string[],
+): Record<string, unknown> {
+  const proibidas = new Set(chaves.map((chave) => chave.toLowerCase()));
+  return Object.fromEntries(
+    Object.entries(objeto).filter(([chave]) => !proibidas.has(chave.toLowerCase())),
+  );
 }
 
 /**
@@ -152,6 +196,11 @@ const CAMINHOS_COM_EMPRESA_NA_RAIZ = [
   // como o do envio por WhatsApp. O SDT a declara `integer int64`, então vai
   // numérica — é o que `corpoComEmpresaNaRaiz` faz.
   '/ApiCentriumOAuth/GerarPIX',
+  // Feature 010 (AD-259): `EstornarPagamento` recebe `in:&Empresa` como
+  // parâmetro comum e não tem `Event … .Before` na API, então a empresa só
+  // chega se estiver no corpo. O `ConsultarStatusCard`, que é `GET`, já a
+  // recebe na query por `queryComEmpresaDaSessao`.
+  '/ApiCentriumOAuth/EstornarPagamento',
 ];
 
 export function corpoComEmpresaNaRaiz(
@@ -159,8 +208,9 @@ export function corpoComEmpresaNaRaiz(
   caminhoNoErp: string,
   codigoEmpresa: string,
 ): unknown {
+  const comparavel = caminhoComparavel(caminhoNoErp);
   const alvo = CAMINHOS_COM_EMPRESA_NA_RAIZ.some(
-    (caminho) => caminho.toLowerCase() === caminhoNoErp.toLowerCase(),
+    (caminho) => caminhoComparavel(caminho) === comparavel,
   );
   if (!alvo || !ehObjeto(body)) {
     return body;
@@ -173,7 +223,72 @@ export function corpoComEmpresaNaRaiz(
 
   // `Empresa` é `integer int64` neste input — numérico, ao contrário do
   // `CheckoutFaturarNFCe.Empresa`, que é texto (AD-188).
-  return { ...body, Empresa: empresa };
+  return { ...semVariantesDeCaixa(body, ['Empresa']), Empresa: empresa };
+}
+
+const CAMINHO_CRIAR_CARD_TEF = caminhoComparavel('/ApiCentriumOAuth/CriarCardPagamento');
+
+/** Os dois campos que decidem de quem é a cobrança e em qual maquininha. */
+const CAMPOS_OPERADOR_TEF = ['EmpCod', 'UsuarioGAM'] as const;
+
+/** Envelope do SDT de entrada, caso a medição mostre que o ERP o exige. */
+const ENVELOPE_CRIAR_CARD_TEF = 'CriarCardReq';
+
+/**
+ * Insere `EmpCod` e `UsuarioGAM` no corpo de `CriarCardPagamento` (feature
+ * 010, `contracts/erp-tef-api.md` §5, invariante T8).
+ *
+ * Os dois decidem **de quem** é a cobrança e **em qual maquininha** ela aparece:
+ * `PSmartTEF` escolhe o `serial_pos` pelo `UsuarioGAM`. Mesmo princípio de
+ * `corpoComUsuarioDaSessao` (AD-224) — o corpo vem do navegador e o ERP não o
+ * confere contra o token —, com uma diferença que justifica uma função própria:
+ * aqui os campos são **inseridos**, porque o navegador não os manda (o tipo
+ * `DadosCriarCardTef` nem os tem), e qualquer ocorrência que chegue é
+ * sobrescrita.
+ *
+ * - `EmpCod` numérico (`NUMERIC(6)` no SDT); empresa da sessão não numérica
+ *   deixa o campo como veio, porque `NaN` seria pior.
+ * - `UsuarioGAM` do cookie, ou `''` quando a sessão não o tem: o ERP recusa
+ *   com "Serial do POS … nao localizado", e um valor forjado nunca passa.
+ * - Aplicado na raiz **e** dentro de `CriarCardReq`, se existir: o envelope do
+ *   corpo ainda não foi medido (`research.md` D6/D17), e o BFF não pode ficar
+ *   para trás quando o cliente trocar a forma.
+ */
+export function corpoComOperadorTef(
+  body: unknown,
+  caminhoNoErp: string,
+  sessao: Pick<SessaoOperador, 'codigoEmpresa' | 'usuarioGam'>,
+): unknown {
+  if (caminhoComparavel(caminhoNoErp) !== CAMINHO_CRIAR_CARD_TEF || !ehObjeto(body)) {
+    return body;
+  }
+
+  const empresa = Number(sessao.codigoEmpresa);
+  // Empresa da sessão não numérica: o `EmpCod` que veio fica — `NaN` seria
+  // pior —, mas só ele; as variantes de caixa saem igual.
+  const empCodPreservado = Number.isFinite(empresa) ? {} : comEmpCodOriginal(body);
+  const operador: Record<string, unknown> = {
+    ...(Number.isFinite(empresa) ? { EmpCod: empresa } : empCodPreservado),
+    UsuarioGAM: sessao.usuarioGam ?? '',
+  };
+
+  const corpo: Record<string, unknown> = {
+    ...semVariantesDeCaixa(body, CAMPOS_OPERADOR_TEF),
+    ...operador,
+  };
+  const envelope = body[ENVELOPE_CRIAR_CARD_TEF];
+  if (ehObjeto(envelope)) {
+    corpo[ENVELOPE_CRIAR_CARD_TEF] = {
+      ...semVariantesDeCaixa(envelope, CAMPOS_OPERADOR_TEF),
+      ...operador,
+    };
+  }
+  return corpo;
+}
+
+/** O `EmpCod` exatamente como veio, quando a sessão não tem empresa numérica. */
+function comEmpCodOriginal(body: Record<string, unknown>): Record<string, unknown> {
+  return 'EmpCod' in body ? { EmpCod: body['EmpCod'] } : {};
 }
 
 /** Campo do retrato que diz quem emitiu a nota (`CheckoutFaturarNFCe`, AD-221). */
@@ -263,14 +378,18 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
     const contentTypeOriginal = request.headers['content-type'];
 
     // Empresa e operador saem do cookie cifrado, nunca do corpo que o navegador
-    // mandou (AD-024 e AD-224).
-    const corpo = corpoComUsuarioDaSessao(
-      corpoComEmpresaNaRaiz(
-        corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
-        caminhoNoErp,
-        sessao.codigoEmpresa,
+    // mandou (AD-024, AD-224 e, para o TEF, AD-259).
+    const corpo = corpoComOperadorTef(
+      corpoComUsuarioDaSessao(
+        corpoComEmpresaNaRaiz(
+          corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
+          caminhoNoErp,
+          sessao.codigoEmpresa,
+        ),
+        sessao.usuarioCodigo,
       ),
-      sessao.usuarioCodigo,
+      caminhoNoErp,
+      sessao,
     );
 
     // `null` = a sessão acabou e o 401 terminal já foi respondido (FR-006).

@@ -3930,3 +3930,68 @@ Tornar estornável uma forma TEF **importada** fica fora — item 65.
 - a forma real de `RespostaJson`.
 
 **Impact:** `specs/010-pagamento-tef/` (plan, research, data-model, contracts, quickstart; `spec.md` com a emenda `FR-010`–`FR-016` e as Assumptions reescritas), `.specs/project/PENDENCIES.md` (item 41 fechado; 64, 65 e 66 abertos). Sem mudança de código.
+
+### AD-260: TEF implementado sem medição ao vivo — o contrato da KB ficou isolado onde a medição pode desmenti-lo (2026-10-02)
+
+**Origem:** `/speckit-implement` da feature 010. O usuário avisou que **ainda não tem a maquininha** de homologação ("em 010, nao consigo fazer o teste pois nao tenho a maquina ainda").
+
+**1. A medição de T001 não aconteceu, e o código seguiu as formas da KB.** `research.md` D17 manda medir três pontos antes do código de rede, só com o usuário presente, porque `CriarCardPagamento` cobra e `EstornarPagamento` estorna de verdade. Sem terminal, a própria tarefa prevê o desvio: registrar a não-medição e seguir com `contracts/erp-tef-api.md`. Cada ponto não medido mora em **um** lugar, e a tabela de `.specs/codebase/CONTRATO-PAGAMENTO-ERP-REAL.md` (seção "SmartTEF") diz qual. A medição continua pendente — item 67 de `PENDENCIES.md` —, junto com a validação ao vivo (T040), que também depende de o ERP publicar `UsuarioGAM` (item 64).
+
+**2. O que foi implementado** (40 tarefas, das quais T040 segue aberta):
+- `domain/tef/`: os nove status por fase (só `CNC` aprova, só `EST` estorna, literal desconhecido espera), parcelas pela condição e pagador.
+- `tef.schema.ts` + `services/tef/`: fronteira em dois estágios e as três chamadas.
+- BFF: `UsuarioGAM` do `GetSessao` no cookie (opcional, sem bump) e injetado com `EmpCod` em `CriarCardPagamento`; `Empresa` na raiz de `EstornarPagamento`.
+- `ModalTef`, `JanelaEstornoTef` e a action `confirmarEstornoTef`.
+- `DadosTEF` e o retrato da NFCe com `TEFPagId` no lugar dos três campos que saíram do SDT.
+- `erp-mock` com os três endpoints e E2E de cobrança, estorno, desistência, estorno rejeitado e celular.
+
+**3. Desvios decididos na implementação:**
+- **As frases de recusa local moram nas classes de erro** (`ErroTefSemUsuarioGam`, `ErroTefSemCliente`, `ErroCobrancaTefIlegivel` em `tefQueries.ts`), não em `avisosTef.ts` como T009 listava. É o arranjo do `ErroPixSemCliente`, e evita a camada de serviço importar da de UI só para ler um texto.
+- **Desistir enquanto a cobrança está sendo criada também pede confirmação.** `research.md` D12 só previa confirmação com a cobrança já criada; mas a resposta de `CriarCardPagamento` pode chegar depois de a SmartTEF abrir a transação (timeout de 30s do `PSmartTEF`), e sair sem o aviso deixaria uma cobrança em voo sem ninguém saber.
+- **`molduraTef.tsx`** reúne cabeçalho, bloco de valor, badge e cartão de detalhes. A janela de estorno não tem nó no Pencil (item 66), e copiar o JSX faria a próxima correção visual valer só para uma das janelas.
+- **NSU e autorização em Geist Mono**, não Inter como no nó `vjHCo`: são códigos, e a regra de fontes do produto põe valor tabular em mono.
+- **TEF aprovado sem `dadosTEF` continua bloqueado no "Remover"**, com o motivo mandando ao ERP: sem `pagId` não há o que estornar. Não deveria existir, porque a 010 sempre grava os dados ao aprovar.
+- **No `erp-mock`, o TEF vem ligado por padrão e aprova pelo relógio** (pedido do usuário, 2026-10-02). `tefAtivo: true` publica a condição `'2 VEZES'` (formas 11–13, todas integradas). Sem roteiro configurado, a cobrança fica `PDT`/`PROC_PAG` e vira `CNC` 30s depois de criada (`atrasoAprovacaoTefMs`), como o PIX faz desde 2026-09-04. Os cartões 2 e 5 da `'A VISTA'` passaram a POS (`' '`, como em todo o tenant medido): com `'1'` e o TEF ligado, as suítes de pagamento geral e o F7 da venda rápida cairiam na janela do TEF. Os E2E do TEF mandam roteiro explícito para não depender do relógio.
+
+**4. Dois furos de A01 achados na revisão `owasp-security` do BFF, e fechados.** O invariante T8 diz que `EmpCod`/`UsuarioGAM` (e o `Empresa` dos corpos planos) vêm sempre do cookie. A injeção já sobrescrevia o valor forjado, mas tinha duas brechas:
+- **o caminho era comparado só ignorando a caixa.** `CriarCardPagamento/`, `//ApiCentriumOAuth//…` ou `CriarCard%50agamento` chegam ao mesmo método no ERP e escapavam da lista, levando o corpo forjado intacto. Agora a comparação usa o caminho decodificado, sem barras repetidas nem final (`caminhoComparavel`). Isso vale também para `CAMINHOS_COM_EMPRESA_NA_RAIZ`, que já protegia `EnvioDiretoWhatsapp` e `GerarPIX`, além do `EstornarPagamento` novo.
+- **variante de caixa sobrevivia ao lado da chave injetada.** Com `empcod: 999` no corpo, o BFF acrescentava `EmpCod` e as duas seguiam para o ERP. Não está confirmado que o desserializador GeneXus diferencia caixa (pendência 62), e a forjada podia vencer. As variantes agora são removidas antes da inserção (`semVariantesDeCaixa`).
+
+**5. Pegadinha de E2E.** Desde 2026-09-24 o campo "Valor recebido" se preenche com o faltante **no foco**. Um `fill` direto do Playwright corre contra esse preenchimento e o texto sai concatenado (`"10,0010,00"`), com o botão bloqueado por "Valor inválido". O helper de `pagamento-tef.spec.ts` foca, espera o preenchimento e só então sobrescreve.
+
+**Impact:** `src/client/domain/tef/*`, `src/client/services/tef/*`, `src/client/features/pagamento/tef/*`, `src/shared/schemas/{tef,bootstrap,dav}.schema.ts`, `src/client/domain/pagamento/{saldoPagamento,formaParaRetrato}.ts`, `src/client/domain/importacaoVenda/mapearVendaExistente.ts`, `src/client/stores/slices/pagamentoSlice.ts`, `src/client/stores/vendaStore.ts` (TSDoc), `src/client/features/pagamento/{ListaPagamentosAplicados,ConfiguracaoPagamento}.tsx`, `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts`, `src/server/session/{getSessao,cookie}.ts`, `src/server/routes/{session-start,erp-proxy}.ts`, `tests/e2e/support/erp-mock.ts`, `tests/e2e/pagamento-tef.spec.ts`.
+
+**Verificação:** 2059 testes unit/integração verdes em 129 arquivos; os 4 cenários de `tests/e2e/pagamento-tef.spec.ts` verdes contra o mock; `tsc --noEmit` e ESLint limpos. **Não verificado contra o ERP real nem com terminal.**
+
+### AD-261: a janela do TEF aprovado fecha mesmo em 10s, e o estorno concluído vira um estado de sucesso da janela, não um toast (2026-10-02)
+
+**Pedido do usuário**, refinando a 010: *"Duas correcoes: 1 - Ao TEF ser aprovado, o modal de aprovacao deve fechar automaticamente em 10s, ou com o ESC como é hoje. 2 - Ao concluir o estorno, também deve haver um modal informando que o estorno foi efetuado com sucesso, tambem fecha automaticamente ou com o ESC"*
+
+**1. Cobrança aprovada: o prazo de 10s agora conta só da aprovação.** O `ModalTef` já tinha o fechamento automático (`MS_FECHAMENTO_APOS_APROVACAO_TEF`), mas com `onFechar` nas dependências do efeito. O pai (`useTefPendente`) recria essa função a cada render, então cada re-render da lista cancelava o temporizador e começava outro de 10s: uma tela que re-renderiza com frequência deixava a janela aberta indefinidamente. A função atual passou a ser lida por referência (`onFecharRef`), e o efeito só reabre quando `aprovado` ou o atraso mudam. O ESC continua como era: só fecha depois de aprovado.
+
+**2. Estorno concluído: novo estado `ESTORNADO` na `JanelaEstornoTef`.** Antes, o `EST` disparava um toast ("Estorno concluído…") e fechava a janela na hora. Agora a janela troca de conteúdo e fica informando o sucesso: disco verde com `check`, badge "Estornado", título "Estorno efetuado com sucesso" (`role="status"`), "Valor estornado" e botão "Fechar". Ela sai sozinha em 10s (`MS_FECHAMENTO_APOS_ESTORNO_TEF`, mesma técnica da referência do item 1), pelo ESC, pelo `X` ou pelo botão. O toast saiu: seria a mesma mensagem duas vezes.
+- **A forma é riscada no instante do `EST`, não ao fechar.** `onEstornado` (→ `confirmarEstornoTef`) é chamado ao entrar em `ESTORNADO`; só a janela espera os 10s, o saldo da venda não.
+- **Sem nó no Pencil para a janela de estorno** (item 66): o estado de sucesso copia a anatomia do estado aprovado da cobrança (`A9MNZI`) e o botão `xpon7` (`$success`, ícone `x`), pela `molduraTef.tsx` compartilhada.
+
+**Impact:** `src/client/features/pagamento/tef/{ModalTef,JanelaEstornoTef}.tsx`, `tests/integration/{ModalTef,JanelaEstornoTef}.spec.tsx`, `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, `tests/e2e/pagamento-tef.spec.ts`.
+
+**Verificação:** 2064 testes unit/integração verdes, entre eles um por janela que re-renderiza o pai a cada 40ms e confirma que o fechamento acontece mesmo assim; os 5 cenários de `tests/e2e/pagamento-tef.spec.ts` verdes contra o mock (o fluxo dourado afirma o "Estorno efetuado com sucesso" e fecha pelo ESC); `tsc --noEmit`, ESLint e Prettier limpos. **Não verificado com terminal** (item 67).
+
+### AD-262: TEF ou PIX que paga o total leva o foco ao "Finalizar venda", e a janela do PIX passa a seguir a do TEF (2026-10-02)
+
+**Pedido do usuário**, em duas mensagens: *"Uma correcao: Quando o valor total a pagar for igual ao  valor recebido, o foco deve ir já para o finalizar venda. Isso já acotnece quando a forma de pagamento não é TEF."* e, durante a execução, *"Também corrija o botão em caso de sucesso no PIX. Hoje o botão é verde no TEF, no PIX é azul. Outra coisa, os modais tem que serem semelhantes, o do TEF pode ser a referencia para o do PIX, incluindo cores, o indicador da aprovação, etc."*
+
+**1. Foco no "Finalizar venda" ao fechar a janela de integração com a venda coberta.** Nas formas sem integração quem pede o foco é o Enter do valor recebido (`EntradaPagamento`, 2026-09-16), que lê o saldo logo depois de aplicar. TEF e PIX entram `PENDENTE_INTEGRACAO`, que não conta no saldo (`FR-004`): naquele instante ainda falta valor e o foco volta ao campo. Ao fechar, a janela devolvia o foco para onde ele estava quando ela abriu, e ninguém pedia o "Finalizar". Agora o `onFechar` de `useTefPendente` e de `usePixPendente` chama `focarFinalizacaoSeVendaCoberta()` (`ListaPagamentosAplicados.tsx`) no mesmo lote do `setIdExibido(null)`. O React roda a limpeza do modal que sai (a devolução de foco do `useFocoDeModal`) antes dos efeitos novos, e o do `BotaoFinalizarVenda` fica com o foco. Desistência, recusa e pagamento parcial passam pelo mesmo `onFechar` com saldo restante, e aí nada muda.
+- **O PIX entrou junto** porque tinha o mesmo defeito, pela mesma causa. O usuário supunha que só o TEF falhava.
+
+**2. Janela do PIX com a anatomia do `ModalTef`, que substitui o desenho do nó `uwg5J` para os estados de espera e aprovado.**
+- **Esperando:** cabeçalho e badge no tom info (disco `$info-soft`, ícone `qr` em `$primary`, badge azul "Aguardando confirmação"), como o "Processando" do TEF. Antes os dois eram verdes, e a espera não se distinguia da confirmação. O resto do corpo (QR, copia e cola, WhatsApp, valor) ficou como estava, para não reabrir a rolagem do celular (AD-233).
+- **Aprovado:** título "Pagamento aprovado" e subtítulo "Transação concluída com sucesso" em `$success-ink`; disco `$success-soft` de 96px com `check` de 56px no lugar do QR; badge verde "Aprovado"; "Valor pago" no bloco escuro; e o botão verde "Fechar" com ícone `x` (`xpon7`) no lugar do "Concluir" azul. O QR, o copia e cola e o envio por WhatsApp saem nesse estado: a cobrança já foi paga.
+- **Sem código compartilhado com o TEF**, pela decisão do desenho da 010 ("Desenho igual ao do PIX, sem código compartilhado"): os tokens e as medidas são os mesmos de `molduraTef.tsx`, mas o PIX não importa o módulo do TEF.
+- `data-testid` novos: `pix-aprovado` (disco) e `pix-valor-pago`. `pix-badge-status`, `pix-subtitulo` e `concluir-pix` seguem com os textos novos.
+
+**3. Seis specs E2E de pagamento falhavam havia dias, sem relação com esta mudança.** Desde 2026-09-24 o "Valor recebido" se preenche com o faltante no foco, e os specs que faziam `fill` direto saíam com o texto concatenado e o botão bloqueado por "Valor inválido" (a pegadinha do item 5 de AD-260, corrigida na época só no spec do TEF). Rodando sem as mudanças deste AD, `pagamento-geral` falhava 3 de 4. A receita do TEF virou `informarValorRecebido` em `tests/e2e/support/pagamento.ts` e passou a ser usada por `pagamento-{tef,pix,geral}`, `layout-mobile`, `display-cliente`, `validacao-previa` e pelo `quitarVendaEmDinheiro`. Destravado o `fill`, apareceu uma segunda asserção defasada: `validacao-previa` esperava o bloco `total-a-pagar` na etapa 2 do celular, que não existe desde AD-255; agora ela lê `total-venda`.
+
+**Impact:** `src/client/features/pagamento/ListaPagamentosAplicados.tsx`, `src/client/features/pagamento/pix/ModalPix.tsx`, `tests/unit/client/pagamento/ListaPagamentosAplicados.spec.tsx`, `tests/integration/ModalPix.spec.tsx`, `tests/e2e/support/pagamento.ts`, `tests/e2e/{pagamento-tef,pagamento-pix,pagamento-geral,layout-mobile,display-cliente,validacao-previa}.spec.ts`.
+
+**Verificação:** 2068 testes unit/integração verdes. Entre eles, os novos da lista: TEF e PIX que pagam o total pedem o foco, e o TEF parcial e a desistência não pedem. Os 32 cenários E2E dos seis specs acima estão verdes, e os fluxos dourados do TEF e do PIX afirmam `toBeFocused()` no "Finalizar venda" depois que a janela fecha. `tsc --noEmit`, ESLint e Prettier limpos. **Não verificado com terminal** (item 67) **nem com o PIX real** (item 62).

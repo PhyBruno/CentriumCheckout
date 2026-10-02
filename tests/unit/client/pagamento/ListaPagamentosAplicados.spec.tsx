@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ListaPagamentosAplicados } from '../../../../src/client/features/pagamento/ListaPagamentosAplicados';
+import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
+import type { StatusPagamento } from '../../../../src/client/domain/pagamento/saldoPagamento';
+import { haJanelaAberta } from '../../../../src/client/lib/useFocoDeModal';
+import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
+import { useSessionStore } from '../../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 import { pagamentoDe } from '../../../support/pagamento';
 import { linhaDe } from '../../../support/precificacao';
+import { registroBootstrapDe } from '../../../support/sessao';
 
 /**
  * Rolagem da lista de formas aplicadas — pedido do usuário (2026-09-04): a barra
@@ -200,5 +206,396 @@ describe('ListaPagamentosAplicados — a rolagem é da lista e segue a última f
       expect(screen.queryByTestId('confirmar-remocao-documento')).toBeNull();
       expect(useVendaStore.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
     });
+  });
+});
+
+/**
+ * A janela do TEF nasce do estado (feature 010, T022 — AD-158, como o PIX).
+ *
+ * O `fetch` global está desligado: a janela abre, a criação da cobrança cai em
+ * erro de rede e ela fica no painel de erro — o que basta para afirmar **quem**
+ * monta a janela e **quando**. O comportamento da cobrança em si é do
+ * `ModalTef.spec.tsx`. Valores sintéticos.
+ */
+describe('ListaPagamentosAplicados — janela do TEF', () => {
+  let fetchFalso: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchFalso = vi.fn().mockRejectedValue(new Error('rede desligada no teste'));
+    vi.stubGlobal('fetch', fetchFalso);
+
+    useSessionStore.setState({
+      estado: 'pronto',
+      registro: registroBootstrapDe({ UsuarioGAM: '0f2c9a4e-0000-4000-8000-000000000000' }),
+    });
+    useVendaStore.setState({
+      linhas: [linhaDe({ precoUnitario: 10_000, quantidadeEmUnidades: 1 })],
+      condicaoSelecionada: null,
+      pagamentos: [],
+      descontoCapa: null,
+      clienteAtual: {
+        codigoCliente: 2538,
+        nome: 'MARIA EXEMPLO',
+        documento: '12345678909',
+        celular: null,
+        listaPreco: 1,
+        descontoConvenio: 0,
+        codigoConvenio: null,
+        origem: 'BUSCA_DOCUMENTO',
+      },
+    });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+  });
+
+  function renderizarLista(): void {
+    const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={cliente}>
+        <ListaPagamentosAplicados />
+      </QueryClientProvider>,
+    );
+  }
+
+  function tefPendente(idPagamento: string) {
+    return pagamentoDe({
+      idPagamento,
+      formaCodigo: 12,
+      meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
+      integracaoCartao: '1',
+      integracao: 'TEF',
+      status: 'PENDENTE_INTEGRACAO',
+      valorAplicado: 5_000,
+    });
+  }
+
+  function criacoesDeCobranca(): number {
+    return fetchFalso.mock.calls.filter(([url]) => String(url).includes('CriarCardPagamento'))
+      .length;
+  }
+
+  // (a)
+  it('pagamento PENDENTE_INTEGRACAO de TEF monta a janela do TEF, e não a do PIX', async () => {
+    useVendaStore.setState({ pagamentos: [tefPendente('tef-1')] });
+    renderizarLista();
+
+    expect(await screen.findByTestId('modal-tef')).toBeInTheDocument();
+    expect(screen.queryByTestId('modal-pix')).toBeNull();
+  });
+
+  it('pagamento PENDENTE_INTEGRACAO de PIX continua montando a janela do PIX', async () => {
+    useVendaStore.setState({
+      pagamentos: [
+        pagamentoDe({
+          idPagamento: 'pix-1',
+          meioPagtoNFe: MEIO_PAGTO.Pix,
+          integracao: 'PIX_DINAMICO',
+          status: 'PENDENTE_INTEGRACAO',
+          valorAplicado: 5_000,
+        }),
+      ],
+    });
+    renderizarLista();
+
+    expect(await screen.findByTestId('modal-pix')).toBeInTheDocument();
+    expect(screen.queryByTestId('modal-tef')).toBeNull();
+  });
+
+  // (b) A janela segue o pagamento exibido durante os 10s do estado aprovado.
+  it('a janela continua montada quando o pagamento vira APROVADO', async () => {
+    useVendaStore.setState({ pagamentos: [tefPendente('tef-1')] });
+    renderizarLista();
+    await screen.findByTestId('modal-tef');
+
+    act(() => {
+      useVendaStore.setState({
+        pagamentos: [{ ...tefPendente('tef-1'), status: 'APROVADO' }],
+      });
+    });
+
+    expect(screen.getByTestId('modal-tef')).toBeInTheDocument();
+  });
+
+  // (c) FR-012: a `key` muda e as travas de "uma criação por montagem" recomeçam.
+  it('dois TEFs em sequência abrem duas janelas, cada uma com a sua criação', async () => {
+    const usuario = userEvent.setup();
+    useVendaStore.setState({ pagamentos: [tefPendente('tef-1')] });
+    renderizarLista();
+
+    await screen.findByTestId('erro-criacao-tef');
+    expect(criacoesDeCobranca()).toBe(1);
+
+    // Erro de criação: desistir sai sem confirmação, e o pagamento é recusado.
+    await usuario.click(screen.getByTestId('desistir-operacao-tef'));
+    expect(useVendaStore.getState().pagamentos).toHaveLength(0);
+    expect(screen.queryByTestId('modal-tef')).toBeNull();
+
+    act(() => {
+      useVendaStore.setState({ pagamentos: [tefPendente('tef-2')] });
+    });
+
+    await screen.findByTestId('modal-tef');
+    await waitFor(() => {
+      expect(criacoesDeCobranca()).toBe(2);
+    });
+  });
+
+  /**
+   * Pedido do usuário (2026-10-02, AD-262): pago o total, o foco vai para
+   * "Finalizar venda" — como já faz o Enter do valor recebido nas formas sem
+   * integração. No TEF e no PIX o pagamento entra `PENDENTE_INTEGRACAO`, que não
+   * conta no saldo (`FR-004`): no instante da inserção ainda falta valor e o foco
+   * volta ao campo. Quem encerra a cobrança é o fechamento da janela aprovada,
+   * e é ali que o pedido de foco tem de nascer.
+   *
+   * A aprovação é encenada pelo store, porque a rede está desligada neste
+   * describe: a janela fica no erro de criação, o status vira `APROVADO` por
+   * fora, e o "Desistir" (que não recusa um pagamento já aprovado) a fecha. O
+   * que se afirma é o pedido; a ordem real entre a devolução de foco do modal e
+   * o foco no botão é conferida no navegador, pelo E2E.
+   */
+  describe('fechar a janela de integração com a venda coberta pede o foco no Finalizar', () => {
+    function integrado(
+      integracao: 'TEF' | 'PIX_DINAMICO',
+      status: StatusPagamento,
+      valorAplicado: number,
+    ) {
+      return pagamentoDe({
+        idPagamento: 'integrado-1',
+        formaCodigo: 12,
+        meioPagtoNFe: integracao === 'TEF' ? MEIO_PAGTO.CartaoDebito : MEIO_PAGTO.Pix,
+        integracaoCartao: integracao === 'TEF' ? '1' : '',
+        integracao,
+        status,
+        valorAplicado,
+      });
+    }
+
+    async function aprovarPorForaEFechar(
+      integracao: 'TEF' | 'PIX_DINAMICO',
+      valorAplicado: number,
+    ): Promise<number> {
+      const usuario = userEvent.setup();
+      const antes = useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao;
+      useVendaStore.setState({
+        pagamentos: [integrado(integracao, 'PENDENTE_INTEGRACAO', valorAplicado)],
+      });
+      renderizarLista();
+      await screen.findByTestId(integracao === 'TEF' ? 'erro-criacao-tef' : 'erro-geracao-pix');
+
+      act(() => {
+        useVendaStore.setState({ pagamentos: [integrado(integracao, 'APROVADO', valorAplicado)] });
+      });
+      await usuario.click(
+        screen.getByTestId(
+          integracao === 'TEF' ? 'desistir-operacao-tef' : 'desistir-operacao-pix',
+        ),
+      );
+
+      expect(screen.queryByTestId(integracao === 'TEF' ? 'modal-tef' : 'modal-pix')).toBeNull();
+      return useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao - antes;
+    }
+
+    it('TEF aprovado que paga o total: o foco vai para o Finalizar', async () => {
+      expect(await aprovarPorForaEFechar('TEF', 10_000)).toBe(1);
+    });
+
+    it('TEF aprovado que paga só parte: o foco não sai do pagamento', async () => {
+      expect(await aprovarPorForaEFechar('TEF', 5_000)).toBe(0);
+    });
+
+    it('PIX aprovado que paga o total: o foco vai para o Finalizar', async () => {
+      expect(await aprovarPorForaEFechar('PIX_DINAMICO', 10_000)).toBe(1);
+    });
+
+    it('desistir de um TEF que pagaria o total não pede foco no Finalizar', async () => {
+      const usuario = userEvent.setup();
+      const antes = useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao;
+      useVendaStore.setState({ pagamentos: [integrado('TEF', 'PENDENTE_INTEGRACAO', 10_000)] });
+      renderizarLista();
+      await screen.findByTestId('erro-criacao-tef');
+
+      await usuario.click(screen.getByTestId('desistir-operacao-tef'));
+
+      expect(useVendaStore.getState().pagamentos).toHaveLength(0);
+      expect(useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao).toBe(antes);
+    });
+  });
+
+  /**
+   * (d) T7: com a janela aberta, nenhuma outra forma entra. O clique em
+   * "Adicionar pagamento" cai no backdrop — o jsdom não faz layout para provar
+   * isso —, e o atalho de venda rápida (F6–F9) é recusado pelo `mapaAtalhos`
+   * quando `haJanelaAberta()`. O que se afirma aqui é a metade verificável: a
+   * janela é modal e entra na pilha que o mapa de atalhos consulta.
+   */
+  /**
+   * T029 (US2): cartão que a 008 resolveu como `NENHUMA` — empresa sem TEF ou
+   * forma POS — entra aprovado e não abre segundo caminho para o TEF.
+   */
+  it('cartão sem integração entra APROVADO, sem janela e sem chamada SmartTEF', async () => {
+    useVendaStore.setState({
+      pagamentos: [
+        pagamentoDe({
+          idPagamento: 'pos-1',
+          meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
+          integracaoCartao: '2',
+          integracao: 'NENHUMA',
+          status: 'APROVADO',
+          valorAplicado: 5_000,
+        }),
+      ],
+    });
+    renderizarLista();
+
+    expect(screen.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'APROVADO');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(screen.queryByTestId('modal-tef')).toBeNull();
+    expect(
+      fetchFalso.mock.calls.filter(([url]) =>
+        /CriarCardPagamento|ConsultarStatusCard|EstornarPagamento/.test(String(url)),
+      ),
+    ).toHaveLength(0);
+  });
+
+  describe('remover TEF aprovado = estorno (US3, T032)', () => {
+    function tefAprovado() {
+      return pagamentoDe({
+        idPagamento: 'tef-ok',
+        formaCodigo: 12,
+        meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
+        integracaoCartao: '1',
+        integracao: 'TEF',
+        status: 'APROVADO',
+        valorAplicado: 5_000,
+        dadosTEF: {
+          pagId: 'pay_exemplo_0001',
+          bandeira: 'MASTERCARD',
+          nsu: '048291',
+          autorizacao: '192837',
+          tipoIntegracao: '1',
+        },
+      });
+    }
+
+    // (a) FR-003: o botão não é mais bloqueio; a remoção direta continua
+    // proibida no slice, e a saída é a confirmação de estorno.
+    it('o remover não está bloqueado e abre a confirmação de estorno', async () => {
+      const usuario = userEvent.setup();
+      useVendaStore.setState({ pagamentos: [tefAprovado()] });
+      renderizarLista();
+
+      const remover = screen.getByTestId('remover-pagamento');
+      expect(remover).not.toHaveAttribute('aria-disabled');
+      await usuario.click(remover);
+
+      expect(screen.getByTestId('confirmar-estorno-tef')).toHaveTextContent(
+        'Estornar o pagamento no cartão?',
+      );
+    });
+
+    // (b)
+    it('cancelar a confirmação não chama nada', async () => {
+      const usuario = userEvent.setup();
+      useVendaStore.setState({ pagamentos: [tefAprovado()] });
+      renderizarLista();
+
+      await usuario.click(screen.getByTestId('remover-pagamento'));
+      await usuario.click(screen.getByTestId('confirmar-estorno-tef-cancelar'));
+
+      expect(screen.queryByTestId('janela-estorno-tef')).toBeNull();
+      expect(useVendaStore.getState().pagamentos[0]?.status).toBe('APROVADO');
+      expect(fetchFalso).not.toHaveBeenCalledWith(
+        expect.stringContaining('EstornarPagamento'),
+        expect.anything(),
+      );
+    });
+
+    // (c) A janela recebe o `pagId` do pagamento: é com ele que consulta.
+    it('confirmar abre a janela de estorno com o pagId do pagamento', async () => {
+      const usuario = userEvent.setup();
+      useVendaStore.setState({ pagamentos: [tefAprovado()] });
+      renderizarLista();
+
+      await usuario.click(screen.getByTestId('remover-pagamento'));
+      await usuario.click(screen.getByTestId('confirmar-estorno-tef-confirmar'));
+
+      expect(await screen.findByTestId('janela-estorno-tef')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          fetchFalso.mock.calls.some(([url]) =>
+            String(url).includes('ConsultarStatusCard?SmartTefPaymentIdentifier=pay_exemplo_0001'),
+          ),
+        ).toBe(true);
+      });
+    });
+
+    // (d) T5: só o `EST` observado risca a forma.
+    it('ao concluir o estorno, a forma fica riscada', async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockImplementation((url: unknown) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              Sucesso: true,
+              CodigoStatusHttp: 200,
+              MensagemErro: '',
+              RespostaJson: String(url).includes('ConsultarStatusCard')
+                ? JSON.stringify([
+                    { payment_identifier: 'pay_exemplo_0001', payment_status: 'EST' },
+                  ])
+                : '[]',
+            }),
+            { status: 200 },
+          ),
+        ),
+      );
+      useVendaStore.setState({ pagamentos: [tefAprovado()] });
+      renderizarLista();
+
+      await usuario.click(screen.getByTestId('remover-pagamento'));
+      await usuario.click(screen.getByTestId('confirmar-estorno-tef-confirmar'));
+
+      await waitFor(() => {
+        expect(useVendaStore.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+      });
+      expect(screen.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
+      // A janela fica informando o sucesso (pedido do usuário, 2026-10-02) e
+      // sai pelo "Fechar" — ou sozinha em 10s, ou pelo ESC.
+      expect(await screen.findByText('Estorno efetuado com sucesso')).toBeInTheDocument();
+      await usuario.click(screen.getByTestId('concluir-estorno-tef'));
+      expect(screen.queryByTestId('janela-estorno-tef')).toBeNull();
+    });
+
+    // (e)
+    it('PIX aprovado continua com a confirmação do PIX, não a do estorno', async () => {
+      const usuario = userEvent.setup();
+      useVendaStore.setState({
+        pagamentos: [
+          pagamentoDe({
+            idPagamento: 'pix-ok',
+            meioPagtoNFe: MEIO_PAGTO.Pix,
+            integracao: 'PIX_DINAMICO',
+            status: 'APROVADO',
+            pixGuid: 'guid-exemplo',
+            valorAplicado: 5_000,
+          }),
+        ],
+      });
+      renderizarLista();
+
+      await usuario.click(screen.getByTestId('remover-pagamento'));
+
+      expect(screen.getByTestId('confirmar-remocao-pix')).toBeInTheDocument();
+      expect(screen.queryByTestId('confirmar-estorno-tef')).toBeNull();
+    });
+  });
+
+  it('a janela é modal e entra na pilha que barra os atalhos de venda rápida', async () => {
+    useVendaStore.setState({ pagamentos: [tefPendente('tef-1')] });
+    renderizarLista();
+
+    const janela = await screen.findByRole('dialog', { name: 'Pagamento no TEF' });
+    expect(janela).toHaveAttribute('aria-modal', 'true');
+    expect(haJanelaAberta()).toBe(true);
   });
 });

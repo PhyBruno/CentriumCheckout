@@ -1,4 +1,4 @@
-import { AlertTriangle, ChatRound, CheckCircle, Copy, Qr, Refresh, Send, X } from 'reicon-react';
+import { AlertTriangle, ChatRound, Check, Copy, Qr, Refresh, Send, X } from 'reicon-react';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { notificar } from '@/lib/notificar';
 import { Button } from '@/components/ui/button';
@@ -94,7 +94,8 @@ import { DialogoConfirmacaoDestrutiva } from '../DialogoConfirmacaoDestrutiva';
  * Ao detectar `APROVADO`, `onAprovado` é chamado na hora — o pagamento vira
  * `APROVADO` no `vendaStore` imediatamente, e nenhum dinheiro fica invisível
  * para a venda. O que muda é que a janela **não desmonta junto**: ela troca para
- * o estado aprovado (disco verde, badge "Pagamento confirmado") e só chama
+ * o estado aprovado (disco verde com check, badge "Aprovado", botão verde
+ * "Fechar" — a anatomia do `ModalTef`, desde AD-262) e só chama
  * `onFechar` 10 segundos depois. É o tempo de o operador ver que deu certo antes
  * de a tela voltar para a venda; nesse intervalo o `X` e o ESC já funcionam,
  * para quem não quiser esperar.
@@ -593,7 +594,7 @@ export function ModalPix({
         ref={janelaRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Pagamento via PIX"
+        aria-label={aprovado ? 'Pagamento aprovado' : 'Pagamento via PIX'}
         className="cc-modal-entra flex max-h-full w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-lg"
       >
         {/* Cabeçalho `lSsvw`, com o `X` que o desenho não tem — ver o TSDoc do
@@ -612,27 +613,38 @@ export function ModalPix({
             tela — encolheram as folgas, o QR e as alturas de cabeçalho/rodapé, e
             `md:` (que desde AD-198 significa "árvore desktop", não largura)
             devolve os valores exatos do `.pen` onde eles cabem. */}
+        {/* Cores e textos do cabeçalho seguem o `ModalTef` (pedido do usuário,
+            2026-10-02, AD-262: "o do TEF pode ser a referencia para o do PIX,
+            incluindo cores"): tom info enquanto se espera, sucesso ao aprovar. */}
         <header className="flex h-16 shrink-0 items-center gap-sm border-b border-border px-base md:h-[78px] md:px-lg">
           <span
-            className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]"
+            className={
+              aprovado
+                ? 'flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]'
+                : 'flex size-[42px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-info-soft)]'
+            }
             data-testid="pix-disco-cabecalho"
           >
             {aprovado ? (
-              <CheckCircle className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+              <Check className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
             ) : (
-              <Qr className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+              <Qr className="size-5 text-primary" aria-hidden="true" />
             )}
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
             <h2 className="text-xl leading-[1.2] font-semibold text-foreground">
-              Pagamento via PIX
+              {aprovado ? 'Pagamento aprovado' : 'Pagamento via PIX'}
             </h2>
             <p
-              className="text-base leading-[1.2] font-medium text-muted-foreground"
+              className={
+                aprovado
+                  ? 'text-base leading-[1.2] font-medium text-[var(--cc-color-up-ink)]'
+                  : 'text-base leading-[1.2] font-medium text-muted-foreground'
+              }
               data-testid="pix-subtitulo"
             >
               {aprovado
-                ? 'Pagamento aprovado'
+                ? 'Transação concluída com sucesso'
                 : emErro
                   ? 'Falha ao gerar a cobrança'
                   : 'Aguardando pagamento'}
@@ -679,6 +691,47 @@ export function ModalPix({
                 {erro ?? 'O ERP não respondeu à geração da cobrança.'}
               </p>
             </div>
+          ) : aprovado ? (
+            <>
+              {/* Estado aprovado com a anatomia do `ModalTef` (pedido do usuário,
+                  2026-10-02, AD-262), que substitui o do nó `uwg5J`: disco
+                  `$success-soft` de 96px com `check` de 56px, badge, título,
+                  instrução e o valor. O QR e o "copia e cola" saem — a cobrança
+                  já foi paga, e deixá-los na tela convidaria a pagar de novo. */}
+              <span
+                className="flex size-[96px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]"
+                data-testid="pix-aprovado"
+              >
+                <Check className="size-14 text-[var(--cc-color-up)]" aria-hidden="true" />
+              </span>
+              <span
+                className="flex items-center gap-[6px] rounded-full bg-[var(--cc-color-up-soft)] px-sm py-[5px]"
+                data-testid="pix-badge-status"
+              >
+                <span
+                  className="size-[7px] shrink-0 rounded-full bg-[var(--cc-color-up)]"
+                  aria-hidden="true"
+                />
+                <span className="text-sm font-semibold whitespace-nowrap text-[var(--cc-color-up-ink)]">
+                  Aprovado
+                </span>
+              </span>
+              <h3 className="text-[18px] leading-[1.2] font-semibold text-foreground" role="status">
+                Pagamento aprovado
+              </h3>
+              <p className="w-full text-center text-base leading-[1.4] text-muted-foreground">
+                Pagamento confirmado pelo banco. Esta janela fecha sozinha em instantes.
+              </p>
+              <div className="flex w-full flex-col items-center gap-[6px] rounded-[20px] bg-[var(--cc-color-surface-dark)] p-3 md:p-base">
+                <span className="text-base text-[var(--cc-color-on-dark-muted)]">Valor pago</span>
+                <span
+                  className="font-mono text-2xl leading-[1.05] font-semibold tabular-nums text-[var(--cc-color-on-primary)]"
+                  data-testid="pix-valor-pago"
+                >
+                  {formatarCentavos(valor)}
+                </span>
+              </div>
+            </>
           ) : (
             <>
               {/* Cartão `DRKJh` — 200×200 é a medida do nó `g8F3HF`. */}
@@ -706,9 +759,7 @@ export function ModalPix({
               </div>
 
               <p className="w-full text-center text-base leading-[1.4] text-muted-foreground">
-                {aprovado
-                  ? 'Pagamento confirmado pelo banco. Esta janela fecha sozinha em instantes.'
-                  : 'Abra o app do seu banco e escaneie o QR Code para concluir o pagamento.'}
+                Abra o app do seu banco e escaneie o QR Code para concluir o pagamento.
               </p>
 
               {/* Faixa `HVY3r`. O código fica em Geist Mono, como todo valor
@@ -752,10 +803,11 @@ export function ModalPix({
                     área de transferência, a outra pelo WhatsApp do cliente.
 
                     Só aparece com cobrança **gerada**: o `TrnGUID` é parâmetro
-                    obrigatório do endpoint. E some ao aprovar, porque mandar ao
-                    cliente uma cobrança que ele acabou de pagar não é
-                    informação, é confusão. */}
-                {cobranca !== null && !aprovado && (
+                    obrigatório do endpoint. E some ao aprovar (a faixa inteira
+                    sai com o estado aprovado), porque mandar ao cliente uma
+                    cobrança que ele acabou de pagar não é informação, é
+                    confusão. */}
+                {cobranca !== null && (
                   <Button
                     type="button"
                     variant="secondary"
@@ -793,7 +845,7 @@ export function ModalPix({
                   O `.pen` não modela este bloco: é tela nova, desenhada com os
                   tokens e as medidas do resto da janela (campos de 42px como os
                   do cadastro de cliente, raio `lg`, botão de 36px). */}
-              {cobranca !== null && !aprovado && (
+              {cobranca !== null && (
                 <div className="flex w-full flex-col gap-xs">
                   {envioAberto && (
                     <div
@@ -880,19 +932,17 @@ export function ModalPix({
                 </span>
               </div>
 
-              {/* Badge `hKvqW` no estado `$success-soft` do nó `uwg5J`. O ponto
-                  pulsa enquanto se espera e fica sólido ao confirmar — a mesma
-                  badge dizendo duas coisas diferentes. */}
+              {/* Badge `hKvqW` no tom info, o do "Processando" do `ModalTef`
+                  (AD-262): enquanto se espera a badge é azul, e o verde fica só
+                  para o estado aprovado — antes as duas eram verdes e a
+                  confirmação não se distinguia da espera. */}
               <span
-                className="flex items-center gap-[6px] rounded-full bg-[var(--cc-color-up-soft)] px-sm py-[5px]"
+                className="flex items-center gap-[6px] rounded-full bg-[var(--cc-color-info-soft)] px-sm py-[5px]"
                 data-testid="pix-badge-status"
               >
-                <span
-                  className="size-[7px] shrink-0 rounded-full bg-[var(--cc-color-up)]"
-                  aria-hidden="true"
-                />
-                <span className="text-sm font-semibold whitespace-nowrap text-[var(--cc-color-up-ink)]">
-                  {aprovado ? 'Pagamento confirmado' : 'Aguardando confirmação'}
+                <span className="size-[7px] shrink-0 rounded-full bg-primary" aria-hidden="true" />
+                <span className="text-sm font-semibold whitespace-nowrap text-[var(--cc-color-info-ink)]">
+                  Aguardando confirmação
                 </span>
               </span>
             </>
@@ -914,14 +964,17 @@ export function ModalPix({
             </Button>
           )}
           {aprovado ? (
+            // O mesmo botão do `ModalTef` aprovado (`xpon7`: `$success` com o
+            // ícone `x`) — pedido do usuário, 2026-10-02 (AD-262): antes era o
+            // "Concluir" azul.
             <Button
               type="button"
-              className="h-9 gap-xs rounded-full px-base text-base font-semibold"
+              className="h-9 gap-xs rounded-full bg-[var(--cc-color-up)] px-base text-base font-semibold text-[var(--cc-color-on-primary)] hover:bg-[var(--cc-color-up-ink)]"
               data-testid="concluir-pix"
               onClick={onFechar}
             >
-              <CheckCircle className="size-4" aria-hidden="true" />
-              Concluir
+              <X className="size-4" aria-hidden="true" />
+              Fechar
             </Button>
           ) : (
             <Button

@@ -271,6 +271,15 @@ export interface PagamentoSlice {
   recusarPagamentoIntegrado(idPagamento: string, motivo: string): void;
   removerPagamento(idPagamento: string): void;
   /**
+   * Único caminho de um TEF `APROVADO` para `EXCLUIDO` (feature 010, T5).
+   *
+   * Chamada **só** pela janela de estorno, depois de observar `EST` na
+   * SmartTEF — nunca no `Sucesso: true` do pedido, que é só o estorno aceito.
+   * No-op para qualquer outro alvo. `removerPagamento` mantém a guarda: a
+   * remoção direta de TEF aprovado continua proibida (`FR-003`).
+   */
+  confirmarEstornoTef(idPagamento: string): void;
+  /**
    * Devolve `true` quando o desconto entrou. O booleano existe para o campo
    * poder **descartar o texto recusado** (correção do usuário, 2026-09-04): sem
    * ele, o número digitado ficava na tela como se estivesse valendo, e o
@@ -375,25 +384,23 @@ export const AVISO_FORMA_FORA_DA_CONDICAO =
 export const AVISO_CONDICAO_COM_PAGAMENTO =
   'Esta venda já tem forma de pagamento aplicada e cada venda usa uma condição só: use "Limpar" para recomeçar o pagamento.';
 /**
- * Só o **TEF** aprovado trava a remoção (correção do usuário, 2026-09-04).
+ * Só o **TEF** aprovado trava a remoção **direta** (correção do usuário,
+ * 2026-09-04; saída reescrita pela feature 010, AD-259).
  *
- * A regra anterior — herdada de AD-030/AD-042 — travava TEF **e** PIX com a
- * mesma frase. O usuário corrigiu a premissa: os dois casos não são iguais.
- *
- * - **TEF** continua irremovível. A transação vive no terminal físico, e
- *   removê-la da venda sem cancelá-la lá deixa o Checkout e a operadora
- *   discordando sobre um dinheiro que já saiu do cartão do cliente. O
- *   cancelamento acontece **antes**, no terminal (e, quando a feature 010
- *   existir, pelo endpoint de cancelamento do ERP — ver
- *   `.specs/features/pagamento-tef/spec.md`).
- * - **PIX** passou a ser removível. Não há terminal a sincronizar: a cobrança
- *   vive no banco, o Checkout nunca soube cancelá-la (invariante J5, não existe
- *   endpoint), e travar a forma na venda não desfazia nada — só prendia o
- *   operador numa venda que ele precisava reorganizar. A remoção agora exige
- *   confirmação explícita, que é onde o aviso sobre o banco aparece.
+ * - **TEF** não sai da venda por `removerPagamento` nem por "Limpar": tirar a
+ *   forma sem desfazer a transação deixaria o Checkout e a operadora
+ *   discordando sobre um dinheiro que já saiu do cartão do cliente. A saída,
+ *   desde a feature 010, é o **estorno**: o botão "Remover" do TEF aprovado
+ *   abre a confirmação e a janela de estorno, e a forma só é riscada quando a
+ *   SmartTEF devolve `EST` (`confirmarEstornoTef`). Até então esta frase dizia
+ *   "cancele a transação no terminal", que era a única saída antes de existir o
+ *   estorno pelo ERP.
+ * - **PIX** é removível com confirmação. Não há terminal a sincronizar: a
+ *   cobrança vive no banco, o Checkout nunca soube cancelá-la (invariante J5),
+ *   e travar a forma não desfazia nada.
  */
 export const AVISO_TEF_IRREVERSIVEL =
-  'Cartão aprovado no TEF não pode ser removido: cancele a transação no terminal antes.';
+  'Cartão aprovado no TEF só sai da venda por estorno: use o botão Remover da forma para estornar no TEF.';
 export const AVISO_DESCONTO_COM_PAGAMENTO =
   'Esta venda já tem pagamento aplicado: o desconto não pode mais ser alterado.';
 /**
@@ -860,9 +867,10 @@ export function criarPagamentoSlice(
         }
 
         // I6, reescrita pelo usuário em 2026-09-04: **só o TEF** aprovado é
-        // irremovível. Ele vive no terminal físico, e tirar a forma da venda sem
-        // cancelar lá deixaria o Checkout e a operadora discordando sobre um
-        // dinheiro já debitado (Constitution III).
+        // irremovível **por aqui**. Tirar a forma da venda sem desfazer a
+        // transação deixaria o Checkout e a operadora discordando sobre um
+        // dinheiro já debitado (Constitution III). A saída, desde a feature 010,
+        // é o estorno confirmado: `confirmarEstornoTef`, logo abaixo.
         //
         // O PIX saiu desta guarda de propósito. Removê-lo **não** estorna nada —
         // e nunca estornou: o Checkout não tem endpoint de cancelamento de PIX.
@@ -899,6 +907,34 @@ export function criarPagamentoSlice(
         // `FR-021`/I11: o veredito da 014 valia para a venda **daquele**
         // instante. Removida uma forma, a próxima inserção precisa consultar o
         // ERP de novo, mesmo que a candidata seja idêntica à anterior.
+        deps.invalidarVeredito();
+
+        get().registrarEventoAuditoria(
+          eventoFormaPagamentoRemovida({ formaPagamento: rotuloDoPagamento(alvo) }),
+        );
+      },
+
+      confirmarEstornoTef: (idPagamento) => {
+        const alvo = get().pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
+        // Só TEF `APROVADO`: é o único estado que tem o que estornar. Já
+        // `EXCLUIDO` é terminal, e reemitir o evento registraria a mesma forma
+        // removida duas vezes no `Log` (mesmo cuidado de AD-171).
+        if (alvo === undefined || alvo.integracao !== 'TEF' || alvo.status !== 'APROVADO') {
+          return;
+        }
+
+        // Mesmos efeitos de `removerPagamento` — a forma fica riscada na lista
+        // (AD-163), sai do saldo e do payload, e o veredito da 014 deixa de
+        // valer. A diferença está em **quem** chama: só a janela de estorno,
+        // depois do `EST` (feature 010, T5).
+        aplicarPagamentos(
+          get().pagamentos.map((pagamento) =>
+            pagamento.idPagamento === idPagamento
+              ? { ...pagamento, status: 'EXCLUIDO' as const }
+              : pagamento,
+          ),
+        );
+
         deps.invalidarVeredito();
 
         get().registrarEventoAuditoria(

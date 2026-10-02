@@ -3,6 +3,7 @@ import { loadEnv } from '../../../../src/server/config/env';
 import {
   buscarUsuarioCodigo,
   extrairUsuarioCodigo,
+  extrairUsuarioGam,
   queryGetSessao,
   type CredenciaisGetSessao,
 } from '../../../../src/server/session/getSessao';
@@ -65,6 +66,37 @@ describe('extrairUsuarioCodigo', () => {
   });
 });
 
+/**
+ * T015 — o operador no TEF (feature 010, AD-259). O ERP ainda não publica o
+ * campo (item 64), e um operador sem ele continua entrando: só não cobra no TEF.
+ */
+describe('extrairUsuarioGam', () => {
+  const GUID = '0f2c9a4e-0000-4000-8000-000000000000';
+
+  it('lê o campo na raiz, onde o ERP vai devolvê-lo', () => {
+    expect(extrairUsuarioGam({ UsuarioCodigo: '147', UsuarioGAM: GUID })).toBe(GUID);
+  });
+
+  it('lê também sob SessaoUsuario, como o erp-mock desenha', () => {
+    expect(extrairUsuarioGam({ SessaoUsuario: { UsuarioGAM: GUID } })).toBe(GUID);
+  });
+
+  it.each([
+    ['ausente', {}],
+    ['vazio', { UsuarioGAM: '' }],
+    ['só espaços', { UsuarioGAM: '   ' }],
+    ['não-string', { UsuarioGAM: 42 }],
+    ['nulo', { UsuarioGAM: null }],
+  ])('%s → null', (_caso, corpo) => {
+    expect(extrairUsuarioGam(corpo)).toBeNull();
+  });
+
+  it('corpo que não é objeto → null', () => {
+    expect(extrairUsuarioGam('texto cru')).toBeNull();
+    expect(extrairUsuarioGam(null)).toBeNull();
+  });
+});
+
 describe('queryGetSessao', () => {
   it('põe Empresa antes de Login — o .Before do ERP recorta até o fim da query', () => {
     expect(Object.keys(queryGetSessao(CREDENCIAIS))).toEqual(['Empresa', 'Login']);
@@ -80,6 +112,7 @@ describe('buscarUsuarioCodigo', () => {
     expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
       situacao: 'identificado',
       usuarioCodigo: '147',
+      usuarioGam: null,
     });
 
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
@@ -91,6 +124,18 @@ describe('buscarUsuarioCodigo', () => {
       'OAuth token-sintetico',
     );
     expect((init?.headers as Record<string, string>)['Empresa']).toBe('1');
+  });
+
+  it('devolve também o UsuarioGAM quando o ERP o publica', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaComSessao({ UsuarioCodigo: '147', UsuarioGAM: 'guid-sintetico' }));
+
+    expect(await buscarUsuarioCodigo(CREDENCIAIS, { env, fetchImpl })).toEqual({
+      situacao: 'identificado',
+      usuarioCodigo: '147',
+      usuarioGam: 'guid-sintetico',
+    });
   });
 
   it('ERP fora é indisponibilidade — o desfecho que vale repetir', async () => {

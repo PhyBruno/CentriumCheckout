@@ -146,6 +146,20 @@ export const sessaoUsuarioSchema = z.looseObject({
    */
   isWhatsappEnabled: z.boolean().optional(),
   /**
+   * GUID GAM do operador — é por ele que `PSmartTEF` escolhe em qual maquininha
+   * (`serial_pos`) a cobrança do TEF aparece (feature 010, AD-259).
+   *
+   * **Só presença, nunca enviado pelo JS** (`research.md` D7 da 010). Quem o
+   * insere no corpo de `CriarCardPagamento` é o BFF, a partir do cookie cifrado
+   * (`corpoComOperadorTef`): um valor vindo do navegador mandaria a cobrança
+   * para o terminal de outro operador (AD-224). O cliente lê o campo só para
+   * recusar o TEF **antes** da rede quando ele falta, explicando o motivo.
+   *
+   * `optional()`: o `SessaoUsuario` da KB ainda não tem o campo (item 64 de
+   * `PENDENCIES.md`). Ausente ou vazio vale "operador sem TEF vinculado".
+   */
+  UsuarioGAM: z.string().optional(),
+  /**
    * Vendedor **do PDV**, exibido na pílula do card de cliente (nó `EqzJM` do
    * Pencil). Vem de `SessaoUsuario`, não de `GetCliente`: o schema
    * `ClienteCheckout` do contrato não tem nenhum campo de vendedor — o cadastro

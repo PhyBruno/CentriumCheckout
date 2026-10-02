@@ -488,10 +488,10 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
     store.getState().confirmarPagamentoIntegrado('pag-1', {
       dadosTEF: {
-        identificacao: 123_456,
-        cnpj: '00000000000000',
+        pagId: 'pay_exemplo_0001',
         bandeira: 'EXEMPLO',
-        numeroAutorizacao: '000000',
+        nsu: '000000',
+        autorizacao: '000000',
         tipoIntegracao: '1',
       },
     });
@@ -1350,5 +1350,123 @@ describe('pagamentoSlice — fronteira monetária', () => {
     expect(store.getState().montarPagamentosParaPayload().FormasDePagamento[0]?.FormaValor).toBe(
       33.33,
     );
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Feature 010 (T030) — estorno do TEF aprovado
+ * ------------------------------------------------------------------ */
+
+/**
+ * `confirmarEstornoTef` é o **único** caminho de um TEF `APROVADO` para
+ * `EXCLUIDO`, e só é chamada depois de a janela de estorno observar `EST`
+ * (invariantes T5/T6 de `specs/010-pagamento-tef/data-model.md`).
+ */
+describe('pagamentoSlice — confirmarEstornoTef (feature 010)', () => {
+  const DADOS_TEF = {
+    pagId: 'pay_exemplo_0001',
+    bandeira: 'MASTERCARD',
+    nsu: '048291',
+    autorizacao: '192837',
+    tipoIntegracao: '1',
+  } as const;
+
+  async function vendaComTefAprovado(valores: readonly number[] = [TOTAL_PADRAO]) {
+    const montado = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+    for (const [indice, valor] of valores.entries()) {
+      await montado.store
+        .getState()
+        .aplicarPagamento({ forma: CARTAO, valorInformado: centavos(valor) });
+      montado.store.getState().confirmarPagamentoIntegrado(`pag-${String(indice + 1)}`, {
+        dadosTEF: { ...DADOS_TEF, pagId: `pay_exemplo_000${String(indice + 1)}` },
+      });
+    }
+    return montado;
+  }
+
+  function removidas(store: ReturnType<typeof montarStore>['store']): number {
+    return store.getState().eventos.filter((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA')
+      .length;
+  }
+
+  // (a) T5.
+  it('risca o TEF aprovado, devolve o saldo, registra a remoção e invalida o veredito', async () => {
+    const { store, invalidarVeredito } = await vendaComTefAprovado();
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+    invalidarVeredito.mockClear();
+
+    store.getState().confirmarEstornoTef('pag-1');
+
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    expect(store.getState().saldo().saldoRestante).toBe(TOTAL_PADRAO);
+    expect(removidas(store)).toBe(1);
+    expect(invalidarVeredito).toHaveBeenCalled();
+  });
+
+  // (b)
+  it('é no-op para o que não é TEF aprovado, sem evento', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: true } });
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(1_000) });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(1_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-2', { pixGuid: 'guid-exemplo' });
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(1_000) });
+
+    for (const id of ['pag-1', 'pag-2', 'pag-3', 'inexistente']) {
+      store.getState().confirmarEstornoTef(id);
+    }
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'APROVADO',
+      'APROVADO',
+      'PENDENTE_INTEGRACAO',
+    ]);
+    expect(removidas(store)).toBe(0);
+  });
+
+  it('é no-op para TEF já excluído — não registra a remoção duas vezes', async () => {
+    const { store } = await vendaComTefAprovado();
+    store.getState().confirmarEstornoTef('pag-1');
+    store.getState().confirmarEstornoTef('pag-1');
+
+    expect(removidas(store)).toBe(1);
+  });
+
+  // (c) FR-003: a remoção **direta** continua proibida.
+  it('removerPagamento continua recusando o TEF aprovado', async () => {
+    const { store, avisar } = await vendaComTefAprovado();
+
+    store.getState().removerPagamento('pag-1');
+
+    expect(avisar).toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
+    expect(store.getState().pagamentos[0]?.status).toBe('APROVADO');
+  });
+
+  // (d) FR-009: a trava some sozinha quando o estorno vira `EXCLUIDO`.
+  it('depois do estorno, Limpar volta a funcionar e o carrinho volta a mutar', async () => {
+    const { store, avisar } = await vendaComTefAprovado();
+    store.getState().descartarPagamento();
+    expect(avisar).toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
+    avisar.mockClear();
+
+    store.getState().confirmarEstornoTef('pag-1');
+    store.getState().descartarPagamento();
+
+    expect(avisar).not.toHaveBeenCalled();
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
+  });
+
+  // (e) T6.
+  it('com dois TEFs aprovados, estornar um mantém o outro travando o descarte', async () => {
+    const { store, avisar } = await vendaComTefAprovado([5_000, 5_000]);
+
+    store.getState().confirmarEstornoTef('pag-1');
+    store.getState().descartarPagamento();
+
+    expect(avisar).toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+      'APROVADO',
+    ]);
   });
 });

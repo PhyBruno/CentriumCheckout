@@ -91,6 +91,37 @@ describe('cookie de sessão', () => {
     expect(cifrador.decifrar(cifradoSemCampo)).toBeNull();
   });
 
+  /**
+   * T016 — `usuarioGam` é **opcional** e entrou sem bump de versão (feature
+   * 010, AD-259): o bump é obrigatório só para campo obrigatório, e quebrá-lo
+   * aqui derrubaria a sessão de todo operador no meio de uma venda no deploy.
+   */
+  it('cookie sem usuarioGam continua decifrando — é o cookie de antes do deploy', () => {
+    const cifrador = criarCifradorDeSessao(SEGREDO);
+
+    const aberto = cifrador.decifrar(cifrador.cifrar(sessao));
+
+    expect(aberto).toEqual(sessao);
+    expect(aberto?.usuarioGam).toBeUndefined();
+  });
+
+  it('cookie com usuarioGam faz ida e volta intacto', () => {
+    const cifrador = criarCifradorDeSessao(SEGREDO);
+    const comGam: SessaoOperador = {
+      ...sessao,
+      usuarioGam: '0f2c9a4e-0000-4000-8000-000000000000',
+    };
+
+    expect(cifrador.decifrar(cifrador.cifrar(comGam))).toEqual(comGam);
+  });
+
+  it('recusa usuarioGam que não é texto', () => {
+    const cifrador = criarCifradorDeSessao(SEGREDO);
+    const forjado = { ...sessao, usuarioGam: 42 } as unknown as SessaoOperador;
+
+    expect(cifrador.decifrar(cifrador.cifrar(forjado))).toBeNull();
+  });
+
   it('marca o cookie como HttpOnly, Secure e SameSite=Lax (FR-002)', () => {
     expect(SESSION_COOKIE_OPTIONS).toMatchObject({
       httpOnly: true,

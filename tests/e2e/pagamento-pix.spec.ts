@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
+import { informarValorRecebido } from './support/pagamento';
 
 /**
  * Fluxo dourado da feature 009 (`specs/009-pagamento-pix/quickstart.md`) — T026.
@@ -74,7 +75,7 @@ async function aplicarPix(page: Page, valor: string): Promise<void> {
 
   await page.getByTestId('combobox-forma-pagamento').click();
   await page.getByTestId('opcao-forma-3').click();
-  await page.getByTestId('campo-valor-recebido').fill(valor);
+  await informarValorRecebido(page, valor);
   await page.getByTestId('adicionar-pagamento').click();
 }
 
@@ -139,9 +140,10 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     // --- aprovação detectada pela sondagem (`FR-001`/`FR-002`) ---------------
     // A janela **não** desmonta na aprovação: ela mostra o estado aprovado e só
     // então fecha sozinha, 10s depois (AD-161, item 7).
-    await expect(page.getByTestId('pix-badge-status')).toContainText('Pagamento confirmado', {
+    await expect(page.getByTestId('pix-badge-status')).toContainText('Aprovado', {
       timeout: 60_000,
     });
+    await expect(page.getByTestId('pix-aprovado')).toBeVisible();
     await expect(page.getByTestId('fechar-modal-pix')).not.toHaveAttribute('aria-disabled', 'true');
 
     await expect(page.getByTestId('modal-pix')).toHaveCount(0, { timeout: 30_000 });
@@ -154,6 +156,8 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     // "Faltante" só é renderizado enquanto o saldo é positivo: sumir é a prova
     // de que o pagamento entrou aprovado e cobriu a venda.
     await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
+    // Venda coberta: a janela sai e o foco fica no "Finalizar venda" (AD-262).
+    await expect(page.getByTestId('botao-finalizar-venda')).toBeFocused();
   });
 
   test('desistir da janela com o PIX pendente libera a venda para outra forma', async ({
@@ -187,7 +191,7 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
 
     await page.getByTestId('combobox-forma-pagamento').click();
     await page.getByTestId('opcao-forma-1').click();
-    await page.getByTestId('campo-valor-recebido').fill(TOTAL_DO_CARRINHO);
+    await informarValorRecebido(page, TOTAL_DO_CARRINHO);
     await page.getByTestId('adicionar-pagamento').click();
 
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
