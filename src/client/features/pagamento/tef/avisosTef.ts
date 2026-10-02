@@ -71,5 +71,11 @@ export const DESTAQUE_ESTORNO =
 export const AVISO_ESTORNO_SOLICITADO =
   'O estorno foi solicitado e pode se concluir na maquininha sem o Checkout ver. O pagamento continua aprovado na venda: use "Remover" de novo para conferir o status.';
 
+/** Chamada da confirmação de desistir de esperar um estorno já pedido. */
+export const CHAMADA_ESTORNO_EM_CURSO = 'O estorno pode se concluir sem o Checkout ver';
+
+export const DESTAQUE_ESTORNO_EM_CURSO =
+  'O pagamento continua aprovado na venda, e a venda continua sem poder ser suspensa, até o estorno ser conferido.';
+
 export const AVISO_ESTORNO_REJEITADO =
   'O estorno foi rejeitado pelo TEF. O pagamento continua aprovado na venda.';

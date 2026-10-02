@@ -127,7 +127,9 @@ export interface FinalizacaoDeps {
    *
    * O nome continua genérico porque a porta é injetada por chamadores que não
    * precisam saber qual integração é irreversível; o que mudou é o padrão, que
-   * hoje olha só o TEF.
+   * hoje olha só o TEF. Com a feature 010 o TEF passou a sair da venda por
+   * estorno, e o bloqueio some sozinho quando a forma vira `EXCLUIDO` — a regra
+   * daqui não muda.
    */
   readonly temPagamentoNaoRemovivel?: () => boolean;
   /**
@@ -178,11 +180,14 @@ const AVISO_VALIDACAO_PENDENTE =
  * Bloqueio de suspensão — **só TEF** (item 1.2 do usuário, 2026-09-04).
  *
  * A frase nomeia a ordem correta das operações, porque o que o operador tentaria
- * sozinho (clicar de novo) nunca funciona: o cancelamento do TEF acontece antes
- * do cancelamento da venda, nunca depois.
+ * sozinho (clicar de novo) nunca funciona: o TEF é desfeito antes da venda,
+ * nunca depois. Desde a feature 010 a saída é o **estorno** pelo botão Remover
+ * da forma — a regra não mudou (`FR-004`), só o caminho: até AD-259 a frase
+ * mandava cancelar a transação no terminal, porque o Checkout não tinha como
+ * estornar.
  */
 const AVISO_SUSPENSAO_BLOQUEADA =
-  'Há cartão aprovado no TEF nesta venda: cancele a transação do TEF antes de cancelar a venda.';
+  'Há cartão aprovado no TEF nesta venda: estorne a forma pelo botão Remover antes de cancelar a venda.';
 
 const ERRO_SEM_CONFIGURACAO =
   'Configuração do ponto de venda indisponível: a venda não pode ser finalizada nem suspensa.';

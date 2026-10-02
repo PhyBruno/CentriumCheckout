@@ -248,20 +248,20 @@ export const pagamentoDepsPadrao: PagamentoDeps = {
   validarTicket: (codigo) => validarTicket(codigo),
   iniciarIntegracao: () => {
     /**
-     * Continua no-op **de propósito**, e não por a 009 estar pendente.
+     * Continua no-op **de propósito** — nas duas integrações.
      *
-     * A feature 009 (PIX) já está implementada e liga a sua janela por outro
-     * caminho: `ListaPagamentosAplicados` monta `ModalPix` a partir do próprio
-     * `PagamentoAplicado` em `PENDENTE_INTEGRACAO` com `integracao ===
-     * 'PIX_DINAMICO'` (ver `usePixPendente` naquele arquivo). Como a janela é
-     * função do estado, chamar algo aqui criaria um **segundo** gatilho para o
-     * mesmo desfecho — e dois disparos independentes divergiriam em silêncio,
-     * que é exatamente o que a nota final de `specs/009-pagamento-pix/tasks.md`
-     * proíbe.
+     * As features 009 (PIX) e 010 (TEF) ligam as suas janelas por outro
+     * caminho: `ListaPagamentosAplicados` monta `ModalPix` e `ModalTef` a partir
+     * do próprio `PagamentoAplicado` em `PENDENTE_INTEGRACAO` com `integracao`
+     * `'PIX_DINAMICO'`/`'TEF'` (ver `usePixPendente` e `useTefPendente` naquele
+     * arquivo). Como a janela é função do estado, chamar algo aqui criaria um
+     * **segundo** gatilho para o mesmo desfecho — e dois disparos independentes
+     * divergiriam em silêncio, que é exatamente o que as notas finais de
+     * `specs/009-pagamento-pix/tasks.md` e `specs/010-pagamento-tef/tasks.md`
+     * proíbem.
      *
-     * A porta permanece no contrato porque o veredito `TEF` (feature 010) ainda
-     * não tem dono, e porque removê-la obrigaria o slice a conhecer quem executa
-     * a integração (Constitution II).
+     * A porta permanece no contrato porque removê-la obrigaria o slice a
+     * conhecer quem executa a integração (Constitution II).
      */
   },
   /**

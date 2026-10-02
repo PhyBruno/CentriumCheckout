@@ -3,6 +3,7 @@ import { useState, type ReactElement } from 'react';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { useVendaStore } from '../../stores/vendaStore';
+import { AVISO_TEF_IRREVERSIVEL } from '../../stores/slices/pagamentoSlice';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import { ControleDescontoCapa } from './ControleDescontoCapa';
@@ -80,8 +81,10 @@ function BotaoLimparPagamento(): ReactElement {
   );
   const vazio = condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null;
 
+  // A frase do slice, e não uma cópia: desde a feature 010 ela aponta o
+  // estorno pelo botão Remover, e duas redações divergiriam na próxima mudança.
   const bloqueio: MotivoBloqueio = temTefAprovado
-    ? 'Cartão aprovado no TEF não pode ser removido: cancele a transação no terminal antes.'
+    ? AVISO_TEF_IRREVERSIVEL
     : vazio
       ? 'Não há condição, desconto ou forma de pagamento nesta venda para limpar.'
       : null;
