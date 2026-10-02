@@ -3930,3 +3930,35 @@ Tornar estornável uma forma TEF **importada** fica fora — item 65.
 - a forma real de `RespostaJson`.
 
 **Impact:** `specs/010-pagamento-tef/` (plan, research, data-model, contracts, quickstart; `spec.md` com a emenda `FR-010`–`FR-016` e as Assumptions reescritas), `.specs/project/PENDENCIES.md` (item 41 fechado; 64, 65 e 66 abertos). Sem mudança de código.
+
+### AD-260: TEF implementado sem medição ao vivo — o contrato da KB ficou isolado onde a medição pode desmenti-lo (2026-10-02)
+
+**Origem:** `/speckit-implement` da feature 010. O usuário avisou que **ainda não tem a maquininha** de homologação ("em 010, nao consigo fazer o teste pois nao tenho a maquina ainda").
+
+**1. A medição de T001 não aconteceu, e o código seguiu as formas da KB.** `research.md` D17 manda medir três pontos antes do código de rede, só com o usuário presente, porque `CriarCardPagamento` cobra e `EstornarPagamento` estorna de verdade. Sem terminal, a própria tarefa prevê o desvio: registrar a não-medição e seguir com `contracts/erp-tef-api.md`. Cada ponto não medido mora em **um** lugar, e a tabela de `.specs/codebase/CONTRATO-PAGAMENTO-ERP-REAL.md` (seção "SmartTEF") diz qual. A medição continua pendente — item 67 de `PENDENCIES.md` —, junto com a validação ao vivo (T040), que também depende de o ERP publicar `UsuarioGAM` (item 64).
+
+**2. O que foi implementado** (40 tarefas, das quais T040 segue aberta):
+- `domain/tef/`: os nove status por fase (só `CNC` aprova, só `EST` estorna, literal desconhecido espera), parcelas pela condição e pagador.
+- `tef.schema.ts` + `services/tef/`: fronteira em dois estágios e as três chamadas.
+- BFF: `UsuarioGAM` do `GetSessao` no cookie (opcional, sem bump) e injetado com `EmpCod` em `CriarCardPagamento`; `Empresa` na raiz de `EstornarPagamento`.
+- `ModalTef`, `JanelaEstornoTef` e a action `confirmarEstornoTef`.
+- `DadosTEF` e o retrato da NFCe com `TEFPagId` no lugar dos três campos que saíram do SDT.
+- `erp-mock` com os três endpoints e E2E de cobrança, estorno, desistência, estorno rejeitado e celular.
+
+**3. Desvios decididos na implementação:**
+- **As frases de recusa local moram nas classes de erro** (`ErroTefSemUsuarioGam`, `ErroTefSemCliente`, `ErroCobrancaTefIlegivel` em `tefQueries.ts`), não em `avisosTef.ts` como T009 listava. É o arranjo do `ErroPixSemCliente`, e evita a camada de serviço importar da de UI só para ler um texto.
+- **Desistir enquanto a cobrança está sendo criada também pede confirmação.** `research.md` D12 só previa confirmação com a cobrança já criada; mas a resposta de `CriarCardPagamento` pode chegar depois de a SmartTEF abrir a transação (timeout de 30s do `PSmartTEF`), e sair sem o aviso deixaria uma cobrança em voo sem ninguém saber.
+- **`molduraTef.tsx`** reúne cabeçalho, bloco de valor, badge e cartão de detalhes. A janela de estorno não tem nó no Pencil (item 66), e copiar o JSX faria a próxima correção visual valer só para uma das janelas.
+- **NSU e autorização em Geist Mono**, não Inter como no nó `vjHCo`: são códigos, e a regra de fontes do produto põe valor tabular em mono.
+- **TEF aprovado sem `dadosTEF` continua bloqueado no "Remover"**, com o motivo mandando ao ERP: sem `pagId` não há o que estornar. Não deveria existir, porque a 010 sempre grava os dados ao aprovar.
+- **No `erp-mock`, o TEF fica atrás da flag `tefAtivo`**, desligada por padrão, e a condição `'2 VEZES'` só aparece com ela ligada. As formas 2 e 5 já tinham `FormaIntegracaoCartao: '1'`, e ligar o TEF por padrão mandaria para a janela toda venda no cartão das outras suítes.
+
+**4. Dois furos de A01 achados na revisão `owasp-security` do BFF, e fechados.** O invariante T8 diz que `EmpCod`/`UsuarioGAM` (e o `Empresa` dos corpos planos) vêm sempre do cookie. A injeção já sobrescrevia o valor forjado, mas tinha duas brechas:
+- **o caminho era comparado só ignorando a caixa.** `CriarCardPagamento/`, `//ApiCentriumOAuth//…` ou `CriarCard%50agamento` chegam ao mesmo método no ERP e escapavam da lista, levando o corpo forjado intacto. Agora a comparação usa o caminho decodificado, sem barras repetidas nem final (`caminhoComparavel`). Isso vale também para `CAMINHOS_COM_EMPRESA_NA_RAIZ`, que já protegia `EnvioDiretoWhatsapp` e `GerarPIX`, além do `EstornarPagamento` novo.
+- **variante de caixa sobrevivia ao lado da chave injetada.** Com `empcod: 999` no corpo, o BFF acrescentava `EmpCod` e as duas seguiam para o ERP. Não está confirmado que o desserializador GeneXus diferencia caixa (pendência 62), e a forjada podia vencer. As variantes agora são removidas antes da inserção (`semVariantesDeCaixa`).
+
+**5. Pegadinha de E2E.** Desde 2026-09-24 o campo "Valor recebido" se preenche com o faltante **no foco**. Um `fill` direto do Playwright corre contra esse preenchimento e o texto sai concatenado (`"10,0010,00"`), com o botão bloqueado por "Valor inválido". O helper de `pagamento-tef.spec.ts` foca, espera o preenchimento e só então sobrescreve.
+
+**Impact:** `src/client/domain/tef/*`, `src/client/services/tef/*`, `src/client/features/pagamento/tef/*`, `src/shared/schemas/{tef,bootstrap,dav}.schema.ts`, `src/client/domain/pagamento/{saldoPagamento,formaParaRetrato}.ts`, `src/client/domain/importacaoVenda/mapearVendaExistente.ts`, `src/client/stores/slices/pagamentoSlice.ts`, `src/client/stores/vendaStore.ts` (TSDoc), `src/client/features/pagamento/{ListaPagamentosAplicados,ConfiguracaoPagamento}.tsx`, `src/client/features/finalizacao-suspensao/useFinalizarOuSuspenderVenda.ts`, `src/server/session/{getSessao,cookie}.ts`, `src/server/routes/{session-start,erp-proxy}.ts`, `tests/e2e/support/erp-mock.ts`, `tests/e2e/pagamento-tef.spec.ts`.
+
+**Verificação:** 2059 testes unit/integração verdes em 129 arquivos; os 4 cenários de `tests/e2e/pagamento-tef.spec.ts` verdes contra o mock; `tsc --noEmit` e ESLint limpos. **Não verificado contra o ERP real nem com terminal.**

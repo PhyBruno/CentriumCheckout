@@ -184,6 +184,29 @@ listava como limitação real do cadastro a impossibilidade de distinguir TEF de
 POS. As duas afirmações caíram: o campo existe, sempre veio no payload, e
 distingue exatamente isso.
 
+### TEF — a cobrança na maquininha (SmartTEF): contrato da KB, **ainda não medido**
+
+Quando o roteamento acima decide `TEF`, a feature 010 fala com três endpoints
+do bloco `//SmartTEF` da API `ApiCentriumOAuth` (`CriarCardPagamento`,
+`ConsultarStatusCard`, `EstornarPagamento`). O contrato completo está em
+`specs/010-pagamento-tef/contracts/erp-tef-api.md` e foi lido **na KB**
+`CentriumDEVU6` (AD-259), não neste payload nem em chamada ao vivo.
+
+**Nada do SmartTEF foi medido contra o ERP real até 2026-10-02 (AD-260).** A
+medição de `research.md` D17 cobra e estorna dinheiro de verdade, então só
+acontece com o usuário num terminal de homologação, que ele ainda não tem
+(item 67 de `PENDENCIES.md`). O código seguiu as formas da KB e as isolou onde a
+medição pode desmenti-las:
+
+| Ponto não medido | O que o código assume | Onde troca |
+|---|---|---|
+| Envelope do corpo de `CriarCardPagamento` | plano | `montarCorpoCriarCard` (`services/tef/tefQueries.ts`); o BFF já injeta nas duas formas |
+| Grafia `FPgCod` × `FpgCod` | `FPgCod` (KB) | `montarCorpoCriarCard` |
+| Envelope da saída (`RespostaSmartTEF`) | as duas formas | `respostaSmartTefSchema` (`semEnvelope`) |
+| Forma de `RespostaJson` da consulta | lista; objeto único aceito | `consultaCardRespSchema` |
+| Grafia `card_brand`/`nsu_host`/`autorization_code` | a da KB | `consultaCardItemSchema` |
+| `UsuarioGAM` na raiz do `GetSessao` | ausente hoje (item 64) | `extrairUsuarioGam` |
+
 ### Nenhuma integração — é o resto
 
 Todo meio fora de `03`/`04`/`17`, e também `03`/`04`/`17` quando a flag da

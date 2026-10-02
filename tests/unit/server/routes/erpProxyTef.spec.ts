@@ -74,6 +74,37 @@ describe('corpoComOperadorTef', () => {
     ).toMatchObject({ EmpCod: 7, UsuarioGAM: GUID });
   });
 
+  /**
+   * Revisão OWASP A01 (2026-10-02): a injeção não pode depender de o navegador
+   * escrever o caminho exatamente como a lista. Barra final, barra dupla e
+   * letra codificada chegam ao mesmo método no ERP — e escapariam da injeção.
+   */
+  it.each([
+    '/ApiCentriumOAuth/CriarCardPagamento/',
+    '//ApiCentriumOAuth//CriarCardPagamento',
+    '/ApiCentriumOAuth/CriarCard%50agamento',
+  ])('grafia alternativa do caminho também recebe a injeção: %s', (caminho) => {
+    expect(
+      corpoComOperadorTef({ ...CORPO_PLANO, EmpCod: 999, UsuarioGAM: 'forjado' }, caminho, SESSAO),
+    ).toMatchObject({ EmpCod: 7, UsuarioGAM: GUID });
+  });
+
+  // O desserializador GeneXus pode não diferenciar caixa (pendência 62): uma
+  // variante forjada ao lado da chave injetada poderia vencer.
+  it('remove as variantes de caixa forjadas de EmpCod e UsuarioGAM', () => {
+    const corpo = corpoComOperadorTef(
+      { ...CORPO_PLANO, empcod: 999, USUARIOGAM: 'forjado', usuarioGam: 'outro' },
+      CAMINHO_CRIAR,
+      SESSAO,
+    ) as Record<string, unknown>;
+
+    expect(Object.keys(corpo).filter((chave) => /^(empcod|usuariogam)$/i.test(chave)).sort()).toEqual(
+      ['EmpCod', 'UsuarioGAM'],
+    );
+    expect(corpo['EmpCod']).toBe(7);
+    expect(corpo['UsuarioGAM']).toBe(GUID);
+  });
+
   it('outro caminho fica intocado', () => {
     const original = { SmartTefPaymentIdentifier: 'pay_exemplo_0001', UsuarioGAM: 'x' };
 
@@ -111,6 +142,16 @@ describe('EstornarPagamento — Empresa na raiz', () => {
       corpoComEmpresaNaRaiz(
         { SmartTefPaymentIdentifier: 'pay_exemplo_0001', Empresa: 999 },
         '/ApiCentriumOAuth/EstornarPagamento',
+        '7',
+      ),
+    ).toEqual({ SmartTefPaymentIdentifier: 'pay_exemplo_0001', Empresa: 7 });
+  });
+
+  it('caminho com barra final e variante de caixa forjada não escapam', () => {
+    expect(
+      corpoComEmpresaNaRaiz(
+        { SmartTefPaymentIdentifier: 'pay_exemplo_0001', empresa: 999 },
+        '/ApiCentriumOAuth/EstornarPagamento/',
         '7',
       ),
     ).toEqual({ SmartTefPaymentIdentifier: 'pay_exemplo_0001', Empresa: 7 });

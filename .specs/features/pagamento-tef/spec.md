@@ -67,9 +67,9 @@ TEF: frames `PDV Online Web - Modal TEF` (aguardando) e `PDV Online Web - Modal 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
 | PAY-02 | Ocultar TEF quando `TEFAtivo=false`; não acionar TEF quando a forma é POS (`FormaIntegracaoCartao` ≠ `'1'`) | - | Verified (a segunda condição é de 2026-09-08, AD-180) |
-| PAY-12 | Cancelar transação TEF aprovada via endpoint do ERP, com polling de confirmação | - | Design (2026-10-02, AD-259) — `EstornarPagamento` + polling de `ConsultarStatusCard` até `EST`; desenho em `specs/010-pagamento-tef/` |
+| PAY-12 | Cancelar transação TEF aprovada via endpoint do ERP, com polling de confirmação | - | Implementado e verificado **contra o mock** (2026-10-02, AD-260) — `EstornarPagamento` + polling de `ConsultarStatusCard` até `EST`, coberto por testes de slice, de janela e E2E. **Não validado ao vivo:** o usuário ainda não tem o terminal de homologação (T040 de `specs/010-pagamento-tef/tasks.md`, item 67) |
 
-**Coverage:** 2 total, 1 verificado e 1 em Design. **Atualizado em 2026-10-02 (AD-259):** o bloqueio dos endpoints de cancelamento (item 41) foi fechado, e o de protocolo com o terminal (AD-037, item 25) deixou de alcançar o Checkout — quem fala com a maquininha é o ERP, pela integração SmartTEF; o Checkout só chama HTTP do ERP.
+**Coverage:** 2 total, 1 verificado ao vivo (`PAY-02`) e 1 verificado só contra o mock (`PAY-12`, aguardando o terminal). **Atualizado em 2026-10-02 (AD-260):** a feature 010 foi implementada. Antes disso (AD-259), o bloqueio dos endpoints de cancelamento (item 41) foi fechado, e o de protocolo com o terminal (AD-037, item 25) deixou de alcançar o Checkout — quem fala com a maquininha é o ERP, pela integração SmartTEF; o Checkout só chama HTTP do ERP.
 
 ---
 
