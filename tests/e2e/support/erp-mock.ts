@@ -179,11 +179,16 @@ export interface ConfigMockErp {
    */
   whatsappHabilitado: boolean;
   /**
-   * `ConfiguracoesTEF.TEFAtivo` (feature 010). **Desligado por padrão**: as
-   * formas de cartão 2 e 5 têm `FormaIntegracaoCartao: '1'`, e ligar o TEF por
-   * padrão mandaria toda venda quitada no cartão das demais suítes para a
-   * janela do TEF. Ligado, o `GetSessao` publica também a condição `'2 VEZES'`
-   * com crédito, débito e PIX integrados (`quickstart.md` da 010, pré-requisito 3).
+   * `ConfiguracoesTEF.TEFAtivo` (feature 010). **Ligado por padrão desde
+   * 2026-10-02** (pedido do usuário), pelo mesmo motivo do `pixAtivo`: a stack
+   * local precisa cobrar no TEF à mão, sem um `POST /__mock/config` por sessão.
+   *
+   * Ligado, o `GetSessao` publica a condição `'2 VEZES'` com crédito, débito e
+   * PIX integrados (formas 11–13). As formas de cartão da `'A VISTA'` (2 e 5)
+   * são **POS** (`FormaIntegracaoCartao: ' '`, como em todo o tenant medido), e
+   * é isso que deixa as demais suítes — que pagam no cartão sem integração —
+   * intactas com o TEF ligado. Quem precisar da empresa sem TEF manda
+   * `{"tefAtivo": false}`.
    */
   tefAtivo: boolean;
   /**
@@ -195,10 +200,18 @@ export interface ConfigMockErp {
    * `payment_status` da cobrança, um por consulta de `ConsultarStatusCard`; o
    * último se repete. `['PDT', 'REJ_PAG']` exercita a rejeição.
    *
+   * **Vazio por padrão** (pedido do usuário, 2026-10-02): sem roteiro, o mock
+   * decide pelo **relógio**, como o `StatusPIX` — a cobrança fica pendente e
+   * vira `CNC` `atrasoAprovacaoTefMs` depois de criada. É o que dá tempo, no
+   * teste manual, de ver a janela esperando a maquininha. Um roteiro explícito
+   * tem precedência e é o que os cenários automatizados usam.
+   *
    * **Formas da KB, não medidas** (T001 adiado, AD-260): o mock imita o
    * contrato desenhado em `contracts/erp-tef-api.md`, não o ERP observado.
    */
   tefStatusCobranca: readonly string[];
+  /** Tempo entre `CriarCardPagamento` e o `CNC`, sem roteiro. Padrão: 30s. */
+  atrasoAprovacaoTefMs: number;
   /**
    * `payment_status` do estorno: o primeiro é a resposta de
    * `EstornarPagamento`, os demais saem um por consulta depois dele.
@@ -266,9 +279,11 @@ const CONFIG_PADRAO: ConfigMockErp = {
   tipoCodigoProduto: 'R',
   faturaProdutoSemSaldo: '',
   whatsappHabilitado: true,
-  tefAtivo: false,
+  tefAtivo: true,
   usuarioGam: '0f2c9a4e-0000-4000-8000-0000000000e2',
-  tefStatusCobranca: ['PDT', 'PROC_PAG', 'CNC'],
+  tefStatusCobranca: [],
+  /** 30 segundos — o número que o usuário pediu para o teste manual. */
+  atrasoAprovacaoTefMs: 30_000,
   tefStatusEstorno: ['SOL_EST', 'PROC_EST', 'EST'],
   tefCriacaoRecusada: false,
   tefEstornoRecusado: false,
@@ -346,6 +361,21 @@ interface TransacaoTefMock {
   fase: 'COBRANCA' | 'ESTORNO';
   consultas: number;
   status: string;
+  /** `Date.now()` da criação — o zero do relógio de aprovação. */
+  criadaEm: number;
+}
+
+/**
+ * Status da cobrança pelo relógio (sem roteiro): `PDT` na primeira consulta,
+ * `PROC_PAG` enquanto espera, `CNC` passado o atraso. Por transação, e não um
+ * relógio global, pelo mesmo motivo de `geracoesPix`: a segunda cobrança da
+ * venda não pode nascer "quase aprovada" herdando o tempo da primeira.
+ */
+function statusDoRelogio(transacao: TransacaoTefMock, atrasoMs: number): string {
+  if (Date.now() - transacao.criadaEm >= atrasoMs) {
+    return 'CNC';
+  }
+  return transacao.consultas <= 1 ? 'PDT' : 'PROC_PAG';
 }
 
 /**
@@ -1437,14 +1467,16 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaFpgUtiCar: '',
           },
           {
-            // Forma **comum**, não vale: `FpgUtiCar` vazio. Com `TEFAtivo` a
-            // integração roteia para TEF (feature 010); sem ele, vira
-            // pagamento manual — nunca a janela do ticket.
+            // Forma **comum**, não vale: `FpgUtiCar` vazio. **POS** desde
+            // 2026-10-02 (`' '`, como todo cartão do tenant medido): com o TEF
+            // ligado por padrão, `'1'` aqui mandaria para a janela do TEF todo
+            // cartão das suítes de pagamento geral. O TEF mora nas formas 11–13
+            // da condição `'2 VEZES'`.
             FormaCodigo: String(2), // int64
             FormaDescricao: '2 - CARTAO CREDITO',
             FormaEntrada: 'N',
             FormaMeioPagtoNFe: '03',
-            FormaIntegracaoCartao: '1',
+            FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: 'CREDITO',
             FormaFpgUtiCar: '',
           },
@@ -1471,11 +1503,13 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
             FormaFpgUtiCar: '',
           },
           {
+            // POS, pelo mesmo motivo da forma 2 — e é o débito do atalho F7 da
+            // venda rápida, que a suíte da 013 espera aprovado na hora.
             FormaCodigo: String(5), // int64
             FormaDescricao: '5 - CARTAO DEBITO',
             FormaEntrada: 'N',
             FormaMeioPagtoNFe: '04',
-            FormaIntegracaoCartao: '1',
+            FormaIntegracaoCartao: ' ',
             FormaTipoTransacaoTEF: 'DEBITO',
             FormaFpgUtiCar: '',
           },
@@ -1562,22 +1596,20 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
           },
         ],
       },
-      // Só com o TEF ligado (feature 010): uma terceira condição mudaria o
-      // combobox de toda suíte que não pediu TEF.
+      // Só com o TEF ligado (feature 010, padrão desde 2026-10-02): a empresa
+      // sem TEF não oferece a condição cujas formas só existem no terminal.
       ...(config.tefAtivo ? [CONDICAO_TEF_DUAS_VEZES] : []),
     ],
     /**
-     * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
-     * as formas roteando para `NENHUMA` (`resolverIntegracao`), de modo que um
-     * pagamento aplicado já entra `APROVADO` sem depender das features 009/010.
-     * É também o cenário do fluxo dourado do quickstart da 008 ("desktop com
-     * `tefAtivo: false`").
+     * TEF e PIX **ligados** no cenário padrão, para a stack local cobrar nos
+     * dois à mão (PIX desde 2026-09-04, TEF desde 2026-10-02, pedidos do
+     * usuário). Vêm de `config.pixAtivo`/`config.tefAtivo`.
      *
-     * O PIX deixou de ser uma constante e passou a vir de `config.pixAtivo`
-     * (feature 009): `pagamento-pix.spec.ts` o liga por `/__mock/config` antes
-     * de abrir a tela. O **padrão continua desligado** de propósito — ligá-lo
-     * aqui faria toda venda quitada por PIX nas demais suítes passar a depender
-     * de um QR Code e de uma sondagem de 10s.
+     * As demais suítes continuam pagando sem integração porque só **algumas
+     * formas** roteiam: o PIX dinâmico (forma 3) e as formas 11–13 da
+     * condição `'2 VEZES'`. Os cartões da `'A VISTA'` são POS, e quem quita a
+     * venda usa dinheiro (`quitarVendaEmDinheiro`). O fluxo dourado da 008
+     * ("desktop com `tefAtivo: false`") manda a flag explicitamente.
      */
     /**
      * Os dois SDTs de configuração têm mais campos do que o mock declarava —
@@ -2727,8 +2759,17 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
       sequenciaTef += 1;
       const paymentIdentifier = `pay_mock_${String(sequenciaTef).padStart(4, '0')}`;
-      const status = statusDoRoteiro(config.tefStatusCobranca, 0, 'PDT');
-      transacoesTef.set(paymentIdentifier, { fase: 'COBRANCA', consultas: 0, status });
+      // Sem roteiro, a cobrança nasce pendente e o relógio decide o resto.
+      const status =
+        config.tefStatusCobranca.length > 0
+          ? statusDoRoteiro(config.tefStatusCobranca, 0, 'PDT')
+          : 'PDT';
+      transacoesTef.set(paymentIdentifier, {
+        fase: 'COBRANCA',
+        consultas: 0,
+        status,
+        criadaEm: Date.now(),
+      });
 
       return reply.send(
         respostaSmartTefOk({
@@ -2763,9 +2804,11 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
       transacao.consultas += 1;
       transacao.status =
-        transacao.fase === 'COBRANCA'
-          ? statusDoRoteiro(config.tefStatusCobranca, transacao.consultas, 'PDT')
-          : statusDoRoteiro(config.tefStatusEstorno, transacao.consultas, 'SOL_EST');
+        transacao.fase === 'ESTORNO'
+          ? statusDoRoteiro(config.tefStatusEstorno, transacao.consultas, 'SOL_EST')
+          : config.tefStatusCobranca.length > 0
+            ? statusDoRoteiro(config.tefStatusCobranca, transacao.consultas, 'PDT')
+            : statusDoRelogio(transacao, config.atrasoAprovacaoTefMs);
 
       const aprovada = transacao.status === 'CNC' || transacao.fase === 'ESTORNO';
       return reply.send(

@@ -46,7 +46,11 @@ async function configurarTef(
   extra: Record<string, unknown> = {},
 ): Promise<void> {
   await request.post(`${URL_ERP_MOCK}/__mock/reset`);
-  await request.post(`${URL_ERP_MOCK}/__mock/config`, { data: { tefAtivo: true, ...extra } });
+  // Roteiro explícito: sem ele o mock aprova pelo relógio, 30s depois da
+  // criação — bom para o teste manual, lento e dependente de tempo aqui.
+  await request.post(`${URL_ERP_MOCK}/__mock/config`, {
+    data: { tefAtivo: true, tefStatusCobranca: ['PDT', 'PROC_PAG', 'CNC'], ...extra },
+  });
 }
 
 async function abrirVendaComItem(page: Page): Promise<void> {
@@ -232,6 +236,34 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
 
     await expect(page.getByTestId('janela-estorno-tef')).toHaveCount(0);
     await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'APROVADO');
+  });
+});
+
+/**
+ * O mock no padrão (pedido do usuário, 2026-10-02): TEF ligado, sem roteiro, e
+ * a maquininha "aprova" 30s depois de a cobrança ser criada — o que o teste
+ * manual na stack local enxerga. Só `reset`, nenhuma configuração.
+ */
+test.describe('TEF no mock padrão — aprovação pelo relógio', () => {
+  test('a cobrança fica pendente e é aprovada depois de 30s', async ({ page, request }) => {
+    test.setTimeout(120_000);
+    await request.post(`${URL_ERP_MOCK}/__mock/reset`);
+    await abrirVendaComItem(page);
+    await selecionarCondicaoDuasVezes(page);
+
+    await aplicarForma(page, FORMA_DEBITO_TEF, '10,00');
+    const criadaEm = Date.now();
+    await expect(page.getByText('Aguardando retorno do TEF')).toBeVisible({ timeout: 15_000 });
+
+    // Ainda pendente bem antes dos 30s.
+    await page.waitForTimeout(Math.max(0, 20_000 - (Date.now() - criadaEm)));
+    await expect(page.getByTestId('tef-badge-status')).toContainText('Processando');
+
+    // O primeiro tick de 10s depois dos 30s aprova.
+    await expect(page.getByTestId('tef-badge-status')).toContainText('Aprovado', {
+      timeout: 30_000,
+    });
+    expect(Date.now() - criadaEm).toBeGreaterThanOrEqual(30_000);
   });
 });
 
