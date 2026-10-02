@@ -16,31 +16,33 @@ import {
  * literal só seria invisível se as duas leituras saíssem da mesma fonte.
  */
 
-const COBRANCA: ReadonlyArray<readonly [StatusSmartTef, ReturnType<typeof interpretarStatusCobrancaTef>]> =
-  [
-    ['PDT', { situacao: 'PENDENTE' }],
-    ['PROC_PAG', { situacao: 'PENDENTE' }],
-    ['CNC', { situacao: 'APROVADO' }],
-    ['CAN_ERP', { situacao: 'FALHA', motivo: 'CANCELADO_NO_ERP' }],
-    ['REJ_PAG', { situacao: 'FALHA', motivo: 'PAGAMENTO_REJEITADO' }],
-    ['SOL_EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
-    ['PROC_EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
-    ['EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
-    ['REJ_EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
-  ];
+const COBRANCA: ReadonlyArray<
+  readonly [StatusSmartTef, ReturnType<typeof interpretarStatusCobrancaTef>]
+> = [
+  ['PDT', { situacao: 'PENDENTE' }],
+  ['PROC_PAG', { situacao: 'PENDENTE' }],
+  ['CNC', { situacao: 'APROVADO' }],
+  ['CAN_ERP', { situacao: 'FALHA', motivo: 'CANCELADO_NO_ERP' }],
+  ['REJ_PAG', { situacao: 'FALHA', motivo: 'PAGAMENTO_REJEITADO' }],
+  ['SOL_EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
+  ['PROC_EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
+  ['EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
+  ['REJ_EST', { situacao: 'FALHA', motivo: 'ESTORNADO_FORA_DO_CHECKOUT' }],
+];
 
-const ESTORNO: ReadonlyArray<readonly [StatusSmartTef, ReturnType<typeof interpretarStatusEstornoTef>]> =
-  [
-    ['PDT', { situacao: 'ESTORNO_PENDENTE' }],
-    ['PROC_PAG', { situacao: 'ESTORNO_PENDENTE' }],
-    ['CNC', { situacao: 'ESTORNO_PENDENTE' }],
-    ['CAN_ERP', { situacao: 'ESTORNO_REJEITADO' }],
-    ['REJ_PAG', { situacao: 'ESTORNO_REJEITADO' }],
-    ['SOL_EST', { situacao: 'ESTORNO_PENDENTE' }],
-    ['PROC_EST', { situacao: 'ESTORNO_PENDENTE' }],
-    ['EST', { situacao: 'ESTORNADO' }],
-    ['REJ_EST', { situacao: 'ESTORNO_REJEITADO' }],
-  ];
+const ESTORNO: ReadonlyArray<
+  readonly [StatusSmartTef, ReturnType<typeof interpretarStatusEstornoTef>]
+> = [
+  ['PDT', { situacao: 'ESTORNO_PENDENTE' }],
+  ['PROC_PAG', { situacao: 'ESTORNO_PENDENTE' }],
+  ['CNC', { situacao: 'ESTORNO_PENDENTE' }],
+  ['CAN_ERP', { situacao: 'ESTORNO_REJEITADO' }],
+  ['REJ_PAG', { situacao: 'ESTORNO_REJEITADO' }],
+  ['SOL_EST', { situacao: 'ESTORNO_PENDENTE' }],
+  ['PROC_EST', { situacao: 'ESTORNO_PENDENTE' }],
+  ['EST', { situacao: 'ESTORNADO' }],
+  ['REJ_EST', { situacao: 'ESTORNO_REJEITADO' }],
+];
 
 /** Literais fora do domínio — inclusive a caixa errada do único que aprova. */
 const DESCONHECIDOS = ['', 'cnc', 'XYZ', ' CNC', 'est'] as const;

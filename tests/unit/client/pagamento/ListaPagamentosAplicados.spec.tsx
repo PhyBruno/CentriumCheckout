@@ -456,7 +456,9 @@ describe('ListaPagamentosAplicados — janela do TEF', () => {
               CodigoStatusHttp: 200,
               MensagemErro: '',
               RespostaJson: String(url).includes('ConsultarStatusCard')
-                ? JSON.stringify([{ payment_identifier: 'pay_exemplo_0001', payment_status: 'EST' }])
+                ? JSON.stringify([
+                    { payment_identifier: 'pay_exemplo_0001', payment_status: 'EST' },
+                  ])
                 : '[]',
             }),
             { status: 200 },

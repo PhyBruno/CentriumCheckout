@@ -29,10 +29,7 @@ describe('parcelasDoTef', () => {
   });
 
   // `PSmartTEF` recusa parcelamento fora do `CREDIT` sem chamar a SmartTEF.
-  it.each([MEIO_PAGTO.CartaoDebito, MEIO_PAGTO.Pix])(
-    '%s com prazo 4 → sempre 1 (T9)',
-    (meio) => {
-      expect(parcelasDoTef(meio, 4)).toBe(1);
-    },
-  );
+  it.each([MEIO_PAGTO.CartaoDebito, MEIO_PAGTO.Pix])('%s com prazo 4 → sempre 1 (T9)', (meio) => {
+    expect(parcelasDoTef(meio, 4)).toBe(1);
+  });
 });

@@ -59,11 +59,9 @@ describe('corpoComOperadorTef', () => {
   });
 
   it('cookie sem usuarioGam → UsuarioGAM vazio, nunca o valor do navegador', () => {
-    const corpo = corpoComOperadorTef(
-      { ...CORPO_PLANO, UsuarioGAM: 'forjado' },
-      CAMINHO_CRIAR,
-      { codigoEmpresa: '7' },
-    ) as Record<string, unknown>;
+    const corpo = corpoComOperadorTef({ ...CORPO_PLANO, UsuarioGAM: 'forjado' }, CAMINHO_CRIAR, {
+      codigoEmpresa: '7',
+    }) as Record<string, unknown>;
 
     expect(corpo['UsuarioGAM']).toBe('');
   });
@@ -98,9 +96,11 @@ describe('corpoComOperadorTef', () => {
       SESSAO,
     ) as Record<string, unknown>;
 
-    expect(Object.keys(corpo).filter((chave) => /^(empcod|usuariogam)$/i.test(chave)).sort()).toEqual(
-      ['EmpCod', 'UsuarioGAM'],
-    );
+    expect(
+      Object.keys(corpo)
+        .filter((chave) => /^(empcod|usuariogam)$/i.test(chave))
+        .sort(),
+    ).toEqual(['EmpCod', 'UsuarioGAM']);
     expect(corpo['EmpCod']).toBe(7);
     expect(corpo['UsuarioGAM']).toBe(GUID);
   });
@@ -114,11 +114,10 @@ describe('corpoComOperadorTef', () => {
   });
 
   it('empresa da sessão não numérica: não grava NaN, mas o UsuarioGAM ainda é o do cookie', () => {
-    const corpo = corpoComOperadorTef(
-      { ...CORPO_PLANO, EmpCod: 999 },
-      CAMINHO_CRIAR,
-      { codigoEmpresa: 'acme', usuarioGam: GUID },
-    ) as Record<string, unknown>;
+    const corpo = corpoComOperadorTef({ ...CORPO_PLANO, EmpCod: 999 }, CAMINHO_CRIAR, {
+      codigoEmpresa: 'acme',
+      usuarioGam: GUID,
+    }) as Record<string, unknown>;
 
     expect(corpo['EmpCod']).toBe(999);
     expect(corpo['UsuarioGAM']).toBe(GUID);

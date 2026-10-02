@@ -130,13 +130,17 @@ type PreCondicao =
   | { readonly ok: false; readonly motivo: string; readonly mensagem: string };
 
 /** Avaliada **uma vez**, na montagem: a venda não troca de cliente com pagamento pendente (AD-209). */
-function avaliarPreCondicao(cliente: ClienteVenda | null, usuarioGamPresente: boolean): PreCondicao {
+function avaliarPreCondicao(
+  cliente: ClienteVenda | null,
+  usuarioGamPresente: boolean,
+): PreCondicao {
   try {
     return { ok: true, pagador: exigirPagadorTef(cliente, usuarioGamPresente) };
   } catch (causa) {
     return {
       ok: false,
-      motivo: causa instanceof ErroTefSemUsuarioGam ? MOTIVO_TEF_SEM_USUARIO_GAM : MOTIVO_TEF_SEM_CLIENTE,
+      motivo:
+        causa instanceof ErroTefSemUsuarioGam ? MOTIVO_TEF_SEM_USUARIO_GAM : MOTIVO_TEF_SEM_CLIENTE,
       mensagem: causa instanceof Error ? causa.message : 'Não foi possível cobrar no TEF.',
     };
   }
@@ -459,7 +463,10 @@ export function ModalTef({
       ) : (
         <>
           {/* Anel `xObO3`: 96px, traço 6, um quarto aberto — gira enquanto se espera. */}
-          <span className="relative flex size-[96px] shrink-0 items-center justify-center" role="status">
+          <span
+            className="relative flex size-[96px] shrink-0 items-center justify-center"
+            role="status"
+          >
             <span
               className="cc-giro absolute inset-0 rounded-full border-[6px] border-primary border-r-transparent"
               aria-hidden="true"
@@ -484,7 +491,11 @@ export function ModalTef({
               [104, 40],
               [60, 56],
             ].map(([rotulo, valorSkeleton], indice) => (
-              <div key={indice} className="flex w-full items-center justify-between" aria-hidden="true">
+              <div
+                key={indice}
+                className="flex w-full items-center justify-between"
+                aria-hidden="true"
+              >
                 <span className="h-3 rounded-[4px] bg-secondary" style={{ width: rotulo }} />
                 <span className="h-3 rounded-[4px] bg-secondary" style={{ width: valorSkeleton }} />
               </div>

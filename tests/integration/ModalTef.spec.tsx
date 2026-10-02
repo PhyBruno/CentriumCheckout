@@ -51,7 +51,12 @@ function respostaJson(corpo: unknown): Response {
 }
 
 function envelopeOk(interno: unknown): Record<string, unknown> {
-  return { Sucesso: true, CodigoStatusHttp: 200, MensagemErro: '', RespostaJson: JSON.stringify(interno) };
+  return {
+    Sucesso: true,
+    CodigoStatusHttp: 200,
+    MensagemErro: '',
+    RespostaJson: JSON.stringify(interno),
+  };
 }
 
 interface OpcoesErpFake {
@@ -73,7 +78,8 @@ function erpFake(opcoes: OpcoesErpFake = {}): { cliente: ErpClient; chamadas: Ch
     chamar(caminho: string, init: RequestInit = {}): Promise<ResultadoChamadaErp> {
       chamadas.push({
         caminho,
-        corpo: typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null,
+        corpo:
+          typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null,
       });
 
       if (caminho.startsWith(CAMINHO_CRIAR)) {
@@ -223,7 +229,9 @@ describe('ModalTef — cobrança', () => {
     expect(await screen.findByTestId('tef-nsu')).toHaveTextContent('048291');
     expect(screen.getByTestId('tef-autorizacao')).toHaveTextContent('192837');
     expect(screen.getByTestId('tef-bandeira')).toHaveTextContent('MASTERCARD');
-    expect(screen.getByTestId('tef-subtitulo')).toHaveTextContent('Transação concluída com sucesso');
+    expect(screen.getByTestId('tef-subtitulo')).toHaveTextContent(
+      'Transação concluída com sucesso',
+    );
   });
 
   it('campo ausente na aprovação aparece como "—", nunca inventado', async () => {
@@ -309,7 +317,8 @@ describe('ModalTef — cobrança', () => {
     expect(
       chamadas.every(
         (chamada) =>
-          chamada.caminho.startsWith(CAMINHO_CRIAR) || chamada.caminho.startsWith(CAMINHO_CONSULTAR),
+          chamada.caminho.startsWith(CAMINHO_CRIAR) ||
+          chamada.caminho.startsWith(CAMINHO_CONSULTAR),
       ),
     ).toBe(true);
   });

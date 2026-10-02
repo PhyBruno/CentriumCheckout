@@ -32,7 +32,12 @@ describe('montarPagadorTef', () => {
   it('cliente default (documento null) → CPF vazio e o nome do default', () => {
     expect(
       montarPagadorTef(
-        clienteDe({ codigoCliente: 999999, nome: 'CONSUMIDOR FINAL', documento: null, origem: 'DEFAULT' }),
+        clienteDe({
+          codigoCliente: 999999,
+          nome: 'CONSUMIDOR FINAL',
+          documento: null,
+          origem: 'DEFAULT',
+        }),
       ),
     ).toEqual({ cpf: '', nome: 'CONSUMIDOR FINAL' });
   });

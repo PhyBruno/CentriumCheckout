@@ -211,7 +211,10 @@ export function JanelaEstornoTef({
       tom={falhou ? 'alerta' : 'info'}
       icone={
         falhou ? (
-          <AlertTriangle className="size-5 text-[var(--cc-color-accent-yellow)]" aria-hidden="true" />
+          <AlertTriangle
+            className="size-5 text-[var(--cc-color-accent-yellow)]"
+            aria-hidden="true"
+          />
         ) : (
           <CreditCard className="size-5 text-primary" aria-hidden="true" />
         )
@@ -285,7 +288,10 @@ export function JanelaEstornoTef({
         </PainelAlertaEstorno>
       ) : (
         <>
-          <span className="relative flex size-[96px] shrink-0 items-center justify-center" role="status">
+          <span
+            className="relative flex size-[96px] shrink-0 items-center justify-center"
+            role="status"
+          >
             <span
               className="cc-giro absolute inset-0 rounded-full border-[6px] border-primary border-r-transparent"
               aria-hidden="true"

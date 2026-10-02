@@ -1377,11 +1377,9 @@ describe('pagamentoSlice — confirmarEstornoTef (feature 010)', () => {
       await montado.store
         .getState()
         .aplicarPagamento({ forma: CARTAO, valorInformado: centavos(valor) });
-      montado.store
-        .getState()
-        .confirmarPagamentoIntegrado(`pag-${String(indice + 1)}`, {
-          dadosTEF: { ...DADOS_TEF, pagId: `pay_exemplo_000${String(indice + 1)}` },
-        });
+      montado.store.getState().confirmarPagamentoIntegrado(`pag-${String(indice + 1)}`, {
+        dadosTEF: { ...DADOS_TEF, pagId: `pay_exemplo_000${String(indice + 1)}` },
+      });
     }
     return montado;
   }

@@ -94,7 +94,12 @@ describe('consultaCardRespSchema', () => {
 
   it('campos de detalhe ausentes, nulos ou numéricos viram texto', () => {
     const lido = consultaCardRespSchema.parse([
-      { payment_identifier: 'pay_exemplo_0001', payment_status: 'PDT', nsu_host: 48291, card_brand: null },
+      {
+        payment_identifier: 'pay_exemplo_0001',
+        payment_status: 'PDT',
+        nsu_host: 48291,
+        card_brand: null,
+      },
     ]);
     expect(lido[0]).toMatchObject({
       nsu_host: '48291',

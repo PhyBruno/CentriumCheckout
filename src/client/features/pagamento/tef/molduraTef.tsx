@@ -202,7 +202,10 @@ export function LinhaDetalheTef({
     <div className="flex w-full items-center justify-between gap-sm">
       <span className="text-base text-[var(--cc-color-muted)]">{rotulo}</span>
       <span
-        className={cn('truncate text-base font-semibold text-foreground', mono && 'font-mono tabular-nums')}
+        className={cn(
+          'truncate text-base font-semibold text-foreground',
+          mono && 'font-mono tabular-nums',
+        )}
         data-testid={testId}
       >
         {valor.trim() === '' ? '—' : valor}

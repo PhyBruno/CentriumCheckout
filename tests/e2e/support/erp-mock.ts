@@ -2797,15 +2797,21 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       contadores.estornarPagamento += 1;
 
       if (config.tefEstornoRecusado) {
-        return reply.send(respostaSmartTefRecusa('Estorno não permitido para esta transação (sintético)'));
+        return reply.send(
+          respostaSmartTefRecusa('Estorno não permitido para esta transação (sintético)'),
+        );
       }
 
       const corpo = request.body ?? {};
       const paymentIdentifier =
-        typeof corpo['SmartTefPaymentIdentifier'] === 'string' ? corpo['SmartTefPaymentIdentifier'] : '';
+        typeof corpo['SmartTefPaymentIdentifier'] === 'string'
+          ? corpo['SmartTefPaymentIdentifier']
+          : '';
       const transacao = transacoesTef.get(paymentIdentifier);
       if (transacao === undefined) {
-        return reply.send(respostaSmartTefRecusa(`Pagamento SmartTEF ${paymentIdentifier} não Localizada.`));
+        return reply.send(
+          respostaSmartTefRecusa(`Pagamento SmartTEF ${paymentIdentifier} não Localizada.`),
+        );
       }
 
       transacao.fase = 'ESTORNO';

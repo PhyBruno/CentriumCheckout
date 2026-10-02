@@ -86,7 +86,10 @@ function caminhoComparavel(caminho: string): string {
   } catch {
     // `%` sem dois hexadecimais: compara como veio.
   }
-  return decodificado.replace(/\/{2,}/g, '/').replace(/\/+$/, '').toLowerCase();
+  return decodificado
+    .replace(/\/{2,}/g, '/')
+    .replace(/\/+$/, '')
+    .toLowerCase();
 }
 
 /**

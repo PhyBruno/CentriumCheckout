@@ -61,11 +61,11 @@ describe('formaParaRetrato — TEF', () => {
       }),
     );
 
-    expect(Object.keys(forma).filter((chave) => chave.startsWith('TEF')).sort()).toEqual([
-      'TEFBandeira',
-      'TEFPagId',
-      'TEFTipoIntegracao',
-    ]);
+    expect(
+      Object.keys(forma)
+        .filter((chave) => chave.startsWith('TEF'))
+        .sort(),
+    ).toEqual(['TEFBandeira', 'TEFPagId', 'TEFTipoIntegracao']);
   });
 
   it('forma sem TEF não leva nenhum campo TEF*', () => {

@@ -49,7 +49,10 @@ export function lerRespostaSmartTef(endpoint: string, corpo: unknown): unknown {
 
   if (!envelope.data.Sucesso) {
     const mensagem = envelope.data.MensagemErro.trim();
-    throw new ErroNegocioErp(endpoint, mensagem === '' ? MENSAGEM_RECUSA_SMARTTEF_PADRAO : mensagem);
+    throw new ErroNegocioErp(
+      endpoint,
+      mensagem === '' ? MENSAGEM_RECUSA_SMARTTEF_PADRAO : mensagem,
+    );
   }
 
   try {

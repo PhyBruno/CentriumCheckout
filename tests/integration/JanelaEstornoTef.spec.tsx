@@ -37,7 +37,12 @@ function respostaJson(corpo: unknown): Response {
 }
 
 function envelopeOk(interno: unknown): Record<string, unknown> {
-  return { Sucesso: true, CodigoStatusHttp: 200, MensagemErro: '', RespostaJson: JSON.stringify(interno) };
+  return {
+    Sucesso: true,
+    CodigoStatusHttp: 200,
+    MensagemErro: '',
+    RespostaJson: JSON.stringify(interno),
+  };
 }
 
 interface OpcoesErpFake {
@@ -61,7 +66,12 @@ function erpFake(opcoes: OpcoesErpFake): { cliente: ErpClient; caminhos: string[
           estado: 'ok',
           resposta: respostaJson(
             'recusa' in estorno
-              ? { Sucesso: false, CodigoStatusHttp: 0, MensagemErro: estorno.recusa, RespostaJson: '' }
+              ? {
+                  Sucesso: false,
+                  CodigoStatusHttp: 0,
+                  MensagemErro: estorno.recusa,
+                  RespostaJson: '',
+                }
               : envelopeOk({ payment_identifier: PAG_ID, payment_status: estorno.status }),
           ),
         });
@@ -71,7 +81,9 @@ function erpFake(opcoes: OpcoesErpFake): { cliente: ErpClient; caminhos: string[
       indice += 1;
       return Promise.resolve({
         estado: 'ok',
-        resposta: respostaJson(envelopeOk([{ payment_identifier: PAG_ID, payment_status: literal }])),
+        resposta: respostaJson(
+          envelopeOk([{ payment_identifier: PAG_ID, payment_status: literal }]),
+        ),
       });
     },
   };
@@ -178,10 +190,15 @@ describe('JanelaEstornoTef', () => {
 
   // (e) T6.
   it('Sucesso:false → painel com a frase do ERP, e o TEF não é estornado', async () => {
-    const { cliente } = erpFake({ consultas: ['CNC'], estorno: { recusa: 'Estorno fora do prazo' } });
+    const { cliente } = erpFake({
+      consultas: ['CNC'],
+      estorno: { recusa: 'Estorno fora do prazo' },
+    });
     const desfechos = renderizar(cliente);
 
-    expect(await screen.findByTestId('erro-estorno-tef')).toHaveTextContent('Estorno fora do prazo');
+    expect(await screen.findByTestId('erro-estorno-tef')).toHaveTextContent(
+      'Estorno fora do prazo',
+    );
     expect(desfechos.estornados.quantidade).toBe(0);
   });
 

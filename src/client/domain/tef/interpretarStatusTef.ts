@@ -25,7 +25,8 @@
 export type StatusSmartTef =
   'PDT' | 'PROC_PAG' | 'CNC' | 'CAN_ERP' | 'REJ_PAG' | 'SOL_EST' | 'PROC_EST' | 'EST' | 'REJ_EST';
 
-export type MotivoFalhaTef = 'PAGAMENTO_REJEITADO' | 'CANCELADO_NO_ERP' | 'ESTORNADO_FORA_DO_CHECKOUT';
+export type MotivoFalhaTef =
+  'PAGAMENTO_REJEITADO' | 'CANCELADO_NO_ERP' | 'ESTORNADO_FORA_DO_CHECKOUT';
 
 export type ResultadoCobrancaTef =
   | { readonly situacao: 'PENDENTE' }

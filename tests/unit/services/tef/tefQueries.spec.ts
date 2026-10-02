@@ -40,7 +40,12 @@ function respostaJson(corpo: unknown, status = 200): Response {
 
 /** `SDTSmartTefResposta` com o JSON interno serializado, como o ERP manda. */
 function envelopeOk(interno: unknown): Record<string, unknown> {
-  return { Sucesso: true, CodigoStatusHttp: 200, MensagemErro: '', RespostaJson: JSON.stringify(interno) };
+  return {
+    Sucesso: true,
+    CodigoStatusHttp: 200,
+    MensagemErro: '',
+    RespostaJson: JSON.stringify(interno),
+  };
 }
 
 function envelopeRecusa(mensagem: string): Record<string, unknown> {
@@ -58,7 +63,9 @@ function erpDe(respostas: Array<Response | 'rede'>): { erpClient: ErpClient; cha
           caminho,
           init,
           corpo:
-            typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null,
+            typeof init.body === 'string'
+              ? (JSON.parse(init.body) as Record<string, unknown>)
+              : null,
         });
         const proxima = fila.shift();
         if (proxima === undefined) {
@@ -79,7 +86,11 @@ const ENTRADA: DadosCriarCardTef = {
   pagador: { cpf: '12345678909', nome: 'MARIA EXEMPLO' },
 };
 
-const CRIADO = { payment_identifier: 'pay_exemplo_0001', payment_status: 'PDT', order_type: 'CRD_UNICO' };
+const CRIADO = {
+  payment_identifier: 'pay_exemplo_0001',
+  payment_status: 'PDT',
+  order_type: 'CRD_UNICO',
+};
 
 describe('criarCardTef', () => {
   // (a) T8 + T10.
@@ -119,7 +130,9 @@ describe('criarCardTef', () => {
     const mensagem = 'Serial do POS (serial_pos) nao localizado para o usuario informado';
     const { erpClient } = erpDe([respostaJson(envelopeRecusa(mensagem))]);
 
-    const erro: unknown = await criarCardTef(ENTRADA, { erpClient }).catch((causa: unknown) => causa);
+    const erro: unknown = await criarCardTef(ENTRADA, { erpClient }).catch(
+      (causa: unknown) => causa,
+    );
 
     expect(erro).toBeInstanceOf(ErroNegocioErp);
     expect((erro as ErroNegocioErp).motivo).toBe(mensagem);
@@ -128,20 +141,27 @@ describe('criarCardTef', () => {
   it('Sucesso:false com MensagemErro vazia usa a frase padrão', async () => {
     const { erpClient } = erpDe([respostaJson(envelopeRecusa(''))]);
 
-    const erro: unknown = await criarCardTef(ENTRADA, { erpClient }).catch((causa: unknown) => causa);
+    const erro: unknown = await criarCardTef(ENTRADA, { erpClient }).catch(
+      (causa: unknown) => causa,
+    );
 
     expect((erro as ErroNegocioErp).motivo).toBe('A SmartTEF recusou a operação.');
   });
 
   // (c) `research.md` D10: sem identificador legível pode haver cobrança criada.
   it.each([
-    ['RespostaJson não-JSON', { Sucesso: true, CodigoStatusHttp: 200, MensagemErro: '', RespostaJson: 'oops' }],
+    [
+      'RespostaJson não-JSON',
+      { Sucesso: true, CodigoStatusHttp: 200, MensagemErro: '', RespostaJson: 'oops' },
+    ],
     ['sem payment_identifier', envelopeOk({ payment_status: 'PDT' })],
     ['payment_identifier vazio', envelopeOk({ payment_identifier: '', payment_status: 'PDT' })],
   ])('%s → ErroCobrancaTefIlegivel, que é ErroRespostaInvalida', async (_caso, corpo) => {
     const { erpClient } = erpDe([respostaJson(corpo)]);
 
-    const erro: unknown = await criarCardTef(ENTRADA, { erpClient }).catch((causa: unknown) => causa);
+    const erro: unknown = await criarCardTef(ENTRADA, { erpClient }).catch(
+      (causa: unknown) => causa,
+    );
 
     expect(erro).toBeInstanceOf(ErroCobrancaTefIlegivel);
     expect(erro).toBeInstanceOf(ErroRespostaInvalida);
@@ -224,7 +244,9 @@ describe('estornarTef', () => {
   // (g) + (e)
   it('vai por POST com { SmartTefPaymentIdentifier } e devolve o payment_status', async () => {
     const { erpClient, chamadas } = erpDe([
-      respostaJson(envelopeOk({ payment_identifier: 'pay_exemplo_0001', payment_status: 'SOL_EST' })),
+      respostaJson(
+        envelopeOk({ payment_identifier: 'pay_exemplo_0001', payment_status: 'SOL_EST' }),
+      ),
     ]);
 
     await expect(estornarTef('pay_exemplo_0001', { erpClient })).resolves.toBe('SOL_EST');
@@ -294,7 +316,9 @@ describe('useStatusTef', () => {
 
   it('ligado consulta e devolve o item', async () => {
     const { erpClient } = erpDe([
-      respostaJson(envelopeOk([{ payment_identifier: 'pay_exemplo_0001', payment_status: 'PROC_PAG' }])),
+      respostaJson(
+        envelopeOk([{ payment_identifier: 'pay_exemplo_0001', payment_status: 'PROC_PAG' }]),
+      ),
     ]);
     const { result } = renderHook(
       () => useStatusTef('pay_exemplo_0001', true, { erpClient, intervaloMs: 60_000 }),

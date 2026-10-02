@@ -107,7 +107,10 @@ describe('cookie de sessão', () => {
 
   it('cookie com usuarioGam faz ida e volta intacto', () => {
     const cifrador = criarCifradorDeSessao(SEGREDO);
-    const comGam: SessaoOperador = { ...sessao, usuarioGam: '0f2c9a4e-0000-4000-8000-000000000000' };
+    const comGam: SessaoOperador = {
+      ...sessao,
+      usuarioGam: '0f2c9a4e-0000-4000-8000-000000000000',
+    };
 
     expect(cifrador.decifrar(cifrador.cifrar(comGam))).toEqual(comGam);
   });

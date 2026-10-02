@@ -90,7 +90,9 @@ async function esperarAprovacaoEFechar(page: Page): Promise<void> {
 }
 
 async function ultimoCriarCard(request: APIRequestContext): Promise<CorpoCriarCard> {
-  return (await (await request.get(`${URL_ERP_MOCK}/__mock/ultimo-criar-card`)).json()) as CorpoCriarCard;
+  return (await (
+    await request.get(`${URL_ERP_MOCK}/__mock/ultimo-criar-card`)
+  ).json()) as CorpoCriarCard;
 }
 
 async function contadores(request: APIRequestContext): Promise<Contadores> {
@@ -258,8 +260,12 @@ test.describe('TEF no layout mobile (cenário 18)', () => {
 
     await page.getByTestId('remover-pagamento').click();
     await page.getByTestId('confirmar-estorno-tef-confirmar').click();
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO', {
-      timeout: 40_000,
-    });
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute(
+      'data-status',
+      'EXCLUIDO',
+      {
+        timeout: 40_000,
+      },
+    );
   });
 });
