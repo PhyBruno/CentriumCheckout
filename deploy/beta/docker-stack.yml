@@ -1,0 +1,134 @@
+# Stack do Docker Swarm do ambiente beta online, que sempre fala com o ERP real.
+#
+# Variáveis (exporte no shell antes do `docker stack deploy`, ou preencha em
+# "Environment variables" no Portainer):
+#
+#   CHECKOUT_IMAGE=justbrunasso/centriumcheckout:beta   padrão; repo público no Docker Hub
+#   CHECKOUT_DOMAIN=checkout.centrium.inf.br            padrão; host publicado pelo Traefik
+#   validationKey=...            obrigatória; a mesma que o ERP manda no redirect (AD-022)
+#   SESSION_SECRET=...           obrigatória; >= 32 caracteres aleatórios
+#   (os dois segredos nunca entram neste arquivo)
+#
+#   ERP_PROXY=1                  1 = token no `.apps`, API no `.prototype` (padrão)
+#                                0 = BFF direto em `https://<tenant>.<ERP_BASE_DOMAIN>`,
+#                                    e o serviço erp-proxy fica com 0 réplicas
+#   ERP_BASE_DOMAIN=apps.centrium.inf.br   base do modo direto e do menu gerencial
+#                                (o gerencial nunca passa pelo proxy)
+#
+#   Só com ERP_PROXY=1. O proxy atende vários tenants: o BFF manda o tenant da
+#   sessão no caminho, e `{tenant}` nos modelos abaixo vira esse valor.
+#   OAUTH_BASE=                  vazio = https://{tenant}.apps.centrium.inf.br
+#   API_BASE=                    vazio = https://{tenant}.prototype.centrium.inf.br
+#   OAUTH_BASE_POR_TENANT=       exceções ao OAUTH_BASE, `TENANT=url;TENANT=url`
+#                                ex.: TENANTX=https://host-do-token.exemplo/caminho-base
+#   TENANTS_PERMITIDOS=          `t1,t2`; vazio = qualquer tenant alfanumérico
+#
+# Subir:
+#   docker build -t "$CHECKOUT_IMAGE" . && docker push "$CHECKOUT_IMAGE"
+#   docker stack deploy -c deploy/beta/docker-stack.yml checkout-beta
+#
+# O proxy é provisório. Para retirá-lo, rode com ERP_PROXY=0. Depois de
+# confirmar, apague o serviço `erp-proxy` daqui, o `deploy/beta/erp-proxy.mjs`
+# e o `COPY` correspondente no Dockerfile.
+
+version: "3.9"
+
+networks:
+  network_public:
+    external: true
+  # BFF ↔ proxy. Sem `internal: true` porque o proxy precisa sair para a internet.
+  interno:
+    driver: overlay
+
+services:
+  checkout:
+    image: ${CHECKOUT_IMAGE:-justbrunasso/centriumcheckout:beta}
+    environment:
+      NODE_ENV: "production"
+      PORT: "3000"
+      baseDomain: ${ERP_BASE_DOMAIN:-apps.centrium.inf.br}
+      validationKey: ${validationKey:?defina validationKey}
+      SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET}
+      ERP_PROXY: ${ERP_PROXY:-1}
+    # A troca de destino fica aqui, e não no `environment`, porque o compose não
+    # tem condicional: com ERP_PROXY=1 o BFF chama `erp-proxy:4020/<tenant>/…`,
+    # e com outro valor vai direto a `https://<tenant>.<baseDomain>`.
+    command:
+      - sh
+      - -c
+      - |
+        if [ "$$ERP_PROXY" = "1" ]; then
+          export ERP_PROXY_URL=http://erp-proxy:4020
+        fi
+        exec node dist/server/index.js
+    networks:
+      - network_public
+      - interno
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+        - "traefik.http.routers.centriumcheckout-beta.rule=Host(`${CHECKOUT_DOMAIN:-checkout.centrium.inf.br}`)"
+        - "traefik.http.routers.centriumcheckout-beta.entrypoints=websecure"
+        - "traefik.http.routers.centriumcheckout-beta.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.centriumcheckout-beta.loadbalancer.server.port=3000"
+        - "traefik.http.services.centriumcheckout-beta.loadbalancer.healthcheck.path=/health"
+    # `node:24-slim` não tem wget nem curl.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Provisório: pede o token no `.apps` e manda o resto ao `.prototype`. Usa a
+  # mesma imagem. Não tem label do Traefik e fica só na rede interna, então não
+  # é publicado.
+  erp-proxy:
+    image: ${CHECKOUT_IMAGE:-justbrunasso/centriumcheckout:beta}
+    command: ["node", "deploy/beta/erp-proxy.mjs"]
+    environment:
+      OAUTH_BASE: ${OAUTH_BASE:-}
+      API_BASE: ${API_BASE:-}
+      OAUTH_BASE_POR_TENANT: ${OAUTH_BASE_POR_TENANT:-}
+      TENANTS_PERMITIDOS: ${TENANTS_PERMITIDOS:-}
+      PORTA: "4020"
+    networks:
+      - interno
+    deploy:
+      # A mesma variável liga e desliga: ERP_PROXY=0 deixa o serviço sem réplicas.
+      replicas: ${ERP_PROXY:-1}
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 5
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4020/__erp-proxy/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

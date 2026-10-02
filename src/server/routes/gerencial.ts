@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { montarBaseUrlErp, type Env } from '../config/env';
+import { montarBaseUrlErpNavegador, type Env } from '../config/env';
 import { SESSION_COOKIE_NAME, type CifradorDeSessao } from '../session/cookie';
 import type { DestinoGerencial } from '../../shared/gerencial';
 
@@ -67,7 +67,7 @@ export function registrarRotaGerencial(app: FastifyInstance, deps: GerencialDeps
     }
 
     return reply.redirect(
-      `${montarBaseUrlErp(deps.env, sessao.tenant)}${caminho}`,
+      `${montarBaseUrlErpNavegador(deps.env, sessao.tenant)}${caminho}`,
       REDIRECT_TEMPORARIO,
     );
   });

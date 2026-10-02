@@ -20,6 +20,11 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 
+# Provisório, só para o beta: proxy apps→prototype rodado como serviço à parte,
+# com esta mesma imagem (`deploy/beta/docker-stack.yml`). Não tem dependência
+# além do Node e fica inerte se nada o chamar. Sai junto com o proxy.
+COPY deploy/beta/erp-proxy.mjs ./deploy/beta/erp-proxy.mjs
+
 USER node
 EXPOSE 3000
 CMD ["node", "dist/server/index.js"]
