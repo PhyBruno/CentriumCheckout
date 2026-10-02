@@ -280,6 +280,47 @@ describe('ModalTef — cobrança', () => {
     expect(outro.fechamentos.quantidade).toBeGreaterThanOrEqual(2);
   });
 
+  /**
+   * Pedido do usuário (2026-10-02): aprovado, a janela fecha em 10s. O pai
+   * (`useTefPendente`) recria `onFechar` a cada render, e o temporizador não
+   * pode recomeçar por isso — senão uma lista que re-renderiza com frequência
+   * deixaria a janela aberta indefinidamente.
+   */
+  it('re-renders do pai não adiam o fechamento automático depois de aprovado', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['CNC'] });
+    const fechamentos = { quantidade: 0 };
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const elemento = (): ReactElement =>
+      createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        createElement(ModalTef, {
+          formaCodigo: 40,
+          meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
+          valor: centavos(8329),
+          prazoDaCondicao: 1,
+          clienteAtual: CLIENTE,
+          usuarioGamPresente: true,
+          onAprovado: () => undefined,
+          onAbandonado: () => undefined,
+          onFechar: () => {
+            fechamentos.quantidade += 1;
+          },
+          deps: { erpClient: cliente, intervaloMs: INTERVALO_TESTE_MS },
+          atrasoFechamentoMs: 150,
+        }),
+      );
+    const { rerender } = render(elemento());
+    await screen.findByTestId('concluir-tef');
+
+    for (let i = 0; i < 8; i += 1) {
+      await esperar(40);
+      rerender(elemento());
+    }
+
+    expect(fechamentos.quantidade).toBeGreaterThanOrEqual(1);
+  });
+
   // (d)
   it('aguardando: ESC não fecha e o X explica por que está travado', async () => {
     const usuario = userEvent.setup();

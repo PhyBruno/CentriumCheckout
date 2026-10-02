@@ -166,6 +166,9 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
       'EXCLUIDO',
       { timeout: 40_000 },
     );
+    // A janela informa o sucesso e o ESC a fecha antes dos 10s.
+    await expect(page.getByText('Estorno efetuado com sucesso')).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('janela-estorno-tef')).toHaveCount(0);
     await expect(page.getByTestId('pagamentos-saldo-restante')).toContainText('5,00');
 

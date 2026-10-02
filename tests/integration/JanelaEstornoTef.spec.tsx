@@ -119,6 +119,9 @@ function renderizar(
       fechamentos.quantidade += 1;
     },
     deps: { erpClient: cliente, intervaloMs: INTERVALO_TESTE_MS },
+    // Longo por padrão: os cenários afirmam o estado concluído na tela, e só os
+    // que testam o fechamento automático encurtam.
+    atrasoFechamentoMs: 60_000,
     ...sobrescritas,
   };
 
@@ -173,7 +176,78 @@ describe('JanelaEstornoTef', () => {
       expect(desfechos.estornados.quantidade).toBe(1);
     });
     expect(pedidosDeEstorno(caminhos)).toBe(1);
-    expect(desfechos.fechamentos.quantidade).toBe(1);
+    // A janela não some junto: ela mostra que o estorno foi efetuado.
+    expect(desfechos.fechamentos.quantidade).toBe(0);
+  });
+
+  /**
+   * Pedido do usuário (2026-10-02): concluído o estorno, a janela informa o
+   * sucesso e fecha sozinha em 10s, ou antes, pelo ESC — o mesmo comportamento
+   * da janela de cobrança aprovada.
+   */
+  describe('estorno concluído', () => {
+    it('mostra que o estorno foi efetuado, com o valor, e libera o X', async () => {
+      const { cliente } = erpFake({ consultas: ['EST'] });
+      renderizar(cliente);
+
+      expect(await screen.findByText('Estorno efetuado com sucesso')).toBeInTheDocument();
+      expect(screen.getByTestId('tef-estorno-badge')).toHaveTextContent('Estornado');
+      expect(screen.getByTestId('tef-valor')).toHaveTextContent('50,00');
+      expect(screen.getByTestId('fechar-janela-estorno-tef')).not.toHaveAttribute('aria-disabled');
+    });
+
+    it('fecha sozinha depois do atraso', async () => {
+      const { cliente } = erpFake({ consultas: ['EST'] });
+      const desfechos = renderizar(cliente, {}, { atrasoFechamentoMs: 50 });
+
+      await screen.findByText('Estorno efetuado com sucesso');
+      await waitFor(() => {
+        expect(desfechos.fechamentos.quantidade).toBe(1);
+      });
+      expect(desfechos.estornados.quantidade).toBe(1);
+    });
+
+    it('ESC fecha antes do atraso', async () => {
+      const usuario = userEvent.setup();
+      const { cliente } = erpFake({ consultas: ['EST'] });
+      const desfechos = renderizar(cliente);
+
+      await screen.findByText('Estorno efetuado com sucesso');
+      await usuario.keyboard('{Escape}');
+
+      expect(desfechos.fechamentos.quantidade).toBe(1);
+    });
+
+    // O pai recria `onFechar` a cada render; isso não pode empurrar o prazo.
+    it('re-renders do pai não adiam o fechamento automático', async () => {
+      const { cliente } = erpFake({ consultas: ['EST'] });
+      const fechamentos = { quantidade: 0 };
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const elemento = (): ReactElement =>
+        createElement(
+          QueryClientProvider,
+          { client: queryClient },
+          createElement(JanelaEstornoTef, {
+            paymentIdentifier: PAG_ID,
+            valor: centavos(5_000),
+            onEstornado: () => undefined,
+            onFechar: () => {
+              fechamentos.quantidade += 1;
+            },
+            deps: { erpClient: cliente, intervaloMs: INTERVALO_TESTE_MS },
+            atrasoFechamentoMs: 150,
+          }),
+        );
+      const { rerender } = render(elemento());
+      await screen.findByText('Estorno efetuado com sucesso');
+
+      for (let i = 0; i < 8; i += 1) {
+        await esperar(40);
+        rerender(elemento());
+      }
+
+      expect(fechamentos.quantidade).toBeGreaterThanOrEqual(1);
+    });
   });
 
   // (d)

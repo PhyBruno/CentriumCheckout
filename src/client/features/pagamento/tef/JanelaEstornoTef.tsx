@@ -61,12 +61,22 @@ export interface JanelaEstornoTefProps {
   readonly valor: Centavos;
   /** → `confirmarEstornoTef(idPagamento)`. Só depois do `EST`. */
   readonly onEstornado: () => void;
-  /** Sem mutação: o TEF segue aprovado. */
+  /** Fecha a janela — depois do estorno, ou sem mutação nenhuma (TEF segue aprovado). */
   readonly onFechar: () => void;
   readonly deps?: TefQueriesDeps;
+  /** Só teste; o padrão é `MS_FECHAMENTO_APOS_ESTORNO_TEF`. */
+  readonly atrasoFechamentoMs?: number;
 }
 
-type FaseEstorno = 'CONSULTANDO' | 'SOLICITANDO' | 'AGUARDANDO' | 'ERRO' | 'REJEITADO';
+type FaseEstorno =
+  'CONSULTANDO' | 'SOLICITANDO' | 'AGUARDANDO' | 'ESTORNADO' | 'ERRO' | 'REJEITADO';
+
+/**
+ * Pedido do usuário (2026-10-02): concluído o estorno, a janela informa o
+ * sucesso e fecha sozinha em 10s, ou antes, pelo ESC, pelo `X` ou pelo botão —
+ * o mesmo que a janela de cobrança faz depois de aprovar.
+ */
+export const MS_FECHAMENTO_APOS_ESTORNO_TEF = 10_000;
 
 const DEPS_VAZIAS: TefQueriesDeps = {};
 
@@ -76,6 +86,7 @@ export function JanelaEstornoTef({
   onEstornado,
   onFechar,
   deps = DEPS_VAZIAS,
+  atrasoFechamentoMs = MS_FECHAMENTO_APOS_ESTORNO_TEF,
 }: JanelaEstornoTefProps): ReactElement {
   const [fase, setFase] = useState<FaseEstorno>('CONSULTANDO');
   const [mensagemErro, setMensagemErro] = useState<string | null>(null);
@@ -89,15 +100,19 @@ export function JanelaEstornoTef({
 
   const { consulta } = useStatusTef(paymentIdentifier, fase === 'AGUARDANDO', deps);
 
+  /**
+   * `EST` observado: a forma é riscada **agora** (`onEstornado`), e a janela
+   * fica na tela mostrando o sucesso até o fechamento automático — o saldo da
+   * venda não espera os 10s, só a janela.
+   */
   const concluir = useCallback((): void => {
     if (desfechoEmitido.current) {
       return;
     }
     desfechoEmitido.current = true;
-    notificar.sucesso('Estorno concluído: o valor volta para o cartão do cliente.');
+    setFase('ESTORNADO');
     onEstornado();
-    onFechar();
-  }, [onEstornado, onFechar]);
+  }, [onEstornado]);
 
   const falhar = useCallback((causa: unknown): void => {
     setMensagemErro(mensagemDeErroTef(causa, 'Não foi possível estornar no TEF.'));
@@ -161,6 +176,27 @@ export function JanelaEstornoTef({
   }, [consulta, fase, seguir]);
 
   const esperando = fase === 'CONSULTANDO' || fase === 'SOLICITANDO' || fase === 'AGUARDANDO';
+  const estornado = fase === 'ESTORNADO';
+
+  // Fechamento automático depois do estorno. Pela referência, e não com
+  // `onFechar` nas dependências, pelo mesmo motivo do `ModalTef`: o pai recria a
+  // função a cada render, e cada re-render empurraria o prazo para frente.
+  const onFecharRef = useRef(onFechar);
+  onFecharRef.current = onFechar;
+  useEffect(() => {
+    if (!estornado) {
+      return;
+    }
+    const temporizador = setTimeout(
+      () => {
+        onFecharRef.current();
+      },
+      Math.max(atrasoFechamentoMs, 0),
+    );
+    return () => {
+      clearTimeout(temporizador);
+    };
+  }, [estornado, atrasoFechamentoMs]);
 
   // ESC fecha só fora da espera: com o estorno em curso, a saída é o botão do
   // rodapé, que avisa que o pedido segue na SmartTEF.
@@ -200,17 +236,21 @@ export function JanelaEstornoTef({
       testId="janela-estorno-tef"
       titulo="Estorno no TEF"
       subtitulo={
-        fase === 'ERRO'
-          ? 'Falha ao pedir o estorno'
-          : fase === 'REJEITADO'
-            ? 'Estorno rejeitado'
-            : fase === 'CONSULTANDO'
-              ? 'Consultando a transação'
-              : 'Estorno em andamento'
+        estornado
+          ? 'Estorno concluído com sucesso'
+          : fase === 'ERRO'
+            ? 'Falha ao pedir o estorno'
+            : fase === 'REJEITADO'
+              ? 'Estorno rejeitado'
+              : fase === 'CONSULTANDO'
+                ? 'Consultando a transação'
+                : 'Estorno em andamento'
       }
-      tom={falhou ? 'alerta' : 'info'}
+      tom={estornado ? 'sucesso' : falhou ? 'alerta' : 'info'}
       icone={
-        falhou ? (
+        estornado ? (
+          <Check className="size-5 text-[var(--cc-color-up)]" aria-hidden="true" />
+        ) : falhou ? (
           <AlertTriangle
             className="size-5 text-[var(--cc-color-accent-yellow)]"
             aria-hidden="true"
@@ -246,6 +286,17 @@ export function JanelaEstornoTef({
             <X className="size-[15px] text-muted-foreground" aria-hidden="true" />
             Desistir de esperar
           </Button>
+        ) : estornado ? (
+          // Mesmo botão do `xpon7` da janela aprovada: `$success` com o ícone `x`.
+          <Button
+            type="button"
+            className="h-9 gap-xs rounded-full bg-[var(--cc-color-up)] px-base text-base font-semibold text-[var(--cc-color-on-primary)] hover:bg-[var(--cc-color-up-ink)]"
+            data-testid="concluir-estorno-tef"
+            onClick={onFechar}
+          >
+            <X className="size-4" aria-hidden="true" />
+            Fechar
+          </Button>
         ) : (
           <Button
             type="button"
@@ -277,7 +328,24 @@ export function JanelaEstornoTef({
         )
       }
     >
-      {fase === 'ERRO' ? (
+      {estornado ? (
+        <>
+          {/* Mesma anatomia do estado aprovado (`A9MNZI`): disco `$success-soft`
+              de 96px com `check` de 56px, badge, título e instrução. */}
+          <span className="flex size-[96px] shrink-0 items-center justify-center rounded-full bg-[var(--cc-color-up-soft)]">
+            <Check className="size-14 text-[var(--cc-color-up)]" aria-hidden="true" />
+          </span>
+          <BadgeTef tom="sucesso" testId="tef-estorno-badge">
+            Estornado
+          </BadgeTef>
+          <h3 className="text-[18px] leading-[1.2] font-semibold text-foreground" role="status">
+            Estorno efetuado com sucesso
+          </h3>
+          <p className="w-full text-center text-base leading-[1.4] text-muted-foreground">
+            O valor volta para o cartão do cliente. Esta janela fecha sozinha em instantes.
+          </p>
+        </>
+      ) : fase === 'ERRO' ? (
         <PainelAlertaEstorno testId="erro-estorno-tef" titulo="Não foi possível pedir o estorno.">
           {mensagemErro ?? 'O ERP não respondeu ao pedido de estorno.'} O pagamento continua
           aprovado na venda.
@@ -312,7 +380,10 @@ export function JanelaEstornoTef({
           </p>
         </>
       )}
-      <BlocoValorTef rotulo="Valor a estornar" valor={formatarCentavos(valor)} />
+      <BlocoValorTef
+        rotulo={estornado ? 'Valor estornado' : 'Valor a estornar'}
+        valor={formatarCentavos(valor)}
+      />
     </MolduraJanelaTef>
   );
 }

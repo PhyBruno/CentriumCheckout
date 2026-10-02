@@ -261,15 +261,32 @@ export function ModalTef({
     abandonar(resultado.motivo, MENSAGEM_POR_MOTIVO_FALHA_TEF[resultado.motivo]);
   }, [consulta, cobranca, onAprovado, abandonar]);
 
+  /**
+   * Fechamento automático 10s depois da aprovação (pedido do usuário).
+   *
+   * O prazo conta **do instante da aprovação**, e só dele. `onFechar` chega do
+   * pai como função nova a cada render (`useTefPendente`); com ele nas
+   * dependências, cada re-render da lista cancelava o temporizador e começava
+   * outro de 10s, e uma lista que re-renderiza com frequência deixava a janela
+   * aberta indefinidamente (correção do usuário, 2026-10-02). A referência
+   * mantém a função atual sem reabrir o efeito.
+   */
+  const onFecharRef = useRef(onFechar);
+  onFecharRef.current = onFechar;
   useEffect(() => {
     if (aprovado === null) {
       return;
     }
-    const temporizador = setTimeout(onFechar, Math.max(atrasoFechamentoMs, 0));
+    const temporizador = setTimeout(
+      () => {
+        onFecharRef.current();
+      },
+      Math.max(atrasoFechamentoMs, 0),
+    );
     return () => {
       clearTimeout(temporizador);
     };
-  }, [aprovado, atrasoFechamentoMs, onFechar]);
+  }, [aprovado, atrasoFechamentoMs]);
 
   // ESC só fecha **depois** de aprovado: com a cobrança aberta na maquininha, a
   // tecla reflexa de "sai daqui" é o gesto que mais facilmente deixaria uma

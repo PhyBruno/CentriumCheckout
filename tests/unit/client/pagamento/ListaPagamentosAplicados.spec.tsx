@@ -475,6 +475,10 @@ describe('ListaPagamentosAplicados — janela do TEF', () => {
         expect(useVendaStore.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
       });
       expect(screen.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
+      // A janela fica informando o sucesso (pedido do usuário, 2026-10-02) e
+      // sai pelo "Fechar" — ou sozinha em 10s, ou pelo ESC.
+      expect(await screen.findByText('Estorno efetuado com sucesso')).toBeInTheDocument();
+      await usuario.click(screen.getByTestId('concluir-estorno-tef'));
       expect(screen.queryByTestId('janela-estorno-tef')).toBeNull();
     });
 
