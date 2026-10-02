@@ -231,6 +231,11 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
         Repository: query.data.Repository,
         codigoEmpresa: query.data.codigoEmpresa,
         usuarioCodigo: operador.usuarioCodigo,
+        // Operador no TEF (feature 010). Ausente não recusa a entrada: quem não
+        // tem TEF vinculado continua vendendo, e a janela do TEF explica a
+        // recusa se ele tentar cobrar no cartão. O campo só entra no cookie
+        // quando existe — `usuarioGam: undefined` gravaria uma chave vazia.
+        ...(operador.usuarioGam === null ? {} : { usuarioGam: operador.usuarioGam }),
       });
 
       return (

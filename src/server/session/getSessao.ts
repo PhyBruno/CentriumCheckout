@@ -49,17 +49,28 @@ export function queryGetSessao(
  * sessão sair atribuída a um operador que não existe — trilha de auditoria
  * falsa, que é pior que recusar a entrada.
  */
-export function extrairUsuarioCodigo(json: unknown): string | null {
+/**
+ * Os campos da sessão de uma resposta de `GetSessao`: na raiz, como o ERP real
+ * devolve (AD-165), ou sob `SessaoUsuario`, como o `erp-mock` e o YAML desenham.
+ * `null` quando o corpo nem é objeto.
+ */
+function camposDaSessao(json: unknown): Record<string, unknown> | null {
   if (typeof json !== 'object' || json === null) {
     return null;
   }
 
   const corpo = json as Record<string, unknown>;
   const envelope = corpo['SessaoUsuario'];
-  const sessao: Record<string, unknown> =
-    typeof envelope === 'object' && envelope !== null && !Array.isArray(envelope)
-      ? (envelope as Record<string, unknown>)
-      : corpo;
+  return typeof envelope === 'object' && envelope !== null && !Array.isArray(envelope)
+    ? (envelope as Record<string, unknown>)
+    : corpo;
+}
+
+export function extrairUsuarioCodigo(json: unknown): string | null {
+  const sessao = camposDaSessao(json);
+  if (sessao === null) {
+    return null;
+  }
 
   const bruto = sessao['UsuarioCodigo'];
   if (typeof bruto !== 'string' && typeof bruto !== 'number') {
@@ -68,6 +79,27 @@ export function extrairUsuarioCodigo(json: unknown): string | null {
 
   const codigo = Number(bruto);
   return Number.isSafeInteger(codigo) && codigo > 0 ? String(codigo) : null;
+}
+
+/**
+ * Lê o `UsuarioGAM` de uma resposta de `GetSessao` (feature 010, AD-259).
+ *
+ * É o GUID GAM do operador, e é por ele que `PSmartTEF` escolhe em qual
+ * maquininha a cobrança do TEF aparece. O BFF o guarda no cookie e o insere no
+ * corpo de `CriarCardPagamento` (`corpoComOperadorTef`), pelo mesmo motivo de
+ * `UsuarioCodigo` (AD-224): o corpo vem do navegador e o ERP não o confere.
+ *
+ * Ausente, vazio ou não-texto vira `null`, e isso **não** é recusa: o campo
+ * ainda não existe no `SessaoUsuario` da KB (item 64 de `PENDENCIES.md`), e um
+ * operador sem ele continua vendendo com as demais formas.
+ */
+export function extrairUsuarioGam(json: unknown): string | null {
+  const bruto = camposDaSessao(json)?.['UsuarioGAM'];
+  if (typeof bruto !== 'string') {
+    return null;
+  }
+  const valor = bruto.trim();
+  return valor === '' ? null : valor;
 }
 
 /**
@@ -80,7 +112,15 @@ export function extrairUsuarioCodigo(json: unknown): string | null {
  * demais.
  */
 export type ResultadoGetSessao =
-  | { readonly situacao: 'identificado'; readonly usuarioCodigo: string }
+  | {
+      readonly situacao: 'identificado';
+      readonly usuarioCodigo: string;
+      /**
+       * Operador no TEF, ou `null` quando o ERP não o publica. Não muda o
+       * desfecho: sem ele a sessão nasce do mesmo jeito (feature 010).
+       */
+      readonly usuarioGam: string | null;
+    }
   | { readonly situacao: 'naoIdentificado' }
   | { readonly situacao: 'indisponivel' };
 
@@ -129,5 +169,5 @@ export async function buscarUsuarioCodigo(
   const usuarioCodigo = extrairUsuarioCodigo(json);
   return usuarioCodigo === null
     ? { situacao: 'naoIdentificado' }
-    : { situacao: 'identificado', usuarioCodigo };
+    : { situacao: 'identificado', usuarioCodigo, usuarioGam: extrairUsuarioGam(json) };
 }

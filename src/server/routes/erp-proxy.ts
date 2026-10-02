@@ -4,6 +4,7 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
   type CifradorDeSessao,
+  type SessaoOperador,
 } from '../session/cookie';
 import { chamarErpComRenovacao } from '../session/chamadaAutenticada';
 import { executarOuEncerrarSessao } from '../session/respostaSessaoEncerrada';
@@ -152,6 +153,11 @@ const CAMINHOS_COM_EMPRESA_NA_RAIZ = [
   // como o do envio por WhatsApp. O SDT a declara `integer int64`, então vai
   // numérica — é o que `corpoComEmpresaNaRaiz` faz.
   '/ApiCentriumOAuth/GerarPIX',
+  // Feature 010 (AD-259): `EstornarPagamento` recebe `in:&Empresa` como
+  // parâmetro comum e não tem `Event … .Before` na API, então a empresa só
+  // chega se estiver no corpo. O `ConsultarStatusCard`, que é `GET`, já a
+  // recebe na query por `queryComEmpresaDaSessao`.
+  '/ApiCentriumOAuth/EstornarPagamento',
 ];
 
 export function corpoComEmpresaNaRaiz(
@@ -174,6 +180,54 @@ export function corpoComEmpresaNaRaiz(
   // `Empresa` é `integer int64` neste input — numérico, ao contrário do
   // `CheckoutFaturarNFCe.Empresa`, que é texto (AD-188).
   return { ...body, Empresa: empresa };
+}
+
+const CAMINHO_CRIAR_CARD_TEF = '/apicentriumoauth/criarcardpagamento';
+
+/** Envelope do SDT de entrada, caso a medição mostre que o ERP o exige. */
+const ENVELOPE_CRIAR_CARD_TEF = 'CriarCardReq';
+
+/**
+ * Insere `EmpCod` e `UsuarioGAM` no corpo de `CriarCardPagamento` (feature
+ * 010, `contracts/erp-tef-api.md` §5, invariante T8).
+ *
+ * Os dois decidem **de quem** é a cobrança e **em qual maquininha** ela aparece:
+ * `PSmartTEF` escolhe o `serial_pos` pelo `UsuarioGAM`. Mesmo princípio de
+ * `corpoComUsuarioDaSessao` (AD-224) — o corpo vem do navegador e o ERP não o
+ * confere contra o token —, com uma diferença que justifica uma função própria:
+ * aqui os campos são **inseridos**, porque o navegador não os manda (o tipo
+ * `DadosCriarCardTef` nem os tem), e qualquer ocorrência que chegue é
+ * sobrescrita.
+ *
+ * - `EmpCod` numérico (`NUMERIC(6)` no SDT); empresa da sessão não numérica
+ *   deixa o campo como veio, porque `NaN` seria pior.
+ * - `UsuarioGAM` do cookie, ou `''` quando a sessão não o tem: o ERP recusa
+ *   com "Serial do POS … nao localizado", e um valor forjado nunca passa.
+ * - Aplicado na raiz **e** dentro de `CriarCardReq`, se existir: o envelope do
+ *   corpo ainda não foi medido (`research.md` D6/D17), e o BFF não pode ficar
+ *   para trás quando o cliente trocar a forma.
+ */
+export function corpoComOperadorTef(
+  body: unknown,
+  caminhoNoErp: string,
+  sessao: Pick<SessaoOperador, 'codigoEmpresa' | 'usuarioGam'>,
+): unknown {
+  if (caminhoNoErp.toLowerCase() !== CAMINHO_CRIAR_CARD_TEF || !ehObjeto(body)) {
+    return body;
+  }
+
+  const empresa = Number(sessao.codigoEmpresa);
+  const operador: Record<string, unknown> = {
+    ...(Number.isFinite(empresa) ? { EmpCod: empresa } : {}),
+    UsuarioGAM: sessao.usuarioGam ?? '',
+  };
+
+  const corpo: Record<string, unknown> = { ...body, ...operador };
+  const envelope = body[ENVELOPE_CRIAR_CARD_TEF];
+  if (ehObjeto(envelope)) {
+    corpo[ENVELOPE_CRIAR_CARD_TEF] = { ...envelope, ...operador };
+  }
+  return corpo;
 }
 
 /** Campo do retrato que diz quem emitiu a nota (`CheckoutFaturarNFCe`, AD-221). */
@@ -263,14 +317,18 @@ export function registrarRotaErpProxy(app: FastifyInstance, deps: ErpProxyDeps):
     const contentTypeOriginal = request.headers['content-type'];
 
     // Empresa e operador saem do cookie cifrado, nunca do corpo que o navegador
-    // mandou (AD-024 e AD-224).
-    const corpo = corpoComUsuarioDaSessao(
-      corpoComEmpresaNaRaiz(
-        corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
-        caminhoNoErp,
-        sessao.codigoEmpresa,
+    // mandou (AD-024, AD-224 e, para o TEF, AD-259).
+    const corpo = corpoComOperadorTef(
+      corpoComUsuarioDaSessao(
+        corpoComEmpresaNaRaiz(
+          corpoComEmpresaDaSessao(request.body, sessao.codigoEmpresa),
+          caminhoNoErp,
+          sessao.codigoEmpresa,
+        ),
+        sessao.usuarioCodigo,
       ),
-      sessao.usuarioCodigo,
+      caminhoNoErp,
+      sessao,
     );
 
     // `null` = a sessão acabou e o 401 terminal já foi respondido (FR-006).

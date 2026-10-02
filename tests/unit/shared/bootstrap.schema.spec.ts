@@ -184,6 +184,31 @@ describe('SessaoUsuario.ClienteDefaultUF e isWhatsappEnabled', () => {
   });
 });
 
+/** Operador no TEF (feature 010, AD-259) — o campo ainda não existe no ERP (item 64). */
+describe('SessaoUsuario.UsuarioGAM', () => {
+  function comUsuarioGam(valor: unknown) {
+    const payload = payloadValido();
+    (payload['SessaoUsuario'] as Record<string, unknown>)['UsuarioGAM'] = valor;
+    return bootstrapPayloadSchema.safeParse(payload);
+  }
+
+  it('lê o GUID quando presente', () => {
+    const lido = comUsuarioGam('0f2c9a4e-0000-4000-8000-000000000000');
+    expect(lido.success && lido.data.SessaoUsuario.UsuarioGAM).toBe(
+      '0f2c9a4e-0000-4000-8000-000000000000',
+    );
+  });
+
+  it('ausente é válido — o ERP de hoje não o publica', () => {
+    expect(bootstrapPayloadSchema.parse(payloadValido()).SessaoUsuario.UsuarioGAM).toBeUndefined();
+  });
+
+  it("vazio é válido e chega como '' (quem decide é a janela do TEF)", () => {
+    const lido = comUsuarioGam('');
+    expect(lido.success && lido.data.SessaoUsuario.UsuarioGAM).toBe('');
+  });
+});
+
 /** Política de saldo de estoque do tenant (`EmpSldPro`, AD-236). */
 describe('SessaoUsuario.FaturaProdutoSemSaldo', () => {
   function comPolitica(valor: unknown) {

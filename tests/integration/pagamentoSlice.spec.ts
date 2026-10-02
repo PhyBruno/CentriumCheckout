@@ -488,10 +488,10 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
     store.getState().confirmarPagamentoIntegrado('pag-1', {
       dadosTEF: {
-        identificacao: 123_456,
-        cnpj: '00000000000000',
+        pagId: 'pay_exemplo_0001',
         bandeira: 'EXEMPLO',
-        numeroAutorizacao: '000000',
+        nsu: '000000',
+        autorizacao: '000000',
         tipoIntegracao: '1',
       },
     });

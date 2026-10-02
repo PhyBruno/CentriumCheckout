@@ -20,6 +20,7 @@
  * ser especulativo no instante em que passou a existir um segundo call site.
  */
 
+import type { DadosTEF } from '../pagamento/saldoPagamento';
 import type { Centavos } from '../precificacao/dinheiro';
 import { ZERO_CENTAVOS } from '../precificacao/dinheiro';
 import type { LinhaCarrinho } from '../precificacao/linha';
@@ -53,13 +54,15 @@ export interface LinhaImportada {
   readonly udm: string;
 }
 
-export interface TefImportado {
-  readonly identificacao: number;
-  readonly cnpj: string;
-  readonly bandeira: string;
-  readonly numeroAutorizacao: string;
-  readonly tipoIntegracao: string;
-}
+/**
+ * TEF de um documento importado, já na forma que o pagamento guarda.
+ *
+ * É o próprio `DadosTEF` desde AD-259: o que importa do documento é o
+ * `TEFPagId`, que precisa ser **reenviado** ao faturar para o ERP não perder o
+ * vínculo com a `TransacaoTEF`. NSU e autorização não vêm no documento e ficam
+ * vazios — eles só existem na tela da aprovação, que aqui não houve.
+ */
+export type TefImportado = DadosTEF;
 
 export interface FormaPagamentoImportada {
   readonly formaCodigo: number;
@@ -147,23 +150,29 @@ function ouNulo(valor: string): string | null {
 }
 
 /**
- * Um item de pagamento só é TEF quando o ERP preencheu a identificação.
+ * Um item de pagamento só é TEF quando o ERP preencheu o `TEFPagId`.
  *
- * `TEFidentificacao === 0` é o default do SDT GeneXus para item não-TEF — os
- * demais campos `TEF*` vêm vazios junto. Agrupar mesmo assim criaria um
- * `TefImportado` de campos em branco que a feature 008 teria de distinguir de
- * um TEF real.
+ * **Até AD-259 o critério era `TEFidentificacao !== 0`**, campo que o SDT
+ * `CheckoutFaturarNFCe` da KB não tem mais. Hoje vale o `TEFPagId` não vazio —
+ * `''` é o default do SDT GeneXus para item não-TEF. Um documento do ERP
+ * anterior, sem `TEFPagId`, tem os campos antigos ignorados: sem o vínculo, não
+ * há o que reenviar, e montar um `TefImportado` de campos em branco faria a
+ * feature 008 tratar como TEF um item que o ERP novo não reconheceria.
+ *
+ * A forma importada continua entrando com `integracao: 'NENHUMA'` — torná-la
+ * estornável pelo Checkout é o item 65 de `PENDENCIES.md`.
  */
 function paraTef(item: CheckoutFaturarNFCe['FormasDePagamento'][number]): TefImportado | null {
-  if (item.TEFidentificacao === 0) {
+  const pagId = item.TEFPagId?.trim() ?? '';
+  if (pagId === '') {
     return null;
   }
   return {
-    identificacao: item.TEFidentificacao,
-    cnpj: item.TEFCNPJ,
+    pagId,
     bandeira: item.TEFBandeira,
-    numeroAutorizacao: item.TEFNumeroAutorizacao,
-    tipoIntegracao: item.TEFTipoIntegracao,
+    nsu: '',
+    autorizacao: '',
+    tipoIntegracao: '1',
   };
 }
 

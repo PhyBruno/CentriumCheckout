@@ -30,6 +30,21 @@ export interface SessaoOperador {
    * (`int64` serializado); quem precisa do número converte na fronteira.
    */
   readonly usuarioCodigo: string;
+  /**
+   * Operador no TEF (`UsuarioGAM` do `GetSessao`, feature 010, AD-259).
+   *
+   * É por ele que `PSmartTEF` escolhe a maquininha, e por isso o BFF o insere no
+   * corpo de `CriarCardPagamento` a partir daqui, nunca do navegador
+   * (`corpoComOperadorTef`) — mesmo motivo de `usuarioCodigo`.
+   *
+   * **Opcional e fora de `CAMPOS_OBRIGATORIOS`, sem bump de `FORMAT_VERSION`.**
+   * O bump é obrigatório para campo obrigatório novo (ver `FORMAT_VERSION`);
+   * aqui, o cookie emitido antes do deploy continua válido, só sem o campo — o
+   * operador segue vendendo e o TEF recusa com o motivo explicado até o próximo
+   * login. O campo ainda não existe no ERP (item 64 de `PENDENCIES.md`), então
+   * ausente é o caso normal hoje.
+   */
+  readonly usuarioGam?: string;
 }
 
 export const SESSION_COOKIE_NAME = 'cc_session';
@@ -109,7 +124,12 @@ function ehSessaoValida(valor: unknown): valor is SessaoOperador {
     return false;
   }
   const registro: Record<string, unknown> = valor as Record<string, unknown>;
-  return CAMPOS_OBRIGATORIOS.every((campo) => typeof registro[campo] === 'string');
+  return (
+    CAMPOS_OBRIGATORIOS.every((campo) => typeof registro[campo] === 'string') &&
+    // Opcional, mas quando existe é texto: é ele que o proxy põe no corpo do
+    // `CriarCardPagamento`, e um número ali viraria `UsuarioGAM` inválido.
+    (registro['usuarioGam'] === undefined || typeof registro['usuarioGam'] === 'string')
+  );
 }
 
 /**

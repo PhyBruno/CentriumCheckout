@@ -178,6 +178,37 @@ export interface ConfigMockErp {
    * prototype; desligado reproduz a empresa que não contratou o envio.
    */
   whatsappHabilitado: boolean;
+  /**
+   * `ConfiguracoesTEF.TEFAtivo` (feature 010). **Desligado por padrão**: as
+   * formas de cartão 2 e 5 têm `FormaIntegracaoCartao: '1'`, e ligar o TEF por
+   * padrão mandaria toda venda quitada no cartão das demais suítes para a
+   * janela do TEF. Ligado, o `GetSessao` publica também a condição `'2 VEZES'`
+   * com crédito, débito e PIX integrados (`quickstart.md` da 010, pré-requisito 3).
+   */
+  tefAtivo: boolean;
+  /**
+   * `UsuarioGAM` na raiz do `GetSessao` (feature 010, item 64). `''` omite o
+   * campo, que é como o ERP de hoje responde — o operador sem TEF vinculado.
+   */
+  usuarioGam: string;
+  /**
+   * `payment_status` da cobrança, um por consulta de `ConsultarStatusCard`; o
+   * último se repete. `['PDT', 'REJ_PAG']` exercita a rejeição.
+   *
+   * **Formas da KB, não medidas** (T001 adiado, AD-260): o mock imita o
+   * contrato desenhado em `contracts/erp-tef-api.md`, não o ERP observado.
+   */
+  tefStatusCobranca: readonly string[];
+  /**
+   * `payment_status` do estorno: o primeiro é a resposta de
+   * `EstornarPagamento`, os demais saem um por consulta depois dele.
+   * `['SOL_EST', 'REJ_EST']` exercita o estorno rejeitado.
+   */
+  tefStatusEstorno: readonly string[];
+  /** `CriarCardPagamento` responde `Sucesso: false` com a recusa real do `PSmartTEF`. */
+  tefCriacaoRecusada: boolean;
+  /** `EstornarPagamento` responde `Sucesso: false`. */
+  tefEstornoRecusado: boolean;
 }
 
 export interface ContadoresMockErp {
@@ -198,6 +229,9 @@ export interface ContadoresMockErp {
   getDav: number;
   gerarPix: number;
   statusPix: number;
+  criarCardPagamento: number;
+  consultarStatusCard: number;
+  estornarPagamento: number;
 }
 
 const CONFIG_PADRAO: ConfigMockErp = {
@@ -232,6 +266,12 @@ const CONFIG_PADRAO: ConfigMockErp = {
   tipoCodigoProduto: 'R',
   faturaProdutoSemSaldo: '',
   whatsappHabilitado: true,
+  tefAtivo: false,
+  usuarioGam: '0f2c9a4e-0000-4000-8000-0000000000e2',
+  tefStatusCobranca: ['PDT', 'PROC_PAG', 'CNC'],
+  tefStatusEstorno: ['SOL_EST', 'PROC_EST', 'EST'],
+  tefCriacaoRecusada: false,
+  tefEstornoRecusado: false,
 };
 
 /**
@@ -264,7 +304,49 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
   getDav: 0,
   gerarPix: 0,
   statusPix: 0,
+  criarCardPagamento: 0,
+  consultarStatusCard: 0,
+  estornarPagamento: 0,
 };
+
+/**
+ * Recusa real de `PSmartTEF` quando o `UsuarioGAM` não tem maquininha
+ * vinculada (`contracts/erp-tef-api.md` §1) — montada pelo ERP sem chamar a
+ * SmartTEF, por isso `CodigoStatusHttp: 0`.
+ */
+export const MENSAGEM_SERIAL_POS_NAO_LOCALIZADO =
+  'Serial do POS (serial_pos) nao localizado para o usuario informado';
+
+/** `SDTSmartTefResposta` de sucesso, com o JSON interno como **texto**, como o ERP manda. */
+function respostaSmartTefOk(interno: unknown): Record<string, unknown> {
+  return {
+    Sucesso: true,
+    CodigoStatusHttp: 200,
+    MensagemErro: '',
+    RespostaJson: JSON.stringify(interno),
+  };
+}
+
+function respostaSmartTefRecusa(mensagem: string): Record<string, unknown> {
+  return { Sucesso: false, CodigoStatusHttp: 0, MensagemErro: mensagem, RespostaJson: '' };
+}
+
+/** O status da posição `indice` de um roteiro, repetindo o último. */
+function statusDoRoteiro(roteiro: readonly string[], indice: number, padrao: string): string {
+  return roteiro[Math.min(indice, roteiro.length - 1)] ?? padrao;
+}
+
+/**
+ * `TransacaoTEF` do mock — o que `PSmartTEF_NovoPagamento` grava no ERP.
+ *
+ * `consultas` conta as consultas **da fase corrente**: o estorno recomeça a
+ * contagem, para o roteiro de estorno valer a partir do pedido.
+ */
+interface TransacaoTefMock {
+  fase: 'COBRANCA' | 'ESTORNO';
+  consultas: number;
+  status: string;
+}
 
 /**
  * Tickets de devolução sintéticos, um por desfecho de `PValidaTicketNFCe`.
@@ -1279,6 +1361,9 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     // devolve.
     ClienteDefaultUF: 'SC',
     isWhatsappEnabled: config.whatsappHabilitado,
+    // Operador no TEF (feature 010) — na **raiz**, onde o ERP vai devolvê-lo
+    // (item 64). `''` omite o campo, como o ERP de hoje.
+    ...(config.usuarioGam === '' ? {} : { UsuarioGAM: config.usuarioGam }),
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
     // logado são campos genuinamente distintos (AD-056), e valores iguais aqui
     // tornariam `FR-008`/`SC-001` indistinguível no payload de `FaturarNFCe`.
@@ -1477,6 +1562,9 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
           },
         ],
       },
+      // Só com o TEF ligado (feature 010): uma terceira condição mudaria o
+      // combobox de toda suíte que não pediu TEF.
+      ...(config.tefAtivo ? [CONDICAO_TEF_DUAS_VEZES] : []),
     ],
     /**
      * TEF e PIX **desligados** no cenário padrão do E2E: é o que mantém todas
@@ -1509,7 +1597,8 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       TEFversaoAutomacao: '',
       TEFregistroCertificacao: '',
       TEFVersaoImpressao: String(0), // int64
-      TEFAtivo: false,
+      // Desligado por padrão (ver `ConfigMockErp.tefAtivo`); a suíte da 010 liga.
+      TEFAtivo: config.tefAtivo,
     },
     ConfiguracoesPIX: {
       UtilizaCentriumPAG: config.pixAtivo,
@@ -1522,6 +1611,53 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     },
   };
 }
+
+/**
+ * Condição `'2 VEZES'` da feature 010 (`quickstart.md`, pré-requisito 3):
+ * crédito, débito e PIX, todos com `FormaIntegracaoCartao: '1'` — com
+ * `TEFAtivo`, os três vão para a janela do TEF (AD-180/AD-250). `CondicaoPrazo`
+ * `"2.00000"` é o que faz o crédito sair com `PagamentoParcelas: 2`.
+ *
+ * Códigos 11–13, a partir do próximo livre: os E2E endereçam as formas por
+ * `opcao-forma-<codigo>`.
+ */
+const CONDICAO_TEF_DUAS_VEZES = {
+  CondicaoCodigo: String(3), // int64
+  CondicaoDescricao: '2 VEZES',
+  CondicaoPrazo: '2.00000',
+  CondicaoMinimoEntrada: '0.00000',
+  CondicaoDesconto: '0.00000',
+  CondicaoDescontoMaximo: '0.00000',
+  CondicaoFormasDePagamento: [
+    {
+      FormaCodigo: String(11), // int64
+      FormaDescricao: '11 - CREDITO TEF',
+      FormaEntrada: 'N',
+      FormaMeioPagtoNFe: '03',
+      FormaIntegracaoCartao: '1',
+      FormaTipoTransacaoTEF: 'CREDITO',
+      FormaFpgUtiCar: '',
+    },
+    {
+      FormaCodigo: String(12), // int64
+      FormaDescricao: '12 - DEBITO TEF',
+      FormaEntrada: 'N',
+      FormaMeioPagtoNFe: '04',
+      FormaIntegracaoCartao: '1',
+      FormaTipoTransacaoTEF: 'DEBITO',
+      FormaFpgUtiCar: '',
+    },
+    {
+      FormaCodigo: String(13), // int64
+      FormaDescricao: '13 - PIX TEF',
+      FormaEntrada: 'S',
+      FormaMeioPagtoNFe: '17',
+      FormaIntegracaoCartao: '1',
+      FormaTipoTransacaoTEF: '',
+      FormaFpgUtiCar: '',
+    },
+  ],
+};
 
 /** Corpo de `FaturarNFCeInput` recebido na última chamada, para inspeção. */
 interface EnvelopeFaturarNFCe {
@@ -1582,6 +1718,33 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
    * a segunda nascer já "quase paga", herdando o tempo da primeira.
    */
   const geracoesPix = new Map<string, number>();
+  /** `TransacaoTEF` por `payment_identifier` — o que o ERP grava (feature 010). */
+  const transacoesTef = new Map<string, TransacaoTefMock>();
+  let sequenciaTef = 0;
+  /** Último corpo de `CriarCardPagamento`, como **o BFF** o entregou ao ERP. */
+  let ultimoCriarCard: Record<string, unknown> | null = null;
+
+  /**
+   * A frase de recusa do ERP para a primeira forma integrada ao TEF sem
+   * transação aprovada, ou `null` quando todas estão em ordem.
+   */
+  function recusaDeFormaTef(retrato: Record<string, unknown> | null): string | null {
+    const formas = Array.isArray(retrato?.['FormasDePagamento'])
+      ? (retrato['FormasDePagamento'] as readonly Record<string, unknown>[])
+      : [];
+
+    for (const forma of formas) {
+      if (forma['FormaIntegracaoCartao'] !== '1') {
+        continue;
+      }
+      const pagId = typeof forma['TEFPagId'] === 'string' ? forma['TEFPagId'] : '';
+      const transacao = transacoesTef.get(pagId);
+      if (transacao === undefined || transacao.fase !== 'COBRANCA' || transacao.status !== 'CNC') {
+        return `Pagamento SmartTEF ${pagId} não Localizada.`;
+      }
+    }
+    return null;
+  }
 
   await app.register(import('@fastify/formbody'));
 
@@ -1594,6 +1757,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     ultimoRetratoValidado = null;
     ultimoGerarPix = null;
     geracoesPix.clear();
+    transacoesTef.clear();
+    sequenciaTef = 0;
+    ultimoCriarCard = null;
     // Cadastro criado por `PostCliente` num teste não pode vazar para o
     // próximo: o cenário "documento inexistente" depende de o CPF continuar
     // ausente.
@@ -1618,6 +1784,12 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
 
   /** Último corpo de `GerarPIX` — `clienteCodigo`, `TrnValor`, `FpgCod` (AD-258). */
   app.get('/__mock/ultimo-pix', async () => ({ sdt: ultimoGerarPix }));
+
+  /**
+   * Último corpo de `CriarCardPagamento` **depois do BFF** — é onde o E2E
+   * confere que `EmpCod`/`UsuarioGAM` vieram do cookie (T8).
+   */
+  app.get('/__mock/ultimo-criar-card', async () => ({ sdt: ultimoCriarCard }));
 
   // --- Contrato do ERP ----------------------------------------------------
   app.post('/oauth/access_token', async (request, reply) => {
@@ -1848,6 +2020,18 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       // `SUSPENDER` não emite documento fiscal: a resposta volta sem
       // `NotaFiscal`, como o ERP real (`contracts/faturamento-api.md`).
       const suspendendo = retrato?.['SuspenderOuFaturar'] === 'SUSPENDER';
+
+      // Feature 010: `PCheckout_FaturarNFCe` só aceita a forma TEF se achar a
+      // `TransacaoTEF` do `TEFPagId` em `CNC` — e recusa com a frase real
+      // (`contracts/erp-tef-api.md` §6). Só com o TEF ligado, para as demais
+      // suítes não mudarem.
+      const recusaTef = config.tefAtivo && !suspendendo ? recusaDeFormaTef(retrato) : null;
+      if (recusaTef !== null) {
+        return reply.type('application/json').send({
+          OutCheckoutFaturarNFCe: { ...(retrato ?? {}) },
+          messages: [{ Id: '9999', Type: 1, Description: recusaTef }],
+        });
+      }
 
       // `PCheckout_FaturarNFCe`: `NumeroRascunho = 0` grava um rascunho novo;
       // `≠ 0` atualiza o existente. Em qualquer caso a resposta devolve o número
@@ -2517,6 +2701,124 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         StatusTransacao: pago ? 'P' : 'G',
         messages: [],
       });
+    },
+  );
+
+  /**
+   * `CriarCardPagamento` (feature 010, `contracts/erp-tef-api.md` §1).
+   *
+   * Recebe o corpo **depois do BFF**, então `EmpCod`/`UsuarioGAM` já são os do
+   * cookie. `UsuarioGAM` vazio recebe a mesma recusa que o `PSmartTEF` real
+   * monta sem chamar a SmartTEF — é o desfecho que um operador sem maquininha
+   * vinculada encontraria se o Checkout não recusasse antes.
+   */
+  app.post<{ Body: Record<string, unknown> }>(
+    '/ApiCentriumOAuth/CriarCardPagamento',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.criarCardPagamento += 1;
+
+      const enviado = request.body ?? {};
+      ultimoCriarCard = enviado;
+
+      if (config.tefCriacaoRecusada || enviado['UsuarioGAM'] === '') {
+        return reply.send(respostaSmartTefRecusa(MENSAGEM_SERIAL_POS_NAO_LOCALIZADO));
+      }
+
+      sequenciaTef += 1;
+      const paymentIdentifier = `pay_mock_${String(sequenciaTef).padStart(4, '0')}`;
+      const status = statusDoRoteiro(config.tefStatusCobranca, 0, 'PDT');
+      transacoesTef.set(paymentIdentifier, { fase: 'COBRANCA', consultas: 0, status });
+
+      return reply.send(
+        respostaSmartTefOk({
+          payment_identifier: paymentIdentifier,
+          payment_status: status,
+          order_type: 'CRD_UNICO',
+        }),
+      );
+    },
+  );
+
+  /**
+   * `ConsultarStatusCard` (`contracts/erp-tef-api.md` §2) — anda pelo roteiro
+   * da fase corrente, uma posição por consulta, e **grava** o status na
+   * transação, como `PSmartTEF_AtualizaRetorno` faz no ERP. É esse status
+   * gravado que o `FaturarNFCe` deste mock confere.
+   *
+   * `RespostaJson` é **lista**, como o SDT da KB. Identificador desconhecido
+   * devolve lista vazia — o Checkout lê como pendente.
+   */
+  app.get<{ Querystring: { SmartTefPaymentIdentifier?: string } }>(
+    '/ApiCentriumOAuth/ConsultarStatusCard',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.consultarStatusCard += 1;
+
+      const paymentIdentifier = request.query.SmartTefPaymentIdentifier ?? '';
+      const transacao = transacoesTef.get(paymentIdentifier);
+      if (transacao === undefined) {
+        return reply.send(respostaSmartTefOk([]));
+      }
+
+      transacao.consultas += 1;
+      transacao.status =
+        transacao.fase === 'COBRANCA'
+          ? statusDoRoteiro(config.tefStatusCobranca, transacao.consultas, 'PDT')
+          : statusDoRoteiro(config.tefStatusEstorno, transacao.consultas, 'SOL_EST');
+
+      const aprovada = transacao.status === 'CNC' || transacao.fase === 'ESTORNO';
+      return reply.send(
+        respostaSmartTefOk([
+          {
+            payment_identifier: paymentIdentifier,
+            payment_status: transacao.status,
+            payment_type: 'DEBIT',
+            installments: 1,
+            ...(aprovada
+              ? { card_brand: 'MASTERCARD', nsu_host: '048291', autorization_code: '192837' }
+              : {}),
+            ...(transacao.status === 'REJ_PAG' ? { reason: 'Transação negada (sintético)' } : {}),
+          },
+        ]),
+      );
+    },
+  );
+
+  /**
+   * `EstornarPagamento` (`contracts/erp-tef-api.md` §3). `Sucesso: true` é só
+   * o pedido aceito: o desfecho vem do roteiro de estorno, cuja primeira
+   * posição é a resposta daqui e as demais saem pelas consultas.
+   */
+  app.post<{ Body: Record<string, unknown> }>(
+    '/ApiCentriumOAuth/EstornarPagamento',
+    async (request, reply) => {
+      contadores.negocio += 1;
+      contadores.estornarPagamento += 1;
+
+      if (config.tefEstornoRecusado) {
+        return reply.send(respostaSmartTefRecusa('Estorno não permitido para esta transação (sintético)'));
+      }
+
+      const corpo = request.body ?? {};
+      const paymentIdentifier =
+        typeof corpo['SmartTefPaymentIdentifier'] === 'string' ? corpo['SmartTefPaymentIdentifier'] : '';
+      const transacao = transacoesTef.get(paymentIdentifier);
+      if (transacao === undefined) {
+        return reply.send(respostaSmartTefRecusa(`Pagamento SmartTEF ${paymentIdentifier} não Localizada.`));
+      }
+
+      transacao.fase = 'ESTORNO';
+      transacao.consultas = 0;
+      transacao.status = statusDoRoteiro(config.tefStatusEstorno, 0, 'SOL_EST');
+
+      return reply.send(
+        respostaSmartTefOk({
+          payment_identifier: paymentIdentifier,
+          payment_status: transacao.status,
+          order_type: 'CRD_UNICO',
+        }),
+      );
     },
   );
 

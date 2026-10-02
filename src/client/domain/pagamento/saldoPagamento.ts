@@ -24,13 +24,33 @@ import type { IntegracaoPagamento } from './roteamentoIntegracao';
  */
 export type StatusPagamento = 'PENDENTE_INTEGRACAO' | 'APROVADO' | 'RECUSADO' | 'EXCLUIDO';
 
-/** Preenchido pela feature 010; opaco para o domínio de pagamento geral. */
+/**
+ * O que a feature 010 observou ao ver o TEF aprovado (`CNC`), congelado no
+ * instante da aprovação — nada o relê depois (`data-model.md` §1 da 010).
+ *
+ * **Forma reescrita em AD-259**, quando o SDT `CheckoutFaturarNFCe` da KB
+ * trocou `TEFidentificacao`/`TEFCNPJ`/`TEFNumeroAutorizacao` por `TEFPagId`: o
+ * ERP passou a ler autorização, CNPJ do adquirente e bandeira da própria
+ * `TransacaoTEF`. Os três campos antigos (`identificacao`, `cnpj`,
+ * `numeroAutorizacao`) saíram daqui junto.
+ *
+ * Opaco para o domínio de pagamento geral: só `formaParaRetrato` e a janela do
+ * TEF leem os campos.
+ */
 export interface DadosTEF {
-  readonly identificacao: number;
-  readonly cnpj: string;
+  /**
+   * `payment_identifier` da SmartTEF — vira `TEFPagId` no retrato e é a chave
+   * do estorno. É o único campo que o ERP precisa para faturar.
+   */
+  readonly pagId: string;
+  /** `card_brand` observado; vira `TEFBandeira`. `''` quando ausente. */
   readonly bandeira: string;
-  readonly numeroAutorizacao: string;
-  readonly tipoIntegracao: string;
+  /** `nsu_host` — só tela (linha "NSU"). */
+  readonly nsu: string;
+  /** `autorization_code`, grafia da SmartTEF — só tela (linha "Autorização"). */
+  readonly autorizacao: string;
+  /** `TEFTipoIntegracao` (`NFCe_tpIntegra`): `'1'` é pagamento integrado. */
+  readonly tipoIntegracao: '1';
 }
 
 /**

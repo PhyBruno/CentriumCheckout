@@ -47,11 +47,14 @@ export function formaParaRetrato(pagamento: PagamentoAplicado): FormaDePagamento
     TicketDevolucao: pagamento.ticketDevolucao ?? '',
   };
 
+  // SDT `CheckoutFaturarNFCe` da KB (AD-259, `research.md` D16 da 010):
+  // `TEFPagId` é o vínculo com a `TransacaoTEF`, e `PCheckout_FaturarNFCe` lê
+  // dela a autorização, o CNPJ do adquirente e a bandeira. Por isso
+  // `TEFidentificacao`, `TEFCNPJ` e `TEFNumeroAutorizacao` não saem mais — o SDT
+  // não os tem. NSU e autorização de `dadosTEF` são só da tela.
   if (pagamento.dadosTEF !== null) {
-    forma.TEFidentificacao = pagamento.dadosTEF.identificacao;
-    forma.TEFCNPJ = pagamento.dadosTEF.cnpj;
+    forma.TEFPagId = pagamento.dadosTEF.pagId;
     forma.TEFBandeira = pagamento.dadosTEF.bandeira;
-    forma.TEFNumeroAutorizacao = pagamento.dadosTEF.numeroAutorizacao;
     forma.TEFTipoIntegracao = pagamento.dadosTEF.tipoIntegracao;
   }
   if (pagamento.pixGuid !== null) {

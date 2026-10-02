@@ -143,15 +143,25 @@ export const produtoDoDocumentoSchema = z.looseObject({
   ValorTotal: valorEmCentavos.optional(),
 });
 
-/** `CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem`. */
+/**
+ * `CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem`.
+ *
+ * **Campos TEF desde AD-259 (feature 010):** o SDT da KB trocou
+ * `TEFidentificacao`, `TEFCNPJ` e `TEFNumeroAutorizacao` por `TEFPagId`, o
+ * vínculo com a `TransacaoTEF`. `TEFPagId` entra opcional, porque o ERP anterior
+ * não o devolve; os três antigos ficam opcionais, porque o ERP novo não os
+ * devolve mais, e deixam de ser lidos pelo mapeador. Exigir qualquer um dos
+ * dois lados reprovaria a importação numa das duas gerações do ERP.
+ */
 export const formaDePagamentoDoDocumentoSchema = z.looseObject({
   FormaCodigo: inteiroErp,
   FormaMeioPagtoNFe: z.string(),
   FormaValor: valorEmCentavos,
-  TEFidentificacao: numeroErp,
-  TEFCNPJ: z.string(),
+  TEFPagId: z.string().optional(),
+  TEFidentificacao: numeroErp.optional(),
+  TEFCNPJ: z.string().optional(),
   TEFBandeira: z.string(),
-  TEFNumeroAutorizacao: z.string(),
+  TEFNumeroAutorizacao: z.string().optional(),
   TEFTipoIntegracao: z.string(),
   FormaPixGUID: z.string(),
   TicketDevolucao: z.string(),

@@ -132,3 +132,33 @@ describe('getDavOutputSchema', () => {
     expect(lido.NumeroRascunho).toBeGreaterThan(0);
   });
 });
+
+/**
+ * T023, AD-259: o SDT `CheckoutFaturarNFCe` da KB trocou `TEFidentificacao`,
+ * `TEFCNPJ` e `TEFNumeroAutorizacao` por `TEFPagId`. A leitura aceita as duas
+ * gerações do ERP — a nova sem os três campos, a antiga com eles.
+ */
+describe('getDavOutputSchema — campos TEF', () => {
+  const formaNova = {
+    FormaCodigo: 3,
+    FormaMeioPagtoNFe: '04',
+    FormaValor: 18.5,
+    TEFPagId: 'pay_exemplo_0001',
+    TEFBandeira: 'VISA',
+    TEFTipoIntegracao: '1',
+    FormaPixGUID: '',
+    TicketDevolucao: '',
+  };
+
+  it('aceita o item com TEFPagId e sem os três campos antigos', () => {
+    const lido = getDavOutputSchema.parse(documentoDoDav({ FormasDePagamento: [formaNova] }));
+
+    expect(lido.FormasDePagamento[0]?.TEFPagId).toBe('pay_exemplo_0001');
+  });
+
+  it('aceita o item antigo, com os três campos e sem TEFPagId', () => {
+    const lido = getDavOutputSchema.parse(documentoDoDav());
+
+    expect(lido.FormasDePagamento[0]?.TEFPagId).toBeUndefined();
+  });
+});

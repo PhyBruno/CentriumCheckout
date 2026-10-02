@@ -139,6 +139,37 @@ describe('GET /session/start — o operador entra na sessão', () => {
   });
 });
 
+/**
+ * T017 — o operador no TEF (feature 010, AD-259). Gravado quando o ERP o
+ * publica; ausente **não** recusa a entrada, porque o operador sem TEF continua
+ * vendendo com as demais formas.
+ */
+describe('GET /session/start — UsuarioGAM', () => {
+  it('grava o UsuarioGAM do GetSessao no cookie cifrado', async () => {
+    montarApp({
+      getSessao: () =>
+        respostaJson({ UsuarioCodigo: '147', UsuarioGAM: '0f2c9a4e-0000-4000-8000-000000000000' }),
+    });
+
+    const resposta = await entrar();
+
+    const sessao = cifrador.decifrar(cookieDaResposta(resposta, SESSION_COOKIE_NAME)?.value);
+    expect(sessao?.usuarioGam).toBe('0f2c9a4e-0000-4000-8000-000000000000');
+  });
+
+  it('sem UsuarioGAM a sessão nasce do mesmo jeito, sem o campo', async () => {
+    montarApp();
+
+    const resposta = await entrar();
+
+    expect(resposta.statusCode).toBe(302);
+    expect(resposta.headers['location']).not.toContain(PARAM_ERRO_ACESSO);
+    const sessao = cifrador.decifrar(cookieDaResposta(resposta, SESSION_COOKIE_NAME)?.value);
+    expect(sessao).not.toBeNull();
+    expect(sessao).not.toHaveProperty('usuarioGam');
+  });
+});
+
 describe('ERP indisponível na entrada — o BFF tenta de novo sozinho', () => {
   it('um GetSessao que falha e depois responde ainda vira sessão', async () => {
     montarApp({ getSessao: emSequencia(() => new Response('', { status: 502 }), SESSAO_OK) });
