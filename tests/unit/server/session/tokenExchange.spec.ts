@@ -156,6 +156,27 @@ describe('trocarCredenciaisPorToken', () => {
     expect(fetchImpl.mock.calls[0]?.[0]).toBe('http://127.0.0.1:4010/oauth/access_token');
   });
 
+  it('com ERP_PROXY_URL, leva o tenant como primeiro segmento do caminho', async () => {
+    // O proxy do beta atende vários tenants e só sabe qual é por aqui.
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(respostaJson({ access_token: 'token-sintetico' }));
+
+    await trocarCredenciaisPorToken(credenciais, {
+      env: envDeTeste({ ERP_PROXY_URL: 'http://erp-proxy:4020/' }),
+      fetchImpl,
+    });
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe('http://erp-proxy:4020/acme/oauth/access_token');
+  });
+
+  it('recusa ERP_PROXY_URL junto com ERP_HOST_OVERRIDE', () => {
+    // Os dois substituem o destino; aceitar ambos esconderia qual deles vale.
+    expect(() =>
+      envDeTeste({ ERP_PROXY_URL: 'http://erp-proxy:4020', ERP_HOST_OVERRIDE: '127.0.0.1:4010' }),
+    ).toThrow(/ERP_PROXY_URL/);
+  });
+
   it('repassa o status do ERP quando a troca é recusada', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
