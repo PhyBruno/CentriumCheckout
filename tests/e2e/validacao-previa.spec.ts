@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
+import { informarValorRecebido } from './support/pagamento';
 import {
   MENSAGEM_AVISO_LIMITE_CREDITO,
   MENSAGEM_RECUSA_CREDITO_BLOQUEADO,
@@ -76,7 +77,7 @@ async function escolherCondicao(page: Page): Promise<void> {
 async function aplicarDinheiro(page: Page, valor: string): Promise<void> {
   await page.getByTestId('combobox-forma-pagamento').click();
   await page.getByTestId('opcao-forma-1').click();
-  await page.getByTestId('campo-valor-recebido').fill(valor);
+  await informarValorRecebido(page, valor);
   await page.getByTestId('adicionar-pagamento').click();
 }
 
@@ -315,7 +316,9 @@ test.describe('O gate no layout compacto (FR-019)', () => {
     // nem resume o motivo da recusa.
     await expect(page.getByText(MENSAGEM_RECUSA_CREDITO_BLOQUEADO).first()).toBeVisible();
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
-    await expect(page.getByTestId('total-a-pagar')).toContainText('70,00');
+    // Na etapa 2 do celular o bloco escuro `total-a-pagar` não existe desde
+    // AD-255 (só a revisão o mostra); o total sai do rodapé da lista de itens.
+    await expect(page.getByTestId('total-venda')).toContainText('70,00');
 
     // O gate foi consultado **uma** vez e nada foi emitido: a paridade que
     // `FR-019` pede não é "o mobile também recusa", é "é o mesmo gate".

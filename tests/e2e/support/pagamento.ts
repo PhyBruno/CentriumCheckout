@@ -30,12 +30,30 @@ export async function quitarVendaEmDinheiro(page: Page): Promise<void> {
 
   await page.getByTestId('combobox-forma-pagamento').click();
   await page.getByTestId('opcao-forma-1').click();
-  await page.getByTestId('campo-valor-recebido').fill(emReaisDigitaveis(totalTexto));
+  await informarValorRecebido(page, emReaisDigitaveis(totalTexto));
   await page.getByTestId('adicionar-pagamento').click();
 
   // O saldo sumir é a prova de que o pagamento entrou aprovado: o bloco
   // "Faltante" só é renderizado enquanto `saldoRestante > 0`.
   await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
+}
+
+/**
+ * Digita o valor recebido com a forma já escolhida.
+ *
+ * O campo se preenche com o faltante **no foco** (pedido do usuário,
+ * 2026-09-24). Um `fill` direto corre contra esse preenchimento e o texto sai
+ * concatenado (`"10,0010,00"`), com "Adicionar pagamento" bloqueado por "Valor
+ * inválido" (AD-260, item 5; os specs que ainda faziam o `fill` direto falhavam
+ * desde então). Por isso o campo é focado primeiro, o preenchimento é
+ * esperado, e só então o valor é sobrescrito.
+ */
+export async function informarValorRecebido(page: Page, valor: string): Promise<void> {
+  const campo = page.getByTestId('campo-valor-recebido');
+  await campo.click();
+  await expect(campo).not.toHaveValue('');
+  await campo.fill(valor);
+  await expect(campo).toHaveValue(valor);
 }
 
 /**

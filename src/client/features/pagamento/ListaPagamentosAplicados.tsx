@@ -8,6 +8,7 @@ import type { PagamentoAplicado, StatusPagamento } from '../../domain/pagamento/
 import { ZERO_CENTAVOS, formatarCentavos } from '../../domain/precificacao/dinheiro';
 import { useCanalDisplay } from '../../services/display/useCanalDisplay';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
 import { iconeDoPagamento } from './iconePorMeio';
@@ -374,6 +375,27 @@ export function ListaPagamentosAplicados(): ReactElement | null {
  * segundo estado de "aberto" capaz de discordar do slice — se o pagamento sumir
  * da lista (recusa, remoção), a janela some junto, sem gesto nenhum.
  */
+/**
+ * Saída de uma janela de integração (PIX ou TEF) com a venda já coberta: o
+ * foco vai para "Finalizar venda" (pedido do usuário, 2026-10-02, AD-262).
+ *
+ * É a mesma regra do Enter no valor recebido (`EntradaPagamento`), que não
+ * alcança estas formas: o pagamento entra `PENDENTE_INTEGRACAO`, que não conta
+ * no saldo (`FR-004`), então no instante da inserção ainda falta valor e o foco
+ * volta ao campo. A cobrança só se encerra quando a janela aprovada fecha.
+ *
+ * Chamado **junto** do `setIdExibido(null)`, no mesmo lote: o React roda a
+ * limpeza do modal que sai — `useFocoDeModal` devolve o foco ao campo de valor —
+ * antes dos efeitos novos, e o do `BotaoFinalizarVenda` vem por último e fica
+ * com o foco. A desistência e a recusa passam por aqui também, mas com saldo
+ * restante: aí nada é pedido e a devolução ao campo prevalece.
+ */
+function focarFinalizacaoSeVendaCoberta(): void {
+  if (useVendaStore.getState().saldo().saldoRestante === ZERO_CENTAVOS) {
+    useFocoVendaStore.getState().focarFinalizarVenda();
+  }
+}
+
 function usePixPendente(): ReactElement | null {
   const pagamentos = useVendaStore((estado) => estado.pagamentos);
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
@@ -453,6 +475,7 @@ function usePixPendente(): ReactElement | null {
         // aprovação, o `X`, o ESC (só com o pagamento aprovado) e a desistência
         // confirmada convergem todos aqui.
         setIdExibido(null);
+        focarFinalizacaoSeVendaCoberta();
       }}
       onEstadoDisplay={publicarNoDisplay}
     />
@@ -524,6 +547,7 @@ function useTefPendente(): ReactElement | null {
       }}
       onFechar={() => {
         setIdExibido(null);
+        focarFinalizacaoSeVendaCoberta();
       }}
     />
   );

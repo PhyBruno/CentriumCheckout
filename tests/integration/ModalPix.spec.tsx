@@ -640,11 +640,21 @@ describe('A janela trava enquanto o PIX não é aprovado', () => {
 
     // O pagamento entra aprovado na venda **antes** de a janela sair: adiar
     // `onAprovado` junto com o fechamento deixaria o total da venda mentindo.
-    expect(screen.getByTestId('pix-badge-status')).toHaveTextContent('Pagamento confirmado');
-    expect(screen.getByTestId('pix-subtitulo')).toHaveTextContent('Pagamento aprovado');
+    // Estado aprovado com a anatomia do TEF (pedido do usuário, 2026-10-02,
+    // AD-262): título e subtítulo de sucesso, disco com check no lugar do QR,
+    // badge "Aprovado", "Valor pago" e o botão verde "Fechar".
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Pagamento aprovado');
+    expect(screen.getByTestId('pix-subtitulo')).toHaveTextContent(
+      'Transação concluída com sucesso',
+    );
+    expect(screen.getByTestId('pix-badge-status')).toHaveTextContent('Aprovado');
+    expect(screen.getByTestId('pix-aprovado')).toBeInTheDocument();
+    expect(screen.queryByTestId('pix-qrcode')).toBeNull();
+    expect(screen.queryByTestId('pix-copia-e-cola')).toBeNull();
+    expect(screen.getByTestId('pix-valor-pago')).toHaveTextContent('R$');
     // Com o pagamento confirmado o fechamento manual é liberado.
     expect(screen.getByTestId('fechar-modal-pix')).not.toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByTestId('concluir-pix')).toBeInTheDocument();
+    expect(screen.getByTestId('concluir-pix')).toHaveTextContent('Fechar');
 
     await waitFor(() => {
       expect(fechamentos).toHaveLength(1);
@@ -951,7 +961,9 @@ describe('Envio da cobrança PIX por WhatsApp', () => {
 
     await screen.findByTestId('pix-qrcode');
     await waitFor(() => {
-      expect(screen.getByTestId('pix-subtitulo')).toHaveTextContent('Pagamento aprovado');
+      expect(screen.getByTestId('pix-subtitulo')).toHaveTextContent(
+        'Transação concluída com sucesso',
+      );
     });
 
     expect(screen.queryByTestId('abrir-envio-whatsapp')).not.toBeInTheDocument();

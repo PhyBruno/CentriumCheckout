@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
+import { informarValorRecebido } from './support/pagamento';
 
 /**
  * Fluxo dourado da feature 010 (`specs/010-pagamento-tef/quickstart.md`) — T037.
@@ -67,20 +68,10 @@ async function selecionarCondicaoDuasVezes(page: Page): Promise<void> {
   await page.getByTestId(CONDICAO_DUAS_VEZES).click();
 }
 
-/**
- * O campo de valor se preenche com o faltante **no foco** (pedido do usuário,
- * 2026-09-24). Um `fill` direto corre contra esse preenchimento e o texto sai
- * concatenado ("10,0010,00"); por isso o campo é focado primeiro, o
- * preenchimento é esperado, e só então o valor é sobrescrito.
- */
 async function aplicarForma(page: Page, forma: string, valor: string): Promise<void> {
   await page.getByTestId('combobox-forma-pagamento').click();
   await page.getByTestId(forma).click();
-  const campo = page.getByTestId('campo-valor-recebido');
-  await campo.click();
-  await expect(campo).not.toHaveValue('');
-  await campo.fill(valor);
-  await expect(campo).toHaveValue(valor);
+  await informarValorRecebido(page, valor);
   await page.getByTestId('adicionar-pagamento').click();
 }
 
@@ -152,6 +143,9 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
       FPgCod: 11,
     });
     await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
+    // Pago o total, o foco vai para "Finalizar venda" ao fechar a janela, como
+    // nas formas sem integração (AD-262) — e não volta ao valor recebido.
+    await expect(page.getByTestId('botao-finalizar-venda')).toBeFocused();
 
     // --- estorno do débito: cenários 12 e 13 ----------------------------------
     await page.getByTestId('pagamento-aplicado').nth(0).getByTestId('remover-pagamento').click();

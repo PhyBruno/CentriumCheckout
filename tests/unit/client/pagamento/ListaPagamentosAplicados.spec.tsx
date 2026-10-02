@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ListaPagamentosAplicados } from '../../../../src/client/features/pagamento/ListaPagamentosAplicados';
 import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
+import type { StatusPagamento } from '../../../../src/client/domain/pagamento/saldoPagamento';
 import { haJanelaAberta } from '../../../../src/client/lib/useFocoDeModal';
+import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 import { pagamentoDe } from '../../../support/pagamento';
@@ -334,6 +336,88 @@ describe('ListaPagamentosAplicados — janela do TEF', () => {
     await screen.findByTestId('modal-tef');
     await waitFor(() => {
       expect(criacoesDeCobranca()).toBe(2);
+    });
+  });
+
+  /**
+   * Pedido do usuário (2026-10-02, AD-262): pago o total, o foco vai para
+   * "Finalizar venda" — como já faz o Enter do valor recebido nas formas sem
+   * integração. No TEF e no PIX o pagamento entra `PENDENTE_INTEGRACAO`, que não
+   * conta no saldo (`FR-004`): no instante da inserção ainda falta valor e o foco
+   * volta ao campo. Quem encerra a cobrança é o fechamento da janela aprovada,
+   * e é ali que o pedido de foco tem de nascer.
+   *
+   * A aprovação é encenada pelo store, porque a rede está desligada neste
+   * describe: a janela fica no erro de criação, o status vira `APROVADO` por
+   * fora, e o "Desistir" (que não recusa um pagamento já aprovado) a fecha. O
+   * que se afirma é o pedido; a ordem real entre a devolução de foco do modal e
+   * o foco no botão é conferida no navegador, pelo E2E.
+   */
+  describe('fechar a janela de integração com a venda coberta pede o foco no Finalizar', () => {
+    function integrado(
+      integracao: 'TEF' | 'PIX_DINAMICO',
+      status: StatusPagamento,
+      valorAplicado: number,
+    ) {
+      return pagamentoDe({
+        idPagamento: 'integrado-1',
+        formaCodigo: 12,
+        meioPagtoNFe: integracao === 'TEF' ? MEIO_PAGTO.CartaoDebito : MEIO_PAGTO.Pix,
+        integracaoCartao: integracao === 'TEF' ? '1' : '',
+        integracao,
+        status,
+        valorAplicado,
+      });
+    }
+
+    async function aprovarPorForaEFechar(
+      integracao: 'TEF' | 'PIX_DINAMICO',
+      valorAplicado: number,
+    ): Promise<number> {
+      const usuario = userEvent.setup();
+      const antes = useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao;
+      useVendaStore.setState({
+        pagamentos: [integrado(integracao, 'PENDENTE_INTEGRACAO', valorAplicado)],
+      });
+      renderizarLista();
+      await screen.findByTestId(integracao === 'TEF' ? 'erro-criacao-tef' : 'erro-geracao-pix');
+
+      act(() => {
+        useVendaStore.setState({ pagamentos: [integrado(integracao, 'APROVADO', valorAplicado)] });
+      });
+      await usuario.click(
+        screen.getByTestId(
+          integracao === 'TEF' ? 'desistir-operacao-tef' : 'desistir-operacao-pix',
+        ),
+      );
+
+      expect(screen.queryByTestId(integracao === 'TEF' ? 'modal-tef' : 'modal-pix')).toBeNull();
+      return useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao - antes;
+    }
+
+    it('TEF aprovado que paga o total: o foco vai para o Finalizar', async () => {
+      expect(await aprovarPorForaEFechar('TEF', 10_000)).toBe(1);
+    });
+
+    it('TEF aprovado que paga só parte: o foco não sai do pagamento', async () => {
+      expect(await aprovarPorForaEFechar('TEF', 5_000)).toBe(0);
+    });
+
+    it('PIX aprovado que paga o total: o foco vai para o Finalizar', async () => {
+      expect(await aprovarPorForaEFechar('PIX_DINAMICO', 10_000)).toBe(1);
+    });
+
+    it('desistir de um TEF que pagaria o total não pede foco no Finalizar', async () => {
+      const usuario = userEvent.setup();
+      const antes = useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao;
+      useVendaStore.setState({ pagamentos: [integrado('TEF', 'PENDENTE_INTEGRACAO', 10_000)] });
+      renderizarLista();
+      await screen.findByTestId('erro-criacao-tef');
+
+      await usuario.click(screen.getByTestId('desistir-operacao-tef'));
+
+      expect(useVendaStore.getState().pagamentos).toHaveLength(0);
+      expect(useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao).toBe(antes);
     });
   });
 

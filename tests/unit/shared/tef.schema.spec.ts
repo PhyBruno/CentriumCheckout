@@ -44,7 +44,8 @@ describe('respostaSmartTefSchema', () => {
   });
 
   it('reprova envelope sem RespostaJson', () => {
-    const { RespostaJson: _ignorado, ...semResposta } = ENVELOPE_PLANO;
+    const semResposta: Record<string, unknown> = { ...ENVELOPE_PLANO };
+    delete semResposta['RespostaJson'];
     expect(respostaSmartTefSchema.safeParse(semResposta).success).toBe(false);
   });
 });

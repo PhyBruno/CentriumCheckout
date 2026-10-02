@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
+import { informarValorRecebido } from './support/pagamento';
 
 /**
  * Fluxo dourado da feature 008 (`specs/008-pagamento-geral/quickstart.md`,
@@ -95,7 +96,7 @@ async function escolherNoCombobox(page: Page, combobox: string, opcao: string): 
  */
 async function aplicarPagamento(page: Page, opcaoForma: string, valor: string): Promise<void> {
   await escolherNoCombobox(page, 'combobox-forma-pagamento', opcaoForma);
-  await page.getByTestId('campo-valor-recebido').fill(valor);
+  await informarValorRecebido(page, valor);
   await page.getByTestId('adicionar-pagamento').click();
 }
 

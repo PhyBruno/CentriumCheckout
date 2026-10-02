@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
+import { informarValorRecebido } from './support/pagamento';
 
 /**
  * Display do cliente (feature 015) — T041, `quickstart.md` Cenários 1 e 2.
@@ -54,7 +55,7 @@ async function aplicarPix(page: Page, valor: string): Promise<void> {
 
   await page.getByTestId('combobox-forma-pagamento').click();
   await page.getByTestId('opcao-forma-3').click();
-  await page.getByTestId('campo-valor-recebido').fill(valor);
+  await informarValorRecebido(page, valor);
   await page.getByTestId('adicionar-pagamento').click();
 }
 
