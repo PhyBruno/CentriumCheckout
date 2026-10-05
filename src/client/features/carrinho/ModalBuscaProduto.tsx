@@ -296,9 +296,7 @@ export function ModalBuscaProduto({
           </div>
           {busca.data === undefined || abaixoDoMinimo ? null : (
             <p className="text-sm font-semibold text-foreground" data-testid="contagem-produtos">
-              {filtroSaldoAtivo(filtroSaldo)
-                ? `${String(produtosFiltrados.length)} de ${String(produtosDaPagina.length)} produto(s) desta página com saldo ${operadorSaldo} ${quantidadeSaldo.trim()}`
-                : `${String(busca.data.TotalRegistros)} produto(s) encontrado(s)`}
+              {`${String(busca.data.TotalRegistros)} produto(s) encontrado(s)`}
             </p>
           )}
         </div>

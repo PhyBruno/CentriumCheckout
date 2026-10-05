@@ -313,6 +313,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/**
+ * Campo de digitação sem zoom no celular (pedido do usuário, 2026-10-05: o
+ * iPhone — e o Android — ampliavam a tela ao focar um campo dentro de modal e
+ * não voltavam ao fechar o teclado).
+ *
+ * O navegador amplia a página ao focar um campo com fonte **abaixo de 16px**, e
+ * o texto do produto é 12–13px. Com 16px o zoom simplesmente não acontece — não
+ * há o que "desaplicar" ao fechar o teclado, e o zoom de pinça do usuário
+ * continua livre (travar com `maximum-scale` tiraria isso de quem precisa).
+ *
+ * Fica **fora de `@layer`** de propósito: regra sem camada vence qualquer
+ * utilitária do Tailwind (`text-sm`, `text-xs`), então vale sem `!important`. Só
+ * no layout de toque (AD-198); o desktop mantém o tamanho do desenho.
+ */
+[data-layout='MOBILE'] :is(input, select, textarea) {
+  font-size: 16px;
+}
+
 #root {
   min-height: 100vh;
 }
