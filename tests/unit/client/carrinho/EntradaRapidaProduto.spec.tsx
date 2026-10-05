@@ -8,6 +8,7 @@ import {
   EntradaRapidaProduto,
   type EntradaRapidaProdutoProps,
 } from '../../../../src/client/features/carrinho/EntradaRapidaProduto';
+import { DialogoErroFaturamento } from '../../../../src/client/features/finalizacao-suspensao/DialogoErroFaturamento';
 import { notificar } from '../../../../src/client/lib/notificar';
 import { useCenarioProdutoStore } from '../../../../src/client/stores/cenarioProdutoStore';
 import { useEdicaoItemStore } from '../../../../src/client/stores/edicaoItemStore';
@@ -1304,6 +1305,100 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
         expect(buscar).toHaveBeenCalledTimes(2);
       });
     });
+  });
+
+  /**
+   * Correção do usuário, 2026-10-05 (AD-266): no celular, tocar na quantidade
+   * consulta o código (AD-254) — e a janela do cenário abria com o teclado da
+   * quantidade na tela. Ao fechá-la, o foco voltava para a quantidade, que era
+   * quem estava focado quando ela abriu, e não para o código a redigitar.
+   *
+   * A janela real é montada aqui, como o provider de finalização faz na tela:
+   * quem devolve o foco ao fechar é o `useFocoDeModal` dela, e é contra ele que
+   * a barra precisa vencer.
+   */
+  describe('janela do cenário: teclado fechado e foco de volta ao código', () => {
+    function JanelaDoCenario(): ReactNode {
+      const recusa = useCenarioProdutoStore((estado) => estado.recusa);
+      const fechar = useCenarioProdutoStore((estado) => estado.fecharRecusaPorCenario);
+      return recusa === null ? null : (
+        <DialogoErroFaturamento
+          desfecho="PRODUTO_SEM_CENARIO"
+          mensagem={recusa.motivos}
+          onFechar={fechar}
+        />
+      );
+    }
+
+    function renderBarraComJanela(props: EntradaRapidaProdutoProps): void {
+      const Wrapper = envolverComQueryClient();
+      render(
+        <Wrapper>
+          <EntradaRapidaProduto {...props} />
+          <JanelaDoCenario />
+        </Wrapper>,
+      );
+    }
+
+    async function recusarPor(
+      usuario: ReturnType<typeof userEvent.setup>,
+      gesto: 'quantidade' | 'enter',
+    ): Promise<void> {
+      const campo = screen.getByTestId('campo-codigo-produto');
+      if (gesto === 'enter') {
+        await usuario.type(campo, '001234{Enter}');
+      } else {
+        await usuario.type(campo, '001234');
+        await usuario.click(screen.getByTestId('previa-quantidade'));
+      }
+      await screen.findByTestId('dialogo-erro-faturamento');
+    }
+
+    it.each(['quantidade', 'enter'] as const)(
+      'no celular, recusado por %s, a janela abre sem nenhum campo de digitação focado',
+      async (gesto) => {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn(() => Promise.resolve(respostaDeCenario(false))),
+        );
+        const usuario = userEvent.setup();
+        renderBarraComJanela({ tecladoVirtual: true });
+
+        await recusarPor(usuario, gesto);
+
+        // O teclado virtual só existe enquanto um campo está focado.
+        await waitFor(() => {
+          expect(document.activeElement).not.toBeInstanceOf(HTMLInputElement);
+        });
+      },
+    );
+
+    it.each([
+      ['celular', 'quantidade', true],
+      ['celular', 'enter', true],
+      ['desktop', 'enter', false],
+    ] as const)(
+      'no %s, recusado por %s, fechar a janela devolve o foco ao código, com o texto selecionado',
+      async (_layout, gesto, tecladoVirtual) => {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn(() => Promise.resolve(respostaDeCenario(false))),
+        );
+        const usuario = userEvent.setup();
+        renderBarraComJanela({ tecladoVirtual });
+        await recusarPor(usuario, gesto);
+
+        await usuario.click(screen.getByTestId('fechar-erro-faturamento'));
+
+        const campo = screen.getByTestId<HTMLInputElement>('campo-codigo-produto');
+        await waitFor(() => {
+          expect(campo).toHaveFocus();
+        });
+        // Selecionado: a próxima tecla substitui o código recusado.
+        expect(campo.selectionStart).toBe(0);
+        expect(campo.selectionEnd).toBe('001234'.length);
+      },
+    );
   });
 });
 

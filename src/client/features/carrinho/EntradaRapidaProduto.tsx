@@ -27,7 +27,11 @@ import {
   somar,
 } from '../../domain/precificacao/dinheiro';
 import { preservarSelecaoNoProximoFoco } from '@/lib/selecionarConteudoAoFocar';
-import { focarSemTeclado, reabrirTecladoNoModoAtual } from '@/lib/tecladoVirtual';
+import {
+  fecharTecladoVirtual,
+  focarSemTeclado,
+  reabrirTecladoNoModoAtual,
+} from '@/lib/tecladoVirtual';
 import {
   AVALIACAO_LIVRE,
   type AvaliacaoSaldo,
@@ -42,6 +46,7 @@ import {
   somarQuantidades,
   type Milesimos,
 } from '../../domain/precificacao/quantidade';
+import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useJanelasStore } from '../../stores/janelasStore';
@@ -303,9 +308,10 @@ export interface EntradaRapidaProdutoProps {
    * "Scanner" da feature 007 (nó `QIJKL` do Pencil, que o desenho põe
    * exatamente aí).
    *
-   * Recebe `aoLerCodigo`, **o mesmo caminho de entrada do leitor físico**: a
-   * string decodificada entra por `inserirPorCodigo`, é classificada por
-   * `EntradaCodigo` (simples/com-quantidade/balança) e vira linha pelo mesmo
+   * Recebe `aoLerCodigo`, **o mesmo caminho de entrada do código digitado**: a
+   * string decodificada vai para o campo e é consultada como na saída dele
+   * (`revisarPorCodigo`, AD-266), é classificada por `EntradaCodigo`
+   * (simples/com-quantidade/balança) e vira linha pelo mesmo
    * `carrinhoSlice.inserirItem` (`FR-007` da 007, D5). É por isso que o slot é
    * uma função e não um `ReactNode` solto: quem monta o botão não precisa —
    * nem consegue — inventar um segundo caminho de inserção.
@@ -409,6 +415,12 @@ export function EntradaRapidaProduto({
    * consultando: são pedidos explícitos, e o cadastro pode ter sido corrigido.
    */
   const entradaRecusada = useRef<string | null>(null);
+  /**
+   * Uma recusa abriu a janela de cenário e o foco ainda precisa voltar ao
+   * código quando ela fechar — ver `voltarAoCodigoAposRecusa`.
+   */
+  const focarCodigoAoFecharCenario = useRef(false);
+  const janelaDeCenarioAberta = useCenarioProdutoStore((estado) => estado.recusa !== null);
   const campoQuantidade = useRef<HTMLInputElement>(null);
   // Preço e desconto ganharam ref pelo mesmo motivo que a quantidade sempre
   // teve: sair deles com valor inválido devolve o foco ao campo (`exigirCampo`).
@@ -634,6 +646,48 @@ export function EntradaRapidaProduto({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidosDeFocoNoCodigo]);
 
+  /**
+   * Foco de volta ao código quando a janela de cenário fecha (correção do
+   * usuário, 2026-10-05, AD-266), com o texto selecionado: o código recusado
+   * fica no campo e a próxima tecla o substitui.
+   *
+   * Efeito desta barra, e não o retorno de foco da própria janela: o
+   * `useFocoDeModal` devolve o foco a quem estava focado quando ela abriu — no
+   * celular, a quantidade em que o operador tocou e cuja saída do código fez a
+   * consulta. Este efeito roda depois daquela devolução (limpezas de efeito
+   * passivo vêm antes das montagens no mesmo commit), então é o que prevalece.
+   */
+  useEffect(() => {
+    if (janelaDeCenarioAberta || !focarCodigoAoFecharCenario.current) {
+      return;
+    }
+    focarCodigoAoFecharCenario.current = false;
+    campoCodigo.current?.focus();
+    campoCodigo.current?.select();
+  }, [janelaDeCenarioAberta]);
+
+  /**
+   * Código recusado pelo ERP: o foco volta ao campo para a redigitação.
+   *
+   * **Com a janela de cenário aberta, só depois de ela fechar** (AD-266). Focar
+   * agora deixaria o teclado virtual aberto por baixo da janela, e é ela que o
+   * operador precisa ler. Então o teclado fecha — o campo focado perde o foco —,
+   * e o efeito acima traz o foco de volta no "Entendi".
+   *
+   * A janela já está no store quando a recusa chega aqui: quem a abre é
+   * `revisarPorCodigo`/`inserirPorCodigo`, antes de devolver `'recusado'`.
+   * Recusa em toast (produto não encontrado, sem preço) não prende nada e foca
+   * na hora, como sempre.
+   */
+  function voltarAoCodigoAposRecusa(): void {
+    if (useCenarioProdutoStore.getState().recusa === null) {
+      campoCodigo.current?.focus();
+      return;
+    }
+    focarCodigoAoFecharCenario.current = true;
+    fecharTecladoVirtual();
+  }
+
   // Terceiro sentido do `focoVendaStore`: daqui para o campo do vendedor,
   // quando a venda ainda não tem um (ver `exigirVendedor`).
   const semVendedor = useVendedorAtual() === null;
@@ -707,13 +761,12 @@ export function EntradaRapidaProduto({
   }
 
   /**
-   * `codigoExterno` existe para a captura por câmera (007): o código chega
-   * pronto, sem ter passado pelo `setTexto` — e `texto` só valeria no render
-   * seguinte, então ler o estado aqui inseriria o código **anterior**.
-   * Sem o parâmetro, o caminho é exatamente o de sempre.
+   * Inserção rápida do Enter (e do leitor físico, que termina a bipagem com
+   * Enter). A câmera não passa mais por aqui desde AD-266: ela segue o caminho
+   * da saída do campo (`capturarPorCamera`).
    */
-  async function confirmarEntradaRapida(codigoExterno?: string): Promise<void> {
-    const entrada = (codigoExterno ?? texto).trim();
+  async function confirmarEntradaRapida(): Promise<void> {
+    const entrada = texto.trim();
     if (entrada === '' || ocupado) {
       return;
     }
@@ -770,8 +823,8 @@ export function EntradaRapidaProduto({
       }
 
       if (resultado.situacao === 'bloqueado') {
-        // Saldo em `'B'` (AD-236): a inserção automática — Enter, leitor,
-        // câmera — não aconteceu, e o produto fica na barra como prévia
+        // Saldo em `'B'` (AD-236): a inserção automática — Enter ou
+        // leitor — não aconteceu, e o produto fica na barra como prévia
         // bloqueada, com o código visível, para o operador reduzir a
         // quantidade ou cancelar com Escape.
         aplicarRevisao(resultado.revisao, entrada);
@@ -785,11 +838,12 @@ export function EntradaRapidaProduto({
 
       if (resultado.situacao === 'inserido') {
         setTexto('');
-      } else {
-        entradaRecusada.current = entrada;
+        campoCodigo.current?.focus();
+        return;
       }
       // Em recusa o texto permanece: o operador corrige o que digitou.
-      campoCodigo.current?.focus();
+      entradaRecusada.current = entrada;
+      voltarAoCodigoAposRecusa();
     } finally {
       setOcupado(false);
     }
@@ -818,6 +872,18 @@ export function EntradaRapidaProduto({
    *
    * `resetar()` antes do `setTexto`, e não depois: ele limpa o campo junto com
    * o resto, então a ordem inversa apagaria o código recém-lido.
+   *
+   * **A leitura é o código digitado mais a saída do campo, não um Enter**
+   * (correção do usuário, 2026-10-05, AD-266). Até aqui ela ia pela inserção
+   * rápida (`confirmarEntradaRapida`); agora escreve o código no campo e segue
+   * o caminho que a mudança de foco segue (`aoSairDoCodigo` → `resolverEExibir`,
+   * o mesmo núcleo do TAB). É a saída do campo que consulta o ERP, e é ela que
+   * decide, pela regra de sempre, entre inserir direto, abrir a prévia e
+   * recusar — a câmera não tem regra própria.
+   *
+   * Chama `resolverEExibir` com o código lido, e não `revisarEntrada`, pelo
+   * mesmo motivo do parâmetro de `confirmarEntradaRapida`: `texto` só valeria
+   * no próximo render.
    */
   async function capturarPorCamera(codigo: string): Promise<void> {
     if (ocupado) {
@@ -833,7 +899,7 @@ export function EntradaRapidaProduto({
       resetar();
     }
     setTexto(codigo);
-    await confirmarEntradaRapida(codigo);
+    await resolverEExibir(codigo);
   }
 
   /**
@@ -895,7 +961,7 @@ export function EntradaRapidaProduto({
       const resultado = await revisarPorCodigo(codigo, opcoes);
       if (resultado.situacao === 'recusado') {
         entradaRecusada.current = codigo.trim();
-        campoCodigo.current?.focus();
+        voltarAoCodigoAposRecusa();
         return;
       }
       const veioDoModal = opcoes?.origem === 'BUSCA';

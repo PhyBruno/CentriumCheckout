@@ -37,9 +37,10 @@ export function EtapaClienteProdutos(): ReactElement {
     <div className="flex shrink-0 grow flex-col gap-xs" data-testid="etapa-cliente-produtos">
       <CampoClienteVenda />
 
-      {/* O código lido pela câmera entra pelo **mesmo** `inserirPorCodigo` do
-          leitor físico e da digitação (`FR-007`, D5) — o slot recebe a função,
-          não um caminho de inserção próprio. Fora de Chrome/Android o botão
+      {/* O código lido pela câmera vai para o campo e é consultado como na
+          saída dele, o mesmo caminho da digitação (`FR-007`, D5, AD-266) — o
+          slot recebe a função, não um caminho de inserção próprio. Fora de
+          Chrome/Android o botão
           nem chega a existir: `ScannerCamera` devolve `null` (`FR-011`).
 
           `tecladoVirtual`: aqui o código é digitado no teclado do celular, que
