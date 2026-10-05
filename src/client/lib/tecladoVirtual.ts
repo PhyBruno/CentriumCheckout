@@ -77,6 +77,63 @@ export function focarSemTeclado(elemento: HTMLElement | null): void {
 }
 
 /**
+ * Quanto a ponte segura o foco antes de devolvê-lo. Um quadro é o bastante para
+ * o Safari tratar as duas trocas de foco como trocas separadas — juntas no mesmo
+ * instante, ele as funde e não recarrega o teclado.
+ */
+const ESPERA_DA_PONTE_MS = 50;
+
+/**
+ * Reabre o teclado de um campo **já focado** no modo que o `inputmode` dele
+ * acabou de ganhar (correção do usuário, 2026-10-05).
+ *
+ * No iPhone, tirar e devolver o foco do **mesmo** campo dentro do toque não
+ * troca nada: o Safari funde as duas mudanças e o teclado numérico continua na
+ * tela. O que o faz reler o `inputmode` é o foco **chegar a outro campo** — o
+ * mesmo que acontece ao passar de um campo de CEP para um de nome. Por isso o
+ * foco passa por uma ponte invisível, no mesmo modo, e volta ao campo no quadro
+ * seguinte.
+ *
+ * A volta acontece fora do toque, e o iPhone aceita porque o teclado nunca chega
+ * a fechar: o foco vai de um campo de digitação a outro. No Android o efeito é o
+ * mesmo, só que lá a troca direta já funcionava.
+ *
+ * A ponte nasce em cima do próprio campo, e não num canto da tela, para o
+ * navegador não rolar a página até ela. Fonte de 16px porque, abaixo disso, o
+ * Safari dá zoom ao focar.
+ *
+ * `aoConcluir` roda com o foco já de volta — é onde quem chamou repõe o cursor.
+ */
+export function reabrirTecladoNoModoAtual(campo: HTMLInputElement, aoConcluir: () => void): void {
+  const posicao = campo.getBoundingClientRect();
+  const ponte = document.createElement('input');
+  ponte.type = 'text';
+  ponte.inputMode = campo.inputMode;
+  ponte.tabIndex = -1;
+  ponte.setAttribute('aria-hidden', 'true');
+  ponte.autocomplete = 'off';
+  Object.assign(ponte.style, {
+    position: 'fixed',
+    top: `${posicao.top}px`,
+    left: `${posicao.left}px`,
+    width: '1px',
+    height: '1px',
+    padding: '0',
+    border: '0',
+    opacity: '0',
+    fontSize: '16px',
+  });
+  document.body.append(ponte);
+  ponte.focus({ preventScroll: true });
+
+  window.setTimeout(() => {
+    campo.focus({ preventScroll: true });
+    ponte.remove();
+    aoConcluir();
+  }, ESPERA_DA_PONTE_MS);
+}
+
+/**
  * O toque caiu num campo de digitação — ou em algo que leva a ele?
  *
  * O `<label>` conta porque tocar no rótulo, no "R$" ao lado do valor ou na

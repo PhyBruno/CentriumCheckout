@@ -27,7 +27,7 @@ import {
   somar,
 } from '../../domain/precificacao/dinheiro';
 import { preservarSelecaoNoProximoFoco } from '@/lib/selecionarConteudoAoFocar';
-import { focarSemTeclado } from '@/lib/tecladoVirtual';
+import { focarSemTeclado, reabrirTecladoNoModoAtual } from '@/lib/tecladoVirtual';
 import {
   AVALIACAO_LIVRE,
   type AvaliacaoSaldo,
@@ -398,6 +398,17 @@ export function EntradaRapidaProduto({
    * o foco sai (`aoSairDoCodigo`) ou em que se confirma (`confirmar`).
    */
   const entradaRevisada = useRef<string | null>(null);
+  /**
+   * Entrada que o ERP **acabou de recusar** — cenário tributário, produto não
+   * encontrado, preço zerado — e que continua no campo para o operador corrigir.
+   *
+   * Existe para a saída do campo não reconsultar a mesma resposta (correção do
+   * usuário, 2026-10-05): no celular, sair do campo consulta (AD-254), e o toque
+   * no "Entendi" da janela de cenário é uma saída. O mesmo código ia ao ERP de
+   * novo e a janela reabria a cada fechamento. Enter, TAB e o "+" continuam
+   * consultando: são pedidos explícitos, e o cadastro pode ter sido corrigido.
+   */
+  const entradaRecusada = useRef<string | null>(null);
   const campoQuantidade = useRef<HTMLInputElement>(null);
   // Preço e desconto ganharam ref pelo mesmo motivo que a quantidade sempre
   // teve: sair deles com valor inválido devolve o foco ao campo (`exigirCampo`).
@@ -658,6 +669,7 @@ export function EntradaRapidaProduto({
   function resetar(): void {
     setResolvido(null);
     entradaRevisada.current = null;
+    entradaRecusada.current = null;
     saldoAnunciado.current = null;
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
@@ -773,6 +785,8 @@ export function EntradaRapidaProduto({
 
       if (resultado.situacao === 'inserido') {
         setTexto('');
+      } else {
+        entradaRecusada.current = entrada;
       }
       // Em recusa o texto permanece: o operador corrige o que digitou.
       campoCodigo.current?.focus();
@@ -880,6 +894,7 @@ export function EntradaRapidaProduto({
     try {
       const resultado = await revisarPorCodigo(codigo, opcoes);
       if (resultado.situacao === 'recusado') {
+        entradaRecusada.current = codigo.trim();
         campoCodigo.current?.focus();
         return;
       }
@@ -938,8 +953,14 @@ export function EntradaRapidaProduto({
    * "terminei de digitar". No desktop a saída sem prévia continua sendo só
    * navegação — o TAB com o campo vazio segue indo para a lupa (pedido do
    * usuário, 2026-09-04), e um clique fora não é pedido de consulta.
+   *
+   * **Nunca o código que o ERP acabou de recusar** (correção do usuário,
+   * 2026-10-05) — ver `entradaRecusada`.
    */
   function codigoPendenteDeConsulta(): boolean {
+    if (entradaRecusada.current !== null && texto.trim() === entradaRecusada.current) {
+      return false;
+    }
     if (resolvido !== null) {
       return texto.trim() !== entradaRevisada.current;
     }
@@ -986,12 +1007,13 @@ export function EntradaRapidaProduto({
    * Troca o teclado virtual do campo de código entre numérico e letras
    * (pedido do usuário, 2026-09-24).
    *
-   * **Tirar e devolver o foco é o que troca o teclado.** O Safari só lê o
-   * `inputmode` quando o campo ganha foco, e mudar o atributo com o teclado
-   * aberto não muda nada na tela; o `blur` + `focus` dentro do próprio toque
-   * funciona nos dois navegadores — e, sendo um gesto do operador, o iPhone
-   * aceita abrir o teclado de novo. `flushSync` porque o atributo precisa estar
-   * no DOM **antes** do novo foco.
+   * **O foco precisa sair e voltar para o teclado trocar.** O Safari só lê o
+   * `inputmode` quando um campo ganha foco, e mudar o atributo com o teclado
+   * aberto não muda nada na tela. Até 2026-10-05 a saída era um `blur` +
+   * `focus` do próprio campo dentro do toque — o que bastava no Android, mas não
+   * no iPhone (correção do usuário nessa data): lá o foco precisa passar por
+   * **outro** campo, e quem faz isso é `reabrirTecladoNoModoAtual`. `flushSync`
+   * porque o atributo precisa estar no DOM **antes** de o foco sair.
    *
    * Com o campo já focado o cursor volta para onde estava: o operador está no
    * meio do código, e a seleção automática de `selecionarConteudoAoFocar` faria
@@ -1012,17 +1034,16 @@ export function EntradaRapidaProduto({
     }
     const inicio = campo.selectionStart;
     const fim = campo.selectionEnd;
+    // Até o foco voltar: o `blur` do campo, quando a ponte o recebe, não é o
+    // operador saindo dele.
     trocandoTeclado.current = true;
-    try {
-      campo.blur();
-    } finally {
-      trocandoTeclado.current = false;
-    }
     preservarSelecaoNoProximoFoco(campo);
-    campo.focus();
-    if (inicio !== null && fim !== null) {
-      campo.setSelectionRange(inicio, fim);
-    }
+    reabrirTecladoNoModoAtual(campo, () => {
+      trocandoTeclado.current = false;
+      if (inicio !== null && fim !== null) {
+        campo.setSelectionRange(inicio, fim);
+      }
+    });
   }
 
   /**
@@ -1448,6 +1469,9 @@ export function EntradaRapidaProduto({
                   : 'O código não muda na edição de um item já lançado: cancele com Esc para inserir outro produto.'
               }
               onChange={(evento) => {
+                // Mexer no código é retomá-lo: redigitar o recusado e sair
+                // volta a consultar, como qualquer código digitado.
+                entradaRecusada.current = null;
                 setTexto(evento.target.value);
               }}
               onKeyDown={aoTeclarNoCodigo}

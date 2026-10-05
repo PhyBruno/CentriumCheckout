@@ -231,11 +231,16 @@ export function DialogoErroFaturamento({
     };
   }, [onFechar]);
 
+  // As medidas do desenho (cabeçalho de 78px, ícone de 96, folgas de 32/24) são
+  // de um cartão de 480px no balcão, e no celular somavam mais do que a tela: o
+  // corpo rolava para mostrar o motivo e o botão (correção do usuário,
+  // 2026-10-05). No compacto elas encolhem, como no `ModalPix` (AD-233), e `md:`
+  // — a árvore desktop desde AD-198, não a largura — devolve as do desenho.
   return (
     <div
       className={cn(
         !fundoJaVisivel && 'cc-backdrop-entra',
-        'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-lg',
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-sm md:p-lg',
       )}
       data-testid="dialogo-erro-faturamento"
     >
@@ -246,7 +251,7 @@ export function DialogoErroFaturamento({
         aria-label={copia.rotuloAcessivel}
         className="cc-modal-entra flex max-h-full w-full max-w-[480px] flex-col overflow-hidden rounded-3xl border border-border bg-card"
       >
-        <header className="flex h-[78px] shrink-0 items-center gap-sm border-b border-border px-lg">
+        <header className="flex h-16 shrink-0 items-center gap-sm border-b border-border px-base md:h-[78px] md:px-lg">
           <span
             className={cn(
               'flex size-[42px] shrink-0 items-center justify-center rounded-full',
@@ -272,14 +277,14 @@ export function DialogoErroFaturamento({
 
         {/* Rola por dentro: a sugestão da IA pode ter vários parágrafos, e o
             rodapé com o botão de fechar não pode sair da tela. */}
-        <div className="flex min-h-0 flex-col items-center gap-lg overflow-y-auto px-lg py-xl">
+        <div className="flex min-h-0 flex-col items-center gap-base overflow-y-auto px-base py-base md:gap-lg md:px-lg md:py-xl">
           <span
             className={cn(
-              'flex size-24 shrink-0 items-center justify-center rounded-full',
+              'flex size-16 shrink-0 items-center justify-center rounded-full md:size-24',
               fundoDoIcone,
             )}
           >
-            <Icone className={cn('size-14', corDoIcone)} aria-hidden="true" />
+            <Icone className={cn('size-10 md:size-14', corDoIcone)} aria-hidden="true" />
           </span>
 
           <span className="flex flex-col items-center gap-xs text-center">
@@ -358,7 +363,7 @@ export function DialogoErroFaturamento({
           )}
         </div>
 
-        <footer className="flex h-[60px] shrink-0 items-center justify-center border-t border-border px-lg">
+        <footer className="flex h-14 shrink-0 items-center justify-center border-t border-border px-base md:h-[60px] md:px-lg">
           <Button
             variant="secondary"
             className="h-9 rounded-full px-lg"

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { URL_ERP_MOCK, urlSessionStart } from './support/constants';
 import { informarValorRecebido, quitarVendaEmDinheiro } from './support/pagamento';
 
@@ -269,5 +269,113 @@ test.describe('Layout mobile (wizard de 3 etapas)', () => {
       await expect(page.getByTestId('pix-badge-status')).toBeInViewport();
       await expect(page.getByTestId('desistir-operacao-pix')).toBeInViewport();
     });
+
+    /**
+     * Correção do usuário, 2026-10-05: "Modais estão necessitando scroll down
+     * no mobile, não deveriam". Medido nesta viewport: o diálogo de recusa do
+     * ERP somava 460px de conteúdo para 452 de faixa e o cadastro de cliente
+     * 563 para 436.
+     */
+    test('a recusa do produto por cenário cabe na tela, sem exigir rolagem', async ({ page }) => {
+      await recusarProdutosPorCenario(page);
+      await page.goto(urlSessionStart());
+
+      const campo = page.getByTestId('campo-codigo-produto');
+      await campo.fill(SKU);
+      await campo.press('Enter');
+      await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+
+      expect(await maiorRolagemInterna(page.getByRole('alertdialog'))).toBeLessThanOrEqual(1);
+      await expect(page.getByTestId('erro-finalizacao')).toBeInViewport();
+      await expect(page.getByTestId('fechar-erro-faturamento')).toBeInViewport();
+    });
+
+    test('o cadastro de cliente cabe na tela, sem exigir rolagem', async ({ page }) => {
+      await page.goto(urlSessionStart());
+      const alternar = page.getByTestId('alternar-cliente-expandido');
+      if ((await alternar.getAttribute('aria-expanded')) === 'false') {
+        await alternar.click();
+      }
+      const documento = page.getByTestId('campo-documento-cliente');
+      await documento.fill('11122233344');
+      await documento.press('Enter');
+      await expect(page.getByTestId('modal-cadastro-cliente')).toBeVisible();
+
+      expect(
+        await maiorRolagemInterna(page.getByRole('dialog', { name: 'Cadastrar cliente' })),
+      ).toBeLessThanOrEqual(1);
+      await expect(page.getByTestId('campo-cadastro-uf')).toBeInViewport();
+      await expect(page.getByTestId('salvar-cliente')).toBeInViewport();
+    });
+  });
+
+  /**
+   * Correção do usuário, 2026-10-05: fechar a janela do cenário reabria a
+   * janela. O código recusado fica no campo, o toque no "Entendi" tira o foco
+   * dele, e no celular sair do campo consulta o ERP (AD-254) — o mesmo código ia
+   * de novo e a recusa voltava.
+   */
+  test('fechar a recusa por cenário não consulta o produto de novo', async ({ page }) => {
+    const consultas = await recusarProdutosPorCenario(page);
+    await page.goto(urlSessionStart());
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU);
+    await campo.press('Enter');
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toBeVisible();
+
+    await page.getByTestId('fechar-erro-faturamento').click();
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toHaveCount(0);
+    // Um toque fora depois de fechar: a outra saída do campo.
+    await page.getByTestId('indicador-etapa').click();
+
+    // Tempo para uma reconsulta acontecer, se fosse acontecer.
+    await page.waitForTimeout(800);
+    await expect(page.getByTestId('dialogo-erro-faturamento')).toHaveCount(0);
+    expect(consultas()).toBe(1);
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
   });
 });
+
+/**
+ * Todo `GetProduto` volta com `CenarioValido: false`, na forma medida no
+ * prototype (AD-258). Devolve o contador de consultas.
+ */
+async function recusarProdutosPorCenario(page: Page): Promise<() => number> {
+  let consultas = 0;
+  await page.route('**/GetProduto*', async (rota) => {
+    consultas += 1;
+    const resposta = await rota.fetch();
+    const produto = (await resposta.json()) as Record<string, unknown>;
+    await rota.fulfill({
+      json: {
+        Produto: { ...produto, CenarioValido: false },
+        messages: [
+          { Id: '', Type: 1, Description: 'Cenário não encontrado!' },
+          { Id: '', Type: 1, Description: 'Cenário pesquisado: Empresa=1, Operação=Desconhecida' },
+        ],
+      },
+    });
+  });
+  return () => consultas;
+}
+
+/**
+ * Quanto o conteúdo da janela passa da faixa visível, no pior elemento rolável
+ * dela — geometria, como no caso do PIX, e não classe CSS.
+ */
+async function maiorRolagemInterna(janela: Locator): Promise<number> {
+  return janela.evaluate((raiz) => {
+    let maior = 0;
+    for (const elemento of [raiz, ...Array.from(raiz.querySelectorAll('*'))]) {
+      if (!(elemento instanceof HTMLElement)) {
+        continue;
+      }
+      const rolagem = getComputedStyle(elemento).overflowY;
+      if (rolagem === 'auto' || rolagem === 'scroll') {
+        maior = Math.max(maior, elemento.scrollHeight - elemento.clientHeight);
+      }
+    }
+    return maior;
+  });
+}
