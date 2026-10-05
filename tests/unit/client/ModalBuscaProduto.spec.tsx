@@ -427,7 +427,8 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
       // Saldo 0 e 18 passam e o negativo sai. O sem saldo **fica**: o filtro
       // só julga o que conhece, senão um ERP sem `Estoque` abriria a busca vazia.
       expect(codigosVisiveis()).toEqual(['001', '002', '004']);
-      expect(screen.getByTestId('contagem-produtos')).toHaveTextContent('3 de 4');
+      expect(screen.getByTestId('contagem-produtos')).toHaveTextContent('4 produto(s) encontrado(s)');
+      expect(screen.queryByText(/desta página com saldo/)).not.toBeInTheDocument();
     });
 
     it('apagar a quantidade desliga o filtro', async () => {
@@ -461,7 +462,7 @@ describe('ModalBuscaProduto — paginação (T015, CART-01)', () => {
 
       await quantidade('1');
       expect(codigosVisiveis()).toEqual(['002', '004']);
-      expect(screen.getByTestId('contagem-produtos')).toHaveTextContent('2 de 4');
+      expect(screen.queryByText(/desta página com saldo/)).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByTestId('operador-saldo-<='));
       expect(codigosVisiveis()).toEqual(['001', '003', '004']);

@@ -618,7 +618,7 @@ export function CampoClienteVenda(): ReactElement {
 
         <button
           type="button"
-          className="flex shrink-0 items-center gap-[7px] text-sm font-semibold text-muted-foreground"
+          className="-m-2 flex shrink-0 items-center gap-[7px] p-2 text-sm font-semibold text-muted-foreground md:m-0 md:p-0"
           data-testid="alternar-cliente-expandido"
           aria-expanded={expandido}
           aria-controls="campos-cliente-venda"
@@ -626,7 +626,12 @@ export function CampoClienteVenda(): ReactElement {
             setExpandido((atual) => !atual);
           }}
         >
-          {expandido ? 'Expandido' : 'Recolhido'}
+          {/* No celular só o chevron fica visível (pedido do usuário,
+              2026-10-05): a palavra tomava a largura que o nome do cliente
+              precisa. `sr-only` mantém o nome acessível do botão, e o padding
+              com margem negativa devolve o alvo de toque que o texto dava, sem
+              mexer na altura do cabeçalho. */}
+          <span className="sr-only md:not-sr-only">{expandido ? 'Expandido' : 'Recolhido'}</span>
           <Chevron className="size-4" aria-hidden="true" />
         </button>
       </header>
