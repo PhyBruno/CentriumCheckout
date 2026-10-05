@@ -102,10 +102,15 @@ export function FormCadastroSimplificado({
     }
   }
 
+  // Medidas do desenho a partir de `md:` (a árvore desktop, AD-198); no compacto
+  // folgas, rótulos e campos encolhem para o formulário inteiro caber sem rolar
+  // (correção do usuário, 2026-10-05: 563px de conteúdo para 436 de faixa em
+  // 360×640). O texto digitado fica em 16px nos dois: abaixo disso o Safari dá
+  // zoom ao focar o campo.
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-lg',
+        'fixed inset-0 z-50 flex items-start justify-center bg-[color-mix(in_srgb,var(--cc-color-ink)_40%,transparent)] p-sm md:p-lg',
         saindo ? 'cc-backdrop-sai' : 'cc-backdrop-entra',
       )}
       data-testid="modal-cadastro-cliente"
@@ -129,7 +134,7 @@ export function FormCadastroSimplificado({
           void confirmar();
         }}
       >
-        <header className="flex h-[78px] shrink-0 items-center justify-between gap-sm border-b border-border px-lg">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-sm border-b border-border px-base md:h-[78px] md:px-lg">
           <div className="flex items-center gap-sm">
             <span className="flex size-[42px] shrink-0 items-center justify-center rounded-full bg-secondary">
               <UserAdd className="size-5 text-primary" aria-hidden="true" />
@@ -153,8 +158,8 @@ export function FormCadastroSimplificado({
           </Button>
         </header>
 
-        <div className="flex flex-1 flex-col gap-md overflow-y-auto p-md">
-          <section className="flex flex-col gap-base">
+        <div className="flex flex-1 flex-col gap-sm overflow-y-auto p-base md:gap-md md:p-md">
+          <section className="flex flex-col gap-xs md:gap-base">
             <h3 className="text-md font-bold text-foreground">Dados do cliente</h3>
             <Campo
               campo="nome"
@@ -193,7 +198,7 @@ export function FormCadastroSimplificado({
             </div>
           </section>
 
-          <section className="flex flex-col gap-base">
+          <section className="flex flex-col gap-xs md:gap-base">
             <h3 className="text-md font-bold text-foreground">Endereço</h3>
             <div className="flex gap-base">
               <Campo
@@ -259,7 +264,7 @@ export function FormCadastroSimplificado({
           </section>
         </div>
 
-        <footer className="flex h-[76px] shrink-0 items-center justify-end gap-sm border-t border-border px-lg">
+        <footer className="flex h-16 shrink-0 items-center justify-end gap-sm border-t border-border px-base md:h-[76px] md:px-lg">
           <Button
             type="submit"
             className="gap-xs rounded-full px-md py-sm text-lg font-semibold"
@@ -305,11 +310,11 @@ function Campo({
   inputMode,
 }: CampoProps): ReactElement {
   return (
-    <label className={cn('flex min-w-0 flex-col gap-[7px]', largura)}>
-      <span className="text-base font-semibold text-foreground">{rotulo}</span>
+    <label className={cn('flex min-w-0 flex-col gap-xxs md:gap-[7px]', largura)}>
+      <span className="text-sm font-semibold text-foreground md:text-base">{rotulo}</span>
       <input
         className={cn(
-          'h-[46px] rounded-lg border bg-background px-[14px] text-lg outline-none placeholder:text-[var(--cc-color-muted)] focus-visible:border-ring',
+          'h-10 rounded-lg border bg-background px-sm text-lg outline-none placeholder:text-[var(--cc-color-muted)] focus-visible:border-ring md:h-[46px] md:px-[14px]',
           invalido ? 'border-destructive' : 'border-border',
         )}
         data-testid={`campo-cadastro-${campo}`}

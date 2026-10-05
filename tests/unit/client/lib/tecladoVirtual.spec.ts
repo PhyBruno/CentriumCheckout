@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ehCampoDeDigitacao,
   fecharTecladoVirtual,
   focarSemTeclado,
   instalarFechamentoDoTecladoAoTocarFora,
+  reabrirTecladoNoModoAtual,
 } from '../../../../src/client/lib/tecladoVirtual';
 
 /**
@@ -101,5 +102,66 @@ describe('fechamento do teclado', () => {
     botao.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
     botao.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }));
     expect(campo).toHaveFocus();
+  });
+});
+
+/**
+ * Correção do usuário, 2026-10-05: no iPhone o ABC/123 do campo de código não
+ * trocava o teclado. Tirar e devolver o foco do **mesmo** campo no mesmo toque
+ * não basta para o Safari reler o `inputmode`; passar por **outro** campo, sim —
+ * é o que acontece quando se navega entre campos de tipos diferentes.
+ */
+describe('reabrirTecladoNoModoAtual', () => {
+  let campo: HTMLInputElement;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    campo = document.createElement('input');
+    campo.inputMode = 'text';
+    document.body.append(campo);
+    campo.focus();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    campo.remove();
+  });
+
+  it('passa o foco por um campo-ponte no mesmo modo e volta ao campo', () => {
+    const focados: Element[] = [];
+    const registrar = (evento: FocusEvent): void => {
+      if (evento.target instanceof Element) {
+        focados.push(evento.target);
+      }
+    };
+    document.addEventListener('focusin', registrar);
+    const aoConcluir = vi.fn();
+
+    reabrirTecladoNoModoAtual(campo, aoConcluir);
+
+    // Agora: a ponte, no modo novo, com o campo fora de foco.
+    const ponte = document.activeElement;
+    expect(ponte).not.toBe(campo);
+    expect(ponte).toBeInstanceOf(HTMLInputElement);
+    expect((ponte as HTMLInputElement).inputMode).toBe('text');
+    expect(aoConcluir).not.toHaveBeenCalled();
+
+    // Depois: o campo de volta, a ponte fora do DOM.
+    vi.runAllTimers();
+    expect(campo).toHaveFocus();
+    expect(ponte?.isConnected).toBe(false);
+    expect(aoConcluir).toHaveBeenCalledTimes(1);
+    expect(focados).toEqual([ponte, campo]);
+
+    document.removeEventListener('focusin', registrar);
+  });
+
+  it('a ponte não é anunciada nem alcançável por TAB', () => {
+    reabrirTecladoNoModoAtual(campo, () => undefined);
+
+    const ponte = document.activeElement as HTMLInputElement;
+    expect(ponte.getAttribute('aria-hidden')).toBe('true');
+    expect(ponte.tabIndex).toBe(-1);
+    vi.runAllTimers();
   });
 });

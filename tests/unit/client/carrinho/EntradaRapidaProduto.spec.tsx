@@ -1239,6 +1239,72 @@ describe('EntradaRapidaProduto — cenário tributário do produto (AD-258)', ()
 
     expect(buscar).toHaveBeenCalledTimes(2);
   });
+
+  /**
+   * Correção do usuário, 2026-10-05: no celular, fechar a janela do cenário
+   * reabria a mesma janela. O código recusado continua no campo, e o toque no
+   * "Entendi" tira o foco dele — a saída que consulta o ERP no celular
+   * (AD-254) mandava o mesmo código de novo, e a recusa voltava.
+   */
+  describe('no celular, a saída do campo não reconsulta o código recusado', () => {
+    async function recusarECerrarJanela(
+      usuario: ReturnType<typeof userEvent.setup>,
+      gesto: 'saida' | 'enter',
+    ): Promise<void> {
+      const campo = screen.getByTestId('campo-codigo-produto');
+      if (gesto === 'enter') {
+        await usuario.type(campo, '001234{Enter}');
+      } else {
+        await usuario.type(campo, '001234');
+        await usuario.click(document.body);
+      }
+      await waitFor(() => {
+        expect(useCenarioProdutoStore.getState().recusa).not.toBeNull();
+      });
+      // O "Entendi": a janela fecha e o foco volta ao campo de código.
+      act(() => {
+        useCenarioProdutoStore.getState().fecharRecusaPorCenario();
+      });
+      campo.focus();
+    }
+
+    it.each(['saida', 'enter'] as const)(
+      'recusado por %s, tocar fora depois de fechar a janela não a reabre',
+      async (gesto) => {
+        const buscar = vi.fn(() => Promise.resolve(respostaDeCenario(false)));
+        vi.stubGlobal('fetch', buscar);
+        const usuario = userEvent.setup();
+        renderBarra({ tecladoVirtual: true });
+
+        await recusarECerrarJanela(usuario, gesto);
+        await usuario.click(document.body);
+
+        // Dá à saída a chance de consultar, antes de afirmar que não consultou.
+        await act(async () => {
+          await new Promise((resolver) => setTimeout(resolver, 50));
+        });
+        expect(buscar).toHaveBeenCalledTimes(1);
+        expect(useCenarioProdutoStore.getState().recusa).toBeNull();
+        expect(screen.getByTestId('campo-codigo-produto')).toHaveValue('001234');
+      },
+    );
+
+    it('trocar o código recusado e sair consulta o código novo', async () => {
+      const buscar = vi.fn(() => Promise.resolve(respostaDeCenario(false)));
+      vi.stubGlobal('fetch', buscar);
+      const usuario = userEvent.setup();
+      renderBarra({ tecladoVirtual: true });
+
+      await recusarECerrarJanela(usuario, 'saida');
+      await usuario.clear(screen.getByTestId('campo-codigo-produto'));
+      await usuario.type(screen.getByTestId('campo-codigo-produto'), '002000');
+      await usuario.click(document.body);
+
+      await waitFor(() => {
+        expect(buscar).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
 });
 
 /**
@@ -1811,17 +1877,43 @@ describe('EntradaRapidaProduto — teclado do campo de código no celular (2026-
     renderBarra({ tecladoVirtual: true });
     const campo = screen.getByTestId<HTMLInputElement>('campo-codigo-produto');
 
+    const buscar = vi.fn();
+    vi.stubGlobal('fetch', buscar);
+    // Quem recebe o foco durante a troca (correção do usuário, 2026-10-05):
+    // no iPhone o teclado só troca se o foco passar por **outro** campo.
+    const focados: Element[] = [];
+    const registrar = (evento: FocusEvent): void => {
+      if (evento.target instanceof Element) {
+        focados.push(evento.target);
+      }
+    };
+
     await usuario.type(campo, '789');
+    document.addEventListener('focusin', registrar);
     await usuario.click(screen.getByTestId('alternar-teclado-codigo'));
 
     expect(campo).toHaveAttribute('inputmode', 'text');
-    expect(campo).toHaveFocus();
+    await waitFor(() => {
+      expect(campo).toHaveFocus();
+    });
+    document.removeEventListener('focusin', registrar);
+    expect(focados).toHaveLength(2);
+    expect(focados[0]).not.toBe(campo);
+    expect(focados[0]).toHaveAttribute('inputmode', 'text');
+    expect(focados[1]).toBe(campo);
     expect(campo).toHaveValue('789');
     expect([campo.selectionStart, campo.selectionEnd]).toEqual([3, 3]);
     expect(screen.getByTestId('alternar-teclado-codigo')).toHaveTextContent('123');
+    // O foco que sai para a ponte não é o operador deixando o campo: o código
+    // pela metade não vai ao ERP (AD-254).
+    expect(buscar).not.toHaveBeenCalled();
 
     await usuario.click(screen.getByTestId('alternar-teclado-codigo'));
     expect(campo).toHaveAttribute('inputmode', 'numeric');
+    await waitFor(() => {
+      expect(campo).toHaveFocus();
+    });
+    expect(buscar).not.toHaveBeenCalled();
   });
 
   it('no desktop o campo não fixa teclado nem mostra o botão', () => {
