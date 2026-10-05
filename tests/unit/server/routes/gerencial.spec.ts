@@ -91,6 +91,34 @@ describe('GET /gerencial/:destino', () => {
     );
   });
 
+  it('com ERP_PROXY_URL, redireciona ao host do tenant e não ao proxy', async () => {
+    // O proxy só existe na rede interna do servidor; o navegador não o alcança.
+    const appComProxy = await buildApp(
+      loadEnv({
+        baseDomain: 'apps.example.test',
+        validationKey: 'chave-de-validacao-sintetica',
+        SESSION_SECRET,
+        NODE_ENV: 'test',
+        SERVE_STATIC_CLIENT: 'false',
+        ERP_PROXY_URL: 'http://erp-proxy:4020',
+      }),
+    );
+
+    try {
+      const resposta = await appComProxy.inject({
+        method: 'GET',
+        url: '/gerencial/resumo-caixa',
+        cookies: { [SESSION_COOKIE_NAME]: cookieDeSessao },
+      });
+
+      expect(resposta.headers.location).toBe(
+        'https://tenantdemo.apps.example.test/WWPResumoCaixa.aspx',
+      );
+    } finally {
+      await appComProxy.close();
+    }
+  });
+
   it('responde 401 sem cookie de sessão, sem revelar destino algum', async () => {
     const resposta = await abrir('/gerencial/resumo-caixa', false);
 
