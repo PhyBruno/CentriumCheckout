@@ -50,7 +50,7 @@ export interface ChamadaAutenticadaDeps {
 }
 
 /**
- * O que basta para falar com o ERP: host, token e empresa.
+ * O que basta para falar com o ERP: host, token, empresa e login.
  *
  * Menos que uma `SessaoOperador` inteira de propósito — `/session/start`
  * precisa chamar `GetSessao` **antes** de a sessão existir, para descobrir o
@@ -60,7 +60,7 @@ export interface ChamadaAutenticadaDeps {
  */
 export type CredenciaisDeChamada = Pick<
   SessaoOperador,
-  'access_token' | 'tenant' | 'codigoEmpresa'
+  'access_token' | 'tenant' | 'codigoEmpresa' | 'username'
 >;
 
 function montarUrl(env: Env, sessao: CredenciaisDeChamada, requisicao: RequisicaoErp): string {
@@ -76,16 +76,32 @@ function montarUrl(env: Env, sessao: CredenciaisDeChamada, requisicao: Requisica
   return `${base}${requisicao.caminho}${sufixo}`;
 }
 
+/**
+ * Cabeçalhos de toda chamada ao ERP.
+ *
+ * `Empresa` e `Login` vão em **todas**, mesmo nas que não os leem: um
+ * procedimento REST do GeneXus só enxerga o cabeçalho que pede com
+ * `&HttpRequest.GetHeader`, e ignora o resto sem erro — é o que já acontece com
+ * `Empresa`, lido por só 8 endpoints (AD-205). Mandar sempre poupa uma lista de
+ * "quem lê o quê" que envelheceria a cada build da KB (AD-264).
+ *
+ * `Login` é o mesmo `username` da troca OAuth e de `GetSessao?Login=`. Vem do
+ * cookie cifrado, como `Empresa`; o navegador não tem como escolhê-lo.
+ *
+ * `headersExtras` entra **antes** das credenciais: só o `Content-Type` é do
+ * chamador, e nenhum extra pode trocar token, empresa ou login da sessão.
+ */
 function montarHeaders(
   sessao: CredenciaisDeChamada,
   requisicao: RequisicaoErp,
 ): Record<string, string> {
   return {
+    'Content-Type': 'application/json',
+    ...requisicao.headersExtras,
     // O contrato do ERP usa o esquema `OAuth`, não `Bearer` (AD-019).
     Authorization: `OAuth ${sessao.access_token}`,
     Empresa: sessao.codigoEmpresa,
-    'Content-Type': 'application/json',
-    ...requisicao.headersExtras,
+    Login: sessao.username,
   };
 }
 

@@ -18,8 +18,13 @@ import type { SessaoOperador } from './cookie';
 /** Caminho de `GetSessao` a partir da raiz do host do ERP. */
 export const CAMINHO_GET_SESSAO = '/ApiCentriumOAuth/GetSessao';
 
-/** O mínimo para perguntar ao ERP quem é o operador de um login. */
-export type CredenciaisGetSessao = CredenciaisDeChamada & Pick<SessaoOperador, 'username'>;
+/**
+ * O mínimo para perguntar ao ERP quem é o operador de um login.
+ *
+ * Igual a `CredenciaisDeChamada` desde que o `username` virou o cabeçalho
+ * `Login` de toda chamada (AD-264); aqui ele vai também na query.
+ */
+export type CredenciaisGetSessao = CredenciaisDeChamada;
 
 /**
  * Query canônica de `GetSessao`, na ordem que o ERP exige.
