@@ -170,7 +170,7 @@ const servidor = createServer((requisicao, resposta) => {
 servidor.listen(PORTA, '0.0.0.0', () => {
   console.log(`erp-proxy em :${PORTA}`);
   console.log(`  /<tenant>/oauth/* e /gam/* → ${MODELO_OAUTH}`);
-  for (const [tenant, base] of OAUTH_POR_TENANT) console.log(`    exceção ${tenant} → ${base}`);
+  console.log(`  exceções de OAuth por tenant: ${OAUTH_POR_TENANT.size}`);
   console.log(`  /<tenant>/demais           → ${MODELO_API}`);
   console.log(
     `  tenants: ${TENANTS_PERMITIDOS.size > 0 ? [...TENANTS_PERMITIDOS].join(', ') : 'qualquer um de formato válido'}`,
