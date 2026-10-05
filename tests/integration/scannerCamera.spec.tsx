@@ -260,10 +260,12 @@ describe('ScannerCamera — inserção pelo mesmo caminho da barra (FR-007)', ()
   it('o código lido pela câmera insere o mesmo item que a digitação da mesma string', async () => {
     const usuario = userEvent.setup();
 
-    // 1) Caminho de sempre: digitar o código e confirmar com Enter.
+    // 1) Digitar o código e sair do campo — o gesto que a câmera imita desde
+    // AD-266: é a mudança de foco que consulta o ERP, não um Enter.
     definirUserAgent(uaOriginal);
     renderizarComProvedores(<EtapaClienteProdutos />);
-    await usuario.type(screen.getByTestId('campo-codigo-produto'), `${CODIGO_LIDO}{Enter}`);
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), CODIGO_LIDO);
+    await usuario.tab();
     await waitFor(() => {
       expect(useVendaStore.getState().linhas).toHaveLength(1);
     });
@@ -292,6 +294,40 @@ describe('ScannerCamera — inserção pelo mesmo caminho da barra (FR-007)', ()
     expect(linhaLida?.descontoManual).toBe(linhaDigitada?.descontoManual);
     // Mesma origem: a câmera não inventa uma proveniência própria.
     expect(linhaLida?.origem).toBe(linhaDigitada?.origem);
+  });
+
+  /**
+   * AD-266 (correção do usuário, 2026-10-05): a leitura escreve o código no
+   * campo e segue a saída dele — não insere por conta própria. Com um produto
+   * `'E'` isso se enxerga: a consulta abre a prévia, o código lido continua no
+   * campo e o foco pousa na quantidade, como quando o operador digita e sai.
+   */
+  it('o código lido fica no campo e é consultado como na saída dele', async () => {
+    const usuario = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({ Produto: respostaGetProduto({ ProdutoPesavelEditavel: 'E' }) }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            ),
+          ),
+        ),
+    );
+    definirUserAgent(UA_CHROME_ANDROID);
+    instalarBarcodeDetector(CODIGO_LIDO);
+
+    renderizarComProvedores(<EtapaClienteProdutos />);
+    await usuario.click(screen.getByTestId('abrir-scanner-camera'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+    expect(screen.getByTestId('campo-codigo-produto')).toHaveValue(CODIGO_LIDO);
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
   });
 
   it('fecha a janela da câmera assim que o primeiro código é lido', async () => {
