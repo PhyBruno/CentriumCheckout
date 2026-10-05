@@ -42,7 +42,7 @@ function json(corpo: unknown, status = 200): Response {
 }
 
 describe('chamarErpComRenovacao', () => {
-  it('envia Authorization OAuth e Empresa do cookie decifrado', async () => {
+  it('envia Authorization OAuth, Empresa e Login do cookie decifrado', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(json({ ok: true }));
 
     await chamarErpComRenovacao(sessao, requisicao, { env, fetchImpl });
@@ -54,7 +54,36 @@ describe('chamarErpComRenovacao', () => {
     expect(init?.headers).toMatchObject({
       Authorization: 'OAuth token-antigo',
       Empresa: '1',
+      // O mesmo login que vai na troca OAuth e em `GetSessao?Login=` (AD-264).
+      Login: 'operador.teste',
       'Content-Type': 'application/json',
+    });
+  });
+
+  it('não deixa headersExtras sobrescrever as credenciais da sessão (AD-264)', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(json({ ok: true }));
+
+    await chamarErpComRenovacao(
+      sessao,
+      {
+        ...requisicao,
+        headersExtras: {
+          Authorization: 'OAuth forjado',
+          Empresa: '99',
+          Login: 'outro.operador',
+          'Content-Type': 'text/plain',
+        },
+      },
+      { env, fetchImpl },
+    );
+
+    // Só o `Content-Type` é do chamador: token, empresa e login saem sempre do
+    // cookie, nunca de quem monta a requisição.
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers).toEqual({
+      Authorization: 'OAuth token-antigo',
+      Empresa: '1',
+      Login: 'operador.teste',
+      'Content-Type': 'text/plain',
     });
   });
 

@@ -4013,3 +4013,22 @@ Tornar estornável uma forma TEF **importada** fica fora — item 65.
 **Impact:** `deploy/beta/docker-stack.yml`, `deploy/beta/erp-proxy.mjs`, `Dockerfile`, `.env.example`, `src/server/config/env.ts`, `src/server/routes/gerencial.ts`, `tests/unit/server/session/tokenExchange.spec.ts`, `tests/unit/server/routes/gerencial.spec.ts`.
 
 **Verificação:** 2071 testes unit/integração verdes, entre eles os três novos: o tenant no caminho do token, a recusa de `ERP_PROXY_URL` junto com `ERP_HOST_OVERRIDE`, e o gerencial indo ao host do tenant com o proxy ligado. `tsc --noEmit` e ESLint limpos. O `docker compose config` resolve o stack com `ERP_PROXY` em `1` e em `0`. Com a imagem montada, o BFF sobe com `ERP_PROXY_URL` e passa no healthcheck. O roteamento do proxy foi conferido contra um servidor de eco local: dois tenants, a exceção de OAuth, tenant fora da lista e tenant com ponto (os dois últimos dão 400). **Não verificado contra o ERP real nem num Swarm de verdade.**
+
+### AD-264: toda chamada ao ERP leva o cabeçalho `Login`, com o `username` da sessão (2026-10-05)
+
+**Pedido do usuário:** *"Precisaremos enviar o header 'Login' em todos os endpoints. Não são exatamente todos, mas se enviar pra um que não precisa, ele ignora, certo?"* e, confirmada a premissa, *"O valor a ser atribuido ao header login, é o mesmo que enviamos já em algum momento. Pode implementar."*
+
+**1. Vai em todas as chamadas, e não só nas que o leem.** O BFF já trata o `Empresa` assim: o cabeçalho vai em toda chamada, e só 8 endpoints o leem (AD-205). Um procedimento REST do GeneXus só vê o cabeçalho que pede com `&HttpRequest.GetHeader`, e ignora os outros sem erro. Uma lista de "quem lê `Login`" envelheceria a cada build da KB. Mandar sempre não custa nada.
+
+**2. O valor é o `username` do cookie cifrado.** É o mesmo login da troca OAuth (`password` grant) e de `GetSessao?Login=`. `CredenciaisDeChamada` ganhou `username`, e `montarHeaders` (`src/server/session/chamadaAutenticada.ts`) o põe em `Login`. Com isso o cabeçalho também sai no `GetSessao` de `/session/start`, antes de a sessão existir. `CredenciaisGetSessao` virou só um apelido de `CredenciaisDeChamada`. A query de `GetSessao` não mudou: o `Event GetSessao.Before` continua recortando o login de `Login=` até o fim da query, e `Empresa` continua sendo o primeiro par.
+
+**3. `headersExtras` não sobrescreve mais as credenciais.** Antes o espalhamento vinha depois de `Authorization`/`Empresa`, e um extra trocaria o token ou a empresa da sessão. Hoje o único extra é o `Content-Type` do proxy. A ordem foi invertida: o chamador ainda escolhe o `Content-Type`, mas token, empresa e login saem sempre da sessão.
+
+**Fora do escopo:**
+- **A troca de token** (`/oauth/access_token`, `tokenExchange.ts`) não recebe o cabeçalho. É o endpoint do GAM, não da API, e o login já vai no corpo.
+- **Endpoint com `in:&Login` como parâmetro** lê da query, não do cabeçalho, como aconteceu com `Empresa` em AD-205. Se algum aparecer, o login vai na query também.
+- **Login com caractere acima de `U+00FF`** faz o `fetch` do Node lançar `TypeError` antes de sair. Acento latino passa, mas viaja em Latin-1. Os logins do GAM são ASCII hoje, e não há tratamento para isso.
+
+**Impact:** `src/server/session/chamadaAutenticada.ts`, `src/server/session/getSessao.ts`, `tests/unit/server/session/chamadaAutenticada.spec.ts`.
+
+**Verificação:** 2069 testes unit/integração verdes, entre eles os dois novos de `chamadaAutenticada.spec.ts`: o `Login` sai com o `username`, e `headersExtras` não troca token, empresa nem login. `tsc --noEmit` e ESLint limpos. **Não verificado contra o ERP real.**
