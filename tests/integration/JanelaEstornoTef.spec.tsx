@@ -50,6 +50,8 @@ interface OpcoesErpFake {
   readonly consultas: readonly string[];
   /** Resposta de `EstornarPagamento`: o status, ou a recusa. */
   readonly estorno?: { readonly status: string } | { readonly recusa: string };
+  /** `reason` do item da consulta, na forma que o ERP mandar (texto, objeto…). */
+  readonly reason?: unknown;
 }
 
 function erpFake(opcoes: OpcoesErpFake): { cliente: ErpClient; caminhos: string[] } {
@@ -82,7 +84,13 @@ function erpFake(opcoes: OpcoesErpFake): { cliente: ErpClient; caminhos: string[
       return Promise.resolve({
         estado: 'ok',
         resposta: respostaJson(
-          envelopeOk([{ payment_identifier: PAG_ID, payment_status: literal }]),
+          envelopeOk([
+            {
+              payment_identifier: PAG_ID,
+              payment_status: literal,
+              ...(opcoes.reason === undefined ? {} : { reason: opcoes.reason }),
+            },
+          ]),
         ),
       });
     },
@@ -285,6 +293,67 @@ describe('JanelaEstornoTef', () => {
       'A maquininha não aceitou o estorno',
     );
     await esperar(INTERVALO_TESTE_MS * 3);
+    expect(desfechos.estornados.quantidade).toBe(0);
+  });
+
+  // Caso real (2026-10-07): o `reason` do REJ_EST vem como objeto. Antes reprovava a
+  // resposta inteira ("Resposta inválida de ConsultarStatusCard") e o REJ_EST nunca
+  // era interpretado — o operador via "não foi possível pedir o estorno".
+  it('REJ_EST com reason em objeto → aviso de estorno rejeitado com a frase do reason', async () => {
+    const { cliente } = erpFake({
+      consultas: ['CNC', 'REJ_EST'],
+      reason: { code: 51, message: 'Estorno negado na maquininha (sintético)' },
+    });
+    const desfechos = renderizar(cliente);
+
+    const aviso = await screen.findByTestId('estorno-rejeitado-tef');
+    expect(aviso).toHaveTextContent('A maquininha não aceitou o estorno');
+    expect(aviso).toHaveTextContent('Estorno negado na maquininha (sintético)');
+    expect(screen.queryByTestId('erro-estorno-tef')).toBeNull();
+    expect(desfechos.estornados.quantidade).toBe(0);
+  });
+
+  it('REJ_EST com reason de forma desconhecida mostra o JSON, sem erro de resposta', async () => {
+    const { cliente } = erpFake({ consultas: ['CNC', 'REJ_EST'], reason: { codigo: 51 } });
+    renderizar(cliente);
+
+    expect(await screen.findByTestId('estorno-rejeitado-tef')).toHaveTextContent('{"codigo":51}');
+    expect(screen.queryByTestId('erro-estorno-tef')).toBeNull();
+  });
+
+  // Caso real (C0, 2026-10-07, AD-270): o POS recusou o estorno e a SmartTEF NÃO mandou
+  // REJ_EST — a cobrança andou SOL_EST → PROC_EST e voltou a CNC. Sem tratar isso, a
+  // janela ficava esperando para sempre.
+  it('voltou a CNC depois de SOL_EST/PROC_EST → estorno recusado, forma segue aprovada', async () => {
+    const { cliente } = erpFake({ consultas: ['CNC', 'SOL_EST', 'PROC_EST', 'CNC'] });
+    const desfechos = renderizar(cliente);
+
+    const aviso = await screen.findByTestId('estorno-rejeitado-tef');
+    expect(aviso).toHaveTextContent('A maquininha não aceitou o estorno');
+    expect(screen.queryByTestId('erro-estorno-tef')).toBeNull();
+    await esperar(INTERVALO_TESTE_MS * 3);
+    expect(desfechos.estornados.quantidade).toBe(0);
+  });
+
+  it('CNC sem nunca ter visto o estorno em andamento NÃO é recusa — segue esperando', async () => {
+    // Todas as consultas voltam CNC (o pedido ainda não apareceu no POS).
+    const { cliente } = erpFake({ consultas: ['CNC'] });
+    const desfechos = renderizar(cliente);
+
+    await screen.findByText('Aguardando a confirmação do estorno');
+    await esperar(INTERVALO_TESTE_MS * 6);
+    expect(screen.queryByTestId('estorno-rejeitado-tef')).toBeNull();
+    expect(screen.getByText('Aguardando a confirmação do estorno')).toBeInTheDocument();
+    expect(desfechos.estornados.quantidade).toBe(0);
+  });
+
+  it('a recusa não dispara um segundo pedido de estorno sozinha', async () => {
+    const { cliente, caminhos } = erpFake({ consultas: ['CNC', 'SOL_EST', 'CNC'] });
+    const desfechos = renderizar(cliente);
+
+    await screen.findByTestId('estorno-rejeitado-tef');
+    await esperar(INTERVALO_TESTE_MS * 3);
+    expect(pedidosDeEstorno(caminhos)).toBe(1);
     expect(desfechos.estornados.quantidade).toBe(0);
   });
 

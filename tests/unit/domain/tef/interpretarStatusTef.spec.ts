@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  estornoEmAndamento,
   interpretarStatusCobrancaTef,
   interpretarStatusEstornoTef,
   MENSAGEM_POR_MOTIVO_FALHA_TEF,
@@ -85,6 +86,34 @@ describe('interpretarStatusCobrancaTef', () => {
 describe('interpretarStatusEstornoTef', () => {
   it.each(ESTORNO)('%s → %o', (literal, esperado) => {
     expect(interpretarStatusEstornoTef(literal)).toEqual(esperado);
+  });
+
+  // AD-270 (C0, 2026-10-07): o POS recusa o estorno devolvendo a cobrança a CNC, depois
+  // de SOL_EST → PROC_EST. Sem `estornoJaVisto`, CNC segue sendo "ainda não estornado".
+  describe('estorno recusado = volta a CNC depois de visto em andamento', () => {
+    it('CNC com o estorno já visto é ESTORNO_REJEITADO', () => {
+      expect(interpretarStatusEstornoTef('CNC', true)).toEqual({ situacao: 'ESTORNO_REJEITADO' });
+    });
+
+    it('CNC sem o estorno visto continua pendente — atraso de leitura não é recusa', () => {
+      expect(interpretarStatusEstornoTef('CNC', false)).toEqual({ situacao: 'ESTORNO_PENDENTE' });
+      expect(interpretarStatusEstornoTef('CNC')).toEqual({ situacao: 'ESTORNO_PENDENTE' });
+    });
+
+    it('a marca não muda nenhum outro literal', () => {
+      for (const [literal, esperado] of ESTORNO) {
+        if (literal === 'CNC') continue;
+        expect(interpretarStatusEstornoTef(literal, true)).toEqual(esperado);
+      }
+    });
+
+    it('estornoEmAndamento só reconhece SOL_EST e PROC_EST', () => {
+      expect(estornoEmAndamento('SOL_EST')).toBe(true);
+      expect(estornoEmAndamento('PROC_EST')).toBe(true);
+      for (const outro of ['CNC', 'EST', 'REJ_EST', 'PDT', 'REJ', '']) {
+        expect(estornoEmAndamento(outro)).toBe(false);
+      }
+    });
   });
 
   it('só EST estorna (T1)', () => {

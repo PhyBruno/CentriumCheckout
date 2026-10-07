@@ -64,14 +64,14 @@ A validação de fronteira é, portanto, **em dois estágios** (`contracts/erp-t
 | `PDT` | Pendente | `PENDENTE` | — (não deveria ocorrer) → `ESTORNO_PENDENTE` |
 | `PROC_PAG` | Processando pagamento | `PENDENTE` | → `ESTORNO_PENDENTE` |
 | `PROC` | Processando (genérico) | `PENDENTE` | `ESTORNO_PENDENTE` |
-| `CNC` | Concluído | **`APROVADO`** | `ESTORNO_PENDENTE` (estorno ainda não registrado) |
+| `CNC` | Concluído | **`APROVADO`** | `ESTORNO_PENDENTE` (estorno ainda não registrado) — **mas `CNC` depois de uma consulta ter visto `SOL_EST`/`PROC_EST` é `ESTORNO_REJEITADO`**: é como o POS simulado sinaliza a recusa do estorno (AD-270) |
 | `REJ` | **O cartão não passou nesta tentativa.** O cliente pode tentar de novo, e a mesma cobrança pode chegar a `CNC` | **`TENTATIVA_RECUSADA`** — **não é desfecho**: a janela segue consultando e mostra o aviso com o `reason` | `ESTORNO_PENDENTE` |
 | `CAN_ERP` | Cancelado pelo ERP | `FALHA` (`CANCELADO_NO_ERP`) | `ESTORNO_REJEITADO` |
 | `REJ_PAG` | **O operador da maquininha não aceitou a cobrança** | `FALHA` (`PAGAMENTO_REJEITADO`) | `ESTORNO_REJEITADO` |
 | `SOL_EST` | Estorno solicitado | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | `ESTORNO_PENDENTE` — a janela continua consultando |
 | `PROC_EST` | Processando estorno | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | `ESTORNO_PENDENTE` |
 | `EST` | Estornado | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | **`ESTORNADO`** |
-| `REJ_EST` | **O operador da maquininha não aceitou o estorno** | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | **`ESTORNO_REJEITADO`** |
+| `REJ_EST` | **O operador da maquininha não aceitou o estorno** (o POS simulado do C0 **nunca o mandou**: devolveu a cobrança a `CNC`, linha acima) | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | **`ESTORNO_REJEITADO`** |
 | `IMP` | Impresso — só de impressão (`print_status`) | `PENDENTE` (não esperado) | `ESTORNO_PENDENTE` |
 | qualquer outro | — | `PENDENTE` (nunca aprovado) | `ESTORNO_PENDENTE` (nunca estornado) |
 

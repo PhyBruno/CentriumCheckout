@@ -7,7 +7,7 @@ import { informarValorRecebido } from './support/pagamento';
  *
  * ```text
  * carrinho 10,00 → condição '2 VEZES'
- *   → débito TEF 5,00: PDT → PROC_PAG → CNC, aprovado com NSU/autorização/bandeira
+ *   → débito TEF 5,00: PDT → PROC_PAG → CNC, aprovado, sem o cartão de detalhes da transação (AD-269)
  *   → crédito TEF 5,00: PagamentoParcelas 2, EmpCod/UsuarioGAM postos pelo BFF
  *   → remover o débito = estorno: SOL_EST → PROC_EST → EST, forma riscada
  *   → PIX TEF 5,00 aprovado
@@ -118,9 +118,10 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
     await expect(page.getByTestId('tef-badge-status')).toContainText('Aprovado', {
       timeout: 40_000,
     });
-    await expect(page.getByTestId('tef-nsu')).toHaveText('048291');
-    await expect(page.getByTestId('tef-autorizacao')).toHaveText('192837');
-    await expect(page.getByTestId('tef-bandeira')).toHaveText('MASTERCARD');
+    // O cartão "Detalhes da transação" não existe mais (AD-269): a aprovação mostra
+    // só o valor pago. A bandeira segue no retrato da NFCe (`formaParaRetrato.spec.ts`).
+    await expect(page.getByTestId('modal-tef').getByText('Detalhes da transação')).toHaveCount(0);
+    await expect(page.getByTestId('tef-nsu')).toHaveCount(0);
     // O saldo abate na hora do `CNC`, com a janela ainda aberta (T3).
     await expect(page.getByTestId('pagamentos-saldo-restante')).toContainText('5,00');
     await page.getByTestId('concluir-tef').click();
