@@ -1,5 +1,5 @@
 import { Pen, Trash2 } from 'reicon-react';
-import type { ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
@@ -49,6 +49,21 @@ export function GridItens(): ReactElement {
   const ativas = linhasAtivas(linhas);
   const ultimoItem = linhas.at(-1);
 
+  // Correção do usuário (2026-10-07): com muitos itens a área rolável ficava
+  // parada no topo e o item recém-inserido nascia fora da vista. Quem rola é
+  // esta `div`, não a página, então o `scrollTop` dela é que acompanha o fim.
+  // Depende do **tamanho** do array, e não dele: cancelar não tira a linha
+  // (`CART-08`) nem muda o tamanho, então riscar um item no meio da lista não
+  // arrasta o operador para o fim; só entrada de linha (bipagem, retomada de
+  // DAV/NFCe) rola.
+  const areaRolavel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const area = areaRolavel.current;
+    if (area !== null) {
+      area.scrollTop = area.scrollHeight;
+    }
+  }, [linhas.length]);
+
   return (
     // "Produtos da venda" do Pencil (nó `q8HBkk`): cartão branco de raio 24 com
     // hairline, recortando a tabela e a faixa de resumo.
@@ -59,7 +74,11 @@ export function GridItens(): ReactElement {
       {/* Só esta área rola — cabeçalho fixo (`sticky`) e o rodapé de resumo
           abaixo ficam sempre visíveis. Sem isso, uma venda com muitas linhas
           rolava a página inteira em vez de só a lista de itens. */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={areaRolavel}
+        className="min-h-0 flex-1 overflow-y-auto"
+        data-testid="area-rolavel-itens"
+      >
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">Itens da venda em andamento</caption>
           {/* `whitespace-nowrap` no cabeçalho inteiro, e a exceção é a coluna

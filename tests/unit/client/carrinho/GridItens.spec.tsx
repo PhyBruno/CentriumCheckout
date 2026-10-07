@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GridItens } from '../../../../src/client/features/carrinho/GridItens';
@@ -167,5 +167,54 @@ describe('GridItens — faixa "Resumo parcial carrinho" (correção do usuário,
       expect(elemento).toHaveClass('shrink-0', 'whitespace-nowrap');
     }
     expect(screen.getByTestId('ultimo-item-adicionado')).toHaveClass('min-w-0', 'flex-1');
+  });
+});
+
+// Correção do usuário, 2026-10-07: com muitos itens a grid não acompanhava o
+// último inserido. O jsdom não mede layout, então `scrollHeight` é fixado à mão
+// e o contrato é o do `scrollTop` da área rolável.
+describe('GridItens — rola até o último item ao inserir (correção do usuário, 2026-10-07)', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+    useVendaStore.setState({ linhas: [linhaDe({ idLinha: 'linha-1' })] });
+  });
+
+  function areaComAltura(altura: number): HTMLElement {
+    const area = screen.getByTestId('area-rolavel-itens');
+    Object.defineProperty(area, 'scrollHeight', { configurable: true, value: altura });
+    return area;
+  }
+
+  it('leva a rolagem ao fim quando entra uma linha nova', () => {
+    render(<GridItens />);
+    const area = areaComAltura(900);
+    area.scrollTop = 0;
+
+    act(() => {
+      useVendaStore.setState({
+        linhas: [linhaDe({ idLinha: 'linha-1' }), linhaDe({ idLinha: 'linha-2' })],
+      });
+    });
+
+    expect(area.scrollTop).toBe(900);
+  });
+
+  it('não arrasta a rolagem ao cancelar um item (a linha riscada continua no array)', () => {
+    useVendaStore.setState({
+      linhas: [linhaDe({ idLinha: 'linha-1' }), linhaDe({ idLinha: 'linha-2' })],
+    });
+    render(<GridItens />);
+    const area = areaComAltura(900);
+    area.scrollTop = 120;
+
+    act(() => {
+      useVendaStore.setState({
+        linhas: [linhaDe({ idLinha: 'linha-1', cancelada: true }), linhaDe({ idLinha: 'linha-2' })],
+      });
+    });
+
+    expect(area.scrollTop).toBe(120);
   });
 });
