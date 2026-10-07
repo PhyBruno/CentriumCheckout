@@ -4116,3 +4116,17 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `src/shared/schemas/tef.schema.ts`, `src/client/domain/tef/interpretarStatusTef.ts`, `src/client/features/pagamento/tef/JanelaEstornoTef.tsx`, `tests/unit/shared/tef.schema.spec.ts`, `tests/unit/domain/tef/interpretarStatusTef.spec.ts`, `tests/unit/services/tef/tefQueries.spec.ts` (corpo real do `REJ_PAG`), `tests/integration/JanelaEstornoTef.spec.tsx`, `tests/integration/ModalTef.spec.tsx`, `specs/010-pagamento-tef/` (`research.md` D4, `contracts/erp-tef-api.md`).
 
 **Verificação:** `tsc` e ESLint limpos, 2124 testes unit/integração verdes, E2E `pagamento-tef` 5/5. Ao vivo no C0: `REJ_PAG`, estorno recusado (duas vezes) e estorno aceito (`EST`). **Não verificado:** a janela de estorno no navegador contra o C0 real; `REJ` (cartão não passou) e um `REJ_EST` explícito — o simulador não os produziu. O intervalo de polling de produção é de 10s e a fase `SOL_EST`/`PROC_EST` durou 10s a 30s: um POS que decidisse mais rápido que um tick pularia o estado visto, e a janela esperaria até "Desistir de esperar".
+
+### AD-271: a grid do carrinho rola até o último item inserido (2026-10-07)
+
+**Pedido do usuário:** *"Correção: Ao colocar muitos itens no carrinho, ele tem que fazer o scroll down automaticamente para ficar sempre o ultimo item aparecendo, hoje isso nao ocorre."*
+
+**Causa.** `GridItens.tsx` já isolava a rolagem numa `div` com `overflow-y-auto` (cabeçalho `sticky` e rodapé de resumo fixos), mas nada movia o `scrollTop` dela: com mais linhas do que cabem, a área ficava parada no topo e o item recém-bipado nascia fora da vista.
+
+**Correção.** Um `useEffect` em `GridItens` leva `scrollTop` a `scrollHeight` quando **`linhas.length`** muda. Depende do tamanho, e não do array, de propósito: cancelar um item não o tira do array (`CART-08`), então riscar uma linha no meio da lista **não** arrasta o operador para o fim; só entrada de linha rola (bipagem, busca, retomada de DAV/NFCe). Atribuição direta de `scrollTop`, sem `scrollTo({ behavior: 'smooth' })`: o operador bipa em sequência e uma animação ainda em curso no item anterior atrasaria a chegada ao seguinte.
+
+**Mobile não muda.** `ListaItensMobile` mostra só as 3 linhas mais recentes com a gaveta fechada (`LINHAS_VISIVEIS`), então o último item já está sempre à vista; com a gaveta aberta quem rola é a página do wizard, e o pedido era sobre a grid.
+
+**Impact:** `src/client/features/carrinho/GridItens.tsx` (`data-testid="area-rolavel-itens"` na `div` rolável), `tests/unit/client/carrinho/GridItens.spec.tsx` (rola ao inserir; não rola ao cancelar).
+
+**Verificação:** spec da grid 12/12 e `tsc` limpo. **Não verificado:** a rolagem em navegador real — o jsdom não mede layout, então o teste fixa `scrollHeight` à mão e prova o contrato do `scrollTop`, não a altura renderizada.
