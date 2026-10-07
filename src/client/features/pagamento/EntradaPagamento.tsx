@@ -1,5 +1,5 @@
 import { Plus, Reply } from 'reicon-react';
-import { useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { lerCentavosDigitados } from '@/lib/numeroDigitado';
@@ -16,6 +16,12 @@ export interface EntradaPagamentoProps {
    * segurado pelo cartão que compõe os dois (ver o TSDoc daquele componente).
    */
   readonly forma: FormaPagamento | null;
+  /**
+   * Contador de pedidos de foco no campo de valor, subido por quem segura a forma
+   * (`ConfiguracaoPagamento`) quando ela é escolhida por clique ou toque. Cada
+   * incremento leva o foco ao campo; `0` é "nunca pediram" e não faz nada.
+   */
+  readonly pedidosDeFoco?: number;
 }
 
 /**
@@ -57,7 +63,10 @@ export interface EntradaPagamentoProps {
  * do `pagamentoSlice`/domínio (`podeAplicarForma`, `derivarValores`,
  * `resolverIntegracao`). O componente só entrega `{ forma, valorInformado }`.
  */
-export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement {
+export function EntradaPagamento({
+  forma,
+  pedidosDeFoco = 0,
+}: EntradaPagamentoProps): ReactElement {
   const aplicarPagamento = useVendaStore((estado) => estado.aplicarPagamento);
   const focarFinalizarVenda = useFocoVendaStore((estado) => estado.focarFinalizarVenda);
   /**
@@ -71,6 +80,18 @@ export function EntradaPagamento({ forma }: EntradaPagamentoProps): ReactElement
   const [valorTexto, setValorTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const campo = useRef<HTMLInputElement>(null);
+
+  // Em efeito, e não no clique que escolheu a forma: ali o campo ainda está
+  // `readOnly` (sem forma) e o `onFocus` leria o bloqueio antigo, deixando de
+  // preencher o faltante. Depois do commit, o campo e o `preencherComFaltante`
+  // já enxergam a forma nova. Roda também depois de o combobox devolver o foco
+  // ao próprio botão, então é o campo de valor que fica com ele.
+  useEffect(() => {
+    if (pedidosDeFoco === 0) {
+      return;
+    }
+    campo.current?.focus();
+  }, [pedidosDeFoco]);
 
   const valorLido = lerCentavosDigitados(valorTexto);
 
