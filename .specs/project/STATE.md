@@ -4130,3 +4130,19 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `src/client/features/carrinho/GridItens.tsx` (`data-testid="area-rolavel-itens"` na `div` rolável), `tests/unit/client/carrinho/GridItens.spec.tsx` (rola ao inserir; não rola ao cancelar).
 
 **Verificação:** spec da grid 12/12 e `tsc` limpo. **Não verificado:** a rolagem em navegador real — o jsdom não mede layout, então o teste fixa `scrollHeight` à mão e prova o contrato do `scrollTop`, não a altura renderizada.
+
+### AD-272: o campo "Forma de pagamento" mostra a forma que o atalho F6–F9 lançou (2026-10-07)
+
+**Pedido do usuário:** *"Ao selecionar uma forma de pagamento rapida, como o F8 testando na C0 na prototype, a condicao de pagamento é ate preenchida, mas a forma noa esta (pelo menos em tela), e o pagamento que é aplicado em tela é 'Cheque'"*.
+
+**Causa do campo vazio.** A forma escolhida é rascunho de UI em `ConfiguracaoPagamento` (`useState`, de propósito fora do store), e o atalho fala só com o store: `selecionarCondicao` + `aplicarForma`, sem passar por `escolherForma`. A condição aparecia preenchida e o campo da forma ficava em "Selecione a forma" com o pagamento já na lista. Pior: o reset por troca de condição (AD do pedido de 2026-09-04) ainda apagava qualquer escolha anterior no mesmo gesto.
+
+**Correção.** `ConfiguracaoPagamento` passa a copiar para o rascunho a forma do pagamento vivo mais recente, **só enquanto `acionamentoEmAndamento`** é verdadeiro. O guard é o que separa o atalho de um pagamento importado de DAV/NFCe, que também entra na lista sem passar pelo combobox e **não** pode mexer no rascunho. O bloco vem depois do reset por troca de condição, então a forma do atalho vence se os dois caírem no mesmo render. O rascunho continua fora do store.
+
+**Em aberto: o "Cheque".** O rótulo da lista vem de `FormaMeioPagtoNFe` do ERP (`pagamentoMapper.ts`, `ROTULO_POR_MEIO`), sem derivação no Checkout: "Cheque" é o meio `02` da forma que o cenário aponta. O atalho lança exatamente a forma `(condição, forma)` do cenário, validada contra o catálogo na projeção. Se a forma esperada não era essa, o cadastro do cenário no ERP (ou o meio da forma) está divergente, e o campo da forma preenchido passa a tornar isso visível. **Não verificado:** o cenário F8 real do usuário. O usuário de teste do C0 (`bruno`, empresa 1) tem `CenarioPagamento` vazio, então não foi possível reproduzir por API.
+
+**Limite conhecido:** no wizard mobile, se o atalho for acionado da etapa 1, `ConfiguracaoPagamento` só monta depois do pedido de etapa; um pagamento que entrasse antes da montagem não preencheria o campo.
+
+**Impact:** `src/client/features/pagamento/ConfiguracaoPagamento.tsx`, `tests/integration/formaDoAtalhoNoSeletor.spec.tsx` (reprova sem a correção).
+
+**Verificação:** 54 testes dos arquivos de pagamento verdes, `tsc` e ESLint limpos. Não verificado em navegador.
