@@ -192,8 +192,9 @@ export interface ConfigMockErp {
    */
   tefAtivo: boolean;
   /**
-   * `UsuarioGAM` na raiz do `GetSessao` (feature 010, item 64). `''` omite o
-   * campo, que é como o ERP de hoje responde — o operador sem TEF vinculado.
+   * `user_guid` da resposta de `POST /oauth/access_token` (feature 010, AD-267):
+   * o GUID GAM do operador, de onde o BFF tira o `UsuarioGAM`. `''` omite o
+   * campo — o operador sem TEF vinculado.
    */
   usuarioGam: string;
   /**
@@ -332,11 +333,15 @@ const CONTADORES_ZERADOS: ContadoresMockErp = {
 export const MENSAGEM_SERIAL_POS_NAO_LOCALIZADO =
   'Serial do POS (serial_pos) nao localizado para o usuario informado';
 
-/** `SDTSmartTefResposta` de sucesso, com o JSON interno como **texto**, como o ERP manda. */
+/**
+ * `SDTSmartTefResposta` de sucesso, com o JSON interno como **texto**, como o ERP
+ * manda. Envelope **plano** e `CodigoStatusHttp: 201`, medidos no C0 em
+ * 2026-10-07 nos três métodos (criar, consultar e estornar).
+ */
 function respostaSmartTefOk(interno: unknown): Record<string, unknown> {
   return {
     Sucesso: true,
-    CodigoStatusHttp: 200,
+    CodigoStatusHttp: 201,
     MensagemErro: '',
     RespostaJson: JSON.stringify(interno),
   };
@@ -1391,9 +1396,10 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
     // devolve.
     ClienteDefaultUF: 'SC',
     isWhatsappEnabled: config.whatsappHabilitado,
-    // Operador no TEF (feature 010) — na **raiz**, onde o ERP vai devolvê-lo
-    // (item 64). `''` omite o campo, como o ERP de hoje.
-    ...(config.usuarioGam === '' ? {} : { UsuarioGAM: config.usuarioGam }),
+    // `UsuarioGAM` **não** sai daqui: o `GetSessao` real não o publica (item 64,
+    // medido em 2026-10-07 no C0 — 29 chaves na raiz, nenhuma é ele). O GUID do
+    // operador vem do `user_guid` do OAuth, e o BFF o devolve ao cliente em
+    // `/api/bootstrap` (AD-267).
     // `21`, e não o `42` do `UsuarioCodigo`: vendedor da venda e operador
     // logado são campos genuinamente distintos (AD-056), e valores iguais aqui
     // tornariam `FR-008`/`SC-001` indistinguível no payload de `FaturarNFCe`.
@@ -1849,6 +1855,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
       token_type: 'bearer',
       expires_in: 3600,
       scope: 'fullcontrol',
+      // O GAM real devolve o GUID do usuário autenticado (AD-267). `''` o omite:
+      // o operador sem TEF vinculado.
+      ...(config.usuarioGam === '' ? {} : { user_guid: config.usuarioGam }),
     });
   });
 
@@ -2818,6 +2827,10 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
             payment_status: transacao.status,
             payment_type: 'DEBIT',
             installments: 1,
+            // O real traz `reason: null` em toda consulta sem rejeição, e
+            // `card_brand`/`nsu_host` como `""` no POS simulado do C0 — o schema
+            // tem que aceitar os dois (`tef.schema.ts`, `detalheTexto`).
+            reason: null,
             ...(aprovada
               ? { card_brand: 'MASTERCARD', nsu_host: '048291', autorization_code: '192837' }
               : {}),

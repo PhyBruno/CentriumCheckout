@@ -77,5 +77,26 @@ export const CHAMADA_ESTORNO_EM_CURSO = 'O estorno pode se concluir sem o Checko
 export const DESTAQUE_ESTORNO_EM_CURSO =
   'O pagamento continua aprovado na venda, e a venda continua sem poder ser suspensa, até o estorno ser conferido.';
 
+/**
+ * `REJ_EST`: o operador da maquininha não aceitou o estorno — e, no caso raro de
+ * `CAN_ERP`/`REJ_PAG` na janela de estorno, ele também não vai acontecer.
+ */
 export const AVISO_ESTORNO_REJEITADO =
-  'O estorno foi rejeitado pelo TEF. O pagamento continua aprovado na venda.';
+  'A maquininha não aceitou o estorno, e ele não foi feito. O pagamento continua aprovado na venda.';
+
+/* ------------------------------------------------------------------ *
+ * Tentativa recusada (`REJ`, AD-268)
+ * ------------------------------------------------------------------ */
+
+/**
+ * `REJ`: o cartão não passou nesta tentativa. **Não encerra a cobrança** — o
+ * cliente pode tentar de novo e a mesma cobrança chegar a `CNC` —, então a frase
+ * diz o que fazer e que a tela continua esperando, em vez de sugerir que acabou.
+ */
+export const TITULO_TENTATIVA_RECUSADA = 'O cartão não foi aprovado';
+
+export const AVISO_TENTATIVA_RECUSADA =
+  'A maquininha não aprovou esta tentativa. O cliente pode passar o cartão de novo, ou usar outro: esta tela continua esperando a aprovação.';
+
+/** Rótulo do motivo que a SmartTEF informou, quando há um. */
+export const ROTULO_MOTIVO_TENTATIVA_RECUSADA = 'Motivo informado:';

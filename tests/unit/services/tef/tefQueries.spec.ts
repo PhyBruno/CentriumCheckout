@@ -7,9 +7,14 @@ import {
   criarCardTef,
   ErroCobrancaTefIlegivel,
   estornarTef,
+  mensagemDeErroTef,
   useCriarCardTef,
   useStatusTef,
 } from '../../../../src/client/services/tef/tefQueries';
+import {
+  interpretarStatusCobrancaTef,
+  interpretarStatusEstornoTef,
+} from '../../../../src/client/domain/tef/interpretarStatusTef';
 import {
   ErroNegocioErp,
   ErroRedeErp,
@@ -23,9 +28,9 @@ import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
  * T012 — camada de rede do TEF (`contracts/tef-domain-api.md` §2,
  * `contracts/erp-tef-api.md`).
  *
- * As formas de resposta são as da KB, **não medidas** (T001 adiado, AD-260): se
- * a medição contradisser, mudam os helpers `envelope*` daqui e o schema, não os
- * cenários. Valores sintéticos.
+ * Os cenários do topo usam as formas da KB. As formas **medidas** no C0 em
+ * 2026-10-07 (AD-267) estão no último `describe`, com os corpos reais. Valores
+ * sintéticos.
  */
 
 interface Chamada {
@@ -328,5 +333,182 @@ describe('useStatusTef', () => {
     await waitFor(() => {
       expect(result.current.consulta?.status).toBe('PROC_PAG');
     });
+  });
+});
+
+/**
+ * Corpos **medidos** no C0 (`c0lj6mvzeh.prototype`, POS simulado, 2026-10-07) —
+ * o ciclo inteiro de uma cobrança de R$ 1,00: criar → `PDT`, consultar → `CNC`,
+ * estornar → `SOL_EST`, consultar → `EST`. Só o identificador, o serial do POS e
+ * o usuário foram trocados por valores sintéticos; a forma e o tipo de cada
+ * campo são os do ERP (`contracts/erp-tef-api.md`).
+ */
+describe('corpos reais do ERP (C0, 2026-10-07)', () => {
+  const ID = '01a1168b-0000-7000-8000-000000000001';
+
+  /** `SDTSmartTefResposta` real: plano, `CodigoStatusHttp` numérico `201`. */
+  function envelopeReal(interno: unknown): Record<string, unknown> {
+    return {
+      Sucesso: true,
+      CodigoStatusHttp: 201,
+      MensagemErro: '',
+      RespostaJson: JSON.stringify(interno),
+    };
+  }
+
+  /** Item de `ConsultarStatusCard` do POS simulado: `card_brand`/`nsu_host` vazios, `reason: null`. */
+  function itemReal(sobrescritas: Record<string, unknown>): Record<string, unknown> {
+    return {
+      payment_identifier: ID,
+      cnpj: '00000000000000',
+      create_at: '2026-10-07T10:26:16.596Z',
+      update_at: '2026-10-07T10:29:15.756Z',
+      value: '1',
+      payment_value: '1',
+      payment_date: '2026-10-07T10:29:15.000Z',
+      autorization_code: 'authorizationCode',
+      order_type: 'CRD_UNICO',
+      payment_type: 'CREDIT',
+      payment_status: 'CNC',
+      card_brand: '',
+      installments: 1,
+      min_installments: 1,
+      nsu_host: '',
+      nsu_sitef: '',
+      acquirer: 'SIMULADO',
+      serial_pos: 'serial-sintetico',
+      user_id: 1,
+      payment_extras: { CPF: '12345678909', Nome: 'CLIENTE TESTE TEF' },
+      has_details: true,
+      type: 'PAYMENT',
+      charge_id: '',
+      conn_type: 1,
+      batt_level: 96,
+      charging: false,
+      location: { lat: '', long: '' },
+      reason: null,
+      refund_autorization_code: null,
+      refund_serial_pos: null,
+      refund_user_id: null,
+      refund_date: null,
+      refound_coupon: null,
+      grouped_payments: [],
+      form_order: null,
+      ...sobrescritas,
+    };
+  }
+
+  it('CriarCardPagamento: o corpo plano com FPgCod volta com PDT e o identificador', async () => {
+    const { erpClient, chamadas } = erpDe([
+      respostaJson(
+        envelopeReal({
+          payment_identifier: ID,
+          payment_status: 'PDT',
+          order_type: 'CRD_UNICO',
+          charge_id: '',
+          allow_multi_payments: false,
+          allow_cash_payment: false,
+          has_details: true,
+          form: null,
+        }),
+      ),
+    ]);
+
+    const cobranca = await criarCardTef(
+      {
+        formaCodigo: 3,
+        valor: centavos(100),
+        parcelas: 1,
+        pagador: { cpf: '12345678909', nome: 'CLIENTE TESTE TEF' },
+      },
+      { erpClient },
+    );
+
+    expect(chamadas[0]?.corpo).toEqual({
+      PagamentoValor: 1,
+      PagamentoParcelas: 1,
+      PagamentoCpfCliente: '12345678909',
+      PagamentoNomeCliente: 'CLIENTE TESTE TEF',
+      FPgCod: 3,
+    });
+    expect(cobranca).toEqual({ paymentIdentifier: ID, valor: 100, statusInicial: 'PDT' });
+    expect(interpretarStatusCobrancaTef(cobranca.statusInicial)).toEqual({
+      situacao: 'PENDENTE',
+    });
+  });
+
+  it('ConsultarStatusCard: CNC aprova mesmo com bandeira e NSU vazios e reason null', async () => {
+    const { erpClient } = erpDe([respostaJson(envelopeReal([itemReal({})]))]);
+
+    const consulta = await consultarStatusTef(ID, { erpClient });
+
+    expect(consulta).toEqual({
+      status: 'CNC',
+      bandeira: '',
+      nsu: '',
+      autorizacao: 'authorizationCode',
+      motivo: '',
+    });
+    expect(interpretarStatusCobrancaTef(consulta.status)).toEqual({ situacao: 'APROVADO' });
+  });
+
+  it('EstornarPagamento: o pedido volta SOL_EST, que ainda não é estorno concluído', async () => {
+    const { erpClient, chamadas } = erpDe([
+      respostaJson(
+        envelopeReal({
+          payment_identifier: ID,
+          payment_status: 'SOL_EST',
+          order_type: 'CRD_UNICO',
+        }),
+      ),
+    ]);
+
+    const status = await estornarTef(ID, { erpClient });
+
+    expect(chamadas[0]?.corpo).toEqual({ SmartTefPaymentIdentifier: ID });
+    expect(status).toBe('SOL_EST');
+    expect(interpretarStatusEstornoTef(status)).toEqual({ situacao: 'ESTORNO_PENDENTE' });
+  });
+
+  it('ConsultarStatusCard depois do estorno: EST conclui, com os campos refund_* preenchidos', async () => {
+    const { erpClient } = erpDe([
+      respostaJson(
+        envelopeReal([
+          itemReal({
+            payment_status: 'EST',
+            refund_autorization_code: 'authorizationCode',
+            refund_user_id: '1',
+            refund_date: '2026-10-07T10:29:15.000Z',
+            refound_coupon: { client: '', store: '' },
+          }),
+        ]),
+      ),
+    ]);
+
+    const consulta = await consultarStatusTef(ID, { erpClient });
+
+    expect(consulta.status).toBe('EST');
+    expect(interpretarStatusEstornoTef(consulta.status)).toEqual({ situacao: 'ESTORNADO' });
+  });
+
+  it('a recusa real sem maquininha vinculada chega íntegra ao operador', async () => {
+    const { erpClient } = erpDe([
+      respostaJson({
+        Sucesso: false,
+        CodigoStatusHttp: 0,
+        MensagemErro: 'Serial do POS (serial_pos) nao localizado para o usuario informado',
+        RespostaJson: '',
+      }),
+    ]);
+
+    const erro = await criarCardTef(
+      { formaCodigo: 3, valor: centavos(100), parcelas: 1, pagador: { cpf: '', nome: 'CLIENTE' } },
+      { erpClient },
+    ).catch((causa: unknown) => causa);
+
+    expect(erro).toBeInstanceOf(ErroNegocioErp);
+    expect(mensagemDeErroTef(erro, '(padrão)')).toBe(
+      'Serial do POS (serial_pos) nao localizado para o usuario informado',
+    );
   });
 });

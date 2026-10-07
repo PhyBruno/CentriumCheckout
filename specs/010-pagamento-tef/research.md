@@ -55,21 +55,24 @@ A validação de fronteira é, portanto, **em dois estágios** (`contracts/erp-t
 
 ---
 
-## D4 — Os nove status reais da SmartTEF (`SmartTefStatusPagamento`)
+## D4 — Os status do card da SmartTEF (`SmartTefStatusPagamento` + `REJ`, `PROC`, `IMP`)
 
-**Decision**: o domínio `SmartTefStatusPagamento` (`CHARACTER(10)`, enumerado) tem nove literais, lidos da KB:
+**Decision**: o domínio `SmartTefStatusPagamento` (`CHARACTER(10)`, enumerado) tem nove literais, lidos da KB. A lista que o usuário colou em 2026-10-07 (AD-268) acrescenta três, que a KB não tinha — `REJ`, `PROC` e `IMP` — e fixa o significado dos rejeitados:
 
-| Literal | Descrição na KB | Fase de **cobrança** | Fase de **estorno** |
+| Literal | Significado | Fase de **cobrança** | Fase de **estorno** |
 |---|---|---|---|
 | `PDT` | Pendente | `PENDENTE` | — (não deveria ocorrer) → `ESTORNO_PENDENTE` |
 | `PROC_PAG` | Processando pagamento | `PENDENTE` | → `ESTORNO_PENDENTE` |
+| `PROC` | Processando (genérico) | `PENDENTE` | `ESTORNO_PENDENTE` |
 | `CNC` | Concluído | **`APROVADO`** | `ESTORNO_PENDENTE` (estorno ainda não registrado) |
+| `REJ` | **O cartão não passou nesta tentativa.** O cliente pode tentar de novo, e a mesma cobrança pode chegar a `CNC` | **`TENTATIVA_RECUSADA`** — **não é desfecho**: a janela segue consultando e mostra o aviso com o `reason` | `ESTORNO_PENDENTE` |
 | `CAN_ERP` | Cancelado pelo ERP | `FALHA` (`CANCELADO_NO_ERP`) | `ESTORNO_REJEITADO` |
-| `REJ_PAG` | Pagamento rejeitado | `FALHA` (`PAGAMENTO_REJEITADO`) | `ESTORNO_REJEITADO` |
-| `SOL_EST` | Estorno solicitado | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | `ESTORNO_PENDENTE` |
+| `REJ_PAG` | **O operador da maquininha não aceitou a cobrança** | `FALHA` (`PAGAMENTO_REJEITADO`) | `ESTORNO_REJEITADO` |
+| `SOL_EST` | Estorno solicitado | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | `ESTORNO_PENDENTE` — a janela continua consultando |
 | `PROC_EST` | Processando estorno | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | `ESTORNO_PENDENTE` |
 | `EST` | Estornado | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | **`ESTORNADO`** |
-| `REJ_EST` | Estorno rejeitado | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | **`ESTORNO_REJEITADO`** |
+| `REJ_EST` | **O operador da maquininha não aceitou o estorno** | `FALHA` (`ESTORNADO_FORA_DO_CHECKOUT`) | **`ESTORNO_REJEITADO`** |
+| `IMP` | Impresso — só de impressão (`print_status`) | `PENDENTE` (não esperado) | `ESTORNO_PENDENTE` |
 | qualquer outro | — | `PENDENTE` (nunca aprovado) | `ESTORNO_PENDENTE` (nunca estornado) |
 
 Duas funções puras, uma por fase (`interpretarStatusCobrancaTef`, `interpretarStatusEstornoTef` — `data-model.md` §2), cada uma com `switch` exaustivo e ramo `default` explícito.
@@ -77,7 +80,9 @@ Duas funções puras, uma por fase (`interpretarStatusCobrancaTef`, `interpretar
 **Rationale**:
 - **Só `CNC` aprova.** Além de ser o significado do literal, é o único status que `PCheckout_FaturarNFCe` aceita: o `For Each` sobre `TransacaoTEF` filtra `TEFSmartSt = SmartTefStatusPagamento.CNC` e, sem achar, recusa a nota com "Pagamento SmartTEF … não Localizada". Dar por aprovado qualquer outro status produziria uma NFCe que o ERP recusa.
 - **Literal desconhecido nunca vira sucesso** (Constitution IV, mesma regra J2 da 009) — mas vira **pendente**, não falha: um literal novo da SmartTEF não pode abandonar uma cobrança que o cliente talvez já tenha pago no cartão; o operador continua tendo a saída manual (D12).
-- Na fase de cobrança, um status de estorno (`SOL_EST`…`REJ_EST`) significa que alguém estornou a transação **fora** do Checkout antes de ela ser confirmada aqui — trata-se como falha terminal, com o mesmo aviso de desistência.
+- Na fase de cobrança, um status de estorno (`SOL_EST`…`REJ_EST`) significa que alguém estornou a transação **fora** do Checkout antes de ela ser confirmada aqui — fecha a janela e tira o pagamento da venda (`FALHA`), com o aviso de que foi estornada fora do Checkout. A frase está certa mesmo para `REJ_EST`: o estorno foi pedido fora daqui.
+- **`REJ` não encerra a cobrança** (AD-268). O cartão não passou, mas o cliente pode tentar de novo na mesma cobrança. Tratá-lo como falha abandonaria uma cobrança que depois pode ser paga. A janela fica esperando e mostra "O cartão não foi aprovado", com o `reason` quando a SmartTEF o informa; o aviso some quando o status muda.
+- **`REJ_PAG` e `REJ_EST` são o operador da maquininha não aceitando** a cobrança ou o estorno, e por isso a frase de `REJ_PAG` diz exatamente isso. Já `REJ` é o cartão.
 
 ---
 

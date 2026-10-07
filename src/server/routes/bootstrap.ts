@@ -105,8 +105,20 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
       typeof json === 'object' && json !== null ? (json as Record<string, unknown>) : {};
     const sessaoUsuario = 'SessaoUsuario' in corpo ? corpo['SessaoUsuario'] : corpo;
 
+    // O `GetSessao` não publica `UsuarioGAM` (item 64, medido em 2026-10-07), e o
+    // cliente decide por ele se recusa o TEF antes da rede (FR-014). Quem sabe o
+    // valor é o cookie, preenchido com o `user_guid` do OAuth (AD-267). É o GUID
+    // do próprio operador, no navegador dele: não abre nada que o corpo forjado
+    // já não pudesse tentar — e o BFF sobrescreve o campo em `CriarCardPagamento`
+    // de qualquer jeito (AD-224). Sem valor no cookie, vale o que o ERP mandou.
+    const usuarioGam = sessao.usuarioGam ?? '';
+    const sessaoComOperadorTef =
+      usuarioGam !== '' && typeof sessaoUsuario === 'object' && sessaoUsuario !== null
+        ? { ...sessaoUsuario, UsuarioGAM: usuarioGam }
+        : sessaoUsuario;
+
     const combinado = {
-      SessaoUsuario: sessaoUsuario,
+      SessaoUsuario: sessaoComOperadorTef,
       tenant: sessao.tenant,
       codigoEmpresa: sessao.codigoEmpresa,
     };
@@ -123,6 +135,10 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
     // `304` nunca pode reaproveitar o cache de outra empresa (FR-009).
     const versionHash = calcularVersionHash(validado.data);
     reply.header('ETag', versionHash);
+    // O payload é **do operador** (`UsuarioCodigo`, `caixa`, `UsuarioGAM`): cache
+    // compartilhado no caminho (Traefik, proxy) não pode servi-lo a outro. Com
+    // `no-cache` o navegador ainda guarda e revalida pelo ETag (`304`).
+    reply.header('Cache-Control', 'private, no-cache');
 
     if (hashConhecido(request.headers['if-none-match'], versionHash)) {
       return reply.code(304).send();

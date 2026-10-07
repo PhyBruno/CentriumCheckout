@@ -66,6 +66,8 @@ interface OpcoesErpFake {
   readonly recusasDeCriacao?: number;
   /** Detalhes que o item da consulta traz junto do `CNC`. */
   readonly detalhes?: Record<string, unknown>;
+  /** Detalhes que o item traz junto do `REJ` — o `reason` da tentativa recusada. */
+  readonly detalhesDaRecusa?: Record<string, unknown>;
 }
 
 function erpFake(opcoes: OpcoesErpFake = {}): { cliente: ErpClient; chamadas: Chamada[] } {
@@ -111,6 +113,7 @@ function erpFake(opcoes: OpcoesErpFake = {}): { cliente: ErpClient; chamadas: Ch
               payment_identifier: PAG_ID,
               payment_status: literal,
               ...(literal === 'CNC' ? (opcoes.detalhes ?? {}) : {}),
+              ...(literal === 'REJ' ? (opcoes.detalhesDaRecusa ?? {}) : {}),
             },
           ]),
         ),
@@ -373,7 +376,41 @@ describe('ModalTef — cobrança', () => {
       expect(desfechos.abandonados).toEqual(['PAGAMENTO_REJEITADO']);
     });
     expect(desfechos.fechamentos.quantidade).toBe(1);
-    expect(avisos.some((aviso) => aviso.includes('rejeitado'))).toBe(true);
+    expect(avisos.some((aviso) => aviso.includes('operador da maquininha não aceitou'))).toBe(true);
+  });
+
+  // `REJ`: o cartão não passou, e o cliente pode tentar de novo (AD-268).
+  it('REJ avisa o operador, mantém a janela esperando e some quando o cliente aprova', async () => {
+    const { cliente } = erpFake({
+      statusSequencia: ['PDT', 'REJ', 'REJ', 'PROC', 'CNC'],
+      detalhesDaRecusa: { reason: 'Saldo insuficiente (sintético)' },
+    });
+    const desfechos = renderizar(cliente);
+
+    const aviso = await screen.findByTestId('tef-tentativa-recusada');
+    expect(aviso).toHaveTextContent('O cartão não foi aprovado');
+    expect(screen.getByTestId('tef-motivo-recusa')).toHaveTextContent(
+      'Saldo insuficiente (sintético)',
+    );
+    // Não encerrou nada: nenhum abandono, nenhum fechamento, nenhuma aprovação.
+    expect(desfechos.abandonados).toHaveLength(0);
+    expect(desfechos.fechamentos.quantidade).toBe(0);
+    expect(desfechos.aprovados).toHaveLength(0);
+
+    // Cliente tenta de novo e a mesma cobrança chega a `CNC`.
+    await waitFor(() => {
+      expect(desfechos.aprovados).toHaveLength(1);
+    });
+    expect(screen.queryByTestId('tef-tentativa-recusada')).toBeNull();
+    expect(desfechos.abandonados).toHaveLength(0);
+  });
+
+  it('REJ sem reason mostra o aviso sem a linha do motivo', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['REJ'] });
+    renderizar(cliente);
+
+    await screen.findByTestId('tef-tentativa-recusada');
+    expect(screen.queryByTestId('tef-motivo-recusa')).toBeNull();
   });
 
   // (g) D10.

@@ -281,9 +281,22 @@ describe('JanelaEstornoTef', () => {
     const { cliente } = erpFake({ consultas: ['CNC', 'REJ_EST'] });
     const desfechos = renderizar(cliente);
 
-    expect(await screen.findByTestId('estorno-rejeitado-tef')).toBeInTheDocument();
+    expect(await screen.findByTestId('estorno-rejeitado-tef')).toHaveTextContent(
+      'A maquininha não aceitou o estorno',
+    );
     await esperar(INTERVALO_TESTE_MS * 3);
     expect(desfechos.estornados.quantidade).toBe(0);
+  });
+
+  // `REJ` (o cartão não passou) não é desfecho de estorno: segue esperando.
+  it('REJ não encerra o estorno: segue consultando e conclui no EST', async () => {
+    const { cliente } = erpFake({ consultas: ['CNC', 'REJ', 'EST'] });
+    const desfechos = renderizar(cliente);
+
+    await waitFor(() => {
+      expect(desfechos.estornados.quantidade).toBe(1);
+    });
+    expect(screen.queryByTestId('estorno-rejeitado-tef')).toBeNull();
   });
 
   // (g)

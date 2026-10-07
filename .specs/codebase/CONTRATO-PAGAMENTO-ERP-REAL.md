@@ -184,7 +184,7 @@ listava como limitação real do cadastro a impossibilidade de distinguir TEF de
 POS. As duas afirmações caíram: o campo existe, sempre veio no payload, e
 distingue exatamente isso.
 
-### TEF — a cobrança na maquininha (SmartTEF): contrato da KB, **medido só na recusa** (2026-10-02)
+### TEF — a cobrança na maquininha (SmartTEF): contrato da KB, **medido na recusa (2026-10-02) e no ciclo completo (2026-10-07)**
 
 Quando o roteamento acima decide `TEF`, a feature 010 fala com três endpoints
 do bloco `//SmartTEF` da API `ApiCentriumOAuth` (`CriarCardPagamento`,
@@ -192,11 +192,12 @@ do bloco `//SmartTEF` da API `ApiCentriumOAuth` (`CriarCardPagamento`,
 `specs/010-pagamento-tef/contracts/erp-tef-api.md` e foi lido **na KB**
 `CentriumDEVU6` (AD-259), não neste payload nem em chamada ao vivo.
 
-**Só o caminho de recusa foi medido contra o ERP real, em 2026-10-02.** Os três
+**A recusa foi medida contra o ERP real em 2026-10-02.** Os três
 endpoints foram chamados no `prototype` do tenant `c0lj6mvzeh`, pelo BFF do
-Checkout e com a sessão real, a pedido e com aval do usuário. O tenant tem
-`TEFAtivo:false`, nenhuma URL da SmartTEF e nenhum `UsuarioGAM`, então nada chegou
-a terminal nenhum:
+Checkout e com a sessão real, a pedido e com aval do usuário. Naquele dia o tenant
+tinha `TEFAtivo:false`, nenhuma URL da SmartTEF e nenhum `UsuarioGAM`, então nada
+chegou a terminal nenhum (em 2026-10-07 o `GetSessao` do mesmo tenant já traz
+`TEFAtivo:true`):
 
 - `ConsultarStatusCard` (`GET ?Empresa=1&SmartTefPaymentIdentifier=…`, com
   identificadores inexistentes, vazio ou sem o parâmetro) e `EstornarPagamento`
@@ -208,22 +209,39 @@ a terminal nenhum:
 - Passado pela fronteira (`consultarStatusTef` com o corpo real), vira
   `ErroNegocioErp`, e o operador lê a `MensagemErro` íntegra.
 
-O caminho de **sucesso** (o `RespostaJson` preenchido, com status, NSU e bandeira)
-continua sem medição. A medição de `research.md` D17 cobra e estorna dinheiro de
-verdade, então só acontece com o usuário num terminal de homologação, que ele
-ainda não tem (item 67 de `PENDENCIES.md`). O código seguiu as formas da KB e as
-isolou onde a medição pode desmenti-las:
+**O ciclo completo de uma cobrança foi medido em 2026-10-07** no `prototype` do
+`c0lj6mvzeh`, com POS **simulado** (`acquirer: "SIMULADO"`), a pedido do usuário,
+R$ 1,00 na forma `3` e o `UsuarioGAM` dele (`bruno`). Cobrança, aprovação e estorno
+terminaram sem sobra pendente:
+
+| Passo | Chamada | Resposta (`RespostaJson`, texto dentro do envelope plano, `CodigoStatusHttp: 201`) |
+|---|---|---|
+| 1 | `CriarCardPagamento`, corpo **plano** `{EmpCod, UsuarioGAM, PagamentoValor:1, PagamentoParcelas:1, PagamentoCpfCliente, PagamentoNomeCliente, FPgCod:3}` | `{payment_identifier, payment_status:"PDT", order_type:"CRD_UNICO", charge_id:"", allow_multi_payments:false, allow_cash_payment:false, has_details:true, form:null}` |
+| 2 | `ConsultarStatusCard` (minutos depois, o POS simulado aprovou) | **lista** com 1 item: `payment_status:"CNC"`, `card_brand:""`, `nsu_host:""`, `autorization_code:"authorizationCode"`, `reason:null`, `acquirer:"SIMULADO"`, `serial_pos`, `payment_extras:{CPF,Nome}` |
+| 3 | `EstornarPagamento` `{Empresa:1, SmartTefPaymentIdentifier}` | objeto único `{payment_identifier, payment_status:"SOL_EST", order_type}` |
+| 4 | `ConsultarStatusCard` (cerca de 1,5 min depois) | `payment_status:"EST"`, `refund_autorization_code:"authorizationCode"`, `refund_user_id`, `refund_date`, `refound_coupon:{client,store}` |
+
+O que cada passo fixou:
 
 | Ponto | Situação | O que o código assume | Onde troca |
 |---|---|---|---|
-| Envelope da saída (`RespostaSmartTEF`) | **medido (recusa):** SDT plano na raiz, sem `messages`, nos três endpoints | as duas formas | `respostaSmartTefSchema` (`semEnvelope`) |
-| `CodigoStatusHttp` | **medido (recusa):** número (`0`), não string | número ou string | `respostaSmartTefSchema` |
+| Envelope da saída (`RespostaSmartTEF`) | **medido:** SDT plano na raiz, sem `messages`, nos três endpoints, na recusa e no sucesso | as duas formas | `respostaSmartTefSchema` (`semEnvelope`) |
+| `CodigoStatusHttp` | **medido:** número — `0` na recusa local, `201` no sucesso | número ou string | `respostaSmartTefSchema` |
 | Recusa de negócio | **medido:** `Sucesso:false` + `MensagemErro`, `RespostaJson:""`, HTTP `200` | idem | `lerRespostaSmartTef` (`services/tef/tefMapper.ts`) |
-| Envelope do corpo de `CriarCardPagamento` | não medido. O plano foi aceito sem erro de desserialização, mas a recusa ("Serial do POS … usuario informado") sairia igual com o corpo envelopado, porque o `UsuarioGAM` estava vazio | plano | `montarCorpoCriarCard` (`services/tef/tefQueries.ts`); o BFF já injeta nas duas formas |
-| Grafia `FPgCod` × `FpgCod` | não medido (a validação do POS vem antes da forma) | `FPgCod` (KB) | `montarCorpoCriarCard` |
-| Forma de `RespostaJson` da consulta | não medido | lista; objeto único aceito | `consultaCardRespSchema` |
-| Grafia `card_brand`/`nsu_host`/`autorization_code` | não medido | a da KB | `consultaCardItemSchema` |
-| `UsuarioGAM` na raiz do `GetSessao` | **medido:** ausente no `c0lj6mvzeh` (item 64) | ausente hoje | `extrairUsuarioGam` |
+| Envelope do corpo de `CriarCardPagamento` | **medido: plano** (`EmpCod` e `UsuarioGAM` na raiz). O envelope `CriarCardReq` não foi testado | plano | `montarCorpoCriarCard` (`services/tef/tefQueries.ts`); o BFF ainda injeta nas duas formas |
+| Grafia `FPgCod` × `FpgCod` | **medido: `FPgCod`** (aceito com `FPgCod:3`; a forma entrou no ERP) | `FPgCod` | `montarCorpoCriarCard` |
+| Forma de `RespostaJson` da consulta | **medido: lista** (1 item) | lista; objeto único aceito | `consultaCardRespSchema` |
+| Grafia `card_brand`/`nsu_host`/`autorization_code` | **medido:** as da KB; no POS simulado os dois primeiros vêm `""`, e o código de autorização é o texto fixo `"authorizationCode"` | a da KB | `consultaCardItemSchema` |
+| `reason` | **medido:** `null` em toda consulta sem rejeição | `string`, `number`, `null` ou ausente (`detalheTexto`) | `consultaCardItemSchema` |
+| `EstornarPagamento` | **medido:** responde `SOL_EST` (pedido aceito); o `EST` vem pela consulta, em cerca de 1,5 min | `SOL_EST` pendente, só `EST` conclui | `interpretarStatusEstornoTef` |
+| `UsuarioGAM` no `GetSessao` | **medido:** ausente no `c0lj6mvzeh`, na raiz e em `SessaoUsuario` (item 64). **Vem do `user_guid` da resposta do OAuth** (`GET /oauth/userinfo` devolve o mesmo valor em `GUID`), e o BFF o grava no cookie (AD-267) | `user_guid` do token, depois o `GetSessao` | `session-start.ts`, `bootstrap.ts` |
+
+**O que continua sem medição:** o envelope `{ CriarCardReq: … }` no corpo (não é
+mais necessário, o plano funciona), um POS **real** (bandeira, NSU e código de
+autorização preenchidos; o simulador os devolve vazios ou fixos) e a rejeição
+(`REJ` — o cartão não passou, não é desfecho —, `REJ_PAG` e `REJ_EST` — o operador da maquininha não aceitou —, com `reason`; AD-268), que o simulador só produz com ação manual
+no app do POS. O `FaturarNFCe` com `TEFPagId` de uma cobrança `CNC` também não foi
+exercitado contra o ERP real (item 67 de `PENDENCIES.md`).
 
 ### Nenhuma integração — é o resto
 
