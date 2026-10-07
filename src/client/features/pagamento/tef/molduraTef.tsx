@@ -4,8 +4,9 @@ import { cn } from '@/lib/utils';
 /**
  * A moldura das janelas do TEF — cabeçalho `H4DCf`, corpo e rodapé `Ttsy4` do
  * modal `uHAyW` (`design/CentriumCheckout.pen`, lido pelo MCP em 2026-10-02) —
- * e as peças do corpo que as duas janelas repetem: badge (`hEB6G`), bloco de
- * valor (`SJmhL`) e o cartão "Detalhes da transação" (`CDhv3`/`vjHCo`).
+ * e as peças do corpo que as duas janelas repetem: badge (`hEB6G`) e bloco de
+ * valor (`SJmhL`). O cartão "Detalhes da transação" (`CDhv3`/`vjHCo`) saiu em
+ * 2026-10-07 (AD-269).
  *
  * Existe porque a janela de **estorno** não tem nó no Pencil (item 66 de
  * `PENDENCIES.md`) e o plano a manda reusar a moldura do modal TEF
@@ -166,49 +167,6 @@ export function BlocoValorTef({
         data-testid="tef-valor"
       >
         {valor}
-      </span>
-    </div>
-  );
-}
-
-/** Cartão `CDhv3`/`vjHCo`: `$surface-soft`, raio 16, hairline, `gap: 14`. */
-export function DetalhesTransacaoTef({ children }: { readonly children: ReactNode }): ReactElement {
-  return (
-    <div className="flex w-full flex-col gap-[14px] rounded-2xl border border-border bg-muted p-base">
-      <span className="text-sm font-semibold text-[var(--cc-color-muted)]">
-        Detalhes da transação
-      </span>
-      {children}
-    </div>
-  );
-}
-
-/**
- * Linha `I0iWy`/`HGR9S`/`ean78`: rótulo 13/400 em `$muted`, valor 13/600.
- * Vazio vira "—": o Checkout nunca inventa um valor que a SmartTEF não mandou.
- */
-export function LinhaDetalheTef({
-  rotulo,
-  valor,
-  mono = false,
-  testId,
-}: {
-  readonly rotulo: string;
-  readonly valor: string;
-  readonly mono?: boolean;
-  readonly testId: string;
-}): ReactElement {
-  return (
-    <div className="flex w-full items-center justify-between gap-sm">
-      <span className="text-base text-[var(--cc-color-muted)]">{rotulo}</span>
-      <span
-        className={cn(
-          'truncate text-base font-semibold text-foreground',
-          mono && 'font-mono tabular-nums',
-        )}
-        data-testid={testId}
-      >
-        {valor.trim() === '' ? '—' : valor}
       </span>
     </div>
   );

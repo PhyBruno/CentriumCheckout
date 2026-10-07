@@ -452,6 +452,47 @@ describe('corpos reais do ERP (C0, 2026-10-07)', () => {
     expect(interpretarStatusCobrancaTef(consulta.status)).toEqual({ situacao: 'APROVADO' });
   });
 
+  // REJ_PAG REAL (C0, 2026-10-07): o operador do POS recusou a cobrança. Os campos de
+  // aprovação vêm `null` e o `reason` vem como OBJETO `{"msg": ""}` — o que reprovava a
+  // resposta inteira e escondia o status.
+  it('ConsultarStatusCard: REJ_PAG real, com reason {"msg":""} e campos null, é interpretado', async () => {
+    const { erpClient } = erpDe([
+      respostaJson(
+        envelopeReal([
+          itemReal({
+            payment_status: 'REJ_PAG',
+            payment_value: null,
+            payment_date: null,
+            autorization_code: null,
+            card_brand: null,
+            nsu_host: null,
+            nsu_sitef: null,
+            acquirer: null,
+            payment_extras: null,
+            reason: { msg: '' },
+          }),
+        ]),
+      ),
+    ]);
+
+    const consulta = await consultarStatusTef(ID, { erpClient });
+
+    expect(consulta).toEqual({
+      status: 'REJ_PAG',
+      bandeira: '',
+      nsu: '',
+      autorizacao: '',
+      motivo: '',
+    });
+    expect(interpretarStatusCobrancaTef(consulta.status)).toEqual({
+      situacao: 'FALHA',
+      motivo: 'PAGAMENTO_REJEITADO',
+    });
+    expect(interpretarStatusEstornoTef(consulta.status)).toEqual({
+      situacao: 'ESTORNO_REJEITADO',
+    });
+  });
+
   it('EstornarPagamento: o pedido volta SOL_EST, que ainda não é estorno concluído', async () => {
     const { erpClient, chamadas } = erpDe([
       respostaJson(

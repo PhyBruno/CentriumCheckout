@@ -42,15 +42,72 @@ export const respostaSmartTefSchema = semEnvelope(
   }),
 );
 
+/** Chaves em que um detalhe em forma de objeto costuma trazer a frase legível. */
+const CHAVES_DE_FRASE = [
+  'message',
+  'mensagem',
+  'description',
+  'descricao',
+  'reason',
+  'error',
+  'detail',
+  'msg',
+] as const;
+
 /**
- * Campo de detalhe da SmartTEF que o Checkout só **exibe**: ausente, `null` ou
- * numérico viram texto. A tela mostra "—" para vazio, e nada aqui entra em
- * cálculo — o valor cobrado é sempre o do Checkout (Constitution V).
+ * Qualquer valor que a SmartTEF mande num campo de detalhe, como texto.
+ *
+ * - ausente e `null` → `''`; texto → ele mesmo; número e booleano → `String`;
+ * - **objeto** → a primeira frase não vazia em `message`/`description`/…, e, se
+ *   não houver, o próprio JSON — o operador vê a forma real em vez de nada;
+ * - lista → JSON.
+ *
+ * Total e sem lançar: o objeto é o caso real de `reason` numa rejeição
+ * (`REJ_EST`/`REJ_PAG`, 2026-10-07), que antes reprovava a resposta **inteira** e
+ * escondia o status — o `REJ_EST` nunca chegava a ser interpretado.
  */
-const detalheTexto = z
-  .union([z.string(), z.number()])
-  .nullish()
-  .transform((valor) => (valor === null || valor === undefined ? '' : String(valor)));
+function textoDeDetalhe(valor: unknown): string {
+  if (valor === null || valor === undefined) {
+    return '';
+  }
+  if (typeof valor === 'string') {
+    return valor;
+  }
+  if (typeof valor === 'number' || typeof valor === 'boolean') {
+    return String(valor);
+  }
+  if (typeof valor === 'object' && !Array.isArray(valor)) {
+    const registro = valor as Record<string, unknown>;
+    let chaveDeFraseVazia = false;
+    for (const chave of CHAVES_DE_FRASE) {
+      const frase = registro[chave];
+      if (typeof frase === 'string') {
+        if (frase.trim() !== '') {
+          return frase;
+        }
+        chaveDeFraseVazia = true;
+      }
+    }
+    // Forma conhecida, sem frase: o `{"msg":""}` que o `REJ_PAG` real manda
+    // (2026-10-07). Vazio, e não o JSON — a tela mostra "—", como para `null`.
+    if (chaveDeFraseVazia) {
+      return '';
+    }
+  }
+  try {
+    return JSON.stringify(valor);
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Campo de detalhe da SmartTEF que o Checkout só **exibe**. A tela mostra "—"
+ * para vazio, e nada aqui entra em cálculo — o valor cobrado é sempre o do
+ * Checkout (Constitution V). **Nunca reprova a resposta**: um campo que só se
+ * mostra não pode esconder o `payment_status`, que é o que decide o dinheiro.
+ */
+const detalheTexto = z.unknown().transform(textoDeDetalhe).default('');
 
 /**
  * `JSON.parse(RespostaJson)` de `CriarCardPagamento` (`SDTSmartTefCriarCardResp`).

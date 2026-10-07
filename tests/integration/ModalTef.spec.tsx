@@ -113,7 +113,9 @@ function erpFake(opcoes: OpcoesErpFake = {}): { cliente: ErpClient; chamadas: Ch
               payment_identifier: PAG_ID,
               payment_status: literal,
               ...(literal === 'CNC' ? (opcoes.detalhes ?? {}) : {}),
-              ...(literal === 'REJ' ? (opcoes.detalhesDaRecusa ?? {}) : {}),
+              ...(literal === 'REJ' || literal === 'REJ_PAG'
+                ? (opcoes.detalhesDaRecusa ?? {})
+                : {}),
             },
           ]),
         ),
@@ -229,20 +231,34 @@ describe('ModalTef — cobrança', () => {
     });
     // Aprovado antes do fechamento automático (60s neste teste).
     expect(desfechos.fechamentos.quantidade).toBe(0);
-    expect(await screen.findByTestId('tef-nsu')).toHaveTextContent('048291');
-    expect(screen.getByTestId('tef-autorizacao')).toHaveTextContent('192837');
-    expect(screen.getByTestId('tef-bandeira')).toHaveTextContent('MASTERCARD');
-    expect(screen.getByTestId('tef-subtitulo')).toHaveTextContent(
+    expect(await screen.findByTestId('tef-subtitulo')).toHaveTextContent(
       'Transação concluída com sucesso',
     );
   });
 
-  it('campo ausente na aprovação aparece como "—", nunca inventado', async () => {
-    const { cliente } = erpFake({ statusSequencia: ['CNC'] });
-    renderizar(cliente);
+  // AD-269: o cartão "Detalhes da transação" (NSU, autorização, bandeira) saiu da
+  // tela — na espera (o esqueleto) e na aprovação. Os dados seguem em `DadosTEF`.
+  it('não mostra o cartão "Detalhes da transação", nem esperando nem aprovado', async () => {
+    const { cliente } = erpFake({
+      statusSequencia: ['PDT', 'CNC'],
+      detalhes: { card_brand: 'MASTERCARD', nsu_host: '048291', autorization_code: '192837' },
+    });
+    const desfechos = renderizar(cliente);
 
-    expect(await screen.findByTestId('tef-nsu')).toHaveTextContent('—');
-    expect(screen.getByTestId('tef-bandeira')).toHaveTextContent('—');
+    await screen.findByText('Aguardando retorno do TEF');
+    expect(screen.queryByText('Detalhes da transação')).toBeNull();
+
+    await waitFor(() => {
+      expect(desfechos.aprovados).toHaveLength(1);
+    });
+    await screen.findByText('Transação concluída.');
+    expect(screen.queryByText('Detalhes da transação')).toBeNull();
+    for (const id of ['tef-nsu', 'tef-autorizacao', 'tef-bandeira']) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+    expect(screen.queryByText('048291')).toBeNull();
+    // O valor pago continua na tela.
+    expect(screen.getByTestId('tef-valor')).toBeInTheDocument();
   });
 
   it('o polling para depois da aprovação', async () => {
@@ -377,6 +393,22 @@ describe('ModalTef — cobrança', () => {
     });
     expect(desfechos.fechamentos.quantidade).toBe(1);
     expect(avisos.some((aviso) => aviso.includes('operador da maquininha não aceitou'))).toBe(true);
+  });
+
+  // Caso real (2026-10-07): o `reason` da rejeição vem como objeto. Antes reprovava
+  // a resposta e o erro da consulta é silencioso na cobrança — a janela ficava
+  // girando e o REJ_PAG nunca era tratado.
+  it('REJ_PAG com reason em objeto abandona com o motivo, em vez de ficar girando', async () => {
+    const { cliente } = erpFake({
+      statusSequencia: ['PDT', 'REJ_PAG'],
+      detalhesDaRecusa: { reason: { code: 5, message: 'Operador recusou (sintético)' } },
+    });
+    const desfechos = renderizar(cliente);
+
+    await waitFor(() => {
+      expect(desfechos.abandonados).toEqual(['PAGAMENTO_REJEITADO']);
+    });
+    expect(desfechos.fechamentos.quantidade).toBe(1);
   });
 
   // `REJ`: o cartão não passou, e o cliente pode tentar de novo (AD-268).

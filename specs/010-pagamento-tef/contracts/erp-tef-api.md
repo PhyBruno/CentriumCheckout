@@ -94,6 +94,10 @@ Campos lidos: `payment_identifier`, `payment_status`, `card_brand`, `nsu_host`, 
 
 Depois do estorno o mesmo item volta com `payment_status: "EST"` e os campos `refund_*` preenchidos (`refund_autorization_code`, `refund_user_id`, `refund_date`, `refound_coupon` — grafia do ERP, com "o" a mais). O Checkout não lê nenhum deles.
 
+**`reason` não é texto.** Medido em 2026-10-07 (AD-270): é `null` até uma recusa, e depois vem como **objeto** — `{"msg": ""}` na rejeição do POS simulado. O schema o aceita em qualquer forma (`tef.schema.ts`, `textoDeDetalhe`), e o mesmo vale para `card_brand`, `nsu_host` e `autorization_code`. Na rejeição de pagamento (`REJ_PAG`) os campos de aprovação vêm `null`, não `""`.
+
+**Estorno recusado = a cobrança volta a `CNC`.** O operador do POS que não aceita o estorno **não** produz `REJ_EST`: a cobrança anda `SOL_EST` → `PROC_EST` e volta a `CNC` (~30s). Por isso a janela de estorno trata `CNC` depois de uma **consulta** ter visto `SOL_EST`/`PROC_EST` como recusa (`interpretarStatusEstornoTef(status, estornoJaVisto)`); o `CNC` visto antes disso, ou logo depois do próprio pedido, é só "ainda não estornado". Um `REJ_EST` explícito continua valendo se algum dia vier.
+
 Efeito colateral no ERP: `PSmartTEF_AtualizaRetorno` grava o status na `TransacaoTEF` — é o que permite ao `FaturarNFCe` achá-la em `CNC` (`research.md` D11).
 
 ---

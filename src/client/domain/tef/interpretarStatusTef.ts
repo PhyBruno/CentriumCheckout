@@ -123,6 +123,11 @@ export function interpretarStatusCobrancaTef(status: string): ResultadoCobrancaT
   }
 }
 
+/** Estorno pedido e ainda não decidido no POS: `SOL_EST` ou `PROC_EST`. */
+export function estornoEmAndamento(status: string): boolean {
+  return status === 'SOL_EST' || status === 'PROC_EST';
+}
+
 /**
  * Fase de **estorno** (janela `JanelaEstornoTef`, `research.md` D14).
  *
@@ -133,7 +138,10 @@ export function interpretarStatusCobrancaTef(status: string): ResultadoCobrancaT
  * | `CNC`, `PDT`, `PROC_PAG`, `SOL_EST`, `PROC_EST`, `PROC`, `REJ`, `IMP` | `ESTORNO_PENDENTE` |
  *
  * `REJ` aqui não é desfecho, como na cobrança: a janela continua consultando.
- * Só `REJ_EST` (o operador não aceitou o estorno) rejeita.
+ * `REJ_EST` (o operador não aceitou o estorno) rejeita. **E o `CNC` depois de
+ * `SOL_EST`/`PROC_EST`** — o parâmetro `estornoJaVisto` — também: é como o POS
+ * simulado realmente sinaliza a recusa (AD-270). Sem `estornoJaVisto`, `CNC` é
+ * só "ainda não estornado".
  *
  * **Só `EST` estorna.** `Sucesso: true` de `EstornarPagamento` é só o pedido
  * aceito (`SOL_EST`); riscar a forma antes do `EST` declararia devolvido um
@@ -145,7 +153,18 @@ export function interpretarStatusCobrancaTef(status: string): ResultadoCobrancaT
  *
  * O `default` espera, pelo mesmo motivo da cobrança (T1).
  */
-export function interpretarStatusEstornoTef(status: string): ResultadoEstornoTef {
+export function interpretarStatusEstornoTef(
+  status: string,
+  estornoJaVisto = false,
+): ResultadoEstornoTef {
+  // Estorno recusado no POS (medido no C0 em 2026-10-07, AD-270): a SmartTEF não
+  // devolve `REJ_EST` — a cobrança anda `SOL_EST` → `PROC_EST` e **volta a `CNC`**.
+  // Só vale depois de uma consulta ter visto o estorno em andamento: um `CNC` antes
+  // disso é "o pedido ainda não chegou", e tomá-lo por recusa mandaria o operador
+  // seguir com uma forma que o estorno pode ainda devolver.
+  if (estornoJaVisto && status === 'CNC') {
+    return { situacao: 'ESTORNO_REJEITADO' };
+  }
   switch (status) {
     case 'EST':
       return { situacao: 'ESTORNADO' };

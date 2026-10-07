@@ -32,13 +32,7 @@ import {
   ROTULO_MOTIVO_TENTATIVA_RECUSADA,
   TITULO_TENTATIVA_RECUSADA,
 } from './avisosTef';
-import {
-  BadgeTef,
-  BlocoValorTef,
-  DetalhesTransacaoTef,
-  LinhaDetalheTef,
-  MolduraJanelaTef,
-} from './molduraTef';
+import { BadgeTef, BlocoValorTef, MolduraJanelaTef } from './molduraTef';
 
 /**
  * Janela de cobrança no TEF (T026, `contracts/tef-domain-api.md` §3,
@@ -53,14 +47,20 @@ import {
  * anel `xObO3` de 96px (traço 6, 270° de arco, `$cb-blue`) ao redor do mesmo
  * ícone em 40px, a badge `hEB6G` "Processando" em `$info-soft`, "Aguardando
  * retorno do TEF" (18/600), a instrução `ELWs2` (13/400, centralizada), o bloco
- * escuro `SJmhL` "Valor a cobrar" (Geist Mono 32/600) e o skeleton `CDhv3`
- * "Detalhes da transação"; rodapé `Ttsy4` de 60px com o botão pílula `mz2gp`.
+ * escuro `SJmhL` "Valor a cobrar" (Geist Mono 32/600); rodapé `Ttsy4` de 60px
+ * com o botão pílula `mz2gp`.
  *
  * Aprovado (`A9MNZI`): disco do cabeçalho em `$success-soft` com `check`,
  * "Pagamento aprovado" / "Transação concluída com sucesso" (`$success-ink`);
  * disco de 96px com `check` de 56px no lugar do anel; badge "Aprovado"; "Valor
- * pago"; as linhas NSU / Autorização / Bandeira (`I0iWy`, `HGR9S`, `ean78`) no
- * lugar do skeleton; botão "Fechar" `xpon7` em `$success`.
+ * pago"; botão "Fechar" `xpon7` em `$success`.
+ *
+ * **O cartão "Detalhes da transação" não existe aqui** (`CDhv3`/`vjHCo` no
+ * `.pen`, com o skeleton na espera e as linhas NSU / Autorização / Bandeira na
+ * aprovação): o usuário o tirou em 2026-10-07 (AD-269) por não ser relevante
+ * para o operador. O NSU, a autorização e a bandeira continuam em `DadosTEF`
+ * — a bandeira ainda vira `TEFBandeira` no retrato —, só deixam de ser
+ * mostrados.
  *
  * **Três desvios conscientes do `.pen`:**
  *
@@ -478,16 +478,6 @@ export function ModalTef({
             Transação concluída.
           </p>
           <BlocoValorTef rotulo="Valor pago" valor={formatarCentavos(valor)} />
-          <DetalhesTransacaoTef>
-            <LinhaDetalheTef rotulo="NSU" valor={aprovado.nsu} mono testId="tef-nsu" />
-            <LinhaDetalheTef
-              rotulo="Autorização"
-              valor={aprovado.autorizacao}
-              mono
-              testId="tef-autorizacao"
-            />
-            <LinhaDetalheTef rotulo="Bandeira" valor={aprovado.bandeira} testId="tef-bandeira" />
-          </DetalhesTransacaoTef>
         </>
       ) : (
         <>
@@ -541,23 +531,6 @@ export function ModalTef({
               )}
             </div>
           )}
-          {/* Skeleton `CDhv3`: as larguras são as dos retângulos do nó. */}
-          <DetalhesTransacaoTef>
-            {[
-              [72, 48],
-              [104, 40],
-              [60, 56],
-            ].map(([rotulo, valorSkeleton], indice) => (
-              <div
-                key={indice}
-                className="flex w-full items-center justify-between"
-                aria-hidden="true"
-              >
-                <span className="h-3 rounded-[4px] bg-secondary" style={{ width: rotulo }} />
-                <span className="h-3 rounded-[4px] bg-secondary" style={{ width: valorSkeleton }} />
-              </div>
-            ))}
-          </DetalhesTransacaoTef>
         </>
       )}
     </MolduraJanelaTef>

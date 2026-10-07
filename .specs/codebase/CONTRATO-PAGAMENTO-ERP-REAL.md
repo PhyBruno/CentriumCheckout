@@ -236,12 +236,27 @@ O que cada passo fixou:
 | `EstornarPagamento` | **medido:** responde `SOL_EST` (pedido aceito); o `EST` vem pela consulta, em cerca de 1,5 min | `SOL_EST` pendente, só `EST` conclui | `interpretarStatusEstornoTef` |
 | `UsuarioGAM` no `GetSessao` | **medido:** ausente no `c0lj6mvzeh`, na raiz e em `SessaoUsuario` (item 64). **Vem do `user_guid` da resposta do OAuth** (`GET /oauth/userinfo` devolve o mesmo valor em `GUID`), e o BFF o grava no cookie (AD-267) | `user_guid` do token, depois o `GetSessao` | `session-start.ts`, `bootstrap.ts` |
 
+**As recusas no POS foram medidas em 2026-10-07 (AD-270)**, com o usuário agindo no
+POS simulado do C0:
+
+| Situação | O que a SmartTEF devolve |
+|---|---|
+| Operador **não aceita a cobrança** | `payment_status: "REJ_PAG"`, **estado fixo**, ~30s depois do `PROC_PAG`. `reason` é um **objeto**, `{"msg": ""}` (frase vazia). `payment_value`, `payment_date`, `autorization_code`, `card_brand`, `nsu_host`, `acquirer` e `payment_extras` vêm **`null`** (não `""`) |
+| Operador **não aceita o estorno** | **Não vem `REJ_EST`.** A cobrança anda `SOL_EST` → `PROC_EST` e, ~30s depois, **volta a `CNC`**. `reason` fica `{"msg": ""}` (já presente desde o `SOL_EST`, resto da recusa anterior: **não é sinal**), `refund_serial_pos`/`refund_user_id` preenchidos e `refund_date`/`refund_autorization_code` **`null`**. Lido a cada 1s, nenhum `REJ_EST` apareceu no meio |
+| Operador **aceita o estorno** | `SOL_EST` → `PROC_EST` → `EST`, com `refund_date` e `refund_autorization_code` preenchidos |
+
+O `reason` era declarado como texto ou `null`, e o objeto `{"msg": ""}` reprovava a
+resposta **inteira** de `ConsultarStatusCard`: o status nunca era interpretado
+("Resposta inválida de ConsultarStatusCard"). Hoje qualquer forma vira texto — a
+primeira frase em `message`/`msg`/`description`/…, vazio se a chave existe sem frase,
+o JSON se o objeto é de forma desconhecida (`tef.schema.ts`).
+
 **O que continua sem medição:** o envelope `{ CriarCardReq: … }` no corpo (não é
 mais necessário, o plano funciona), um POS **real** (bandeira, NSU e código de
-autorização preenchidos; o simulador os devolve vazios ou fixos) e a rejeição
-(`REJ` — o cartão não passou, não é desfecho —, `REJ_PAG` e `REJ_EST` — o operador da maquininha não aceitou —, com `reason`; AD-268), que o simulador só produz com ação manual
-no app do POS. O `FaturarNFCe` com `TEFPagId` de uma cobrança `CNC` também não foi
-exercitado contra o ERP real (item 67 de `PENDENCIES.md`).
+autorização preenchidos; o simulador os devolve vazios ou fixos), `REJ` (o cartão não
+passou, não é desfecho; AD-268) e um `REJ_EST` explícito, que o simulador nunca mandou.
+O `FaturarNFCe` com `TEFPagId` de uma cobrança `CNC` também não foi exercitado contra
+o ERP real (item 67 de `PENDENCIES.md`).
 
 ### Nenhuma integração — é o resto
 

@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import { formatarCentavos, type Centavos } from '../../../domain/precificacao/dinheiro';
-import { interpretarStatusEstornoTef } from '../../../domain/tef/interpretarStatusTef';
+import {
+  estornoEmAndamento,
+  interpretarStatusEstornoTef,
+} from '../../../domain/tef/interpretarStatusTef';
 import {
   consultarStatusTef,
   estornarTef,
@@ -40,6 +43,8 @@ import { BadgeTef, BlocoValorTef, MolduraJanelaTef } from './molduraTef';
  *                  └─ outro ──► AGUARDANDO
  * AGUARDANDO ── EST ──► ESTORNADO
  *            ── REJ_EST | CAN_ERP | REJ_PAG ──► REJEITADO (TEF segue aprovado)
+ *            ── CNC, depois de uma consulta ter visto SOL_EST | PROC_EST ──► REJEITADO
+ *               (o POS recusou: a SmartTEF devolve a cobrança a CNC, AD-270)
  *            ── "Desistir de esperar" ──► confirmação ──► fecha (TEF segue aprovado)
  * ```
  *
@@ -97,6 +102,8 @@ export function JanelaEstornoTef({
   const inicioFeito = useRef(false);
   const pedidoFeito = useRef(false);
   const desfechoEmitido = useRef(false);
+  /** Uma consulta já viu o estorno em andamento (`SOL_EST`/`PROC_EST`) — AD-270. */
+  const estornoVisto = useRef(false);
 
   const { consulta } = useStatusTef(paymentIdentifier, fase === 'AGUARDANDO', deps);
 
@@ -121,8 +128,14 @@ export function JanelaEstornoTef({
 
   /** Interpreta um status na fase de estorno e decide o próximo passo. */
   const seguir = useCallback(
-    (status: string, motivo: string): void => {
-      const resultado = interpretarStatusEstornoTef(status);
+    (status: string, motivo: string, deConsulta: boolean): void => {
+      // Só uma **consulta** que viu o estorno em andamento arma a recusa por
+      // "voltou a `CNC`" (AD-270). A resposta do próprio pedido não conta: um `CNC`
+      // lido logo depois dele seria atraso de leitura, não recusa.
+      if (deConsulta && estornoEmAndamento(status)) {
+        estornoVisto.current = true;
+      }
+      const resultado = interpretarStatusEstornoTef(status, estornoVisto.current);
       if (resultado.situacao === 'ESTORNADO') {
         concluir();
         return;
@@ -144,7 +157,7 @@ export function JanelaEstornoTef({
     pedidoFeito.current = true;
     setFase('SOLICITANDO');
     estornarTef(paymentIdentifier, deps).then((status) => {
-      seguir(status, '');
+      seguir(status, '', false);
     }, falhar);
     // `deps` é objeto literal no call site; o que importa é o cliente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,7 +172,7 @@ export function JanelaEstornoTef({
     consultarStatusTef(paymentIdentifier, deps).then((inicial) => {
       // Já estornado, ou com estorno em andamento: não pede de novo.
       if (['EST', 'SOL_EST', 'PROC_EST'].includes(inicial.status)) {
-        seguir(inicial.status, inicial.motivo);
+        seguir(inicial.status, inicial.motivo, true);
         return;
       }
       solicitar();
@@ -172,7 +185,7 @@ export function JanelaEstornoTef({
     if (consulta === null || fase !== 'AGUARDANDO' || desfechoEmitido.current) {
       return;
     }
-    seguir(consulta.status, consulta.motivo);
+    seguir(consulta.status, consulta.motivo, true);
   }, [consulta, fase, seguir]);
 
   const esperando = fase === 'CONSULTANDO' || fase === 'SOLICITANDO' || fase === 'AGUARDANDO';

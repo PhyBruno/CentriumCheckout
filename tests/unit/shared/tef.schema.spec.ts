@@ -109,6 +109,58 @@ describe('consultaCardRespSchema', () => {
       reason: '',
     });
   });
+
+  // REJ_EST/REJ_PAG reais mandam `reason` como objeto (2026-10-07): reprovava a
+  // resposta inteira e escondia o status.
+  describe('reason em forma de objeto nunca reprova a resposta', () => {
+    const comReason = (reason: unknown) =>
+      consultaCardRespSchema.parse([
+        { payment_identifier: 'pay_exemplo_0001', payment_status: 'REJ_EST', reason },
+      ])[0];
+
+    it('objeto com `message` vira a frase', () => {
+      expect(comReason({ code: 51, message: 'Estorno não autorizado (sintético)' })).toMatchObject({
+        payment_status: 'REJ_EST',
+        reason: 'Estorno não autorizado (sintético)',
+      });
+    });
+
+    it('usa a primeira chave de frase não vazia', () => {
+      expect(
+        comReason({ message: '  ', description: 'Negado pelo operador (sintético)' }),
+      ).toMatchObject({
+        reason: 'Negado pelo operador (sintético)',
+      });
+    });
+
+    // Forma REAL do REJ_PAG medida no C0 em 2026-10-07: `reason: {"msg": ""}`.
+    it('{"msg":""} — a rejeição real, com a frase vazia — vira vazio, não JSON', () => {
+      expect(comReason({ msg: '' })).toMatchObject({ payment_status: 'REJ_EST', reason: '' });
+    });
+
+    it('objeto sem chave de frase vai como JSON, para a forma real aparecer', () => {
+      expect(comReason({ codigo: 51, origem: 'POS' })).toMatchObject({
+        reason: '{"codigo":51,"origem":"POS"}',
+      });
+    });
+
+    it('lista vai como JSON, e objeto vazio também', () => {
+      expect(comReason(['a', 'b'])).toMatchObject({ reason: '["a","b"]' });
+      expect(comReason({})).toMatchObject({ reason: '{}' });
+    });
+
+    it('o mesmo vale para os outros campos de detalhe', () => {
+      const lido = consultaCardRespSchema.parse([
+        {
+          payment_identifier: 'pay_exemplo_0001',
+          payment_status: 'CNC',
+          card_brand: { nome: 'MASTERCARD' },
+          nsu_host: true,
+        },
+      ]);
+      expect(lido[0]).toMatchObject({ card_brand: '{"nome":"MASTERCARD"}', nsu_host: 'true' });
+    });
+  });
 });
 
 describe('estornoRespSchema', () => {
