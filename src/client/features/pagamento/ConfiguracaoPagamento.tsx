@@ -224,6 +224,41 @@ export function ConfiguracaoPagamento({
   }
 
   /**
+   * A forma que o **atalho de cenário** (F6–F9) acabou de lançar passa a ser a
+   * forma exibida (correção do usuário, 2026-10-07).
+   *
+   * O atalho fala só com o store: seleciona a condição e aplica a forma, sem
+   * passar por `escolherForma`. A condição aparecia preenchida e o campo da forma
+   * ficava em "Selecione a forma" — e o reset acima, que roda quando o atalho
+   * troca a condição, ainda apagava qualquer escolha anterior. O pagamento
+   * entrava na lista e o operador não via de onde ele tinha saído.
+   *
+   * Só vale **durante um acionamento** (`acionamentoEmAndamento`): é o que
+   * separa o atalho de um pagamento importado de DAV/NFCe, que também entra na
+   * lista sem passar pelo combobox e **não** deve mexer no rascunho. Fica depois
+   * do reset de propósito: se condição e pagamento chegarem no mesmo render, a
+   * forma do atalho vence. Comparação durante o render, como no reset acima.
+   */
+  const acionamentoEmAndamento = useVendaStore((estado) => estado.acionamentoEmAndamento);
+  const formaDoUltimoPagamento = useVendaStore((estado) => {
+    const vivo = estado.pagamentos.findLast(
+      (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
+    );
+    return vivo === undefined
+      ? null
+      : (estado.condicaoSelecionada?.formas.find((forma) => forma.codigo === vivo.formaCodigo) ??
+          null);
+  });
+  const [formaDoUltimoPagamentoAnterior, setFormaDoUltimoPagamentoAnterior] =
+    useState(formaDoUltimoPagamento);
+  if (formaDoUltimoPagamento !== formaDoUltimoPagamentoAnterior) {
+    setFormaDoUltimoPagamentoAnterior(formaDoUltimoPagamento);
+    if (acionamentoEmAndamento && formaDoUltimoPagamento !== null) {
+      setFormaSelecionada(formaDoUltimoPagamento);
+    }
+  }
+
+  /**
    * Escolher a forma de vale devolução **por clique do mouse** abre o modal do
    * ticket; qualquer outra forma, ou a mesma escolhida pela seta do teclado, só
    * vira o rascunho da próxima inserção.
