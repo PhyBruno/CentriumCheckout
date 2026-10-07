@@ -201,6 +201,23 @@ export function ConfiguracaoPagamento({
   const [valeAberto, setValeAberto] = useState(false);
 
   /**
+   * Pedidos de foco no campo "Valor recebido" — um contador, e não um booleano,
+   * pelo mesmo motivo de `focoVendaStore`: duas escolhas seguidas da mesma forma
+   * precisam levar o foco ao campo as duas vezes.
+   *
+   * Sobe quando a forma é escolhida **por clique ou toque** (pedido do usuário,
+   * 2026-10-07): o gesto seguinte é informar o valor, e o campo já chega com o
+   * faltante preenchido e selecionado. Pela seta do teclado não sobe — ela
+   * percorre várias formas no ritmo do teclado, e puxar o foco a cada tecla
+   * tiraria o operador do combobox no meio do passeio. Vale devolução também
+   * não: o clique abre o modal do ticket e o campo não aceita valor para ela.
+   *
+   * Local, e não no `focoVendaStore`, porque quem pede (este cartão) e quem foca
+   * (`EntradaPagamento`) já têm pai comum.
+   */
+  const [pedidosDeFocoNoValor, setPedidosDeFocoNoValor] = useState(0);
+
+  /**
    * Trocar a condição **limpa a forma escolhida** (pedido do usuário,
    * 2026-09-04).
    *
@@ -270,9 +287,14 @@ export function ConfiguracaoPagamento({
    */
   function escolherForma(forma: FormaPagamento, origem: OrigemSelecao): void {
     setFormaSelecionada(forma);
-    if (origem === 'mouse' && ehFormaDeValeDevolucao(forma)) {
-      setValeAberto(true);
+    if (origem !== 'mouse') {
+      return;
     }
+    if (ehFormaDeValeDevolucao(forma)) {
+      setValeAberto(true);
+      return;
+    }
+    setPedidosDeFocoNoValor((atual) => atual + 1);
   }
 
   const formaDoVale =
@@ -347,7 +369,7 @@ export function ConfiguracaoPagamento({
           formaSelecionada={formaSelecionada}
           onSelecionarForma={escolherForma}
         />
-        <EntradaPagamento forma={formaSelecionada} />
+        <EntradaPagamento forma={formaSelecionada} pedidosDeFoco={pedidosDeFocoNoValor} />
         <ListaPagamentosAplicados />
 
         {/* O modal do vale abre a partir da **escolha da forma**, não de um

@@ -4146,3 +4146,17 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `src/client/features/pagamento/ConfiguracaoPagamento.tsx`, `tests/integration/formaDoAtalhoNoSeletor.spec.tsx` (reprova sem a correção).
 
 **Verificação:** 54 testes dos arquivos de pagamento verdes, `tsc` e ESLint limpos. Não verificado em navegador.
+
+### AD-273: escolher a forma por clique ou toque leva o foco ao campo "Valor recebido" (2026-10-07)
+
+**Pedido do usuário:** *"Ao selecionar a forma de pagamento com o mouse/touch [Exceto teclado que pode passar por varias formas], teria como já ir pro campo de valor recebido? (Lembrando que oa chegar nesse campo já preenche com o valor faltante)"*.
+
+**Correção.** `escolherForma` em `ConfiguracaoPagamento` sobe um contador local (`pedidosDeFocoNoValor`) quando a origem é `'mouse'` e a forma não é vale devolução; `EntradaPagamento` recebe o contador na prop opcional `pedidosDeFoco` e foca o campo em um `useEffect`. O preenchimento com o faltante não mudou: continua sendo o `onFocus` (`preencherComFaltante`), que já seleciona o texto inteiro.
+
+**Por que em efeito, e não no clique.** No clique o campo ainda está `readOnly` (sem forma), e o `onFocus` leria o bloqueio antigo e não preencheria nada. Depois do commit o campo já enxerga a forma nova. O efeito também roda **depois** de `fecharEDevolverFoco` devolver o foco ao botão do combobox, então é o campo de valor que fica com ele.
+
+**Fora do pedido, de propósito.** Seta do teclado não pede foco (ela percorre várias formas; puxar o foco a cada tecla tiraria o operador do combobox). Vale devolução não pede: o clique abre o modal do ticket e o campo não aceita valor para essa forma. O contador é local, e não do `focoVendaStore`, porque quem pede e quem foca têm pai comum.
+
+**Impact:** `src/client/features/pagamento/ConfiguracaoPagamento.tsx`, `src/client/features/pagamento/EntradaPagamento.tsx`, `tests/integration/focoNoValorAoEscolherForma.spec.tsx`.
+
+**Verificação:** 54 testes dos arquivos de pagamento verdes, `tsc` e ESLint limpos. **Não verificado:** em navegador real, nem o teclado virtual do celular — o foco programático dentro de um toque pode não abrir o teclado no iPhone (ver AD-253/AD-265).
