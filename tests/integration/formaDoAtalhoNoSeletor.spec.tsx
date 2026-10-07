@@ -88,8 +88,6 @@ describe('forma lançada pelo atalho no seletor de forma', () => {
       });
     });
 
-    expect(screen.getByTestId('combobox-forma-pagamento')).toHaveTextContent(
-      'Selecione a forma',
-    );
+    expect(screen.getByTestId('combobox-forma-pagamento')).toHaveTextContent('Selecione a forma');
   });
 });
