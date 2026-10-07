@@ -97,6 +97,13 @@ describe('GET /api/bootstrap — UsuarioGAM do cookie', () => {
     );
   });
 
+  it('a resposta é privada: cache compartilhado não pode servi-la a outro operador', async () => {
+    const resposta = await carregarBootstrap({ ...SESSAO_BASE, usuarioGam: GUID_DO_COOKIE });
+
+    expect(resposta.headers['cache-control']).toBe('private, no-cache');
+    expect(resposta.headers['etag']).toBeDefined();
+  });
+
   it('sem UsuarioGAM no cookie, o campo segue ausente — o operador sem TEF', async () => {
     const resposta = await carregarBootstrap(SESSAO_BASE);
 

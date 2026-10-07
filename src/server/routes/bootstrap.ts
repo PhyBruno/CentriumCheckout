@@ -135,6 +135,10 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
     // `304` nunca pode reaproveitar o cache de outra empresa (FR-009).
     const versionHash = calcularVersionHash(validado.data);
     reply.header('ETag', versionHash);
+    // O payload é **do operador** (`UsuarioCodigo`, `caixa`, `UsuarioGAM`): cache
+    // compartilhado no caminho (Traefik, proxy) não pode servi-lo a outro. Com
+    // `no-cache` o navegador ainda guarda e revalida pelo ETag (`304`).
+    reply.header('Cache-Control', 'private, no-cache');
 
     if (hashConhecido(request.headers['if-none-match'], versionHash)) {
       return reply.code(304).send();
