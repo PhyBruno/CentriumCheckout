@@ -9,12 +9,14 @@ Superfície pública que as duas janelas TEF consomem. Não é uma API HTTP — 
 ```ts
 // interpretarStatusTef.ts
 export type StatusSmartTef =
-  'PDT' | 'PROC_PAG' | 'CNC' | 'CAN_ERP' | 'REJ_PAG' | 'SOL_EST' | 'PROC_EST' | 'EST' | 'REJ_EST';
+  | 'PDT' | 'PROC_PAG' | 'CNC' | 'CAN_ERP' | 'REJ_PAG' | 'SOL_EST' | 'PROC_EST' | 'EST' | 'REJ_EST'
+  | 'REJ' | 'PROC' | 'IMP'; // os três últimos: lista do usuário, 2026-10-07 (AD-268)
 
 export type MotivoFalhaTef = 'PAGAMENTO_REJEITADO' | 'CANCELADO_NO_ERP' | 'ESTORNADO_FORA_DO_CHECKOUT';
 
 export type ResultadoCobrancaTef =
   | { readonly situacao: 'PENDENTE' }
+  | { readonly situacao: 'TENTATIVA_RECUSADA' } // REJ: o cartão não passou; NÃO é desfecho
   | { readonly situacao: 'APROVADO' }
   | { readonly situacao: 'FALHA'; readonly motivo: MotivoFalhaTef };
 

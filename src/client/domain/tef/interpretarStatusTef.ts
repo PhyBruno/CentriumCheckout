@@ -14,8 +14,24 @@
  */
 
 /**
- * Os nove literais do domínio `SmartTefStatusPagamento` (`CHARACTER(10)`) da KB
- * `CentriumDEVU6`, lidos em 2026-10-02 (AD-259).
+ * Os literais de status do card da SmartTEF (`payment_status`; `print_status`
+ * para impressão).
+ *
+ * Os nove primeiros são o domínio `SmartTefStatusPagamento` (`CHARACTER(10)`) da
+ * KB `CentriumDEVU6`, lidos em 2026-10-02 (AD-259). `REJ`, `PROC` e `IMP` vêm da
+ * lista que o usuário colou em 2026-10-07 (AD-268) e não estavam na KB:
+ *
+ * | Literal | Significado |
+ * |---|---|
+ * | `PDT` | Pendente |
+ * | `PROC_PAG` / `PROC_EST` / `PROC` | Processando pagamento / estorno / (genérico) |
+ * | `CNC` | Concluído — **a aprovação** |
+ * | `REJ_PAG` | O operador da maquininha **não aceitou** a cobrança |
+ * | `REJ_EST` | O operador da maquininha **não aceitou** o estorno |
+ * | `REJ` | O cartão **não passou** nesta tentativa — o cliente pode tentar de novo |
+ * | `CAN_ERP` | Cancelado pelo ERP |
+ * | `SOL_EST` / `EST` | Estorno solicitado / concluído |
+ * | `IMP` | Impresso — só de impressão, não esperado num pagamento |
  *
  * Documentação e insumo de teste — a **fronteira Zod não o usa**:
  * `payment_status` chega como `string` livre, e o estreitamento acontece só
@@ -23,13 +39,31 @@
  * passasse a mandar um literal novo.
  */
 export type StatusSmartTef =
-  'PDT' | 'PROC_PAG' | 'CNC' | 'CAN_ERP' | 'REJ_PAG' | 'SOL_EST' | 'PROC_EST' | 'EST' | 'REJ_EST';
+  | 'PDT'
+  | 'PROC_PAG'
+  | 'CNC'
+  | 'CAN_ERP'
+  | 'REJ_PAG'
+  | 'SOL_EST'
+  | 'PROC_EST'
+  | 'EST'
+  | 'REJ_EST'
+  | 'REJ'
+  | 'PROC'
+  | 'IMP';
 
 export type MotivoFalhaTef =
   'PAGAMENTO_REJEITADO' | 'CANCELADO_NO_ERP' | 'ESTORNADO_FORA_DO_CHECKOUT';
 
 export type ResultadoCobrancaTef =
   | { readonly situacao: 'PENDENTE' }
+  /**
+   * O cartão não passou nesta tentativa (`REJ`). **Não é desfecho**: a janela
+   * segue esperando e consultando, porque o cliente pode tentar de novo e a
+   * mesma cobrança chegar a `CNC`. Existe separado de `PENDENTE` só para a
+   * tela avisar o operador, em vez de girar sem dizer nada.
+   */
+  | { readonly situacao: 'TENTATIVA_RECUSADA' }
   | { readonly situacao: 'APROVADO' }
   | { readonly situacao: 'FALHA'; readonly motivo: MotivoFalhaTef };
 
@@ -43,10 +77,11 @@ export type ResultadoEstornoTef =
  *
  * | Literal | Na KB | Situação |
  * |---|---|---|
- * | `PDT`, `PROC_PAG` | Pendente, Processando pagamento | `PENDENTE` |
+ * | `PDT`, `PROC_PAG`, `PROC`, `IMP` | Pendente, processando (`IMP` não é esperado) | `PENDENTE` |
+ * | `REJ` | O cartão não passou nesta tentativa | `TENTATIVA_RECUSADA` (**não** é desfecho) |
  * | `CNC` | Concluído | **`APROVADO`** |
  * | `CAN_ERP` | Cancelado pelo ERP | `FALHA` / `CANCELADO_NO_ERP` |
- * | `REJ_PAG` | Pagamento rejeitado | `FALHA` / `PAGAMENTO_REJEITADO` |
+ * | `REJ_PAG` | O operador da maquininha não aceitou a cobrança | `FALHA` / `PAGAMENTO_REJEITADO` |
  * | `SOL_EST`, `PROC_EST`, `EST`, `REJ_EST` | ciclo do estorno | `FALHA` / `ESTORNADO_FORA_DO_CHECKOUT` |
  *
  * **Só `CNC` aprova**, e não por leitura do nome: é o único status que
@@ -69,7 +104,11 @@ export function interpretarStatusCobrancaTef(status: string): ResultadoCobrancaT
       return { situacao: 'APROVADO' };
     case 'PDT':
     case 'PROC_PAG':
+    case 'PROC':
+    case 'IMP':
       return { situacao: 'PENDENTE' };
+    case 'REJ':
+      return { situacao: 'TENTATIVA_RECUSADA' };
     case 'CAN_ERP':
       return { situacao: 'FALHA', motivo: 'CANCELADO_NO_ERP' };
     case 'REJ_PAG':
@@ -91,7 +130,10 @@ export function interpretarStatusCobrancaTef(status: string): ResultadoCobrancaT
  * |---|---|
  * | `EST` | **`ESTORNADO`** |
  * | `REJ_EST`, `CAN_ERP`, `REJ_PAG` | `ESTORNO_REJEITADO` |
- * | `CNC`, `PDT`, `PROC_PAG`, `SOL_EST`, `PROC_EST` | `ESTORNO_PENDENTE` |
+ * | `CNC`, `PDT`, `PROC_PAG`, `SOL_EST`, `PROC_EST`, `PROC`, `REJ`, `IMP` | `ESTORNO_PENDENTE` |
+ *
+ * `REJ` aqui não é desfecho, como na cobrança: a janela continua consultando.
+ * Só `REJ_EST` (o operador não aceitou o estorno) rejeita.
  *
  * **Só `EST` estorna.** `Sucesso: true` de `EstornarPagamento` é só o pedido
  * aceito (`SOL_EST`); riscar a forma antes do `EST` declararia devolvido um
@@ -116,6 +158,9 @@ export function interpretarStatusEstornoTef(status: string): ResultadoEstornoTef
     case 'PROC_PAG':
     case 'SOL_EST':
     case 'PROC_EST':
+    case 'PROC':
+    case 'REJ':
+    case 'IMP':
       return { situacao: 'ESTORNO_PENDENTE' };
     default:
       return { situacao: 'ESTORNO_PENDENTE' };
@@ -131,8 +176,10 @@ export function interpretarStatusEstornoTef(status: string): ResultadoEstornoTef
  * descobre se o cliente foi cobrado.
  */
 export const MENSAGEM_POR_MOTIVO_FALHA_TEF: Readonly<Record<MotivoFalhaTef, string>> = {
-  PAGAMENTO_REJEITADO: 'O pagamento foi rejeitado no TEF. Escolha outra forma ou tente de novo.',
-  CANCELADO_NO_ERP: 'A transação foi cancelada pelo ERP antes da aprovação. Confira na maquininha.',
+  PAGAMENTO_REJEITADO:
+    'O operador da maquininha não aceitou a cobrança, e nada foi cobrado do cliente. Escolha outra forma de pagamento ou cobre de novo.',
+  CANCELADO_NO_ERP:
+    'O ERP cancelou a cobrança antes de ela ser aprovada. Confira na maquininha antes de cobrar de outro jeito.',
   ESTORNADO_FORA_DO_CHECKOUT:
-    'A transação foi estornada fora do Checkout antes da aprovação. Confira na maquininha.',
+    'A cobrança foi estornada fora do Checkout antes de ser confirmada aqui. Confira na maquininha antes de cobrar de outro jeito.',
 };

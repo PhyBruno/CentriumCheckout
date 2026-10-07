@@ -239,7 +239,7 @@ O que cada passo fixou:
 **O que continua sem medição:** o envelope `{ CriarCardReq: … }` no corpo (não é
 mais necessário, o plano funciona), um POS **real** (bandeira, NSU e código de
 autorização preenchidos; o simulador os devolve vazios ou fixos) e a rejeição
-(`REJ_PAG`, `REJ_EST`, com `reason`), que o simulador só produz com ação manual
+(`REJ` — o cartão não passou, não é desfecho —, `REJ_PAG` e `REJ_EST` — o operador da maquininha não aceitou —, com `reason`; AD-268), que o simulador só produz com ação manual
 no app do POS. O `FaturarNFCe` com `TEFPagId` de uma cobrança `CNC` também não foi
 exercitado contra o ERP real (item 67 de `PENDENCIES.md`).
 

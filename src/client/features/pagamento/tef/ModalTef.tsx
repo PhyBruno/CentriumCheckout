@@ -24,10 +24,13 @@ import {
 } from '../../../services/tef/tefQueries';
 import { DialogoConfirmacaoDestrutiva } from '../DialogoConfirmacaoDestrutiva';
 import {
+  AVISO_TENTATIVA_RECUSADA,
   AVISO_TRANSACAO_EM_VOO,
   CHAMADA_TEF_NAO_E_CANCELADO,
   DESTAQUE_TEF_SEGUE_NA_MAQUININHA,
   MOTIVO_JANELA_TEF_TRAVADA,
+  ROTULO_MOTIVO_TENTATIVA_RECUSADA,
+  TITULO_TENTATIVA_RECUSADA,
 } from './avisosTef';
 import {
   BadgeTef,
@@ -182,6 +185,15 @@ export function ModalTef({
 
   const emErro = status === 'erro' && cobranca === null;
   const criando = cobranca === null && !emErro;
+  /**
+   * `REJ`: o cartão não passou nesta tentativa. Não é desfecho — a janela segue
+   * consultando —, e o aviso some sozinho quando o status muda (cliente tenta de
+   * novo e a consulta volta `PDT`/`PROC`/`CNC`).
+   */
+  const tentativaRecusada =
+    !resolvido &&
+    consulta !== null &&
+    interpretarStatusCobrancaTef(consulta.status).situacao === 'TENTATIVA_RECUSADA';
 
   const criarCobranca = useCallback((): void => {
     if (!preCondicao.ok) {
@@ -240,7 +252,7 @@ export function ModalTef({
       return;
     }
     const resultado = interpretarStatusCobrancaTef(consulta.status);
-    if (resultado.situacao === 'PENDENTE') {
+    if (resultado.situacao === 'PENDENTE' || resultado.situacao === 'TENTATIVA_RECUSADA') {
       return;
     }
     if (resultado.situacao === 'APROVADO') {
@@ -501,6 +513,34 @@ export function ModalTef({
             Não feche esta tela nem desligue a maquininha durante a operação.
           </p>
           <BlocoValorTef rotulo="Valor a cobrar" valor={formatarCentavos(valor)} />
+          {tentativaRecusada && (
+            <div
+              className="flex w-full flex-col gap-xs rounded-lg bg-[var(--cc-color-warning-soft)] px-sm py-sm"
+              data-testid="tef-tentativa-recusada"
+              role="alert"
+            >
+              <div className="flex items-start gap-xs">
+                <AlertTriangle
+                  className="mt-[2px] size-4.5 shrink-0 text-[var(--cc-color-accent-yellow)]"
+                  aria-hidden="true"
+                />
+                <p className="text-base font-semibold text-foreground">
+                  {TITULO_TENTATIVA_RECUSADA}
+                </p>
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                {AVISO_TENTATIVA_RECUSADA}
+              </p>
+              {consulta !== null && consulta.motivo !== '' && (
+                <p
+                  className="text-sm font-medium text-muted-foreground"
+                  data-testid="tef-motivo-recusa"
+                >
+                  {ROTULO_MOTIVO_TENTATIVA_RECUSADA} {consulta.motivo}
+                </p>
+              )}
+            </div>
+          )}
           {/* Skeleton `CDhv3`: as larguras são as dos retângulos do nó. */}
           <DetalhesTransacaoTef>
             {[

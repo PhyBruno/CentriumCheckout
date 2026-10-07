@@ -30,14 +30,16 @@ Esta feature **não acrescenta estado de venda novo** ao `vendaStore`. O único 
 
 ```text
 'PDT' | 'PROC_PAG' | 'CNC' | 'CAN_ERP' | 'REJ_PAG' | 'SOL_EST' | 'PROC_EST' | 'EST' | 'REJ_EST'
+| 'REJ' | 'PROC' | 'IMP'
 ```
 
-Os nove literais do domínio `SmartTefStatusPagamento` da KB (`research.md` D4). A fronteira Zod aceita **qualquer** `string` em `payment_status`; o estreitamento acontece nas duas funções abaixo, cada uma com ramo `default`.
+Os nove literais do domínio `SmartTefStatusPagamento` da KB mais `REJ`, `PROC` e `IMP`, da lista do usuário de 2026-10-07 (`research.md` D4, AD-268). A fronteira Zod aceita **qualquer** `string` em `payment_status`; o estreitamento acontece nas duas funções abaixo, cada uma com ramo `default`.
 
 ### 2.2 `ResultadoCobrancaTef` — `interpretarStatusCobrancaTef(status: string)`
 
 ```text
 { situacao: 'PENDENTE' }
+{ situacao: 'TENTATIVA_RECUSADA' }   // REJ: não é desfecho, a janela segue esperando e avisa
 { situacao: 'APROVADO' }
 { situacao: 'FALHA', motivo: MotivoFalhaTef }
 
