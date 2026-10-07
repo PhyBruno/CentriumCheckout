@@ -13,10 +13,11 @@ import { inteiroErp, semEnvelope } from './erpJson';
  * `corpo-da-nfce-viaja-envelopado` registrou para o retrato. Quem encadeia os
  * dois estágios é `services/tef/tefMapper.ts`.
  *
- * **Formas lidas na KB, não medidas ao vivo.** O usuário ainda não tem o
- * terminal de homologação para a medição de `research.md` D17 (T001, AD-260).
- * Os pontos não confirmados estão marcados **[medir]** e são aceitos nas duas
- * formas possíveis, para que a medição troque uma linha e não o desenho.
+ * **Formas medidas ao vivo em 2026-10-07** (AD-267, C0, POS simulado): envelope
+ * plano com `CodigoStatusHttp` numérico (`201`), `RespostaJson` em **lista** na
+ * consulta e em objeto único no estorno. Os schemas seguem aceitando as duas
+ * formas onde a KB admitia as duas (envelope nomeado, objeto único na consulta):
+ * a tolerância é barata e outra versão do ERP pode ainda mandá-las.
  */
 
 /**
@@ -28,8 +29,8 @@ import { inteiroErp, semEnvelope } from './erpJson';
  * - `CodigoStatusHttp` é `0` quando a chamada nem saiu (recusa local do
  *   `PSmartTEF`, como "Serial do POS … nao localizado"). Número ou texto, como
  *   todo número do GeneXus (`inteiroErp`).
- * - Envelope `{ RespostaSmartTEF: … }` ou plano: **[medir]**, aceitos os dois
- *   (`semEnvelope`, regra de AD-218).
+ * - Envelope `{ RespostaSmartTEF: … }` ou plano: **medido plano**, aceitos os
+ *   dois (`semEnvelope`, regra de AD-218).
  */
 export const respostaSmartTefSchema = semEnvelope(
   'RespostaSmartTEF',
@@ -81,8 +82,8 @@ export const consultaCardItemSchema = z.looseObject({
 
 /**
  * `RespostaJson` de `ConsultarStatusCard`: **lista** na KB (`.Count` em
- * `PSmartTEF`). Objeto único também é aceito e normalizado para lista
- * **[medir]** — quem consome escolhe o item pelo `payment_identifier`.
+ * `PSmartTEF`) e **medida lista** em 2026-10-07. Objeto único também é aceito e
+ * normalizado para lista — quem consome escolhe o item pelo `payment_identifier`.
  */
 export const consultaCardRespSchema = z.union([
   z.array(consultaCardItemSchema),

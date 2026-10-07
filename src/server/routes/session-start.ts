@@ -95,8 +95,19 @@ async function comRepeticao<T>(
 }
 
 type DesfechoDeToken =
-  | { readonly autenticado: true; readonly access_token: string }
+  | {
+      readonly autenticado: true;
+      readonly access_token: string;
+      /** `user_guid` da resposta do OAuth, quando o GAM o devolve (AD-267). */
+      readonly usuarioGam: string | null;
+    }
   | { readonly autenticado: false; readonly erro: ErroTrocaDeToken };
+
+/** `user_guid` do OAuth: texto não vazio ou `null` (mesma regra de `extrairUsuarioGam`). */
+function usuarioGamDoToken(userGuid: string | undefined): string | null {
+  const valor = userGuid?.trim() ?? '';
+  return valor === '' ? null : valor;
+}
 
 /**
  * Só indisponibilidade se repete: `rede` é o ERP inalcançável e `5xx` é o ERP
@@ -174,7 +185,11 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
               },
               erpDeps,
             );
-            return { autenticado: true, access_token: token.access_token };
+            return {
+              autenticado: true,
+              access_token: token.access_token,
+              usuarioGam: usuarioGamDoToken(token.user_guid),
+            };
           } catch (erro) {
             if (erro instanceof ErroTrocaDeToken) {
               return { autenticado: false, erro };
@@ -221,6 +236,8 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
         return recusarEntrada(reply);
       }
 
+      const usuarioGam = autenticacao.usuarioGam ?? operador.usuarioGam;
+
       const cookie = deps.cifrador.cifrar({
         access_token: autenticacao.access_token,
         tenant: query.data.tenant,
@@ -235,7 +252,9 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
         // tem TEF vinculado continua vendendo, e a janela do TEF explica a
         // recusa se ele tentar cobrar no cartão. O campo só entra no cookie
         // quando existe — `usuarioGam: undefined` gravaria uma chave vazia.
-        ...(operador.usuarioGam === null ? {} : { usuarioGam: operador.usuarioGam }),
+        // O `user_guid` do OAuth vem primeiro (AD-267): é o GAM falando do
+        // próprio usuário autenticado, e o `GetSessao` ainda não publica o campo.
+        ...(usuarioGam === null ? {} : { usuarioGam }),
       });
 
       return (

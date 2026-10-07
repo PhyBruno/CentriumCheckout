@@ -157,6 +157,54 @@ describe('GET /session/start — UsuarioGAM', () => {
     expect(sessao?.usuarioGam).toBe('0f2c9a4e-0000-4000-8000-000000000000');
   });
 
+  // AD-267: o `GetSessao` real não publica `UsuarioGAM` (medido no C0 em
+  // 2026-10-07), mas a resposta do OAuth traz `user_guid` — o GUID do próprio
+  // operador autenticado.
+  it('grava o user_guid da resposta do OAuth como UsuarioGAM', async () => {
+    montarApp({
+      token: () =>
+        respostaJson({
+          access_token: 'token-sintetico',
+          user_guid: '0f2c9a4e-0000-4000-8000-000000000001',
+        }),
+    });
+
+    const resposta = await entrar();
+
+    const sessao = cifrador.decifrar(cookieDaResposta(resposta, SESSION_COOKIE_NAME)?.value);
+    expect(sessao?.usuarioGam).toBe('0f2c9a4e-0000-4000-8000-000000000001');
+  });
+
+  it('o user_guid do OAuth vale mais que o UsuarioGAM do GetSessao', async () => {
+    montarApp({
+      token: () =>
+        respostaJson({
+          access_token: 'token-sintetico',
+          user_guid: '0f2c9a4e-0000-4000-8000-000000000001',
+        }),
+      getSessao: () =>
+        respostaJson({ UsuarioCodigo: '147', UsuarioGAM: '11111111-0000-4000-8000-000000000000' }),
+    });
+
+    const resposta = await entrar();
+
+    const sessao = cifrador.decifrar(cookieDaResposta(resposta, SESSION_COOKIE_NAME)?.value);
+    expect(sessao?.usuarioGam).toBe('0f2c9a4e-0000-4000-8000-000000000001');
+  });
+
+  it('user_guid vazio não grava UsuarioGAM e cai no GetSessao', async () => {
+    montarApp({
+      token: () => respostaJson({ access_token: 'token-sintetico', user_guid: '  ' }),
+      getSessao: () =>
+        respostaJson({ UsuarioCodigo: '147', UsuarioGAM: '0f2c9a4e-0000-4000-8000-000000000002' }),
+    });
+
+    const resposta = await entrar();
+
+    const sessao = cifrador.decifrar(cookieDaResposta(resposta, SESSION_COOKIE_NAME)?.value);
+    expect(sessao?.usuarioGam).toBe('0f2c9a4e-0000-4000-8000-000000000002');
+  });
+
   it('sem UsuarioGAM a sessão nasce do mesmo jeito, sem o campo', async () => {
     montarApp();
 

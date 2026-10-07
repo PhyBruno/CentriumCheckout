@@ -95,8 +95,9 @@ export function extrairUsuarioCodigo(json: unknown): string | null {
  * `UsuarioCodigo` (AD-224): o corpo vem do navegador e o ERP não o confere.
  *
  * Ausente, vazio ou não-texto vira `null`, e isso **não** é recusa: o campo
- * ainda não existe no `SessaoUsuario` da KB (item 64 de `PENDENCIES.md`), e um
- * operador sem ele continua vendendo com as demais formas.
+ * não existe no `GetSessao` real (item 64, medido em 2026-10-07), e um operador
+ * sem ele continua vendendo com as demais formas. É só o **fallback**: a fonte
+ * é o `user_guid` do OAuth (`session-start.ts`, AD-267).
  */
 export function extrairUsuarioGam(json: unknown): string | null {
   const bruto = camposDaSessao(json)?.['UsuarioGAM'];

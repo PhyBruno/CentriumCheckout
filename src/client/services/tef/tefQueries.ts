@@ -12,9 +12,10 @@
  * dois contratos não têm um campo em comum, e o TEF estorna, o PIX não
  * (`plan.md` § Structure Decision).
  *
- * **Formas não medidas ao vivo** (T001 adiado, AD-260): o corpo de
- * `CriarCardPagamento` sai plano e com `FPgCod` (grafia da KB). Se a medição
- * mostrar outra coisa, a troca é em `montarCorpoCriarCard` e no BFF.
+ * **Formas medidas ao vivo em 2026-10-07** (AD-267, C0, POS simulado): o corpo
+ * de `CriarCardPagamento` sai plano e com `FPgCod`, e o ERP o aceita; a consulta
+ * devolve lista, e o estorno devolve `SOL_EST`, com o `EST` chegando pela
+ * consulta. Ver `contracts/erp-tef-api.md`.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -148,9 +149,10 @@ async function corpoJson(endpoint: string, resposta: Response): Promise<unknown>
  * O único ponto que conhece a forma do corpo de `CriarCardPagamento`.
  *
  * **Plano**, como o precedente medido mais recente para um `POST` de SDT único
- * (`GerarPIX`, AD-251), e com a grafia `FPgCod` da KB — os dois **[medir]**
- * (`research.md` D6/D17). Se o ERP exigir `{ CriarCardReq: … }`, a troca é aqui;
- * o BFF já injeta `EmpCod`/`UsuarioGAM` nas duas formas.
+ * (`GerarPIX`, AD-251), e com a grafia `FPgCod` da KB — os dois **confirmados**
+ * em 2026-10-07 (AD-267): o ERP aceita o corpo assim e a forma entra. O BFF
+ * ainda injeta `EmpCod`/`UsuarioGAM` também dentro de `CriarCardReq`, que ficou
+ * sem uso.
  *
  * `PagamentoValor` é a fronteira de saída `Centavos → reais`: o único ponto em
  * que o valor deixa de ser inteiro, e ele nunca volta para um cálculo (T10).

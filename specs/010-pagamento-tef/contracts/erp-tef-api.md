@@ -2,7 +2,9 @@
 
 Fonte: KB GeneXus `CentriumDEVU6`, API `ApiCentriumOAuth`, bloco `//SmartTEF` (lida em 2026-10-02 — `research.md` D2). O `Fluxograma - Diagrama - Alinhamentos/APICentriumOAuth.yaml` do repositório é **anterior** a este bloco e não os descreve.
 
-Todos os três passam pelo proxy autenticado `/api/erp/ApiCentriumOAuth/<Método>` da feature 002. O navegador **nunca** envia `Empresa`, `EmpCod` nem `UsuarioGAM` — o BFF os injeta (§5). Itens marcados **[medir]** são confirmados no prototype antes de codar (`research.md` D17).
+Todos os três passam pelo proxy autenticado `/api/erp/ApiCentriumOAuth/<Método>` da feature 002. O navegador **nunca** envia `Empresa`, `EmpCod` nem `UsuarioGAM` — o BFF os injeta (§5).
+
+**Medido ao vivo em 2026-10-07** no `prototype` do `c0lj6mvzeh` (POS simulado, R$ 1,00, forma `3`): o ciclo completo criar → `PDT` → `CNC` → estornar → `SOL_EST` → `EST` (AD-267). Todos os pontos que este documento marcava como **[medir]** foram fechados abaixo, com o resultado no próprio item. Os valores de exemplo seguem sintéticos.
 
 Valores de exemplo abaixo são **sintéticos**.
 
@@ -12,7 +14,7 @@ Valores de exemplo abaixo são **sintéticos**.
 
 `POST /api/erp/ApiCentriumOAuth/CriarCardPagamento`
 
-**Corpo enviado pelo navegador** (forma plana — **[medir]** se o ERP exige o envelope `{ "CriarCardReq": { … } }`):
+**Corpo enviado pelo navegador** (forma **plana — medida**: o ERP a aceita sem o envelope `{ "CriarCardReq": { … } }`):
 
 ```json
 {
@@ -44,22 +46,22 @@ Valores de exemplo abaixo são **sintéticos**.
 | `PagamentoParcelas` | `parcelasDoTef` — `CondicaoPrazo` no crédito, `1` nos demais (`research.md` D8) |
 | `PagamentoCpfCliente` | só dígitos do documento; `""` no cliente default (`research.md` D9) |
 | `PagamentoNomeCliente` | nome do cliente da venda (default incluído) |
-| `FPgCod` | `formaCodigo` do pagamento — grafia da KB; **[medir]** `FpgCod` |
+| `FPgCod` | `formaCodigo` do pagamento — grafia da KB, **confirmada** (`FPgCod: 3` entrou no ERP) |
 | `CNPJAdquirente` | **não enviado** — o ERP o sobrescreve a partir da forma |
 | tipo (`CREDIT`/`DEBIT`/`PIX`) | **não enviado** — o ERP deduz de `FpgNfFormaPagamento` |
 
-**Resposta** (`SDTSmartTefResposta`; **[medir]** plana × `{ "RespostaSmartTEF": … }`):
+**Resposta** (`SDTSmartTefResposta`, **plana** — sem `{ "RespostaSmartTEF": … }`; `CodigoStatusHttp` numérico, `201` no sucesso):
 
 ```json
 {
   "Sucesso": true,
-  "CodigoStatusHttp": 200,
+  "CodigoStatusHttp": 201,
   "MensagemErro": "",
-  "RespostaJson": "{\"payment_identifier\":\"pay_exemplo_0001\",\"payment_status\":\"PDT\",\"order_type\":\"CRD_UNICO\",\"charge_id\":\"…\",\"form\":{…}}"
+  "RespostaJson": "{\"payment_identifier\":\"pay_exemplo_0001\",\"payment_status\":\"PDT\",\"order_type\":\"CRD_UNICO\",\"charge_id\":\"\",\"allow_multi_payments\":false,\"allow_cash_payment\":false,\"has_details\":true,\"form\":null}"
 }
 ```
 
-`RespostaJson` interno = `SDTSmartTefCriarCardResp`: `payment_identifier`, `payment_status` (`SmartTefStatusPagamento`), `order_type`, `charge_id`, `form{…}`. O Checkout lê só os dois primeiros.
+`RespostaJson` interno = `SDTSmartTefCriarCardResp`: `payment_identifier`, `payment_status` (`SmartTefStatusPagamento`), `order_type`, `charge_id`, `form` (`null` no POS simulado). O Checkout lê só os dois primeiros.
 
 **Recusas conhecidas** (montadas pelo próprio ERP, sem chamar a SmartTEF — `CodigoStatusHttp: 0`, `RespostaJson: ""`):
 - `"Serial do POS (serial_pos) nao localizado para o usuario informado"` — `UsuarioGAM` sem maquininha vinculada na configuração SmartTEF da empresa;
@@ -75,18 +77,22 @@ Efeito colateral no ERP quando `Sucesso`: `PSmartTEF_NovoPagamento` grava a `Tra
 
 O BFF prefixa `Empresa=<empresa da sessão>` como **primeiro** par da query (AD-205); não há `Event … .Before` para este método, então o `Empresa` vem do parâmetro.
 
-**Resposta**: `SDTSmartTefResposta` com `RespostaJson` = **lista** de `SDTSmartTefConsultaCard` (**[medir]** se pode vir objeto único — o schema normaliza para lista).
+**Resposta**: `SDTSmartTefResposta` com `RespostaJson` = **lista** de `SDTSmartTefConsultaCard` (**medido: lista** com um item; o schema ainda normaliza objeto único para lista).
 
 ```json
 {
   "Sucesso": true,
-  "CodigoStatusHttp": 200,
+  "CodigoStatusHttp": 201,
   "MensagemErro": "",
-  "RespostaJson": "[{\"payment_identifier\":\"pay_exemplo_0001\",\"payment_status\":\"CNC\",\"card_brand\":\"MASTERCARD\",\"nsu_host\":\"048291\",\"autorization_code\":\"192837\",\"payment_type\":\"DEBIT\",\"installments\":1}]"
+  "RespostaJson": "[{\"payment_identifier\":\"pay_exemplo_0001\",\"payment_status\":\"CNC\",\"card_brand\":\"\",\"nsu_host\":\"\",\"autorization_code\":\"authorizationCode\",\"payment_type\":\"CREDIT\",\"installments\":1,\"acquirer\":\"SIMULADO\",\"reason\":null}]"
 }
 ```
 
-Campos lidos: `payment_identifier`, `payment_status`, `card_brand`, `nsu_host`, `autorization_code` (grafia da SmartTEF, sem o "h"), `reason` (para a mensagem de rejeição). Item escolhido = o de `payment_identifier` igual ao consultado; lista vazia ⇒ `PENDENTE`.
+O exemplo é o do **POS simulado**: `card_brand` e `nsu_host` vêm `""` e o código de autorização é o texto fixo `authorizationCode`. Um POS real preenche os três; a aprovação não depende deles — só do `payment_status`. O item traz ~40 campos; os demais não são lidos.
+
+Campos lidos: `payment_identifier`, `payment_status`, `card_brand`, `nsu_host`, `autorization_code` (grafia da SmartTEF, sem o "h"), `reason` (`null` em toda consulta sem rejeição; para a mensagem de rejeição). Item escolhido = o de `payment_identifier` igual ao consultado; lista vazia ⇒ `PENDENTE`.
+
+Depois do estorno o mesmo item volta com `payment_status: "EST"` e os campos `refund_*` preenchidos (`refund_autorization_code`, `refund_user_id`, `refund_date`, `refound_coupon` — grafia do ERP, com "o" a mais). O Checkout não lê nenhum deles.
 
 Efeito colateral no ERP: `PSmartTEF_AtualizaRetorno` grava o status na `TransacaoTEF` — é o que permite ao `FaturarNFCe` achá-la em `CNC` (`research.md` D11).
 
@@ -113,13 +119,13 @@ Efeito colateral no ERP: `PSmartTEF_AtualizaRetorno` grava o status na `Transaca
 ```json
 {
   "Sucesso": true,
-  "CodigoStatusHttp": 200,
+  "CodigoStatusHttp": 201,
   "MensagemErro": "",
   "RespostaJson": "{\"payment_identifier\":\"pay_exemplo_0001\",\"payment_status\":\"SOL_EST\",\"order_type\":\"CRD_UNICO\"}"
 }
 ```
 
-`Sucesso: true` significa **pedido aceito**, não estorno concluído. O desfecho vem de `payment_status` (`EST` ⇒ concluído) ou do polling de §2 (`research.md` D14).
+`Sucesso: true` significa **pedido aceito**, não estorno concluído. **Medido:** a resposta é `SOL_EST` e o `EST` chega pela consulta de §2, cerca de 1,5 min depois no POS simulado (`research.md` D14).
 
 ---
 
@@ -148,8 +154,9 @@ mapper → domínio (interpretarStatus…)
 
 | Onde | Mudança |
 |---|---|
-| `session/getSessao.ts` | `extrairUsuarioGam(json): string \| null` — lê `UsuarioGAM` da **raiz** da resposta; ausente ⇒ `null` (o campo ainda não existe no ERP, item 64) |
-| `routes/session-start.ts` | grava `usuarioGam` no cookie quando presente; **não** recusa a entrada sem ele (o operador sem TEF continua vendendo) |
+| `session/getSessao.ts` | `extrairUsuarioGam(json): string \| null` — lê `UsuarioGAM` da **raiz** da resposta; ausente ⇒ `null`. **Medido em 2026-10-07: o `GetSessao` não o publica** (item 64), então este é só o fallback |
+| `shared/schemas/token-response.schema.ts`, `routes/session-start.ts` | **AD-267.** A fonte do `UsuarioGAM` é o `user_guid` da resposta de `POST /oauth/access_token` (o GAM, falando do próprio usuário autenticado); o `GetSessao` é o fallback. Grava `usuarioGam` no cookie quando algum dos dois existe; **não** recusa a entrada sem ele (o operador sem TEF continua vendendo) |
+| `routes/bootstrap.ts` | **AD-267.** Devolve ao cliente `SessaoUsuario.UsuarioGAM` com o valor do cookie, para a recusa antes da rede (`FR-014`) enxergar o campo. O corpo de `CriarCardPagamento` segue sendo escrito pelo BFF a partir do cookie, nunca do navegador |
 | `session/cookie.ts` | campo opcional `usuarioGam?: string`; fora de `CAMPOS_OBRIGATORIOS`; **sem** bump de versão |
 | `routes/erp-proxy.ts` | (a) `EstornarPagamento` em `CAMINHOS_COM_EMPRESA_NA_RAIZ`; (b) nova `corpoComOperadorTef(body, caminho, sessao)`: só em `CriarCardPagamento`, insere `EmpCod` (numérico) e `UsuarioGAM` (texto; `""` quando o cookie não tem) na raiz **e**, se existir, dentro de `CriarCardReq` — cobre as duas formas de §1 até a medição |
 | `tests/e2e/support/erp-mock.ts` | os três endpoints, com uma `TransacaoTEF` em memória que anda `PDT → PROC_PAG → CNC` por número de consultas, e `CNC → SOL_EST → EST` (ou `REJ_EST`, por flag) no estorno |
