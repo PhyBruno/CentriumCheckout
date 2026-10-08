@@ -244,7 +244,9 @@ test.describe('User Story 1 — selecionar o vendedor da venda (T015)', () => {
     await expandirCardCliente(page);
     const lupa = page.getByTestId('abrir-busca-vendedor');
     await expect(lupa).toHaveAttribute('aria-disabled', 'true');
-    await lupa.click({ force: true });
+    // `dispatchEvent`, e não `click({ force })`: dentro do card, que tem transição
+    // de altura, o clique por coordenada cai no container.
+    await lupa.dispatchEvent('click');
 
     // O campo continua no default e a busca não abre.
     await expect(page.getByTestId('nome-vendedor')).toHaveText(VENDEDOR_DEFAULT.nome);
