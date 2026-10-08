@@ -4160,3 +4160,17 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `src/client/features/pagamento/ConfiguracaoPagamento.tsx`, `src/client/features/pagamento/EntradaPagamento.tsx`, `tests/integration/focoNoValorAoEscolherForma.spec.tsx`.
 
 **Verificação:** 54 testes dos arquivos de pagamento verdes, `tsc` e ESLint limpos. **Não verificado:** em navegador real, nem o teclado virtual do celular — o foco programático dentro de um toque pode não abrir o teclado no iPhone (ver AD-253/AD-265).
+
+### AD-274: qualquer recusa que cite "cenário" libera o caixa, em vez de exigir "cenário tributário" (2026-10-08)
+
+**Pedido do usuário:** relato de que, ao finalizar e ao cancelar, o ERP recusava por cenário (gravando o rascunho), mas o Checkout não limpava a tela para a próxima venda. Decisão: *"Acredito que poderia por hora ampliar o regex para 'Cenário' 'cenário'"*.
+
+**Causa provável (não reproduzida).** `ehRecusaDeCenarioTributario` exigia as duas palavras juntas (AD-239), calibradas na frase de 2026-09-16 ("Cenário Tributário não foi Encontrada"). O contrato de outubro (AD-258) mostrou, no `GetProduto`, a variante "Cenário não encontrado!", sem "tributário". Uma recusa assim cai em `venda-recusada`, e a venda fica presa no caixa. O mesmo mapper serve a `FATURAR` e `SUSPENDER`, então os dois sintomas têm a mesma origem. **Não medido:** o texto que o `FaturarNFCe` devolve hoje, nem o título do diálogo que o operador viu.
+
+**Correção.** O critério passou a ser `/cenario/` sobre o texto normalizado (sem acento, minúsculas). O teste que afirmava "cenário sozinho não basta" foi invertido.
+
+**Provisório, de propósito.** O `Id` da mensagem é o genérico `9999`, então o texto segue sendo o único sinal, e agora largo: uma recusa de validação que cite "cenário" por outro motivo também limpa o caixa. Sai quando o ERP expuser um sinal estruturado no `FaturarNFCe` (como o `CenarioValido` do `GetProduto`).
+
+**Impact:** `src/client/domain/venda/recusaDoErp.ts`, `tests/unit/domain/venda/recusaDoErp.spec.ts`.
+
+**Verificação:** 108 testes (recusaDoErp, serviços de faturamento e integração de finalização) verdes e `tsc` limpo. **Não verificado:** contra o ERP real, nem em navegador.

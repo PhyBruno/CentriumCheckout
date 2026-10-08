@@ -26,9 +26,15 @@ function normalizar(texto: string): string {
 }
 
 /**
- * `true` quando a recusa é "Busca realizada pelo seguinte Cenário Tributário
- * não foi Encontrada" (texto medido no ERP real em 2026-09-16).
+ * `true` quando a recusa menciona cenário: "Busca realizada pelo seguinte
+ * Cenário Tributário não foi Encontrada" (texto medido no ERP real em
+ * 2026-09-16) ou "Cenário não encontrado!" (a variante do contrato de outubro,
+ * AD-258, que não traz a palavra "tributário").
+ *
+ * Critério largo de propósito, e provisório: o `Id` é o genérico `9999`, então
+ * qualquer recusa que cite "cenário" libera o caixa. Sai quando o ERP expuser um
+ * sinal estruturado no `FaturarNFCe`.
  */
 export function ehRecusaDeCenarioTributario(mensagem: string): boolean {
-  return /cenario\s+tributario/.test(normalizar(mensagem));
+  return /cenario/.test(normalizar(mensagem));
 }
