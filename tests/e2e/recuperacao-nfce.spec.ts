@@ -278,8 +278,17 @@ test.describe('venda retomada já paga — congelamento e saída', () => {
     // O pagamento do rascunho chega aplicado e aprovado.
     await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
 
-    await page.getByTestId('campo-codigo-produto').fill(SKU_DO_RASCUNHO);
-    await page.getByTestId('campo-codigo-produto').press('Enter');
+    // Desde 2026-10-08 (AD-275) o campo de código já nasce fechado nesta venda:
+    // `readOnly` + `aria-disabled`, e o clique diz por quê. Não há mais o que
+    // digitar — o Playwright recusa o `fill` num campo `aria-disabled`.
+    const campo = page.getByTestId('campo-codigo-produto');
+    await expect(campo).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('abrir-busca-produto')).toHaveAttribute('aria-disabled', 'true');
+    // O modal de recuperação ainda faz a animação de saída e cobre o campo: um
+    // clique por coordenada cairia na tabela dele. O `fill` de antes esperava
+    // sozinho; um clique forçado, não.
+    await expect(page.getByTestId('modal-recuperacao-nfce')).toHaveCount(0);
+    await campo.click({ force: true });
 
     // Nada entra, e o aviso nomeia o documento — não um gesto do operador.
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
