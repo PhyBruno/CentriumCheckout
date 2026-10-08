@@ -30,7 +30,16 @@ describe('ehRecusaDeCenarioTributario', () => {
     expect(ehRecusaDeCenarioTributario(mensagem)).toBe(false);
   });
 
-  it('exige as duas palavras juntas — "cenário" sozinho não basta', () => {
-    expect(ehRecusaDeCenarioTributario('Cenário de pagamento não encontrado')).toBe(false);
+  it('reconhece a variante do contrato de outubro, sem "tributário" (AD-258)', () => {
+    expect(
+      ehRecusaDeCenarioTributario(
+        'Cenário não encontrado!\r\nCenário pesquisado: Empresa=1, UF Destino=SC',
+      ),
+    ).toBe(true);
+  });
+
+  it('o critério é a palavra "cenário", com ou sem acento e em qualquer caixa', () => {
+    expect(ehRecusaDeCenarioTributario('CENÁRIO inválido')).toBe(true);
+    expect(ehRecusaDeCenarioTributario('cenario invalido')).toBe(true);
   });
 });
