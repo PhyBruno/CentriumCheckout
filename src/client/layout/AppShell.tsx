@@ -6,6 +6,8 @@ import {
   useFinalizacaoVenda,
   vendaTemAlgoACancelar,
 } from '../features/finalizacao-suspensao/AcoesFinaisVenda';
+import { motivoCarrinhoBloqueadoAgora } from '../features/carrinho/useCarrinho';
+import { motivoClienteBloqueadoAgora } from '../features/cliente/useCliente';
 import { useFraseDeRecusaDeImportacao } from '../features/importacao/useImportacaoDocumento';
 import { TeclasVendaRapida } from '../features/venda-rapida/TeclasVendaRapida';
 import { useTeclasFixas } from '../hotkeys/mapaAtalhos';
@@ -235,9 +237,11 @@ function TeclasFixasDaVenda({ compacto }: TeclasFixasDaVendaProps): null {
       },
     },
     IDENTIFICAR_CLIENTE: {
-      // A lupa do card de cliente nunca fica bloqueada: quem recusa a troca de
-      // cliente com item na venda é o `clienteSlice`, no fim do gesto.
-      indisponivel: () => null,
+      // A mesma recusa da lupa do card de cliente, pela mesma função: com item
+      // na venda o cliente não troca, e a tecla diz isso em vez de abrir uma
+      // busca de onde nenhuma escolha vale (pedido do usuário, 2026-10-08;
+      // `data-model.md` da 016: "a mesma do controle equivalente na tela").
+      indisponivel: motivoClienteBloqueadoAgora,
       // O mesmo `abrir` que a lupa chama. No wizard mobile, `MobileWizard` leva
       // o operador à etapa 1, onde o card existe (decisão de 2026-09-15).
       executar: () => {
@@ -246,8 +250,9 @@ function TeclasFixasDaVenda({ compacto }: TeclasFixasDaVendaProps): null {
       },
     },
     IDENTIFICAR_PRODUTO: {
-      // Idem para a lupa da barra de produto.
-      indisponivel: () => null,
+      // Idem para a lupa da barra de produto: venda congelada não recebe
+      // produto, e a tecla recusa com a frase do lápis e da lixeira da grid.
+      indisponivel: motivoCarrinhoBloqueadoAgora,
       executar: () => {
         auditarAtalho('IDENTIFICAR_PRODUTO');
         useJanelasStore.getState().abrir('produto');

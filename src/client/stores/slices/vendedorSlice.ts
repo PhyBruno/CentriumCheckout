@@ -131,8 +131,27 @@ export interface VendedorSlice extends VendedorState {
   ): void;
 }
 
+/**
+ * A frase nomeia a saída ("Limpar") e fala de venda **em pagamento**, e não só
+ * de pagamento aprovado: `podeMutarCarrinho()` também fecha ao escolher a
+ * condição (AD-152), e o texto anterior ("já há pagamento aprovado") soava falso
+ * para quem ainda não aprovou nada.
+ */
 const AVISO_VENDEDOR_BLOQUEADO =
-  'Já há pagamento aprovado nesta venda: o vendedor não pode mais ser trocado.';
+  'Esta venda já está em pagamento: o vendedor não pode mais ser trocado. Use "Limpar" no cartão de pagamento para voltar a editar.';
+
+/**
+ * Por que o vendedor da venda não pode ser trocado agora — `null` quando pode.
+ *
+ * **A única cópia do predicado**: o slice o consulta antes de gravar
+ * (`selecionarVendedor`) e a tela o consulta para fechar a lupa *antes* do gesto
+ * (pedido do usuário, 2026-10-08). É a mesma razão pela qual o carrinho expõe
+ * `motivoCarrinhoBloqueado`: duas redações do mesmo motivo divergem no dia em
+ * que só uma for revisada.
+ */
+export function motivoVendedorBloqueado(podeMutarCarrinho: boolean): string | null {
+  return podeMutarCarrinho ? null : AVISO_VENDEDOR_BLOQUEADO;
+}
 
 /** `VendedorCodigo` `0`/ausente é o "vazio" do campo — `int64` não anulável. */
 function semVendedorDefault(sessaoUsuario: SessaoUsuario): boolean {
@@ -166,8 +185,9 @@ export function criarVendedorSlice(
     },
 
     selecionarVendedor: (vendedor) => {
-      if (!deps.podeMutarCarrinho()) {
-        deps.avisar?.(AVISO_VENDEDOR_BLOQUEADO);
+      const bloqueio = motivoVendedorBloqueado(deps.podeMutarCarrinho());
+      if (bloqueio !== null) {
+        deps.avisar?.(bloqueio);
         return;
       }
 

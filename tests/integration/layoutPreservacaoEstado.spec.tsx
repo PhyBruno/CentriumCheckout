@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppShell } from '../../src/client/layout/AppShell';
 import { useEdicaoItemStore } from '../../src/client/stores/edicaoItemStore';
@@ -264,12 +264,16 @@ describe('Travessia do breakpoint no meio de um gesto', () => {
   });
 
   it('o modal de busca aberto some na travessia sem levar nada da venda junto', async () => {
-    const usuario = userEvent.setup();
     popularVendaAdiantada();
     renderizarShell();
 
-    await usuario.click(screen.getByTestId('abrir-busca-produto'));
-    expect(screen.getByTestId('modal-busca-produto')).toBeInTheDocument();
+    // Pelo store, e não pelo clique na lupa: a venda adiantada já tem condição
+    // escolhida, e a lupa fecha com a venda congelada (2026-10-08). O que o
+    // teste afirma é o destino do modal na travessia, não como ele foi aberto.
+    act(() => {
+      useJanelasStore.getState().abrir('produto');
+    });
+    expect(await screen.findByTestId('modal-busca-produto')).toBeInTheDocument();
 
     const antes = useVendaStore.getState();
     cruzarBreakpointPara('mobile');

@@ -61,6 +61,7 @@ import {
   useContextoPrecificacao,
   useEdicaoDeItemExistente,
   useInsercaoDeProduto,
+  useMotivoCarrinhoBloqueado,
   usePoliticaSaldo,
   type ResultadoConfirmacao,
   type RevisaoProduto,
@@ -688,6 +689,23 @@ export function EntradaRapidaProduto({
     fecharTecladoVirtual();
   }
 
+  /**
+   * A venda está congelada (condição escolhida ou pagamento aprovado) e nenhum
+   * produto entra mais (pedido do usuário, 2026-10-08).
+   *
+   * A recusa já existia no fim do gesto — `inserirItem` devolve o aviso —, mas
+   * o campo de código e a lupa seguiam abertos e convidavam o operador a
+   * bipar uma compra que a venda ia descartar. A frase é a mesma do lápis e da
+   * lixeira da grid (`useMotivoCarrinhoBloqueado`), com a saída "Limpar".
+   *
+   * `readOnly` + `aria-disabled`, e não `disabled` (AD-143): o campo precisa
+   * receber o clique para explicar o motivo, e o `disabled` nativo o engole.
+   * Com o lápis o código já fica `disabled` por outra razão (`linhaEmEdicao`),
+   * então este bloqueio só vale fora dele.
+   */
+  const bloqueioDoCarrinho = useMotivoCarrinhoBloqueado();
+  const bloqueioDoCodigo: MotivoBloqueio = linhaEmEdicao === null ? bloqueioDoCarrinho : null;
+
   // Terceiro sentido do `focoVendaStore`: daqui para o campo do vendedor,
   // quando a venda ainda não tem um (ver `exigirVendedor`).
   const semVendedor = useVendedorAtual() === null;
@@ -717,6 +735,21 @@ export function EntradaRapidaProduto({
     }
     notificar.erro(AVISO_SEM_VENDEDOR);
     focarVendedor();
+    return false;
+  }
+
+  /**
+   * Venda congelada não recebe produto: responde `false` depois de dizer o
+   * motivo. Vem **antes** de `exigirVendedor` e de qualquer consulta ao ERP —
+   * pedir um `GetProduto` para um item que a venda vai recusar é só latência —,
+   * nos mesmos pontos de entrada que ela guarda: Enter, TAB/modal, câmera e a
+   * confirmação da prévia.
+   */
+  function exigirCarrinhoLivre(): boolean {
+    if (bloqueioDoCarrinho === null) {
+      return true;
+    }
+    notificar.erro(bloqueioDoCarrinho);
     return false;
   }
 
@@ -771,7 +804,7 @@ export function EntradaRapidaProduto({
       return;
     }
 
-    if (!exigirVendedor()) {
+    if (!exigirCarrinhoLivre() || !exigirVendedor()) {
       return;
     }
 
@@ -891,8 +924,9 @@ export function EntradaRapidaProduto({
     }
     // **Antes** do `resetar()` abaixo: recusada a inserção por falta de
     // vendedor, descartar a prévia em curso cobraria do operador um trabalho
-    // que a leitura recusada nem chegou a substituir.
-    if (!exigirVendedor()) {
+    // que a leitura recusada nem chegou a substituir. O mesmo vale para a venda
+    // congelada.
+    if (!exigirCarrinhoLivre() || !exigirVendedor()) {
       return;
     }
     if (resolvido !== null || linhaEmEdicao !== null) {
@@ -952,7 +986,7 @@ export function EntradaRapidaProduto({
     // O TAB e o modal de busca também terminam em item no grid quando o produto
     // é `''` (inserção direta, AD-124), então a exigência vale aqui e não só na
     // confirmação da prévia — e vale **antes** do `GetProduto`.
-    if (!exigirVendedor()) {
+    if (!exigirCarrinhoLivre() || !exigirVendedor()) {
       return;
     }
 
@@ -1059,7 +1093,14 @@ export function EntradaRapidaProduto({
    * consulta (`codigoPendenteDeConsulta`, AD-254) — pelo mesmo caminho do TAB.
    */
   async function aoSairDoCodigo(): Promise<void> {
-    if (trocandoTeclado.current || ocupado || !codigoPendenteDeConsulta()) {
+    // Venda congelada: o campo está fechado e o clique nele já disse o motivo —
+    // sair dele não consulta nada nem repete o aviso.
+    if (
+      bloqueioDoCarrinho !== null ||
+      trocandoTeclado.current ||
+      ocupado ||
+      !codigoPendenteDeConsulta()
+    ) {
       return;
     }
     if (texto.trim() === '') {
@@ -1239,8 +1280,9 @@ export function EntradaRapidaProduto({
     // Daqui para baixo é **inserção**, não edição de linha existente — e toda
     // inserção exige vendedor. `confirmarEntradaRapida` repete a checagem por
     // ser também o alvo da câmera; aqui ela cobre a confirmação da prévia, que
-    // chama `confirmarEdicao`/`confirmarPrevia` direto.
-    if (!exigirVendedor()) {
+    // chama `confirmarEdicao`/`confirmarPrevia` direto. A venda congelada
+    // entra na mesma porta.
+    if (!exigirCarrinhoLivre() || !exigirVendedor()) {
       return;
     }
 
@@ -1496,7 +1538,7 @@ export function EntradaRapidaProduto({
             <input
               ref={campoCodigo}
               className={cn(
-                'h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono disabled:cursor-not-allowed disabled:opacity-70 md:h-11.5',
+                'h-10 w-full rounded-xl border border-border bg-muted px-3 font-mono disabled:cursor-not-allowed disabled:opacity-70 aria-disabled:cursor-not-allowed aria-disabled:opacity-70 md:h-11.5',
                 tecladoVirtual && 'pr-14',
               )}
               data-testid="campo-codigo-produto"
@@ -1529,12 +1571,24 @@ export function EntradaRapidaProduto({
                produto diferente o caminho é cancelar a edição e bipar o novo
                código, que é o gesto que o caixa já faz. */
               disabled={linhaEmEdicao !== null}
+              /* **Venda congelada** (pedido do usuário, 2026-10-08): o campo
+               fica `readOnly` + `aria-disabled` — apagado, com o cursor de
+               proibido no hover e fora da ordem de TAB — e o clique diz por
+               quê. O que já estava digitado permanece; só a digitação fecha. */
+              readOnly={bloqueioDoCodigo !== null}
+              {...atributosDeBloqueio(bloqueioDoCodigo)}
               title={
                 linhaEmEdicao === null
-                  ? undefined
+                  ? (bloqueioDoCodigo ?? undefined)
                   : 'O código não muda na edição de um item já lançado: cancele com Esc para inserir outro produto.'
               }
+              onClick={acaoBloqueavel(bloqueioDoCodigo, () => {
+                /* campo livre: o clique só posiciona o cursor. */
+              })}
               onChange={(evento) => {
+                if (bloqueioDoCodigo !== null) {
+                  return;
+                }
                 // Mexer no código é retomá-lo: redigitar o recusado e sair
                 // volta a consultar, como qualquer código digitado.
                 entradaRecusada.current = null;
@@ -1557,7 +1611,7 @@ export function EntradaRapidaProduto({
               levaria o foco para o botão e o teclado fecharia antes de reabrir
               no outro modo. Fica dentro do `<label>` do código, então o toque
               também não conta como "fora do campo" para `tecladoVirtual.ts`. */}
-            {tecladoVirtual && linhaEmEdicao === null ? (
+            {tecladoVirtual && linhaEmEdicao === null && bloqueioDoCodigo === null ? (
               <button
                 type="button"
                 className="absolute top-1/2 right-1.5 flex h-7 -translate-y-1/2 items-center rounded-full bg-secondary px-2.5 font-sans text-xs font-semibold text-primary"
@@ -1585,9 +1639,10 @@ export function EntradaRapidaProduto({
           className="size-10 shrink-0 rounded-full md:size-11.5"
           aria-label="Buscar produto"
           data-testid="abrir-busca-produto"
-          onClick={() => {
+          {...atributosDeBloqueio(bloqueioDoCarrinho)}
+          onClick={acaoBloqueavel(bloqueioDoCarrinho, () => {
             abrirJanela('produto');
-          }}
+          })}
         >
           <Search className="size-4.5" aria-hidden="true" />
         </Button>

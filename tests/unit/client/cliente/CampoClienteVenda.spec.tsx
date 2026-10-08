@@ -6,9 +6,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CampoClienteVenda } from '../../../../src/client/features/cliente/CampoClienteVenda';
 import { clienteCheckoutDe } from '../../../support/cliente';
 import { linhaDe } from '../../../support/precificacao';
+import { notificar } from '../../../../src/client/lib/notificar';
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useJanelasStore } from '../../../../src/client/stores/janelasStore';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
+import { AVISO_CLIENTE_COM_ITEM } from '../../../../src/client/stores/slices/clienteSlice';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
 
 /**
@@ -274,11 +276,43 @@ describe('CampoClienteVenda — troca de cliente (correção do usuário, 2026-0
     expect(campo).toHaveAttribute('aria-disabled', 'true');
     expect(campo).toHaveAttribute('title', expect.stringContaining('lista de preço'));
     expect(screen.getByTestId('identificar-cliente')).toHaveAttribute('aria-disabled', 'true');
+    // A lupa fecha junto (pedido do usuário, 2026-10-08) e o campo apaga: a
+    // caixa inteira ganha o cursor de proibido, e o conteúdo digitado fica.
+    expect(screen.getByTestId('abrir-busca-cliente')).toHaveAttribute('aria-disabled', 'true');
+    expect(campo.closest('label')).toHaveClass('cursor-not-allowed', 'opacity-70');
 
     // Nem o ERP é consultado: trocar o cliente é o que está fechado, e buscar
     // o cadastro só para recusá-lo depois seria uma ida de rede desperdiçada.
     expect(chamadas).not.toHaveBeenCalled();
     expect(useVendaStore.getState().clienteAtual).toBeNull();
+  });
+
+  it('com item na venda, clicar na lupa explica o motivo e não abre a busca (2026-10-08)', async () => {
+    const usuario = userEvent.setup();
+    const erro = vi.spyOn(notificar, 'erro');
+    renderCard();
+    await abrirCard(usuario);
+    act(() => {
+      useVendaStore.setState({ linhas: [linhaDe({})] });
+    });
+
+    await usuario.click(screen.getByTestId('abrir-busca-cliente'));
+
+    expect(erro).toHaveBeenCalledWith(AVISO_CLIENTE_COM_ITEM);
+    expect(screen.queryByTestId('modal-busca-cliente')).toBeNull();
+    expect(useJanelasStore.getState().janela).toBe('nenhuma');
+  });
+
+  it('sem item na venda, campo e lupa seguem livres', async () => {
+    const usuario = userEvent.setup();
+    renderCard();
+    await abrirCard(usuario);
+
+    expect(screen.getByTestId('abrir-busca-cliente')).not.toHaveAttribute('aria-disabled');
+    expect(screen.getByTestId('campo-documento-cliente')).not.toHaveAttribute('aria-disabled');
+    expect(screen.getByTestId('campo-documento-cliente').closest('label')).not.toHaveClass(
+      'cursor-not-allowed',
+    );
   });
 
   it('o slice recusa a troca mesmo por fora do campo — a regra não mora na UI', async () => {

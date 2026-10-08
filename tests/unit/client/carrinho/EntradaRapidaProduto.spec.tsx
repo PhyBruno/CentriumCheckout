@@ -15,7 +15,9 @@ import { useEdicaoItemStore } from '../../../../src/client/stores/edicaoItemStor
 import { useFocoVendaStore } from '../../../../src/client/stores/focoVendaStore';
 import { useJanelasStore } from '../../../../src/client/stores/janelasStore';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
+import { motivoCarrinhoBloqueado } from '../../../../src/client/stores/slices/carrinhoSlice';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
+import { condicaoDe } from '../../../support/pagamento';
 import { linhaDe, respostaGetProduto, snapshotDe } from '../../../support/precificacao';
 
 /**
@@ -1104,6 +1106,130 @@ describe('EntradaRapidaProduto — venda sem vendedor (correção do usuário, 2
     );
 
     vi.unstubAllGlobals();
+  });
+});
+
+/**
+ * Venda congelada pela condição de pagamento (pedido do usuário, 2026-10-08).
+ *
+ * Escolher a condição já fecha o carrinho (AD-152), mas o campo de código e a
+ * lupa seguiam abertos — o operador bipava e só então ouvia o não. O padrão é o
+ * de `lib/bloqueio.ts`: `readOnly` + `aria-disabled` e o clique que explica.
+ */
+describe('EntradaRapidaProduto — venda congelada (pedido do usuário, 2026-10-08)', () => {
+  const MOTIVO = motivoCarrinhoBloqueado(false, false);
+
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({
+      linhas: [],
+      vendedorAtual: VENDEDOR_DE_TESTE,
+      condicaoSelecionada: null,
+      pagamentos: [],
+    });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+    useJanelasStore.getState().fechar();
+  });
+
+  function congelar(): void {
+    act(() => {
+      useVendaStore.setState({ condicaoSelecionada: condicaoDe(1, 'A VISTA') });
+    });
+  }
+
+  it('o campo de código fecha: somente leitura, fora do TAB e com o motivo no título', () => {
+    renderBarra();
+    congelar();
+
+    const campo = screen.getByTestId('campo-codigo-produto');
+    expect(campo).toHaveAttribute('aria-disabled', 'true');
+    expect(campo).toHaveAttribute('readonly');
+    expect(campo).toHaveAttribute('tabindex', '-1');
+    expect(campo).toHaveAttribute('title', MOTIVO);
+    // `readOnly`, e não `disabled`: o campo precisa receber o clique.
+    expect(campo).not.toBeDisabled();
+  });
+
+  it('clicar no campo explica o motivo e digitar não muda nada', async () => {
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+    congelar();
+    const campo = screen.getByTestId('campo-codigo-produto');
+
+    await usuario.click(campo);
+    await usuario.type(campo, '001234');
+
+    expect(erro).toHaveBeenCalledWith(MOTIVO);
+    expect(campo).toHaveValue('');
+  });
+
+  it('o que já estava digitado permanece no campo fechado', async () => {
+    const usuario = userEvent.setup();
+    renderBarra();
+    const campo = screen.getByTestId('campo-codigo-produto');
+
+    // Digita antes de congelar, congela depois.
+    await usuario.type(campo, '789');
+    congelar();
+
+    expect(campo).toHaveValue('789');
+    expect(campo).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('Enter no campo fechado não consulta o ERP nem insere', async () => {
+    const chamadas = vi.fn();
+    vi.stubGlobal('fetch', chamadas);
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+    congelar();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '{Enter}');
+
+    expect(chamadas).not.toHaveBeenCalled();
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+    expect(erro).toHaveBeenCalledWith(MOTIVO);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a lupa fecha, explica o motivo ao clique e não abre a busca', async () => {
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+    congelar();
+
+    const lupa = screen.getByTestId('abrir-busca-produto');
+    expect(lupa).toHaveAttribute('aria-disabled', 'true');
+    expect(lupa).toHaveAttribute('title', MOTIVO);
+
+    await usuario.click(lupa);
+
+    expect(erro).toHaveBeenCalledWith(MOTIVO);
+    expect(useJanelasStore.getState().janela).toBe('nenhuma');
+  });
+
+  it('no celular o botão ABC/123 some junto com o campo', () => {
+    renderBarra({ tecladoVirtual: true });
+    expect(screen.getByTestId('alternar-teclado-codigo')).toBeInTheDocument();
+
+    congelar();
+
+    expect(screen.queryByTestId('alternar-teclado-codigo')).toBeNull();
+  });
+
+  it('sem condição nem pagamento, campo e lupa seguem livres', async () => {
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    expect(screen.getByTestId('campo-codigo-produto')).not.toHaveAttribute('aria-disabled');
+    expect(screen.getByTestId('abrir-busca-produto')).not.toHaveAttribute('aria-disabled');
+
+    await usuario.click(screen.getByTestId('abrir-busca-produto'));
+
+    expect(useJanelasStore.getState().janela).toBe('produto');
   });
 });
 

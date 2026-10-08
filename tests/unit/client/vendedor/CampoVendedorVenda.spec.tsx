@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CampoVendedorVenda } from '../../../../src/client/features/vendedor/CampoVendedorVenda';
 import { rotuloDoVendedor } from '../../../../src/client/features/vendedor/useVendedor';
+import { notificar } from '../../../../src/client/lib/notificar';
 import { useSessionStore } from '../../../../src/client/stores/sessionStore';
+import { motivoVendedorBloqueado } from '../../../../src/client/stores/slices/vendedorSlice';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
+import { condicaoDe } from '../../../support/pagamento';
 import { registroBootstrapDe } from '../../../support/sessao';
 
 /**
@@ -50,7 +54,12 @@ describe('rotuloDoVendedor', () => {
 describe('CampoVendedorVenda', () => {
   beforeEach(() => {
     useSessionStore.setState({ estado: 'pronto', registro: registroBootstrapDe() });
-    useVendaStore.setState({ linhas: [], vendedorAtual: null });
+    useVendaStore.setState({
+      linhas: [],
+      vendedorAtual: null,
+      condicaoSelecionada: null,
+      pagamentos: [],
+    });
     useVendaStore.getState().resetarAuditoria('NOVA');
   });
 
@@ -109,11 +118,39 @@ describe('CampoVendedorVenda', () => {
     expect(useVendaStore.getState().vendedorAtual).toBeNull();
   });
 
-  it('mantém a lupa clicável para o operador conferir quem está na venda', () => {
+  it('a lupa fica livre enquanto a venda ainda pode mudar', async () => {
+    const usuario = userEvent.setup();
     renderCampo();
 
-    // Bloqueio pós-pagamento é decidido pelo slice (I4), não escondendo a
-    // busca: consultar a lista é leitura, e continua permitida.
-    expect(screen.getByTestId('abrir-busca-vendedor')).toBeEnabled();
+    const lupa = screen.getByTestId('abrir-busca-vendedor');
+    expect(lupa).not.toHaveAttribute('aria-disabled');
+
+    await usuario.click(lupa);
+
+    expect(await screen.findByTestId('modal-busca-vendedor')).toBeInTheDocument();
+  });
+
+  it('com a venda em pagamento a lupa fecha, explica o motivo ao clique e não abre a busca (2026-10-08)', async () => {
+    const usuario = userEvent.setup();
+    const erro = vi.spyOn(notificar, 'erro');
+    // Escolher a condição já congela a venda (AD-152) — antes de qualquer
+    // pagamento aprovado.
+    useVendaStore.setState({ condicaoSelecionada: condicaoDe(1, 'A VISTA') });
+    renderCampo();
+
+    const lupa = screen.getByTestId('abrir-busca-vendedor');
+    expect(lupa).toHaveAttribute('aria-disabled', 'true');
+    expect(lupa).toHaveAttribute('tabindex', '-1');
+    expect(lupa).toHaveAttribute('title', motivoVendedorBloqueado(false));
+
+    await usuario.click(lupa);
+
+    expect(erro).toHaveBeenCalledWith(motivoVendedorBloqueado(false));
+    expect(screen.queryByTestId('modal-busca-vendedor')).toBeNull();
+  });
+
+  it('o motivo nomeia a saída — "Limpar" no cartão de pagamento', () => {
+    expect(motivoVendedorBloqueado(false)).toContain('Limpar');
+    expect(motivoVendedorBloqueado(true)).toBeNull();
   });
 });

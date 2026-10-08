@@ -4174,3 +4174,28 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `src/client/domain/venda/recusaDoErp.ts`, `tests/unit/domain/venda/recusaDoErp.spec.ts`.
 
 **Verificação:** 108 testes (recusaDoErp, serviços de faturamento e integração de finalização) verdes e `tsc` limpo. **Não verificado:** contra o ERP real, nem em navegador.
+
+### AD-275: campo de código do produto, campo e lupa do cliente e lupa do vendedor fecham quando a venda não aceita mais a troca (2026-10-08)
+
+**Pedido do usuário:** *"Ao inserir condicao ou forma de pagamento, já não é possivel inserir produto, mas o input do codigo do produto continua enabled, isso é um problema, tem que ficar disabled, com icone no hover, e se clicar dar motivo, a lupa continua enabled. [...] depois que tem item no carrinho, já não pode trocar o cliente, contudo, o campo do codigo do cliente tem que ficar disabled (preservando o conteudo que ja ta lá), e a lupa também tem que ficar disabled. [...] se já tiver pagamento aprovado não é possivel trocar vendedor hoje, por isso, a lupa de pesquisa do vendedor tem que ficar disabled. Todos esses casos são necessarios para nao induzir o usuario ao erro. O mesmo para mobile"*.
+
+**Origem do defeito.** As três recusas já existiam no fim do gesto (`inserirItem`, `selecionarCliente`, `selecionarVendedor` devolvem aviso), mas os controles seguiam abertos e convidavam o operador a fazer o que a venda ia descartar. É o oposto do padrão de `lib/bloqueio.ts` (AD-143): o controle nasce bloqueado e o clique **ensina a saída**.
+
+**Correção — o mesmo padrão nos três, `aria-disabled` + `readOnly` nos campos de texto (não `disabled`, que engole o clique):**
+1. **Produto** (venda congelada por condição ou pagamento aprovado — `useMotivoCarrinhoBloqueado`, a frase do lápis e da lixeira): o campo de código fica `readOnly`, fora do TAB, com o texto que já estava digitado preservado, `cursor-not-allowed` no hover e o motivo ao clique; a lupa fecha; o ABC/123 do celular some. Enter, TAB, saída do campo, câmera e a confirmação da prévia param **antes** do `GetProduto` (`exigirCarrinhoLivre`).
+2. **Cliente** (item ativo na venda — `motivoClienteBloqueadoPorItem`): a caixa do campo de código/CPF apaga (`opacity-70`, cursor de proibido) preservando o conteúdo, e a lupa fecha. O campo já era `readOnly` desde AD-209; faltava o aspecto e a lupa.
+3. **Vendedor** (`podeMutarCarrinho()` falso — `motivoVendedorBloqueado`): a lupa fecha. **Reverte** o comentário de `CampoVendedorVenda` que mantinha a lupa clicável "para conferir quem está na venda": o nome já está no campo ao lado.
+
+**Os atalhos F3/F4 seguem as lupas.** Antes, os dois diziam em comentário "a lupa nunca fica bloqueada"; agora `indisponivel` delega ao **mesmo** veredito do controle (`motivoClienteBloqueadoAgora`, `motivoCarrinhoBloqueadoAgora`), como `data-model.md` da 016 já mandava ("a mesma do controle equivalente na tela"). Vivem em `features/`, e não no `AppShell`, porque `layout/` não importa slice do `vendaStore` (`semDuplicacaoRegra.spec.ts`, SC-001).
+
+**Uma regra, uma função.** Cada slice passou a exportar o predicado que usa para recusar — `motivoClienteBloqueadoPorItem`, `motivoVendedorBloqueado` — e a tela o consulta para antecipar; sem segunda cópia que possa divergir. A frase do vendedor mudou de "Já há pagamento aprovado nesta venda…" para "Esta venda já está em pagamento…" e nomeia a saída ("Limpar"): `podeMutarCarrinho()` também fecha ao **escolher a condição** (AD-152), antes de qualquer aprovação, e o texto antigo soava falso nesse caso.
+
+**Mobile.** Os três componentes são os mesmos nos dois layouts; nenhum código novo no wizard. `readOnly` também mantém o teclado virtual fechado.
+
+**Fora do pedido, de propósito.** O botão "Scanner" (câmera) do celular continua ativo com a venda congelada: o caminho dele (`capturarPorCamera`) já para antes do ERP e diz o motivo, mas o botão em si não aparece bloqueado.
+
+**Design.** O Pencil MCP estava indisponível (app fechado); o `.pen` define "Secondary disabled" (fundo `$surface-strong`, texto `$muted-soft`) só para botões — as lupas herdam do `Button` com `aria-disabled`. Para campos de texto o desenho não tem variante, e foi usada a convenção que o código já tinha (`cursor-not-allowed` + `opacity-70`).
+
+**Impact:** `clienteSlice.ts`, `vendedorSlice.ts`, `useCarrinho.ts`, `useCliente.ts`, `EntradaRapidaProduto.tsx`, `CampoClienteVenda.tsx`, `CampoVendedorVenda.tsx`, `AppShell.tsx`; testes `CampoVendedorVenda.spec`, `CampoClienteVenda.spec`, `EntradaRapidaProduto.spec`, `appShell.atalhos.spec`, `layoutPreservacaoEstado.spec` e o E2E `selecao-vendedor.spec` (cenário 6).
+
+**Verificação:** `tsc`, ESLint e Prettier limpos; 2145 testes unit/integração verdes. E2E: ver o resultado registrado na tarefa. **Não verificado:** em navegador real nem no celular.

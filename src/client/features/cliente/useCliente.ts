@@ -18,9 +18,26 @@ import {
 } from '../../services/cliente/clienteQueries';
 import { ErroRespostaInvalida } from '../../services/errosErp';
 import type { ClienteCheckout } from '../../../shared/schemas/cliente.schema';
-import type { ResultadoAplicacaoCliente } from '../../stores/slices/clienteSlice';
+import {
+  motivoClienteBloqueadoPorItem,
+  type ResultadoAplicacaoCliente,
+} from '../../stores/slices/clienteSlice';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useVendaStore } from '../../stores/vendaStore';
+
+/**
+ * Por que o cliente não pode ser trocado **agora** — `null` quando pode —, lido
+ * fora de React para o F3 decidir no instante da pressionada (`AppShell`, `FR-018`
+ * da 016). É a mesma função que o card de cliente usa para fechar o campo e a
+ * lupa, então a tecla e o clique nunca divergem.
+ *
+ * Mora aqui, e não no `AppShell`, porque `layout/` não importa slice do
+ * `vendaStore` (`semDuplicacaoRegra.spec.ts`, SC-001) — o mesmo caminho de
+ * `motivoCarrinhoBloqueadoAgora` em `useCarrinho.ts`.
+ */
+export function motivoClienteBloqueadoAgora(): string | null {
+  return motivoClienteBloqueadoPorItem(useVendaStore.getState().linhas);
+}
 
 /**
  * Orquestração da identificação de cliente, compartilhada pelas três

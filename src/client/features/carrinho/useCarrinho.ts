@@ -39,7 +39,7 @@ import {
 } from '../../services/produto/produtoQueries';
 import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useSessionStore } from '../../stores/sessionStore';
-import { useVendaStore } from '../../stores/vendaStore';
+import { useVendaStore, type VendaState } from '../../stores/vendaStore';
 
 /**
  * Orquestração de inserção de produto, compartilhada pelos dois caminhos de
@@ -441,14 +441,25 @@ export interface ApiInsercao {
  * referência nova a cada render e o Zustand v5 leria como mudança.
  */
 export function useMotivoCarrinhoBloqueado(): MotivoBloqueio {
-  const podeMutar = useVendaStore((estado) => estado.podeMutarCarrinho());
-  const veioDeDocumento = useVendaStore((estado) =>
-    estado.pagamentos.some(
-      (pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO',
-    ),
-  );
+  // O seletor devolve a própria frase (ou `null`): primitivo, comparado por
+  // valor, então não re-renderiza à toa.
+  return useVendaStore(motivoDoCarrinhoNoEstado);
+}
 
-  return motivoCarrinhoBloqueado(podeMutar, veioDeDocumento);
+/**
+ * O mesmo veredito, lido **agora** e fora de React — para o F4, que decide no
+ * instante da pressionada (`AppShell`, `FR-018` da 016). Passa pelo mesmo
+ * seletor do hook: a tecla e a lupa nunca divergem.
+ */
+export function motivoCarrinhoBloqueadoAgora(): MotivoBloqueio {
+  return motivoDoCarrinhoNoEstado(useVendaStore.getState());
+}
+
+function motivoDoCarrinhoNoEstado(estado: VendaState): MotivoBloqueio {
+  const veioDeDocumento = estado.pagamentos.some(
+    (pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO',
+  );
+  return motivoCarrinhoBloqueado(estado.podeMutarCarrinho(), veioDeDocumento);
 }
 
 export function useEncerrarVenda(): () => void {

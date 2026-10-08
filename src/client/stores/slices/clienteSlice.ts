@@ -181,6 +181,20 @@ const AVISO_CLIENTE_BLOQUEADO =
 export const AVISO_CLIENTE_COM_ITEM =
   'Esta venda já tem itens: o cliente não pode mais ser trocado, porque a lista de preço dele já valeu na precificação. Cancele os itens para trocar o cliente.';
 
+/**
+ * Por que o cliente da venda não pode ser trocado agora — `null` quando pode.
+ *
+ * **A única cópia do predicado "a venda já tem item"**: o slice a consulta para
+ * recusar a troca (`trocaRecusadaPorItem`) e a tela a consulta para fechar o
+ * campo de código, a lupa e o F3 *antes* do gesto (pedido do usuário,
+ * 2026-10-08). Linha cancelada não conta — ela saiu da venda.
+ */
+export function motivoClienteBloqueadoPorItem(
+  linhas: readonly { readonly cancelada: boolean }[],
+): string | null {
+  return linhas.some((linha) => !linha.cancelada) ? AVISO_CLIENTE_COM_ITEM : null;
+}
+
 const AVISO_REPRECIFICACAO_FALHOU =
   'O cliente foi trocado, mas os preços do carrinho não puderam ser atualizados. Verifique antes de finalizar.';
 
@@ -301,10 +315,11 @@ export function criarClienteSlice(
       if (origem === 'DAV' || origem === 'RASCUNHO') {
         return false;
       }
-      if (!get().linhas.some((linha) => !linha.cancelada)) {
+      const motivo = motivoClienteBloqueadoPorItem(get().linhas);
+      if (motivo === null) {
         return false;
       }
-      deps.avisar?.(AVISO_CLIENTE_COM_ITEM);
+      deps.avisar?.(motivo);
       return true;
     }
 
