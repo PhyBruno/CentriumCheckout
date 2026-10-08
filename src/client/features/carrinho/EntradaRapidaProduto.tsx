@@ -317,7 +317,15 @@ export interface EntradaRapidaProdutoProps {
    * uma função e não um `ReactNode` solto: quem monta o botão não precisa —
    * nem consegue — inventar um segundo caminho de inserção.
    */
-  readonly renderizarCaptura?: (aoLerCodigo: (codigo: string) => void) => ReactNode;
+  readonly renderizarCaptura?: (
+    aoLerCodigo: (codigo: string) => void,
+    /**
+     * Por que nenhum produto entra agora (venda congelada), ou `null` — o botão
+     * de captura se fecha com a mesma frase da lupa e do campo de código
+     * (pedido do usuário, 2026-10-08).
+     */
+    bloqueio: MotivoBloqueio,
+  ) => ReactNode;
   /**
    * A barra está no layout de toque, onde o código é digitado no teclado
    * virtual (pedido do usuário, 2026-09-24): o campo de código abre o teclado
@@ -1653,7 +1661,7 @@ export function EntradaRapidaProduto({
             quem devolve `null` é o próprio `ScannerCamera` (`FR-011`). */}
         {renderizarCaptura?.((codigo) => {
           void capturarPorCamera(codigo);
-        })}
+        }, bloqueioDoCarrinho)}
 
         {/* Única célula que **não** é um `<label>` envolvendo o campo: esta
             contém os botões +/- além do input, e o navegador aplica o

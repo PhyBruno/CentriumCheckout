@@ -4192,7 +4192,7 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 
 **Mobile.** Os três componentes são os mesmos nos dois layouts; nenhum código novo no wizard. `readOnly` também mantém o teclado virtual fechado.
 
-**Fora do pedido, de propósito.** O botão "Scanner" (câmera) do celular continua ativo com a venda congelada: o caminho dele (`capturarPorCamera`) já para antes do ERP e diz o motivo, mas o botão em si não aparece bloqueado.
+**O botão "Scanner" (câmera) do celular fecha junto** (pedido do usuário, mesma data, depois de eu apontar a lacuna). A barra passa o motivo ao slot `renderizarCaptura` (segundo argumento) e `ScannerCamera` ganhou a prop `bloqueio`: o botão fica `aria-disabled`, apagado, e o toque diz o motivo sem abrir a câmera. **Não é o `null` de `FR-011`**: lá o aparelho não suporta a câmera e o botão nem existe; aqui ele existe e está fechado. `ScannerCamera` segue sem conhecer a venda — quem decide é o chamador.
 
 **Design.** O Pencil MCP estava indisponível (app fechado); o `.pen` define "Secondary disabled" (fundo `$surface-strong`, texto `$muted-soft`) só para botões — as lupas herdam do `Button` com `aria-disabled`. Para campos de texto o desenho não tem variante, e foi usada a convenção que o código já tinha (`cursor-not-allowed` + `opacity-70`).
 
