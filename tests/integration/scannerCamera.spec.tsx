@@ -1,13 +1,16 @@
 import { useState, type ReactElement } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EtapaClienteProdutos } from '../../src/client/layout/mobile/EtapaClienteProdutos';
 import { ScannerCamera } from '../../src/client/layout/mobile/ScannerCamera';
+import { notificar } from '../../src/client/lib/notificar';
 import { useEdicaoItemStore } from '../../src/client/stores/edicaoItemStore';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
+import { motivoCarrinhoBloqueado } from '../../src/client/stores/slices/carrinhoSlice';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
 import { instalarMatchMediaDeLayout, renderizarComProvedores } from '../support/layout';
+import { condicaoDe } from '../support/pagamento';
 import { linhaDe, respostaGetProduto } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -213,6 +216,8 @@ beforeEach(() => {
     // Nenhuma inserção acontece sem vendedor desde 2026-09-10; estes cenários
     // são sobre a câmera, não sobre a trava, então a venda nasce com um.
     vendedorAtual: { codigo: 21, nome: 'Ana Lima', origem: 'DEFAULT' },
+    condicaoSelecionada: null,
+    pagamentos: [],
   });
   useVendaStore.getState().resetarAuditoria('NOVA');
   useEdicaoItemStore.setState({ linhaEmEdicao: null });
@@ -253,6 +258,70 @@ describe('ScannerCamera — disponibilidade (FR-011)', () => {
     renderizarComProvedores(<EtapaClienteProdutos />);
 
     expect(screen.getByTestId('abrir-scanner-camera')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Venda congelada (pedido do usuário, 2026-10-08): o botão **existe** — o
+ * aparelho suporta a câmera —, mas está fechado, no padrão de `lib/bloqueio.ts`.
+ * É o contrário de `FR-011`, em que o botão nem aparece.
+ */
+describe('ScannerCamera — venda congelada', () => {
+  const MOTIVO = motivoCarrinhoBloqueado(false, false);
+
+  beforeEach(() => {
+    definirUserAgent(UA_CHROME_ANDROID);
+    instalarBarcodeDetector(CODIGO_LIDO);
+  });
+
+  it('sem condição nem pagamento o botão segue livre e abre a câmera', async () => {
+    const usuario = userEvent.setup();
+    renderizarComProvedores(<EtapaClienteProdutos />);
+
+    const botao = screen.getByTestId('abrir-scanner-camera');
+    expect(botao).not.toHaveAttribute('aria-disabled');
+
+    await usuario.click(botao);
+
+    // A câmera falsa lê o código na hora e fecha a janela: o sinal de que o
+    // botão funcionou é o item ter entrado na venda.
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+  });
+
+  it('com a condição escolhida o botão fecha, explica o motivo ao toque e não abre a câmera', async () => {
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    useVendaStore.setState({ condicaoSelecionada: condicaoDe(1, 'A VISTA') });
+    renderizarComProvedores(<EtapaClienteProdutos />);
+
+    const botao = screen.getByTestId('abrir-scanner-camera');
+    expect(botao).toHaveAttribute('aria-disabled', 'true');
+    expect(botao).toHaveAttribute('tabindex', '-1');
+    expect(botao).toHaveAttribute('title', MOTIVO);
+
+    await usuario.click(botao);
+
+    expect(erro).toHaveBeenCalledWith(MOTIVO);
+    expect(screen.queryByTestId('scanner-camera')).toBeNull();
+    // A câmera falsa inseriria na hora se tivesse aberto.
+    expect(useVendaStore.getState().linhas).toHaveLength(0);
+  });
+
+  it('o botão fecha e reabre junto com a venda — limpar o pagamento o libera', () => {
+    renderizarComProvedores(<EtapaClienteProdutos />);
+    expect(screen.getByTestId('abrir-scanner-camera')).not.toHaveAttribute('aria-disabled');
+
+    act(() => {
+      useVendaStore.setState({ condicaoSelecionada: condicaoDe(1, 'A VISTA') });
+    });
+    expect(screen.getByTestId('abrir-scanner-camera')).toHaveAttribute('aria-disabled', 'true');
+
+    act(() => {
+      useVendaStore.setState({ condicaoSelecionada: null });
+    });
+    expect(screen.getByTestId('abrir-scanner-camera')).not.toHaveAttribute('aria-disabled');
   });
 });
 

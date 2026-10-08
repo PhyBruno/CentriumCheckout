@@ -15,7 +15,7 @@ import { CampoVendedorVenda } from '../vendedor/CampoVendedorVenda';
 import { rotuloDoVendedor, useVendedorAtual } from '../vendedor/useVendedor';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useJanelasStore } from '../../stores/janelasStore';
-import { AVISO_CLIENTE_COM_ITEM } from '../../stores/slices/clienteSlice';
+import { motivoClienteBloqueadoPorItem } from '../../stores/slices/clienteSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 import { FormCadastroSimplificado } from './FormCadastroSimplificado';
 import { ModalBuscaCliente, type CandidatoEscolhido } from './ModalBuscaCliente';
@@ -87,11 +87,14 @@ export function CampoClienteVenda(): ReactElement {
    * 2026-09-10) — o porquê está no TSDoc de `AVISO_CLIENTE_COM_ITEM`.
    *
    * Quem recusa de verdade é o `clienteSlice`, para todos os caminhos de uma
-   * vez (campo, lupa, cadastro). Aqui a mesma condição só chega ao operador
-   * **antes** do gesto: linha cancelada não conta, e o seletor devolve um
-   * booleano, então nada re-renderiza à toa.
+   * vez (campo, lupa, cadastro). Aqui a mesma condição — a mesma função, não
+   * uma cópia — só chega ao operador **antes** do gesto: linha cancelada não
+   * conta, e o seletor devolve a própria frase (ou `null`), um primitivo, então
+   * nada re-renderiza à toa.
    */
-  const vendaTemItem = useVendaStore((estado) => estado.linhas.some((linha) => !linha.cancelada));
+  const bloqueioPorItemNaVenda: MotivoBloqueio = useVendaStore((estado) =>
+    motivoClienteBloqueadoPorItem(estado.linhas),
+  );
   const rotuloVendedor = rotuloDoVendedor(useVendedorAtual());
   const { identificarPorDocumento, identificarPorCodigo, cadastrar } = useIdentificacaoCliente();
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
@@ -348,9 +351,10 @@ export function CampoClienteVenda(): ReactElement {
    * diferentes: os outros dois motivos impedem *identificar agora* (consulta em
    * voo, campo vazio) e não têm por que travar a digitação; este impede
    * **trocar de cliente**, e deixar o operador digitar um código novo que a
-   * venda vai recusar seria oferecer um caminho que não existe.
+   * venda vai recusar seria oferecer um caminho que não existe. Pelo mesmo
+   * motivo a lupa e o F3 fecham junto (pedido do usuário, 2026-10-08): o
+   * motivo vem do `useVendaStore` no topo do componente.
    */
-  const bloqueioPorItemNaVenda: MotivoBloqueio = vendaTemItem ? AVISO_CLIENTE_COM_ITEM : null;
 
   const bloqueioDeIdentificacao: MotivoBloqueio =
     bloqueioPorItemNaVenda ??
@@ -674,14 +678,22 @@ export function CampoClienteVenda(): ReactElement {
                 cabeçalho em AD-198: com duas linhas, `h-[42px]` cortaria a
                 segunda. */}
             <div className="flex flex-wrap items-center gap-[10px] md:min-h-[42px]">
-              <label className="flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]">
+              {/* Fechado com item na venda: a caixa inteira apaga e ganha o
+                  cursor de proibido no hover (pedido do usuário, 2026-10-08) —
+                  o conteúdo já digitado permanece, só a troca fecha. */}
+              <label
+                className={cn(
+                  'flex h-[42px] w-full shrink-0 items-center gap-[9px] rounded-lg border border-border bg-[var(--cc-color-surface-soft)] px-sm md:w-[243px]',
+                  bloqueioPorItemNaVenda !== null && 'cursor-not-allowed opacity-70',
+                )}
+              >
                 <Scan className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex min-w-0 flex-1 flex-col gap-[1px]">
                   <span className="text-[10px] font-semibold text-muted-foreground">
                     Código do cliente ou CPF
                   </span>
                   <input
-                    className="w-full bg-transparent font-mono text-base font-medium tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground"
+                    className="w-full bg-transparent font-mono text-base font-medium tabular-nums outline-none placeholder:font-sans placeholder:text-muted-foreground aria-disabled:cursor-not-allowed"
                     data-testid="campo-documento-cliente"
                     ref={campoDocumento}
                     autoComplete="off"
@@ -759,9 +771,10 @@ export function CampoClienteVenda(): ReactElement {
                 className="size-[42px] shrink-0 rounded-full"
                 data-testid="abrir-busca-cliente"
                 aria-label="Buscar cliente"
-                onClick={() => {
+                {...atributosDeBloqueio(bloqueioPorItemNaVenda)}
+                onClick={acaoBloqueavel(bloqueioPorItemNaVenda, () => {
                   abrirJanela('cliente');
-                }}
+                })}
               >
                 <Search className="size-4" aria-hidden="true" />
               </Button>

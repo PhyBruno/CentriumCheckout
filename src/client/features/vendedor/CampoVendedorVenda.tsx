@@ -1,8 +1,10 @@
 import { Search, User } from 'reicon-react';
 import { useState, type ReactElement, type RefObject } from 'react';
 import { Button } from '@/components/ui/button';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
+import { motivoVendedorBloqueado } from '../../stores/slices/vendedorSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 import { ModalBuscaVendedor, type VendedorEscolhido } from './ModalBuscaVendedor';
 import { rotuloDoVendedor, useVendedorAtual } from './useVendedor';
@@ -22,11 +24,14 @@ import { rotuloDoVendedor, useVendedorAtual } from './useVendedor';
  * vendedor (`FR-006`/`VEND-07` — empresa sem default configurado) e a ausência
  * do **nome**, que cai em `"Vendedor #<codigo>"` (`AD-095`, `research.md` D4).
  *
- * O componente não decide o bloqueio pós-pagamento: quem decide é
- * `selecionarVendedor` no slice, que é no-op com aviso quando
- * `podeMutarCarrinho()` é falso (I4). Manter a lupa clicável é deliberado — o
- * operador precisa poder abrir a lista e ver quem está na venda mesmo depois de
- * um pagamento aprovado.
+ * O componente não decide o bloqueio pós-pagamento: quem decide é o slice —
+ * `selecionarVendedor` é no-op com aviso quando `podeMutarCarrinho()` é falso
+ * (I4) — e a lupa só **antecipa** o mesmo veredito, pela mesma função
+ * (`motivoVendedorBloqueado`). **Reverte** a decisão anterior de manter a lupa
+ * clicável para consulta (pedido do usuário, 2026-10-08): abrir uma lista de
+ * onde nenhuma escolha vale induzia ao erro, e quem está na venda já aparece no
+ * campo ao lado. Com a lupa fechada, o clique explica o motivo e a saída
+ * ("Limpar" no cartão de pagamento), no padrão de `lib/bloqueio.ts`.
  */
 export interface CampoVendedorVendaProps {
   /**
@@ -60,6 +65,10 @@ export function CampoVendedorVenda({ refLupa }: CampoVendedorVendaProps = {}): R
   const selecionarVendedor = useVendaStore((estado) => estado.selecionarVendedor);
   const focarCodigoProduto = useFocoVendaStore((estado) => estado.focarCodigoProduto);
   const [modalAberto, setModalAberto] = useState(false);
+  // A frase (ou `null`) como seletor: primitivo, comparado por valor.
+  const bloqueioDaLupa: MotivoBloqueio = useVendaStore((estado) =>
+    motivoVendedorBloqueado(estado.podeMutarCarrinho()),
+  );
 
   const rotulo = rotuloDoVendedor(vendedorAtual);
 
@@ -109,9 +118,10 @@ export function CampoVendedorVenda({ refLupa }: CampoVendedorVendaProps = {}): R
         className="size-[42px] shrink-0 rounded-full"
         data-testid="abrir-busca-vendedor"
         aria-label="Buscar vendedor"
-        onClick={() => {
+        {...atributosDeBloqueio(bloqueioDaLupa)}
+        onClick={acaoBloqueavel(bloqueioDaLupa, () => {
           setModalAberto(true);
-        }}
+        })}
       >
         <Search className="size-4" aria-hidden="true" />
       </Button>

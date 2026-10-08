@@ -1,5 +1,6 @@
 import { Refresh, Scan, X } from 'reicon-react';
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { suportaScannerCamera } from '../../domain/layout/suportaScannerCamera';
 import {
   CAUSA_CONTEXTO_INSEGURO,
@@ -51,9 +52,26 @@ function construtorDeDetector(): ConstrutorDeDetector | null {
 export interface ScannerCameraProps {
   /** Chamado com o texto decodificado; quem insere é o chamador (D5). */
   onCodigoLido(codigo: string): void;
+  /**
+   * Por que a câmera não pode ser aberta agora — `null` quando pode (pedido do
+   * usuário, 2026-10-08).
+   *
+   * É a venda congelada por condição ou pagamento: nenhum produto entra mais, e
+   * ler uma etiqueta só terminaria num aviso. O botão fica apagado
+   * (`aria-disabled`) e o toque explica o motivo, no padrão de `lib/bloqueio.ts`.
+   * **Não confundir com o `null` de `FR-011`**: lá o aparelho não suporta a
+   * câmera e o botão nem existe; aqui ele existe, e está fechado.
+   *
+   * A decisão é do chamador, que já sabe se a venda está congelada
+   * (`EntradaRapidaProduto`) — este componente continua sem conhecer a venda.
+   */
+  readonly bloqueio?: MotivoBloqueio;
 }
 
-export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElement | null {
+export function ScannerCamera({
+  onCodigoLido,
+  bloqueio = null,
+}: ScannerCameraProps): ReactElement | null {
   const [aberto, setAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   /**
@@ -240,14 +258,15 @@ export function ScannerCamera({ onCodigoLido }: ScannerCameraProps): ReactElemen
           mover nem engordar um pixel da pílula que o desenho fixa. */}
       <button
         type="button"
-        className="cc-alvo-toque flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-secondary px-2.5 text-xs font-bold text-primary hover:bg-secondary-hover outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="cc-alvo-toque flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-secondary px-2.5 text-xs font-bold text-primary hover:bg-secondary-hover outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-secondary"
         data-testid="abrir-scanner-camera"
-        onClick={() => {
+        {...atributosDeBloqueio(bloqueio)}
+        onClick={acaoBloqueavel(bloqueio, () => {
           jaLeuRef.current = false;
           setErro(null);
           setTentativas(0);
           setAberto(true);
-        }}
+        })}
       >
         <Scan className="size-3.5 shrink-0" aria-hidden="true" />
         Scanner

@@ -47,7 +47,9 @@ export function EtapaClienteProdutos(): ReactElement {
           passa a abrir no numérico, com o botão ABC/123 para as letras. */}
       <EntradaRapidaProduto
         tecladoVirtual
-        renderizarCaptura={(aoLerCodigo) => <ScannerCamera onCodigoLido={aoLerCodigo} />}
+        renderizarCaptura={(aoLerCodigo, bloqueio) => (
+          <ScannerCamera onCodigoLido={aoLerCodigo} bloqueio={bloqueio} />
+        )}
       />
 
       <ListaItensMobile />

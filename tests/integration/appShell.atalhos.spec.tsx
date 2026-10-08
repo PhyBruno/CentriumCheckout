@@ -9,7 +9,10 @@ import { useFocoDeModal } from '../../src/client/lib/useFocoDeModal';
 import { mensagemDeRecusa } from '../../src/client/services/importacao/importarVendaExistente';
 import { useJanelasStore } from '../../src/client/stores/janelasStore';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
+import { motivoCarrinhoBloqueado } from '../../src/client/stores/slices/carrinhoSlice';
+import { AVISO_CLIENTE_COM_ITEM } from '../../src/client/stores/slices/clienteSlice';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
+import { condicaoDe } from '../support/pagamento';
 import {
   cruzarBreakpointPara,
   definirLayoutInicial,
@@ -256,17 +259,38 @@ describe('US2 — F3 e F4 abrem as buscas com o campo focado', () => {
     expect(useJanelasStore.getState().janela).toBe('cliente');
   });
 
-  it('com item na venda, F3 ainda abre a busca — a lupa não é bloqueada, quem recusa a troca é o slice (US2-5)', async () => {
+  it('com item na venda, F3 recusa com a frase da lupa e não abre a busca (US2-5, 2026-10-08)', async () => {
     const usuario = userEvent.setup();
+    const erro = vi.spyOn(notificar, 'erro');
     useVendaStore.setState({ linhas: [linhaDe({ idLinha: 'linha-1' })] });
     renderizarShell();
 
     await usuario.keyboard('{F3}');
 
-    expect(await screen.findByTestId('modal-busca-cliente')).toBeInTheDocument();
+    // A tecla diz o mesmo que o clique na lupa fechada (`motivoClienteBloqueadoPorItem`),
+    // em vez de abrir uma busca de onde nenhuma escolha vale.
+    expect(erro).toHaveBeenCalledWith(AVISO_CLIENTE_COM_ITEM);
+    expect(screen.queryByTestId('modal-busca-cliente')).toBeNull();
+    expect(useJanelasStore.getState().janela).toBe('nenhuma');
   });
 
-  it('no wizard mobile, F3 fora da etapa 1 leva à etapa 1 e abre a busca lá (decisão de 2026-09-15)', async () => {
+  it('com a venda congelada pela condição, F4 recusa com a frase do lápis e não abre a busca', async () => {
+    const usuario = userEvent.setup();
+    const erro = vi.spyOn(notificar, 'erro');
+    useVendaStore.setState({
+      linhas: [linhaDe({ idLinha: 'linha-1' })],
+      condicaoSelecionada: condicaoDe(1, 'A VISTA'),
+    });
+    renderizarShell();
+
+    await usuario.keyboard('{F4}');
+
+    expect(erro).toHaveBeenCalledWith(motivoCarrinhoBloqueado(false, false));
+    expect(screen.queryByTestId('modal-busca-produto')).toBeNull();
+    expect(useJanelasStore.getState().janela).toBe('nenhuma');
+  });
+
+  it('no wizard mobile, F4 fora da etapa 1 leva à etapa 1 e abre a busca lá (decisão de 2026-09-15)', async () => {
     const usuario = userEvent.setup();
     definirLayoutInicial('mobile');
     useVendaStore.setState({
@@ -276,12 +300,14 @@ describe('US2 — F3 e F4 abrem as buscas com o campo focado', () => {
     await usuario.click(screen.getByTestId('wizard-avancar'));
     expect(screen.queryByTestId('etapa-cliente-produtos')).toBeNull();
 
-    await usuario.keyboard('{F3}');
+    // F4, e não F3: com item na venda o F3 agora recusa (cliente travado), então
+    // a etapa 1 é alcançada pela busca de produto, que segue livre.
+    await usuario.keyboard('{F4}');
 
     expect(await screen.findByTestId('etapa-cliente-produtos')).toBeInTheDocument();
-    expect(await screen.findByTestId('modal-busca-cliente')).toBeInTheDocument();
+    expect(await screen.findByTestId('modal-busca-produto')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByTestId('campo-busca-cliente')).toHaveFocus();
+      expect(screen.getByTestId('campo-busca-produto')).toHaveFocus();
     });
   });
 });

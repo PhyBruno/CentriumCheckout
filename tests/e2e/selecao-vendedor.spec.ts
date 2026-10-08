@@ -229,19 +229,28 @@ test.describe('User Story 1 — selecionar o vendedor da venda (T015)', () => {
     await expect(page.getByTestId('nome-vendedor')).toHaveText(VENDEDOR_DEFAULT.nome);
   });
 
-  test('cenário 6: com pagamento aprovado, a troca é no-op e o operador é avisado', async ({
+  test('cenário 6: com pagamento aprovado, a lupa fecha e explica o motivo ao clique', async ({
     page,
   }) => {
     await abrirTelaDeVenda(page);
     await biparProduto(page);
     await quitarVendaEmDinheiro(page);
 
-    await buscarVendedor(page, 'Marta');
-    await selecionarVendedor(page, 'Marta Souza');
-
     // `FR-013`/`VEND-09` (AD-043): o mesmo predicado que congela o carrinho
-    // congela o vendedor. O campo continua no default.
+    // congela o vendedor. Desde 2026-10-08 a lupa antecipa a recusa (aria-disabled)
+    // em vez de abrir uma lista de onde nenhuma escolha vale.
+    // A lupa mora no bloco colapsável do card de cliente, `inert` enquanto
+    // recolhido: sem expandir, o clique não chega a lugar nenhum.
+    await expandirCardCliente(page);
+    const lupa = page.getByTestId('abrir-busca-vendedor');
+    await expect(lupa).toHaveAttribute('aria-disabled', 'true');
+    // `dispatchEvent`, e não `click({ force })`: dentro do card, que tem transição
+    // de altura, o clique por coordenada cai no container.
+    await lupa.dispatchEvent('click');
+
+    // O campo continua no default e a busca não abre.
     await expect(page.getByTestId('nome-vendedor')).toHaveText(VENDEDOR_DEFAULT.nome);
+    await expect(page.getByTestId('modal-busca-vendedor')).toHaveCount(0);
     // `.first()`: o toast escreve a frase duas vezes — o `span` visível e um
     // duplicado para leitores de tela.
     await expect(page.getByText(/o vendedor não pode mais ser trocado/i).first()).toBeVisible();
