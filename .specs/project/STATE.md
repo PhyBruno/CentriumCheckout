@@ -4199,3 +4199,15 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `clienteSlice.ts`, `vendedorSlice.ts`, `useCarrinho.ts`, `useCliente.ts`, `EntradaRapidaProduto.tsx`, `CampoClienteVenda.tsx`, `CampoVendedorVenda.tsx`, `AppShell.tsx`; testes `CampoVendedorVenda.spec`, `CampoClienteVenda.spec`, `EntradaRapidaProduto.spec`, `appShell.atalhos.spec`, `layoutPreservacaoEstado.spec` e o E2E `selecao-vendedor.spec` (cenário 6).
 
 **Verificação:** `tsc`, ESLint e Prettier limpos; 2145 testes unit/integração verdes. E2E: ver o resultado registrado na tarefa. **Não verificado:** em navegador real nem no celular.
+
+### AD-277: a impressão local é sempre tentada, inclusive em página `https` (2026-10-09)
+
+**Pedido do usuário:** *"ta dando erro O navegador bloqueou a comunicação com o serviço de impressão local. […] mas o meu brave esta com isso liberado"*
+
+**Origem do defeito.** `imprimirNFCeLocal` tratava "página em `https:`" como Mixed Content certo e devolvia a mensagem de bloqueio **sem fazer a requisição**. O código não tem como saber se a política (`LocalNetworkAccessAllowedForUrls`, `InsecureContentAllowedForUrls`) ou a permissão do site foi concedida — só o navegador sabe —, e `127.0.0.1`, o host padrão, nem entra na regra de Mixed Content. Resultado: em produção, que é sempre `https`, a impressão direta nunca era tentada, e liberar o navegador não mudava nada.
+
+**Correção:** a requisição é sempre feita. A falha é classificada depois, em três casos: (1) o erro nomeia o bloqueio de rede local → mensagem de política, como antes; (2) página `https` e erro sem marcador → mensagem nova que nomeia **as duas** causas (serviço parado ou navegador bloqueando), porque Mixed Content e porta fechada chegam com o mesmo `Failed to fetch`; (3) página `http` → "o serviço de impressão da máquina não respondeu", como antes. Nos três o PDF continua oferecido.
+
+**Impact:** `src/client/services/impressao/imprimirNFCeLocal.ts`; `tests/integration/finalizacaoSuspensao.spec.ts` (o caso que afirmava "não chama `fetch` em https" foi invertido, mais dois casos novos); `INTEGRATIONS.md`.
+
+**Verificação:** `tsc`, ESLint e Prettier limpos; 1107 testes de cliente e integração verdes. **Não verificado:** em navegador real contra o serviço de impressão — nem no Chrome, nem no Brave.
