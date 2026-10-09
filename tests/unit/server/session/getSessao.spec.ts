@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { loadEnv } from '../../../../src/server/config/env';
+import { ENV_DA_ENTRADA } from '../../../support/entradaCifrada';
 import {
   buscarUsuarioCodigo,
   extrairUsuarioCodigo,
@@ -27,7 +28,7 @@ const CREDENCIAIS: CredenciaisGetSessao = {
 
 const env = loadEnv({
   baseDomain: 'apps.example.test',
-  validationKey: 'chave-de-validacao-sintetica',
+  ...ENV_DA_ENTRADA,
   SESSION_SECRET: 'segredo-sintetico-de-teste-com-32+'.padEnd(32, '-'),
   NODE_ENV: 'test',
   SERVE_STATIC_CLIENT: 'false',

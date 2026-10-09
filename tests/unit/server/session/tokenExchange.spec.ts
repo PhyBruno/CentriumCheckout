@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { loadEnv, type Env } from '../../../../src/server/config/env';
+import { ENV_DA_ENTRADA } from '../../../support/entradaCifrada';
 import {
   ErroTrocaDeToken,
   trocarCredenciaisPorToken,
@@ -10,7 +11,7 @@ import {
 function envDeTeste(extra: Record<string, string> = {}): Env {
   return loadEnv({
     baseDomain: 'apps.example.test',
-    validationKey: 'chave-de-validacao-de-teste',
+    ...ENV_DA_ENTRADA,
     SESSION_SECRET: 'segredo-de-teste-com-32-caracteres-ok',
     NODE_ENV: 'test',
     ...extra,

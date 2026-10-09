@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { loadEnv } from '../../../../src/server/config/env';
+import { ENV_DA_ENTRADA } from '../../../support/entradaCifrada';
 import type { SessaoOperador } from '../../../../src/server/session/cookie';
 import {
   ErroSessaoEncerrada,
@@ -15,7 +16,7 @@ import {
 
 const env = loadEnv({
   baseDomain: 'apps.example.test',
-  validationKey: 'chave-de-validacao-de-teste',
+  ...ENV_DA_ENTRADA,
   SESSION_SECRET: 'segredo-de-teste-com-32-caracteres-ok',
   NODE_ENV: 'test',
 });

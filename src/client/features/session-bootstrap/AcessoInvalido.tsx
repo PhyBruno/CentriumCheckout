@@ -4,7 +4,7 @@ import { INSTRUCAO_REABRIR_PELO_CENTRIUMWEB, MENSAGEM_FALHA_CHECKOUT } from './m
 
 /**
  * Falha terminal do acesso: o Checkout foi aberto sem dados de sessão válidos
- * (URL digitada à mão, `validationKey` errada, redirect incompleto, sessão já
+ * (URL digitada à mão, entrada que não decifra, redirect incompleto, sessão já
  * encerrada com carrinho vazio).
  *
  * Mesma tela do `ErrorRetry`, **sem** "Tentar novamente": repetir a chamada com

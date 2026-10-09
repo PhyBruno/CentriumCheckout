@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { ENTRADA_AES_KEY_DE_OUTRO_AMBIENTE } from '../support/entradaCifrada';
 import { CREDENCIAIS_REDIRECT, URL_ERP_MOCK, urlSessionStart } from './support/constants';
 
 interface ContadoresMock {
@@ -64,10 +65,12 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
     expect((await contadores(request)).token).toBe(1);
   });
 
-  test('recusa validationKey inválida mandando para a tela de acesso inválido', async ({
+  test('recusa a entrada cifrada com outra chave mandando para a tela de acesso inválido', async ({
     request,
   }) => {
-    const resposta = await request.get(urlSessionStart({}, 'chave-errada'), { maxRedirects: 0 });
+    const resposta = await request.get(urlSessionStart({}, ENTRADA_AES_KEY_DE_OUTRO_AMBIENTE), {
+      maxRedirects: 0,
+    });
 
     // Quem chega aqui é um navegador: em vez de JSON cru, a SPA com o painel
     // terminal ("Acesse o Checkout novamente pelo CentriumWEB").
@@ -75,12 +78,29 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
     expect(resposta.headers()['location']).toBe('/?erro=sessao');
     esperarRecusaSemSessao(resposta.headers()['set-cookie']);
 
-    // AD-022: a origem é rejeitada antes de gastar uma tentativa de autenticação.
+    // AD-276: quem não cifrou com a chave do ambiente é rejeitado antes de
+    // gastar uma tentativa de autenticação.
     expect((await contadores(request)).token).toBe(0);
   });
 
-  test('recusa redirect sem os parâmetros obrigatórios, sem chamar o ERP', async ({ request }) => {
-    const resposta = await request.get('/session/start?tenant=acme', { maxRedirects: 0 });
+  test('recusa as credenciais em claro, no formato antigo, sem chamar o ERP', async ({
+    request,
+  }) => {
+    const emClaro = new URLSearchParams(CREDENCIAIS_REDIRECT).toString();
+    const resposta = await request.get(`/session/start?${emClaro}`, { maxRedirects: 0 });
+
+    expect(resposta.status()).toBe(302);
+    expect(resposta.headers()['location']).toBe('/?erro=sessao');
+    esperarRecusaSemSessao(resposta.headers()['set-cookie']);
+    expect((await contadores(request)).token).toBe(0);
+  });
+
+  test('recusa a entrada cifrada sem os campos obrigatórios, sem chamar o ERP', async ({
+    request,
+  }) => {
+    const resposta = await request.get(urlSessionStart({ codigoEmpresa: '' }), {
+      maxRedirects: 0,
+    });
 
     expect(resposta.status()).toBe(302);
     expect(resposta.headers()['location']).toBe('/?erro=sessao');
@@ -101,7 +121,7 @@ test.describe('Cenário 1 — Login automático via redirect do ERP (AUTH-01, AU
   test('mostra a tela de acesso inválido, sem "Tentar novamente", no navegador', async ({
     page,
   }) => {
-    await page.goto(urlSessionStart({}, 'chave-errada'));
+    await page.goto(urlSessionStart({}, ENTRADA_AES_KEY_DE_OUTRO_AMBIENTE));
 
     await expect(
       page.getByText('Não foi possível carregar o checkout com os dados fornecidos'),

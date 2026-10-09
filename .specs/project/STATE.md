@@ -177,6 +177,8 @@ Requisito de comportamento de feature, não decisão arquitetural — migrado pa
 
 ### AD-022: Introdução de um BFF mínimo de sessão/autenticação — corrige AD-002/AD-010 (2026-08-21)
 
+**Atualização (2026-10-09):** a parte desta decisão que trata de `validationKey` e de query params em claro foi **superada por AD-276** — a query de `/session/start` chega cifrada pelo ERP (AES-256/CBC/PKCS7) e `validationKey` deixou de existir. Onde o texto abaixo disser "valida `validationKey`", leia "decifra a query e recusa o que não abrir com a chave do ambiente". O restante (BFF mínimo, cookie cifrado, as três rotas) segue valendo.
+
 **Decision:** Corrige AD-002 e AD-010: a premissa "SPA sem backend próprio" não se sustenta para o fluxo de autenticação, porque um cookie `HttpOnly` só pode ser setado por uma resposta de servidor — nenhuma decisão anterior definia quem seta esse cookie nem como o JS acessaria `codigoEmpresa` ou dispararia a renovação de sessão (`AUTH-06`) sem acesso ao token. Introduz-se um BFF (Backend for Frontend) mínimo — sem banco de dados, sem lógica de negócio, o ERP continua sendo a única fonte de verdade — rodando no mesmo processo/container Node que hoje serve os assets estáticos da SPA (ver Containerização em `.specs/codebase/ARCHITECTURE.md`), com três rotas:
 
 - `GET /session/start` — recebe o redirect do ERP com os mesmos query params de AD-002, mais o novo campo `validationKey`: uma credencial fixa por ambiente (variável de ambiente Docker), igual para todos os tenants, que só confirma que a chamada partiu de uma configuração legítima do ERP — separada e ortogonal das credenciais OAuth por operador. O BFF valida `validationKey`, chama `POST /oauth/access_token`, cifra `access_token` + as credenciais originais com uma chave de servidor (variável de ambiente Docker `SESSION_SECRET`) e devolve isso em `Set-Cookie` (`HttpOnly`, `Secure`, `SameSite=Lax`), depois redireciona para a URL limpa da SPA.
@@ -4211,3 +4213,24 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `src/client/services/impressao/imprimirNFCeLocal.ts`; `tests/integration/finalizacaoSuspensao.spec.ts` (o caso que afirmava "não chama `fetch` em https" foi invertido, mais dois casos novos); `INTEGRATIONS.md`.
 
 **Verificação:** `tsc`, ESLint e Prettier limpos; 1107 testes de cliente e integração verdes. **Não verificado:** em navegador real contra o serviço de impressão — nem no Chrome, nem no Brave.
+
+### AD-276: a query de `/session/start` chega cifrada pelo ERP, e a `validationKey` deixa de existir (2026-10-09)
+
+**Pedido do usuário:** *"Hoje, o login é com dados em plaintext. O ERP vai passar esses dados encriptografados pra gente, e nosso BFF tem que desencriptar. […] Validationkey é desnecessario, nao vamos mais implementar e não tem serventia."*
+
+**Decision:** supera a parte de AD-022 que tratava de `validationKey` e de query params em claro. O CentriumWEB abre `/session/start?<base64>`; o base64 é a query de antes (`tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`, `codigoEmpresa`) cifrada com `SymmetricCipher.DoEncrypt` do GeneXus — AES, CBC, PKCS7, chave de 256 bits e IV fixos. O BFF decifra, valida os sete campos com o mesmo schema Zod e segue o fluxo de sempre (OAuth → `GetSessao` → cookie). `validationKey` saiu do schema, do `Env`, do compose, do stack do beta e dos testes: a própria cifra passa a confirmar a origem, porque só quem tem a chave do ambiente produz uma entrada que abre — e a recusa continua acontecendo **antes** de gastar uma tentativa de autenticação OAuth.
+
+**Medido no exemplo real enviado pelo usuário** (decifrado em memória, valores não registrados): 224 bytes cifrados, UTF-8, sem `?` na frente e sem `validationKey`; os sete campos na ordem acima. **`codigoEmpresa` veio vazio nesse exemplo** — o BFF segue exigindo o campo preenchido (ele vira o cabeçalho e o parâmetro `Empresa` de toda chamada, AD-205), então aquela URL específica é recusada. Pendente confirmar com o ERP se foi só o exemplo.
+
+**Três decisões de implementação:**
+1. **A query é lida bruta** (`request.raw.url`), não por `request.query`: o parser de query string troca os `+` do base64 por espaço e parte o texto no `=` do padding. O decifrador aceita o base64 cru, com percent-encoding, ou com o `+` já convertido em espaço.
+2. **Chave e IV vêm do ambiente**, em hexadecimal como o ERP os declara: `ENTRADA_AES_KEY` (64 caracteres) e `ENTRADA_AES_IV` (32), validados no `loadEnv`. Os valores reais não entram no repositório; os versionados (`.env.example`, compose de dev, testes) são sintéticos.
+3. **Sem aceitar o formato antigo.** Uma query em claro é recusada como qualquer outra entrada que não decifra; manter os dois caminhos deixaria a cifra opcional.
+
+**Os valores do texto aberto seguem a semântica de query string** (`URLSearchParams`: `+` vira espaço, `%XX` é decodificado) — a mesma de quando a query vinha em claro. Se o ERP não codificar os valores antes de cifrar, uma senha com `+`, `&` ou `%` chega errada; o comportamento não mudou, mas agora o erro fica escondido dentro do envelope.
+
+**Limite conhecido, do lado do ERP:** AES-CBC com IV fixo e sem autenticação (MAC) é determinístico e maleável. Protege as credenciais de quem lê a URL (histórico, log de proxy), mas a URL cifrada continua sendo uma credencial reutilizável enquanto a senha do operador não mudar. Toda recusa responde o mesmo `302` opaco, para não servir de oráculo.
+
+**Impact:** `src/server/session/entradaCifrada.ts` (novo), `src/server/routes/session-start.ts`, `src/server/config/env.ts`, `.env.example`, `docker-compose.yml`, `deploy/beta/docker-stack.yml`; testes `entradaCifrada.spec` (novo), `sessionStartUsuario.spec`, `tests/support/entradaCifrada.ts` (novo — faz o papel do ERP), `tests/e2e/support/{constants,stack}.ts`, `auth-bootstrap.spec` e os sete specs do BFF que montam `loadEnv`. Docs: `ARCHITECTURE.md`, `spec.md` e `contracts/session-bff-api.md`/`quickstart.md` da 002. **Deploy:** o beta precisa de `ENTRADA_AES_KEY` e `ENTRADA_AES_IV` no ambiente antes de subir a imagem nova — sem elas o processo não inicia —, e `validationKey` pode ser apagada de lá.
+
+**Verificação:** `tsc` e ESLint limpos; 2164 testes unit/integração verdes; E2E `auth-bootstrap.spec` 15/15 (inclui navegador abrindo a URL com base64 cru); a URL de exemplo real abre pelo decifrador do BFF. **Não verificado:** login ponta a ponta contra o ERP real com uma URL cifrada, nem o restante da suíte E2E.

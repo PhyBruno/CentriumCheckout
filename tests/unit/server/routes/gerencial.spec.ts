@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { loadEnv } from '../../../../src/server/config/env';
+import { ENV_DA_ENTRADA } from '../../../support/entradaCifrada';
 import { buildApp } from '../../../../src/server/index';
 import {
   criarCifradorDeSessao,
@@ -36,7 +37,7 @@ const SESSAO: SessaoOperador = {
 
 const env = loadEnv({
   baseDomain: 'apps.example.test',
-  validationKey: 'chave-de-validacao-sintetica',
+  ...ENV_DA_ENTRADA,
   SESSION_SECRET,
   NODE_ENV: 'test',
   SERVE_STATIC_CLIENT: 'false',
@@ -96,7 +97,7 @@ describe('GET /gerencial/:destino', () => {
     const appComProxy = await buildApp(
       loadEnv({
         baseDomain: 'apps.example.test',
-        validationKey: 'chave-de-validacao-sintetica',
+        ...ENV_DA_ENTRADA,
         SESSION_SECRET,
         NODE_ENV: 'test',
         SERVE_STATIC_CLIENT: 'false',

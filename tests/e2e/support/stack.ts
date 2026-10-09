@@ -1,7 +1,8 @@
 import { loadEnv } from '../../../src/server/config/env';
 import { buildApp } from '../../../src/server/index';
 import { criarMockErp } from './erp-mock';
-import { PORTA_BFF, PORTA_ERP_MOCK, SESSION_SECRET, VALIDATION_KEY } from './constants';
+import { ENV_DA_ENTRADA } from '../../support/entradaCifrada';
+import { PORTA_BFF, PORTA_ERP_MOCK, SESSION_SECRET } from './constants';
 
 /**
  * Sobe a stack completa dos cenários E2E: ERP mockado + BFF servindo o build da
@@ -12,7 +13,7 @@ async function main(): Promise<void> {
 
   const env = loadEnv({
     baseDomain: 'apps.example.test',
-    validationKey: VALIDATION_KEY,
+    ...ENV_DA_ENTRADA,
     SESSION_SECRET,
     NODE_ENV: 'test',
     PORT: String(PORTA_BFF),
