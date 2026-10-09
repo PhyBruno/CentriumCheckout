@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import { loadEnv } from '../../../../src/server/config/env';
+import { ENV_DA_ENTRADA } from '../../../support/entradaCifrada';
 import {
   criarCifradorDeSessao,
   SESSION_COOKIE_NAME,
@@ -27,7 +28,7 @@ const GUID_DO_ERP = '11111111-0000-4000-8000-000000000000';
 
 const env = loadEnv({
   baseDomain: 'apps.example.test',
-  validationKey: 'chave-de-validacao-sintetica',
+  ...ENV_DA_ENTRADA,
   SESSION_SECRET,
   NODE_ENV: 'test',
   SERVE_STATIC_CLIENT: 'false',

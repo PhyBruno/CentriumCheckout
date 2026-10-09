@@ -5,6 +5,11 @@ import { loadEnv } from '../../../../src/server/config/env';
 import { criarCifradorDeSessao, SESSION_COOKIE_NAME } from '../../../../src/server/session/cookie';
 import { registrarRotaSessionStart } from '../../../../src/server/routes/session-start';
 import { COOKIE_ENTRADA, PARAM_ERRO_ACESSO } from '../../../../src/shared/erroAcesso';
+import {
+  cifrarEntrada,
+  ENTRADA_AES_KEY_DE_OUTRO_AMBIENTE,
+  ENV_DA_ENTRADA,
+} from '../../../support/entradaCifrada';
 
 /**
  * O operador entra na sessão junto com o resto (AD-224).
@@ -22,11 +27,10 @@ import { COOKIE_ENTRADA, PARAM_ERRO_ACESSO } from '../../../../src/shared/erroAc
  */
 
 const SESSION_SECRET = 'segredo-sintetico-de-teste-com-32+'.padEnd(32, '-');
-const VALIDATION_KEY = 'chave-de-validacao-sintetica';
 
 const env = loadEnv({
   baseDomain: 'apps.example.test',
-  validationKey: VALIDATION_KEY,
+  ...ENV_DA_ENTRADA,
   SESSION_SECRET,
   NODE_ENV: 'test',
   SERVE_STATIC_CLIENT: 'false',
@@ -34,8 +38,8 @@ const env = loadEnv({
 
 const cifrador = criarCifradorDeSessao(SESSION_SECRET);
 
-/** Redirect completo do ERP — nenhuma credencial real. */
-const ENTRADA = new URLSearchParams({
+/** Redirect completo do ERP, ainda em claro — nenhuma credencial real. */
+const CAMPOS_DA_ENTRADA = {
   tenant: 'tenantdemo',
   client_id: 'id-sintetico',
   client_secret: 'segredo-sintetico',
@@ -43,8 +47,12 @@ const ENTRADA = new URLSearchParams({
   password: 'senha-sintetica',
   Repository: 'repo-sintetico',
   codigoEmpresa: '1',
-  validationKey: VALIDATION_KEY,
-}).toString();
+} as const;
+
+const ENTRADA_EM_CLARO = new URLSearchParams(CAMPOS_DA_ENTRADA).toString();
+
+/** O que o ERP de fato manda depois do `?`: a query acima, cifrada (AD-276). */
+const ENTRADA = cifrarEntrada(ENTRADA_EM_CLARO);
 
 function respostaJson(corpo: unknown, status = 200): Response {
   return new Response(JSON.stringify(corpo), {
@@ -98,8 +106,8 @@ function emSequencia(...respostas: readonly (() => Response)[]): () => Response 
   };
 }
 
-function entrar() {
-  return app.inject({ method: 'GET', url: `/session/start?${ENTRADA}` });
+function entrar(query: string = ENTRADA) {
+  return app.inject({ method: 'GET', url: `/session/start?${query}` });
 }
 
 function cookieDaResposta(resposta: Awaited<ReturnType<typeof entrar>>, nome: string) {
@@ -136,6 +144,73 @@ describe('GET /session/start — o operador entra na sessão', () => {
     expect(String(fetchImpl.mock.calls[1]?.[0])).toContain(
       '/ApiCentriumOAuth/GetSessao?Empresa=1&Login=operador.teste',
     );
+  });
+});
+
+/**
+ * AD-276 — as credenciais chegam cifradas pelo ERP. A cifra substitui a
+ * `validationKey`: só quem tem a chave do ambiente produz uma entrada que abre,
+ * e tudo o mais é recusado **antes** de gastar uma tentativa de autenticação.
+ */
+describe('GET /session/start — entrada cifrada', () => {
+  it('abre a entrada e grava no cookie as credenciais que vieram dentro dela', async () => {
+    montarApp();
+
+    const resposta = await entrar();
+
+    expect(resposta.statusCode).toBe(302);
+    expect(resposta.headers['location']).toBe('/');
+    const sessao = cifrador.decifrar(cookieDaResposta(resposta, SESSION_COOKIE_NAME)?.value);
+    expect(sessao).toMatchObject(CAMPOS_DA_ENTRADA);
+  });
+
+  it('aceita a entrada com percent-encoding', async () => {
+    montarApp();
+
+    const resposta = await entrar(encodeURIComponent(ENTRADA));
+
+    expect(resposta.headers['location']).toBe('/');
+  });
+
+  it('recusa a query em claro, no formato antigo, sem chamar o ERP', async () => {
+    montarApp();
+
+    const resposta = await entrar(ENTRADA_EM_CLARO);
+
+    expect(resposta.statusCode).toBe(302);
+    expect(resposta.headers['location']).toContain(PARAM_ERRO_ACESSO);
+    expect(cookieDaResposta(resposta, SESSION_COOKIE_NAME)).toBeUndefined();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('recusa a entrada cifrada com a chave de outro ambiente, sem chamar o ERP', async () => {
+    montarApp();
+
+    const resposta = await entrar(
+      cifrarEntrada(ENTRADA_EM_CLARO, ENTRADA_AES_KEY_DE_OUTRO_AMBIENTE),
+    );
+
+    expect(resposta.headers['location']).toContain(PARAM_ERRO_ACESSO);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('recusa o redirect sem query, sem chamar o ERP', async () => {
+    montarApp();
+
+    const resposta = await app.inject({ method: 'GET', url: '/session/start' });
+
+    expect(resposta.headers['location']).toContain(PARAM_ERRO_ACESSO);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('recusa a entrada que abre mas vem sem um campo obrigatório', async () => {
+    montarApp();
+    const semEmpresa = new URLSearchParams({ ...CAMPOS_DA_ENTRADA, codigoEmpresa: '' }).toString();
+
+    const resposta = await entrar(cifrarEntrada(semEmpresa));
+
+    expect(resposta.headers['location']).toContain(PARAM_ERRO_ACESSO);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 

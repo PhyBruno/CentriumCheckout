@@ -6,13 +6,13 @@ Guia de validação ponta a ponta desta feature. Pressupõe o BFF (Fastify) e a 
 
 - Container de dev subido (`docker-compose up`, hot-reload ativo).
 - Mock de `POST /oauth/access_token` e `GET /ApiCentriumOAuth/GetSessao` do ERP (ex.: MSW ou servidor de mock dedicado) respondendo nos formatos documentados em `contracts/session-bff-api.md` e `.specs/features/autenticacao-sessao-bootstrap/spec.md`.
-- Variáveis de ambiente Docker configuradas com valores de teste: `baseDomain`, `validationKey`, `SESSION_SECRET`.
+- Variáveis de ambiente Docker configuradas com valores de teste: `baseDomain`, `ENTRADA_AES_KEY`, `ENTRADA_AES_IV`, `SESSION_SECRET` (AD-276 — `validationKey` foi removida).
 
 ## Cenário 1 — Login automático via redirect do ERP (AUTH-01, AUTH-02)
 
-1. Simular o redirect do ERP: `GET /session/start?tenant=acme&client_id=...&client_secret=...&username=...&password=...&Repository=...&codigoEmpresa=1&validationKey=<valor-de-teste>`.
+1. Simular o redirect do ERP: `GET /session/start?<base64>`, em que o base64 é a query `tenant=acme&client_id=...&client_secret=...&username=...&password=...&Repository=...&codigoEmpresa=1` cifrada em AES-256/CBC/PKCS7 com `ENTRADA_AES_KEY`/`ENTRADA_AES_IV` (AD-276; nos testes, `cifrarEntrada` de `tests/support/entradaCifrada.ts` faz o papel do ERP).
 2. **Esperado**: resposta `302` com header `Set-Cookie` presente; nenhum dos query params sensíveis aparece na URL de destino do redirect.
-3. Repetir com `validationKey` inválida. **Esperado**: `401`, sem chamada ao mock de `/oauth/access_token` (verificar que o mock não foi acionado).
+3. Repetir com a query em claro e com a query cifrada com outra chave. **Esperado**: `302` para `/?erro=sessao` (AD-184), sem chamada ao mock de `/oauth/access_token` (verificar que o mock não foi acionado).
 
 ## Cenário 2 — Bootstrap completo antes da tela de venda (AUTH-03, AUTH-04, AUTH-05)
 
