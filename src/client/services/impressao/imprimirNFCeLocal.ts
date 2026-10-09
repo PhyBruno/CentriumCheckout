@@ -54,15 +54,23 @@ const MENSAGEM_BLOQUEIO_NAVEGADOR =
 const MARCADORES_BLOQUEIO = ['local network', 'private network', 'mixed content', 'insecure'];
 
 /**
- * Mixed Content é decidível **antes** de tentar: página em `https:` chamando
- * `http:` é bloqueada pelo navegador por definição.
- *
- * Vale a pena separar essa causa da genérica porque as remediações são
- * completamente diferentes — "o serviço não está rodando, verifique a máquina"
- * versus "a política de TI não liberou este site para a rede local", que o
- * operador de caixa não resolve sozinho (`research.md`, D5).
+ * Em página `https:`, a falha sem marcador é ambígua: o navegador recusa a
+ * chamada `http:` (Mixed Content) com o mesmo `Failed to fetch` de uma porta
+ * fechada. A mensagem nomeia as duas saídas em vez de escolher uma.
  */
-function haMixedContent(protocoloDaPagina: string): boolean {
+const MENSAGEM_FALHA_EM_PAGINA_SEGURA =
+  'Não foi possível falar com o serviço de impressão local. Confira se ele está rodando ' +
+  'nesta máquina; se estiver, o navegador está bloqueando a chamada — é configuração de ' +
+  'navegador/política de TI (LocalNetworkAccessAllowedForUrls e InsecureContentAllowedForUrls).';
+
+/**
+ * Página em `https:` chamando `http:` **pode** ser barrada por Mixed Content —
+ * mas só o navegador sabe se a política ou a permissão do site liberou a
+ * chamada, e `127.0.0.1` nem entra na regra. Por isso a requisição é sempre
+ * tentada: decidir pelo protocolo, antes de tentar, recusava a impressão de
+ * quem já tinha o navegador liberado (AD-277).
+ */
+function paginaSegura(protocoloDaPagina: string): boolean {
   return protocoloDaPagina === 'https:';
 }
 
@@ -90,18 +98,6 @@ export async function imprimirNFCeLocal(
   const usouHostPadrao = host === '';
   const alvo = usouHostPadrao ? HOST_IMPRESSAO_PADRAO : host;
 
-  if (haMixedContent(protocoloDaPagina)) {
-    // Nem tenta: a requisição seria descartada pelo navegador e a falha
-    // apareceria como "erro de conexão" genérico, mandando o operador procurar
-    // um problema de impressora que não existe.
-    return {
-      estado: 'falha',
-      causa: 'bloqueio-navegador',
-      mensagem: MENSAGEM_BLOQUEIO_NAVEGADOR,
-      usouHostPadrao,
-    };
-  }
-
   try {
     await executarFetch(`http://${alvo}`, {
       method: 'POST',
@@ -109,12 +105,26 @@ export async function imprimirNFCeLocal(
       body: xmlImpressao,
     });
   } catch (erro) {
+    if (ehBloqueioDeNavegador(erro)) {
+      return {
+        estado: 'falha',
+        causa: 'bloqueio-navegador',
+        mensagem: MENSAGEM_BLOQUEIO_NAVEGADOR,
+        usouHostPadrao,
+      };
+    }
+    if (paginaSegura(protocoloDaPagina)) {
+      return {
+        estado: 'falha',
+        causa: 'bloqueio-navegador',
+        mensagem: MENSAGEM_FALHA_EM_PAGINA_SEGURA,
+        usouHostPadrao,
+      };
+    }
     return {
       estado: 'falha',
-      causa: ehBloqueioDeNavegador(erro) ? 'bloqueio-navegador' : 'servico-indisponivel',
-      mensagem: ehBloqueioDeNavegador(erro)
-        ? MENSAGEM_BLOQUEIO_NAVEGADOR
-        : MENSAGEM_SERVICO_INDISPONIVEL,
+      causa: 'servico-indisponivel',
+      mensagem: MENSAGEM_SERVICO_INDISPONIVEL,
       usouHostPadrao,
     };
   }

@@ -801,16 +801,39 @@ describe('entrega do documento fiscal (T015, FR-009; correções do usuário 202
     expect(screen.getByRole('alert')).toHaveTextContent(/serviço de impressão da máquina/i);
   });
 
-  it('distingue o bloqueio do navegador do serviço indisponível', async () => {
-    // Página em `https:` chamando `http://…`: Mixed Content, decidível antes de
-    // tentar. A remediação é de política de TI, não de impressora.
+  // AD-277: página em `https:` não decide nada sozinha — só o navegador sabe se
+  // a política ou a permissão do site liberou a chamada. Decidir pelo protocolo
+  // recusava a impressão de quem já tinha o navegador liberado.
+  it('em página https tenta imprimir, e imprime quando o navegador deixa', async () => {
     const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response('')));
 
     renderizarEntrega('E', { fetchImpl, protocoloDaPagina: 'https:' });
 
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('distingue o bloqueio do navegador do serviço indisponível', async () => {
+    // O Chrome nomeia o bloqueio de rede local na mensagem do `TypeError`.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.reject(new TypeError('Request to the local network was blocked')),
+    );
+
+    renderizarEntrega('E', { fetchImpl });
+
     expect(await screen.findByTestId('abrir-pdf-documento-fiscal')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/navegador bloqueou/i);
-    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('em página https, a falha sem marcador nomeia as duas causas possíveis', async () => {
+    // Mixed Content e porta fechada chegam com o mesmo `Failed to fetch`.
+    const fetchImpl = vi.fn<typeof fetch>(() => Promise.reject(new TypeError('Failed to fetch')));
+
+    renderizarEntrega('E', { fetchImpl, protocoloDaPagina: 'https:' });
+
+    expect(await screen.findByTestId('abrir-pdf-documento-fiscal')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/confira se ele está rodando/i);
+    expect(screen.getByRole('alert')).toHaveTextContent(/LocalNetworkAccessAllowedForUrls/);
   });
 
   it('mostra o modal quando o navegador recusa a aba do PDF, sem perder o documento', async () => {

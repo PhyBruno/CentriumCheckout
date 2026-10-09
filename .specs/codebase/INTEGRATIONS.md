@@ -41,7 +41,7 @@ Pendência real de contrato: nenhuma. Host por tenant confirmado como decisão c
 Como o CheckoutWEB é servido via HTTPS a partir do domínio do ERP (não `localhost`), duas proteções do Chrome bloqueiam por padrão as chamadas HTTP locais ao TEF/impressão:
 
 1. **Local Network Access (LNA)** — bloqueia acesso a endpoints de rede local sem permissão explícita (padrão a partir do Chrome 142).
-2. **Mixed content** — página HTTPS chamando endpoint HTTP é bloqueada por padrão.
+2. **Mixed content** — página HTTPS chamando endpoint HTTP é bloqueada por padrão (exceto `127.0.0.1`/`localhost`, que o navegador trata como origem confiável). O Checkout **não** decide isso pelo protocolo da página: sempre tenta a requisição e classifica a falha depois (AD-277).
 
 **Solução para produção:** políticas de Chrome Enterprise aplicadas pela TI de cada cliente (GPO no Windows ou Chrome Browser Cloud Management):
 - `LocalNetworkAccessAllowedForUrls` — allowlist da origem do CheckoutWEB.
