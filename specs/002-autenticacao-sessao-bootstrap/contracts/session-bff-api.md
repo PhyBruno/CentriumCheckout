@@ -6,9 +6,15 @@ Este contrato cobre só as rotas que o **BFF do Checkout** expõe para a própri
 
 **Chamador**: navegador, via redirect feito pelo ERP (não é uma chamada AJAX da SPA).
 
-**Query params** (todos vindos do ERP, nunca digitados pelo operador):
+**Query** (revisado em 2026-10-09, AD-276 — as credenciais não viajam mais em claro, e `validationKey` foi removida): a URL é `/session/start?<base64>`. Não há pares `chave=valor` na URL; tudo o que vem depois do `?` é um único valor, o base64 do texto cifrado.
 
-| Param | Tipo | Obrigatório |
+- **Cifra**: `SymmetricCipher.DoEncrypt` do GeneXus — AES, CBC, PKCS7, chave de 256 bits e IV fixos por ambiente, texto em UTF-8, saída em base64 padrão (com `+`, `/` e `=`).
+- **Chave e IV**: variáveis Docker `ENTRADA_AES_KEY` (64 caracteres hexadecimais) e `ENTRADA_AES_IV` (32), idênticas às declaradas no CentriumWEB.
+- **Base64 na URL**: o BFF lê a query **bruta**, sem o parser de query string (que trocaria `+` por espaço e partiria no `=`). Aceita o base64 cru, com percent-encoding (`%2B`, `%2F`, `%3D`) ou com o `+` já convertido em espaço.
+
+**Texto em claro** (o que sai da decifragem): uma query string com os campos abaixo, todos vindos do ERP, nunca digitados pelo operador.
+
+| Campo | Tipo | Obrigatório |
 |---|---|---|
 | `tenant` | string | Sim |
 | `client_id` | string | Sim |
@@ -16,11 +22,12 @@ Este contrato cobre só as rotas que o **BFF do Checkout** expõe para a própri
 | `username` | string | Sim |
 | `password` | string | Sim |
 | `Repository` | string (GUID) | Sim |
-| `codigoEmpresa` | string | Sim |
-| `validationKey` | string | Sim — credencial fixa por ambiente (variável Docker), valida a origem do redirect |
+| `codigoEmpresa` | string | Sim — vazio é recusado |
+
+Os valores são lidos com a semântica de query string (`+` vira espaço, `%XX` é decodificado), a mesma de quando a query vinha em claro: o ERP precisa continuar codificando caracteres especiais de `password` e afins.
 
 **Comportamento**:
-1. Rejeita a requisição (sem chamar o ERP) se `validationKey` não confere com o valor configurado no ambiente.
+1. Decifra a query. Rejeita a requisição (sem chamar o ERP) se ela não abrir com a chave e o IV do ambiente, ou se o texto aberto não trouxer todos os campos obrigatórios.
 2. Monta o host do ERP como `tenant.<baseDomain>` (variável de ambiente Docker).
 3. Chama `POST /oauth/access_token` no ERP (form `application/x-www-form-urlencoded`; `grant_type=password`; `additionalParameters={"AuthenticationTypeName":"local","Repository":"<Repository>"}`).
 4. Cifra `access_token` + todas as credenciais originais com `SESSION_SECRET` e responde com `Set-Cookie` (`HttpOnly`, `Secure`, `SameSite=Lax`).
@@ -28,7 +35,7 @@ Este contrato cobre só as rotas que o **BFF do Checkout** expõe para a própri
 
 **Resposta ao navegador**: `302 Found` com header `Set-Cookie`; corpo vazio. Nenhum campo sensível no corpo ou na URL de destino.
 
-**Erros** (revisado em 2026-09-08, AD-184): toda falha responde `302` para `/?erro=sessao`, **sem** `Set-Cookie` e sem ecoar os valores recebidos — quem chega em `/session/start` é um navegador vindo de um redirect, não um cliente de API, e a SPA mostra o painel terminal ("Não foi possível carregar o checkout com os dados fornecidos" / "Acesse o Checkout novamente pelo CentriumWEB.", sem "Tentar novamente"). Vale para: parâmetros ausentes/inválidos, `validationKey` inválida (ainda rejeitada **antes** de chamar o ERP, AD-022), falha do ERP em `/oauth/access_token` e qualquer erro não tratado. O motivo específico fica só no log do servidor; o parâmetro `erro=sessao` é opaco de propósito.
+**Erros** (revisado em 2026-09-08, AD-184): toda falha responde `302` para `/?erro=sessao`, **sem** `Set-Cookie` e sem ecoar os valores recebidos — quem chega em `/session/start` é um navegador vindo de um redirect, não um cliente de API, e a SPA mostra o painel terminal ("Não foi possível carregar o checkout com os dados fornecidos" / "Acesse o Checkout novamente pelo CentriumWEB.", sem "Tentar novamente"). Vale para: query que não decifra com a chave do ambiente — em claro, de outra chave, truncada ou adulterada — e campos ausentes no texto aberto (ambos rejeitados **antes** de chamar o ERP, AD-276), falha do ERP em `/oauth/access_token` e qualquer erro não tratado. O motivo específico fica só no log do servidor; o parâmetro `erro=sessao` é opaco de propósito.
 
 ## `GET /api/bootstrap`
 

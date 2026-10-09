@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { Env } from '../config/env';
@@ -8,6 +7,7 @@ import {
   SESSION_COOKIE_OPTIONS,
   type CifradorDeSessao,
 } from '../session/cookie';
+import { criarDecifradorDeEntrada } from '../session/entradaCifrada';
 import { ErroTrocaDeToken, trocarCredenciaisPorToken } from '../session/tokenExchange';
 import { buscarUsuarioCodigo } from '../session/getSessao';
 import {
@@ -18,8 +18,9 @@ import {
 } from '../../shared/erroAcesso';
 
 /**
- * Query params do redirect do ERP (`contracts/session-bff-api.md`).
- * Todos vêm do ERP — nunca são digitados pelo operador.
+ * Campos do redirect do ERP (`contracts/session-bff-api.md`), como saem da
+ * query depois de decifrada (AD-276). Todos vêm do ERP — nunca são digitados
+ * pelo operador.
  */
 const sessionStartQuerySchema = z.object({
   tenant: z.string().min(1),
@@ -29,8 +30,18 @@ const sessionStartQuerySchema = z.object({
   password: z.string().min(1),
   Repository: z.string().min(1),
   codigoEmpresa: z.string().min(1),
-  validationKey: z.string().min(1),
 });
+
+/**
+ * O que vem depois do `?`, sem interpretar.
+ *
+ * `request.query` não serve aqui: o parser de query string trocaria os `+` do
+ * base64 por espaço e partiria o texto no `=` do padding.
+ */
+function queryBruta(url: string | undefined): string {
+  const inicio = url?.indexOf('?') ?? -1;
+  return url === undefined || inicio < 0 ? '' : url.slice(inicio + 1);
+}
 
 export interface SessionStartDeps {
   readonly env: Env;
@@ -40,13 +51,6 @@ export interface SessionStartDeps {
   readonly destinoAposLogin?: string;
   /** Espera entre tentativas; injetável para o teste não dormir de verdade. */
   readonly esperar?: (ms: number) => Promise<void>;
-}
-
-/** Comparação em tempo constante — evita distinguir chaves por tempo de resposta. */
-function chaveConfere(recebida: string, esperada: string): boolean {
-  const a = Buffer.from(recebida, 'utf8');
-  const b = Buffer.from(esperada, 'utf8');
-  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 /**
@@ -127,11 +131,13 @@ function tokenIndisponivel(desfecho: DesfechoDeToken): boolean {
 /**
  * `GET /session/start` — ponto de entrada único do Checkout (T014, US1).
  *
- * Recebe o redirect do ERP com as credenciais do operador, troca por
- * `access_token`, cifra tudo no cookie `HttpOnly` e redireciona para a URL limpa
- * da SPA. Nenhum dado sensível sobra na URL de destino (FR-001, FR-002, SC-001).
+ * Recebe o redirect do ERP com as credenciais do operador cifradas (AD-276),
+ * troca por `access_token`, cifra tudo no cookie `HttpOnly` e redireciona para a
+ * URL limpa da SPA. Nenhum dado sensível sobra na URL de destino (FR-001,
+ * FR-002, SC-001).
  */
 export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionStartDeps): void {
+  const decifrador = criarDecifradorDeEntrada(deps.env.entradaAesKey, deps.env.entradaAesIv);
   const destino = deps.destinoAposLogin ?? '/';
   const separador = destino.includes('?') ? '&' : '?';
   const destinoComErro = `${destino}${separador}${PARAM_ERRO_ACESSO}=${VALOR_ERRO_ACESSO}`;
@@ -150,20 +156,29 @@ export function registrarRotaSessionStart(app: FastifyInstance, deps: SessionSta
   }
 
   app.get('/session/start', async (request, reply) => {
-    const query = sessionStartQuerySchema.safeParse(request.query);
+    // Só entra quem cifrou com a chave deste ambiente. Uma query em claro, de
+    // outra chave ou adulterada para aqui, ANTES de gastar uma tentativa de
+    // autenticação OAuth — é o papel que a `validationKey` cumpria (AD-276).
+    const entrada = decifrador.decifrar(queryBruta(request.raw.url));
+
+    if (entrada === null) {
+      request.log.warn('redirect sem entrada cifrada válida');
+      return recusarEntrada(reply);
+    }
+
+    const query = sessionStartQuerySchema.safeParse(
+      Object.fromEntries(new URLSearchParams(entrada)),
+    );
 
     if (!query.success) {
       // Não ecoa os valores recebidos: a query carrega credenciais. Manda para a
       // SPA, que mostra o painel terminal — quem chega aqui é um **navegador**
       // vindo de um redirect, não um cliente de API, e um JSON cru na tela não
       // diz ao operador o que fazer (pedido do usuário, 2026-09-08).
-      return recusarEntrada(reply);
-    }
-
-    // Valida a origem do redirect ANTES de gastar uma tentativa de autenticação
-    // OAuth com uma origem não verificada (AD-022).
-    if (!chaveConfere(query.data.validationKey, deps.env.validationKey)) {
-      request.log.warn('redirect com validationKey inválida');
+      request.log.warn(
+        { campos: query.error.issues.map((issue) => issue.path.join('.')) },
+        'entrada decifrada sem os campos obrigatórios',
+      );
       return recusarEntrada(reply);
     }
 

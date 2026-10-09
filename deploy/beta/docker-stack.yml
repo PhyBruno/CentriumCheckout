@@ -5,9 +5,11 @@
 #
 #   CHECKOUT_IMAGE=justbrunasso/centriumcheckout:beta   padrão; repo público no Docker Hub
 #   CHECKOUT_DOMAIN=checkout.centrium.inf.br            padrão; host publicado pelo Traefik
-#   validationKey=...            obrigatória; a mesma que o ERP manda no redirect (AD-022)
+#   ENTRADA_AES_KEY=...          obrigatória; chave AES-256 em hex (64 caracteres), a mesma
+#                                com que o ERP cifra a query de /session/start (AD-276)
+#   ENTRADA_AES_IV=...           obrigatória; IV da mesma cifra em hex (32 caracteres)
 #   SESSION_SECRET=...           obrigatória; >= 32 caracteres aleatórios
-#   (os dois segredos nunca entram neste arquivo)
+#   (os três segredos nunca entram neste arquivo)
 #
 #   ERP_PROXY=1                  1 = token no `.apps`, API no `.prototype` (padrão)
 #                                0 = BFF direto em `https://<tenant>.<ERP_BASE_DOMAIN>`,
@@ -47,7 +49,8 @@ services:
       NODE_ENV: "production"
       PORT: "3000"
       baseDomain: ${ERP_BASE_DOMAIN:-apps.centrium.inf.br}
-      validationKey: ${validationKey:?defina validationKey}
+      ENTRADA_AES_KEY: ${ENTRADA_AES_KEY:?defina ENTRADA_AES_KEY}
+      ENTRADA_AES_IV: ${ENTRADA_AES_IV:?defina ENTRADA_AES_IV}
       SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET}
       ERP_PROXY: ${ERP_PROXY:-1}
     # A troca de destino fica aqui, e não no `environment`, porque o compose não

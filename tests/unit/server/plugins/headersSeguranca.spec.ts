@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { loadEnv } from '../../../../src/server/config/env';
+import { ENV_DA_ENTRADA } from '../../../support/entradaCifrada';
 import { buildApp } from '../../../../src/server/index';
 import { CSP_CHECKOUT, HSTS } from '../../../../src/server/plugins/headersSeguranca';
 
@@ -19,7 +20,7 @@ import { CSP_CHECKOUT, HSTS } from '../../../../src/server/plugins/headersSegura
 
 const env = loadEnv({
   baseDomain: 'apps.example.test',
-  validationKey: 'chave-de-validacao-sintetica',
+  ...ENV_DA_ENTRADA,
   SESSION_SECRET: 'segredo-sintetico-de-teste-com-32+'.padEnd(32, '-'),
   NODE_ENV: 'test',
   SERVE_STATIC_CLIENT: 'false',

@@ -10,8 +10,13 @@ import { z } from 'zod';
 export interface Env {
   /** Domínio base do ERP. O host efetivo é `<tenant>.<baseDomain>` (AD-019). */
   readonly baseDomain: string;
-  /** Credencial fixa por ambiente que valida a origem do redirect do ERP (AD-022). */
-  readonly validationKey: string;
+  /**
+   * Chave AES-256 (hexadecimal) com que o ERP cifra a query de `/session/start`
+   * (AD-276). Fixa por ambiente e igual à declarada no CentriumWEB.
+   */
+  readonly entradaAesKey: string;
+  /** IV (hexadecimal) da mesma cifra — também fixo, é o ERP que o define. */
+  readonly entradaAesIv: string;
   /** Chave de servidor usada para cifrar o cookie de sessão. */
   readonly sessionSecret: string;
   readonly port: number;
@@ -43,7 +48,12 @@ const SESSION_SECRET_MIN_LENGTH = 32;
 const envSchema = z
   .object({
     baseDomain: z.string().min(1, 'baseDomain é obrigatório'),
-    validationKey: z.string().min(1, 'validationKey é obrigatório'),
+    ENTRADA_AES_KEY: z
+      .string()
+      .regex(/^[0-9a-fA-F]{64}$/, 'ENTRADA_AES_KEY deve ter 64 caracteres hexadecimais (AES-256)'),
+    ENTRADA_AES_IV: z
+      .string()
+      .regex(/^[0-9a-fA-F]{32}$/, 'ENTRADA_AES_IV deve ter 32 caracteres hexadecimais'),
     SESSION_SECRET: z
       .string()
       .min(
@@ -83,7 +93,8 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
 
   return {
     baseDomain: value.baseDomain,
-    validationKey: value.validationKey,
+    entradaAesKey: value.ENTRADA_AES_KEY,
+    entradaAesIv: value.ENTRADA_AES_IV,
     sessionSecret: value.SESSION_SECRET,
     port: value.PORT,
     erpProtocol: value.ERP_PROTOCOL,

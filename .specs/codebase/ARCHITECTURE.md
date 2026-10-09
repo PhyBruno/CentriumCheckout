@@ -7,7 +7,7 @@
 ## High-Level Structure
 
 ```
-ERP (autentica operador, abre URL do Checkout com credenciais + validationKey)
+ERP (autentica operador, abre URL do Checkout com as credenciais cifradas em AES — AD-276)
         │
         ▼
 BFF (Node — sessão/autenticação; cookie HttpOnly cifrado; proxy de API; AD-022)
@@ -44,7 +44,7 @@ Não há banco de dados nem lógica de negócio própria do Checkout — toda fo
 
 Um BFF mínimo (Node, sem banco de dados, sem lógica de negócio — AD-022 em `.specs/project/STATE.md`) intermedia toda a sessão:
 
-- `GET /session/start` recebe o redirect do ERP (query params `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository`, `codigoEmpresa` e `validationKey`), valida `validationKey` (credencial fixa por ambiente, igual para todos os tenants — só confirma a origem da chamada, não é uma credencial de operador), troca as credenciais por `access_token` (`POST /oauth/access_token`) e cifra `access_token` + credenciais originais num cookie `HttpOnly`/`Secure`/`SameSite=Lax`, usando uma chave de servidor própria (não em `localStorage`/`sessionStorage`, e nunca em texto plano acessível fora do processo do BFF).
+- `GET /session/start` recebe o redirect do ERP com a query **cifrada** (AD-276, 2026-10-09 — a `validationKey` de AD-022 deixou de existir): o que vem depois do `?` é um único base64, que o BFF decifra (AES-256, CBC, PKCS7; chave e IV fixos por ambiente, iguais aos do CentriumWEB) para obter `tenant`, `client_id`, `client_secret`, `username`, `password`, `Repository` e `codigoEmpresa`. Quem não cifrou com a chave do ambiente é recusado antes de qualquer chamada ao ERP — é a própria cifra que confirma a origem. Em seguida o BFF troca as credenciais por `access_token` (`POST /oauth/access_token`) e cifra `access_token` + credenciais originais num cookie `HttpOnly`/`Secure`/`SameSite=Lax`, usando uma chave de servidor própria (não em `localStorage`/`sessionStorage`, e nunca em texto plano acessível fora do processo do BFF).
 - `GET /api/bootstrap` decifra o cookie no servidor e devolve ao JS só os campos não sensíveis (`codigoEmpresa`, `tenant`) combinados com o payload do `GetSessao` — o frontend nunca lê `client_secret`, `password` ou `access_token`.
 - `/api/erp/*` faz proxy autenticado de toda chamada de negócio subsequente, injetando `Authorization`/`Empresa` no servidor e renovando o token sozinho em caso de expiração (401) — renovação de sessão é lógica 100% de servidor, invisível ao JS.
 
@@ -89,7 +89,7 @@ Cada opção é só navegação para fora do Checkout — nenhuma das duas é fu
 - **Produção:** build multi-stage — um estágio compila os assets estáticos da SPA, outro roda o processo Node do BFF (AD-022), que serve esses assets **e** responde as rotas de sessão/proxy — não é mais um Nginx puro servindo estático, é um processo Node ativo.
 - **Fora do escopo do container:** TEF e servidor de impressão continuam nativos na máquina física do PDV (ver `.specs/codebase/INTEGRATIONS.md`).
 - **Domínio base da API do ERP:** vem de variável de ambiente Docker chamada `baseDomain`, configurada por ambiente de implantação (dev/staging/produção) (ver AD-019 em `.specs/project/STATE.md`).
-- **Credencial fixa de validação do redirect do ERP:** variável de ambiente Docker `validationKey`, igual para todos os tenants de um mesmo ambiente (AD-022).
+- **Chave e IV da entrada cifrada do ERP:** variáveis de ambiente Docker `ENTRADA_AES_KEY` (64 caracteres hexadecimais) e `ENTRADA_AES_IV` (32), iguais para todos os tenants de um mesmo ambiente e idênticas às declaradas no CentriumWEB (AD-276). Substituem a `validationKey` de AD-022, que foi removida.
 - **Chave de cifra do cookie de sessão:** variável de ambiente Docker `SESSION_SECRET` (AD-022).
 - **Imagem-base:** `node:<version>-slim`, para dev e produção.
 - **CI/CD (produção):** a cada merge na `master`, workflow do GitHub Actions builda a imagem e publica no Docker Hub.
