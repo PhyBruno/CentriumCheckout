@@ -4,14 +4,19 @@
 
 .DESCRIPTION
   O Checkout roda em https e imprime mandando o XML da nota para um serviço
-  http na própria máquina do PDV (padrão 127.0.0.1:4545). O navegador barra
-  essa chamada até que a origem do Checkout seja liberada em duas políticas:
+  http na própria máquina do PDV (padrão 127.0.0.1:4545). No Brave, quem barra
+  essa chamada é o Shields (o leão), que bloqueia o acesso de sites públicos
+  ao localhost. O script desliga o Shields SÓ para a origem do Checkout:
+
+    BraveShieldsDisabledForUrls       - Shields desligado para o site
+
+  e, como o Brave é Chromium, grava também as duas políticas do Chrome, na
+  chave própria dele:
 
     LocalNetworkAccessAllowedForUrls  - acesso à rede local
     InsecureContentAllowedForUrls     - chamada http a partir de página https
 
-  O Brave é Chromium e lê as mesmas políticas, na chave própria dele. O script
-  só acrescenta a origem; nunca apaga o que já estava liberado.
+  O script só acrescenta a origem; nunca apaga o que já estava liberado.
 
   Precisa de PowerShell como administrador. Depois de rodar, abra
   brave://policy, clique em "Recarregar políticas" e recarregue o Checkout.
@@ -34,7 +39,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RAIZ_BRAVE = 'HKLM:\SOFTWARE\Policies\BraveSoftware\Brave'
-$POLITICAS = 'LocalNetworkAccessAllowedForUrls', 'InsecureContentAllowedForUrls'
+$POLITICAS = 'BraveShieldsDisabledForUrls', 'LocalNetworkAccessAllowedForUrls', 'InsecureContentAllowedForUrls'
 
 function Test-Administrador {
   $identidade = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -79,4 +84,5 @@ foreach ($politica in $POLITICAS) {
 
 Write-Host ''
 Write-Host 'Pronto. Abra brave://policy, clique em "Recarregar políticas" e recarregue o Checkout.'
-Write-Host 'Se ainda bloquear, confira o Shields do site e a permissão de rede local no cadeado.'
+Write-Host 'Em brave://policy, BraveShieldsDisabledForUrls tem que aparecer com status OK.'
+Write-Host 'Se o Brave não reconhecer a política, desligue o Shields do site pelo ícone do leão.'
