@@ -119,7 +119,6 @@ Ao finalizar, suspender ou validar a venda, o Checkout envia o desconto de capa 
 - **Item cancelado e capa ativa.** O carrinho continua congelado enquanto houver capa; nada na regra de congelamento muda.
 - **Capa e pagamento já aplicado.** A capa não pode ser alterada com pagamento vivo, como hoje.
 - **Operador troca de condição sem capa digitada.** A capa passa a ser a da nova condição (pode ser vazia).
-- **Teto da condição ausente.** Condição que não traz o campo do teto é tratada como teto zero (nenhum desconto de capa).
 - **ERP sem o campo de capa.** Chave ligada e ERP que ainda não lê o campo: o desconto não aparece na nota. É risco de implantação, não de operação, e é tratado na ordem de virada (ver Dependências).
 
 ## Requirements *(mandatory)*
@@ -151,7 +150,7 @@ Ao finalizar, suspender ou validar a venda, o Checkout envia o desconto de capa 
 - **FR-015**: Ao escolher uma condição de pagamento, o sistema MUST aplicar como desconto de capa o percentual de desconto da condição, calculado sobre o subtotal líquido dos descontos de item.
 - **FR-016**: O operador MUST poder alterar ou remover a capa aplicada, em percentual ou em valor, desde que o resultado não ultrapasse o teto da condição. Uma digitação acima do teto MUST ser ajustada automaticamente ao teto, com aviso em texto informando o teto e que o valor foi ajustado — o mesmo tratamento que o preço mínimo recebe no item (FR-010). Ajustar, e não recusar, porque a capa é gravada a cada tecla: ao digitar "10", o "1" já foi uma capa válida, e "voltar ao último valor válido" restauraria um valor que o operador nunca escolheu.
 - **FR-017**: O teto da condição MUST ser tratado como percentual do subtotal líquido; um valor digitado em reais MUST ser comparado pelo seu equivalente em percentual.
-- **FR-018**: Teto zero ou ausente numa condição MUST significar que nenhum desconto de capa é permitido nela: o campo fica bloqueado e explica o motivo.
+- **FR-018**: Teto zero numa condição MUST significar que nenhum desconto de capa é permitido nela: o campo fica bloqueado e explica o motivo. (O teto é campo obrigatório do cadastro da condição no contrato do ERP; uma condição sem ele já é recusada na fronteira, antes de chegar a esta regra.)
 - **FR-019**: Trocar a condição MUST recalcular a capa a partir da nova condição e MUST descartar a capa digitada anteriormente.
 - **FR-020**: Quando o desconto automático da condição for maior que o teto da mesma condição, o sistema MUST aplicar a capa limitada ao teto e MUST avisar o operador.
 - **FR-021**: Quando a capa automática igualar ou exceder o subtotal da venda, o sistema MUST NOT aplicá-la e MUST avisar o operador.
@@ -180,29 +179,32 @@ Ao finalizar, suspender ou validar a venda, o Checkout envia o desconto de capa 
 ### Measurable Outcomes
 
 - **SC-001**: Em 100% dos gestos de edição de preço ou desconto de um item, o outro campo reflete o novo valor no mesmo gesto, sem que o operador precise sair do campo ou confirmar duas vezes.
-- **SC-002**: Em nenhuma venda finalizada existe item com preço praticado abaixo do preço mínimo do produto no ERP, por qualquer caminho de inclusão ou edição.
+- **SC-002**: Em nenhuma venda finalizada existe item cujo preço o operador pode editar (produto de preço editável com preço de tabela cadastrado) com preço praticado abaixo do preço mínimo do produto no ERP, por qualquer caminho de inclusão ou edição. Ficam fora do critério: itens importados de DAV/NFCe (o documento já foi aceito pelo ERP), produtos de preço fixo ou pesável (o preço vem da tabela, sem campo editável) e produtos de preço de tabela zero (FR-005).
 - **SC-003**: Em 100% das tentativas de desconto de item abaixo do mínimo, o operador é informado em texto do preço mínimo e de que o valor foi ajustado, sem precisar consultar outro sistema.
-- **SC-004**: Ao escolher uma condição de pagamento com desconto, o operador chega ao total a pagar com desconto sem digitar nada — zero campos preenchidos manualmente no caminho feliz.
+- **SC-004**: Ao escolher uma condição de pagamento com desconto, o operador chega ao total a pagar já com o desconto sem digitar nenhum valor de desconto — zero campos de desconto preenchidos manualmente no caminho feliz.
 - **SC-005**: Nenhuma venda aceita desconto de capa acima do teto da condição escolhida.
 - **SC-006**: O total de uma venda com desconto de item e capa confere com o cálculo manual em reais: capa = percentual × (subtotal bruto − descontos de item), sem divergência de centavo.
 - **SC-007**: Com a chave desligada, 100% dos documentos enviados ao ERP são idênticos aos de antes da mudança; com a chave ligada, o valor do campo de capa é igual ao desconto de capa exibido ao operador em 100% das vendas.
-- **SC-008**: O operador conclui uma venda com desconto de item, capa e pagamento no mesmo número de gestos que hoje ou menos.
+- **SC-008**: O operador conclui uma venda com desconto de item, capa e pagamento no mesmo número de gestos que hoje ou menos. *Métrica de acompanhamento pós-lançamento, medida com o piloto; não gera tarefa de construção.*
 
 ## Dependencies
 
-- **ERP — campo de capa.** O ERP precisa criar o campo de desconto de capa no documento de faturamento (`CheckoutFaturarNFCe.DescontoCapaValor`) e rateá-lo entre os itens, somando ao desconto individual. Até lá, a chave fica desligada. O nome e o tipo exatos do campo precisam ser confirmados com o ERP antes de ligar.
+- **ERP — campo de capa.** O ERP precisa criar o campo de desconto de capa no documento de faturamento (`CheckoutFaturarNFCe.DescontoCapaValor`) e rateá-lo entre os itens, somando ao desconto individual. Até lá, a chave fica desligada. **Confirmado em 2026-10-13:** o nome é esse; é valor monetário em reais, com até 2 casas decimais (como `DescontoValor`); e a porcentagem, quando a capa é dada em %, é calculada pelo Checkout — só o valor resolvido em reais viaja. **Ainda a confirmar com o ERP:** a regra de rateio dele.
+- **ERP — reimposição das regras.** Preço mínimo e teto da condição são impostos **no Checkout**, e o corpo da venda é editável no navegador. Para a regra não depender só do cliente, o ERP (ou a validação prévia `ValidarNFCe`) deveria reconferi-las. Não bloqueia esta feature; fica registrado como pendência.
 - **ERP — cadastro de tetos.** A maioria das condições de pagamento hoje vem com teto zero. Ligar a regra do teto sem cadastrar tetos bloquearia o desconto de capa em quase todas as condições; o cadastro precisa ser revisado antes da virada.
 - **ERP — preço mínimo.** O cadastro do produto já entrega o preço mínimo; valores zero são tratados como "sem mínimo".
 
 **Ordem de virada sugerida**: (1) ERP cria e testa o campo; (2) cadastro de tetos revisado; (3) chave ligada numa loja piloto; (4) demais lojas.
 
+**Efeito esperado na primeira carga depois da implantação**: como a configuração da chave passa a fazer parte do que o servidor entrega ao abrir a tela, o conteúdo de partida muda uma vez para **todas** as empresas, e cada uma rebaixa o pacote de configuração (~5 MB) na primeira abertura. É esperado e acontece uma vez só.
+
 ## Assumptions
 
-- O preço de tabela de referência do item é o preço de venda que o ERP entrega com o produto no momento da inclusão. Para produtos de preço por faixa de quantidade, a referência segue o que o motor de precificação já resolve para a quantidade do item.
+- O preço de tabela de referência do item é o preço de venda (`PrecoVenda`) que o ERP entrega com o produto no momento da inclusão. O vínculo só vale para produto de preço editável, cujo preço o operador define e que o motor de precificação **nunca** reescreve por faixa de quantidade; por isso a referência é sempre esse preço de venda, e preço por faixa não entra no vínculo.
 - O vínculo entre preço e desconto só se aplica a itens cujos campos o operador já pode editar hoje.
 - O preço mínimo é comparado com o preço do item após o desconto manual; o desconto automático do convênio não entra na comparação.
 - Sem condição de pagamento escolhida, a capa continua livre. Se existir condição padrão importada de um documento, ela segue as regras da condição escolhida.
 - A mensagem de ajuste por preço mínimo e as de recusa por teto são avisos em texto, no mesmo padrão das demais notificações do Checkout.
-- O desconto de capa em modo percentual aceita uma casa decimal, e em modo valor aceita duas, como hoje.
+- O desconto de capa digitado em modo percentual aceita uma casa decimal, e em modo valor aceita duas, como hoje. A capa **automática** da condição pode trazer mais casas (ex.: 3,25%), porque vem do cadastro do ERP; o campo a exibe inteira, e a restrição vale só para a digitação.
 - Escopo fora desta feature: desconto percentual por item como campo próprio, alçada/autorização de gerente para exceder tetos, relatório de descontos concedidos, e leitura de capa em DAV/NFCe importados (depende de o ERP devolvê-la no documento).
 - Esta feature supera parcialmente as decisões AD-098, AD-151 e as regras de desconto sem teto das specs 003 e 008; a reescrita dessas passagens nas specs de origem e o registro de um novo AD em `.specs/project/STATE.md` fazem parte da implementação.

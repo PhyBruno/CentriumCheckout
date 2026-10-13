@@ -20,7 +20,7 @@ Três decisões da pesquisa corrigiram ou refinaram a spec e estão em [research
 
 **Primary Dependencies**: Zustand 5 + Immer, TanStack Query, Zod 4, Vitest + Testing Library, Playwright. **Nenhuma dependência nova.**
 
-**Storage**: N/A — nenhum estado persistido novo. `recursos` entra no registro do bootstrap que o Dexie já guarda (cache de leitura, revalidado por Zod na leitura).
+**Storage**: N/A — nenhum estado persistido novo. `recursos` entra no registro do bootstrap que o Dexie já guarda (cache de leitura). O Dexie **não** reparseia o registro ao ler; quem impede um registro anterior ao campo de ser reaproveitado é o ETag, que cobre `recursos` e muda junto com ele (ver `research.md` D11).
 
 **Testing**: Vitest (unitário de domínio, integração de slice, componente) + Playwright E2E contra o `erp-mock`. Domínio monetário com teste de propriedade (soma exata, ida-e-volta preço↔desconto dentro de 1 centavo por unidade).
 
@@ -36,7 +36,7 @@ Três decisões da pesquisa corrigiram ou refinaram a spec e estão em [research
 - Retrato validado (014) e retrato emitido recebem a **mesma** capa (I5): um único produtor, `montarPagamentosParaPayload`.
 - Mobile: o campo de preço/desconto reescrito por código só recebe a seleção total (`selecionarConteudoAoFocar`) se estiver habilitado.
 
-**Scale/Scope**: ~14 arquivos de produção alterados, 4 criados (`descontoItem.ts`, `useVinculoPrecoDesconto.ts` e dois acréscimos de módulo); 1 evento de auditoria novo; ~12 arquivos de teste reescritos, ~5 criados.
+**Scale/Scope**: ~14 arquivos de produção alterados e 2 criados (`descontoItem.ts`, `useVinculoPrecoDesconto.ts`); 1 evento de auditoria novo; ~12 arquivos de teste reescritos e 5 criados (`descontoItem.spec.ts`, `useVinculoPrecoDesconto.spec.tsx`, `env.spec.ts`, `bootstrapRecursos.spec.ts`, mais o que `tasks.md` acrescentar).
 
 ## Constitution Check
 
@@ -152,6 +152,9 @@ tests/
 | **Divisão não exata** (desconto ÷ qtd) | Desconto total é a verdade; mestre explícito na barra impede o laço (D4); teste de propriedade |
 | **Dois avisos para uma ocorrência** (barra + slice) | A barra ajusta antes; o slice só fala se ainda precisar (D7); teste que conta chamadas de `notificar.aviso` |
 | **`ZERA_UM_ITEM` some com a chave ligada**: o ERP pode ratear e deixar item abaixo de R$ 0,01 | Aceito (D13); a rede é o `ValidarNFCe` antes do pagamento |
+| **Preço mínimo e teto só no cliente**: o corpo de `FaturarNFCe` é editável no navegador, e a Constitution III põe o ERP como fonte de verdade | Fora do escopo desta feature; registrado em `PENDENCIES.md` como pendência com o ERP (reconferir no `ValidarNFCe`). Não bloqueia |
+| **Auditoria da capa some a partir da 2ª venda** se a deduplicação guardar estado fora do store (a venda reinicia, a closure não) | A dedup deriva do **último `DESCONTO_CAPA_APLICADO` em `eventos`**, que é zerado por venda (D10) |
+| **1ª carga pós-implantação rebaixa ~5 MB por empresa**: `recursos` muda o hash do bootstrap de todos os tenants de uma vez | Esperado e único (AD-045/FR-008); entra na ordem de virada da spec |
 
 ## Complexity Tracking
 

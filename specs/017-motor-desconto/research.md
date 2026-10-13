@@ -98,7 +98,9 @@ Com o ajuste automático da feature, isso pioraria: o desconto passaria a ser re
 
 ## D10. Auditoria da capa: um evento por confirmação, não por tecla
 
-**Decisão**: novo evento `DESCONTO_CAPA_APLICADO` (`origem`, `modo`, `entrada`, `valor`), emitido pela chamada **não silenciosa** (saída do campo, Enter, troca de modo) e pela capa automática; deduplicado contra a última capa auditada.
+**Decisão**: novo evento `DESCONTO_CAPA_APLICADO` (`origem`, `modo`, `entrada`, `valor`), emitido pela chamada **não silenciosa** (saída do campo, Enter, troca de modo) e pela capa automática de `selecionarCondicao`; deduplicado contra o **último `DESCONTO_CAPA_APLICADO` em `eventos`** (seletor puro em `domain/auditoria/eventos.ts`).
+
+**Por que a dedup lê o `Log` e não guarda uma variável no slice**: o store é um só e a venda reinicia, mas uma closure do slice sobreviveria à venda. Na venda seguinte, a mesma capa (muito comum: a mesma condição de 5%) seria igual à "última auditada" e **não geraria evento** — violando FR-025 a partir da 2ª venda. `eventos` é zerado por venda, então a dedup herda o escopo certo sem estado novo.
 
 **Por quê**: o comentário em `ControleDescontoCapa.tsx:364-370` diz que "a aplicação não audita (a 004 audita na finalização)". Verifiquei: **não existe nenhum evento de capa** em `eventos.ts` — a 004 não audita capa, só envia. FR-025 exige o registro da origem, então o evento tem de nascer. Emitir por tecla (a capa grava a cada tecla desde AD-278) poluiria o `Log` que vai inteiro ao ERP; a chamada não silenciosa já existe e já é o "número completo" do operador.
 
@@ -107,6 +109,8 @@ Com o ajuste automático da feature, isso pioraria: o desconto passaria a ser re
 ## D11. A chave de virada viaja pelo bootstrap
 
 **Decisão**: `DESCONTO_CAPA_NO_ERP` (variável do BFF, padrão `false`) → `Env.descontoCapaNoErp` → `GET /api/bootstrap` devolve `recursos: { descontoCapaNoErp }` → `sessionStore.registro` → `PagamentoDeps.descontoCapaNoErp()`.
+
+**Registro guardado e ETag (corrigido em 2026-10-13)**: o Dexie **não** reparseia o registro ao ler. `bootstrapClient.ts` devolve o registro guardado sem validar quando o servidor responde 304 (linhas 133-136) ou quando o hash coincide (176-177). O `default` do schema só age sobre payload **recém-buscado**. O que impede um registro anterior ao campo de ser reaproveitado é o hash: como `recursos` entra no corpo, o hash muda e o servidor responde 200, e o registro novo substitui o velho. Efeito colateral esperado: na primeira carga depois do deploy **todas** as empresas rebaixam o bootstrap (~5 MB) uma vez.
 
 **Por quê**: não existe hoje nenhum canal BFF → cliente para chave de comportamento (varri `process.env` e `import.meta.env` em `src/`: o cliente não lê nenhum). O bootstrap é a única leitura de partida da SPA, e seu ETag é o hash do corpo (`calcularVersionHash(validado.data)`, `bootstrap.ts:136`) — então a chave entra no hash e a SPA descarta o cache do Dexie sozinha quando ela muda. Sem trabalho extra de invalidação.
 

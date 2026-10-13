@@ -103,6 +103,11 @@ Compatível com chamadas antigas que omitiam o 4º argumento. `reaisDeCentavos` 
 export function eventoDescontoCapaAplicado(detalhes: {
   origem: OrigemDescontoCapa; modo: 'PERCENTUAL' | 'VALOR'; entrada: number; valor: number;
 }): EventoDescontoCapaAplicado;
+
+/** Último `DESCONTO_CAPA_APLICADO` do histórico da venda, ou `null`. Base da deduplicação (research D10). */
+export function ultimoDescontoCapaAuditado(
+  eventos: readonly EventoAuditoria[],
+): EventoDescontoCapaAplicado | null;
 ```
 
 ## 2. Stores
@@ -137,9 +142,9 @@ montarPagamentosParaPayload(): {
 };
 ```
 
-Comportamentos novos de `aplicarDescontoCapa`: (a) consulta o teto da `condicaoSelecionada`; (b) acima do teto grava `valorResolvido = teto` e avisa (exceto `silencioso`); (c) teto 0 recusa com `AVISO_CONDICAO_SEM_DESCONTO`; (d) grava `origem: 'MANUAL'`; (e) emite `DESCONTO_CAPA_APLICADO` quando **não** silenciosa e a capa difere da última auditada.
+Comportamentos novos de `aplicarDescontoCapa`: (a) consulta o teto da `condicaoSelecionada`; (b) acima do teto grava `valorResolvido = teto` e avisa (exceto `silencioso`); (c) teto 0 recusa com `AVISO_CONDICAO_SEM_DESCONTO`; (d) grava `origem: 'MANUAL'`; (e) emite `DESCONTO_CAPA_APLICADO` quando **não** silenciosa e a capa difere do **último `DESCONTO_CAPA_APLICADO` em `eventos`** (seletor puro `ultimoDescontoCapaAuditado(eventos)`, em `eventos.ts`) — sem estado guardado no slice, para a dedup não atravessar vendas.
 
-`selecionarCondicao(condicao)`: grava `condicaoSelecionada` **e** `descontoCapa` no mesmo `set` (I-D4); capa nova com `origem: 'CONDICAO'`, ou `null`.
+`selecionarCondicao(condicao)`: grava `condicaoSelecionada` **e** `descontoCapa` no mesmo `set` (I-D4); capa nova com `origem: 'CONDICAO'`, ou `null`. Quando aplica uma capa, emite `DESCONTO_CAPA_APLICADO` com `origem: 'CONDICAO'` (mesma dedup de `aplicarDescontoCapa`); quando o desconto é limitado ao teto (FR-020) ou zeraria a venda (FR-021), avisa.
 
 ### 2.3 `ValidacaoDeps`
 
@@ -174,7 +179,7 @@ confirmarEdicaoDeLinha(...): Promise<ResultadoConfirmacao>
 { "recursos": { "descontoCapaNoErp": false } }
 ```
 
-Entra no hash do ETag. Ausente no cache antigo do Dexie ⇒ `default` do schema ⇒ `false`.
+Entra no hash do ETag: ligar ou desligar a chave muda o hash, o servidor responde 200 e o registro novo substitui o do Dexie. O `default` do schema cobre só payload **recém-buscado** sem o campo; o registro já guardado não é reparseado ao ler, então a leitura no cliente (`pagamentoDepsPadrao.descontoCapaNoErp`) tolera a ausência em runtime e vale `false`.
 
 Variável de ambiente: `DESCONTO_CAPA_NO_ERP` ∈ {`true`, `false`}, padrão `false`. Declarada em `.env.example`, `docker-compose.yml` e `deploy/beta/docker-stack.yml`.
 
@@ -187,4 +192,6 @@ Variável de ambiente: `DESCONTO_CAPA_NO_ERP` ∈ {`true`, `false`}, padrão `fa
 
 O BFF (`erp-proxy.ts`) só reescreve `Empresa` e `UsuarioCodigo` e repassa o resto: **nenhuma mudança no proxy**.
 
-**Pendente com o ERP (não bloqueia o plano, bloqueia ligar a chave):** nome exato e tipo do campo (`double` em reais, como `DescontoValor`?), ausência vs. zero, e a regra de rateio dele. Confirmar pelo MCP `genexus` e registrar em `PENDENCIES.md`.
+**Confirmado em 2026-10-13:** o nome é `DescontoCapaValor`; é valor monetário em reais com até 2 casas decimais (como `DescontoValor`); e a porcentagem, quando a capa é dada em %, é calculada pelo Checkout (`resolverDescontoCapa`/`aplicarPercentual`), de modo que só o valor resolvido viaja. Serializado por `reaisDeCentavos` (inteiro de centavos ÷ 100), sem ponto flutuante intermediário.
+
+**Pendente com o ERP (bloqueia ligar a chave, não o desenvolvimento):** a regra de rateio dele; se o campo ausente equivale a zero (o Checkout sempre o envia quando a chave está ligada); e a reconferência de preço mínimo e teto no `ValidarNFCe`. Registrar em `PENDENCIES.md`.

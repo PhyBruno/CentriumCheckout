@@ -50,7 +50,7 @@ Invariantes preservados: I8 (`desconto ≤ totalBruto`), I9 (total nunca armazen
 
 | Campo | Tipo | Mudança |
 |---|---|---|
-| `recursos` | `{ descontoCapaNoErp: boolean }` | **NOVO**, nível da raiz (ao lado de `tenant` e `codigoEmpresa`). `default({ descontoCapaNoErp: false })`, para o registro antigo do Dexie ser revalidado sem derrubar o bootstrap. |
+| `recursos` | `{ descontoCapaNoErp: boolean }` | **NOVO**, nível da raiz (ao lado de `tenant` e `codigoEmpresa`). `default({ descontoCapaNoErp: false })`, que vale para payload **recém-buscado** sem o campo (BFF anterior). O registro já guardado no Dexie **não** é reparseado ao ler; ele deixa de ser reaproveitado porque o ETag cobre `recursos` e muda (`research.md` D11). |
 
 ### 1.7 `Env` (`server/config/env.ts`)
 
