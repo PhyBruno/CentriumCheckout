@@ -265,10 +265,7 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
 
     expect(campo).toHaveAttribute('aria-disabled', 'true');
     expect(campo).toHaveAttribute('title', AVISO_DESCONTO_COM_PAGAMENTO);
-    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute('aria-disabled', 'true');
 
     await usuario.click(campo);
     await usuario.keyboard('{Backspace}{Backspace}5');
