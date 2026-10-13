@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { EntradaPagamento } from '../../../../src/client/features/pagamento/EntradaPagamento';
@@ -184,5 +184,46 @@ describe('EntradaPagamento — valor faltante pré-carregado (pedido do usuário
     await usuario.tab();
 
     expect(screen.getByTestId('campo-valor-recebido')).toHaveValue('');
+  });
+
+  /**
+   * Correção do usuário (2026-10-13): "o valor recebido (antes de inserir) tem
+   * que ser ajustado conforme o desconto". O faltante era copiado **uma vez**,
+   * no foco, e ficava parado: passar pelo campo e depois aplicar o desconto
+   * deixava "100,00" sobre uma venda de 90,00, e o Enter inseria o valor cheio.
+   */
+  it('o faltante pré-carregado acompanha o desconto aplicado depois', async () => {
+    const usuario = userEvent.setup();
+    render(createElement(EntradaPagamento, { forma: DINHEIRO }));
+    const campo = screen.getByTestId('campo-valor-recebido');
+
+    await usuario.tab();
+    expect(campo).toHaveValue('100,00');
+
+    act(() => {
+      useVendaStore.getState().aplicarDescontoCapa('VALOR', 1_000);
+    });
+    expect(campo).toHaveValue('90,00');
+
+    act(() => {
+      useVendaStore.getState().removerDescontoCapa();
+    });
+    expect(campo).toHaveValue('100,00');
+  });
+
+  it('o valor digitado pelo operador não é reescrito pelo desconto', async () => {
+    // A cédula que o cliente entregou não muda porque a venda ficou mais
+    // barata: quem muda é o troco.
+    const usuario = userEvent.setup();
+    render(createElement(EntradaPagamento, { forma: DINHEIRO }));
+    const campo = screen.getByTestId('campo-valor-recebido');
+
+    await usuario.click(campo);
+    await usuario.keyboard('100');
+    act(() => {
+      useVendaStore.getState().aplicarDescontoCapa('VALOR', 1_000);
+    });
+
+    expect(campo).toHaveValue('100');
   });
 });
