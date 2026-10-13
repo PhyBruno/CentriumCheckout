@@ -2004,7 +2004,9 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
         ? Number(valor) === Number(codigo)
         : String(valor) === codigo;
     const produto =
-      campo === undefined ? catalogo[0] : catalogo.find((candidato) => mesmoCodigo(candidato[campo]));
+      campo === undefined
+        ? catalogo[0]
+        : catalogo.find((candidato) => mesmoCodigo(candidato[campo]));
 
     // **Nunca `404`.** Não encontrou é `200` com o SDT todo zerado
     // (`CodigoProduto: ''`) — o `404` que este mock devolvia não existe no ERP

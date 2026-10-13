@@ -35,9 +35,7 @@ describe('dividirPorQuantidade', () => {
   });
 
   it('lança em quantidade zero', () => {
-    expect(() => dividirPorQuantidade(centavos(100), milesimos(0))).toThrow(
-      ErroQuantidadeInvalida,
-    );
+    expect(() => dividirPorQuantidade(centavos(100), milesimos(0))).toThrow(ErroQuantidadeInvalida);
   });
 
   it('ida e volta com multiplicarPorQuantidade fica dentro de 1 centavo por unidade', () => {

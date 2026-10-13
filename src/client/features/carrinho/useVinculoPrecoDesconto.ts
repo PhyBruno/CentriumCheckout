@@ -88,7 +88,11 @@ interface Campos {
   readonly mestre: MestreDoVinculo;
 }
 
-const CAMPOS_VAZIOS: Campos = { precoTexto: '', descontoTexto: TEXTO_SEM_DESCONTO, mestre: 'PRECO' };
+const CAMPOS_VAZIOS: Campos = {
+  precoTexto: '',
+  descontoTexto: TEXTO_SEM_DESCONTO,
+  mestre: 'PRECO',
+};
 
 export function useVinculoPrecoDesconto(args: ArgsVinculoPrecoDesconto): VinculoPrecoDesconto {
   const [campos, setCampos] = useState<Campos>(CAMPOS_VAZIOS);

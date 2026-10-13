@@ -122,7 +122,11 @@ export interface AjustesDeItem {
   readonly descontoManual: Centavos;
 }
 
-const CAMPOS_EDITAVEIS: readonly CampoEditavel[] = ['quantidade', 'precoUnitario', 'descontoManual'];
+const CAMPOS_EDITAVEIS: readonly CampoEditavel[] = [
+  'quantidade',
+  'precoUnitario',
+  'descontoManual',
+];
 
 export interface CarrinhoSlice {
   /** Ordem de inserção, **incluindo canceladas** (invariante I1). */

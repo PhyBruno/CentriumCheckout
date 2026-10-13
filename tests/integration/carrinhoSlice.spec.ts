@@ -650,7 +650,9 @@ describe('carrinhoSlice — preço mínimo', () => {
   it('atualizarItem ajusta o conjunto e grava', () => {
     const avisar = vi.fn();
     const store = montarStore({ avisar });
-    store.getState().inserirItem({ snapshot: comMinimo, quantidade: unidades(1), origem: 'MANUAL' });
+    store
+      .getState()
+      .inserirItem({ snapshot: comMinimo, quantidade: unidades(1), origem: 'MANUAL' });
 
     const gravou = store.getState().atualizarItem('linha-1', {
       quantidade: unidades(3),
@@ -669,7 +671,12 @@ describe('carrinhoSlice — preço mínimo', () => {
 
     // Preço de tabela zero: sem referência, sem limite (FR-005).
     store.getState().inserirItem({
-      snapshot: snapshotDe({ codigoProduto: 'A', pesavelEditavel: 'E', precoBase: 0, precoMinimo: 800 }),
+      snapshot: snapshotDe({
+        codigoProduto: 'A',
+        pesavelEditavel: 'E',
+        precoBase: 0,
+        precoMinimo: 800,
+      }),
       quantidade: unidades(1),
       precoUnitario: emCentavos(2000),
       descontoManual: emCentavos(1500),
@@ -697,7 +704,9 @@ describe('carrinhoSlice — preço mínimo', () => {
       origem: 'MANUAL',
     });
 
-    expect(store.getState().linhas.map((linha) => linha.descontoManual)).toEqual([1500, 1500, 1900]);
+    expect(store.getState().linhas.map((linha) => linha.descontoManual)).toEqual([
+      1500, 1500, 1900,
+    ]);
     expect(avisar).not.toHaveBeenCalled();
   });
 
@@ -716,7 +725,10 @@ describe('carrinhoSlice — preço mínimo', () => {
       origem: 'MANUAL',
     });
 
-    expect(store.getState().linhas[0]).toMatchObject({ descontoManual: 1200, descontoConvenio: 200 });
+    expect(store.getState().linhas[0]).toMatchObject({
+      descontoManual: 1200,
+      descontoConvenio: 200,
+    });
     expect(avisar).not.toHaveBeenCalled();
   });
 });

@@ -259,7 +259,9 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     // `.first()`: a frase aparece no toast e na região `aria-live` dele.
     await expect(
       page
-        .getByText('Desconto máximo desta condição de pagamento: 8%. O desconto foi ajustado automaticamente.')
+        .getByText(
+          'Desconto máximo desta condição de pagamento: 8%. O desconto foi ajustado automaticamente.',
+        )
         .first(),
     ).toBeVisible();
 

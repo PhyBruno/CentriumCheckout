@@ -153,8 +153,10 @@ describe('recursos', () => {
 
   it('recusa chave que não é booleana', () => {
     expect(
-      bootstrapPayloadSchema.safeParse({ ...payloadValido(), recursos: { descontoCapaNoErp: 'true' } })
-        .success,
+      bootstrapPayloadSchema.safeParse({
+        ...payloadValido(),
+        recursos: { descontoCapaNoErp: 'true' },
+      }).success,
     ).toBe(false);
   });
 });
