@@ -105,12 +105,34 @@ export type InserirItemInput =
 
 export type CampoEditavel = 'quantidade' | 'precoUnitario' | 'descontoManual';
 
+/** Os três campos que o lápis edita juntos (017, `atualizarItem`). */
+export interface AjustesDeItem {
+  readonly quantidade: Milesimos;
+  readonly precoUnitario: Centavos;
+  readonly descontoManual: Centavos;
+}
+
+const CAMPOS_EDITAVEIS: readonly CampoEditavel[] = ['quantidade', 'precoUnitario', 'descontoManual'];
+
 export interface CarrinhoSlice {
   /** Ordem de inserção, **incluindo canceladas** (invariante I1). */
   linhas: LinhaCarrinho[];
 
   inserirItem(input: InserirItemInput): void;
   editarItem(idLinha: string, campo: CampoEditavel, valor: Centavos | Milesimos): void;
+  /**
+   * Aplica quantidade, preço e desconto como **uma** operação (017, FR-007,
+   * I-D7): grava o conjunto ou não grava nada. `true` = gravou (inclusive
+   * quando nada mudou).
+   *
+   * Existe ao lado de `editarItem`, e não no lugar dele, porque três
+   * `editarItem` seguidos validam cada passo sozinho: linha 10 × R$ 10,00 com
+   * R$ 50,00 de desconto, editada para preço R$ 5,00 e desconto R$ 20,00, tinha
+   * o passo do preço recusado (bruto 50 − desconto 50 = 0) e o do desconto
+   * aceito — terminando num estado que o operador nunca digitou (`research.md`
+   * D5).
+   */
+  atualizarItem(idLinha: string, ajustes: AjustesDeItem): boolean;
   cancelarItem(idLinha: string): void;
   /** `FR-018` — troca de cliente com carrinho já populado. */
   reprecificarPorTrocaDeCliente(): void;
@@ -405,6 +427,61 @@ export function criarCarrinhoSlice(
             valorNovo: valor,
           }),
         );
+      },
+
+      atualizarItem: (idLinha, ajustes) => {
+        if (carrinhoBloqueado()) {
+          return false;
+        }
+
+        const atuais = get().linhas;
+        const alvo = atuais.find((linha) => linha.idLinha === idLinha);
+        if (alvo === undefined || alvo.cancelada) {
+          return false;
+        }
+
+        const alterados = CAMPOS_EDITAVEIS.filter((campo) => alvo[campo] !== ajustes[campo]);
+        if (alterados.length === 0) {
+          return true;
+        }
+
+        // Mesmas regras de `editarItem`, aplicadas ao conjunto: a edição
+        // explícita descongela (invariante I6), e reprecifica na mudança de
+        // quantidade ou no descongelamento — exceto quando o próprio operador
+        // acabou de digitar o `precoUnitario`.
+        const estavaCongelada = alvo.precoCongelado;
+        const editada: LinhaCarrinho = { ...alvo, ...ajustes, precoCongelado: false };
+        const comEdicao = atuais.map((linha) => (linha.idLinha === idLinha ? editada : linha));
+
+        const deveReprecificar =
+          alterados.includes('quantidade') ||
+          (estavaCongelada && !alterados.includes('precoUnitario'));
+
+        const resultantes = deveReprecificar
+          ? reprecificarSku(comEdicao, alvo.snapshot.codigoProduto)
+          : comEdicao;
+
+        const resultante = resultantes.find((linha) => linha.idLinha === idLinha);
+        if (resultante !== undefined && descontoZeraALinha(resultante)) {
+          deps.avisar?.(AVISO_DESCONTO_ZERA_A_LINHA);
+          return false;
+        }
+
+        aplicarLinhas(resultantes);
+
+        // Um evento por campo, no mesmo formato de `editarItem`: o `Log` que o
+        // ERP recebe não muda de forma por causa da edição atômica.
+        for (const campo of alterados) {
+          get().registrarEventoAuditoria(
+            eventoProdutoAlterado({
+              codigoProduto: alvo.snapshot.codigoProduto,
+              campo,
+              valorAnterior: alvo[campo],
+              valorNovo: ajustes[campo],
+            }),
+          );
+        }
+        return true;
       },
 
       cancelarItem: (idLinha) => {

@@ -458,6 +458,129 @@ describe('carrinhoSlice — auditoria (AD-061, D11)', () => {
   });
 });
 
+/**
+ * 017, US1 (T017, FR-007, I-D7) — a edição pelo lápis é **uma** operação:
+ * grava o conjunto ou não grava nada.
+ */
+describe('carrinhoSlice — atualizarItem atômico', () => {
+  const editavel = snapshotDe({ codigoProduto: SKU, pesavelEditavel: 'E', precoBase: 1000 });
+
+  function comLinha(sobrescritas: Partial<CarrinhoDeps> = {}) {
+    const store = montarStore(sobrescritas);
+    store.getState().inserirItem({
+      snapshot: editavel,
+      quantidade: unidades(10),
+      descontoManual: emCentavos(5000),
+      origem: 'MANUAL',
+    });
+    return store;
+  }
+
+  it('grava o conjunto e devolve true', () => {
+    const store = comLinha();
+
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(4),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(800),
+    });
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]).toMatchObject({
+      quantidade: 4000,
+      precoUnitario: 1000,
+      descontoManual: 800,
+    });
+  });
+
+  it('recusa por inteiro o conjunto que zera a linha — nunca grava parcial', () => {
+    const avisar = vi.fn();
+    const store = comLinha({ avisar });
+
+    // 10 × R$ 5,00 = R$ 50,00 bruto, com R$ 20,00 de desconto daria R$ 30,00 —
+    // mas com 10 × 1,00 = 10,00 bruto o desconto de 20,00 zera a linha.
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(10),
+      precoUnitario: emCentavos(100),
+      descontoManual: emCentavos(2000),
+    });
+
+    expect(gravou).toBe(false);
+    expect(avisar).toHaveBeenCalledTimes(1);
+    expect(store.getState().linhas[0]).toMatchObject({
+      quantidade: 10000,
+      precoUnitario: 1000,
+      descontoManual: 5000,
+    });
+  });
+
+  it('aceita a combinação que, aplicada campo a campo, seria recusada no meio', () => {
+    const store = comLinha();
+
+    // Preço 5,00 sozinho (bruto 50,00 − desconto 50,00 = 0) seria recusado pelo
+    // `editarItem`; com o desconto novo de 20,00 junto, o conjunto vale 30,00.
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(10),
+      precoUnitario: emCentavos(500),
+      descontoManual: emCentavos(2000),
+    });
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]).toMatchObject({ precoUnitario: 500, descontoManual: 2000 });
+  });
+
+  it('reprecifica quando a quantidade muda', () => {
+    const store = montarStore();
+    store.getState().inserirItem({ snapshot: produto, quantidade: unidades(3), origem: 'MANUAL' });
+
+    store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(6),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(0),
+    });
+
+    // Produto '' com faixa: 6 unidades cruzam o limiar de 5 → 900.
+    expect(store.getState().linhas[0]?.precoUnitario).toBe(900);
+  });
+
+  it('audita um PRODUTO_ALTERADO por campo efetivamente alterado', () => {
+    const store = comLinha();
+    const antes = store.getState().eventos.length;
+
+    store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(10),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(3000),
+    });
+
+    const novos = store.getState().eventos.slice(antes);
+    expect(novos).toHaveLength(1);
+    expect(novos[0]?.tipo).toBe('PRODUTO_ALTERADO');
+    expect(novos[0]?.detalhes).toMatchObject({
+      campo: 'descontoManual',
+      valorAnterior: 5000,
+      valorNovo: 3000,
+    });
+  });
+
+  it('respeita o carrinho bloqueado', () => {
+    const avisar = vi.fn();
+    let pode = true;
+    const store = comLinha({ avisar, podeMutarCarrinho: () => pode });
+    pode = false;
+
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(2),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(0),
+    });
+
+    expect(gravou).toBe(false);
+    expect(avisar).toHaveBeenCalledTimes(1);
+    expect(store.getState().linhas[0]?.quantidade).toBe(10000);
+  });
+});
+
 describe('carrinhoSlice — limparCarrinho', () => {
   it('esvazia as linhas, canceladas inclusive', () => {
     const store = montarStore();
