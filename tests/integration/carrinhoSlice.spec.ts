@@ -581,6 +581,146 @@ describe('carrinhoSlice — atualizarItem atômico', () => {
   });
 });
 
+/**
+ * 017, US2 (T028, FR-010 a FR-014) — o slice é a rede de segurança do preço
+ * mínimo: ajusta (não recusa) e avisa **uma vez**, só quando ainda precisou.
+ * Produto `'E'`, tabela R$ 20,00, mínimo R$ 8,00.
+ */
+describe('carrinhoSlice — preço mínimo', () => {
+  const AVISO = 'Preço mínimo deste item: R$ 8,00. O desconto foi ajustado automaticamente.';
+  const comMinimo = snapshotDe({
+    codigoProduto: SKU,
+    pesavelEditavel: 'E',
+    precoBase: 2000,
+    precoMinimo: 800,
+  });
+
+  it('inserirItem ajusta o desconto acima do limite e avisa uma vez', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]?.descontoManual).toBe(1200);
+    expect(avisar).toHaveBeenCalledTimes(1);
+    expect(avisar).toHaveBeenCalledWith(AVISO);
+    // A auditoria registra o desconto que de fato entrou.
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({ desconto: 1200 });
+  });
+
+  it('dentro do limite não avisa', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3600),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]?.descontoManual).toBe(3600);
+    expect(avisar).not.toHaveBeenCalled();
+  });
+
+  it('editarItem ajusta o desconto digitado e a quantidade reduzida que estoura o limite', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3000),
+      origem: 'MANUAL',
+    });
+
+    store.getState().editarItem('linha-1', 'descontoManual', emCentavos(4000));
+    expect(store.getState().linhas[0]?.descontoManual).toBe(3600);
+
+    // 2 unidades: limite 24,00 — os 36,00 passam do mínimo.
+    store.getState().editarItem('linha-1', 'quantidade', unidades(2));
+    expect(store.getState().linhas[0]?.descontoManual).toBe(2400);
+    expect(avisar).toHaveBeenCalledTimes(2);
+  });
+
+  it('atualizarItem ajusta o conjunto e grava', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+    store.getState().inserirItem({ snapshot: comMinimo, quantidade: unidades(1), origem: 'MANUAL' });
+
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(3),
+      precoUnitario: emCentavos(2000),
+      descontoManual: emCentavos(4000),
+    });
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]?.descontoManual).toBe(3600);
+    expect(avisar).toHaveBeenCalledTimes(1);
+  });
+
+  it('não toca linha não vinculável, de importação nem produto sem mínimo', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    // Preço de tabela zero: sem referência, sem limite (FR-005).
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: 'A', pesavelEditavel: 'E', precoBase: 0, precoMinimo: 800 }),
+      quantidade: unidades(1),
+      precoUnitario: emCentavos(2000),
+      descontoManual: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+    // Produto '' (como a linha de DAV/NFCe): fora do vínculo.
+    store.getState().inserirItem({
+      snapshot: snapshotDe({
+        codigoProduto: 'B',
+        pesavelEditavel: '',
+        precoBase: 2000,
+        // `''` é reprecificado pela faixa: ela precisa valer os mesmos 20,00.
+        precosFaixa: [2000, 0, 0, 0, 0],
+        precoMinimo: 800,
+      }),
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+    // Sem mínimo.
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: 'C', pesavelEditavel: 'E', precoBase: 2000 }),
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1900),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas.map((linha) => linha.descontoManual)).toEqual([1500, 1500, 1900]);
+    expect(avisar).not.toHaveBeenCalled();
+  });
+
+  it('o desconto de convênio fica fora da comparação (FR-014)', () => {
+    const avisar = vi.fn();
+    const store = montarStore({
+      avisar,
+      clienteAtual: () => ({ codigo: 7, listaPreco: null, descontoConvenio: 10 }),
+    });
+
+    // Manual 12,00 está no limite; com os 2,00 de convênio passaria dele.
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1200),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]).toMatchObject({ descontoManual: 1200, descontoConvenio: 200 });
+    expect(avisar).not.toHaveBeenCalled();
+  });
+});
+
 describe('carrinhoSlice — limparCarrinho', () => {
   it('esvazia as linhas, canceladas inclusive', () => {
     const store = montarStore();

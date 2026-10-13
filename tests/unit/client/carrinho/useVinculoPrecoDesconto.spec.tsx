@@ -127,6 +127,47 @@ describe('useVinculoPrecoDesconto — lápis', () => {
   });
 });
 
+/** 017, US2 (T029) — preço de tabela R$ 20,00 e mínimo R$ 8,00 (quickstart Q2). */
+describe('useVinculoPrecoDesconto — ajustarAoMinimo', () => {
+  const comMinimo = snapshotDe({ pesavelEditavel: 'E', precoBase: 2000, precoMinimo: 800 });
+
+  it('preço abaixo do mínimo sobe ao mínimo e devolve os textos ajustados', () => {
+    const { result } = montar(comMinimo);
+    act(() => result.current.mudarPreco('6'));
+
+    let ajuste: ReturnType<typeof result.current.ajustarAoMinimo> = null;
+    act(() => {
+      ajuste = result.current.ajustarAoMinimo();
+    });
+
+    expect(ajuste).toEqual({ precoTexto: '8,00', descontoTexto: '12,00' });
+    expect(result.current.precoTexto).toBe('8,00');
+    expect(result.current.descontoTexto).toBe('12,00');
+    expect(result.current.consolidar()).toEqual({ precoUnitario: 2000, descontoManual: 1200 });
+  });
+
+  it('o limite é sobre o total da linha', () => {
+    const { result } = montar(comMinimo, 3);
+    act(() => result.current.mudarDesconto('40'));
+
+    act(() => {
+      result.current.ajustarAoMinimo();
+    });
+
+    expect(result.current.descontoTexto).toBe('36,00');
+  });
+
+  it('dentro do limite, ou sem mínimo, não há o que ajustar', () => {
+    const { result } = montar(comMinimo);
+    act(() => result.current.mudarDesconto('12'));
+    expect(result.current.ajustarAoMinimo()).toBeNull();
+
+    const semMinimo = montar(vinteReais);
+    act(() => semMinimo.result.current.mudarDesconto('19'));
+    expect(semMinimo.result.current.ajustarAoMinimo()).toBeNull();
+  });
+});
+
 describe('useVinculoPrecoDesconto — fora do vínculo (FR-005/FR-006)', () => {
   it('preço de tabela zero mantém os campos independentes', () => {
     const semPreco = snapshotDe({ pesavelEditavel: 'E', precoBase: 0 });

@@ -515,6 +515,49 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     ProdutoPesavelEditavel: 'E',
   },
   /**
+   * Motor de desconto (017, quickstart Q2). O `003000` acima é o `'E'` de
+   * R$ 20,00 **sem** mínimo (`PrecoMinimo` cai no default `0.0000`); estes dois
+   * completam o trio: o mesmo preço com mínimo de R$ 8,00, e um `'E'` de preço
+   * de tabela zero, que fica fora do vínculo (FR-005).
+   */
+  '003100': {
+    CodigoProduto: '003100',
+    Descricao: 'EDITAVEL COM MINIMO',
+    Referencia: 'REF-MINIMO',
+    CodigoBarras: '7890000000031',
+    PrecoVenda: String(20.0),
+    PrecoVenda1: String(20.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    PrecoMinimo: '8.0000',
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: 'E',
+  },
+  '003200': {
+    CodigoProduto: '003200',
+    Descricao: 'EDITAVEL SEM PRECO',
+    Referencia: 'REF-SEM-PRECO',
+    CodigoBarras: '7890000000032',
+    PrecoVenda: String(0),
+    PrecoVenda1: String(0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: 'E',
+  },
+  /**
    * Os três itens do fluxo dourado da feature 008 — 70,00 + 29,00 + 1,00 = 100,00
    * (`pagamento-geral.spec.ts`).
    *

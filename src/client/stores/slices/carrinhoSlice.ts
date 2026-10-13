@@ -10,7 +10,17 @@ import {
   type LinhaImportada,
   type OrigemDocumentoImportado,
 } from '../../domain/importacaoVenda/mapearVendaExistente';
-import { somar, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
+import {
+  ajustarAoPrecoMinimo,
+  ehVinculavel,
+  limiteDeDesconto,
+} from '../../domain/precificacao/descontoItem';
+import {
+  formatarCentavos,
+  somar,
+  ZERO_CENTAVOS,
+  type Centavos,
+} from '../../domain/precificacao/dinheiro';
 import {
   TOTAL_MINIMO_DA_LINHA,
   origemCongelaPreco,
@@ -214,6 +224,39 @@ const AVISO_DESCONTO_ZERA_A_LINHA =
   'O desconto deste item zeraria o total dele: reduza o desconto ou aumente a quantidade.';
 
 /**
+ * Desconto manual acima do limite do preço mínimo, já ajustado (017, FR-010).
+ *
+ * Exportada porque a barra de entrada ajusta **antes** e avisa com a mesma
+ * frase (FR-013): duas cópias do texto poderiam divergir, e o operador leria
+ * dois avisos diferentes para a mesma regra.
+ */
+export function avisoDePrecoMinimo(precoMinimo: Centavos): string {
+  return `Preço mínimo deste item: ${formatarCentavos(precoMinimo)}. O desconto foi ajustado automaticamente.`;
+}
+
+/**
+ * A linha com o desconto manual limitado ao preço mínimo, ou `null` quando não
+ * há o que ajustar (017, I-D1).
+ *
+ * Só linha vinculável (`'E'` com preço de tabela): a de DAV/NFCe entra com
+ * `pesavelEditavel: ''` e fica de fora, porque o documento já foi aceito pelo
+ * ERP. A referência é o `precoUnitario` da linha — o preço de tabela, ou o
+ * preço digitado acima dele. O convênio não entra na conta (FR-014).
+ */
+function ajustarLinhaAoMinimo(linha: LinhaCarrinho): LinhaCarrinho | null {
+  if (!ehVinculavel(linha.snapshot)) {
+    return null;
+  }
+  const limite = limiteDeDesconto(
+    linha.precoUnitario,
+    linha.snapshot.precoMinimo,
+    linha.quantidade,
+  );
+  const ajuste = ajustarAoPrecoMinimo(linha.descontoManual, limite);
+  return ajuste.ajustado ? { ...linha, descontoManual: ajuste.desconto } : null;
+}
+
+/**
  * A linha terminaria valendo menos de um centavo **por causa de um desconto**.
  *
  * O `desconto > 0` não é detalhe: um produto de brinde cadastrado com
@@ -312,6 +355,27 @@ export function criarCarrinhoSlice(
       );
     }
 
+    /**
+     * Rede de segurança do preço mínimo (017, `research.md` D7), no mesmo ponto
+     * de `descontoZeraALinha`: depois da reprecificação, antes da gravação.
+     *
+     * A barra ajusta antes e entrega um valor dentro do limite, então no caso
+     * normal este passo fica calado; ele só fala quando outro chamador passa um
+     * valor fora — e aí é o único aviso (FR-013).
+     */
+    function comPrecoMinimo(
+      linhas: readonly LinhaCarrinho[],
+      idLinha: string,
+    ): readonly LinhaCarrinho[] {
+      const alvo = linhas.find((linha) => linha.idLinha === idLinha);
+      const ajustada = alvo === undefined ? null : ajustarLinhaAoMinimo(alvo);
+      if (ajustada === null) {
+        return linhas;
+      }
+      deps.avisar?.(avisoDePrecoMinimo(ajustada.snapshot.precoMinimo));
+      return linhas.map((linha) => (linha.idLinha === idLinha ? ajustada : linha));
+    }
+
     return {
       linhas: [],
 
@@ -348,7 +412,10 @@ export function criarCarrinhoSlice(
         };
 
         const codigoProduto = input.snapshot.codigoProduto;
-        const linhas = reprecificarSku([...get().linhas, novaLinha], codigoProduto);
+        const linhas = comPrecoMinimo(
+          reprecificarSku([...get().linhas, novaLinha], codigoProduto),
+          novaLinha.idLinha,
+        );
 
         // A auditoria registra o preço **após** a reprecificação: é o valor que
         // de fato entrou na venda (`research.md`, D11).
@@ -403,9 +470,10 @@ export function criarCarrinhoSlice(
         const deveReprecificar =
           campo === 'quantidade' || (estavaCongelada && campo !== 'precoUnitario');
 
-        const resultantes = deveReprecificar
-          ? reprecificarSku(comEdicao, alvo.snapshot.codigoProduto)
-          : comEdicao;
+        const resultantes = comPrecoMinimo(
+          deveReprecificar ? reprecificarSku(comEdicao, alvo.snapshot.codigoProduto) : comEdicao,
+          idLinha,
+        );
 
         // Vale para **qualquer** campo, não só o desconto: reduzir a quantidade
         // ou o preço de uma linha que já tem desconto absoluto zera o total dela
@@ -424,7 +492,9 @@ export function criarCarrinhoSlice(
             codigoProduto: alvo.snapshot.codigoProduto,
             campo,
             valorAnterior,
-            valorNovo: valor,
+            // O valor que entrou, que difere do pedido quando o preço mínimo
+            // ajustou o desconto.
+            valorNovo: resultante?.[campo] ?? valor,
           }),
         );
       },
@@ -457,9 +527,10 @@ export function criarCarrinhoSlice(
           alterados.includes('quantidade') ||
           (estavaCongelada && !alterados.includes('precoUnitario'));
 
-        const resultantes = deveReprecificar
-          ? reprecificarSku(comEdicao, alvo.snapshot.codigoProduto)
-          : comEdicao;
+        const resultantes = comPrecoMinimo(
+          deveReprecificar ? reprecificarSku(comEdicao, alvo.snapshot.codigoProduto) : comEdicao,
+          idLinha,
+        );
 
         const resultante = resultantes.find((linha) => linha.idLinha === idLinha);
         if (resultante !== undefined && descontoZeraALinha(resultante)) {
@@ -477,7 +548,10 @@ export function criarCarrinhoSlice(
               codigoProduto: alvo.snapshot.codigoProduto,
               campo,
               valorAnterior: alvo[campo],
-              valorNovo: ajustes[campo],
+              valorNovo:
+                campo === 'descontoManual' && resultante !== undefined
+                  ? resultante.descontoManual
+                  : ajustes[campo],
             }),
           );
         }

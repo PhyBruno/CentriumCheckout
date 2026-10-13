@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
 import {
+  ajustarAoPrecoMinimo,
   consolidarPorDesconto,
   consolidarPorPreco,
   descontoDoPreco,
   ehVinculavel,
+  limiteDeDesconto,
   precoDoDesconto,
 } from '../../../../src/client/domain/precificacao/descontoItem';
 import { milesimosDeUnidades } from '../../../../src/client/domain/precificacao/quantidade';
@@ -89,6 +91,48 @@ describe('consolidarPorDesconto', () => {
     expect(consolidarPorDesconto(snapshot, centavos(100))).toEqual({
       precoUnitario: 2000,
       descontoManual: 100,
+    });
+  });
+});
+
+/** 017, US2 (T027) — o preço mínimo limita o desconto, em totais (research D7). */
+describe('limiteDeDesconto', () => {
+  const oito = centavos(800);
+
+  it('é (tabela − mínimo) × quantidade', () => {
+    expect(limiteDeDesconto(VINTE, oito, um)).toBe(1200);
+    expect(limiteDeDesconto(VINTE, oito, tres)).toBe(3600);
+  });
+
+  it('mínimo zero significa sem limite', () => {
+    expect(limiteDeDesconto(VINTE, centavos(0), tres)).toBeNull();
+  });
+
+  it('mínimo igual ou acima da tabela não deixa desconto nenhum', () => {
+    expect(limiteDeDesconto(VINTE, VINTE, tres)).toBe(0);
+    expect(limiteDeDesconto(VINTE, centavos(2500), tres)).toBe(0);
+  });
+});
+
+describe('ajustarAoPrecoMinimo', () => {
+  it('dentro do limite não ajusta', () => {
+    expect(ajustarAoPrecoMinimo(centavos(1200), centavos(1200))).toEqual({
+      desconto: 1200,
+      ajustado: false,
+    });
+  });
+
+  it('acima do limite devolve o limite', () => {
+    expect(ajustarAoPrecoMinimo(centavos(1500), centavos(1200))).toEqual({
+      desconto: 1200,
+      ajustado: true,
+    });
+  });
+
+  it('sem limite nunca ajusta', () => {
+    expect(ajustarAoPrecoMinimo(centavos(99_999), null)).toEqual({
+      desconto: 99_999,
+      ajustado: false,
     });
   });
 });

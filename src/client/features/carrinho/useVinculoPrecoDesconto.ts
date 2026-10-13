@@ -1,10 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { lerCentavosDigitados } from '@/lib/numeroDigitado';
 import {
+  ajustarAoPrecoMinimo,
   consolidarPorDesconto,
   consolidarPorPreco,
   descontoDoPreco,
   ehVinculavel,
+  limiteDeDesconto,
   precoDoDesconto,
   type ItemConsolidado,
 } from '../../domain/precificacao/descontoItem';
@@ -58,6 +60,12 @@ export interface VinculoPrecoDesconto {
   mudarQuantidade(quantidade: Milesimos | null): void;
   /** O par que a linha deve guardar, ou `null` fora do vínculo ou com texto inválido. */
   consolidar(): ItemConsolidado | null;
+  /**
+   * Limita o desconto ao preço mínimo (017, US2) e devolve os dois textos
+   * ajustados — `null` quando não havia o que ajustar. Quem chama avisa o
+   * operador e lê os textos devolvidos, não o estado do quadro corrente.
+   */
+  ajustarAoMinimo(): { readonly precoTexto: string; readonly descontoTexto: string } | null;
   /** Lápis: carrega o par **derivado** da linha (o preço praticado, não o de referência). */
   carregar(linha: LinhaCarrinho): void;
   /** Revisão de produto novo: preço de tabela, sem desconto. */
@@ -157,6 +165,28 @@ export function useVinculoPrecoDesconto(args: ArgsVinculoPrecoDesconto): Vinculo
     return preco === null ? null : consolidarPorPreco(snapshot, preco, quantidade);
   }, [snapshotVinculavel]);
 
+  const ajustarAoMinimo = useCallback(() => {
+    const snapshot = snapshotVinculavel();
+    const { quantidade } = contexto.current;
+    const item = consolidar();
+    if (snapshot === null || quantidade === null || item === null) {
+      return null;
+    }
+    const limite = limiteDeDesconto(item.precoUnitario, snapshot.precoMinimo, quantidade);
+    const ajuste = ajustarAoPrecoMinimo(item.descontoManual, limite);
+    if (!ajuste.ajustado) {
+      return null;
+    }
+    const novos: Campos = {
+      precoTexto: textoDeCentavos(precoDoDesconto(item.precoUnitario, ajuste.desconto, quantidade)),
+      descontoTexto: textoDeCentavos(ajuste.desconto),
+      // O desconto ajustado é exato; o preço exibido é que deriva dele.
+      mestre: 'DESCONTO',
+    };
+    gravar(novos);
+    return { precoTexto: novos.precoTexto, descontoTexto: novos.descontoTexto };
+  }, [consolidar, gravar, snapshotVinculavel]);
+
   const carregar = useCallback(
     (linha: LinhaCarrinho) => {
       contexto.current = { snapshot: linha.snapshot, quantidade: linha.quantidade };
@@ -213,6 +243,7 @@ export function useVinculoPrecoDesconto(args: ArgsVinculoPrecoDesconto): Vinculo
     mudarDesconto,
     mudarQuantidade,
     consolidar,
+    ajustarAoMinimo,
     carregar,
     iniciar,
     zerar,

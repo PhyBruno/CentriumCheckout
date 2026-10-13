@@ -46,6 +46,8 @@ import {
   somarQuantidades,
   type Milesimos,
 } from '../../domain/precificacao/quantidade';
+import type { ItemConsolidado } from '../../domain/precificacao/descontoItem';
+import { avisoDePrecoMinimo } from '../../stores/slices/carrinhoSlice';
 import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
@@ -476,6 +478,34 @@ export function EntradaRapidaProduto({
   // Preço derivado do desconto não é digitação do operador: um desconto que
   // leva o preço a zero é o caso de `descontoZeraItem`, não de preço inválido.
   const precoDerivado = vinculo.vinculavel && vinculo.mestre === 'DESCONTO';
+
+  /**
+   * Limita o desconto ao preço mínimo do produto e avisa (017, US2). Roda ao
+   * sair do preço ou do desconto e na confirmação; como o par ajustado já sai
+   * daqui dentro do limite, o slice não repete o aviso (FR-013).
+   */
+  function ajustarAoMinimoEAvisar(): boolean {
+    if (!editavel || snapshotAtivo === null || vinculo.ajustarAoMinimo() === null) {
+      return false;
+    }
+    notificar.aviso(avisoDePrecoMinimo(snapshotAtivo.precoMinimo));
+    return true;
+  }
+
+  /**
+   * O par preço/desconto que a confirmação grava. No produto vinculável ele sai
+   * do hook **depois** do ajuste ao mínimo — o estado do React ainda é o do
+   * quadro anterior dentro deste mesmo gesto.
+   */
+  function parParaGravar(): ItemConsolidado | null {
+    if (editavel && vinculo.vinculavel) {
+      ajustarAoMinimoEAvisar();
+      return vinculo.consolidar();
+    }
+    return precoLido === null || descontoManualLido === null
+      ? null
+      : { precoUnitario: precoLido, descontoManual: descontoManualLido };
+  }
   const descontoTotalLido =
     descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
 
@@ -1287,17 +1317,14 @@ export function EntradaRapidaProduto({
     // própria linha (campos somente leitura), então `editarItem` não muda
     // nada neles (é idempotente, `carrinhoSlice.ts`).
     if (linhaEmEdicao !== null) {
-      if (quantidadeLida === null || precoLido === null || descontoManualLido === null) {
+      const par = parParaGravar();
+      if (quantidadeLida === null || par === null) {
         return;
       }
       // Saldo (AD-236): a linha só muda se a reconsulta deixar; recusada, o
       // item continua carregado aqui, com o botão já bloqueado pelo saldo novo.
       const linha = linhaEmEdicao;
-      const ajustes = {
-        quantidade: quantidadeLida,
-        precoUnitario: precoLido,
-        descontoManual: descontoManualLido,
-      };
+      const ajustes = { quantidade: quantidadeLida, ...par };
       void aplicarConfirmacao(() => confirmarEdicaoDeLinha(linha, ajustes, saldoConhecido));
       return;
     }
@@ -1330,14 +1357,11 @@ export function EntradaRapidaProduto({
     const quantidade = quantidadeLida;
     const opcoesSaldo = { avisoJaComunicado: saldoAnunciado.current };
     if (revisao.editavel) {
-      if (precoLido === null || descontoManualLido === null) {
+      const par = parParaGravar();
+      if (par === null) {
         return;
       }
-      const ajustes = {
-        quantidade,
-        precoUnitario: precoLido,
-        descontoManual: descontoManualLido,
-      };
+      const ajustes = { quantidade, ...par };
       void aplicarConfirmacao(() =>
         confirmarEdicao(
           {
@@ -1819,7 +1843,9 @@ export function EntradaRapidaProduto({
               onBlur={() => {
                 if (precoInvalido) {
                   exigirCampo(campoPreco, AVISO_PRECO_INVALIDO);
+                  return;
                 }
+                ajustarAoMinimoEAvisar();
               }}
             />
           </span>
@@ -1864,6 +1890,11 @@ export function EntradaRapidaProduto({
                 }
                 if (descontoInvalido) {
                   exigirCampo(campoDesconto, AVISO_DESCONTO_INVALIDO);
+                  return;
+                }
+                // Acima do mínimo o desconto é ajustado, e o ajustado nunca zera
+                // o item: o aviso de mínimo basta.
+                if (ajustarAoMinimoEAvisar()) {
                   return;
                 }
                 if (descontoZeraItem) {

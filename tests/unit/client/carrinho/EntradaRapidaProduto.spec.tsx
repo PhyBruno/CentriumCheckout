@@ -283,10 +283,10 @@ describe('EntradaRapidaProduto — preço e desconto vinculados (017)', () => {
     vi.restoreAllMocks();
   });
 
-  async function carregarNoLapis(precoBase: number) {
+  async function carregarNoLapis(precoBase: number, precoMinimo = 0) {
     const linha = linhaDe({
       idLinha: 'linha-1',
-      snapshot: snapshotDe({ pesavelEditavel: 'E', precoBase }),
+      snapshot: snapshotDe({ pesavelEditavel: 'E', precoBase, precoMinimo }),
       quantidadeEmUnidades: 1,
       precoUnitario: precoBase === 0 ? 500 : precoBase,
     });
@@ -337,6 +337,50 @@ describe('EntradaRapidaProduto — preço e desconto vinculados (017)', () => {
     expect(erro).not.toHaveBeenCalledWith(
       'Informe o preço unitário do item: ele precisa ser um valor maior que zero.',
     );
+  });
+
+  /** 017, US2 (T030) — tabela R$ 20,00, mínimo R$ 8,00. */
+  const AVISO_MINIMO = 'Preço mínimo deste item: R$ 8,00. O desconto foi ajustado automaticamente.';
+
+  it('sair do preço abaixo do mínimo ajusta os dois campos e avisa uma vez', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    await carregarNoLapis(2000, 800);
+
+    await usuario.clear(screen.getByTestId('previa-preco-unitario'));
+    await usuario.type(screen.getByTestId('previa-preco-unitario'), '6');
+    await usuario.tab();
+
+    expect(screen.getByTestId('previa-preco-unitario')).toHaveValue('8,00');
+    expect(screen.getByTestId('previa-desconto-item')).toHaveValue('12,00');
+    expect(aviso).toHaveBeenCalledTimes(1);
+    expect(aviso).toHaveBeenCalledWith(AVISO_MINIMO);
+  });
+
+  it('Enter com desconto acima do limite grava o valor ajustado, com um aviso só', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    await carregarNoLapis(2000, 800);
+
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.type(screen.getByTestId('previa-desconto-item'), '15');
+    await usuario.keyboard('{Enter}');
+
+    expect(useVendaStore.getState().linhas[0]?.descontoManual).toBe(1200);
+    expect(aviso.mock.calls.filter(([frase]) => frase === AVISO_MINIMO)).toHaveLength(1);
+  });
+
+  it('o "+" usa o valor ajustado, não o do quadro anterior', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    await carregarNoLapis(2000, 800);
+
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.type(screen.getByTestId('previa-desconto-item'), '15');
+    await usuario.click(screen.getByTestId('previa-confirmar'));
+
+    expect(useVendaStore.getState().linhas[0]?.descontoManual).toBe(1200);
+    expect(aviso.mock.calls.filter(([frase]) => frase === AVISO_MINIMO)).toHaveLength(1);
   });
 
   it('produto de preço de tabela zero mantém preço e desconto independentes', async () => {

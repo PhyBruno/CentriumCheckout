@@ -61,6 +61,46 @@ export function precoDoDesconto(
   return centavos(Math.max(0, preco));
 }
 
+/**
+ * Maior desconto manual que mantém o preço no mínimo (017, FR-011):
+ * `(precoBase − precoMinimo) × quantidade`, com piso em zero. `null` quando
+ * não há mínimo cadastrado (`precoMinimo = 0`).
+ *
+ * Compara **totais**, nunca preços unitários (`research.md` D7): o desconto é
+ * absoluto sobre a linha, e dividi-lo pela quantidade reintroduziria o
+ * arredondamento de `precoDoDesconto`.
+ */
+export function limiteDeDesconto(
+  precoBase: Centavos,
+  precoMinimo: Centavos,
+  quantidade: Milesimos,
+): Centavos | null {
+  if (precoMinimo <= ZERO_CENTAVOS) {
+    return null;
+  }
+  if (precoMinimo >= precoBase) {
+    return ZERO_CENTAVOS;
+  }
+  return multiplicarPorQuantidade(centavos(precoBase - precoMinimo), quantidade);
+}
+
+export interface AjusteDeMinimo {
+  readonly desconto: Centavos;
+  readonly ajustado: boolean;
+}
+
+/**
+ * Limita o desconto ao limite do preço mínimo. **Ajusta, não recusa** (FR-010):
+ * é o que o usuário pediu — "automaticamente deve alterar o valor para o
+ * limiar".
+ */
+export function ajustarAoPrecoMinimo(desconto: Centavos, limite: Centavos | null): AjusteDeMinimo {
+  if (limite === null || desconto <= limite) {
+    return { desconto, ajustado: false };
+  }
+  return { desconto: limite, ajustado: true };
+}
+
 /** Os dois campos que a linha guarda para um item vinculável. */
 export interface ItemConsolidado {
   readonly precoUnitario: Centavos;
