@@ -220,6 +220,18 @@ export interface PagamentoDeps {
   gerarIdPagamento?: () => string;
 }
 
+/**
+ * `silencioso` cala o toast da recusa sem mudar a recusa (correção do usuário,
+ * 2026-10-13). Existe para o campo de desconto acompanhar a **digitação**: o
+ * total a pagar segue cada tecla, e "200" passa por "2" e "20" no caminho — um
+ * aviso por tecla anunciaria recusas de números que o operador ainda não
+ * terminou de escrever. A recusa que ele lê é a de quando sai do campo, que
+ * chama sem a opção.
+ */
+export interface OpcoesDescontoCapa {
+  readonly silencioso?: boolean;
+}
+
 export interface PagamentoSlice {
   /** Escalar: **uma** condição por venda (I1, `research.md` D2). */
   condicaoSelecionada: CondicaoPagamento | null;
@@ -285,8 +297,12 @@ export interface PagamentoSlice {
    * ele, o número digitado ficava na tela como se estivesse valendo, e o
    * operador só descobria o contrário ao ler o total.
    */
-  aplicarDescontoCapa(modo: 'PERCENTUAL' | 'VALOR', entrada: number): boolean;
-  removerDescontoCapa(): void;
+  aplicarDescontoCapa(
+    modo: 'PERCENTUAL' | 'VALOR',
+    entrada: number,
+    opcoes?: OpcoesDescontoCapa,
+  ): boolean;
+  removerDescontoCapa(opcoes?: OpcoesDescontoCapa): void;
   /**
    * Valida o ticket no ERP e, se válido, **insere o pagamento** de valor igual
    * ao do vale. Devolve `true` quando o pagamento entrou.
@@ -942,7 +958,9 @@ export function criarPagamentoSlice(
         );
       },
 
-      aplicarDescontoCapa: (modo, entrada) => {
+      aplicarDescontoCapa: (modo, entrada, opcoes) => {
+        const avisar = opcoes?.silencioso === true ? undefined : deps.avisar;
+
         // Guarda 1 — I12/`FR-023`/AD-113: com pagamento aplicado, o desconto
         // congela junto com carrinho, cliente e vendedor. Alterá-lo aqui mudaria
         // o total líquido de uma venda que já tem dinheiro atribuído a ela.
@@ -951,7 +969,7 @@ export function criarPagamentoSlice(
         // atribuído — ela já saiu do saldo e do payload —, e contá-la congelava
         // o desconto de uma venda sem pagamento nenhum (AD-171).
         if (pagamentosVivos().length > 0) {
-          deps.avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
+          avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
           return false;
         }
 
@@ -965,7 +983,7 @@ export function criarPagamentoSlice(
         // na frase que o operador lê ao sair do campo.
         const recusa = recusaDoDescontoCapa(valorResolvido, subtotal, deps.linhasRateaveis());
         if (recusa !== null) {
-          deps.avisar?.(AVISO_POR_RECUSA_DESCONTO[recusa]);
+          avisar?.(AVISO_POR_RECUSA_DESCONTO[recusa]);
           return false;
         }
 
@@ -975,12 +993,14 @@ export function criarPagamentoSlice(
         return true;
       },
 
-      removerDescontoCapa: () => {
+      removerDescontoCapa: (opcoes) => {
         // Mesmo recorte de `aplicarDescontoCapa` — as duas guardam a mesma
         // invariante e divergir aqui deixaria o desconto removível mas não
         // alterável, ou o contrário.
         if (pagamentosVivos().length > 0) {
-          deps.avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
+          if (opcoes?.silencioso !== true) {
+            deps.avisar?.(AVISO_DESCONTO_COM_PAGAMENTO);
+          }
           return;
         }
         set({ descontoCapa: null });

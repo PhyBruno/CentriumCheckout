@@ -14,6 +14,7 @@ import {
 } from '../../domain/precificacao/dinheiro';
 import type { DescontoCapa } from '../../domain/pagamento/descontoCapa';
 import { totalVenda } from '../../domain/precificacao/linha';
+import { AVISO_DESCONTO_COM_PAGAMENTO } from '../../stores/slices/pagamentoSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 
 type ModoAjuste = 'PERCENTUAL' | 'VALOR';
@@ -60,6 +61,20 @@ function textoDoDescontoAplicado(desconto: DescontoCapa | null): string {
 function lerPercentualDigitado(texto: string): number | null {
   return lerDecimalDigitado(texto, 1);
 }
+
+/**
+ * A entrada do domínio que o texto representa no modo dado — centavos em
+ * `'VALOR'`, percentual em `'PERCENTUAL'` — ou `null` quando o texto não é
+ * legível nesse modo. Campo vazio vale zero (`lib/numeroDigitado`).
+ */
+function lerEntradaDigitada(modo: ModoAjuste, texto: string): number | null {
+  return modo === 'VALOR' ? lerCentavosDigitados(texto) : lerPercentualDigitado(texto);
+}
+
+const AVISO_FORMATO: Record<ModoAjuste, string> = {
+  VALOR: 'Valor inválido: use apenas números, com até duas casas decimais.',
+  PERCENTUAL: 'Percentual inválido: use apenas números, com até uma casa decimal.',
+};
 
 /**
  * Desconto de capa da venda (T035, `FR-015`/AD-039) — nó `Jup0R` "Desconto e
@@ -142,19 +157,6 @@ export function ControleDescontoCapa(): ReactElement {
   const [entradaTexto, setEntradaTexto] = useState(() => textoDoDescontoAplicado(descontoCapa));
 
   /**
-   * Espelho do desconto aplicado, para o campo acompanhar quem o zerou de fora
-   * — `limparPagamentos` da feature 004, por exemplo. Sincronizado durante a
-   * renderização, e não num efeito, pelo mesmo motivo de `documentoEspelhado`
-   * em `CampoClienteVenda.tsx`: é estado derivado de algo que mudou no store, e
-   * um efeito daria um quadro com o valor velho em tela.
-   *
-   * Só o caminho "virou `null`" reescreve o campo. O texto que o operador
-   * digitou **não** é reformatado depois de aplicado: normalizar `"5"` para
-   * `"5,00"` por conta própria mexeria no que ele escreveu, e reconstruir o
-   * texto a partir de `entrada` exigiria dividir centavos por 100 aqui dentro —
-   * conversão monetária que não pertence a um componente.
-   */
-  /**
    * Equivalente financeiro do que está **no campo agora**, não do que foi
    * aceito (correção do usuário, 2026-09-04).
    *
@@ -180,8 +182,21 @@ export function ControleDescontoCapa(): ReactElement {
    * desconto zera —, então o campo recusa antes, em vez de aceitar a digitação
    * para desfazê-la no `blur`.
    */
-  const bloqueio: MotivoBloqueio =
-    subtotal === ZERO_CENTAVOS
+  //
+  // Com forma de pagamento na venda o desconto **congela** (I12/`FR-023`): o
+  // slice já recusava a alteração, mas o campo continuava aberto, e a recusa só
+  // aparecia ao sair dele — depois de o operador ter apagado ou reescrito o
+  // número que segue valendo (correção do usuário, 2026-10-13). O recorte é o
+  // de `pagamentosVivos()` no slice e o do combobox de condição: a forma
+  // riscada ou recusada não tem dinheiro atribuído e não congela nada (AD-171).
+  const temPagamento = useVendaStore((estado) =>
+    estado.pagamentos.some(
+      (pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO',
+    ),
+  );
+  const bloqueio: MotivoBloqueio = temPagamento
+    ? AVISO_DESCONTO_COM_PAGAMENTO
+    : subtotal === ZERO_CENTAVOS
       ? 'Insira ao menos um produto na venda antes de aplicar desconto.'
       : null;
 
@@ -212,75 +227,81 @@ export function ControleDescontoCapa(): ReactElement {
     return resolverDescontoCapa('PERCENTUAL', percentualDigitado, subtotal);
   }
 
+  /**
+   * O último desconto que **este campo** gravou ou já viu — é o que separa a
+   * mudança feita aqui da feita de fora.
+   *
+   * Desde 2026-10-13 o campo grava a cada tecla, e o espelho antigo ("virou
+   * `null`, esvazia o texto") passou a apagar o que o operador digitava: "0,5"
+   * passa por "0", que remove o desconto, e o campo se esvaziava no meio da
+   * palavra. Por isso toda gravação daqui passa por `gravar`, que registra o
+   * resultado, e o espelho só age quando o store mudou **sem** passar por ela —
+   * `limparPagamentos` da feature 004, uma importação, o reset da venda. Nesse
+   * caso o campo passa a descrever o desconto que vale, inclusive o modo.
+   *
+   * Sincronizado durante a renderização, e não num efeito, pelo mesmo motivo de
+   * `documentoEspelhado` em `CampoClienteVenda.tsx`: é estado derivado de algo
+   * que mudou no store, e um efeito daria um quadro com o valor velho em tela.
+   */
   const [ultimoAplicado, setUltimoAplicado] = useState(descontoCapa);
   if (descontoCapa !== ultimoAplicado) {
     setUltimoAplicado(descontoCapa);
-    if (descontoCapa === null) {
-      setEntradaTexto('');
+    setEntradaTexto(textoDoDescontoAplicado(descontoCapa));
+    if (descontoCapa !== null) {
+      setModo(descontoCapa.modo);
     }
   }
 
-  /**
-   * Aplica (ou remove) o desconto de capa a partir do texto corrente.
-   *
-   * Campo vazio e valor zero **removem** o desconto, em vez de aplicarem zero:
-   * o desenho não tem botão de remover, e apagar o número é o gesto natural de
-   * quem desistiu do ajuste. `removerDescontoCapa()` existe justamente para
-   * esse desfecho e ficaria inalcançável de outro modo.
-   */
-  function aplicar(modoAlvo: ModoAjuste, texto: string): void {
-    const bruto = texto.trim();
-    if (bruto === '') {
-      removerDescontoCapa();
-      return;
-    }
-
-    if (modoAlvo === 'VALOR') {
-      const valor = lerCentavosDigitados(bruto);
-      if (valor === null) {
-        notificar.aviso('Valor inválido: use apenas números, com até duas casas decimais.');
-        return;
-      }
-      if (valor === ZERO_CENTAVOS) {
-        removerDescontoCapa();
-        return;
-      }
-      descartarSeRecusado(aplicarDescontoCapa('VALOR', valor));
-      return;
-    }
-
-    const percentual = lerPercentualDigitado(bruto);
-    if (percentual === null) {
-      notificar.aviso('Percentual inválido: use apenas números, com até uma casa decimal.');
-      return;
-    }
-    if (percentual === 0) {
-      removerDescontoCapa();
-      return;
-    }
-    descartarSeRecusado(aplicarDescontoCapa('PERCENTUAL', percentual));
+  function gravar(escrita: () => void): void {
+    escrita();
+    setUltimoAplicado(useVendaStore.getState().descontoCapa);
   }
 
   /**
-   * Desconto recusado pelo slice **esvazia o campo** (correção do usuário,
-   * 2026-09-04).
+   * Faz o desconto da venda ser o que `texto` significa em `modoAlvo` — ou
+   * nenhum, quando o texto não significa um desconto aceitável.
    *
-   * O defeito relatado: com o carrinho vazio, digitar "10" e sair aplicava
-   * nada — o slice recusa por zerar a venda —, mas o texto permanecia. O
-   * espelho `ultimoAplicado` abaixo só limpa quando o desconto **muda** para
-   * `null`, e aqui ele já era `null`. Ao inserir o primeiro item, a tela então
-   * mostrava "10" com o equivalente recalculado sobre o subtotal novo, e o
-   * total a pagar sem desconto nenhum: três informações, duas delas mentira.
+   * **Invariante** (correção do usuário, 2026-10-13): o campo e o store nunca
+   * divergem. Antes, a aplicação só acontecia ao sair do campo, e entre uma
+   * coisa e outra o operador via o campo vazio ao lado de um total ainda
+   * descontado; se nesse intervalo uma forma de pagamento entrasse (atalho de
+   * teclado, sem tirar o foco), a remoção era recusada e a divergência ficava
+   * para sempre. Hoje todo desfecho grava:
    *
-   * Só a recusa **de regra** limpa. Erro de formato ("10,25", "abc") não passa
-   * por aqui e mantém o texto: ali o operador tem o que corrigir, enquanto um
-   * valor recusado por regra não é aproveitável — o próprio toast já disse por
-   * quê.
+   * - texto vazio ou zero **remove** — o desenho não tem botão de remover, e
+   *   apagar o número é o gesto de quem desistiu do ajuste;
+   * - texto legível e aceito pelo slice **aplica**;
+   * - texto ilegível ou recusado pela regra **remove**: um número que a venda
+   *   não pode carregar não fica valendo, nem o desconto anterior a ele.
+   *
+   * `silencioso` é a digitação: o total acompanha cada tecla, mas os avisos
+   * esperam o operador sair do campo (ou teclar Enter), quando o número dele
+   * está completo. Só ali a recusa **de regra** também esvazia o campo
+   * (correção de 2026-09-04: deixar "10" recusado em tela fazia o equivalente
+   * recalcular sobre o próximo subtotal como se estivesse valendo). Erro de
+   * formato ("10,25", "abc") mantém o texto — ali o operador tem o que corrigir.
    */
-  function descartarSeRecusado(aplicado: boolean): void {
-    if (!aplicado) {
-      setEntradaTexto('');
-    }
+  function aplicar(modoAlvo: ModoAjuste, texto: string, silencioso: boolean): void {
+    const entrada = lerEntradaDigitada(modoAlvo, texto);
+    gravar(() => {
+      if (entrada === null) {
+        removerDescontoCapa({ silencioso: true });
+        if (!silencioso) {
+          notificar.aviso(AVISO_FORMATO[modoAlvo]);
+        }
+        return;
+      }
+      if (entrada === 0) {
+        removerDescontoCapa({ silencioso });
+        return;
+      }
+      if (!aplicarDescontoCapa(modoAlvo, entrada, { silencioso })) {
+        removerDescontoCapa({ silencioso: true });
+        if (!silencioso) {
+          setEntradaTexto('');
+        }
+      }
+    });
   }
 
   function trocarModo(modoAlvo: ModoAjuste): void {
@@ -288,13 +309,13 @@ export function ControleDescontoCapa(): ReactElement {
     // Reaplica no ato: o mesmo "10" significa dez reais ou dez por cento
     // conforme o toggle, e deixar o desconto anterior de pé enquanto a tela já
     // mostra a outra unidade descreveria um ajuste que não é o vigente.
-    aplicar(modoAlvo, entradaTexto);
+    aplicar(modoAlvo, entradaTexto, false);
   }
 
   function aoTeclar(evento: KeyboardEvent<HTMLInputElement>): void {
     if (evento.key === 'Enter') {
       evento.preventDefault();
-      aplicar(modo, entradaTexto);
+      aplicar(modo, entradaTexto, false);
     }
   }
 
@@ -340,17 +361,22 @@ export function ControleDescontoCapa(): ReactElement {
           onClick={acaoBloqueavel(bloqueio, () => {
             /* campo livre: o clique só posiciona o cursor. */
           })}
+          // Grava **a cada tecla** (correção do usuário, 2026-10-13): o total a
+          // pagar tem de acompanhar o desconto sem o operador sair do campo. A
+          // razão antiga para esperar o `blur` — "1" no caminho de "10" seria
+          // um desconto de verdade, com auditoria e rateio — não se sustenta: a
+          // aplicação não audita (a 004 audita na finalização) e o rateio é
+          // calculado na montagem do payload, nunca guardado. O que continua
+          // esperando o `blur` são os avisos.
           onChange={(evento) => {
             if (bloqueio === null) {
               setEntradaTexto(evento.target.value);
+              aplicar(modo, evento.target.value, true);
             }
           }}
-          // Aplica ao sair do campo e no Enter, nunca a cada tecla: digitar
-          // "10" passaria por "1" no caminho, e cada passagem seria um
-          // desconto aplicado de verdade (com auditoria e rateio) por engano.
           onBlur={() => {
             if (bloqueio === null) {
-              aplicar(modo, entradaTexto);
+              aplicar(modo, entradaTexto, false);
             }
           }}
           onKeyDown={aoTeclar}
@@ -365,6 +391,7 @@ export function ControleDescontoCapa(): ReactElement {
             rotulo="R$"
             ativo={modo === 'VALOR'}
             testId="toggle-ajuste-valor"
+            bloqueio={bloqueio}
             aoAcionar={() => {
               trocarModo('VALOR');
             }}
@@ -373,6 +400,7 @@ export function ControleDescontoCapa(): ReactElement {
             rotulo="%"
             ativo={modo === 'PERCENTUAL'}
             testId="toggle-ajuste-percentual"
+            bloqueio={bloqueio}
             aoAcionar={() => {
               trocarModo('PERCENTUAL');
             }}
@@ -411,6 +439,7 @@ interface BotaoUnidadeProps {
   readonly rotulo: string;
   readonly ativo: boolean;
   readonly testId: string;
+  readonly bloqueio: MotivoBloqueio;
   readonly aoAcionar: () => void;
 }
 
@@ -421,22 +450,30 @@ interface BotaoUnidadeProps {
  *
  * `aria-pressed` em vez de dois estados visuais soltos: para o leitor de tela é
  * um par de botões de alternância, e é assim que ele anuncia qual unidade está
- * valendo. Não usa `atributosDeBloqueio`: nenhum dos dois modos é bloqueável —
- * `FR-015` aceita percentual e valor sem restrição.
+ * valendo. `FR-015` aceita percentual e valor sem restrição, mas o toggle
+ * **reaplica** o desconto na outra unidade — é uma alteração do desconto, e
+ * fecha junto com o campo (mesmo `bloqueio`, correção de 2026-10-13).
  */
-function BotaoUnidade({ rotulo, ativo, testId, aoAcionar }: BotaoUnidadeProps): ReactElement {
+function BotaoUnidade({
+  rotulo,
+  ativo,
+  testId,
+  bloqueio,
+  aoAcionar,
+}: BotaoUnidadeProps): ReactElement {
   return (
     <button
       type="button"
       className={cn(
-        'flex h-7 shrink-0 items-center justify-center rounded-md px-[9px] text-xs font-bold',
+        'flex h-7 shrink-0 items-center justify-center rounded-md px-[9px] text-xs font-bold aria-disabled:cursor-not-allowed',
         ativo
           ? 'bg-primary text-primary-foreground'
           : 'bg-secondary text-muted-foreground hover:bg-secondary-hover',
       )}
       aria-pressed={ativo}
       data-testid={testId}
-      onClick={aoAcionar}
+      {...atributosDeBloqueio(bloqueio)}
+      onClick={acaoBloqueavel(bloqueio, aoAcionar)}
     >
       {rotulo}
     </button>

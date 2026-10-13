@@ -4234,3 +4234,22 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Impact:** `src/server/session/entradaCifrada.ts` (novo), `src/server/routes/session-start.ts`, `src/server/config/env.ts`, `.env.example`, `docker-compose.yml`, `deploy/beta/docker-stack.yml`; testes `entradaCifrada.spec` (novo), `sessionStartUsuario.spec`, `tests/support/entradaCifrada.ts` (novo — faz o papel do ERP), `tests/e2e/support/{constants,stack}.ts`, `auth-bootstrap.spec` e os sete specs do BFF que montam `loadEnv`. Docs: `ARCHITECTURE.md`, `spec.md` e `contracts/session-bff-api.md`/`quickstart.md` da 002. **Deploy:** o beta precisa de `ENTRADA_AES_KEY` e `ENTRADA_AES_IV` no ambiente antes de subir a imagem nova — sem elas o processo não inicia —, e `validationKey` pode ser apagada de lá.
 
 **Verificação:** `tsc` e ESLint limpos; 2164 testes unit/integração verdes; E2E `auth-bootstrap.spec` 15/15 (inclui navegador abrindo a URL com base64 cru); a URL de exemplo real abre pelo decifrador do BFF. **Não verificado:** login ponta a ponta contra o ERP real com uma URL cifrada, nem o restante da suíte E2E.
+
+### AD-278: o desconto de capa grava a cada tecla, e congela no campo quando há pagamento (2026-10-13)
+
+**Pedido do usuário:** *"Ao colocar um desconto, e depois remove-lo, aparentemente o rateio do item zera. Contudo o totalizador do total a pagar não é alterado instantaneamente. Ao colocar o desconto, mesmo sem sair do campo, o total a pagar tem que ser alterado dinamicamente. O desconto não pode ser alterado depois de ter forma de pagamento inclusa. Tem algum erro no estado do desconto, revise"*
+
+**Decision:** supera a regra de `ControleDescontoCapa` de aplicar o desconto **só** ao sair do campo ou no Enter. O campo passa a gravar a cada tecla, e o campo e o store deixam de poder divergir: texto vazio ou zero remove o desconto; texto legível e aceito pelo slice aplica; texto ilegível ou recusado pela regra também **remove**. Um número que a venda não pode carregar não fica valendo, e o desconto anterior a ele também não. Os avisos (toast) continuam esperando o `blur` ou o Enter, por meio do novo `opcoes.silencioso` de `aplicarDescontoCapa` e `removerDescontoCapa`. Com forma de pagamento viva (o recorte de `pagamentosVivos()`, AD-171), o campo **e** o toggle R$/% ficam bloqueados com `AVISO_DESCONTO_COM_PAGAMENTO`, no padrão de `lib/bloqueio`.
+
+**Origem do defeito, em três partes:**
+1. O total a pagar lê `saldo()` do store, e o store só recebia o desconto no `blur`. Por isso, ao apagar o número, o campo ficava vazio ao lado de um total ainda descontado.
+2. A guarda de I12 (desconto congela com pagamento) existia só no slice, e o campo seguia editável. Se uma forma entrasse com o campo ainda em foco (atalho de teclado), a remoção no `blur` era recusada e o campo vazio ficava para sempre ao lado do desconto que seguia valendo. O caminho de recusa também esvaziava o texto, de modo que digitar sobre um desconto congelado apagava o campo sem tirar o desconto da venda.
+3. O toggle R$/% reaplicava o desconto na outra unidade sem guarda de UI. Uma recusa ali, como "150" virar 150%, esvaziava o campo e deixava valendo o desconto da unidade anterior.
+
+**O espelho do campo mudou de critério.** Antes ele esvaziava o texto quando o desconto "virava `null`". Com gravação por tecla, isso apagava "0,5" no meio da digitação, porque "0" remove o desconto. Hoje toda gravação do próprio campo passa por `gravar`, que registra o desconto resultante. O espelho só reage a mudança feita **de fora** (`limparPagamentos`, importação, reset) e então reescreve o texto e o modo a partir do desconto vigente.
+
+**Por que gravar por tecla é seguro:** o comentário antigo temia que "1" no caminho de "10" fosse "um desconto de verdade, com auditoria e rateio". A aplicação não audita (quem audita é a 004, na finalização), e o rateio é calculado na montagem do payload, nunca guardado.
+
+**Impact:** `src/client/features/pagamento/ControleDescontoCapa.tsx`; `src/client/stores/slices/pagamentoSlice.ts` (tipo `OpcoesDescontoCapa` e parâmetro opcional nas duas ações, sem mudar nenhuma chamada existente); `tests/unit/client/pagamento/ControleDescontoCapa.spec.tsx` (7 casos novos).
+
+**Verificação:** `tsc` e ESLint limpos; 2173 testes unit e integração verdes; E2E `pagamento-geral.spec` 4/4, incluindo o fluxo dourado com desconto de capa de 2%. **Não verificado:** em navegador real contra o ERP.
