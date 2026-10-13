@@ -1995,10 +1995,16 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     };
     const campo = campoFiltrado[tipo];
 
+    // O reduzido (`MatCodRed`) é **numérico** no ERP: `2000` e `002000` são o
+    // mesmo produto. A etiqueta de balança consulta sem os zeros à esquerda
+    // desde AD-252, e a comparação de texto exato deste mock nunca achava o
+    // `002000` — o E2E da etiqueta falhava por causa do mock, não do Checkout.
+    const mesmoCodigo = (valor: unknown): boolean =>
+      campo === 'CodigoProduto' && /^\d+$/.test(codigo) && /^\d+$/.test(String(valor))
+        ? Number(valor) === Number(codigo)
+        : String(valor) === codigo;
     const produto =
-      campo === undefined
-        ? catalogo[0]
-        : catalogo.find((candidato) => String(candidato[campo]) === codigo);
+      campo === undefined ? catalogo[0] : catalogo.find((candidato) => mesmoCodigo(candidato[campo]));
 
     // **Nunca `404`.** Não encontrou é `200` com o SDT todo zerado
     // (`CodigoProduto: ''`) — o `404` que este mock devolvia não existe no ERP

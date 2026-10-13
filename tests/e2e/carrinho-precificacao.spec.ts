@@ -301,6 +301,9 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     // 1. Preço abaixo do mínimo, ao sair do campo: sobe ao mínimo.
     await campo.fill('003100');
     await campo.press('Tab');
+    // Espera a prévia: a revisão chega depois do `GetProduto` e reescreveria
+    // os campos preenchidos antes dela.
+    await expect(preco).toHaveValue('20,00');
     await preco.fill('6');
     await preco.press('Tab');
     await expect(preco).toHaveValue('8,00');
@@ -324,6 +327,7 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     // 4. Sem mínimo: qualquer desconto que não zere o item é aceito.
     await campo.fill(SKU_EDITAVEL);
     await campo.press('Tab');
+    await expect(preco).toHaveValue('20,00');
     await desconto.fill('19');
     await desconto.press('Tab');
     await expect(desconto).toHaveValue('19');
@@ -333,6 +337,8 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     await page.keyboard.press('Escape');
     await campo.fill('003200');
     await campo.press('Tab');
+    await expect(preco).toHaveValue('0,00');
+    await expect(preco).toBeEnabled();
     await preco.fill('10');
     await desconto.fill('2');
     await expect(preco).toHaveValue('10');

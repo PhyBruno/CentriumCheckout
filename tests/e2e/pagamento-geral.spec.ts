@@ -231,6 +231,9 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     const codigo = page.getByTestId('campo-codigo-produto');
     await codigo.fill('003000');
     await codigo.press('Tab');
+    // A prévia chega depois do `GetProduto`: preencher antes dela deixaria a
+    // revisão sobrescrever a quantidade com 1.
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('20,00');
     await page.getByTestId('previa-quantidade').fill('6');
     await page.getByTestId('previa-desconto-item').fill('20');
     await page.getByTestId('previa-desconto-item').press('Enter');
@@ -253,8 +256,11 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     await campo.press('Tab');
     await expect(campo).toHaveValue('8');
     await expect(total).toContainText('92,00');
+    // `.first()`: a frase aparece no toast e na região `aria-live` dele.
     await expect(
-      page.getByText('Desconto máximo desta condição de pagamento: 8%. O desconto foi ajustado automaticamente.'),
+      page
+        .getByText('Desconto máximo desta condição de pagamento: 8%. O desconto foi ajustado automaticamente.')
+        .first(),
     ).toBeVisible();
 
     // 4. Condição B: a capa digitada some e o campo fica bloqueado.
