@@ -14,7 +14,9 @@ interface EventoAuditoriaBase<TTipo extends string, TDetalhes> {
 
 Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codigoProduto`, etc.) são identificadores internos do Checkout (camelCase), não necessariamente os nomes de campo brutos do contrato do ERP (que seguem convenção GeneXus, ex. `CadCliCod`) — a normalização desses valores é responsabilidade da feature de origem (cliente/vendedor/carrinho/pagamento), que já os recebe tipados de suas próprias chamadas ao ERP antes de montar o `detalhes` do evento.
 
-### Catálogo de tipos (20)
+### Catálogo de tipos
+
+⚠️ **O código tem 23 tipos desde a 017 (2026-10-13), não os 20 desta tabela original.** A tabela abaixo ganhou a linha 23 (`DESCONTO_CAPA_APLICADO`, 017/AD-279); `NFCE_RECUPERADA` (011) e `ATALHO_ACIONADO` (016) existem em `src/client/domain/auditoria/eventos.ts` e estão documentados nas próprias features, não aqui. A fonte de verdade da forma de cada evento é a união `EventoAuditoria` daquele arquivo.
 
 | # | `tipo` | Origem (feature) | `detalhes` |
 |---|---|---|---|
@@ -38,6 +40,7 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 | 18 | `VALIDACAO_VENDA_RECUSADA` | 014-validacao-previa-nfce | `{ origem: 'MANUAL' \| 'ATALHO_CENARIO', condicao: string, formaPagamento: string, motivo: string }` — registra recusa por regra de negócio **e** indisponibilidade do ERP; avisos (`Valido = true` com mensagem) **não** são registrados (AD-113) |
 | 19 | `VENDA_RAPIDA_ACIONADA` | 013-venda-rapida-cenario-pagamento | `{ tecla: 'F6' \| 'F7' \| 'F8' \| 'F9', cenarioNome: string, condicaoCodigo: number, formaCodigo: number, valorLancado: number, finalizacaoAutomatica: boolean }` (`valorLancado` em centavos inteiros) — um evento por acionamento que alterou a venda; acionamento recusado em G1–G4 (`specs/013-.../data-model.md`) não gera evento (I12 da feature 013) |
 | 20 | `DAV_IMPORTADO` | 006-importacao-dav | `{ numeroDav: string, numeroNota: number, quantidadeLinhas: number, quantidadeFormasDePagamento: number }` — disparado uma única vez ao final de `importarVendaExistente`, depois que carrinho/cliente/vendedor/pagamento já foram populados (AD-114); `numeroDav` só existe nesta trilha — não é reenviado a `FaturarNFCe` (AD-107) |
+| 23 | `DESCONTO_CAPA_APLICADO` | 017-motor-desconto | `{ origem: 'CONDICAO' \| 'MANUAL', modo: 'PERCENTUAL' \| 'VALOR', entrada: number, valor: number }` (`valor` em centavos; `entrada` é percentual em `PERCENTUAL` e centavos em `VALOR`) — emitido pela capa automática de `selecionarCondicao` e pela aplicação **não silenciosa** de `aplicarDescontoCapa` (nunca por tecla); deduplicado contra o último evento de capa do histórico da venda (`ultimoDescontoCapaAuditado`) |
 
 ### Regras de estado (state machine do slice)
 

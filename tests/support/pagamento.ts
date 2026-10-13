@@ -52,14 +52,16 @@ export function condicaoDe(
   codigo: number,
   descricao: string,
   formas: readonly FormaPagamento[] = [formaDe()],
+  /** Percentuais da capa (017): sem eles, condição sem desconto e de teto zero. */
+  limites: { readonly desconto?: number; readonly descontoMaximo?: number } = {},
 ): CondicaoPagamento {
   return {
     codigo,
     descricao,
     prazo: 0,
     minimoEntrada: centavos(0),
-    desconto: 0,
-    descontoMaximo: 0,
+    desconto: limites.desconto ?? 0,
+    descontoMaximo: limites.descontoMaximo ?? 0,
     formas,
   };
 }

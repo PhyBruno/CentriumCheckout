@@ -31,6 +31,8 @@ import {
 } from '../../src/client/stores/slices/vendedorSlice';
 import {
   AVISO_CONDICAO_COM_PAGAMENTO,
+  AVISO_CONDICAO_SEM_DESCONTO,
+  avisoTetoDaCondicao,
   AVISO_DESCONTO_COM_PAGAMENTO,
   AVISO_DESCONTO_ZERA_A_VENDA,
   AVISO_DESCONTO_ZERA_ITEM,
@@ -128,18 +130,25 @@ const VALE = formaDe({
   fpgUtiCar: 'VDV',
 });
 
+/**
+ * Teto padrão de 100% (017): desde AD-279 o teto da condição limita a capa e o
+ * teto `0` a bloqueia, então uma fixture com teto zero tornaria todo caso de
+ * capa desta suíte uma recusa por `CONDICAO_SEM_DESCONTO`. 100% não limita nada
+ * abaixo do próprio subtotal — que já é recusado por `ZERA_A_VENDA`.
+ */
 function condicaoDe(
   codigo: number,
   descricao: string,
   formas: readonly FormaPagamento[] = [DINHEIRO, CARTAO, PIX, PIX_ESTATICO, CARTAO_SEM_VALE, VALE],
+  limites: { readonly desconto?: number; readonly descontoMaximo?: number } = {},
 ): CondicaoPagamento {
   return {
     codigo,
     descricao,
     prazo: 0,
     minimoEntrada: centavos(0),
-    desconto: 0,
-    descontoMaximo: 0,
+    desconto: limites.desconto ?? 0,
+    descontoMaximo: limites.descontoMaximo ?? 100,
     formas,
   };
 }
@@ -1295,6 +1304,198 @@ describe('pagamentoSlice — importação e limpeza', () => {
 /* ------------------------------------------------------------------ *
  * Cenário 8 — ordem dos eventos de auditoria
  * ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ *
+ * 017, US3 (T039) — capa pela condição, com teto
+ * ------------------------------------------------------------------ */
+
+describe('pagamentoSlice — capa pela condição de pagamento (017)', () => {
+  // Subtotal R$ 100,00 (TOTAL_PADRAO).
+  const COND_A = condicaoDe(10, 'COND A', undefined, { desconto: 5, descontoMaximo: 8 });
+  const COND_B = condicaoDe(11, 'COND B', undefined, { desconto: 0, descontoMaximo: 0 });
+  const COND_C = condicaoDe(12, 'COND C', undefined, { desconto: 10, descontoMaximo: 8 });
+  const COND_SEM_TETO_COM_DESCONTO = condicaoDe(13, 'COND D', undefined, {
+    desconto: 5,
+    descontoMaximo: 0,
+  });
+  const COND_TUDO = condicaoDe(14, 'COND E', undefined, { desconto: 100, descontoMaximo: 100 });
+
+  function eventosDeCapa(store: ReturnType<typeof montarStore>['store']) {
+    return store
+      .getState()
+      .eventos.filter((evento) => evento.tipo === 'DESCONTO_CAPA_APLICADO')
+      .map((evento) => evento.detalhes);
+  }
+
+  it('escolher a condição preenche a capa no mesmo set (I-D4)', () => {
+    const { store } = montarStore();
+    const quadros: { codigo: number | undefined; capa: boolean }[] = [];
+    store.subscribe((estado) => {
+      quadros.push({
+        codigo: estado.condicaoSelecionada?.codigo,
+        capa: estado.descontoCapa !== null,
+      });
+    });
+
+    store.getState().selecionarCondicao(COND_A);
+
+    expect(store.getState().descontoCapa).toEqual({
+      modo: 'PERCENTUAL',
+      entrada: 5,
+      valorResolvido: 500,
+      origem: 'CONDICAO',
+    });
+    expect(quadros.filter((quadro) => quadro.codigo === COND_A.codigo && !quadro.capa)).toEqual([]);
+  });
+
+  it('trocar a condição descarta a capa digitada (FR-019)', () => {
+    const { store } = montarStore();
+    store.getState().selecionarCondicao(COND_A);
+    store.getState().aplicarDescontoCapa('PERCENTUAL', 7);
+    expect(store.getState().descontoCapa?.origem).toBe('MANUAL');
+
+    store.getState().selecionarCondicao(A_PRAZO);
+
+    expect(store.getState().descontoCapa).toBeNull();
+  });
+
+  it('condição sem desconto deixa a capa vazia, sem aviso', () => {
+    const { store, avisar } = montarStore();
+    avisar.mockClear();
+
+    store.getState().selecionarCondicao(COND_B);
+
+    expect(store.getState().descontoCapa).toBeNull();
+    expect(avisar).not.toHaveBeenCalled();
+  });
+
+  it('desconto com teto zero não aplica e avisa', () => {
+    const { store, avisar } = montarStore();
+
+    store.getState().selecionarCondicao(COND_SEM_TETO_COM_DESCONTO);
+
+    expect(store.getState().descontoCapa).toBeNull();
+    expect(avisar).toHaveBeenCalledWith(AVISO_CONDICAO_SEM_DESCONTO);
+  });
+
+  it('desconto acima do próprio teto aplica limitado e avisa (FR-020)', () => {
+    const { store, avisar } = montarStore();
+
+    store.getState().selecionarCondicao(COND_C);
+
+    expect(store.getState().descontoCapa).toMatchObject({ entrada: 8, valorResolvido: 800 });
+    expect(avisar).toHaveBeenCalledWith(avisoTetoDaCondicao(8));
+  });
+
+  it('capa automática que igualaria o subtotal não aplica e avisa (FR-021)', () => {
+    const { store, avisar } = montarStore();
+
+    store.getState().selecionarCondicao(COND_TUDO);
+
+    expect(store.getState().descontoCapa).toBeNull();
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(COND_TUDO.codigo);
+    expect(avisar).toHaveBeenCalledWith(AVISO_DESCONTO_ZERA_A_VENDA);
+  });
+
+  it('troca recusada com pagamento vivo mantém a capa', async () => {
+    const { store } = montarStore();
+    store.getState().selecionarCondicao(COND_A);
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(9_500) });
+
+    store.getState().selecionarCondicao(COND_C);
+
+    expect(store.getState().condicaoSelecionada?.codigo).toBe(COND_A.codigo);
+    expect(store.getState().descontoCapa?.valorResolvido).toBe(500);
+  });
+
+  it('condição importada de documento não aplica capa automática', () => {
+    const { store } = montarStore();
+    store.setState({ condicaoSelecionada: null, descontoCapa: null });
+
+    store.getState().importarCondicaoPagamento(COND_A);
+
+    expect(store.getState().descontoCapa).toBeNull();
+  });
+
+  it('sem condição não há teto (FR-022)', () => {
+    const { store } = montarStore();
+    store.setState({ condicaoSelecionada: null });
+
+    expect(store.getState().aplicarDescontoCapa('PERCENTUAL', 50)).toBe(true);
+    expect(store.getState().descontoCapa?.valorResolvido).toBe(5_000);
+  });
+
+  it('a digitação acima do teto é ajustada e avisada; o teto zero recusa', () => {
+    const { store, avisar } = montarStore();
+    store.getState().selecionarCondicao(COND_A);
+    avisar.mockClear();
+
+    expect(store.getState().aplicarDescontoCapa('PERCENTUAL', 10)).toBe(true);
+    expect(store.getState().descontoCapa).toEqual({
+      modo: 'PERCENTUAL',
+      entrada: 8,
+      valorResolvido: 800,
+      origem: 'MANUAL',
+    });
+    expect(avisar).toHaveBeenCalledWith(avisoTetoDaCondicao(8));
+
+    store.getState().selecionarCondicao(COND_B);
+    expect(store.getState().aplicarDescontoCapa('VALOR', 100)).toBe(false);
+    expect(avisar).toHaveBeenCalledWith(AVISO_CONDICAO_SEM_DESCONTO);
+  });
+
+  it('a digitação silenciosa ajusta sem avisar', () => {
+    const { store, avisar } = montarStore();
+    store.getState().selecionarCondicao(COND_A);
+    avisar.mockClear();
+
+    store.getState().aplicarDescontoCapa('PERCENTUAL', 10, { silencioso: true });
+
+    expect(store.getState().descontoCapa?.entrada).toBe(8);
+    expect(avisar).not.toHaveBeenCalled();
+  });
+
+  describe('auditoria (FR-025)', () => {
+    it('a capa automática registra origem CONDICAO', () => {
+      const { store } = montarStore();
+
+      store.getState().selecionarCondicao(COND_A);
+
+      expect(eventosDeCapa(store)).toEqual([
+        { origem: 'CONDICAO', modo: 'PERCENTUAL', entrada: 5, valor: 500 },
+      ]);
+    });
+
+    it('a manual só registra na chamada não silenciosa, sem duplicar a mesma capa', () => {
+      const { store } = montarStore();
+      store.getState().selecionarCondicao(COND_A);
+
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 7, { silencioso: true });
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 7);
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 7);
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 6);
+
+      expect(eventosDeCapa(store)).toEqual([
+        { origem: 'CONDICAO', modo: 'PERCENTUAL', entrada: 5, valor: 500 },
+        { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 7, valor: 700 },
+        { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 6, valor: 600 },
+      ]);
+    });
+
+    it('na venda seguinte a mesma capa registra de novo (achado D1)', () => {
+      const { store } = montarStore();
+      store.getState().selecionarCondicao(COND_A);
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 7);
+
+      store.getState().resetarAuditoria('NOVA');
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 7);
+
+      expect(eventosDeCapa(store)).toEqual([
+        { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 7, valor: 700 },
+      ]);
+    });
+  });
+});
 
 describe('pagamentoSlice — auditoria da venda (Cenário 8, FR-017)', () => {
   it('registra os cinco eventos na ordem de posição do array', async () => {

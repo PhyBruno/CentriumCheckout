@@ -1,12 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { ControleDescontoCapa } from '../../../../src/client/features/pagamento/ControleDescontoCapa';
 import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
-import { AVISO_DESCONTO_COM_PAGAMENTO } from '../../../../src/client/stores/slices/pagamentoSlice';
+import { notificar } from '../../../../src/client/lib/notificar';
+import {
+  AVISO_CONDICAO_SEM_DESCONTO,
+  AVISO_DESCONTO_COM_PAGAMENTO,
+  avisoTetoDaCondicao,
+} from '../../../../src/client/stores/slices/pagamentoSlice';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
-import { pagamentoDe } from '../../../support/pagamento';
+import { condicaoDe, pagamentoDe } from '../../../support/pagamento';
 import { linhaDe } from '../../../support/precificacao';
 
 /**
@@ -308,5 +313,102 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
     render(createElement(ControleDescontoCapa));
 
     expect(screen.getByTestId('campo-valor-ajuste')).not.toHaveAttribute('aria-disabled');
+  });
+});
+
+/** 017, US3 (T040) — a capa preenchida pela condição e limitada pelo teto dela. */
+describe('ControleDescontoCapa — teto da condição (017)', () => {
+  beforeEach(() => {
+    useVendaStore.setState({
+      linhas: [linhaDe({ precoUnitario: 10_000, quantidadeEmUnidades: 1 })],
+      condicaoSelecionada: null,
+      pagamentos: [],
+      descontoCapa: null,
+    });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function escolher(desconto: number, descontoMaximo: number): void {
+    act(() => {
+      useVendaStore.getState().selecionarCondicao({
+        ...condicaoDe(10, 'COND A'),
+        desconto,
+        descontoMaximo,
+      });
+    });
+  }
+
+  it('a condição preenche o campo e o teto aparece', () => {
+    render(createElement(ControleDescontoCapa));
+
+    escolher(5, 8);
+
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('5');
+    expect(screen.getByTestId('teto-desconto-capa')).toHaveTextContent('Máx. 8%');
+  });
+
+  it('teto zero bloqueia o campo com a explicação', () => {
+    render(createElement(ControleDescontoCapa));
+
+    escolher(0, 0);
+
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveAttribute(
+      'title',
+      AVISO_CONDICAO_SEM_DESCONTO,
+    );
+  });
+
+  it('acima do teto, ao sair do campo o texto vira o teto e há um aviso só', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    render(createElement(ControleDescontoCapa));
+    escolher(5, 8);
+
+    await usuario.clear(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.type(screen.getByTestId('campo-valor-ajuste'), '10');
+    // Durante a digitação o equivalente nunca passa do teto.
+    expect(screen.getByTestId('equivalente-financeiro-desconto-capa')).toHaveTextContent('R$ 8,00');
+    await usuario.tab();
+
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('8');
+    expect(useVendaStore.getState().descontoCapa?.valorResolvido).toBe(800);
+    expect(aviso).toHaveBeenCalledTimes(1);
+    expect(aviso).toHaveBeenCalledWith(avisoTetoDaCondicao(8));
+  });
+
+  it('a entrada do ERP com duas casas é exibida inteira e sobrevive a sair do campo (D9)', async () => {
+    const usuario = userEvent.setup();
+    render(createElement(ControleDescontoCapa));
+    escolher(3.25, 8);
+
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('3,25');
+    await usuario.click(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.tab();
+
+    expect(useVendaStore.getState().descontoCapa).toMatchObject({
+      entrada: 3.25,
+      origem: 'CONDICAO',
+    });
+  });
+
+  it('só a digitação rejeita casas extras', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    render(createElement(ControleDescontoCapa));
+    escolher(5, 8);
+
+    await usuario.clear(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.type(screen.getByTestId('campo-valor-ajuste'), '3,25');
+    await usuario.tab();
+
+    expect(aviso).toHaveBeenCalledWith(
+      'Percentual inválido: use apenas números, com até uma casa decimal.',
+    );
   });
 });

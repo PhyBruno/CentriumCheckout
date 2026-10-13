@@ -196,6 +196,65 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     }
   });
 
+  /** Quickstart Q3 da 017 — capa pela condição, com teto (US3, AD-279). */
+  test('a condição preenche a capa e o teto dela limita a digitação (017, Q3)', async ({
+    page,
+  }) => {
+    await stubarImpressoraLocal(page);
+    await abrirTelaDeVenda(page);
+
+    // 1. Subtotal líquido 100,00: 6 × R$ 20,00 = 120,00 bruto, com R$ 20,00 de
+    //    desconto de item.
+    const codigo = page.getByTestId('campo-codigo-produto');
+    await codigo.fill('003000');
+    await codigo.press('Tab');
+    await page.getByTestId('previa-quantidade').fill('6');
+    await page.getByTestId('previa-desconto-item').fill('20');
+    await page.getByTestId('previa-desconto-item').press('Enter');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    const campo = page.getByTestId('campo-valor-ajuste');
+    const equivalente = page.getByTestId('equivalente-financeiro-desconto-capa');
+    const total = page.getByTestId('total-a-pagar');
+
+    // 2. Condição A: 5% sobre os 100,00 líquidos, não sobre os 120,00.
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-20');
+    await expect(campo).toHaveValue('5');
+    await expect(equivalente).toContainText('5,00');
+    await expect(total).toContainText('95,00');
+
+    // 3. 7% passa; 10% é ajustado ao teto de 8% ao sair do campo, com aviso.
+    await campo.fill('7');
+    await expect(total).toContainText('93,00');
+    await campo.fill('10');
+    await campo.press('Tab');
+    await expect(campo).toHaveValue('8');
+    await expect(total).toContainText('92,00');
+    await expect(
+      page.getByText('Desconto máximo desta condição de pagamento: 8%. O desconto foi ajustado automaticamente.'),
+    ).toBeVisible();
+
+    // 4. Condição B: a capa digitada some e o campo fica bloqueado.
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-21');
+    await expect(campo).toHaveAttribute('aria-disabled', 'true');
+    await expect(total).toContainText('100,00');
+
+    // 5. Condição C: o desconto de 10% entra limitado ao teto de 8%.
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-22');
+    await expect(campo).toHaveValue('8');
+    await expect(total).toContainText('92,00');
+
+    // 6. Com forma aplicada a condição não muda, e a capa fica.
+    await aplicarPagamento(page, 'opcao-forma-1', '10,00');
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByTestId('combobox-condicao-pagamento')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await expect(page.getByTestId('combobox-condicao-pagamento')).toContainText('COND C');
+    await expect(campo).toHaveValue('8');
+  });
+
   test('segunda forma dinheiro é recusada e a lista permanece intacta (FR-013/SC-003)', async ({
     page,
   }) => {

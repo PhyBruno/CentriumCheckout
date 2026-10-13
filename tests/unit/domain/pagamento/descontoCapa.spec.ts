@@ -4,9 +4,97 @@ import {
   ErroDescontoCapaAcimaDoSubtotal,
   ratearDescontoCapa,
   recusaDoDescontoCapa,
+  resolverCapaComTeto,
   resolverDescontoCapa,
+  tetoDaCapa,
   type LinhaRateavel,
 } from '../../../../src/client/domain/pagamento/descontoCapa';
+import { totalVenda } from '../../../../src/client/domain/precificacao/linha';
+import { linhaDe } from '../../../support/precificacao';
+
+/** 017, US3 (T037) — o teto da condição limita a capa, como ajuste (research D8). */
+describe('tetoDaCapa', () => {
+  const cem = centavos(10_000);
+
+  it('sem condição não há teto (FR-022)', () => {
+    expect(tetoDaCapa(null, cem)).toBeNull();
+  });
+
+  it('é o percentual máximo da condição sobre o subtotal', () => {
+    expect(tetoDaCapa({ descontoMaximo: 8 }, cem)).toBe(800);
+  });
+
+  it('teto zero ou negativo vira zero (FR-018)', () => {
+    expect(tetoDaCapa({ descontoMaximo: 0 }, cem)).toBe(0);
+    expect(tetoDaCapa({ descontoMaximo: -3 }, cem)).toBe(0);
+  });
+});
+
+describe('resolverCapaComTeto', () => {
+  const cem = centavos(10_000);
+  const teto8 = centavos(800);
+
+  it('abaixo do teto fica como digitado', () => {
+    expect(resolverCapaComTeto('PERCENTUAL', 7, cem, teto8, 8)).toEqual({
+      modo: 'PERCENTUAL',
+      entrada: 7,
+      valorResolvido: 700,
+      ajustadaAoTeto: false,
+    });
+  });
+
+  it('acima do teto ajusta a entrada e o valor, no modo percentual', () => {
+    expect(resolverCapaComTeto('PERCENTUAL', 10, cem, teto8, 8)).toEqual({
+      modo: 'PERCENTUAL',
+      entrada: 8,
+      valorResolvido: 800,
+      ajustadaAoTeto: true,
+    });
+  });
+
+  it('acima do teto ajusta a entrada e o valor, no modo valor', () => {
+    expect(resolverCapaComTeto('VALOR', 1_500, cem, teto8, 8)).toEqual({
+      modo: 'VALOR',
+      entrada: 800,
+      valorResolvido: 800,
+      ajustadaAoTeto: true,
+    });
+  });
+
+  it('compara em centavos: R$ 8,00 em valor é exatamente o teto de 8%', () => {
+    expect(resolverCapaComTeto('VALOR', 800, cem, teto8, 8)).toMatchObject({
+      ajustadaAoTeto: false,
+      valorResolvido: 800,
+    });
+  });
+
+  it('teto zero recusa qualquer desconto', () => {
+    expect(resolverCapaComTeto('PERCENTUAL', 1, cem, centavos(0), 0)).toEqual({
+      recusa: 'CONDICAO_SEM_DESCONTO',
+    });
+  });
+
+  it('sem condição não limita', () => {
+    expect(resolverCapaComTeto('PERCENTUAL', 50, cem, null, null)).toMatchObject({
+      valorResolvido: 5_000,
+      ajustadaAoTeto: false,
+    });
+  });
+
+  it('incide sobre o subtotal já líquido dos descontos de item (FR-023)', () => {
+    // Bruto 120,00 com 20,00 de desconto de item: a base é 100,00, e 10% = 10,00.
+    const linhas = [
+      linhaDe({ precoUnitario: 6_000, descontoManual: 1_000 }),
+      linhaDe({ precoUnitario: 6_000, descontoManual: 1_000 }),
+    ];
+    const subtotal = totalVenda(linhas);
+
+    expect(subtotal).toBe(10_000);
+    expect(resolverCapaComTeto('PERCENTUAL', 10, subtotal, null, null)).toMatchObject({
+      valorResolvido: 1_000,
+    });
+  });
+});
 
 /** Soma das parcelas do rateio, na mesma ordem de `linhas` recebida no teste. */
 function somaMapa(mapa: ReadonlyMap<string, number>): number {

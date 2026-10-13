@@ -2,10 +2,12 @@ import type { StateCreator } from 'zustand';
 import type { VendaState } from '../vendaStore';
 import {
   eventoCondicaoPagamentoAplicada,
+  eventoDescontoCapaAplicado,
   eventoFormaPagamentoAplicada,
   eventoFormaPagamentoRemovida,
   eventoPagamentoRecusado,
   eventoValeDevolucaoUsado,
+  ultimoDescontoCapaAuditado,
 } from '../../domain/auditoria/eventos';
 import type { FormaPagamentoImportada } from '../../domain/importacaoVenda/mapearVendaExistente';
 import {
@@ -19,7 +21,9 @@ import {
 import {
   ratearDescontoCapa,
   recusaDoDescontoCapa,
+  resolverCapaComTeto,
   resolverDescontoCapa,
+  tetoDaCapa,
   type DescontoCapa,
   type LinhaRateavel,
   type RecusaDescontoCapa,
@@ -433,9 +437,32 @@ export const AVISO_DESCONTO_ZERA_A_VENDA =
 export const AVISO_DESCONTO_ZERA_ITEM =
   'Este desconto zeraria um item da venda: no rateio, cada item precisa continuar valendo pelo menos R$ 0,01.';
 
+/**
+ * A condição escolhida tem teto zero (017, FR-018): o campo de capa fica
+ * bloqueado com esta frase, e a capa automática de uma condição com desconto
+ * mas sem teto também não entra. A saída nomeada é a única que existe — outra
+ * condição.
+ */
+export const AVISO_CONDICAO_SEM_DESCONTO =
+  'A condição de pagamento escolhida não permite desconto na venda: para dar desconto, escolha outra condição.';
+
+/** `8` → `"8"`, `3.25` → `"3,25"` — percentual do ERP na frase do operador. */
+function percentualParaTexto(percentual: number): string {
+  return String(percentual).replace('.', ',');
+}
+
+/**
+ * A capa passou do teto da condição e foi ajustada a ele (017, FR-016/FR-020).
+ * Mesmo tratamento — e mesma estrutura de frase — do preço mínimo do item.
+ */
+export function avisoTetoDaCondicao(descontoMaximo: number): string {
+  return `Desconto máximo desta condição de pagamento: ${percentualParaTexto(descontoMaximo)}%. O desconto foi ajustado automaticamente.`;
+}
+
 const AVISO_POR_RECUSA_DESCONTO: Record<RecusaDescontoCapa, string> = {
   ZERA_A_VENDA: AVISO_DESCONTO_ZERA_A_VENDA,
   ZERA_UM_ITEM: AVISO_DESCONTO_ZERA_ITEM,
+  CONDICAO_SEM_DESCONTO: AVISO_CONDICAO_SEM_DESCONTO,
 };
 export const AVISO_VALE_FORMA_ERRADA =
   'Esta forma de pagamento não é vale devolução: escolha a forma de vale no catálogo.';
@@ -487,6 +514,77 @@ export function criarPagamentoSlice(
         descontoCapa?.valorResolvido ?? ZERO_CENTAVOS,
         pagamentos,
       );
+    }
+
+    /**
+     * As linhas que a recusa `ZERA_UM_ITEM` examina. Ponto único para a US4 da
+     * 017 desligar essa recusa quando o rateio passar a ser do ERP.
+     */
+    function linhasDaRecusa(): readonly LinhaRateavel[] {
+      return deps.linhasRateaveis();
+    }
+
+    /**
+     * Registra `DESCONTO_CAPA_APLICADO` quando a capa difere da última auditada
+     * **nesta venda** (017, FR-025, `research.md` D10). A comparação lê o
+     * histórico, que é zerado por venda — nunca uma variável deste closure, que
+     * atravessaria vendas e calaria a mesma capa a partir da 2ª.
+     */
+    function auditarCapa(capa: DescontoCapa): void {
+      const ultimo = ultimoDescontoCapaAuditado(get().eventos);
+      if (
+        ultimo !== null &&
+        ultimo.detalhes.origem === capa.origem &&
+        ultimo.detalhes.modo === capa.modo &&
+        ultimo.detalhes.entrada === capa.entrada &&
+        ultimo.detalhes.valor === capa.valorResolvido
+      ) {
+        return;
+      }
+      get().registrarEventoAuditoria(
+        eventoDescontoCapaAplicado({
+          origem: capa.origem,
+          modo: capa.modo,
+          entrada: capa.entrada,
+          valor: capa.valorResolvido,
+        }),
+      );
+    }
+
+    /**
+     * A capa automática de uma condição (017, FR-015, FR-020, FR-021):
+     * percentual `min(desconto, descontoMaximo)` sobre o subtotal líquido, ou
+     * nenhuma. O aviso, quando há, sai junto para `selecionarCondicao` emitir
+     * depois de gravar.
+     */
+    function capaDaCondicao(condicao: CondicaoPagamento): {
+      readonly capa: DescontoCapa | null;
+      readonly aviso: string | null;
+    } {
+      if (condicao.desconto <= 0) {
+        return { capa: null, aviso: null };
+      }
+      if (condicao.descontoMaximo <= 0) {
+        return { capa: null, aviso: AVISO_CONDICAO_SEM_DESCONTO };
+      }
+      const percentual = Math.min(condicao.desconto, condicao.descontoMaximo);
+      const subtotal = deps.subtotalCarrinho();
+      const valorResolvido = resolverDescontoCapa('PERCENTUAL', percentual, subtotal);
+      // Nada a descontar (venda sem valor): sem capa e sem aviso.
+      if (valorResolvido <= ZERO_CENTAVOS) {
+        return { capa: null, aviso: null };
+      }
+      const recusa = recusaDoDescontoCapa(valorResolvido, subtotal, linhasDaRecusa());
+      if (recusa !== null) {
+        return { capa: null, aviso: AVISO_POR_RECUSA_DESCONTO[recusa] };
+      }
+      return {
+        capa: { modo: 'PERCENTUAL', entrada: percentual, valorResolvido, origem: 'CONDICAO' },
+        aviso:
+          condicao.desconto > condicao.descontoMaximo
+            ? avisoTetoDaCondicao(condicao.descontoMaximo)
+            : null,
+      };
     }
 
     /**
@@ -794,11 +892,21 @@ export function criarPagamentoSlice(
         // — inclusive quando ele substitui a que veio importada. É a declaração
         // que I7 descreve, e a partir daqui ela congela o carrinho.
         condicaoVeioDeDocumento = false;
-        set({ condicaoSelecionada: condicao });
+        // A condição define a capa (017, FR-015/FR-019): a nova substitui a
+        // anterior, inclusive a digitada, e as duas são gravadas no **mesmo**
+        // `set` (I-D4) — nenhum quadro mostra condição nova com capa velha.
+        const { capa, aviso } = capaDaCondicao(condicao);
+        set({ condicaoSelecionada: condicao, descontoCapa: capa });
 
         get().registrarEventoAuditoria(
           eventoCondicaoPagamentoAplicada({ condicao: condicao.descricao }),
         );
+        if (aviso !== null) {
+          deps.avisar?.(aviso);
+        }
+        if (capa !== null) {
+          auditarCapa(capa);
+        }
       },
 
       aplicarPagamento: async (input) => {
@@ -974,22 +1082,51 @@ export function criarPagamentoSlice(
         }
 
         const subtotal = deps.subtotalCarrinho();
-        const valorResolvido = resolverDescontoCapa(modo, entrada, subtotal);
 
-        // Guarda 2 — I8, apertada pelo usuário em 2026-09-04: além de manter a
+        // Guarda 2 — teto da condição escolhida (017, FR-016 a FR-018): acima
+        // dele a capa é **ajustada** ao teto, não recusada (`research.md` D8);
+        // teto zero recusa. Sem condição não há teto (FR-022).
+        const condicao = get().condicaoSelecionada;
+        const resolucao = resolverCapaComTeto(
+          modo,
+          entrada,
+          subtotal,
+          tetoDaCapa(condicao, subtotal),
+          condicao?.descontoMaximo ?? null,
+        );
+        if ('recusa' in resolucao) {
+          avisar?.(AVISO_POR_RECUSA_DESCONTO[resolucao.recusa]);
+          return false;
+        }
+
+        // Guarda 3 — I8, apertada pelo usuário em 2026-09-04: além de manter a
         // pré-condição de `ratearDescontoCapa` (`desconto <= Σ linhas`), o
-        // desconto agora não pode zerar nem o total da venda nem o de um item
-        // depois do rateio. Quem decide é o domínio; aqui só se traduz a recusa
-        // na frase que o operador lê ao sair do campo.
-        const recusa = recusaDoDescontoCapa(valorResolvido, subtotal, deps.linhasRateaveis());
+        // desconto não pode zerar nem o total da venda nem o de um item depois
+        // do rateio. Quem decide é o domínio; aqui só se traduz a recusa na
+        // frase que o operador lê ao sair do campo.
+        const recusa = recusaDoDescontoCapa(resolucao.valorResolvido, subtotal, linhasDaRecusa());
         if (recusa !== null) {
           avisar?.(AVISO_POR_RECUSA_DESCONTO[recusa]);
           return false;
         }
 
-        // Substitui, nunca acumula. Sem evento de auditoria: o desconto é
-        // auditado pela feature 004 na finalização.
-        set({ descontoCapa: { modo, entrada, valorResolvido, origem: 'MANUAL' } });
+        if (resolucao.ajustadaAoTeto && condicao !== null) {
+          avisar?.(avisoTetoDaCondicao(condicao.descontoMaximo));
+        }
+
+        // Substitui, nunca acumula.
+        const capa: DescontoCapa = {
+          modo,
+          entrada: resolucao.entrada,
+          valorResolvido: resolucao.valorResolvido,
+          origem: 'MANUAL',
+        };
+        set({ descontoCapa: capa });
+        // Auditada só na chamada não silenciosa: a silenciosa é a tecla, e o
+        // número completo do operador é o do `blur`/Enter (D10).
+        if (opcoes?.silencioso !== true) {
+          auditarCapa(capa);
+        }
         return true;
       },
 

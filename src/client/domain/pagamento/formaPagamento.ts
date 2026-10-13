@@ -137,9 +137,15 @@ export interface CondicaoPagamento {
   readonly prazo: number;
   /** `CondicaoMinimoEntrada`, convertido de `double` na fronteira Zod. */
   readonly minimoEntrada: Centavos;
-  /** Percentual da condição — **não** é o desconto manual de capa. */
+  /**
+   * `CondicaoDesconto` — percentual que a condição aplica como capa ao ser
+   * escolhida (017, FR-015, AD-279), limitado a `descontoMaximo`.
+   */
   readonly desconto: number;
-  /** Teto da condição — **não** limita o desconto manual (`FR-015` é sem teto). */
+  /**
+   * `CondicaoDescontoMaximo` — teto da capa, em percentual do subtotal líquido
+   * (017, FR-016 a FR-018). `0` = a condição não permite desconto de capa.
+   */
   readonly descontoMaximo: number;
   readonly formas: readonly FormaPagamento[];
 }

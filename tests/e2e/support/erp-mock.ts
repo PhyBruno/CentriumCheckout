@@ -1498,7 +1498,10 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
         CondicaoPrazo: '0.00000',
         CondicaoMinimoEntrada: '0.00000',
         CondicaoDesconto: '0.00000',
-        CondicaoDescontoMaximo: '0.00000',
+        // Teto de 10% (017, AD-279): com teto zero a capa fica bloqueada, e o
+        // fluxo dourado aplica 2% de capa sobre esta condição. Sem desconto
+        // automático, para nenhum outro fluxo mudar de total.
+        CondicaoDescontoMaximo: '10.00000',
         CondicaoFormasDePagamento: [
           {
             FormaCodigo: String(1), // int64
@@ -1648,6 +1651,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       // Só com o TEF ligado (feature 010, padrão desde 2026-10-02): a empresa
       // sem TEF não oferece a condição cujas formas só existem no terminal.
       ...(config.tefAtivo ? [CONDICAO_TEF_DUAS_VEZES] : []),
+      ...CONDICOES_MOTOR_DESCONTO,
     ],
     /**
      * TEF e PIX **ligados** no cenário padrão, para a stack local cobrar nos
@@ -1702,6 +1706,45 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
  * Códigos 11–13, a partir do próximo livre: os E2E endereçam as formas por
  * `opcao-forma-<codigo>`.
  */
+/**
+ * As três condições do quickstart Q3 da 017 (motor de desconto, AD-279): **A**
+ * concede 5% com teto 8%; **B** não permite desconto (teto zero); **C** é o
+ * cadastro incoerente, desconto 10% acima do próprio teto de 8%. Só dinheiro,
+ * para o roteiro não depender de integração.
+ */
+function condicaoDoMotor(
+  codigo: number,
+  descricao: string,
+  desconto: string,
+  descontoMaximo: string,
+): Record<string, unknown> {
+  return {
+    CondicaoCodigo: String(codigo), // int64
+    CondicaoDescricao: descricao,
+    CondicaoPrazo: '0.00000',
+    CondicaoMinimoEntrada: '0.00000',
+    CondicaoDesconto: desconto,
+    CondicaoDescontoMaximo: descontoMaximo,
+    CondicaoFormasDePagamento: [
+      {
+        FormaCodigo: String(1), // int64
+        FormaDescricao: '1 - DINHEIRO',
+        FormaEntrada: 'S',
+        FormaMeioPagtoNFe: '01',
+        FormaIntegracaoCartao: ' ',
+        FormaTipoTransacaoTEF: '',
+        FormaFpgUtiCar: '',
+      },
+    ],
+  };
+}
+
+const CONDICOES_MOTOR_DESCONTO = [
+  condicaoDoMotor(20, 'COND A 5 POR CENTO', '5.00000', '8.00000'),
+  condicaoDoMotor(21, 'COND B SEM DESCONTO', '0.00000', '0.00000'),
+  condicaoDoMotor(22, 'COND C INCOERENTE', '10.00000', '8.00000'),
+];
+
 const CONDICAO_TEF_DUAS_VEZES = {
   CondicaoCodigo: String(3), // int64
   CondicaoDescricao: '2 VEZES',

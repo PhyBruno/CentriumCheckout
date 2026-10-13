@@ -2,8 +2,8 @@
  * Catálogo de eventos de auditoria da venda (feature 001).
  *
  * Domínio puro: nenhuma dependência de React, Zustand ou rede — só a união
- * discriminada dos 20 tipos de evento (`data-model.md`) e uma factory tipada
- * por tipo, para que nenhuma feature consumidora precise montar o objeto
+ * discriminada dos tipos de evento (23 desde a 017; `data-model.md`) e uma
+ * factory tipada por tipo, para que nenhuma feature consumidora precise montar o objeto
  * literal solto em cada call site (`contracts/auditoria-events.md`).
  *
  * Este módulo **não** conhece regra de negócio de cliente/vendedor/produto/
@@ -153,6 +153,27 @@ export type EventoPagamentoRecusado = EventoAuditoriaBase<
   { readonly tipo: string; readonly motivo?: string }
 >;
 
+/**
+ * Desconto de capa definido — pela condição de pagamento ou digitado pelo
+ * operador (feature 017, FR-025, AD-279).
+ *
+ * Um evento por **confirmação**, não por tecla: a capa grava a cada tecla
+ * (AD-278), e auditar cada passagem ("1" a caminho de "10") encheria o `Log`
+ * que vai inteiro ao ERP. `origem` é texto literal, e não o tipo do domínio de
+ * pagamento, pelo mesmo motivo de `condicao` e `formaPagamento` serem texto.
+ */
+export type EventoDescontoCapaAplicado = EventoAuditoriaBase<
+  'DESCONTO_CAPA_APLICADO',
+  {
+    readonly origem: 'CONDICAO' | 'MANUAL';
+    readonly modo: 'PERCENTUAL' | 'VALOR';
+    /** Percentual em `'PERCENTUAL'`, centavos inteiros em `'VALOR'`. */
+    readonly entrada: number;
+    /** Centavos inteiros. */
+    readonly valor: number;
+  }
+>;
+
 /* ------------------------------------------------------------------ *
  * 15–17. Finalização e suspensão (feature 004)
  * ------------------------------------------------------------------ */
@@ -275,7 +296,7 @@ export type EventoAtalhoAcionado = EventoAuditoriaBase<
  * União e histórico
  * ------------------------------------------------------------------ */
 
-/** União discriminada por `tipo` dos 22 eventos do catálogo (`data-model.md`). */
+/** União discriminada por `tipo` dos 23 eventos do catálogo (`data-model.md`). */
 export type EventoAuditoria =
   | EventoVendaIniciada
   | EventoClienteSelecionado
@@ -291,6 +312,7 @@ export type EventoAuditoria =
   | EventoFormaPagamentoRemovida
   | EventoValeDevolucaoUsado
   | EventoPagamentoRecusado
+  | EventoDescontoCapaAplicado
   | EventoFaturamentoFalhou
   | EventoVendaFinalizada
   | EventoVendaSuspensa
@@ -442,6 +464,33 @@ export function eventoPagamentoRecusado(
   detalhes: EventoPagamentoRecusado['detalhes'],
 ): SemTimestamp<EventoPagamentoRecusado> {
   return { tipo: 'PAGAMENTO_RECUSADO', detalhes };
+}
+
+export function eventoDescontoCapaAplicado(
+  detalhes: EventoDescontoCapaAplicado['detalhes'],
+): SemTimestamp<EventoDescontoCapaAplicado> {
+  return { tipo: 'DESCONTO_CAPA_APLICADO', detalhes };
+}
+
+/**
+ * O último `DESCONTO_CAPA_APLICADO` do histórico da venda, ou `null` — a base da
+ * deduplicação da auditoria da capa (017, `research.md` D10).
+ *
+ * Lê o histórico, e não uma variável guardada no slice, porque o histórico é
+ * zerado a cada venda e a variável não: com ela, a mesma capa na venda seguinte
+ * (a mesma condição de 5%, o caso comum) pareceria "já auditada" e não geraria
+ * evento a partir da 2ª venda.
+ */
+export function ultimoDescontoCapaAuditado(
+  eventos: readonly EventoAuditoria[],
+): EventoDescontoCapaAplicado | null {
+  for (let indice = eventos.length - 1; indice >= 0; indice -= 1) {
+    const evento = eventos[indice];
+    if (evento?.tipo === 'DESCONTO_CAPA_APLICADO') {
+      return evento;
+    }
+  }
+  return null;
 }
 
 export function eventoFaturamentoFalhou(

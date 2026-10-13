@@ -4,7 +4,7 @@ import { notificar } from '@/lib/notificar';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { lerCentavosDigitados, lerDecimalDigitado } from '@/lib/numeroDigitado';
 import { cn } from '@/lib/utils';
-import { resolverDescontoCapa } from '../../domain/pagamento/descontoCapa';
+import { resolverDescontoCapa, tetoDaCapa } from '../../domain/pagamento/descontoCapa';
 import {
   ZERO_CENTAVOS,
   centavos,
@@ -14,7 +14,10 @@ import {
 } from '../../domain/precificacao/dinheiro';
 import type { DescontoCapa } from '../../domain/pagamento/descontoCapa';
 import { totalVenda } from '../../domain/precificacao/linha';
-import { AVISO_DESCONTO_COM_PAGAMENTO } from '../../stores/slices/pagamentoSlice';
+import {
+  AVISO_CONDICAO_SEM_DESCONTO,
+  AVISO_DESCONTO_COM_PAGAMENTO,
+} from '../../stores/slices/pagamentoSlice';
 import { useVendaStore } from '../../stores/vendaStore';
 
 type ModoAjuste = 'PERCENTUAL' | 'VALOR';
@@ -41,9 +44,10 @@ function textoDoDescontoAplicado(desconto: DescontoCapa | null): string {
     return '';
   }
   if (desconto.modo === 'PERCENTUAL') {
-    // `entrada` já é o percentual como o operador o digitou (uma casa, no
-    // máximo): devolvê-lo é reexibi-lo, não reformatá-lo.
-    return String(desconto.entrada);
+    // `entrada` é o percentual como o operador o digitou — ou como o ERP o
+    // cadastrou na condição, que pode ter mais casas (3,25%, 017 D9): exibido
+    // inteiro, com a vírgula do português.
+    return String(desconto.entrada).replace('.', ',');
   }
   return reaisDeCentavos(centavos(desconto.entrada)).toFixed(2).replace('.', ',');
 }
@@ -126,10 +130,13 @@ const AVISO_FORMATO: Record<ModoAjuste, string> = {
  * espremia o campo de valor até o toggle R$/% escapar para fora do cartão
  * (o scroll lateral relatado no mesmo dia).
  *
- * **Sem teto e sem autorização** (`FR-015`/AD-039): não há limite máximo nem
- * pedido de senha. A única guarda é I8 (`desconto <= subtotal`), e ela vive no
- * slice — que é onde o subtotal corrente existe — recusando com toast. O
- * componente não a repete.
+ * **Teto da condição, sem autorização** (017, AD-279 — supera o "sem teto" de
+ * `FR-015`/AD-039): escolher a condição preenche a capa com o desconto dela, e o
+ * percentual máximo da condição limita a digitação. Quem aplica e ajusta é o
+ * slice; aqui o teto é só mostrado, o equivalente nunca passa dele, e o texto é
+ * reescrito com o valor que o slice gravou quando ele ajustou. Teto zero
+ * bloqueia o campo com a explicação (`lib/bloqueio`). Continua sem pedido de
+ * senha, e a guarda I8 (`desconto < subtotal`) segue no slice.
  */
 export function ControleDescontoCapa(): ReactElement {
   const descontoCapa = useVendaStore((estado) => estado.descontoCapa);
@@ -172,6 +179,9 @@ export function ControleDescontoCapa(): ReactElement {
    * valor efetivamente aplicado, que é o que a venda de fato tem.
    */
   const subtotal = useVendaStore((estado) => totalVenda(estado.linhas));
+  // Teto da condição escolhida (017): `null` sem condição; zero bloqueia.
+  const condicao = useVendaStore((estado) => estado.condicaoSelecionada);
+  const teto = tetoDaCapa(condicao, subtotal);
   const percentualDigitado = lerPercentualDigitado(entradaTexto);
   const equivalenteFinanceiro = resolverEquivalente();
 
@@ -198,9 +208,17 @@ export function ControleDescontoCapa(): ReactElement {
     ? AVISO_DESCONTO_COM_PAGAMENTO
     : subtotal === ZERO_CENTAVOS
       ? 'Insira ao menos um produto na venda antes de aplicar desconto.'
-      : null;
+      : teto === ZERO_CENTAVOS
+        ? AVISO_CONDICAO_SEM_DESCONTO
+        : null;
 
   function resolverEquivalente(): Centavos {
+    const equivalente = resolverEquivalenteSemTeto();
+    // O que o slice grava nunca passa do teto; a prévia também não.
+    return teto !== null && equivalente > teto ? teto : equivalente;
+  }
+
+  function resolverEquivalenteSemTeto(): Centavos {
     // Campo vazio: mostra o desconto que a venda de fato tem — nenhum, na
     // maioria das vezes.
     if (entradaTexto.trim() === '') {
@@ -282,6 +300,18 @@ export function ControleDescontoCapa(): ReactElement {
    * formato ("10,25", "abc") mantém o texto — ali o operador tem o que corrigir.
    */
   function aplicar(modoAlvo: ModoAjuste, texto: string, silencioso: boolean): void {
+    // Sair do campo sem mexer não reaplica (017): a capa automática da condição
+    // continuaria sendo dela, e não viraria "digitada" nem seria reauditada; e
+    // uma entrada de duas casas vinda do ERP (3,25%, D9) não cairia na regra de
+    // digitação, que aceita uma só.
+    const vigente = useVendaStore.getState().descontoCapa;
+    if (
+      vigente !== null &&
+      vigente.modo === modoAlvo &&
+      texto === textoDoDescontoAplicado(vigente)
+    ) {
+      return;
+    }
     const entrada = lerEntradaDigitada(modoAlvo, texto);
     gravar(() => {
       if (entrada === null) {
@@ -300,6 +330,14 @@ export function ControleDescontoCapa(): ReactElement {
         if (!silencioso) {
           setEntradaTexto('');
         }
+        return;
+      }
+      // Acima do teto o slice grava o teto (017, FR-016): ao sair do campo o
+      // texto passa a mostrar o que vale. Durante a digitação o texto fica, e
+      // o equivalente já aparece limitado.
+      const gravado = useVendaStore.getState().descontoCapa;
+      if (!silencioso && gravado !== null && gravado.entrada !== entrada) {
+        setEntradaTexto(textoDoDescontoAplicado(gravado));
       }
     });
   }
@@ -340,6 +378,16 @@ export function ControleDescontoCapa(): ReactElement {
     >
       <header className="flex w-full items-center justify-between">
         <span className="text-base font-semibold text-foreground">Desconto</span>
+        {/* Teto da condição (017). Sem nó no Pencil — a regra é nova e o MCP
+            não conectou; segue a tipografia da legenda "sobre o subtotal". */}
+        {condicao !== null && condicao.descontoMaximo > 0 ? (
+          <span
+            className="text-xs font-medium text-muted-foreground"
+            data-testid="teto-desconto-capa"
+          >
+            Máx. {String(condicao.descontoMaximo).replace('.', ',')}%
+          </span>
+        ) : null}
       </header>
 
       {/* Uma peça só na linha, sem wrapper de layout: com o combobox de tipo
@@ -363,11 +411,9 @@ export function ControleDescontoCapa(): ReactElement {
           })}
           // Grava **a cada tecla** (correção do usuário, 2026-10-13): o total a
           // pagar tem de acompanhar o desconto sem o operador sair do campo. A
-          // razão antiga para esperar o `blur` — "1" no caminho de "10" seria
-          // um desconto de verdade, com auditoria e rateio — não se sustenta: a
-          // aplicação não audita (a 004 audita na finalização) e o rateio é
-          // calculado na montagem do payload, nunca guardado. O que continua
-          // esperando o `blur` são os avisos.
+          // gravação por tecla é silenciosa — sem aviso e sem auditoria; o
+          // `DESCONTO_CAPA_APLICADO` (017) e os avisos esperam o `blur` ou o
+          // Enter. O rateio é calculado na montagem do payload, nunca guardado.
           onChange={(evento) => {
             if (bloqueio === null) {
               setEntradaTexto(evento.target.value);
