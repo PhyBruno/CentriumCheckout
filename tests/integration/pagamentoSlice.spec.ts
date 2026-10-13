@@ -164,6 +164,8 @@ interface Opcoes {
   readonly subtotal?: number;
   readonly capacidades?: CapacidadesPagamento;
   readonly linhas?: readonly LinhaRateavel[];
+  /** Chave `DESCONTO_CAPA_NO_ERP` (017). Padrão desligada. */
+  readonly descontoCapaNoErp?: boolean;
 }
 
 function montarStore(opcoes: Opcoes = {}) {
@@ -189,6 +191,7 @@ function montarStore(opcoes: Opcoes = {}) {
     subtotalCarrinho: () => subtotal,
     linhasRateaveis: () => linhas,
     capacidades: () => capacidades,
+    descontoCapaNoErp: () => opcoes.descontoCapaNoErp ?? false,
     validarTicket,
     iniciarIntegracao,
     validarInsercao,
@@ -246,6 +249,17 @@ function montarStore(opcoes: Opcoes = {}) {
 /** Tipos dos eventos na ordem de posição do array — a ordem autoritativa. */
 function tiposDeEvento(store: ReturnType<typeof montarStore>['store']): readonly string[] {
   return store.getState().eventos.map((evento) => evento.tipo);
+}
+
+/** O rateio da capa no payload — `RATEADA` é o único modo com a chave desligada (017). */
+function rateioDoPayload(
+  store: ReturnType<typeof montarStore>['store'],
+): ReadonlyMap<string, Centavos> {
+  const { descontoCapa } = store.getState().montarPagamentosParaPayload();
+  if (descontoCapa.tipo !== 'RATEADA') {
+    throw new Error(`capa fora do rateio: ${descontoCapa.tipo}`);
+  }
+  return descontoCapa.rateio;
 }
 
 function emReais(valor: number): number {
@@ -989,7 +1003,7 @@ describe('pagamentoSlice — desconto de capa (T032/T033, Cenário 4)', () => {
     store.getState().aplicarDescontoCapa('VALOR', 297);
     // Afirmado por chave, não por posição: a ordem de iteração do `Map` não faz
     // parte do contrato — o que importa é a parcela de cada linha.
-    const comDesconto = store.getState().montarPagamentosParaPayload().rateioDescontoCapa;
+    const comDesconto = rateioDoPayload(store);
     expect(comDesconto.get('linha-1')).toBe(99);
     expect(comDesconto.get('linha-2')).toBe(99);
     expect(comDesconto.get('linha-3')).toBe(99);
@@ -997,7 +1011,7 @@ describe('pagamentoSlice — desconto de capa (T032/T033, Cenário 4)', () => {
 
     store.getState().removerDescontoCapa();
 
-    const semDesconto = store.getState().montarPagamentosParaPayload().rateioDescontoCapa;
+    const semDesconto = rateioDoPayload(store);
     expect([...semDesconto.values()]).toEqual([0, 0, 0]);
     expect(store.getState().saldo().totalLiquido).toBe(TOTAL_PADRAO);
   });
@@ -1494,6 +1508,61 @@ describe('pagamentoSlice — capa pela condição de pagamento (017)', () => {
         { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 7, valor: 700 },
       ]);
     });
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 017, US4 (T054) — a chave decide como a capa vai ao ERP
+ * ------------------------------------------------------------------ */
+
+describe('pagamentoSlice — chave DESCONTO_CAPA_NO_ERP (017)', () => {
+  // 70,00 + 29,00 + 1,00 = 100,00 — o caso de AD-151.
+  const LINHAS_AD151: readonly LinhaRateavel[] = [
+    { idLinha: 'linha-1', totalLiquido: centavos(7_000) },
+    { idLinha: 'linha-2', totalLiquido: centavos(2_900) },
+    { idLinha: 'linha-3', totalLiquido: centavos(100) },
+  ];
+
+  it('ligada, o payload leva a capa no cabeçalho', () => {
+    const { store } = montarStore({ linhas: LINHAS_AD151, descontoCapaNoErp: true });
+    store.getState().aplicarDescontoCapa('VALOR', 300);
+
+    expect(store.getState().montarPagamentosParaPayload().descontoCapa).toEqual({
+      tipo: 'NO_CABECALHO',
+      valor: 300,
+    });
+  });
+
+  it('ligada e sem capa, o cabeçalho leva zero', () => {
+    const { store } = montarStore({ descontoCapaNoErp: true });
+
+    expect(store.getState().montarPagamentosParaPayload().descontoCapa).toEqual({
+      tipo: 'NO_CABECALHO',
+      valor: 0,
+    });
+  });
+
+  it('desligada, o payload continua rateado', () => {
+    const { store } = montarStore({ linhas: LINHAS_AD151 });
+    store.getState().aplicarDescontoCapa('VALOR', 300);
+
+    expect(store.getState().montarPagamentosParaPayload().descontoCapa.tipo).toBe('RATEADA');
+  });
+
+  it('ligada, 10% em 70/29/1 é aceito — ZERA_UM_ITEM deixa de valer (FR-029)', () => {
+    const desligada = montarStore({ linhas: LINHAS_AD151 });
+    expect(desligada.store.getState().aplicarDescontoCapa('PERCENTUAL', 10)).toBe(false);
+
+    const ligada = montarStore({ linhas: LINHAS_AD151, descontoCapaNoErp: true });
+    expect(ligada.store.getState().aplicarDescontoCapa('PERCENTUAL', 10)).toBe(true);
+    expect(ligada.store.getState().descontoCapa?.valorResolvido).toBe(1_000);
+  });
+
+  it('ligada, ZERA_A_VENDA continua recusando', () => {
+    const { store, avisar } = montarStore({ linhas: LINHAS_AD151, descontoCapaNoErp: true });
+
+    expect(store.getState().aplicarDescontoCapa('VALOR', 10_000)).toBe(false);
+    expect(avisar).toHaveBeenCalledWith(AVISO_DESCONTO_ZERA_A_VENDA);
   });
 });
 

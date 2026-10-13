@@ -170,7 +170,7 @@ export const validacaoDepsInertes: ValidacaoDeps = {
     throw new Error('snapshotVenda não é exercitado nesta suíte');
   },
   pagamentosAplicados: () => [],
-  rateioDescontoCapa: () => new Map(),
+  descontoCapa: () => ({ tipo: 'RATEADA', rateio: new Map() }),
   validar: () => Promise.resolve({ resultado: 'ACEITA', avisos: [] }),
   registrarEvento: () => undefined,
   notificar: () => undefined,

@@ -44,8 +44,23 @@ interface FormaRetrato {
   readonly FormaMeioPagtoNFe?: string;
 }
 
+/**
+ * Chave `DESCONTO_CAPA_NO_ERP` da 017 (AD-279), repassada à stack por
+ * `support/stack.ts`. Este spec roda nas duas variantes:
+ *
+ * ```text
+ * npx playwright test pagamento-geral                              # desligada (padrão)
+ * DESCONTO_CAPA_NO_ERP=true npx playwright test pagamento-geral    # ligada
+ * ```
+ *
+ * Derrube a stack (porta 3100) entre as duas: o `webServer` reaproveita a que
+ * estiver de pé, com a chave com que ela subiu.
+ */
+const CAPA_NO_ERP = process.env['DESCONTO_CAPA_NO_ERP'] === 'true';
+
 interface RetratoFaturado {
   retrato: {
+    DescontoCapaValor?: number;
     CondicaoPagamentoCodigo?: number;
     produtos?: readonly ItemRetrato[];
     FormasDePagamento?: readonly FormaRetrato[];
@@ -183,16 +198,24 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
       expect(forma.FormaEntrada).toBeTruthy();
     }
 
-    // O desconto de capa só existe no payload diluído por item — não há campo de
-    // cabeçalho para ele. Soma exata de 2,00, e **nenhum item fica abaixo de
-    // 0,01**: é a guarda de 2026-09-04, que só deixa passar o desconto cujo
-    // rateio preserva todas as linhas.
     const itens = retrato?.produtos ?? [];
     expect(itens).toHaveLength(3);
     const somaDescontos = itens.reduce((total, item) => total + (item.DescontoValor ?? 0), 0);
-    expect(somaDescontos).toBeCloseTo(2, 2);
-    for (const item of itens) {
-      expect(item.ValorTotal ?? 0).toBeGreaterThanOrEqual(0.01);
+    if (CAPA_NO_ERP) {
+      // Chave ligada (017, AD-279): a capa vai inteira no cabeçalho e nenhum
+      // item leva parcela dela — estes itens não têm desconto próprio.
+      expect(retrato?.DescontoCapaValor).toBe(2);
+      expect(somaDescontos).toBe(0);
+    } else {
+      // Chave desligada: a capa só existe diluída por item, sem a chave de
+      // cabeçalho. Soma exata de 2,00, e **nenhum item fica abaixo de 0,01**: é
+      // a guarda de 2026-09-04, que só deixa passar o desconto cujo rateio
+      // preserva todas as linhas.
+      expect(retrato).not.toHaveProperty('DescontoCapaValor');
+      expect(somaDescontos).toBeCloseTo(2, 2);
+      for (const item of itens) {
+        expect(item.ValorTotal ?? 0).toBeGreaterThanOrEqual(0.01);
+      }
     }
   });
 

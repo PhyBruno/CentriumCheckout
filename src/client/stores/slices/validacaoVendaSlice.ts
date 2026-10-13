@@ -1,7 +1,6 @@
 import { castDraft } from 'immer';
 import type { StateCreator } from 'zustand';
 import type { VendaState } from '../vendaStore';
-import type { Centavos } from '../../domain/precificacao/dinheiro';
 import type { PagamentoAplicado } from '../../domain/pagamento/saldoPagamento';
 import {
   autorizaFinalizacao,
@@ -14,6 +13,7 @@ import {
 import {
   montarRetratoVenda,
   type CheckoutFaturarNFCe,
+  type DescontoCapaNoRetrato,
   type SnapshotVenda,
 } from '../../domain/venda/montarRetratoVenda';
 import {
@@ -57,13 +57,14 @@ export interface ValidacaoDeps {
   /** Formas já aplicadas à venda, na ordem de inserção (008). */
   pagamentosAplicados(): readonly PagamentoAplicado[];
   /**
-   * Rateio do desconto de capa por `idLinha` (008).
+   * Como a capa entra no retrato — rateada nos itens ou no cabeçalho (008/017).
    *
    * Entra na dependência em vez de ser recalculado aqui porque o retrato
-   * validado precisa ser idêntico ao retrato emitido (I5), e o rateio é parte
-   * dele: um segundo cálculo poderia distribuir centavos de forma diferente.
+   * validado precisa ser idêntico ao retrato emitido (I5, I-D5): um segundo
+   * cálculo poderia distribuir centavos de forma diferente, ou decidir a chave
+   * `DESCONTO_CAPA_NO_ERP` de outro jeito.
    */
-  rateioDescontoCapa(): ReadonlyMap<string, Centavos>;
+  descontoCapa(): DescontoCapaNoRetrato;
   /** Consulta ao ERP. **Nunca rejeita** — falha vira `INDISPONIVEL` (I4). */
   validar(retrato: CheckoutFaturarNFCe): Promise<Veredito>;
   /**
@@ -166,7 +167,7 @@ export function criarValidacaoVendaSlice(
           deps.snapshotVenda(),
           'VALIDAR',
           projetarPagamentos(deps.pagamentosAplicados(), candidata),
-          deps.rateioDescontoCapa(),
+          deps.descontoCapa(),
         );
 
         const veredito = await deps.validar(retrato);

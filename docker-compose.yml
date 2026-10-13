@@ -23,6 +23,8 @@ services:
       # APENAS DEV: aponta o BFF para um ERP mockado, já que `<tenant>.<baseDomain>`
       # não resolve num ambiente local. MUST ficar vazio em produção.
       ERP_HOST_OVERRIDE: ${ERP_HOST_OVERRIDE:-}
+      # Capa no ERP (017, AD-279). Desligada por padrão — ver `.env.example`.
+      DESCONTO_CAPA_NO_ERP: ${DESCONTO_CAPA_NO_ERP:-false}
     volumes:
       - .:/app
       - node_modules:/app/node_modules

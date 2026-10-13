@@ -200,6 +200,17 @@ export const bootstrapPayloadSchema = z.looseObject({
   /** Reenviado como `Empresa` nas chamadas via `/api/erp/*` (AD-019). */
   codigoEmpresa: z.string().min(1),
   SessaoUsuario: sessaoUsuarioSchema,
+  /**
+   * Chaves de comportamento do BFF (017, AD-279), ao lado de `tenant`. Entram no
+   * hash do ETag, então mudar uma descarta o cache do Dexie sozinho.
+   *
+   * `optional()`, e não `default()`: o registro guardado no Dexie antes da 017
+   * não tem o campo e **não** é reparseado ao ler (`research.md` D11). Com
+   * `default` o tipo afirmaria um campo que o registro real pode não ter;
+   * opcional, o compilador obriga quem lê a tratar a ausência — que vale
+   * "desligada" (`pagamentoDepsPadrao.descontoCapaNoErp`).
+   */
+  recursos: z.looseObject({ descontoCapaNoErp: z.boolean() }).optional(),
 });
 
 export type SessaoUsuario = z.infer<typeof sessaoUsuarioSchema>;

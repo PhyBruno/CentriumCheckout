@@ -219,6 +219,20 @@ function capacidadesDoBootstrap(): CapacidadesPagamento {
   return paraCapacidadesPagamento(validado.data);
 }
 
+/**
+ * Chave `DESCONTO_CAPA_NO_ERP` do BFF, entregue no bootstrap (017, AD-279).
+ *
+ * Mesmo padrão e mesmo desfecho seguro de `capacidadesDoBootstrap`: lida de
+ * forma síncrona (a decisão acontece dentro da montagem do payload) e, sem
+ * bootstrap ou sem o campo, vale **desligada** — o comportamento de antes da 017.
+ * O registro guardado no Dexie não é reparseado ao ler, então um registro de
+ * antes do campo chega aqui sem `recursos`; o ETag é que o substitui na próxima
+ * carga (`research.md` D11).
+ */
+function descontoCapaNoErpDoBootstrap(): boolean {
+  return useSessionStore.getState().registro?.recursos?.descontoCapaNoErp === true;
+}
+
 /** Linhas ativas no formato que o rateio do desconto de capa consome (AD-098). */
 function linhasRateaveisDoCarrinho(): readonly LinhaRateavel[] {
   return linhasAtivas(useVendaStore.getState().linhas).map((linha) => ({
@@ -245,6 +259,7 @@ export const pagamentoDepsPadrao: PagamentoDeps = {
   subtotalCarrinho: () => totalVenda(useVendaStore.getState().linhas),
   linhasRateaveis: linhasRateaveisDoCarrinho,
   capacidades: capacidadesDoBootstrap,
+  descontoCapaNoErp: descontoCapaNoErpDoBootstrap,
   validarTicket: (codigo) => validarTicket(codigo),
   iniciarIntegracao: () => {
     /**
@@ -348,8 +363,7 @@ export const validacaoDepsPadrao: ValidacaoDeps = {
   // pelo mesmo motivo de `snapshotDaVendaCorrente`: é a função que a emissão
   // usa, e dois rateios independentes poderiam distribuir centavos diferentes
   // entre as mesmas linhas (I5).
-  rateioDescontoCapa: () =>
-    useVendaStore.getState().montarPagamentosParaPayload().rateioDescontoCapa,
+  descontoCapa: () => useVendaStore.getState().montarPagamentosParaPayload().descontoCapa,
   validar: (retrato) => enviarValidarNFCe(retrato),
   registrarEvento: (evento) => {
     useVendaStore.getState().registrarEventoAuditoria(evento);

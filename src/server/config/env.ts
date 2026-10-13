@@ -41,6 +41,12 @@ export interface Env {
   readonly serveStaticClient: boolean;
   /** Diretório do build da SPA servido como estático. */
   readonly clientDistDir: string;
+  /**
+   * Chave de virada da capa (017, AD-279): ligada, o Checkout envia a capa em
+   * `CheckoutFaturarNFCe.DescontoCapaValor` e o ERP a rateia; desligada (padrão),
+   * o Checkout rateia como antes. Chega à SPA pelo bootstrap (`recursos`).
+   */
+  readonly descontoCapaNoErp: boolean;
 }
 
 const SESSION_SECRET_MIN_LENGTH = 32;
@@ -67,6 +73,8 @@ const envSchema = z
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     SERVE_STATIC_CLIENT: z.enum(['true', 'false']).optional(),
     CLIENT_DIST_DIR: z.string().min(1).default('dist/client'),
+    // Só os dois literais: um valor qualquer não pode ligar a capa no ERP.
+    DESCONTO_CAPA_NO_ERP: z.enum(['true', 'false']).default('false'),
   })
   .refine((valor) => valor.ERP_PROXY_URL === undefined || valor.ERP_HOST_OVERRIDE === undefined, {
     // Os dois substituem o destino; aceitar ambos esconderia qual deles vale.
@@ -106,6 +114,7 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
         ? nodeEnv === 'production'
         : value.SERVE_STATIC_CLIENT === 'true',
     clientDistDir: resolve(process.cwd(), value.CLIENT_DIST_DIR),
+    descontoCapaNoErp: value.DESCONTO_CAPA_NO_ERP === 'true',
   };
 }
 

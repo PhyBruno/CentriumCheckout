@@ -46,7 +46,10 @@ import { subtrair, ZERO_CENTAVOS, type Centavos } from '../../domain/precificaca
 import { formaParaRetrato } from '../../domain/pagamento/formaParaRetrato';
 import type { FormaCandidata } from '../../domain/validacaoVenda/projetarPagamentos';
 import type { OrigemAcionamento } from './validacaoVendaSlice';
-import type { FormaDePagamentoRetrato } from '../../domain/venda/montarRetratoVenda';
+import type {
+  DescontoCapaNoRetrato,
+  FormaDePagamentoRetrato,
+} from '../../domain/venda/montarRetratoVenda';
 
 /**
  * Slice do pagamento da venda em andamento (feature 008).
@@ -184,8 +187,12 @@ export interface AplicarPagamentoInput {
 export interface PagamentosPayload {
   readonly CondicaoPagamentoCodigo: number;
   readonly FormasDePagamento: readonly FormaDePagamentoRetrato[];
-  /** Rateio do desconto de capa por `idLinha`, para a feature 004 aplicar em `produtos[].DescontoValor`. */
-  readonly rateioDescontoCapa: ReadonlyMap<string, Centavos>;
+  /**
+   * Como a capa entra no retrato (017): rateada nos itens ou inteira no
+   * cabeçalho. Produtor **único**, para o retrato validado (014) e o emitido
+   * (004) receberem a mesma (I-D5). Substitui `rateioDescontoCapa`.
+   */
+  readonly descontoCapa: DescontoCapaNoRetrato;
 }
 
 /**
@@ -202,6 +209,12 @@ export interface PagamentoDeps {
   linhasRateaveis(): readonly LinhaRateavel[];
   /** `TEFAtivo`/`UtilizaCentriumPAG` do bootstrap (feature 002). */
   capacidades(): CapacidadesPagamento;
+  /**
+   * Chave `DESCONTO_CAPA_NO_ERP` (017, AD-279), lida do bootstrap: ligada, a
+   * capa vai inteira ao ERP e a recusa `ZERA_UM_ITEM` deixa de valer. `false`
+   * sem bootstrap ou sem o campo.
+   */
+  descontoCapaNoErp(): boolean;
   /** `ValidaTicketDevolucao` pela camada de query (feature 008). */
   validarTicket(codigo: string): Promise<ResultadoTicket>;
   /** Entrega o veredito de integração às features 009/010 — nunca as executa aqui. */
@@ -517,11 +530,12 @@ export function criarPagamentoSlice(
     }
 
     /**
-     * As linhas que a recusa `ZERA_UM_ITEM` examina. Ponto único para a US4 da
-     * 017 desligar essa recusa quando o rateio passar a ser do ERP.
+     * As linhas que a recusa `ZERA_UM_ITEM` examina. Com a chave ligada o rateio
+     * é do ERP (017, FR-029, `research.md` D13): lista vazia faz
+     * `recusaDoDescontoCapa` avaliar só `ZERA_A_VENDA`, sem mudar a assinatura.
      */
     function linhasDaRecusa(): readonly LinhaRateavel[] {
-      return deps.linhasRateaveis();
+      return deps.descontoCapaNoErp() ? [] : deps.linhasRateaveis();
     }
 
     /**
@@ -1461,13 +1475,20 @@ export function criarPagamentoSlice(
           // `undefined` viraria ausência de campo no corpo da requisição.
           CondicaoPagamentoCodigo: condicaoSelecionada?.codigo ?? 0,
           FormasDePagamento: formasDePagamento,
-          // O rateio é calculado **na montagem**, nunca guardado no estado: ele
-          // depende das linhas ativas do carrinho, que mudam sem que o desconto
-          // de capa mude (`data-model.md` §5).
-          rateioDescontoCapa: ratearDescontoCapa(
-            descontoCapa?.valorResolvido ?? ZERO_CENTAVOS,
-            deps.linhasRateaveis(),
-          ),
+          // Chave ligada (017): a capa vai inteira no cabeçalho, zero sem capa,
+          // e o ERP rateia. Desligada: o rateio é calculado **na montagem**,
+          // nunca guardado no estado — ele depende das linhas ativas do
+          // carrinho, que mudam sem que o desconto de capa mude
+          // (`data-model.md` §5).
+          descontoCapa: deps.descontoCapaNoErp()
+            ? { tipo: 'NO_CABECALHO', valor: descontoCapa?.valorResolvido ?? ZERO_CENTAVOS }
+            : {
+                tipo: 'RATEADA',
+                rateio: ratearDescontoCapa(
+                  descontoCapa?.valorResolvido ?? ZERO_CENTAVOS,
+                  deps.linhasRateaveis(),
+                ),
+              },
         };
       },
     };
