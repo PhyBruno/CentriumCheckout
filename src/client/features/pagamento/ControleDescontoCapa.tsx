@@ -300,13 +300,18 @@ export function ControleDescontoCapa(): ReactElement {
    * formato ("10,25", "abc") mantém o texto — ali o operador tem o que corrigir.
    */
   function aplicar(modoAlvo: ModoAjuste, texto: string, silencioso: boolean): void {
-    // Sair do campo sem mexer não reaplica (017): a capa automática da condição
-    // continuaria sendo dela, e não viraria "digitada" nem seria reauditada; e
-    // uma entrada de duas casas vinda do ERP (3,25%, D9) não cairia na regra de
+    // Passar pelo campo sem mexer na capa **da condição** não a reaplica (017):
+    // ela continua sendo da condição, sem virar "digitada" nem ser reauditada, e
+    // uma entrada de duas casas vinda do ERP (3,25%, D9) não cai na regra de
     // digitação, que aceita uma só.
+    //
+    // Só a da condição: a digitada já foi gravada em silêncio a cada tecla, e o
+    // texto sempre bate com ela na saída — pular aqui calava justamente a chamada
+    // não silenciosa que a audita (achado no ERP real, 2026-10-13, FR-025).
     const vigente = useVendaStore.getState().descontoCapa;
     if (
       vigente !== null &&
+      vigente.origem === 'CONDICAO' &&
       vigente.modo === modoAlvo &&
       texto === textoDoDescontoAplicado(vigente)
     ) {

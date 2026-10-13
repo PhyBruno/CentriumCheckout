@@ -287,10 +287,7 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
 
     expect(campo).toHaveAttribute('aria-disabled', 'true');
     expect(campo).toHaveAttribute('title', AVISO_DESCONTO_COM_PAGAMENTO);
-    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute('aria-disabled', 'true');
 
     await usuario.click(campo);
     await usuario.keyboard('{Backspace}{Backspace}5');
@@ -395,6 +392,46 @@ describe('ControleDescontoCapa — teto da condição (017)', () => {
       entrada: 3.25,
       origem: 'CONDICAO',
     });
+  });
+
+  /**
+   * Achado no ERP real (2026-10-13): a capa digitada não chegava ao `Log`. A
+   * digitação grava em silêncio a cada tecla, e a guarda "sair sem mexer não
+   * reaplica" via o texto igual à capa vigente — então a chamada não silenciosa,
+   * que é a que audita, nunca acontecia.
+   */
+  it.each([
+    ['Tab', '{Tab}'],
+    ['Enter', '{Enter}'],
+  ])('a capa digitada é auditada ao sair do campo pelo %s (FR-025)', async (_rotulo, tecla) => {
+    const usuario = userEvent.setup();
+    render(createElement(ControleDescontoCapa));
+    escolher(0, 10);
+
+    await usuario.click(screen.getByTestId('toggle-ajuste-percentual'));
+    await usuario.type(screen.getByTestId('campo-valor-ajuste'), '5');
+    await usuario.keyboard(tecla);
+
+    const eventosDeCapa = useVendaStore
+      .getState()
+      .eventos.filter((evento) => evento.tipo === 'DESCONTO_CAPA_APLICADO');
+    expect(eventosDeCapa.map((evento) => evento.detalhes)).toEqual([
+      { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 5, valor: 500 },
+    ]);
+  });
+
+  it('a capa da condição não vira digitada nem é reauditada ao só passar pelo campo', async () => {
+    const usuario = userEvent.setup();
+    render(createElement(ControleDescontoCapa));
+    escolher(5, 8);
+
+    await usuario.click(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.tab();
+
+    expect(useVendaStore.getState().descontoCapa?.origem).toBe('CONDICAO');
+    expect(
+      useVendaStore.getState().eventos.filter((evento) => evento.tipo === 'DESCONTO_CAPA_APLICADO'),
+    ).toHaveLength(1);
   });
 
   it('só a digitação rejeita casas extras', async () => {
