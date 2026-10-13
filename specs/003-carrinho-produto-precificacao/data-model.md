@@ -112,8 +112,8 @@ export type OrigemLinha = 'MANUAL' | 'BUSCA' | 'BALANCA' | 'RASCUNHO' | 'DAV';
 | I5 | `precoCongelado` só é `true` quando `origem ∈ {'RASCUNHO', 'DAV'}` | `FR-017` |
 | I6 | `precoCongelado` nunca vira `false` por reprecificação automática — só por reinserção ou edição explícita do operador | `FR-017`, `NFCE-04` |
 | I7 | `quantidade > 0` em toda linha ativa | — |
-| I8 | `descontoLinha ≤ totalBruto` — o total da linha nunca é negativo | Constitution V |
-| I9 | `totalLinha` **nunca** é armazenado na linha: é sempre derivado de `precoUnitario`, `quantidade` e `descontoLinha`. Estado redundante poderia divergir do preço após uma reprecificação | `SC-001`, `FR-007` |
+| I8 | `descontoLinha ≤ totalBruto` — o total da linha nunca é negativo. ⚠️ **Desde a 017 (AD-279), em produto `'E'` com `precoBase > 0` o desconto manual deixa de ser independente do preço:** `descontoManual = (precoBase − preçoPraticado) × quantidade`, limitado a `(precoBase − precoMinimo) × quantidade` quando há preço mínimo. O invariante continua valendo | Constitution V, 017 FR-002/FR-011 |
+| I9 | `totalLinha` **nunca** é armazenado na linha: é sempre derivado de `precoUnitario`, `quantidade` e `descontoLinha`. Estado redundante poderia divergir do preço após uma reprecificação. ⚠️ **Na 017 (AD-279) o mesmo princípio vale para o preço praticado do item `'E'` vinculável:** ele também não é armazenado — é derivado de `precoUnitario − descontoManual ÷ quantidade` | `SC-001`, `FR-007` |
 
 ---
 

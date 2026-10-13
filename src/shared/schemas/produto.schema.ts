@@ -31,6 +31,18 @@ import { inteiroErp, numeroErp, semEnvelope } from './erpJson';
  */
 const precoEmCentavos = numeroErp.transform((valor) => centavos(Math.round(valor * 100)));
 
+/**
+ * `PrecoMinimo` → `Centavos`, com `0` significando "sem mínimo" (017, FR-009).
+ *
+ * Ausente e `null` também viram `0`: o ERP só preenche o campo quando a loja
+ * cadastra um mínimo, e um produto sem cadastro não pode reprovar a inserção.
+ * Negativo e texto não numérico continuam sendo erro de fronteira.
+ */
+const precoMinimoEmCentavos = z
+  .union([numeroErp.pipe(z.number().nonnegative()), z.null()])
+  .default(null)
+  .transform((valor) => centavos(Math.round((valor ?? 0) * 100)));
+
 /** `QtdMinimaPreco2..5` chegam como unidades inteiras (`int64`) → `Milesimos`. */
 const unidadesEmMilesimos = inteiroErp.transform((valor) => milesimosDeUnidades(valor));
 
@@ -53,6 +65,12 @@ export const sdtCheckoutGetProdutoSchema = z.looseObject({
   PrecoVenda3: precoEmCentavos,
   PrecoVenda4: precoEmCentavos,
   PrecoVenda5: precoEmCentavos,
+  /**
+   * Preço mínimo do produto: limita o desconto do item `'E'` (017, US2). Até a
+   * 017 atravessava o `looseObject` sem ser lido, embora o T004 da 003 pedisse
+   * a conversão.
+   */
+  PrecoMinimo: precoMinimoEmCentavos,
   QtdMinimaPreco2: unidadesEmMilesimos,
   QtdMinimaPreco3: unidadesEmMilesimos,
   QtdMinimaPreco4: unidadesEmMilesimos,

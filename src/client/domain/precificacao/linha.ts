@@ -45,6 +45,12 @@ export interface SnapshotPrecoProduto {
   /** `QtdMinimaPreco2..QtdMinimaPreco5`; `0` = faixa não configurada. */
   readonly limiaresFaixa: readonly [Milesimos, Milesimos, Milesimos, Milesimos];
   readonly pesavelEditavel: PesavelEditavel;
+  /**
+   * `PrecoMinimo` — piso do preço praticado de um item `'E'` (017, FR-009).
+   * `0` = sem mínimo. Obrigatório de propósito: opcional transformaria "sem
+   * mínimo" em "não sei" numa fixture esquecida (`research.md` D6).
+   */
+  readonly precoMinimo: Centavos;
 }
 
 /** Como a linha entrou na venda. `RASCUNHO`/`DAV` são as origens congeladas. */

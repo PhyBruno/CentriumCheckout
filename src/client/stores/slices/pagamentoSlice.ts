@@ -989,7 +989,7 @@ export function criarPagamentoSlice(
 
         // Substitui, nunca acumula. Sem evento de auditoria: o desconto é
         // auditado pela feature 004 na finalização.
-        set({ descontoCapa: { modo, entrada, valorResolvido } });
+        set({ descontoCapa: { modo, entrada, valorResolvido, origem: 'MANUAL' } });
         return true;
       },
 

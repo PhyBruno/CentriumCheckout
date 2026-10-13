@@ -55,6 +55,7 @@ export function paraSnapshotPrecoProduto(produto: SdtCheckoutGetProduto): Snapsh
       produto.QtdMinimaPreco5,
     ],
     pesavelEditavel: produto.ProdutoPesavelEditavel,
+    precoMinimo: produto.PrecoMinimo,
   };
 }
 

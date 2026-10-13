@@ -24,6 +24,12 @@ export interface LinhaRateavel {
 }
 
 /**
+ * Quem definiu a capa (017, FR-025): a condição de pagamento escolhida
+ * (`selecionarCondicao`) ou o operador digitando (`aplicarDescontoCapa`).
+ */
+export type OrigemDescontoCapa = 'CONDICAO' | 'MANUAL';
+
+/**
  * Modo e entrada bruta com que o operador expressou o desconto de capa
  * (`FR-015`). `entrada` é percentual (`number`) em `'PERCENTUAL'` e
  * `Centavos` em `'VALOR'` — ver `data-model.md` §2, campo `DescontoCapa`.
@@ -32,6 +38,7 @@ export interface DescontoCapa {
   readonly modo: 'PERCENTUAL' | 'VALOR';
   readonly entrada: number;
   readonly valorResolvido: Centavos;
+  readonly origem: OrigemDescontoCapa;
 }
 
 /** Desconto de capa maior que a soma das linhas — pré-condição de `ratearDescontoCapa` violada. */

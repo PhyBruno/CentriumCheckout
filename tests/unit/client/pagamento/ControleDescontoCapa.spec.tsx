@@ -57,7 +57,12 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
 
   it('um desconto já aplicado manda no modo de abertura, não o padrão', () => {
     useVendaStore.setState({
-      descontoCapa: { modo: 'PERCENTUAL', entrada: 10, valorResolvido: centavos(1_000) },
+      descontoCapa: {
+        modo: 'PERCENTUAL',
+        entrada: 10,
+        valorResolvido: centavos(1_000),
+        origem: 'MANUAL',
+      },
     });
     render(createElement(ControleDescontoCapa));
 
@@ -129,6 +134,7 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
       modo: 'PERCENTUAL',
       entrada: 99.9,
       valorResolvido: 9_990,
+      origem: 'MANUAL',
     });
   });
 
@@ -186,6 +192,7 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
       modo: 'VALOR',
       entrada: 1_000,
       valorResolvido: 1_000,
+      origem: 'MANUAL',
     });
   });
 
@@ -242,7 +249,12 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
 
   it('remoção vinda de fora esvazia o campo', () => {
     useVendaStore.setState({
-      descontoCapa: { modo: 'VALOR', entrada: 1_000, valorResolvido: centavos(1_000) },
+      descontoCapa: {
+        modo: 'VALOR',
+        entrada: 1_000,
+        valorResolvido: centavos(1_000),
+        origem: 'MANUAL',
+      },
     });
     render(createElement(ControleDescontoCapa));
     expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('10,00');
@@ -257,7 +269,12 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
   it('com forma de pagamento inserida, campo e unidade ficam bloqueados', async () => {
     const usuario = userEvent.setup();
     useVendaStore.setState({
-      descontoCapa: { modo: 'VALOR', entrada: 1_000, valorResolvido: centavos(1_000) },
+      descontoCapa: {
+        modo: 'VALOR',
+        entrada: 1_000,
+        valorResolvido: centavos(1_000),
+        origem: 'MANUAL',
+      },
       pagamentos: [pagamentoDe({ valorAplicado: 9_000 })],
     });
     render(createElement(ControleDescontoCapa));
@@ -280,6 +297,7 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
       modo: 'VALOR',
       entrada: 1_000,
       valorResolvido: 1_000,
+      origem: 'MANUAL',
     });
   });
 
