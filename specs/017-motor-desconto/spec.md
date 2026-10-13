@@ -78,7 +78,7 @@ O operador escolhe a condição de pagamento "À vista", que no ERP concede 5% d
 **Acceptance Scenarios**:
 
 1. **Given** uma venda de subtotal líquido R$ 100,00 e condição com desconto 5% e teto 8%, **When** o operador escolhe a condição, **Then** a capa fica em 5% (R$ 5,00) e o total a pagar é R$ 95,00.
-2. **Given** a capa automática aplicada, **When** o operador digita 7%, **Then** a capa passa a 7%; **When** digita 10%, **Then** a digitação é recusada, o teto da condição (8%) é informado em texto e a capa volta ao último valor válido (7%).
+2. **Given** a capa automática aplicada, **When** o operador digita 7%, **Then** a capa passa a 7%; **When** digita 10%, **Then** a capa é ajustada ao teto da condição (8%), o campo passa a mostrar 8% e um aviso em texto informa o teto e que o valor foi ajustado automaticamente.
 3. **Given** a capa automática aplicada, **When** o operador a remove, **Then** o total volta a R$ 100,00 e a condição continua escolhida.
 4. **Given** uma capa digitada pelo operador (7%), **When** ele escolhe outra condição, **Then** a capa digitada é descartada e a nova condição define a capa (ou a deixa vazia, se ela não tiver desconto).
 5. **Given** uma condição de teto zero, **When** o operador a escolhe ou tenta digitar qualquer desconto de capa, **Then** o campo fica bloqueado com a explicação de que a condição não permite desconto.
@@ -149,7 +149,7 @@ Ao finalizar, suspender ou validar a venda, o Checkout envia o desconto de capa 
 **Desconto de capa — condição de pagamento**
 
 - **FR-015**: Ao escolher uma condição de pagamento, o sistema MUST aplicar como desconto de capa o percentual de desconto da condição, calculado sobre o subtotal líquido dos descontos de item.
-- **FR-016**: O operador MUST poder alterar ou remover a capa aplicada, em percentual ou em valor, desde que o resultado não ultrapasse o teto da condição. Uma digitação acima do teto MUST ser recusada com aviso em texto informando o teto, e a capa MUST voltar ao último valor válido.
+- **FR-016**: O operador MUST poder alterar ou remover a capa aplicada, em percentual ou em valor, desde que o resultado não ultrapasse o teto da condição. Uma digitação acima do teto MUST ser ajustada automaticamente ao teto, com aviso em texto informando o teto e que o valor foi ajustado — o mesmo tratamento que o preço mínimo recebe no item (FR-010). Ajustar, e não recusar, porque a capa é gravada a cada tecla: ao digitar "10", o "1" já foi uma capa válida, e "voltar ao último valor válido" restauraria um valor que o operador nunca escolheu.
 - **FR-017**: O teto da condição MUST ser tratado como percentual do subtotal líquido; um valor digitado em reais MUST ser comparado pelo seu equivalente em percentual.
 - **FR-018**: Teto zero ou ausente numa condição MUST significar que nenhum desconto de capa é permitido nela: o campo fica bloqueado e explica o motivo.
 - **FR-019**: Trocar a condição MUST recalcular a capa a partir da nova condição e MUST descartar a capa digitada anteriormente.
