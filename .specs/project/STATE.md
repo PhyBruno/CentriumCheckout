@@ -4305,3 +4305,17 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Verificação:** `tsc`, ESLint e Prettier limpos; 2339 testes unit e integração verdes; E2E completo 207/208 (1 pulado).
 
 **E2E corrigido junto, defeito anterior a esta branch:** `validacao-previa.spec.ts:330` ("aceito, o pagamento entra no mobile e a etapa 3 libera a finalização") falhava 5 de 5 também no `master` `dec2dad`. O teste esperava `linha-carrinho` chegar a zero como sinal de venda emitida, mas na etapa 3 do wizard a lista de itens não existe. A espera passava antes do clique ter efeito, e o contador do mock era lido antes de `FaturarNFCe` chegar. A venda era emitida normalmente. O teste agora espera a janela do documento fiscal ("Venda finalizada", AD-246), o mesmo sinal de `finalizacao-suspensao.spec.ts`, e passou 45 de 45 (a spec inteira 5 vezes).
+
+### AD-286: o faltante pré-carregado no "Valor recebido" acompanha o saldo até o operador digitar (2026-10-13)
+
+> Numerada AD-279 na branch de origem; renumerada no merge com o `master`, onde AD-279 já era o motor de desconto (e a 282–285 já existiam na 018).
+
+**Pedido do usuário:** *"Encontrei um erro: O valor recebido (antes de inserir), tem que ser ajustado conforme o desconto."*
+
+**Origem do defeito.** `EntradaPagamento` copia o faltante para o campo **uma vez**, no foco (pedido de 2026-09-24), e depois não volta a tocar nele. Passar pelo campo, que fica com "100,00", e só depois aplicar o desconto de capa deixava o valor cheio sobre uma venda de 90,00. O Enter então inseria 100,00: troco fantasma no dinheiro, ou recusa por valor acima do saldo no cartão. Com o AD-278 o desconto passou a gravar a cada tecla, mas o campo de valor não acompanhava.
+
+**Decision:** o campo guarda qual faltante ele mesmo pré-carregou (`faltantePreenchido`). Enquanto o texto for esse preenchimento automático, ele segue `saldo().saldoRestante`, sincronizado durante a renderização como o espelho do AD-278; saldo zerado esvazia o campo. Isso vale para qualquer mudança do saldo antes da inserção, inclusive item acrescentado ou removido, não só o desconto. **O texto digitado pelo operador não é reescrito**: é a cédula que o cliente entregou, e ela não muda porque a venda ficou mais barata; quem muda é o troco. Inserir o pagamento também descarta o preenchimento.
+
+**Impact:** `src/client/features/pagamento/EntradaPagamento.tsx`; `tests/unit/client/pagamento/EntradaPagamento.spec.tsx` (2 casos novos).
+
+**Verificação:** `tsc`, ESLint e Prettier limpos; 2175 testes unit e integração verdes; E2E `pagamento-geral.spec` e `venda-rapida.spec` 15/15. **Não verificado:** em navegador real contra o ERP. A inserção ponta a ponta depois do desconto não tem teste unitário próprio, porque passa pelo gate da 014, que vai à rede; o teste afirma o texto do campo, que é exatamente o que o Enter envia.
