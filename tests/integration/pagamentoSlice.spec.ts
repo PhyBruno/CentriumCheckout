@@ -342,7 +342,8 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
     store.getState().selecionarCondicao(A_PRAZO);
 
     expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
-    expect(store.getState().pagamentos).toEqual([]);
+    // Feature 018: o "Limpar" risca a forma, não a apaga (FR-002).
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
   });
 
   it('veredito desfavorável não muta o estado nem alcança iniciarIntegracao (I11, FR-019)', async () => {
@@ -603,7 +604,7 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     expect(avisar).not.toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
     expect(store.getState().condicaoSelecionada).toBeNull();
-    expect(store.getState().pagamentos).toHaveLength(0);
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
   });
 
   it('descartarPagamento limpa condição, formas, desconto e vales, e audita cada forma removida', async () => {
@@ -617,12 +618,103 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     store.getState().descartarPagamento();
 
     expect(store.getState().condicaoSelecionada).toBeNull();
-    expect(store.getState().pagamentos).toEqual([]);
+    // Feature 018: a forma continua na lista, riscada, e fora do saldo.
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    expect(store.getState().saldo().totalAplicado).toBe(0);
     expect(store.getState().descontoCapa).toBeNull();
     expect(store.getState().valesDevolucao).toEqual([]);
     expect(tiposDeEvento(store)).toContain('FORMA_PAGAMENTO_REMOVIDA');
     // `FR-021`/I11: o veredito da 014 valia para a venda daquele instante.
     expect(invalidarVeredito).toHaveBeenCalled();
+  });
+
+  /* ---------------------------------------------------------------- *
+   * Feature 018, US2 — "Limpar" preserva o histórico das formas
+   * ---------------------------------------------------------------- */
+
+  it('"Limpar" mantém as formas já riscadas e risca só as vivas, com um evento LIMPAR por forma que era viva (FR-002 a FR-004)', async () => {
+    const { store } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(4_000) });
+    store.getState().removerPagamento('pag-1');
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(6_000) });
+
+    store.getState().descartarPagamento();
+
+    const { pagamentos } = store.getState();
+    expect(pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO', 'EXCLUIDO']);
+    expect(pagamentos.map((pagamento) => pagamento.idPagamento)).toEqual(['pag-1', 'pag-2']);
+    expect(detalhesDasRemocoes(store)).toEqual([
+      expect.objectContaining({ valor: 4_000, motivo: 'OPERADOR' }),
+      // Só a que **era** viva ganha o `LIMPAR`; a já riscada não reemite.
+      expect.objectContaining({ valor: 6_000, motivo: 'LIMPAR' }),
+    ]);
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
+  });
+
+  it('"Limpar" com só formas riscadas e sem condição nem capa é no-op, sem evento (FR-006)', async () => {
+    const { store, invalidarVeredito } = montarStore();
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    store.getState().removerPagamento('pag-1');
+    store.getState().descartarPagamento();
+    const eventosAntes = store.getState().eventos.length;
+    invalidarVeredito.mockClear();
+
+    store.getState().descartarPagamento();
+
+    expect(store.getState().eventos).toHaveLength(eventosAntes);
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(invalidarVeredito).not.toHaveBeenCalled();
+  });
+
+  it('"Limpar" com TEF estornado e condição zera a condição e mantém o TEF riscado (FR-003)', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', {
+      dadosTEF: {
+        pagId: 'pay_exemplo_0001',
+        bandeira: 'EXEMPLO',
+        nsu: '000000',
+        autorizacao: '000000',
+        tipoIntegracao: '1',
+      },
+    });
+    store.getState().confirmarEstornoTef('pag-1');
+
+    store.getState().descartarPagamento();
+
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    // O estorno já tinha o seu evento; o "Limpar" não o repete.
+    expect(detalhesDasRemocoes(store)).toHaveLength(1);
+  });
+
+  it('PIX pendente riscado pelo "Limpar" não volta a valer quando a aprovação chega depois', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    expect(store.getState().pagamentos[0]?.status).toBe('PENDENTE_INTEGRACAO');
+
+    store.getState().descartarPagamento();
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-tardio' });
+
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    expect(store.getState().saldo().totalAplicado).toBe(0);
+  });
+
+  it('depois do "Limpar", nova condição e nova forma entram normalmente ao lado das riscadas (FR-008)', async () => {
+    const { store } = montarStore();
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    store.getState().descartarPagamento();
+
+    store.getState().selecionarCondicao(A_PRAZO);
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+      'APROVADO',
+    ]);
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+    expect(store.getState().montarPagamentosParaPayload().FormasDePagamento).toHaveLength(1);
   });
 });
 

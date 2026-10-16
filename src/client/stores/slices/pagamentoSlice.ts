@@ -343,8 +343,15 @@ export interface PagamentoSlice {
    *
    * Não é `limparPagamentos`: aquela é a limpeza pós-entrega da feature 004,
    * chamada depois de o ERP confirmar, e por isso não tem guarda nenhuma.
-   * Esta é um gesto de tela e recusa o que I6 já protege — um TEF/PIX aprovado
+   * Esta é um gesto de tela e recusa o que I6 já protege — um TEF aprovado
    * movimentou dinheiro fora do Checkout e não desaparece por um clique.
+   *
+   * Zera condição, desconto de capa e vales, e **risca** as formas ainda vivas
+   * (`EXCLUIDO`), mantendo na lista as que já estavam riscadas — inclusive o TEF
+   * estornado (feature 018, AD-282): a rastreabilidade de AD-163 vale para o
+   * bloco como vale para a forma. Sem condição, capa nem forma viva não há o que
+   * limpar: no-op silencioso. Cada forma riscada agora gera o seu
+   * `FORMA_PAGAMENTO_REMOVIDA` com `motivo: 'LIMPAR'`.
    */
   descartarPagamento(): void;
   /**
@@ -891,8 +898,8 @@ export function criarPagamentoSlice(
         //
         // A recusa é no-op com aviso, nunca exceção — mesmo padrão de
         // `carrinhoBloqueado()`. A saída existe e a frase a nomeia: "Limpar"
-        // (`descartarPagamento`), que zera condição, formas, desconto e vales de
-        // uma vez, com o operador sabendo o que está descartando.
+        // (`descartarPagamento`), que zera condição, desconto e vales e risca as
+        // formas de uma vez, com o operador sabendo o que está descartando.
         //
         // `pagamentosVivos()`, e não `pagamentos.length`: a forma excluída fica
         // no array desde AD-163, e contá-la travava a condição de uma venda cujo
@@ -1307,7 +1314,14 @@ export function criarPagamentoSlice(
           return;
         }
 
-        if (condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null) {
+        // `pagamentosVivos()`, e não `pagamentos.length`: a forma riscada fica na
+        // lista e não é motivo para "limpar" nada (FR-006, mesmo critério de
+        // AD-171).
+        if (
+          condicaoSelecionada === null &&
+          pagamentosVivos().length === 0 &&
+          descontoCapa === null
+        ) {
           return;
         }
 
@@ -1326,10 +1340,16 @@ export function criarPagamentoSlice(
           .filter(pagamentoVivo)
           .map((pagamento) => detalhesDaRemocao(pagamento, rotuloDoPagamento(pagamento), 'LIMPAR'));
 
+        // As vivas viram `EXCLUIDO` e as demais ficam como estão: o "Limpar"
+        // não apaga o que o operador já viu riscado, nem o TEF estornado
+        // (FR-002/FR-003). `limparPagamentos`, a limpeza pós-entrega, é que
+        // esvazia a lista inteira (FR-009).
         condicaoVeioDeDocumento = false;
         set({
           condicaoSelecionada: null,
-          pagamentos: [],
+          pagamentos: pagamentos.map((pagamento) =>
+            pagamentoVivo(pagamento) ? { ...pagamento, status: 'EXCLUIDO' as const } : pagamento,
+          ),
           descontoCapa: null,
           valesDevolucao: [],
         });

@@ -318,7 +318,9 @@ test.describe('venda retomada já paga — congelamento e saída', () => {
 
     await page.getByTestId('limpar-pagamento').click();
     await page.getByTestId('confirmar-limpeza-documento-confirmar').click();
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    // A forma do documento fica riscada, não some (feature 018, FR-002).
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
 
     // `FR-008` volta a valer: o item novo entra e é precificado pelo catálogo
     // (R$ 10,00), sem tocar na linha congelada do rascunho (R$ 7,77).

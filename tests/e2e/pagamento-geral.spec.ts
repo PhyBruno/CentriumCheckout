@@ -337,8 +337,39 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
 
     // "Limpar" é a saída, e ela zera a pedido do operador — não por baixo dele.
     await page.getByTestId('limpar-pagamento').click();
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    // Feature 018 (FR-002/FR-007): a forma continua na lista, riscada e com o
+    // nome legível do meio de pagamento, mesmo sem a condição que a trouxe.
+    const riscada = page.getByTestId('pagamento-aplicado');
+    await expect(riscada).toHaveCount(1);
+    await expect(riscada).toHaveAttribute('data-status', 'EXCLUIDO');
+    await expect(riscada).toContainText('Dinheiro');
     await expect(condicao).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  // Feature 018, FR-006: forma riscada sozinha não habilita o "Limpar".
+  // FR-008: o que ficou riscado não atrapalha a venda seguinte.
+  test('depois do "Limpar", sem nada ativo o botão bloqueia; nova condição e forma entram ao lado da riscada', async ({
+    page,
+  }) => {
+    await stubarImpressoraLocal(page);
+    await abrirTelaDeVenda(page);
+    await biparProduto(page, ITENS[0].sku, 1);
+
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-1');
+    await aplicarPagamento(page, 'opcao-forma-1', '10,00');
+    await page.getByTestId('limpar-pagamento').click();
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
+
+    // Só a forma riscada: nada a limpar.
+    await expect(page.getByTestId('limpar-pagamento')).toHaveAttribute('aria-disabled', 'true');
+
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-1');
+    await aplicarPagamento(page, 'opcao-forma-1', '10,00');
+
+    const linhas = page.getByTestId('pagamento-aplicado');
+    await expect(linhas).toHaveCount(2);
+    await expect(linhas.nth(0)).toHaveAttribute('data-status', 'EXCLUIDO');
+    await expect(linhas.nth(1)).not.toHaveAttribute('data-status', 'EXCLUIDO');
   });
 
   test('trocar a condição antes de cobrar limpa a forma escolhida no combobox', async ({

@@ -29,8 +29,13 @@ import {
 } from './SeletorCondicaoForma';
 
 /**
- * "Limpar" — descarta condição, formas, desconto de capa e vales da venda
- * (pedido do usuário, 2026-09-04).
+ * "Limpar" — descarta condição, desconto de capa e vales da venda e risca as
+ * formas que ainda valem (pedido do usuário, 2026-09-04; feature 018, AD-282).
+ *
+ * As formas **não somem da lista**: ficam riscadas, como na remoção individual
+ * (AD-163), e as que já estavam riscadas — o TEF estornado entre elas —
+ * continuam como estavam. O operador vê tudo o que aconteceu com o pagamento da
+ * venda, e a rastreabilidade no `Log` segue por forma.
  *
  * **Existe porque a condição de pagamento passou a congelar o carrinho.** Sem
  * um caminho de volta, escolher a condição por engano deixaria o operador preso:
@@ -72,7 +77,11 @@ function BotaoLimparPagamento(): ReactElement {
   const temTefAprovado = pagamentos.some(
     (pagamento) => pagamento.integracao === 'TEF' && pagamento.status === 'APROVADO',
   );
-  const temPix = pagamentos.some((pagamento) => pagamento.integracao === 'PIX_DINAMICO');
+  // Só PIX vivo: o "Limpar" não mexe numa cobrança já riscada, então perguntar
+  // por ela seria pedir confirmação de um gesto que nada tem a ver com ela.
+  const temPix = pagamentos.some(
+    (pagamento) => pagamento.integracao === 'PIX_DINAMICO' && pagamentoVivo(pagamento),
+  );
   // `importarFormasDePagamento` grava `integracao: 'NENHUMA'` em tudo o que vem
   // do documento, então nenhuma forma importada é `PIX_DINAMICO` e as duas
   // confirmações nunca competem pelo mesmo pagamento. A ordem abaixo ainda dá
@@ -80,7 +89,10 @@ function BotaoLimparPagamento(): ReactElement {
   const temPagamentoDoDocumento = pagamentos.some(
     (pagamento) => pagamento.veioDeDocumento && pagamento.status === 'APROVADO',
   );
-  const vazio = condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null;
+  // Forma riscada sozinha não habilita o botão (FR-006): o "Limpar" só enxerga o
+  // que ainda vale, e o que ficou riscado permanece na lista de qualquer jeito.
+  const vazio =
+    condicaoSelecionada === null && !pagamentos.some(pagamentoVivo) && descontoCapa === null;
 
   // A frase do slice, e não uma cópia: desde a feature 010 ela aponta o
   // estorno pelo botão Remover, e duas redações divergiriam na próxima mudança.

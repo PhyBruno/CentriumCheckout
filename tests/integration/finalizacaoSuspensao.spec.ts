@@ -610,6 +610,31 @@ describe('bloqueio de suspensão por pagamento não removível (T022/T023, FR-00
     expect(cenario.enviados).toHaveLength(1);
     expect(cenario.enviados[0]?.SuspenderOuFaturar).toBe('FATURAR');
   });
+
+  // Feature 018, edge case da spec: a cobrança PIX riscada (pelo "Limpar" ou pelo
+  // Remover) continua viva no banco, então o aviso "a cobrança segue no banco"
+  // continua verdadeiro ao suspender — o default olha qualquer status.
+  it('PIX riscado ainda pede a confirmação de "cobrança segue no banco" ao suspender', async () => {
+    useVendaStore.setState({
+      pagamentos: [
+        pagamentoDe({
+          integracao: 'PIX_DINAMICO',
+          status: 'EXCLUIDO',
+          valorAplicado: 2000,
+          pixGuid: 'guid-exemplo',
+        }),
+      ],
+    });
+    const cenario = montarCenario([{ estado: 'sucesso', notaFiscal: null }]);
+    const { result } = renderizar(cenario);
+
+    await act(async () => {
+      await result.current.suspender();
+    });
+
+    expect(result.current.estado).toEqual({ tipo: 'confirmar-suspensao-pix' });
+    expect(cenario.enviados).toHaveLength(0);
+  });
 });
 
 describe('auditoria do desfecho (SC-001)', () => {
