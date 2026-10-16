@@ -1,5 +1,16 @@
-import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
+import { haJanelaAberta } from '@/lib/useFocoDeModal';
+import { cn } from '@/lib/utils';
+import { useTravaDasTeclas } from '../../hotkeys/mapaAtalhos';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useRecusaValidacaoStore } from '../../stores/recusaValidacaoStore';
@@ -267,6 +278,92 @@ function useVendaTemAlgoACancelar(): boolean {
   return useVendaStore(vendaTemAlgoACancelar);
 }
 
+/** A venda foi ao ERP e a resposta ainda não voltou — vale para toda ação da tela. */
+export const MOTIVO_AGUARDANDO_ERP = 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
+
+/**
+ * Fecha a tela de venda inteira enquanto a suspensão espera o ERP (pedido do
+ * usuário, 2026-10-16, AD-280: "enquanto cancela, nenhuma ação deve estar
+ * disponível").
+ *
+ * Suspender não abre janela nenhuma e termina num toast, então durante a espera
+ * o operador ainda bipava produto, trocava cliente e lançava pagamento numa
+ * venda que já estava a caminho de virar rascunho no ERP; o que ele fazia ali se
+ * perdia quando a resposta zerava o caixa.
+ *
+ * **`inert` no contêiner, e não um `disabled` em cada controle**: são dezenas de
+ * botões e campos em duas árvores de layout, e qualquer um que ficasse de fora
+ * seria justamente o que o operador clicaria. `inert` tira a sub-árvore inteira
+ * do clique, do foco e do leitor de tela de uma vez; a opacidade é o que diz ao
+ * olho que nada ali responde. Os diálogos do provider ficam fora daqui — são
+ * irmãos deste contêiner —, então a janela de emissão continua de pé.
+ *
+ * O clique não explica o motivo, ao contrário do padrão de `lib/bloqueio.ts`:
+ * a espera dura o tempo de uma chamada ao ERP, e o próprio estado apagado já é a
+ * resposta. As teclas, que não enxergam o `inert`, são travadas no próprio mapa
+ * de teclas (`useTravaDasTeclas`) e recusam com `MOTIVO_AGUARDANDO_ERP`.
+ *
+ * **Só na suspensão.** Na emissão a janela "Autorizando NFCe" já cobre a tela e
+ * prende o foco; fechar o fundo por baixo dela não acrescentaria nada, e o fundo
+ * inerte no instante em que a janela fecha impediria o foco de voltar a quem a
+ * abriu.
+ */
+export function TravaDaVendaDuranteEnvio({
+  children,
+}: {
+  readonly children: ReactNode;
+}): ReactElement {
+  const { estado } = useFinalizacaoVenda();
+  const travada = estado.tipo === 'enviando' && estado.operacao === 'SUSPENDER';
+  useTravaDasTeclas(travada ? MOTIVO_AGUARDANDO_ERP : null);
+  useFocoDeVoltaAoDestravar(travada, estado.tipo === 'sucesso');
+
+  return (
+    <div
+      className={cn(
+        'flex min-h-0 flex-1 flex-col transition-opacity',
+        travada && 'cursor-progress opacity-60',
+      )}
+      data-testid="area-da-venda"
+      inert={travada}
+      aria-busy={travada}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Devolve o foco ao campo de código quando a tela sai da trava (revisão de
+ * 2026-10-16).
+ *
+ * O `inert` tira o foco de quem estava dentro da tela — o campo de código, de
+ * onde o F10 costuma sair —, e o navegador o deixa no `body`. A venda seguinte
+ * nasce com a barra de produto já vazia, então o efeito dela que foca o código
+ * "ao voltar ao vazio" não roda de novo: sem isto, os dígitos do primeiro bipe
+ * da próxima venda caíam no `body`, sem nada na tela.
+ *
+ * Só na saída **sem janela** — o sucesso, que na suspensão termina num toast — e
+ * com o foco mesmo perdido. Todo outro desfecho (falha de rede, recusa do ERP)
+ * abre diálogo, e o foco é dele. A pergunta é feita pelo desfecho, e não por
+ * `haJanelaAberta()`: o diálogo se registra no efeito dele, que roda **depois**
+ * deste — a pilha ainda estaria vazia aqui.
+ */
+function useFocoDeVoltaAoDestravar(travada: boolean, saiuSemJanela: boolean): void {
+  const estavaTravada = useRef(false);
+  useEffect(() => {
+    const acabouDeDestravar = estavaTravada.current && !travada;
+    estavaTravada.current = travada;
+    if (!acabouDeDestravar || !saiuSemJanela || haJanelaAberta()) {
+      return;
+    }
+    const focado = document.activeElement;
+    if (focado === null || focado === document.body) {
+      useFocoVendaStore.getState().focarCodigoProduto();
+    }
+  }, [travada, saiuSemJanela]);
+}
+
 /**
  * Por que "Cancelar venda" está bloqueado — a frase que o operador lê ao clicar
  * no botão bloqueado (padrão de `lib/bloqueio.ts`, pedido do usuário
@@ -285,7 +382,7 @@ export function motivoDeBloqueioDoCancelar(
   temAlgoACancelar: boolean,
 ): string | null {
   if (travado) {
-    return 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
+    return MOTIVO_AGUARDANDO_ERP;
   }
   if (!temAlgoACancelar) {
     return 'Não há nada a cancelar: esta venda está vazia.';

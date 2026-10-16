@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { eventoAtalhoAcionado } from '../domain/auditoria/eventos';
 import {
   ProvedorFinalizacaoVenda,
+  TravaDaVendaDuranteEnvio,
   motivoDeBloqueioDoCancelar,
   useFinalizacaoVenda,
   vendaTemAlgoACancelar,
@@ -156,7 +157,11 @@ export function AppShell({ onRecarregarBootstrap }: AppShellProps): ReactElement
             mesmo carrinho; manter as duas no DOM duplicaria cada item para
             leitores de tela. É também o que a 007 exige de forma mais ampla:
             ausência estrutural, não flag de "oculto" (MOB-05, `FR-008`). */}
-        {compacto ? <MobileWizard /> : <DesktopLayout />}
+        {/* Os dois layouts dentro da mesma trava: com a suspensão esperando o
+            ERP, nada da tela age (AD-280). */}
+        <TravaDaVendaDuranteEnvio>
+          {compacto ? <MobileWizard /> : <DesktopLayout />}
+        </TravaDaVendaDuranteEnvio>
       </ProvedorFinalizacaoVenda>
     </main>
   );
@@ -218,6 +223,8 @@ function TeclasFixasDaVenda({ compacto }: TeclasFixasDaVendaProps): null {
     return fraseDeRecusaDeImportacao();
   }
 
+  // Com a venda esperando o ERP, nenhuma destas age: quem recusa é a trava do
+  // próprio mapa de teclas (`useTravaDasTeclas`, AD-280), não cada comando.
   useTeclasFixas({
     // Direto na janela, pulando o seletor (`research.md` D6): quem decorou a
     // tecla já escolheu o documento. A importação em si reaplica a recusa no

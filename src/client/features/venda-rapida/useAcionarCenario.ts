@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { notificar } from '@/lib/notificar';
 import { eventoVendaRapidaAcionada } from '../../domain/auditoria/eventos';
 import type { CondicaoPagamento } from '../../domain/pagamento/formaPagamento';
+import { haPagamentoVivo } from '../../domain/pagamento/saldoPagamento';
 import { ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import { buscarAtalho } from '../../domain/vendaRapida/projetarAtalhos';
 import type {
@@ -289,14 +290,9 @@ export function criarDepsPadrao(
     // importa é existir valor a cobrar — que G4 confirma logo em seguida.
     vendaTemItens: () => useVendaStore.getState().linhas.some((linha) => !linha.cancelada),
     condicaoDaVenda: () => useVendaStore.getState().condicaoSelecionada?.codigo ?? null,
-    // `RECUSADO`/`EXCLUIDO` ficam de fora: já saíram do fluxo e não deveriam
-    // travar um atalho — a mesma exclusão que `podeAplicarForma` faz.
-    vendaTemFormaAplicada: () =>
-      useVendaStore
-        .getState()
-        .pagamentos.some(
-          (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
-        ),
+    // A mesma leitura que apaga a faixa (`FaixaAtalhosVendaRapida`, AD-280):
+    // `RECUSADO`/`EXCLUIDO` já saíram do fluxo e não travam o atalho.
+    vendaTemFormaAplicada: () => haPagamentoVivo(useVendaStore.getState().pagamentos),
     /**
      * As duas portas de etapa viram **pedidos** no `etapaVendaStore`: este
      * módulo não pode saber qual layout está montado (`semDuplicacaoRegra`).
@@ -361,6 +357,9 @@ export function useAcionarCenario(): ApiVendaRapida {
   const condicoes = useCatalogoDeCondicoes();
   const { finalizar } = useFinalizacaoVenda();
 
+  // Com a venda esperando o ERP, a tela está inerte (a faixa não recebe clique)
+  // e a tecla é recusada pela trava do mapa de teclas (`useTravaDasTeclas`,
+  // AD-280) — nenhum dos dois caminhos chega aqui.
   const acionar = useCallback(
     (tecla: TeclaAtalho) => acionarCenario(tecla, atalhos, criarDepsPadrao(condicoes, finalizar)),
     [atalhos, condicoes, finalizar],

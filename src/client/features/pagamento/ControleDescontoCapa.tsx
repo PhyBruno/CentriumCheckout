@@ -13,6 +13,7 @@ import {
   type Centavos,
 } from '../../domain/precificacao/dinheiro';
 import type { DescontoCapa } from '../../domain/pagamento/descontoCapa';
+import { haPagamentoVivo } from '../../domain/pagamento/saldoPagamento';
 import { totalVenda } from '../../domain/precificacao/linha';
 import {
   AVISO_CONDICAO_SEM_DESCONTO,
@@ -199,11 +200,7 @@ export function ControleDescontoCapa(): ReactElement {
   // número que segue valendo (correção do usuário, 2026-10-13). O recorte é o
   // de `pagamentosVivos()` no slice e o do combobox de condição: a forma
   // riscada ou recusada não tem dinheiro atribuído e não congela nada (AD-171).
-  const temPagamento = useVendaStore((estado) =>
-    estado.pagamentos.some(
-      (pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO',
-    ),
-  );
+  const temPagamento = useVendaStore((estado) => haPagamentoVivo(estado.pagamentos));
   const bloqueio: MotivoBloqueio = temPagamento
     ? AVISO_DESCONTO_COM_PAGAMENTO
     : subtotal === ZERO_CENTAVOS

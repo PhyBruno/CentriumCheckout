@@ -36,6 +36,7 @@ import {
 import {
   calcularSaldo,
   derivarValores,
+  pagamentoVivo,
   podeAplicarForma,
   type DadosTEF,
   type PagamentoAplicado,
@@ -544,14 +545,18 @@ export function criarPagamentoSlice(
      * histórico, que é zerado por venda — nunca uma variável deste closure, que
      * atravessaria vendas e calaria a mesma capa a partir da 2ª.
      */
-    function auditarCapa(capa: DescontoCapa): void {
+    function auditarCapa(capa: DescontoCapa, entradaSolicitada: number | null = null): void {
       const ultimo = ultimoDescontoCapaAuditado(get().eventos);
+      // O pedido entra na comparação (AD-280): a mesma capa de 10% chegando
+      // agora de um pedido de 30% é uma tentativa nova, e calá-la apagaria
+      // justamente o valor que o operador pediu.
       if (
         ultimo !== null &&
         ultimo.detalhes.origem === capa.origem &&
         ultimo.detalhes.modo === capa.modo &&
         ultimo.detalhes.entrada === capa.entrada &&
-        ultimo.detalhes.valor === capa.valorResolvido
+        ultimo.detalhes.valor === capa.valorResolvido &&
+        (ultimo.detalhes.entradaSolicitada ?? null) === entradaSolicitada
       ) {
         return;
       }
@@ -561,6 +566,7 @@ export function criarPagamentoSlice(
           modo: capa.modo,
           entrada: capa.entrada,
           valor: capa.valorResolvido,
+          ...(entradaSolicitada === null ? {} : { entradaSolicitada }),
         }),
       );
     }
@@ -627,9 +633,7 @@ export function criarPagamentoSlice(
      * predicado já era `status === 'APROVADO'`, que é correto.
      */
     function pagamentosVivos(): readonly PagamentoAplicado[] {
-      return get().pagamentos.filter(
-        (pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO',
-      );
+      return get().pagamentos.filter(pagamentoVivo);
     }
 
     /**
@@ -919,7 +923,9 @@ export function criarPagamentoSlice(
           deps.avisar?.(aviso);
         }
         if (capa !== null) {
-          auditarCapa(capa);
+          // A condição pediu mais do que o próprio teto permite: o pedido dela
+          // fica no `Log` ao lado do que entrou (AD-280).
+          auditarCapa(capa, condicao.desconto > condicao.descontoMaximo ? condicao.desconto : null);
         }
       },
 
@@ -1139,7 +1145,7 @@ export function criarPagamentoSlice(
         // Auditada só na chamada não silenciosa: a silenciosa é a tecla, e o
         // número completo do operador é o do `blur`/Enter (D10).
         if (opcoes?.silencioso !== true) {
-          auditarCapa(capa);
+          auditarCapa(capa, resolucao.ajustadaAoTeto ? entrada : null);
         }
         return true;
       },
@@ -1307,9 +1313,7 @@ export function criarPagamentoSlice(
         // reemiti-lo aqui mandaria ao ERP, no `Log`, a mesma forma removida
         // duas vezes (AD-171). `RECUSADO` nunca chegou a valer como pagamento,
         // pelo mesmo critério de `pagamentosVivos`.
-        const rotulos = pagamentos
-          .filter((pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO')
-          .map(rotuloDoPagamento);
+        const rotulos = pagamentos.filter(pagamentoVivo).map(rotuloDoPagamento);
 
         condicaoVeioDeDocumento = false;
         set({

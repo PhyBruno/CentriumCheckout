@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { notificar } from '@/lib/notificar';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
-import { motivoCarrinhoBloqueado } from '../../stores/slices/carrinhoSlice';
+import { motivoCarrinhoBloqueado, type AjustesDeItem } from '../../stores/slices/carrinhoSlice';
 import {
   ErroPrecoIndisponivelParaPesagem,
   interpretarEntradaCodigo,
@@ -370,6 +370,15 @@ export interface OpcoesConfirmacaoPrevia extends OpcoesConfirmacao {
   readonly saldoRecemConsultado?: boolean;
 }
 
+/**
+ * O que a barra de entrada confirma: os três campos da linha e, quando ela
+ * ajustou o desconto ao preço mínimo, o que o operador tinha pedido — só para o
+ * `Log` (AD-280).
+ */
+export interface AjustesDaBarra extends AjustesDeItem {
+  readonly descontoManualSolicitado?: Centavos;
+}
+
 export interface ApiInsercao {
   /**
    * Resolve o produto por código e decide o fluxo pelo `ProdutoPesavelEditavel`.
@@ -382,7 +391,7 @@ export interface ApiInsercao {
    */
   confirmarEdicao(
     pendente: PendenteDeEdicao,
-    ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
+    ajustes: AjustesDaBarra,
     opcoes?: OpcoesConfirmacao,
   ): Promise<ResultadoConfirmacao>;
   /**
@@ -752,6 +761,9 @@ export function useInsercaoDeProduto(): ApiInsercao {
               origem: 'MANUAL',
               precoUnitario: ajustes.precoUnitario,
               descontoManual: ajustes.descontoManual,
+              ...(ajustes.descontoManualSolicitado === undefined
+                ? {}
+                : { descontoManualSolicitado: ajustes.descontoManualSolicitado }),
             });
           },
           opcoes,
@@ -781,7 +793,7 @@ export interface ApiEdicaoItem {
    */
   confirmarEdicaoDeLinha(
     linha: LinhaCarrinho,
-    ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
+    ajustes: AjustesDaBarra,
     saldoConhecido?: SaldoMilesimos | null,
   ): Promise<ResultadoConfirmacao>;
 }
@@ -809,7 +821,12 @@ export function useEdicaoDeItemExistente(): ApiEdicaoItem {
             return { situacao: 'bloqueado', saldo };
           }
         }
-        return atualizarItem(linha.idLinha, ajustes)
+        // O pedido vai à parte: `ajustes` é espalhado na linha pelo slice, e o
+        // campo de auditoria entraria no estado do carrinho.
+        const { descontoManualSolicitado, ...campos } = ajustes;
+        const opcoes =
+          descontoManualSolicitado === undefined ? undefined : { descontoManualSolicitado };
+        return atualizarItem(linha.idLinha, campos, opcoes)
           ? { situacao: 'confirmado' }
           : { situacao: 'recusado' };
       },

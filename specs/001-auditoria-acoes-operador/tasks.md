@@ -55,7 +55,7 @@ Conforme `plan.md`, "Project Structure":
 
 - [X] T002 [P] Definir tipos base `EventoAuditoriaBase<TTipo, TDetalhes>`, `EventoAuditoriaSemTimestamp`, `HistoricoAuditoriaVenda` e o evento `VENDA_INICIADA` (`{ origem: 'NOVA' | 'RASCUNHO' | 'DAV' }`) + sua factory function em `src/client/domain/auditoria/eventos.ts`
 - [X] T003 [P] Criar `vendaStore.ts` combinando slice creators via Zustand+Immer `create()`, sem `persist` (AD-006), pronto para ser estendido pelas features 003/004/005/008/012 com seus próprios slices, em `src/client/stores/vendaStore.ts`
-- [X] T004 Implementar `auditoriaSlice.ts`: estado `eventos: EventoAuditoria[]`, `registrarEventoAuditoria(evento)` (atribui `new Date().toISOString()` e faz `push`), `resetarAuditoria(origem)` (zera o array e já registra `VENDA_INICIADA`) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T002, T003)
+- [X] T004 Implementar `auditoriaSlice.ts`: estado `eventos: EventoAuditoria[]`, `registrarEventoAuditoria(evento)` (atribui o `timestamp` e faz `push` — hoje `instanteLocalIso()`, no fuso do navegador, desde AD-280; quando a tarefa foi feita era `new Date().toISOString()`, em UTC), `resetarAuditoria(origem)` (zera o array e já registra `VENDA_INICIADA`) em `src/client/stores/slices/auditoriaSlice.ts` (depende de T002, T003)
 - [X] T005 Teste unitário de `VENDA_INICIADA` + `resetarAuditoria`: array zerado, evento inicial correto por `origem`, `timestamp` ISO 8601, nunca herda histórico de sessão anterior (FR-008) em `tests/unit/domain/auditoria/eventos.spec.ts` (depende de T004)
 
 **Checkpoint**: Slice base pronto — eventos podem ser registrados e uma sessão de venda pode ser iniciada/reiniciada.

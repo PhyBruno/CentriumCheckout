@@ -28,7 +28,7 @@ Um slice dedicado `auditoria`, combinado no mesmo store Zustand+Immer da venda e
 
 **Constraints**:
 - Nenhuma tela própria (FR-009) — mecanismo inteiramente de bastidor.
-- Timestamp em ISO 8601 completo, com segundos (AD-061) — `new Date().toISOString()` (UTC, com milissegundos, satisfaz o requisito de precisão de segundos).
+- Timestamp em ISO 8601 completo, com segundos (AD-061) — `instanteLocalIso()`: fuso do navegador, com milissegundos e o deslocamento explícito (`2026-10-16T10:23:45.123-03:00`). Desde AD-280 (2026-10-16); antes era `new Date().toISOString()`, em UTC.
 - Toda feature de negócio que gera um evento MUST chamar um dispatcher tipado (`registrarEventoAuditoria(...)`) — não há interceptação genérica de mutações Zustand (descartada, AD-061 "Out of Scope").
 - Slice zerado só no evento `VENDA_INICIADA` (início ou retomada); nunca reconstrói histórico de sessão anterior (FR-008, AUDIT-10 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 88).
 - Slice preservado (nunca descartado) em falha de rede de `FaturarNFCe`; descartado só após entrega bem-sucedida (FR-006/FR-007, AUDIT-09 — mesma referência, linha 87).

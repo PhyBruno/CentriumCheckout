@@ -310,28 +310,33 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     await expect(desconto).toHaveValue('12,00');
     await expect(page.getByText(AVISO)).toHaveCount(1);
 
-    // 2. Desconto acima do limite.
+    // 2. Desconto acima do limite: o TAB que sai do desconto ajusta ao mínimo
+    // e insere o item já ajustado (pedido do usuário, 2026-10-16).
     await desconto.fill('15');
     await desconto.press('Tab');
-    await expect(desconto).toHaveValue('12,00');
-    await expect(preco).toHaveValue('8,00');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    // 1 × R$ 20,00 − R$ 12,00 = R$ 8,00 — o mínimo, nunca abaixo dele.
+    await expect(page.getByTestId('total-venda')).toHaveText('R$ 8,00');
+    await expect(campo).toBeFocused();
 
     // 3. O limite é sobre o total da linha: 3 × 12,00 = 36,00.
+    await campo.fill('003100');
+    await campo.press('Tab');
+    await expect(preco).toHaveValue('20,00');
     await quantidade.fill('3');
     await desconto.fill('40');
     await desconto.press('Enter');
-    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
-    // 3 × R$ 20,00 − R$ 36,00 = R$ 24,00 — nunca abaixo de 3 × R$ 8,00.
-    await expect(page.getByTestId('total-venda')).toHaveText('R$ 24,00');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(2);
+    // R$ 8,00 + (3 × R$ 20,00 − R$ 36,00) = R$ 32,00 — nunca abaixo de 3 × R$ 8,00.
+    await expect(page.getByTestId('total-venda')).toHaveText('R$ 32,00');
 
     // 4. Sem mínimo: qualquer desconto que não zere o item é aceito.
     await campo.fill(SKU_EDITAVEL);
     await campo.press('Tab');
     await expect(preco).toHaveValue('20,00');
     await desconto.fill('19');
-    await desconto.press('Tab');
-    await expect(desconto).toHaveValue('19');
     await expect(preco).toHaveValue('1,00');
+    await expect(desconto).toHaveValue('19');
 
     // 5. Preço de tabela zero: os campos seguem independentes.
     await page.keyboard.press('Escape');
