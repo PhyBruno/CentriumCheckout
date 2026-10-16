@@ -251,6 +251,14 @@ function tiposDeEvento(store: ReturnType<typeof montarStore>['store']): readonly
   return store.getState().eventos.map((evento) => evento.tipo);
 }
 
+/** Detalhes de cada `FORMA_PAGAMENTO_REMOVIDA`, na ordem do `Log` (feature 018). */
+function detalhesDasRemocoes(store: ReturnType<typeof montarStore>['store']): readonly object[] {
+  return store
+    .getState()
+    .eventos.filter((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA')
+    .map((evento) => evento.detalhes);
+}
+
 /** O rateio da capa no payload — `RATEADA` é o único modo com a chave desligada (017). */
 function rateioDoPayload(
   store: ReturnType<typeof montarStore>['store'],
@@ -334,7 +342,8 @@ describe('pagamentoSlice — condição de pagamento e gate de inserção (T014)
     store.getState().selecionarCondicao(A_PRAZO);
 
     expect(store.getState().condicaoSelecionada?.codigo).toBe(A_PRAZO.codigo);
-    expect(store.getState().pagamentos).toEqual([]);
+    // Feature 018: o "Limpar" risca a forma, não a apaga (FR-002).
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
   });
 
   it('veredito desfavorável não muta o estado nem alcança iniciarIntegracao (I11, FR-019)', async () => {
@@ -566,6 +575,23 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     expect(
       store.getState().eventos.some((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA'),
     ).toBe(true);
+    // Feature 018 (FR-013): a cobrança PIX aprovada leva o identificador ao `Log`.
+    expect(detalhesDasRemocoes(store)).toEqual([
+      expect.objectContaining({ motivo: 'OPERADOR', valor: 10_000, pixGuid: 'guid-exemplo' }),
+    ]);
+  });
+
+  // Feature 018, FR-010/FR-011: o evento deixa de levar só o nome da forma.
+  it('removerPagamento de dinheiro registra valor recebido e motivo OPERADOR, sem identificador', async () => {
+    const { store } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(5_000) });
+    store.getState().removerPagamento('pag-1');
+
+    const [detalhes] = detalhesDasRemocoes(store);
+    expect(detalhes).toMatchObject({ valor: 5_000, motivo: 'OPERADOR' });
+    expect(detalhes).not.toHaveProperty('tefPagId');
+    expect(detalhes).not.toHaveProperty('pixGuid');
   });
 
   it('descartarPagamento aceita venda com PIX aprovado (AD-161)', async () => {
@@ -578,7 +604,7 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
 
     expect(avisar).not.toHaveBeenCalledWith(AVISO_TEF_IRREVERSIVEL);
     expect(store.getState().condicaoSelecionada).toBeNull();
-    expect(store.getState().pagamentos).toHaveLength(0);
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
   });
 
   it('descartarPagamento limpa condição, formas, desconto e vales, e audita cada forma removida', async () => {
@@ -592,12 +618,103 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     store.getState().descartarPagamento();
 
     expect(store.getState().condicaoSelecionada).toBeNull();
-    expect(store.getState().pagamentos).toEqual([]);
+    // Feature 018: a forma continua na lista, riscada, e fora do saldo.
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    expect(store.getState().saldo().totalAplicado).toBe(0);
     expect(store.getState().descontoCapa).toBeNull();
     expect(store.getState().valesDevolucao).toEqual([]);
     expect(tiposDeEvento(store)).toContain('FORMA_PAGAMENTO_REMOVIDA');
     // `FR-021`/I11: o veredito da 014 valia para a venda daquele instante.
     expect(invalidarVeredito).toHaveBeenCalled();
+  });
+
+  /* ---------------------------------------------------------------- *
+   * Feature 018, US2 — "Limpar" preserva o histórico das formas
+   * ---------------------------------------------------------------- */
+
+  it('"Limpar" mantém as formas já riscadas e risca só as vivas, com um evento LIMPAR por forma que era viva (FR-002 a FR-004)', async () => {
+    const { store } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(4_000) });
+    store.getState().removerPagamento('pag-1');
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(6_000) });
+
+    store.getState().descartarPagamento();
+
+    const { pagamentos } = store.getState();
+    expect(pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO', 'EXCLUIDO']);
+    expect(pagamentos.map((pagamento) => pagamento.idPagamento)).toEqual(['pag-1', 'pag-2']);
+    expect(detalhesDasRemocoes(store)).toEqual([
+      expect.objectContaining({ valor: 4_000, motivo: 'OPERADOR' }),
+      // Só a que **era** viva ganha o `LIMPAR`; a já riscada não reemite.
+      expect.objectContaining({ valor: 6_000, motivo: 'LIMPAR' }),
+    ]);
+    expect(store.getState().podeMutarCarrinho()).toBe(true);
+  });
+
+  it('"Limpar" com só formas riscadas e sem condição nem capa é no-op, sem evento (FR-006)', async () => {
+    const { store, invalidarVeredito } = montarStore();
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    store.getState().removerPagamento('pag-1');
+    store.getState().descartarPagamento();
+    const eventosAntes = store.getState().eventos.length;
+    invalidarVeredito.mockClear();
+
+    store.getState().descartarPagamento();
+
+    expect(store.getState().eventos).toHaveLength(eventosAntes);
+    expect(store.getState().pagamentos).toHaveLength(1);
+    expect(invalidarVeredito).not.toHaveBeenCalled();
+  });
+
+  it('"Limpar" com TEF estornado e condição zera a condição e mantém o TEF riscado (FR-003)', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', {
+      dadosTEF: {
+        pagId: 'pay_exemplo_0001',
+        bandeira: 'EXEMPLO',
+        nsu: '000000',
+        autorizacao: '000000',
+        tipoIntegracao: '1',
+      },
+    });
+    store.getState().confirmarEstornoTef('pag-1');
+
+    store.getState().descartarPagamento();
+
+    expect(store.getState().condicaoSelecionada).toBeNull();
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    // O estorno já tinha o seu evento; o "Limpar" não o repete.
+    expect(detalhesDasRemocoes(store)).toHaveLength(1);
+  });
+
+  it('PIX pendente riscado pelo "Limpar" não volta a valer quando a aprovação chega depois', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    expect(store.getState().pagamentos[0]?.status).toBe('PENDENTE_INTEGRACAO');
+
+    store.getState().descartarPagamento();
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-tardio' });
+
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    expect(store.getState().saldo().totalAplicado).toBe(0);
+  });
+
+  it('depois do "Limpar", nova condição e nova forma entram normalmente ao lado das riscadas (FR-008)', async () => {
+    const { store } = montarStore();
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+    store.getState().descartarPagamento();
+
+    store.getState().selecionarCondicao(A_PRAZO);
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+      'APROVADO',
+    ]);
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+    expect(store.getState().montarPagamentosParaPayload().FormasDePagamento).toHaveLength(1);
   });
 });
 
@@ -897,7 +1014,7 @@ describe('pagamentoSlice — forma sem troco acima do saldo (FR-024)', () => {
  * ------------------------------------------------------------------ */
 
 describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3)', () => {
-  it('soma exatamente o total líquido em reais, só com aprovados e com FormaEntrada', async () => {
+  it('soma o total líquido mais o troco em reais, só com aprovados e com FormaEntrada (AD-284)', async () => {
     const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
 
     // Um Pix pendente que **não** pode entrar no payload…
@@ -915,7 +1032,9 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
       (acumulado, forma) => acumulado + Number(forma.FormaValor),
       0,
     );
-    expect(soma).toBeCloseTo(emReais(TOTAL_PADRAO), 10);
+    // Feature 018: o dinheiro vai com o que o cliente entregou, então a soma é o
+    // total (100,00) **mais** o troco (20,00) — o ERP deriva o troco da diferença.
+    expect(soma).toBeCloseTo(emReais(TOTAL_PADRAO + 2_000), 10);
 
     expect(payload.FormasDePagamento[0]).toEqual({
       FormaCodigo: CARTAO.codigo,
@@ -933,18 +1052,19 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
     expect(payload.FormasDePagamento[1]).toEqual({
       FormaCodigo: DINHEIRO.codigo,
       FormaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
-      FormaValor: 30,
+      // O recebido (50,00), não os 30,00 que quitaram a venda.
+      FormaValor: 50,
       FormaIntegracaoCartao: '',
       FormaFpgUtiCar: '',
       FormaEntrada: 'S',
       TicketDevolucao: '',
     });
 
-    // O troco de 20,00 existe no saldo e **não** aparece em campo nenhum.
+    // A tela não muda: quem quita a venda continua sendo o aplicado, e o troco de
+    // 20,00 segue no saldo. O contrato não tem campo de troco.
     expect(store.getState().saldo().troco).toBe(2_000);
-    const serializado = JSON.stringify(payload.FormasDePagamento);
-    expect(serializado).not.toContain('20');
-    expect(serializado.toLowerCase()).not.toContain('troco');
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+    expect(JSON.stringify(payload.FormasDePagamento).toLowerCase()).not.toContain('troco');
   });
 });
 
@@ -1222,6 +1342,8 @@ describe('pagamentoSlice — aplicarForma (porta da feature 013)', () => {
         // payload de emissão (I5).
         integracaoCartao: '',
         ticketDevolucao: null,
+        // Feature 018: o dinheiro entra na candidata com o recebido (I5).
+        valorRecebido: 10_000,
       },
       'ATALHO_CENARIO',
     );
@@ -1299,6 +1421,54 @@ describe('pagamentoSlice — importação e limpeza', () => {
       1,
     );
     aviso.mockRestore();
+  });
+
+  // Feature 018, FR-020: o ERP grava o dinheiro com o recebido; retomado, o
+  // excedente volta a ser troco em vez de "pagamento acima do total".
+  it('dinheiro do documento acima do total reconstrói o troco, sem acusar excesso (FR-020)', () => {
+    const { store } = montarStore(); // subtotal R$ 100,00
+
+    store.getState().importarFormasDePagamento([
+      {
+        formaCodigo: DINHEIRO.codigo,
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
+        valor: centavos(15_000),
+        tef: null,
+        pixGuid: null,
+        ticketDevolucao: null,
+      },
+    ]);
+
+    const [dinheiro] = store.getState().pagamentos;
+    expect(dinheiro?.valorRecebido).toBe(15_000);
+    expect(dinheiro?.valorAplicado).toBe(TOTAL_PADRAO);
+    const saldo = store.getState().saldo();
+    expect(saldo.saldoRestante).toBe(0);
+    expect(saldo.troco).toBe(5_000);
+    // O que vai de volta ao ERP é o mesmo recebido do documento.
+    expect(store.getState().montarPagamentosParaPayload().FormasDePagamento[0]?.FormaValor).toBe(
+      150,
+    );
+  });
+
+  it('documento sem excedente segue com recebido igual ao aplicado (FR-021)', () => {
+    const { store } = montarStore();
+
+    store.getState().importarFormasDePagamento([
+      {
+        formaCodigo: DINHEIRO.codigo,
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
+        valor: centavos(TOTAL_PADRAO),
+        tef: null,
+        pixGuid: null,
+        ticketDevolucao: null,
+      },
+    ]);
+
+    const [dinheiro] = store.getState().pagamentos;
+    expect(dinheiro?.valorRecebido).toBe(TOTAL_PADRAO);
+    expect(dinheiro?.valorAplicado).toBe(TOTAL_PADRAO);
+    expect(store.getState().saldo().troco).toBe(0);
   });
 
   it('limparPagamentos esvazia pagamentos, condição, desconto e vale', async () => {
@@ -1645,6 +1815,142 @@ describe('pagamentoSlice — auditoria da venda (Cenário 8, FR-017)', () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Feature 018, US4 — desistir do TEF/PIX deixa rastro
+ * ------------------------------------------------------------------ */
+
+describe('pagamentoSlice — desistência e falha de cobrança TEF/PIX (018, US4)', () => {
+  const DESISTENCIA = 'FECHADO_PELO_OPERADOR';
+
+  function recusas(store: ReturnType<typeof montarStore>['store']): readonly object[] {
+    return store
+      .getState()
+      .eventos.filter((evento) => evento.tipo === 'PAGAMENTO_RECUSADO')
+      .map((evento) => evento.detalhes);
+  }
+
+  it('registrarIdentificadorIntegracao guarda o identificador na forma pendente, sem aprová-la nem enviá-la', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+
+    store.getState().registrarIdentificadorIntegracao('pag-1', { pixGuid: 'guid-gerado' });
+
+    const [pix] = store.getState().pagamentos;
+    expect(pix?.pixGuid).toBe('guid-gerado');
+    expect(pix?.status).toBe('PENDENTE_INTEGRACAO');
+    expect(store.getState().montarPagamentosParaPayload().FormasDePagamento).toEqual([]);
+    expect(store.getState().saldo().totalAplicado).toBe(0);
+  });
+
+  it('registrarIdentificadorIntegracao é no-op fora de PENDENTE_INTEGRACAO', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-aprovado' });
+
+    store.getState().registrarIdentificadorIntegracao('pag-1', { pixGuid: 'guid-tardio' });
+    store.getState().registrarIdentificadorIntegracao('inexistente', { pixGuid: 'x' });
+
+    expect(store.getState().pagamentos[0]?.pixGuid).toBe('guid-aprovado');
+  });
+
+  it('desistir do PIX gerado risca a forma e leva o identificador ao Log (FR-023, FR-025)', async () => {
+    const { store, invalidarVeredito } = montarStore({
+      capacidades: { tefAtivo: false, pixAtivo: true },
+    });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().registrarIdentificadorIntegracao('pag-1', { pixGuid: 'guid-gerado' });
+    invalidarVeredito.mockClear();
+
+    store.getState().recusarPagamentoIntegrado('pag-1', DESISTENCIA);
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    expect(store.getState().saldo().saldoRestante).toBe(TOTAL_PADRAO);
+    expect(invalidarVeredito).toHaveBeenCalled();
+    expect(recusas(store)).toEqual([
+      {
+        tipo: 'Pix',
+        motivo: DESISTENCIA,
+        formaPagamento: expect.any(String),
+        valor: 10_000,
+        pixGuid: 'guid-gerado',
+      },
+    ]);
+  });
+
+  it('desistir do TEF criado leva o payment_identifier, sem dadosTEF (FR-025)', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
+    store.getState().registrarIdentificadorIntegracao('pag-1', { tefPagId: 'pay_criado_0001' });
+
+    store.getState().recusarPagamentoIntegrado('pag-1', DESISTENCIA);
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    expect(recusas(store)).toEqual([
+      expect.objectContaining({ valor: 10_000, tefPagId: 'pay_criado_0001' }),
+    ]);
+  });
+
+  it('falha terminal de cobrança já criada também deixa a forma riscada, com o identificador', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
+    store.getState().registrarIdentificadorIntegracao('pag-1', { tefPagId: 'pay_criado_0002' });
+
+    store.getState().recusarPagamentoIntegrado('pag-1', 'CANCELADO');
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    expect(recusas(store)).toEqual([expect.objectContaining({ tefPagId: 'pay_criado_0002' })]);
+  });
+
+  it('desistir antes de a cobrança existir risca a forma e o evento vai sem identificador (cenário 4)', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
+
+    store.getState().recusarPagamentoIntegrado('pag-1', DESISTENCIA);
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual(['EXCLUIDO']);
+    const [recusa] = recusas(store);
+    expect(recusa).toMatchObject({ motivo: DESISTENCIA, valor: 10_000 });
+    expect(recusa).not.toHaveProperty('tefPagId');
+    expect(recusa).not.toHaveProperty('pixGuid');
+  });
+
+  it('recusa sem cobrança e sem desistência tira a forma da lista, como antes (FR-024)', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: true, pixAtivo: false } });
+    await store.getState().aplicarPagamento({ forma: CARTAO, valorInformado: centavos(10_000) });
+
+    store.getState().recusarPagamentoIntegrado('pag-1', 'SEM_CLIENTE');
+
+    expect(store.getState().pagamentos).toEqual([]);
+    expect(recusas(store)).toEqual([{ tipo: expect.any(String), motivo: 'SEM_CLIENTE' }]);
+  });
+
+  it('aprovação que chega depois da desistência não ressuscita a forma', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().registrarIdentificadorIntegracao('pag-1', { pixGuid: 'guid-gerado' });
+    store.getState().recusarPagamentoIntegrado('pag-1', DESISTENCIA);
+
+    store.getState().confirmarPagamentoIntegrado('pag-1', { pixGuid: 'guid-gerado' });
+
+    expect(store.getState().pagamentos[0]?.status).toBe('EXCLUIDO');
+    expect(store.getState().saldo().totalAplicado).toBe(0);
+  });
+
+  it('uma nova forma entra ao lado da desistida, que fica fora do saldo (cenário 6)', async () => {
+    const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
+    await store.getState().aplicarPagamento({ forma: PIX, valorInformado: centavos(10_000) });
+    store.getState().recusarPagamentoIntegrado('pag-1', DESISTENCIA);
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(10_000) });
+
+    expect(store.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+      'APROVADO',
+    ]);
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+  });
+});
+
+/* ------------------------------------------------------------------ *
  * Sanidade dos tipos monetários
  * ------------------------------------------------------------------ */
 
@@ -1710,6 +2016,21 @@ describe('pagamentoSlice — confirmarEstornoTef (feature 010)', () => {
     expect(store.getState().saldo().saldoRestante).toBe(TOTAL_PADRAO);
     expect(removidas(store)).toBe(1);
     expect(invalidarVeredito).toHaveBeenCalled();
+  });
+
+  // Feature 018, FR-012: o ERP concilia o estorno pelo `payment_identifier`.
+  it('o evento do estorno leva valor, motivo ESTORNO_TEF e o pagId da transação', async () => {
+    const { store } = await vendaComTefAprovado();
+
+    store.getState().confirmarEstornoTef('pag-1');
+
+    expect(detalhesDasRemocoes(store)).toEqual([
+      expect.objectContaining({
+        valor: TOTAL_PADRAO,
+        motivo: 'ESTORNO_TEF',
+        tefPagId: 'pay_exemplo_0001',
+      }),
+    ]);
   });
 
   // (b)

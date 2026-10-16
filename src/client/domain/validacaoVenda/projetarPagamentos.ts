@@ -40,6 +40,14 @@ export interface FormaCandidata {
   readonly integracaoCartao: '1' | '2' | '';
   /** Código do ticket quando a forma é a de vale devolução; `null` caso contrário. */
   readonly ticketDevolucao: string | null;
+  /**
+   * O que o cliente entregou: só dinheiro, `null` nas demais (I3 da 008).
+   *
+   * Entra pela invariante I5, como `integracaoCartao`: o dinheiro vai ao ERP com
+   * este valor (feature 018), e o gate precisa validar o mesmo `FormaValor` que o
+   * faturamento enviará.
+   */
+  readonly valorRecebido: Centavos | null;
 }
 
 /**
@@ -60,11 +68,12 @@ function candidataComoPagamento(candidata: FormaCandidata): PagamentoAplicado {
     entrada: candidata.entrada,
     fpgUtiCar: candidata.fpgUtiCar,
     valorAplicado: candidata.valor,
-    valorRecebido: null,
+    valorRecebido: candidata.valorRecebido,
     integracao: 'NENHUMA',
     status: 'APROVADO',
     dadosTEF: null,
     pixGuid: null,
+    tefPagId: null,
     ticketDevolucao: candidata.ticketDevolucao,
     veioDeDocumento: false,
   };

@@ -45,6 +45,12 @@ import {
 import { ehFormaDeValeDevolucao, type ResultadoTicket } from '../../domain/pagamento/valeDevolucao';
 import { subtrair, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import { formaParaRetrato } from '../../domain/pagamento/formaParaRetrato';
+import {
+  detalhesDaRemocao,
+  identificadoresDaForma,
+  MOTIVO_DESISTENCIA_DO_OPERADOR,
+} from '../../domain/pagamento/remocaoPagamento';
+import { reconstruirTrocoImportado } from '../../domain/pagamento/trocoImportado';
 import type { FormaCandidata } from '../../domain/validacaoVenda/projetarPagamentos';
 import type { OrigemAcionamento } from './validacaoVendaSlice';
 import type {
@@ -151,6 +157,14 @@ export interface ContextoIntegracao {
 /** Resultado opaco devolvido pela integração ao confirmar o pagamento. */
 export interface DadosIntegracao {
   readonly dadosTEF?: DadosTEF;
+  readonly pixGuid?: string;
+}
+
+/** O que a integração já sabe da cobrança **criada**, antes da aprovação (018, US4). */
+export interface IdentificadorCobranca {
+  /** `payment_identifier` da SmartTEF. */
+  readonly tefPagId?: string;
+  /** Identificador da cobrança PIX (`trnGuid`). */
   readonly pixGuid?: string;
 }
 
@@ -298,6 +312,17 @@ export interface PagamentoSlice {
   /** Liga/desliga o guard de acionamento único da feature 013 (I9). */
   marcarAcionamentoEmAndamento(emAndamento: boolean): void;
   confirmarPagamentoIntegrado(idPagamento: string, dados: DadosIntegracao): void;
+  /**
+   * Guarda o identificador da cobrança assim que o ERP a cria (feature 018, US4),
+   * antes de qualquer aprovação. No-op fora de `PENDENTE_INTEGRACAO`. Não muda o
+   * status e não entra no payload: só a forma aprovada vai ao ERP.
+   */
+  registrarIdentificadorIntegracao(idPagamento: string, identificador: IdentificadorCobranca): void;
+  /**
+   * Encerra uma forma pendente que não foi aprovada. Com cobrança criada
+   * (identificador guardado) ou desistência do operador, a forma fica riscada
+   * (`EXCLUIDO`); sem nenhum dos dois, sai da lista.
+   */
   recusarPagamentoIntegrado(idPagamento: string, motivo: string): void;
   removerPagamento(idPagamento: string): void;
   /**
@@ -342,8 +367,15 @@ export interface PagamentoSlice {
    *
    * Não é `limparPagamentos`: aquela é a limpeza pós-entrega da feature 004,
    * chamada depois de o ERP confirmar, e por isso não tem guarda nenhuma.
-   * Esta é um gesto de tela e recusa o que I6 já protege — um TEF/PIX aprovado
+   * Esta é um gesto de tela e recusa o que I6 já protege — um TEF aprovado
    * movimentou dinheiro fora do Checkout e não desaparece por um clique.
+   *
+   * Zera condição, desconto de capa e vales, e **risca** as formas ainda vivas
+   * (`EXCLUIDO`), mantendo na lista as que já estavam riscadas — inclusive o TEF
+   * estornado (feature 018, AD-282): a rastreabilidade de AD-163 vale para o
+   * bloco como vale para a forma. Sem condição, capa nem forma viva não há o que
+   * limpar: no-op silencioso. Cada forma riscada agora gera o seu
+   * `FORMA_PAGAMENTO_REMOVIDA` com `motivo: 'LIMPAR'`.
    */
   descartarPagamento(): void;
   /**
@@ -758,6 +790,7 @@ export function criarPagamentoSlice(
         entrada: forma.entrada,
         integracaoCartao: forma.integracaoCartao,
         ticketDevolucao,
+        valorRecebido,
       };
 
       let veredito: Veredito;
@@ -819,6 +852,7 @@ export function criarPagamentoSlice(
         status: integracao === 'NENHUMA' ? 'APROVADO' : 'PENDENTE_INTEGRACAO',
         dadosTEF: null,
         pixGuid: null,
+        tefPagId: null,
         ticketDevolucao,
         // Gesto do operador nesta venda: nada foi recebido antes, e "Limpar"
         // sobre esta forma descarta só o que ele acabou de digitar.
@@ -890,8 +924,8 @@ export function criarPagamentoSlice(
         //
         // A recusa é no-op com aviso, nunca exceção — mesmo padrão de
         // `carrinhoBloqueado()`. A saída existe e a frase a nomeia: "Limpar"
-        // (`descartarPagamento`), que zera condição, formas, desconto e vales de
-        // uma vez, com o operador sabendo o que está descartando.
+        // (`descartarPagamento`), que zera condição, desconto e vales e risca as
+        // formas de uma vez, com o operador sabendo o que está descartando.
         //
         // `pagamentosVivos()`, e não `pagamentos.length`: a forma excluída fica
         // no array desde AD-163, e contá-la travava a condição de uma venda cujo
@@ -982,11 +1016,24 @@ export function criarPagamentoSlice(
           return;
         }
 
-        // `RECUSADO` é terminal e **efêmero** (`data-model.md` §4): o evento
-        // preserva o registro na auditoria e o pagamento sai da lista, para que
-        // o operador possa tentar outra forma imediatamente.
+        // A forma **fica riscada** (`EXCLUIDO`) quando houve cobrança de verdade
+        // (já há identificador guardado) ou o operador desistiu — feature 018,
+        // US4: a cobrança segue viva na SmartTEF ou no banco, e o operador e o
+        // ERP precisam ver o que aconteceu. Mesmo tratamento de `removerPagamento`
+        // (AD-163). Sem cobrança e sem gesto do operador (sem cliente, PIX abaixo
+        // do mínimo) nada foi tentado de fato: a forma sai da lista, como era no
+        // desenho original (`data-model.md` §4 da 008), e o operador tenta outra.
+        const identificadores = identificadoresDaForma(alvo);
+        const deixaRastro =
+          motivo === MOTIVO_DESISTENCIA_DO_OPERADOR || Object.keys(identificadores).length > 0;
         aplicarPagamentos(
-          get().pagamentos.filter((pagamento) => pagamento.idPagamento !== idPagamento),
+          deixaRastro
+            ? get().pagamentos.map((pagamento) =>
+                pagamento.idPagamento === idPagamento
+                  ? { ...pagamento, status: 'EXCLUIDO' as const }
+                  : pagamento,
+              )
+            : get().pagamentos.filter((pagamento) => pagamento.idPagamento !== idPagamento),
         );
 
         // Mesma razão de `removerPagamento`: a forma saiu da venda, então o
@@ -998,7 +1045,39 @@ export function criarPagamentoSlice(
         deps.invalidarVeredito();
 
         get().registrarEventoAuditoria(
-          eventoPagamentoRecusado({ tipo: nomeDoMeioPagto(alvo.meioPagtoNFe), motivo }),
+          eventoPagamentoRecusado({
+            tipo: nomeDoMeioPagto(alvo.meioPagtoNFe),
+            motivo,
+            // Só quando a forma ficou na lista: aí o `Log` precisa dizer qual e
+            // quanto, e levar a cobrança que o Checkout não cancela.
+            ...(deixaRastro && {
+              formaPagamento: rotuloDoPagamento(alvo),
+              valor: alvo.valorAplicado,
+              ...identificadores,
+            }),
+          }),
+        );
+      },
+
+      registrarIdentificadorIntegracao: (idPagamento, identificador) => {
+        const alvo = get().pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
+        // Só a forma ainda pendente: depois de aprovada o identificador já está em
+        // `dadosTEF`/`pixGuid`, e numa forma encerrada a resposta chegou tarde
+        // demais para o evento que já foi registrado.
+        if (alvo === undefined || alvo.status !== 'PENDENTE_INTEGRACAO') {
+          return;
+        }
+
+        aplicarPagamentos(
+          get().pagamentos.map((pagamento) =>
+            pagamento.idPagamento === idPagamento
+              ? {
+                  ...pagamento,
+                  tefPagId: identificador.tefPagId ?? pagamento.tefPagId,
+                  pixGuid: identificador.pixGuid ?? pagamento.pixGuid,
+                }
+              : pagamento,
+          ),
         );
       },
 
@@ -1053,8 +1132,12 @@ export function criarPagamentoSlice(
         // ERP de novo, mesmo que a candidata seja idêntica à anterior.
         deps.invalidarVeredito();
 
+        // Feature 018: valor, motivo e, quando há, o identificador da cobrança
+        // PIX — o `Log` deixa de mostrar duas formas iguais como linhas iguais.
         get().registrarEventoAuditoria(
-          eventoFormaPagamentoRemovida({ formaPagamento: rotuloDoPagamento(alvo) }),
+          eventoFormaPagamentoRemovida(
+            detalhesDaRemocao(alvo, rotuloDoPagamento(alvo), 'OPERADOR'),
+          ),
         );
       },
 
@@ -1081,8 +1164,12 @@ export function criarPagamentoSlice(
 
         deps.invalidarVeredito();
 
+        // `tefPagId` é o `payment_identifier` da SmartTEF, o mesmo `TEFPagId` do
+        // faturamento: com ele o ERP concilia o estorno com a `TransacaoTEF`.
         get().registrarEventoAuditoria(
-          eventoFormaPagamentoRemovida({ formaPagamento: rotuloDoPagamento(alvo) }),
+          eventoFormaPagamentoRemovida(
+            detalhesDaRemocao(alvo, rotuloDoPagamento(alvo), 'ESTORNO_TEF'),
+          ),
         );
       },
 
@@ -1256,8 +1343,9 @@ export function criarPagamentoSlice(
 
         // O valor é o do ticket, não um valor digitado. `derivarValores` limita
         // `valorAplicado` ao saldo, e é o correto: a nota fecha pelo total dela
-        // (`Σ FormaValor` nunca excede), enquanto o ticket é consumido por
-        // inteiro no ERP — que é exatamente a perda que a confirmação anunciou.
+        // (o vale não é dinheiro, então vai ao ERP com o aplicado e nunca
+        // excede), enquanto o ticket é consumido por inteiro no ERP — que é
+        // exatamente a perda que a confirmação anunciou.
         return aplicarNucleo(forma, resultado.valor, 'MANUAL', codigoLimpo);
       },
 
@@ -1298,7 +1386,14 @@ export function criarPagamentoSlice(
           return;
         }
 
-        if (condicaoSelecionada === null && pagamentos.length === 0 && descontoCapa === null) {
+        // `pagamentosVivos()`, e não `pagamentos.length`: a forma riscada fica na
+        // lista e não é motivo para "limpar" nada (FR-006, mesmo critério de
+        // AD-171).
+        if (
+          condicaoSelecionada === null &&
+          pagamentosVivos().length === 0 &&
+          descontoCapa === null
+        ) {
           return;
         }
 
@@ -1313,18 +1408,26 @@ export function criarPagamentoSlice(
         // reemiti-lo aqui mandaria ao ERP, no `Log`, a mesma forma removida
         // duas vezes (AD-171). `RECUSADO` nunca chegou a valer como pagamento,
         // pelo mesmo critério de `pagamentosVivos`.
-        const rotulos = pagamentos.filter(pagamentoVivo).map(rotuloDoPagamento);
+        const removidas = pagamentos
+          .filter(pagamentoVivo)
+          .map((pagamento) => detalhesDaRemocao(pagamento, rotuloDoPagamento(pagamento), 'LIMPAR'));
 
+        // As vivas viram `EXCLUIDO` e as demais ficam como estão: o "Limpar"
+        // não apaga o que o operador já viu riscado, nem o TEF estornado
+        // (FR-002/FR-003). `limparPagamentos`, a limpeza pós-entrega, é que
+        // esvazia a lista inteira (FR-009).
         condicaoVeioDeDocumento = false;
         set({
           condicaoSelecionada: null,
-          pagamentos: [],
+          pagamentos: pagamentos.map((pagamento) =>
+            pagamentoVivo(pagamento) ? { ...pagamento, status: 'EXCLUIDO' as const } : pagamento,
+          ),
           descontoCapa: null,
           valesDevolucao: [],
         });
 
-        for (const formaPagamento of rotulos) {
-          get().registrarEventoAuditoria(eventoFormaPagamentoRemovida({ formaPagamento }));
+        for (const detalhes of removidas) {
+          get().registrarEventoAuditoria(eventoFormaPagamentoRemovida(detalhes));
         }
 
         // `FR-021`/I11, mesma razão de `removerPagamento`: o veredito da 014
@@ -1370,9 +1473,10 @@ export function criarPagamentoSlice(
             // aceito pelo ERP com os valores que tinha.
             fpgUtiCar: doCatalogo?.fpgUtiCar ?? '',
             valorAplicado: forma.valor,
-            // I3 (`valorRecebido !== null` ⇔ `Dinheiro`) preservada: o documento
-            // registra o que quitou, então recebido e aplicado coincidem e o
-            // troco derivado é zero — que é o correto para uma venda já fechada.
+            // I3 (`valorRecebido !== null` ⇔ `Dinheiro`) preservada. Aqui
+            // recebido e aplicado coincidem; se a soma do documento passar do
+            // total, `reconstruirTrocoImportado` devolve o excedente ao dinheiro
+            // logo abaixo, antes de gravar (feature 018, FR-020).
             valorRecebido: meioPagtoNFe === MEIO_PAGTO.Dinheiro ? forma.valor : null,
             // Sempre `NENHUMA`/`APROVADO`: o veredito do ERP já está implícito
             // no próprio documento existir, e nenhuma integração é reaberta.
@@ -1384,6 +1488,7 @@ export function criarPagamentoSlice(
             veioDeDocumento: true,
             dadosTEF: forma.tef,
             pixGuid: forma.pixGuid,
+            tefPagId: null,
             ticketDevolucao: forma.ticketDevolucao,
           });
         }
@@ -1400,7 +1505,12 @@ export function criarPagamentoSlice(
         // pela metade — com os itens dentro e o pagamento fora —, que é pior do
         // que reproduzir fielmente um documento estranho. A guarda vale para o
         // que o operador digita; o que o ERP já registrou entra como está.
-        aplicarPagamentos(importados);
+        //
+        // O ERP grava o dinheiro com o que o cliente entregou (AD-284), então a
+        // soma do documento pode passar do total: o excedente volta a ser troco
+        // do dinheiro, e não "pagamento acima do total". O subtotal é o dos itens
+        // já importados (`importarLinhasCongeladas` roda antes desta porta).
+        aplicarPagamentos(reconstruirTrocoImportado(importados, deps.subtotalCarrinho()));
 
         // Pelo mesmo motivo, a venda montada a partir do documento nasce com o
         // veredito da 014 dispensado (`FR-013`): estas formas não passaram por

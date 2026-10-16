@@ -190,6 +190,19 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
       expect(forma).not.toHaveProperty('TEFNumeroAutorizacao');
     }
     expect((await contadores(request)).estornarPagamento).toBe(1);
+
+    // Feature 018 (FR-012): o estorno chega ao ERP no `Log` com valor, motivo e o
+    // `TEFPagId` da transação estornada — a chave de conciliação com a operadora.
+    const eventos: { tipo: string; detalhes: Record<string, unknown> }[] = JSON.parse(
+      (retrato as { Log?: string } | null)?.Log ?? '[]',
+    );
+    const removidas = eventos.filter((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA');
+    expect(removidas).toHaveLength(1);
+    expect(removidas[0]?.detalhes).toMatchObject({ valor: 500, motivo: 'ESTORNO_TEF' });
+    const tefPagIdEstornado = removidas[0]?.detalhes['tefPagId'];
+    expect(tefPagIdEstornado).toMatch(/^pay_mock_/);
+    // Não é nenhuma das transações que ficaram na nota.
+    expect(pagIds).not.toContain(tefPagIdEstornado);
   });
 
   // Cenário 6: o Checkout não cancela a transação em voo, e diz isso.
@@ -197,7 +210,8 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
     page,
     request,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
+    await page.route(URL_SERVICO_IMPRESSAO, (rota) => rota.fulfill({ status: 200, body: '' }));
     await configurarTef(request, { tefStatusCobranca: ['PDT'] });
     await abrirVendaComItem(page);
     await selecionarCondicaoDuasVezes(page);
@@ -212,8 +226,36 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
     await page.getByTestId('confirmar-desistencia-tef-confirmar').click();
 
     await expect(page.getByTestId('modal-tef')).toHaveCount(0);
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    // Feature 018 (FR-023): a forma desistida fica riscada, não some.
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
     expect((await contadores(request)).estornarPagamento).toBe(0);
+
+    // A venda segue com outra forma, que o mock agora aprova.
+    await request.post(`${URL_ERP_MOCK}/__mock/config`, {
+      data: { tefStatusCobranca: ['PDT', 'PROC_PAG', 'CNC'] },
+    });
+    await aplicarForma(page, FORMA_CREDITO_TEF, '10,00');
+    await esperarAprovacaoEFechar(page);
+    await page.getByTestId('botao-finalizar-venda').click();
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0, { timeout: 30_000 });
+
+    // FR-025: o `Log` do ERP traz a cobrança desistida com o `payment_identifier`
+    // criado — o Checkout não a cancelou, e o ERP precisa poder achá-la.
+    const { retrato } = (await (
+      await request.get(`${URL_ERP_MOCK}/__mock/ultimo-faturamento`)
+    ).json()) as RetratoFaturado;
+    const formas = retrato?.FormasDePagamento ?? [];
+    expect(formas).toHaveLength(1);
+    const eventos: { tipo: string; detalhes: Record<string, unknown> }[] = JSON.parse(
+      (retrato as { Log?: string } | null)?.Log ?? '[]',
+    );
+    const recusas = eventos.filter((evento) => evento.tipo === 'PAGAMENTO_RECUSADO');
+    expect(recusas).toHaveLength(1);
+    expect(recusas[0]?.detalhes).toMatchObject({ motivo: 'FECHADO_PELO_OPERADOR', valor: 1000 });
+    const tefPagIdDesistido = recusas[0]?.detalhes['tefPagId'];
+    expect(tefPagIdDesistido).toMatch(/^pay_mock_/);
+    expect(formas[0]?.['TEFPagId']).not.toBe(tefPagIdDesistido);
   });
 
   // Cenário 14: estorno rejeitado mantém o TEF aprovado na venda (T6).

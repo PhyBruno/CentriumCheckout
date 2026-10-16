@@ -15,7 +15,8 @@ import { MEIO_PAGTO } from '../../src/client/domain/pagamento/formaPagamento';
 import type { ErpClient, ResultadoChamadaErp } from '../../src/client/services/erpClient';
 import type { CarrinhoDeps } from '../../src/client/stores/slices/carrinhoSlice';
 import type { ClienteDeps } from '../../src/client/stores/slices/clienteSlice';
-import { criarVendaStore } from '../../src/client/stores/vendaStore';
+import { totalVenda } from '../../src/client/domain/precificacao/linha';
+import { criarVendaStore, pagamentoDepsPadrao } from '../../src/client/stores/vendaStore';
 import { clienteCheckoutDe } from '../support/cliente';
 import { snapshotDe } from '../support/precificacao';
 import { CODIGO_CLIENTE_DAV, CODIGO_VENDEDOR_DAV, SKU_DAV } from '../support/dav';
@@ -92,7 +93,14 @@ function montarStore() {
     buscarSnapshotProduto: (codigoProduto) => Promise.resolve(snapshotDe({ codigoProduto })),
   };
 
-  const store = criarVendaStore(depsCarrinho, depsCliente);
+  // O padrão do slice de pagamento lê o subtotal do `useVendaStore` global, e
+  // esta suíte exercita um store próprio: sem apontar para ele, a importação das
+  // formas veria um carrinho vazio (feature 018: `reconstruirTrocoImportado`
+  // compara a soma do documento com o total dos itens).
+  const store = criarVendaStore(depsCarrinho, depsCliente, undefined, {
+    ...pagamentoDepsPadrao,
+    subtotalCarrinho: () => totalVenda(store.getState().linhas),
+  });
   store.getState().resetarAuditoria('NOVA');
   return store;
 }

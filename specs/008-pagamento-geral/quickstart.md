@@ -83,7 +83,7 @@ A matriz ganhou a coluna `integracaoCartao` em 2026-09-08 (AD-180): `'1'` signif
 | 1 | aplicar `CartaoCredito` de `70,00` (desktop, `tefAtivo: false`) | `saldoRestante = 30,00`; pagamento `APROVADO` |
 | 2 | aplicar `Dinheiro` com `valorRecebido = 50,00` | `valorAplicado = 30,00`, `troco = 20,00`, `saldoRestante = 0` |
 | 3 | tentar aplicar uma segunda forma `Dinheiro` | bloqueado, toast "já existe uma forma dinheiro aplicada"; a lista continua com 2 pagamentos |
-| 4 | inspecionar o payload montado | `Σ FormaValor === 100,00` — o troco de `20,00` **não** aparece em lugar nenhum |
+| 4 | inspecionar o payload montado | `Σ FormaValor === 120,00` (`70,00` + o dinheiro com o recebido, `50,00`): o troco de `20,00` não tem campo próprio, o ERP o deriva da diferença para o total (018, AD-284 — **corrigido em 2026-10-16**; antes, `Σ FormaValor === 100,00`) |
 | 5 | aplicar `Pix` com valor acima do saldo | `valorAplicado` limitado ao saldo; `troco` permanece `0` (`FR-012`) |
 
 ---
@@ -152,7 +152,7 @@ carrinho com 3 itens (100,00)
   → aplicar CartaoCredito 60,00
   → aplicar Dinheiro recebido 40,00  (aplicado 30,00, troco 10,00)
   → saldo zerado, botão "Finalizar Venda" habilitado
-  → payload: Σ FormaValor = 90,00; DescontoValor por item soma 10,00; sem campo de troco
+  → payload: Σ FormaValor = 100,00 (90,00 + troco 10,00, 018); DescontoValor por item soma 10,00; sem campo de troco
 ```
 
 ---

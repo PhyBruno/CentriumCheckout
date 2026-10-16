@@ -6,6 +6,7 @@ import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import type { EstadoDisplay } from '../../../../shared/display';
 import type { ClienteVenda } from '../../../domain/cliente/clienteVenda';
+import { MOTIVO_DESISTENCIA_DO_OPERADOR } from '../../../domain/pagamento/remocaoPagamento';
 import type { CobrancaPix } from '../../../domain/pix/cobrancaPix';
 import { MENSAGEM_POR_MOTIVO_FALHA } from '../../../domain/pix/interpretarStatusPix';
 import {
@@ -150,6 +151,12 @@ export interface ModalPixProps {
   readonly onAprovado: (pixGuid: string) => void;
   /** Chama `recusarPagamentoIntegrado(idPagamento, motivo)` (feature 008). */
   readonly onAbandonado: (motivo: string) => void;
+  /**
+   * Chama `registrarIdentificadorIntegracao(idPagamento, { pixGuid })`. Dispara
+   * assim que o ERP devolve a cobrança, antes da aprovação: é o que deixa a
+   * desistência levar o identificador ao `Log` (feature 018, US4).
+   */
+  readonly onCobrancaGerada?: (trnGuid: string) => void;
   readonly onFechar: () => void;
   /** Injetável só para teste — ver `PixQueriesDeps.intervaloMs`. */
   readonly deps?: PixQueriesDeps;
@@ -173,7 +180,7 @@ export interface ModalPixProps {
   readonly onEstadoDisplay?: (estado: EstadoDisplay) => void;
 }
 
-export const MOTIVO_FECHADO_PELO_OPERADOR = 'FECHADO_PELO_OPERADOR';
+export const MOTIVO_FECHADO_PELO_OPERADOR = MOTIVO_DESISTENCIA_DO_OPERADOR;
 export const MOTIVO_ABAIXO_DO_MINIMO = 'VALOR_ABAIXO_DO_MINIMO';
 
 /**
@@ -211,11 +218,15 @@ export function ModalPix({
   clienteAtual,
   onAprovado,
   onAbandonado,
+  onCobrancaGerada,
   onFechar,
   deps = DEPS_VAZIAS,
   atrasoFechamentoMs = MS_FECHAMENTO_APOS_APROVACAO,
   onEstadoDisplay,
 }: ModalPixProps): ReactElement | null {
+  // Pela ref: a função nova a cada render do pai não pode recriar a geração.
+  const onCobrancaGeradaRef = useRef(onCobrancaGerada);
+  onCobrancaGeradaRef.current = onCobrancaGerada;
   const [cobranca, setCobranca] = useState<CobrancaPix | null>(null);
   /** Desliga o polling na **mesma renderização** que processa o desfecho (J3). */
   const [resolvido, setResolvido] = useState(false);
@@ -289,7 +300,12 @@ export function ModalPix({
       valor,
       codigoCliente: clienteAtual?.codigoCliente ?? null,
     })
-      .then(setCobranca)
+      .then((gerada) => {
+        // Antes do estado local: a desistência que vier a seguir já encontra o
+        // identificador na forma, e o `Log` do ERP o leva.
+        onCobrancaGeradaRef.current?.(gerada.trnGuid);
+        setCobranca(gerada);
+      })
       .catch(() => {
         // O motivo já está em `erro` e vira painel + toast abaixo. Engolir aqui
         // é o que impede a rejeição de virar `unhandledrejection` — o desfecho

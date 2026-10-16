@@ -269,6 +269,7 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
         entrada: 'S',
         integracaoCartao: '',
         ticketDevolucao: null,
+        valorRecebido: null,
       },
       'MANUAL',
     );
@@ -282,6 +283,7 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
         entrada: 'S',
         integracaoCartao: '',
         ticketDevolucao: null,
+        valorRecebido: null,
       },
       'MANUAL',
     );
@@ -377,6 +379,22 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
     expect(enviado?.FormasDePagamento).toEqual(
       store.getState().montarPagamentosParaPayload().FormasDePagamento,
     );
+  });
+
+  // Feature 018, FR-018: com troco o dinheiro vai ao ERP com o recebido, e o gate
+  // valida exatamente o `FormaValor` que o faturamento enviará.
+  it('dinheiro com troco: validado e emitido levam o mesmo FormaValor, o recebido (FR-018)', async () => {
+    const { store, retratosEnviados } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(15_000) });
+
+    const validado = retratosEnviados[0]?.FormasDePagamento ?? [];
+    const emitido = store.getState().montarPagamentosParaPayload().FormasDePagamento;
+    expect(validado[0]?.FormaValor).toBe(150);
+    expect(validado).toEqual(emitido);
+    // A tela segue igual: a venda fecha em R$ 100,00 e o troco é a diferença.
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+    expect(store.getState().saldo().troco).toBe(5_000);
   });
 });
 

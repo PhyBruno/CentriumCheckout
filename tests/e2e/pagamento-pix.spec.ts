@@ -79,6 +79,15 @@ async function aplicarPix(page: Page, valor: string): Promise<void> {
   await page.getByTestId('adicionar-pagamento').click();
 }
 
+interface RetratoFaturado {
+  retrato: { Log?: string; FormasDePagamento?: unknown[] } | null;
+}
+
+async function ultimoFaturamento(request: APIRequestContext): Promise<RetratoFaturado> {
+  const resposta = await request.get(`${URL_ERP_MOCK}/__mock/ultimo-faturamento`);
+  return (await resposta.json()) as RetratoFaturado;
+}
+
 async function ultimoPix(request: APIRequestContext): Promise<SdtPixCapturado> {
   const resposta = await request.get(`${URL_ERP_MOCK}/__mock/ultimo-pix`);
   return (await resposta.json()) as SdtPixCapturado;
@@ -165,6 +174,9 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     request,
   }) => {
     test.setTimeout(60_000);
+    // A finalização no fim do cenário chama o serviço de impressão local, que na
+    // CI não existe (mesmo stub de `pagamento-tef.spec.ts`).
+    await page.route('http://127.0.0.1:4545/**', (rota) => rota.fulfill({ status: 200, body: '' }));
 
     // `'G'` para sempre: a cobrança nunca é paga e o operador desiste.
     await configurarPix(request, ['G']);
@@ -184,18 +196,41 @@ test.describe('Fluxo dourado do PIX (T026)', () => {
     await expect(page.getByTestId('confirmar-desistencia-pix')).toBeVisible();
     await page.getByTestId('confirmar-desistencia-pix-confirmar').click();
 
-    // `FR-004`–`FR-007`: o pagamento pendente sai da lista — não fica órfão — e
-    // o saldo volta cheio, disponível para outra forma.
+    // `FR-004`–`FR-007` e feature 018 (FR-023): a forma pendente não fica órfã e
+    // também não some — fica riscada, e o saldo volta cheio, disponível para
+    // outra forma.
     await expect(page.getByTestId('modal-pix')).toHaveCount(0);
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
+    await expect(page.getByTestId('pagamentos-saldo-restante')).toContainText(TOTAL_DO_CARRINHO);
 
     await page.getByTestId('combobox-forma-pagamento').click();
     await page.getByTestId('opcao-forma-1').click();
     await informarValorRecebido(page, TOTAL_DO_CARRINHO);
     await page.getByTestId('adicionar-pagamento').click();
 
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    const linhas = page.getByTestId('pagamento-aplicado');
+    await expect(linhas).toHaveCount(2);
+    await expect(linhas.nth(0)).toHaveAttribute('data-status', 'EXCLUIDO');
+    await expect(linhas.nth(1)).toHaveAttribute('data-status', 'APROVADO');
     await expect(page.getByTestId('pagamentos-saldo-restante')).toHaveCount(0);
+
+    // Feature 018 (FR-025): finalizada a venda, o `Log` do ERP traz a desistência
+    // com o valor e o identificador da cobrança que o Checkout não cancelou.
+    await page.getByTestId('botao-finalizar-venda').click();
+    await expect
+      .poll(async () => (await ultimoFaturamento(request)).retrato !== null, { timeout: 30_000 })
+      .toBe(true);
+    const { retrato } = await ultimoFaturamento(request);
+    const eventos: { tipo: string; detalhes: Record<string, unknown> }[] = JSON.parse(
+      retrato?.Log ?? '[]',
+    );
+    const recusas = eventos.filter((evento) => evento.tipo === 'PAGAMENTO_RECUSADO');
+    expect(recusas).toHaveLength(1);
+    expect(recusas[0]?.detalhes).toMatchObject({ motivo: 'FECHADO_PELO_OPERADOR', valor: 1000 });
+    expect(String(recusas[0]?.detalhes['pixGuid'] ?? '')).not.toBe('');
+    // A forma riscada não vai ao ERP como pagamento.
+    expect(retrato?.FormasDePagamento).toHaveLength(1);
   });
 
   /**

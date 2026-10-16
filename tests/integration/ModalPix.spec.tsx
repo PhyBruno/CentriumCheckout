@@ -386,6 +386,18 @@ describe('US1 — acompanhar a aprovação do PIX', () => {
     },
   );
 
+  // Feature 018, US4 (FR-022): o GUID do ERP sai da janela quando a cobrança é
+  // gerada, antes de qualquer aprovação, para a desistência levá-lo ao `Log`.
+  it('entrega o GUID do ERP assim que a cobrança é gerada, uma vez só', async () => {
+    const { cliente } = erpFake({ statusSequencia: ['G'] });
+    const geradas: string[] = [];
+    renderizar(cliente, { onCobrancaGerada: (guid) => geradas.push(guid) });
+
+    await screen.findByTestId('pix-qrcode');
+
+    expect(geradas).toEqual([GUID_DO_ERP]);
+  });
+
   // T012 / `FR-009` (quickstart Cenário 5).
   it('bloqueia por valor mínimo sem abrir a janela e sem tocar a rede', async () => {
     const { cliente, chamadas } = erpFake();

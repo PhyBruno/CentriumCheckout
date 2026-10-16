@@ -210,6 +210,22 @@ describe('ModalTef — cobrança', () => {
     expect(criacoes(chamadas)).toHaveLength(1);
   });
 
+  // Feature 018, US4 (FR-022): o identificador sai da janela assim que o ERP cria a
+  // cobrança, antes de qualquer aprovação, e uma vez só.
+  it('entrega o payment_identifier assim que a cobrança é criada, mesmo em StrictMode', async () => {
+    const { cliente } = erpFake();
+    const criadas: string[] = [];
+    renderizar(
+      cliente,
+      { onCobrancaCriada: (identificador) => criadas.push(identificador) },
+      { strict: true },
+    );
+
+    await screen.findByText('Aguardando retorno do TEF');
+
+    expect(criadas).toEqual([PAG_ID]);
+  });
+
   // (b) T3 + FR-015.
   it('PDT → PROC_PAG → CNC: aprova no tick do CNC, com NSU, autorização e bandeira', async () => {
     const { cliente } = erpFake({

@@ -324,9 +324,12 @@ describe('ListaPagamentosAplicados — janela do TEF', () => {
     await screen.findByTestId('erro-criacao-tef');
     expect(criacoesDeCobranca()).toBe(1);
 
-    // Erro de criação: desistir sai sem confirmação, e o pagamento é recusado.
+    // Erro de criação: desistir sai sem confirmação, e a forma fica riscada, sem
+    // identificador (nada foi criado) — feature 018, US4.
     await usuario.click(screen.getByTestId('desistir-operacao-tef'));
-    expect(useVendaStore.getState().pagamentos).toHaveLength(0);
+    expect(useVendaStore.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+    ]);
     expect(screen.queryByTestId('modal-tef')).toBeNull();
 
     act(() => {
@@ -416,7 +419,9 @@ describe('ListaPagamentosAplicados — janela do TEF', () => {
 
       await usuario.click(screen.getByTestId('desistir-operacao-tef'));
 
-      expect(useVendaStore.getState().pagamentos).toHaveLength(0);
+      expect(useVendaStore.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+        'EXCLUIDO',
+      ]);
       expect(useFocoVendaStore.getState().pedidosDeFocoNaFinalizacao).toBe(antes);
     });
   });

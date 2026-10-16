@@ -13,7 +13,7 @@ import { informarValorRecebido } from './support/pagamento';
  *   → aplicar CartaoCredito 60,00
  *   → aplicar Dinheiro recebido 40,00  (aplicado 38,00, troco 2,00)
  *   → saldo zerado, botão "Finalizar Venda" habilitado
- *   → payload: Σ FormaValor = 98,00; DescontoValor por item soma 2,00; sem campo de troco
+ *   → payload: Σ FormaValor = 100,00 (98,00 + troco 2,00, 018); DescontoValor por item soma 2,00; sem campo de troco
  * ```
  *
  * O quickstart original usava 10%; o percentual caiu para 2% em 2026-09-04,
@@ -78,6 +78,12 @@ const URL_SERVICO_IMPRESSAO = 'http://127.0.0.1:4545/**';
 
 async function ultimoRetrato(request: APIRequestContext): Promise<RetratoFaturado> {
   const resposta = await request.get(`${URL_ERP_MOCK}/__mock/ultimo-faturamento`);
+  return (await resposta.json()) as RetratoFaturado;
+}
+
+/** O retrato que o gate da 014 mandou ao `ValidarNFCe` na última inserção. */
+async function ultimaValidacao(request: APIRequestContext): Promise<RetratoFaturado> {
+  const resposta = await request.get(`${URL_ERP_MOCK}/__mock/ultima-validacao`);
   return (await resposta.json()) as RetratoFaturado;
 }
 
@@ -185,12 +191,18 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     const formas = retrato?.FormasDePagamento ?? [];
     expect(formas).toHaveLength(2);
 
-    // `Σ FormaValor` é **exatamente** o total líquido: 60,00 + 38,00 = 98,00.
-    // O troco de 2,00 não aparece em campo nenhum — não existe campo de troco
-    // no contrato (`research.md` D3).
+    // Feature 018 (AD-284): o dinheiro vai com o que o cliente entregou, então
+    // `Σ FormaValor` é o total líquido **mais o troco**: 60,00 + 40,00 = 100,00
+    // (98,00 + 2,00). Não existe campo de troco no contrato — o ERP o deriva da
+    // diferença.
     const somaFormas = formas.reduce((total, forma) => total + (forma.FormaValor ?? 0), 0);
-    expect(somaFormas).toBeCloseTo(98, 2);
+    expect(somaFormas).toBeCloseTo(100, 2);
+    expect(formas.map((forma) => forma.FormaValor)).toEqual([60, 40]);
     expect(JSON.stringify(retrato)).not.toContain('roco');
+
+    // FR-018: a validação prévia recebeu exatamente as mesmas formas.
+    const { retrato: validado } = await ultimaValidacao(request);
+    expect(validado?.FormasDePagamento).toEqual(formas);
 
     // `FormaEntrada` ecoado do catálogo em toda forma (`FR-022`/AD-111): sem ele
     // o ERP calcula crediário zero e o gate da 014 aprovaria o que deve barrar.
@@ -337,8 +349,39 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
 
     // "Limpar" é a saída, e ela zera a pedido do operador — não por baixo dele.
     await page.getByTestId('limpar-pagamento').click();
-    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(0);
+    // Feature 018 (FR-002/FR-007): a forma continua na lista, riscada e com o
+    // nome legível do meio de pagamento, mesmo sem a condição que a trouxe.
+    const riscada = page.getByTestId('pagamento-aplicado');
+    await expect(riscada).toHaveCount(1);
+    await expect(riscada).toHaveAttribute('data-status', 'EXCLUIDO');
+    await expect(riscada).toContainText('Dinheiro');
     await expect(condicao).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  // Feature 018, FR-006: forma riscada sozinha não habilita o "Limpar".
+  // FR-008: o que ficou riscado não atrapalha a venda seguinte.
+  test('depois do "Limpar", sem nada ativo o botão bloqueia; nova condição e forma entram ao lado da riscada', async ({
+    page,
+  }) => {
+    await stubarImpressoraLocal(page);
+    await abrirTelaDeVenda(page);
+    await biparProduto(page, ITENS[0].sku, 1);
+
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-1');
+    await aplicarPagamento(page, 'opcao-forma-1', '10,00');
+    await page.getByTestId('limpar-pagamento').click();
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveAttribute('data-status', 'EXCLUIDO');
+
+    // Só a forma riscada: nada a limpar.
+    await expect(page.getByTestId('limpar-pagamento')).toHaveAttribute('aria-disabled', 'true');
+
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-1');
+    await aplicarPagamento(page, 'opcao-forma-1', '10,00');
+
+    const linhas = page.getByTestId('pagamento-aplicado');
+    await expect(linhas).toHaveCount(2);
+    await expect(linhas.nth(0)).toHaveAttribute('data-status', 'EXCLUIDO');
+    await expect(linhas.nth(1)).not.toHaveAttribute('data-status', 'EXCLUIDO');
   });
 
   test('trocar a condição antes de cobrar limpa a forma escolhida no combobox', async ({

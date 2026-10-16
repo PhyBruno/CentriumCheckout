@@ -86,7 +86,20 @@ export interface PagamentoAplicado {
   readonly integracao: IntegracaoPagamento;
   readonly status: StatusPagamento;
   readonly dadosTEF: DadosTEF | null;
+  /**
+   * Identificador da cobrança PIX. Guardado já na **geração** (feature 018, US4),
+   * e não só na aprovação: a cobrança desistida precisa dele no `Log` do ERP.
+   * Só a forma `APROVADO` vai ao payload, então o valor guardado numa forma
+   * pendente nunca chega a `FormaPixGUID`.
+   */
   readonly pixGuid: string | null;
+  /**
+   * `payment_identifier` da cobrança TEF **criada**, antes da aprovação (feature
+   * 018, US4). Existe ao lado de `dadosTEF.pagId`, e não no lugar dele, porque
+   * `dadosTEF` descreve o que a SmartTEF aprovou (bandeira, NSU, autorização) e
+   * só existe depois do `CNC`. `null` sem cobrança criada e fora do TEF.
+   */
+  readonly tefPagId: string | null;
   readonly ticketDevolucao: string | null;
   /**
    * A forma entrou **com o documento** (DAV importado ou rascunho de NFCe
@@ -113,7 +126,11 @@ export interface PagamentoAplicado {
 /** Derivado, nunca armazenado — seletor puro sobre carrinho + pagamentos. */
 export interface SaldoPagamento {
   readonly totalLiquido: Centavos;
-  /** Σ `valorAplicado` dos aprovados — o que abate a venda e vai ao ERP. */
+  /**
+   * Σ `valorAplicado` dos aprovados — o que abate a venda. Não é o que vai ao ERP
+   * em `FormaValor`: o dinheiro vai com o recebido (`totalRecebido`), e o ERP
+   * deriva o troco da diferença (feature 018).
+   */
   readonly totalAplicado: Centavos;
   /**
    * Σ do que o operador **entregou**: `valorRecebido` quando existe (dinheiro),
@@ -279,7 +296,9 @@ export function podeAplicarForma(
  * `podeAplicarForma` antes de chegar aqui, em vez de truncado em silêncio. Ele
  * permanece como rede de segurança — se um chamador futuro esquecer de passar
  * `valorInformado` à validação, o pior desfecho é um valor truncado, nunca um
- * `FormaValor` acima do total da nota.
+ * `FormaValor` acima do saldo numa forma que não gera troco. (No dinheiro o
+ * `FormaValor` passa do total de propósito: vai o recebido, e o ERP gera o
+ * troco — feature 018.)
  */
 export function derivarValores(
   forma: FormaPagamento,

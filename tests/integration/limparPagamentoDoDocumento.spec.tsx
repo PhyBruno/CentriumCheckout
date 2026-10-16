@@ -6,7 +6,7 @@ import { ProvedorFinalizacaoVenda } from '../../src/client/features/finalizacao-
 import { PainelPagamentoETotais } from '../../src/client/features/pagamento/PainelPagamentoETotais';
 import { useSessionStore } from '../../src/client/stores/sessionStore';
 import { useVendaStore } from '../../src/client/stores/vendaStore';
-import { pagamentoDe } from '../support/pagamento';
+import { condicaoDe, pagamentoDe } from '../support/pagamento';
 import { linhaDe } from '../support/precificacao';
 import { registroBootstrapDe } from '../support/sessao';
 
@@ -127,7 +127,10 @@ describe('"Limpar" com pagamento vindo do documento', () => {
 
     // É o desfecho que fecha `FR-008`: a partir daqui o operador reinsere itens
     // e o preço é recalculado normalmente.
-    expect(useVendaStore.getState().pagamentos).toHaveLength(0);
+    // A forma do documento fica riscada, não apagada (feature 018, FR-002).
+    expect(useVendaStore.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+    ]);
     expect(useVendaStore.getState().podeMutarCarrinho()).toBe(true);
   });
 
@@ -143,6 +146,35 @@ describe('"Limpar" com pagamento vindo do documento', () => {
     await usuario.click(screen.getByTestId('limpar-pagamento'));
 
     expect(screen.queryByTestId('confirmar-limpeza-documento')).toBeNull();
-    expect(useVendaStore.getState().pagamentos).toHaveLength(0);
+    expect(useVendaStore.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+    ]);
+  });
+
+  // Feature 018, FR-006/FR-007: o PIX já riscado fica na lista, mas não é motivo
+  // para o botão perguntar por uma cobrança que o "Limpar" não toca.
+  it('PIX já riscado + condição: "Limpar" descarta a condição sem abrir a confirmação de PIX', async () => {
+    const usuario = userEvent.setup();
+    useVendaStore.setState({
+      condicaoSelecionada: condicaoDe(1, 'A VISTA'),
+      pagamentos: [
+        pagamentoDe({
+          idPagamento: 'pag-pix',
+          integracao: 'PIX_DINAMICO',
+          status: 'EXCLUIDO',
+          valorAplicado: 10_000,
+          pixGuid: 'guid-exemplo',
+        }),
+      ],
+    });
+    renderizarPainel();
+
+    await usuario.click(screen.getByTestId('limpar-pagamento'));
+
+    expect(screen.queryByTestId('confirmar-limpeza-pix')).toBeNull();
+    expect(useVendaStore.getState().condicaoSelecionada).toBeNull();
+    expect(useVendaStore.getState().pagamentos.map((pagamento) => pagamento.status)).toEqual([
+      'EXCLUIDO',
+    ]);
   });
 });

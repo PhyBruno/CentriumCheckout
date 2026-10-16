@@ -123,6 +123,8 @@ export interface OpcoesPagamento {
   readonly status?: StatusPagamento;
   readonly dadosTEF?: DadosTEF | null;
   readonly pixGuid?: string | null;
+  /** `payment_identifier` da cobrança TEF criada e ainda não aprovada (018). */
+  readonly tefPagId?: string | null;
   readonly ticketDevolucao?: string | null;
   /** Forma vinda de um documento importado/retomado — default `false`. */
   readonly veioDeDocumento?: boolean;
@@ -146,6 +148,7 @@ export function pagamentoDe(opcoes: OpcoesPagamento = {}): PagamentoAplicado {
     status: opcoes.status ?? 'APROVADO',
     dadosTEF: opcoes.dadosTEF ?? null,
     pixGuid: opcoes.pixGuid ?? null,
+    tefPagId: opcoes.tefPagId ?? null,
     ticketDevolucao: opcoes.ticketDevolucao ?? null,
     veioDeDocumento: opcoes.veioDeDocumento ?? false,
   };
