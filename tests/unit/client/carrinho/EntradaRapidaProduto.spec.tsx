@@ -867,7 +867,8 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
 
     await usuario.clear(screen.getByTestId('previa-desconto-item'));
     expect(screen.getByTestId('previa-confirmar')).not.toHaveAttribute('aria-disabled', 'true');
-    await usuario.tab();
+    // Shift+TAB sai do campo sem confirmar: é o TAB para a frente que insere.
+    await usuario.tab({ shift: true });
 
     expect(screen.getByTestId('previa-desconto-item')).not.toHaveFocus();
     expect(screen.getByTestId('previa-desconto-item')).toHaveValue('0,00');
@@ -877,6 +878,160 @@ describe('EntradaRapidaProduto — campos obrigatórios da prévia (pedido do us
     const editada = useVendaStore.getState().linhas.find((linha) => linha.idLinha === 'linha-1');
     expect(editada?.descontoManual).toBe(0);
     expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
+  });
+});
+
+/**
+ * TAB no desconto insere o produto (pedido do usuário, 2026-10-16).
+ *
+ * No produto editável o desconto é o último campo antes do "+". O TAB que
+ * chegava ao botão só o focava, e cada item custava um Enter a mais a quem
+ * percorre a barra pelo teclado. Agora o TAB faz o que o "+" faria — depois de
+ * a saída do desconto rodar, com os valores que ela deixou.
+ */
+describe('EntradaRapidaProduto — TAB no desconto insere (pedido do usuário, 2026-10-16)', () => {
+  const AVISO_MINIMO = 'Preço mínimo deste item: R$ 8,00. O desconto foi ajustado automaticamente.';
+
+  beforeEach(() => {
+    useSessionStore.setState({ estado: 'pronto', registro: registroDeBootstrap() });
+    useVendaStore.setState({ linhas: [], vendedorAtual: VENDEDOR_DE_TESTE });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+    useEdicaoItemStore.setState({ linhaEmEdicao: null });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  async function carregarNoLapis(precoMinimo = 0): Promise<void> {
+    const linha = linhaDe({
+      idLinha: 'linha-1',
+      snapshot: snapshotDe({ pesavelEditavel: 'E', precoBase: 2000, precoMinimo }),
+      quantidadeEmUnidades: 1,
+      precoUnitario: 2000,
+    });
+    useVendaStore.setState({ linhas: [linha] });
+    renderBarra();
+    act(() => {
+      useEdicaoItemStore.getState().carregarParaEdicao(linha);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+  }
+
+  it('produto novo: TAB pelos campos e o TAB do desconto insere o item', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify(respostaGetProduto({ ProdutoPesavelEditavel: 'E' })), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      ),
+    );
+    const usuario = userEvent.setup();
+    renderBarra();
+
+    await usuario.type(screen.getByTestId('campo-codigo-produto'), '001234');
+    await usuario.tab();
+    await waitFor(() => {
+      expect(screen.getByTestId('previa-quantidade')).toHaveFocus();
+    });
+    await usuario.tab(); // "+" da quantidade
+    await usuario.tab(); // preço
+    await usuario.tab(); // desconto
+    expect(screen.getByTestId('previa-desconto-item')).toHaveFocus();
+    await usuario.tab(); // insere
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas).toHaveLength(1);
+    });
+    // A barra volta ao vazio, pronta para o próximo bipe.
+    await waitFor(() => {
+      expect(screen.getByTestId('campo-codigo-produto')).toHaveFocus();
+    });
+  });
+
+  it('item do lápis: o TAB do desconto confirma a edição com o desconto digitado', async () => {
+    const usuario = userEvent.setup();
+    await carregarNoLapis();
+
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.type(screen.getByTestId('previa-desconto-item'), '3');
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(useEdicaoItemStore.getState().linhaEmEdicao).toBeNull();
+    });
+    expect(useVendaStore.getState().linhas[0]?.descontoManual).toBe(300);
+  });
+
+  it('confirma com o valor que a saída do campo ajustou ao mínimo, com um aviso só', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    await carregarNoLapis(800);
+
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.type(screen.getByTestId('previa-desconto-item'), '15');
+    await usuario.tab();
+
+    await waitFor(() => {
+      expect(useVendaStore.getState().linhas[0]?.descontoManual).toBe(1200);
+    });
+    expect(aviso.mock.calls.filter(([frase]) => frase === AVISO_MINIMO)).toHaveLength(1);
+    // O pedido de R$ 15,00 fica no `Log` ao lado do que entrou (AD-280).
+    expect(useVendaStore.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      campo: 'descontoManual',
+      valorNovo: 1200,
+      valorSolicitado: 1500,
+    });
+  });
+
+  it('desconto que zera o item: avisa uma vez ao sair do campo e não confirma', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    const erro = vi.spyOn(notificar, 'erro');
+    await carregarNoLapis();
+
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.type(screen.getByTestId('previa-desconto-item'), '20');
+    await usuario.tab();
+
+    expect(aviso).toHaveBeenCalledTimes(1);
+    expect(erro).not.toHaveBeenCalled();
+    expect(useEdicaoItemStore.getState().linhaEmEdicao).not.toBeNull();
+    expect(useVendaStore.getState().linhas[0]?.descontoManual).toBe(0);
+  });
+
+  it('Shift+TAB no desconto volta ao preço sem confirmar', async () => {
+    const usuario = userEvent.setup();
+    await carregarNoLapis();
+
+    await usuario.clear(screen.getByTestId('previa-desconto-item'));
+    await usuario.type(screen.getByTestId('previa-desconto-item'), '3');
+    await usuario.tab({ shift: true });
+
+    expect(screen.getByTestId('previa-preco-unitario')).toHaveFocus();
+    expect(useEdicaoItemStore.getState().linhaEmEdicao).not.toBeNull();
+    expect(useVendaStore.getState().linhas[0]?.descontoManual).toBe(0);
+  });
+
+  it('TAB nos campos anteriores continua só andando entre eles', async () => {
+    const usuario = userEvent.setup();
+    await carregarNoLapis();
+
+    // Quantidade → "+" da quantidade → preço → desconto.
+    await usuario.tab();
+    expect(screen.getByTestId('previa-quantidade-aumentar')).toHaveFocus();
+    await usuario.tab();
+    expect(screen.getByTestId('previa-preco-unitario')).toHaveFocus();
+    await usuario.tab();
+    expect(screen.getByTestId('previa-desconto-item')).toHaveFocus();
+    expect(useEdicaoItemStore.getState().linhaEmEdicao).not.toBeNull();
   });
 });
 

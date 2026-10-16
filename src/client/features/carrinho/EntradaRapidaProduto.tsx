@@ -447,6 +447,8 @@ export function EntradaRapidaProduto({
   const campoPreco = useRef<HTMLInputElement>(null);
   const campoDesconto = useRef<HTMLInputElement>(null);
   const botaoConfirmar = useRef<HTMLButtonElement>(null);
+  /** Contador de TABs do desconto para o "+" — ver `aoTeclarNoCartao`. */
+  const [pedidosDeInsercaoPorTab, setPedidosDeInsercaoPorTab] = useState(0);
 
   // `linhaEmEdicao` (item já inserido, recarregado pelo lápis) e `resolvido`
   // (produto novo em revisão, TAB/busca) nunca coexistem — cada um "vence" o
@@ -1477,6 +1479,27 @@ export function EntradaRapidaProduto({
       resetar();
       return;
     }
+    // **TAB no desconto insere** (pedido do usuário, 2026-10-16): no produto
+    // editável o desconto é o último campo antes do "+", e o TAB que chegava ao
+    // botão só o focava — o operador que percorria a barra pelo teclado
+    // precisava de um Enter a mais em cada item. O foco vai ao "+" pelo código
+    // (inclusive quando ele está bloqueado e fora da ordem de TAB, para o
+    // motivo ser dito), a saída do desconto roda como sempre, e quem insere é
+    // o efeito de `pedidosDeInsercaoPorTab`, depois desse render.
+    if (
+      evento.key === 'Tab' &&
+      !evento.shiftKey &&
+      !evento.altKey &&
+      !evento.ctrlKey &&
+      !evento.metaKey &&
+      editavel &&
+      evento.target === campoDesconto.current
+    ) {
+      evento.preventDefault();
+      botaoConfirmar.current?.focus();
+      setPedidosDeInsercaoPorTab((pedidos) => pedidos + 1);
+      return;
+    }
     if (evento.key === 'Enter' && evento.target instanceof HTMLInputElement) {
       evento.preventDefault();
       confirmar();
@@ -1545,6 +1568,71 @@ export function EntradaRapidaProduto({
                     // item: a quantidade é válida, quem a recusa é o saldo
                     // (AD-236). A saída é reduzi-la.
                     (motivoSaldo ?? 'Revise quantidade, preço e desconto: há um valor inválido.');
+
+  /**
+   * O que acionar o "+" faz — pelo clique, pelo toque ou pelo TAB que chega a
+   * ele vindo do desconto (`pedidosDeInsercaoPorTab`). Um handler só, para os
+   * dois gestos nunca divergirem nas exceções abaixo.
+   *
+   * Quatro exceções ao `acaoBloqueavel`, todas porque `confirmar` faz mais do
+   * que notificar:
+   * - **sem vendedor**, quem responde é `exigirVendedor`, que também leva o
+   *   foco ao campo do vendedor;
+   * - **saldo** (AD-239), porque a confirmação reconsulta o ERP: o estoque pode
+   *   ter sido reposto desde a última consulta, e repetir o motivo antigo
+   *   obrigaria o operador a bipar de novo. Recusada a reconsulta, o motivo
+   *   volta em toast por `comunicarSaldo`.
+   * - **campo obrigatório inválido** (correção do usuário, 2026-09-17):
+   *   `confirmar` passa por `previaValida`, que além de avisar leva o foco ao
+   *   campo — só o toast deixava o operador sem saber onde corrigir o preço
+   *   zerado.
+   * - **código em consulta** (AD-254): no celular, tocar aqui com um código
+   *   digitado tira o foco do campo, e é essa saída que consulta e insere. O
+   *   toque chega com a consulta em voo, e anunciar "Aguarde" por cima de uma
+   *   inserção que já está acontecendo seria um aviso de erro para o gesto
+   *   certo. `confirmar` ignora a segunda inserção sozinho
+   *   (`confirmarEntradaRapida` com `ocupado`).
+   *
+   * Nos quatro casos o motivo continua em `bloqueioDeInsercao`, para o botão
+   * aparecer bloqueado e o `title` explicar sem depender do clique.
+   */
+  const acionarConfirmacao = acaoBloqueavel(
+    bloqueadoPorVendedor ||
+      (ocupado && semResolucao) ||
+      motivoSaldo !== null ||
+      (!semResolucao && (quantidadeInvalida || precoInvalido || descontoInvalido))
+      ? null
+      : bloqueioDeInsercao,
+    confirmar,
+  );
+
+  /**
+   * O TAB que sai do desconto pediu a inserção: confirma **depois** do render
+   * que a saída do campo provocou.
+   *
+   * Num efeito, e não no próprio `keydown`: o `blur` do desconto ainda mexe na
+   * barra — campo vazio vira `0,00`, desconto acima do mínimo é ajustado — e
+   * esses valores só existem no render seguinte. Confirmar ali gravaria o
+   * desconto de antes da saída do campo.
+   *
+   * Não confirma quando a saída do desconto já disse o que impede: o foco
+   * preso de volta no campo (texto que não é número, `exigirCampo` no
+   * `onBlur`) ou o aviso do desconto que zera o item. Nos dois o operador já
+   * leu o motivo, e confirmar repetiria a mesma frase como erro.
+   */
+  useEffect(() => {
+    if (
+      pedidosDeInsercaoPorTab === 0 ||
+      document.activeElement !== botaoConfirmar.current ||
+      descontoZeraItem
+    ) {
+      return;
+    }
+    acionarConfirmacao();
+    // Reage só ao pedido: `acionarConfirmacao` é refeita a cada render e, nas
+    // dependências, confirmaria a cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidosDeInsercaoPorTab]);
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -2011,36 +2099,9 @@ export function EntradaRapidaProduto({
           }
           data-testid="previa-confirmar"
           {...atributosDeBloqueio(bloqueioDeInsercao)}
-          // Duas exceções ao `acaoBloqueavel`, e as duas porque `confirmar` faz
-          // mais do que notificar:
-          // - **sem vendedor**, quem responde é `exigirVendedor`, que também
-          //   leva o foco ao campo do vendedor;
-          // - **saldo** (AD-239), porque a confirmação reconsulta o ERP: o
-          //   estoque pode ter sido reposto desde a última consulta, e repetir
-          //   o motivo antigo obrigaria o operador a bipar de novo. Recusada a
-          //   reconsulta, o motivo volta em toast por `comunicarSaldo`.
-          // - **campo obrigatório inválido** (correção do usuário, 2026-09-17):
-          //   `confirmar` passa por `previaValida`, que além de avisar leva o
-          //   foco ao campo — só o toast deixava o operador sem saber onde
-          //   corrigir o preço zerado.
-          // - **código em consulta** (AD-254): no celular, tocar aqui com um
-          //   código digitado tira o foco do campo, e é essa saída que consulta
-          //   e insere. O toque chega com a consulta em voo, e anunciar
-          //   "Aguarde" por cima de uma inserção que já está acontecendo seria
-          //   um aviso de erro para o gesto certo. `confirmar` ignora a
-          //   segunda inserção sozinho (`confirmarEntradaRapida` com `ocupado`).
-          // Nos quatro casos o motivo continua em `bloqueioDeInsercao`, para o
-          // botão aparecer bloqueado e o `title` explicar sem depender do
-          // clique.
-          onClick={acaoBloqueavel(
-            bloqueadoPorVendedor ||
-              (ocupado && semResolucao) ||
-              motivoSaldo !== null ||
-              (!semResolucao && (quantidadeInvalida || precoInvalido || descontoInvalido))
-              ? null
-              : bloqueioDeInsercao,
-            confirmar,
-          )}
+          // As exceções ao bloqueio explicativo estão em `acionarConfirmacao`,
+          // o mesmo handler do TAB que chega aqui vindo do desconto.
+          onClick={acionarConfirmacao}
         >
           <Plus className="size-5 shrink-0" aria-hidden="true" />
           <span className="text-md font-bold md:hidden">
