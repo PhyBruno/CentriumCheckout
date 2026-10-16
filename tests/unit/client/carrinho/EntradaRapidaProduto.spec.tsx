@@ -1297,6 +1297,42 @@ describe('EntradaRapidaProduto — venda congelada (pedido do usuário, 2026-10-
     expect(campo).toHaveValue('');
   });
 
+  it('a quantidade fecha junto: o par −/+ e o campo explicam o motivo e não mudam nada (AD-280)', async () => {
+    const erro = vi.spyOn(notificar, 'erro');
+    const usuario = userEvent.setup();
+    renderBarra();
+    congelar();
+    const campo = screen.getByTestId('previa-quantidade');
+    const antes = (campo as HTMLInputElement).value;
+
+    for (const id of ['previa-quantidade-diminuir', 'previa-quantidade-aumentar']) {
+      const botao = screen.getByTestId(id);
+      expect(botao).toHaveAttribute('aria-disabled', 'true');
+      expect(botao).toHaveAttribute('title', MOTIVO);
+      await usuario.click(botao);
+    }
+    expect(campo).toHaveAttribute('aria-disabled', 'true');
+    expect(campo).toHaveAttribute('readonly');
+    // `type` clica no campo antes de digitar: é o terceiro clique explicado.
+    await usuario.type(campo, '5');
+
+    expect(erro).toHaveBeenCalledTimes(3);
+    expect(erro).toHaveBeenCalledWith(MOTIVO);
+    expect(campo).toHaveValue(antes);
+  });
+
+  it('com a venda livre, o par −/+ segue mudando a quantidade', async () => {
+    const usuario = userEvent.setup();
+    renderBarra();
+    const campo = screen.getByTestId('previa-quantidade');
+    const antes = (campo as HTMLInputElement).value;
+
+    await usuario.click(screen.getByTestId('previa-quantidade-aumentar'));
+
+    expect(screen.getByTestId('previa-quantidade-aumentar')).not.toHaveAttribute('aria-disabled');
+    expect(campo).not.toHaveValue(antes);
+  });
+
   it('o que já estava digitado permanece no campo fechado', async () => {
     const usuario = userEvent.setup();
     renderBarra();

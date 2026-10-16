@@ -11,7 +11,7 @@ function registrarEventoAuditoria(evento: EventoAuditoriaRegistravel): void;
 
 - `EventoAuditoriaSemTimestamp` e `EventoAuditoriaRegistravel` são tipos **exportados por `src/client/domain/auditoria/eventos.ts`** — importe-os de lá, não reescreva a fórmula. Ambos são construídos com `Omit` **distributivo** sobre a união discriminada `EventoAuditoria` (aplicado membro a membro, ex. `T extends unknown ? Omit<T, 'timestamp'> : never`), não um `Omit<EventoAuditoria, 'timestamp'>` direto: `Omit` direto sobre uma união de 20 membros colapsa a união nas chaves comuns e **perde a discriminação por `tipo`**, permitindo combinar em compilação o `tipo` de um evento com o `detalhes` de outro — por isso ninguém deve "simplificar" essa fórmula de volta a um `Omit` direto.
 - `EventoAuditoriaRegistravel` é, além disso, `EventoAuditoriaSemTimestamp` **menos** o membro `VENDA_INICIADA` — é o tipo que `registrarEventoAuditoria` aceita. `VENDA_INICIADA` é privativo de `resetarAuditoria` (ver "Ciclo de vida", abaixo): nenhuma feature de negócio deve registrá-lo por conta própria via `registrarEventoAuditoria`, sob pena de produzir esse evento no meio do histórico sem zerar o array — violação silenciosa de FR-002, invisível porque a feature não tem tela de revisão (FR-009).
-- Quem chama não fornece o `timestamp`; o slice atribui `new Date().toISOString()` no momento do `push`. Essa atribuição tem resolução de milissegundo: dois eventos originados no mesmo milissegundo real recebem `timestamp` iguais. **A ordem autoritativa é a posição no array** (ordem de inserção via `push`), não o valor de `timestamp`, que é não-decrescente — nunca estritamente crescente.
+- Quem chama não fornece o `timestamp`; o slice atribui `instanteLocalIso()` no momento do `push` — ISO 8601 no fuso do navegador, com o deslocamento explícito (AD-280; até 2026-10-16 era `new Date().toISOString()`, em UTC). Essa atribuição tem resolução de milissegundo: dois eventos originados no mesmo milissegundo real recebem `timestamp` iguais. **A ordem autoritativa é a posição no array** (ordem de inserção via `push`), não o valor de `timestamp`, que é não-decrescente — nunca estritamente crescente.
 - Chamada síncrona, sem retorno — o call site de negócio (ex.: "cliente selecionado") não precisa aguardar nem tratar erro; é um `push` em memória.
 - Cada feature de negócio usa as factory functions tipadas de `src/client/domain/auditoria/eventos.ts` (uma por `tipo`, ver `data-model.md`) para montar o `evento` antes de passar ao dispatcher — evita montar o objeto literal solto em cada call site.
 
@@ -43,7 +43,7 @@ function serializarLogAuditoria(eventos: HistoricoAuditoriaVenda): string;
   "NumeroNota": "...",
   "CadSerieNFCe": "...",
   "vendedorCodigo": "...",
-  "Log": "[{\"tipo\":\"VENDA_INICIADA\",\"timestamp\":\"2026-08-26T17:32:07.123Z\",\"detalhes\":{\"origem\":\"NOVA\"}}, ...]"
+  "Log": "[{\"tipo\":\"VENDA_INICIADA\",\"timestamp\":\"2026-08-26T14:32:07.123-03:00\",\"detalhes\":{\"origem\":\"NOVA\"}}, ...]"
   // ... demais campos de CheckoutFaturarNFCe, fora do escopo desta feature
 }
 ```

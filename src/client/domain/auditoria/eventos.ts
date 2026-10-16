@@ -2,7 +2,7 @@
  * Catálogo de eventos de auditoria da venda (feature 001).
  *
  * Domínio puro: nenhuma dependência de React, Zustand ou rede — só a união
- * discriminada dos tipos de evento (23 desde a 017; `data-model.md`) e uma
+ * discriminada dos tipos de evento (24 desde AD-280; `data-model.md`) e uma
  * factory tipada por tipo, para que nenhuma feature consumidora precise montar o objeto
  * literal solto em cada call site (`contracts/auditoria-events.md`).
  *
@@ -40,7 +40,10 @@ export type OrigemAcionamento = 'CLIQUE' | 'TECLADO';
  */
 export interface EventoAuditoriaBase<TTipo extends string, TDetalhes> {
   readonly tipo: TTipo;
-  /** ISO 8601 UTC com milissegundos, `new Date().toISOString()` (research.md #2). */
+  /**
+   * ISO 8601 com milissegundos **no fuso do navegador** e o deslocamento
+   * explícito — `2026-10-16T10:23:45.123-03:00` (AD-280, `instanteLocalIso`).
+   */
   readonly timestamp: string;
   readonly detalhes: TDetalhes;
 }
@@ -293,10 +296,44 @@ export type EventoAtalhoAcionado = EventoAuditoriaBase<
 >;
 
 /* ------------------------------------------------------------------ *
+ * 24. Tentativa recusada (AD-280)
+ * ------------------------------------------------------------------ */
+
+/** Com que peso a recusa chegou ao operador — o tipo do toast que ele leu. */
+export type NivelRecusa = 'ERRO' | 'AVISO';
+
+/**
+ * O operador tentou algo que a venda não aceitou, e leu o porquê num toast de
+ * erro ou de aviso (pedido do usuário, 2026-10-16: "Log tem que explicitar quando
+ * tentou fazer uma operação que não podia, seja ela com erro ou aviso").
+ *
+ * Antes disto a trilha só registrava o que **aconteceu**: um desconto acima do
+ * teto virava um `DESCONTO_CAPA_APLICADO` já ajustado, e quem lia o `Log` não
+ * sabia que o operador tinha pedido mais. Um clique num botão bloqueado, uma
+ * forma recusada pelo saldo, um produto barrado pela venda congelada — nada
+ * disso deixava rastro.
+ *
+ * **Um evento genérico com a frase, e não um tipo por recusa**: são dezenas de
+ * recusas espalhadas pelas features, e cada uma já tem a sua frase escrita para
+ * o operador. Um tipo por recusa obrigaria cada call site a saber da auditoria
+ * — e a próxima recusa nova nasceria sem rastro. Quem emite é a composição do
+ * `vendaStore`, ouvindo `notificar` (o canal único dos toasts): toda frase de
+ * erro ou aviso que o operador lê entra no `Log` exatamente como ele a leu.
+ *
+ * Convive com os eventos específicos de recusa (`PAGAMENTO_RECUSADO`,
+ * `VALIDACAO_VENDA_RECUSADA`, `FATURAMENTO_FALHOU`): aqueles registram o fato
+ * estruturado, este registra o que foi dito ao operador.
+ */
+export type EventoOperacaoRecusada = EventoAuditoriaBase<
+  'OPERACAO_RECUSADA',
+  { readonly nivel: NivelRecusa; readonly mensagem: string }
+>;
+
+/* ------------------------------------------------------------------ *
  * União e histórico
  * ------------------------------------------------------------------ */
 
-/** União discriminada por `tipo` dos 23 eventos do catálogo (`data-model.md`). */
+/** União discriminada por `tipo` dos 24 eventos do catálogo (`data-model.md`). */
 export type EventoAuditoria =
   | EventoVendaIniciada
   | EventoClienteSelecionado
@@ -320,7 +357,8 @@ export type EventoAuditoria =
   | EventoVendaRapidaAcionada
   | EventoDavImportado
   | EventoNFCeRecuperada
-  | EventoAtalhoAcionado;
+  | EventoAtalhoAcionado
+  | EventoOperacaoRecusada;
 
 /** Todo `tipo` do catálogo, para exaustividade em testes e consumidores. */
 export type TipoEventoAuditoria = EventoAuditoria['tipo'];
@@ -535,4 +573,10 @@ export function eventoAtalhoAcionado(
   detalhes: EventoAtalhoAcionado['detalhes'],
 ): SemTimestamp<EventoAtalhoAcionado> {
   return { tipo: 'ATALHO_ACIONADO', detalhes };
+}
+
+export function eventoOperacaoRecusada(
+  detalhes: EventoOperacaoRecusada['detalhes'],
+): SemTimestamp<EventoOperacaoRecusada> {
+  return { tipo: 'OPERACAO_RECUSADA', detalhes };
 }

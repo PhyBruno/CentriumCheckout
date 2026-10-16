@@ -3,7 +3,18 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { useFocoDeModal } from '../../../../src/client/lib/useFocoDeModal';
-import { DicaAtalhos } from '../../../../src/client/features/venda-rapida/DicaAtalhos';
+import {
+  DicaAtalhos,
+  motivoDeBloqueioDaFaixa,
+} from '../../../../src/client/features/venda-rapida/DicaAtalhos';
+import {
+  AVISO_ATALHO_SEM_ITENS,
+  AVISO_PAGAMENTO_JA_INICIADO,
+} from '../../../../src/client/features/venda-rapida/avisosVendaRapida';
+import {
+  haPagamentoVivo,
+  type PagamentoAplicado,
+} from '../../../../src/client/domain/pagamento/saldoPagamento';
 import { TeclasDosAtalhos } from '../../../../src/client/features/venda-rapida/TeclasVendaRapida';
 import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../../../src/client/hotkeys/mapaAtalhos';
 import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
@@ -301,6 +312,42 @@ describe('DicaAtalhos — faixa bloqueada (correção do usuário, 2026-09-10)',
 
     await usuario.click(botao);
     expect(onAcionar).toHaveBeenCalledWith('F6');
+  });
+});
+
+/**
+ * Pedido do usuário (2026-10-16, AD-280): com uma forma de pagamento já na
+ * venda, nenhum cenário lança mais — e a faixa precisa dizer isso antes do
+ * clique, como já dizia para a venda sem item.
+ */
+describe('motivoDeBloqueioDaFaixa — a mesma ordem das guardas do gesto', () => {
+  it('sem item ativo vem primeiro (G3), mesmo com forma na venda', () => {
+    expect(motivoDeBloqueioDaFaixa(true, true)).toBe(AVISO_ATALHO_SEM_ITENS);
+    expect(motivoDeBloqueioDaFaixa(true, false)).toBe(AVISO_ATALHO_SEM_ITENS);
+  });
+
+  it('com item e forma viva na venda, a faixa fecha com a frase do pagamento iniciado (G5)', () => {
+    expect(motivoDeBloqueioDaFaixa(false, true)).toBe(AVISO_PAGAMENTO_JA_INICIADO);
+  });
+
+  it('com item e sem forma, a faixa fica livre', () => {
+    expect(motivoDeBloqueioDaFaixa(false, false)).toBeNull();
+  });
+});
+
+describe('haPagamentoVivo — o que conta como forma na venda', () => {
+  function pagamentoCom(status: PagamentoAplicado['status']): PagamentoAplicado {
+    return { status } as PagamentoAplicado;
+  }
+
+  it('aprovada ou pendente de integração conta', () => {
+    expect(haPagamentoVivo([pagamentoCom('APROVADO')])).toBe(true);
+    expect(haPagamentoVivo([pagamentoCom('PENDENTE_INTEGRACAO')])).toBe(true);
+  });
+
+  it('recusada ou excluída já saiu do fluxo e não fecha a faixa', () => {
+    expect(haPagamentoVivo([pagamentoCom('RECUSADO'), pagamentoCom('EXCLUIDO')])).toBe(false);
+    expect(haPagamentoVivo([])).toBe(false);
   });
 });
 

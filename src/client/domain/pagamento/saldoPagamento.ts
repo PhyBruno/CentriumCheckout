@@ -200,6 +200,17 @@ export function calcularSaldo(
  * reaproveitar a mesma checagem para os três casos sem duplicar regra; omiti-los
  * mantém a função utilizável em qualquer teste que só queira a duplicidade.
  */
+/**
+ * A venda tem forma de pagamento que ainda participa dela? `RECUSADO` e
+ * `EXCLUIDO` ficam de fora pela mesma razão de `podeAplicarForma`: os dois já
+ * saíram do fluxo (AD-163, AD-171).
+ */
+export function haPagamentoVivo(pagamentos: readonly PagamentoAplicado[]): boolean {
+  return pagamentos.some(
+    (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
+  );
+}
+
 export function podeAplicarForma(
   forma: FormaPagamento,
   pagamentosAtuais: readonly PagamentoAplicado[],

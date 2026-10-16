@@ -1734,20 +1734,35 @@ export function EntradaRapidaProduto({
               className="size-8 shrink-0 rounded-full bg-background"
               aria-label="Diminuir quantidade"
               data-testid="previa-quantidade-diminuir"
-              onClick={() => {
+              /* **Venda congelada fecha a quantidade** (pedido do usuário,
+               2026-10-16, AD-280): com pagamento na venda nenhum produto entra
+               nem muda, e o par −/+ seguia aceso convidando a mexer numa
+               quantidade que não ia a lugar nenhum. Mesmo bloqueio explicativo
+               do campo de código e do lápis da grid. */
+              {...atributosDeBloqueio(bloqueioDoCarrinho)}
+              onClick={acaoBloqueavel(bloqueioDoCarrinho, () => {
                 alterarQuantidade(-1);
-              }}
+              })}
             >
               <Minus className="size-4" aria-hidden="true" />
             </Button>
             <input
               ref={campoQuantidade}
               id={ID_CAMPO_QUANTIDADE}
-              className="h-full w-full min-w-0 bg-transparent text-center font-mono text-lg tabular-nums outline-none"
+              className="h-full w-full min-w-0 bg-transparent text-center font-mono text-lg tabular-nums outline-none aria-disabled:cursor-not-allowed aria-disabled:opacity-70"
               inputMode="decimal"
               data-testid="previa-quantidade"
               value={quantidadeTexto}
+              // Fechado com a venda congelada, como o par −/+ ao lado.
+              readOnly={bloqueioDoCarrinho !== null}
+              {...atributosDeBloqueio(bloqueioDoCarrinho)}
+              onClick={acaoBloqueavel(bloqueioDoCarrinho, () => {
+                /* campo livre: o clique só posiciona o cursor. */
+              })}
               onChange={(evento) => {
+                if (bloqueioDoCarrinho !== null) {
+                  return;
+                }
                 // Letra digitada no campo **não entra** (correção do usuário,
                 // 2026-09-16): quantidade é número, e deixar o texto livre
                 // dependia do operador reparar no aviso do `onBlur` para
@@ -1792,9 +1807,10 @@ export function EntradaRapidaProduto({
               className="size-8 shrink-0 rounded-full bg-background"
               aria-label="Aumentar quantidade"
               data-testid="previa-quantidade-aumentar"
-              onClick={() => {
+              {...atributosDeBloqueio(bloqueioDoCarrinho)}
+              onClick={acaoBloqueavel(bloqueioDoCarrinho, () => {
                 alterarQuantidade(1);
-              }}
+              })}
             >
               <Plus className="size-4" aria-hidden="true" />
             </Button>

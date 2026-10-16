@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { notificar } from '@/lib/notificar';
 import { eventoVendaRapidaAcionada } from '../../domain/auditoria/eventos';
 import type { CondicaoPagamento } from '../../domain/pagamento/formaPagamento';
+import { haPagamentoVivo } from '../../domain/pagamento/saldoPagamento';
 import { ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import { buscarAtalho } from '../../domain/vendaRapida/projetarAtalhos';
 import type {
@@ -13,7 +14,11 @@ import type {
 } from '../../domain/vendaRapida/tipos';
 import { useEtapaVendaStore } from '../../stores/etapaVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
-import { useFinalizacaoVenda } from '../finalizacao-suspensao/AcoesFinaisVenda';
+import {
+  MOTIVO_AGUARDANDO_ERP,
+  aguardandoRetornoDoErp,
+  useFinalizacaoVenda,
+} from '../finalizacao-suspensao/AcoesFinaisVenda';
 import { aplicarFormaComIntegracao } from './aplicarFormaComIntegracao';
 import {
   AVISO_ATALHO_SEM_ITENS,
@@ -289,14 +294,9 @@ export function criarDepsPadrao(
     // importa é existir valor a cobrar — que G4 confirma logo em seguida.
     vendaTemItens: () => useVendaStore.getState().linhas.some((linha) => !linha.cancelada),
     condicaoDaVenda: () => useVendaStore.getState().condicaoSelecionada?.codigo ?? null,
-    // `RECUSADO`/`EXCLUIDO` ficam de fora: já saíram do fluxo e não deveriam
-    // travar um atalho — a mesma exclusão que `podeAplicarForma` faz.
-    vendaTemFormaAplicada: () =>
-      useVendaStore
-        .getState()
-        .pagamentos.some(
-          (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
-        ),
+    // A mesma leitura que apaga a faixa (`FaixaAtalhosVendaRapida`, AD-280):
+    // `RECUSADO`/`EXCLUIDO` já saíram do fluxo e não travam o atalho.
+    vendaTemFormaAplicada: () => haPagamentoVivo(useVendaStore.getState().pagamentos),
     /**
      * As duas portas de etapa viram **pedidos** no `etapaVendaStore`: este
      * módulo não pode saber qual layout está montado (`semDuplicacaoRegra`).
@@ -359,11 +359,23 @@ export interface ApiVendaRapida {
 export function useAcionarCenario(): ApiVendaRapida {
   const atalhos = useAtalhosVendaRapida();
   const condicoes = useCatalogoDeCondicoes();
-  const { finalizar } = useFinalizacaoVenda();
+  const { finalizar, estado } = useFinalizacaoVenda();
+  const aguardandoErp = aguardandoRetornoDoErp(estado);
 
   const acionar = useCallback(
-    (tecla: TeclaAtalho) => acionarCenario(tecla, atalhos, criarDepsPadrao(condicoes, finalizar)),
-    [atalhos, condicoes, finalizar],
+    (tecla: TeclaAtalho): Promise<ResultadoAcionamento> => {
+      // Venda esperando o ERP (AD-280): a tela está inerte, mas F6–F9 são
+      // ouvidas no `document`. Recusa antes de G1 — nada do cenário pode
+      // começar numa venda que está a caminho de virar rascunho. O motivo é o
+      // de "um acionamento por vez" porque é isto: já há uma operação da venda
+      // em curso, só que não é do atalho.
+      if (aguardandoErp) {
+        notificar.erro(MOTIVO_AGUARDANDO_ERP);
+        return Promise.resolve({ tipo: 'RECUSADO', motivo: 'ACIONAMENTO_EM_ANDAMENTO' });
+      }
+      return acionarCenario(tecla, atalhos, criarDepsPadrao(condicoes, finalizar));
+    },
+    [aguardandoErp, atalhos, condicoes, finalizar],
   );
 
   return { atalhos, acionar };

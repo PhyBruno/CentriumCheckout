@@ -1,7 +1,10 @@
 import { useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { eventoAtalhoAcionado } from '../domain/auditoria/eventos';
 import {
+  MOTIVO_AGUARDANDO_ERP,
   ProvedorFinalizacaoVenda,
+  TravaDaVendaDuranteEnvio,
+  aguardandoRetornoDoErp,
   motivoDeBloqueioDoCancelar,
   useFinalizacaoVenda,
   vendaTemAlgoACancelar,
@@ -156,7 +159,11 @@ export function AppShell({ onRecarregarBootstrap }: AppShellProps): ReactElement
             mesmo carrinho; manter as duas no DOM duplicaria cada item para
             leitores de tela. É também o que a 007 exige de forma mais ampla:
             ausência estrutural, não flag de "oculto" (MOB-05, `FR-008`). */}
-        {compacto ? <MobileWizard /> : <DesktopLayout />}
+        {/* Os dois layouts dentro da mesma trava: com a suspensão esperando o
+            ERP, nada da tela age (AD-280). */}
+        <TravaDaVendaDuranteEnvio>
+          {compacto ? <MobileWizard /> : <DesktopLayout />}
+        </TravaDaVendaDuranteEnvio>
       </ProvedorFinalizacaoVenda>
     </main>
   );
@@ -218,19 +225,29 @@ function TeclasFixasDaVenda({ compacto }: TeclasFixasDaVendaProps): null {
     return fraseDeRecusaDeImportacao();
   }
 
+  /**
+   * Venda esperando o ERP: nenhuma tecla age (AD-280). A tela já está inerte
+   * (`TravaDaVendaDuranteEnvio`), mas a tecla é ouvida no `document` e o
+   * `inert` não a alcança — sem isto o F4 abriria a busca de produto por cima
+   * de uma venda a caminho de virar rascunho.
+   */
+  function aposEspera(recusa: () => string | null): () => string | null {
+    return () => (aguardandoRetornoDoErp(estado) ? MOTIVO_AGUARDANDO_ERP : recusa());
+  }
+
   useTeclasFixas({
     // Direto na janela, pulando o seletor (`research.md` D6): quem decorou a
     // tecla já escolheu o documento. A importação em si reaplica a recusa no
     // fim (`importarVendaExistente`), como no caminho por clique.
     IMPORTAR_DAV: {
-      indisponivel: recusaDeImportacao,
+      indisponivel: aposEspera(recusaDeImportacao),
       executar: () => {
         auditarAtalho('IMPORTAR_DAV');
         useJanelasStore.getState().abrir('dav');
       },
     },
     IMPORTAR_NFCE: {
-      indisponivel: recusaDeImportacao,
+      indisponivel: aposEspera(recusaDeImportacao),
       executar: () => {
         auditarAtalho('IMPORTAR_NFCE');
         useJanelasStore.getState().abrir('nfce');
@@ -241,7 +258,7 @@ function TeclasFixasDaVenda({ compacto }: TeclasFixasDaVendaProps): null {
       // na venda o cliente não troca, e a tecla diz isso em vez de abrir uma
       // busca de onde nenhuma escolha vale (pedido do usuário, 2026-10-08;
       // `data-model.md` da 016: "a mesma do controle equivalente na tela").
-      indisponivel: motivoClienteBloqueadoAgora,
+      indisponivel: aposEspera(motivoClienteBloqueadoAgora),
       // O mesmo `abrir` que a lupa chama. No wizard mobile, `MobileWizard` leva
       // o operador à etapa 1, onde o card existe (decisão de 2026-09-15).
       executar: () => {
@@ -252,7 +269,7 @@ function TeclasFixasDaVenda({ compacto }: TeclasFixasDaVendaProps): null {
     IDENTIFICAR_PRODUTO: {
       // Idem para a lupa da barra de produto: venda congelada não recebe
       // produto, e a tecla recusa com a frase do lápis e da lixeira da grid.
-      indisponivel: motivoCarrinhoBloqueadoAgora,
+      indisponivel: aposEspera(motivoCarrinhoBloqueadoAgora),
       executar: () => {
         auditarAtalho('IDENTIFICAR_PRODUTO');
         useJanelasStore.getState().abrir('produto');

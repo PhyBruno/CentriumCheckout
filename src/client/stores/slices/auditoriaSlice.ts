@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand';
+import { instanteLocalIso } from '@/lib/instanteLocal';
 import type { VendaState } from '../vendaStore';
 import { eventoVendaIniciada } from '../../domain/auditoria/eventos';
 import type {
@@ -52,9 +53,13 @@ export interface AuditoriaSlice {
   descartarAuditoria(): void;
 }
 
-/** `timestamp` autoritativo do slice — nunca vem do call site. */
+/**
+ * `timestamp` autoritativo do slice — nunca vem do call site. No fuso do
+ * navegador, com o deslocamento explícito (AD-280): é a hora do relógio do caixa
+ * que quem lê o `Log` no ERP precisa ver.
+ */
 function carimbar(evento: EventoAuditoriaSemTimestamp): EventoAuditoria {
-  return { ...evento, timestamp: new Date().toISOString() };
+  return { ...evento, timestamp: instanteLocalIso() };
 }
 
 export const criarAuditoriaSlice: StateCreator<

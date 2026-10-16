@@ -159,7 +159,58 @@ function montarToast(
   };
 }
 
+/** Uma recusa que o operador acabou de ler — o que os ouvintes recebem. */
+export interface RecusaNotificada {
+  readonly tipo: Exclude<TipoNotificacao, 'sucesso'>;
+  readonly mensagem: string;
+}
+
+export type OuvinteDeRecusa = (recusa: RecusaNotificada) => void;
+
+const ouvintesDeRecusa = new Set<OuvinteDeRecusa>();
+
+/**
+ * Inscreve um ouvinte de **erro e aviso** e devolve a função que o desinscreve
+ * (AD-280).
+ *
+ * Existe para a auditoria registrar toda tentativa recusada sem que este módulo
+ * conheça store nenhum — `lib/` não importa `stores/`. Quem liga os dois é a
+ * composição do `vendaStore`, do mesmo jeito que ela já liga `avisar` e
+ * `notificadorDeVeredito`.
+ *
+ * `sucesso` fica de fora: o desfecho que deu certo já tem o próprio evento, e
+ * a pergunta aqui é só "o que o operador tentou e não pôde".
+ */
+export function ouvirRecusas(ouvinte: OuvinteDeRecusa): () => void {
+  ouvintesDeRecusa.add(ouvinte);
+  return () => {
+    ouvintesDeRecusa.delete(ouvinte);
+  };
+}
+
+/**
+ * Avisa os ouvintes **depois** do toast: um ouvinte que falhe não pode tirar do
+ * operador a frase que explica a recusa — perder uma linha do `Log` é ruim, mas
+ * deixar o caixa sem resposta é pior (mesma escolha de `registrarEventoAuditoria`).
+ */
+function avisarOuvintes(recusa: RecusaNotificada): void {
+  for (const ouvinte of ouvintesDeRecusa) {
+    try {
+      ouvinte(recusa);
+    } catch (erro) {
+      console.error('[notificar] um ouvinte de recusa falhou.', erro);
+    }
+  }
+}
+
 function emitir(tipo: TipoNotificacao, mensagem: string): void {
+  exibir(tipo, mensagem);
+  if (tipo !== 'sucesso') {
+    avisarOuvintes({ tipo, mensagem });
+  }
+}
+
+function exibir(tipo: TipoNotificacao, mensagem: string): void {
   const { titulo, opcoes } = montarToast(tipo, mensagem);
 
   // **No compacto, a tela volta ao topo junto com o toast** (pedido do usuário,

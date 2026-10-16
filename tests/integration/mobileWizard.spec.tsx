@@ -214,7 +214,14 @@ describe('MobileWizard — navegação', () => {
     expect(depois.linhas).toBe(antes.linhas);
     expect(depois.clienteAtual).toBe(antes.clienteAtual);
     expect(depois.pagamentos).toBe(antes.pagamentos);
-    expect(depois.eventos).toBe(antes.eventos);
+    // A trilha só ganha a recusa do avanço que o operador leu (AD-280): a
+    // navegação em si continua sem deixar evento nenhum.
+    expect(depois.eventos.slice(0, antes.eventos.length)).toEqual(antes.eventos);
+    expect(
+      depois.eventos
+        .slice(antes.eventos.length)
+        .every((evento) => evento.tipo === 'OPERACAO_RECUSADA'),
+    ).toBe(true);
   });
 });
 

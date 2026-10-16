@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { notificadorDeVeredito, notificar } from '@/lib/notificar';
+import { notificadorDeVeredito, notificar, ouvirRecusas } from '@/lib/notificar';
 import { useRecusaValidacaoStore } from './recusaValidacaoStore';
 import { criarAuditoriaSlice } from './slices/auditoriaSlice';
 import type { AuditoriaSlice } from './slices/auditoriaSlice';
@@ -17,6 +17,7 @@ import type { ValidacaoDeps, ValidacaoVendaSlice } from './slices/validacaoVenda
 import { criarVendedorSlice } from './slices/vendedorSlice';
 import type { VendedorDeps, VendedorSlice } from './slices/vendedorSlice';
 import { useSessionStore } from './sessionStore';
+import { eventoOperacaoRecusada } from '../domain/auditoria/eventos';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
 import type { CapacidadesPagamento } from '../domain/pagamento/roteamentoIntegracao';
 import type { LinhaRateavel } from '../domain/pagamento/descontoCapa';
@@ -402,6 +403,34 @@ export function criarVendaStore(
 }
 
 export const useVendaStore = criarVendaStore();
+
+/**
+ * Toda recusa que o operador lê num toast vira `OPERACAO_RECUSADA` na trilha da
+ * venda (AD-280) — inclusive o clique num controle bloqueado, que passa por
+ * `acaoBloqueavel` e chega ao mesmo `notificar`.
+ *
+ * Aqui, e não em `notificar`, pelo mesmo motivo de `avisar` e da recusa da
+ * validação logo acima: é a composição que conhece os dois lados, e `lib/` não
+ * importa store nenhum.
+ *
+ * **Só com uma sessão de venda aberta**: antes de `abrirSessaoDeVenda` (o
+ * bootstrap ainda carregando, por exemplo) não há venda a que a recusa
+ * pertença, e registrá-la num histórico vazio é o que `registrarEventoAuditoria`
+ * existe para denunciar (FR-002).
+ */
+export function auditarRecusasNaVenda(store: typeof useVendaStore): () => void {
+  return ouvirRecusas(({ tipo, mensagem }) => {
+    const venda = store.getState();
+    if (venda.eventos.length === 0) {
+      return;
+    }
+    venda.registrarEventoAuditoria(
+      eventoOperacaoRecusada({ nivel: tipo === 'erro' ? 'ERRO' : 'AVISO', mensagem }),
+    );
+  });
+}
+
+auditarRecusasNaVenda(useVendaStore);
 
 /**
  * Abre uma sessão de venda: **único** ponto que toca `auditoria` e

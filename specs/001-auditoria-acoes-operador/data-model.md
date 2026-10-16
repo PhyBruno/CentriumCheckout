@@ -7,7 +7,7 @@ União TypeScript discriminada por `tipo`. Todo evento tem a base:
 ```ts
 interface EventoAuditoriaBase<TTipo extends string, TDetalhes> {
   tipo: TTipo;
-  timestamp: string; // ISO 8601, new Date().toISOString() — ver research.md #2
+  timestamp: string; // ISO 8601 no fuso do navegador, com deslocamento (instanteLocalIso, AD-280) — ver research.md #2
   detalhes: TDetalhes;
 }
 ```
@@ -16,7 +16,7 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 
 ### Catálogo de tipos
 
-⚠️ **O código tem 23 tipos desde a 017 (2026-10-13), não os 20 desta tabela original.** A tabela abaixo ganhou a linha 23 (`DESCONTO_CAPA_APLICADO`, 017/AD-279); `NFCE_RECUPERADA` (011) e `ATALHO_ACIONADO` (016) existem em `src/client/domain/auditoria/eventos.ts` e estão documentados nas próprias features, não aqui. A fonte de verdade da forma de cada evento é a união `EventoAuditoria` daquele arquivo.
+⚠️ **O código tem 24 tipos desde AD-280 (2026-10-16), não os 20 desta tabela original.** A tabela abaixo ganhou as linhas 23 (`DESCONTO_CAPA_APLICADO`, 017/AD-279) e 24 (`OPERACAO_RECUSADA`, AD-280); `NFCE_RECUPERADA` (011) e `ATALHO_ACIONADO` (016) existem em `src/client/domain/auditoria/eventos.ts` e estão documentados nas próprias features, não aqui. A fonte de verdade da forma de cada evento é a união `EventoAuditoria` daquele arquivo.
 
 | # | `tipo` | Origem (feature) | `detalhes` |
 |---|---|---|---|
@@ -41,11 +41,12 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 | 19 | `VENDA_RAPIDA_ACIONADA` | 013-venda-rapida-cenario-pagamento | `{ tecla: 'F6' \| 'F7' \| 'F8' \| 'F9', cenarioNome: string, condicaoCodigo: number, formaCodigo: number, valorLancado: number, finalizacaoAutomatica: boolean }` (`valorLancado` em centavos inteiros) — um evento por acionamento que alterou a venda; acionamento recusado em G1–G4 (`specs/013-.../data-model.md`) não gera evento (I12 da feature 013) |
 | 20 | `DAV_IMPORTADO` | 006-importacao-dav | `{ numeroDav: string, numeroNota: number, quantidadeLinhas: number, quantidadeFormasDePagamento: number }` — disparado uma única vez ao final de `importarVendaExistente`, depois que carrinho/cliente/vendedor/pagamento já foram populados (AD-114); `numeroDav` só existe nesta trilha — não é reenviado a `FaturarNFCe` (AD-107) |
 | 23 | `DESCONTO_CAPA_APLICADO` | 017-motor-desconto | `{ origem: 'CONDICAO' \| 'MANUAL', modo: 'PERCENTUAL' \| 'VALOR', entrada: number, valor: number }` (`valor` em centavos; `entrada` é percentual em `PERCENTUAL` e centavos em `VALOR`) — emitido pela capa automática de `selecionarCondicao` e pela aplicação **não silenciosa** de `aplicarDescontoCapa` (nunca por tecla); deduplicado contra o último evento de capa do histórico da venda (`ultimoDescontoCapaAuditado`) |
+| 24 | `OPERACAO_RECUSADA` | Composição do `vendaStore` (AD-280), ouvindo `notificar` | `{ nivel: 'ERRO' \| 'AVISO', mensagem: string }` — toda frase de erro ou aviso que o operador lê num toast, inclusive o clique num controle bloqueado (`acaoBloqueavel`) e a tecla recusada; `mensagem` é o texto exato exibido. Só com sessão de venda aberta (histórico não vazio). Convive com os eventos específicos de recusa (14, 15, 18): aqueles registram o fato estruturado, este o que foi dito ao operador |
 
 ### Regras de estado (state machine do slice)
 
 - **Zerado** → só no evento `VENDA_INICIADA` (início de venda nova ou retomada de rascunho/DAV). Nunca herda eventos de uma sessão anterior (FR-008).
-- **Acumulando** → todo evento subsequente é `push`ado ao final do array na ordem em que ocorre. **A ordem autoritativa é a posição no próprio array (ordem de inserção via `push`), não o valor de `timestamp`**: `new Date().toISOString()` tem resolução de milissegundo, e dois eventos originados no mesmo milissegundo real (ex.: duas bipagens de código de barras em sequência rápida, produzindo dois `PRODUTO_INSERIDO`; ou dois `push` disparados no mesmo frame) recebem `timestamp` **iguais**. A sequência de `timestamp` é, portanto, **não-decrescente** — nunca estritamente crescente. O ERP deve tratar a ordem do array como autoritativa ao ler o campo `Log`, não reordenar por `timestamp`.
+- **Acumulando** → todo evento subsequente é `push`ado ao final do array na ordem em que ocorre. **A ordem autoritativa é a posição no próprio array (ordem de inserção via `push`), não o valor de `timestamp`**: o carimbo (`instanteLocalIso()`, AD-280) tem resolução de milissegundo, e dois eventos originados no mesmo milissegundo real (ex.: duas bipagens de código de barras em sequência rápida, produzindo dois `PRODUTO_INSERIDO`; ou dois `push` disparados no mesmo frame) recebem `timestamp` **iguais**. A sequência de `timestamp` é, portanto, **não-decrescente** — nunca estritamente crescente. O ERP deve tratar a ordem do array como autoritativa ao ler o campo `Log`, não reordenar por `timestamp`.
 - **Enviado, descartado** → após `FaturarNFCe` retornar sucesso (`FATURAR` ou `SUSPENDER`), o array é serializado para `Log` e o slice é resetado junto com carrinho/cache (FR-007).
 - **Enviado, preservado** → se `FaturarNFCe` falhar por rede, o evento `FATURAMENTO_FALHOU` é adicionado ao array e o slice **não** é resetado — a próxima tentativa reenvia o array completo, incluindo a falha anterior (FR-006, AUDIT-09 — catálogo de invariantes em `.specs/features/auditoria-acoes-operador/spec.md`, linha 87).
 
