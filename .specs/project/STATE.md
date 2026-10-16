@@ -4353,3 +4353,17 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Limite conhecido:** se o operador desiste **antes** de o ERP responder à criação, o evento sai sem identificador, e uma resposta que chegue depois não é registrada (o evento já foi emitido). A janela continua avisando que a transação em voo não é cancelada. Fechar essa janela exigiria cancelar ou consultar a cobrança, o que o Checkout não faz.
 
 **Impact:** `src/client/domain/pagamento/{remocaoPagamento,saldoPagamento}.ts`, `src/client/domain/auditoria/eventos.ts`, `src/client/domain/validacaoVenda/projetarPagamentos.ts`, `src/client/stores/slices/pagamentoSlice.ts`, `src/client/features/pagamento/{ListaPagamentosAplicados.tsx,tef/ModalTef.tsx,pix/ModalPix.tsx}`; testes em `remocaoPagamento.spec.ts`, `pagamentoSlice.spec.ts`, `ModalTef.spec.tsx`, `ModalPix.spec.tsx`, `ListaPagamentosAplicados.spec.tsx`, `e2e/pagamento-pix.spec.ts` e `e2e/pagamento-tef.spec.ts` (a desistência chega no `Log` de `FaturarNFCe` com o identificador criado pelo mock).
+
+### AD-286: o faltante pré-carregado no "Valor recebido" acompanha o saldo até o operador digitar (2026-10-13)
+
+> Numerada AD-279 na branch de origem; renumerada no merge com o `master`, onde AD-279 já era o motor de desconto (e a 282–285 já existiam na 018).
+
+**Pedido do usuário:** *"Encontrei um erro: O valor recebido (antes de inserir), tem que ser ajustado conforme o desconto."*
+
+**Origem do defeito.** `EntradaPagamento` copia o faltante para o campo **uma vez**, no foco (pedido de 2026-09-24), e depois não volta a tocar nele. Passar pelo campo, que fica com "100,00", e só depois aplicar o desconto de capa deixava o valor cheio sobre uma venda de 90,00. O Enter então inseria 100,00: troco fantasma no dinheiro, ou recusa por valor acima do saldo no cartão. Com o AD-278 o desconto passou a gravar a cada tecla, mas o campo de valor não acompanhava.
+
+**Decision:** o campo guarda qual faltante ele mesmo pré-carregou (`faltantePreenchido`). Enquanto o texto for esse preenchimento automático, ele segue `saldo().saldoRestante`, sincronizado durante a renderização como o espelho do AD-278; saldo zerado esvazia o campo. Isso vale para qualquer mudança do saldo antes da inserção, inclusive item acrescentado ou removido, não só o desconto. **O texto digitado pelo operador não é reescrito**: é a cédula que o cliente entregou, e ela não muda porque a venda ficou mais barata; quem muda é o troco. Inserir o pagamento também descarta o preenchimento.
+
+**Impact:** `src/client/features/pagamento/EntradaPagamento.tsx`; `tests/unit/client/pagamento/EntradaPagamento.spec.tsx` (2 casos novos).
+
+**Verificação:** `tsc`, ESLint e Prettier limpos; 2175 testes unit e integração verdes; E2E `pagamento-geral.spec` e `venda-rapida.spec` 15/15. **Não verificado:** em navegador real contra o ERP. A inserção ponta a ponta depois do desconto não tem teste unitário próprio, porque passa pelo gate da 014, que vai à rede; o teste afirma o texto do campo, que é exatamente o que o Enter envia.

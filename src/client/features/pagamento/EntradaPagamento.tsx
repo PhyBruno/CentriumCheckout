@@ -6,9 +6,18 @@ import { lerCentavosDigitados } from '@/lib/numeroDigitado';
 import { fecharTecladoVirtual } from '@/lib/tecladoVirtual';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
-import { ZERO_CENTAVOS, reaisDeCentavos } from '../../domain/precificacao/dinheiro';
+import { ZERO_CENTAVOS, reaisDeCentavos, type Centavos } from '../../domain/precificacao/dinheiro';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
+
+/**
+ * Centavos no texto do campo. Mesma vírgula decimal de `textoDoDescontoAplicado`:
+ * a conversão é do domínio (`reaisDeCentavos`), o componente só escolhe a
+ * apresentação.
+ */
+function textoDoValor(valor: Centavos): string {
+  return reaisDeCentavos(valor).toFixed(2).replace('.', ',');
+}
 
 export interface EntradaPagamentoProps {
   /**
@@ -77,8 +86,41 @@ export function EntradaPagamento({
    */
   const totalLiquido = useVendaStore((estado) => estado.saldo().totalLiquido);
 
+  const saldoRestante = useVendaStore((estado) => estado.saldo().saldoRestante);
+
   const [valorTexto, setValorTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+
+  /**
+   * O faltante que `preencherComFaltante` pôs no campo — ou `null` quando o
+   * texto é do operador (ou o campo está vazio).
+   *
+   * O faltante pré-carregado **acompanha o saldo** enquanto ninguém o editou
+   * (correção do usuário, 2026-10-13: "o valor recebido, antes de inserir, tem
+   * que ser ajustado conforme o desconto"). Ele era copiado uma vez, no foco, e
+   * ficava parado: passar pelo campo e depois aplicar o desconto deixava
+   * "100,00" sobre uma venda de 90,00, e o Enter inseria o valor cheio — troco
+   * fantasma no dinheiro, recusa por valor acima do saldo no cartão. Vale para
+   * qualquer mudança do saldo antes da inserção, não só o desconto: um item
+   * acrescentado ou removido mexe no faltante do mesmo jeito.
+   *
+   * O texto **digitado** não é tocado: é a cédula que o cliente entregou, e ela
+   * não muda porque a venda ficou mais barata — quem muda é o troco.
+   *
+   * Sincronizado durante a renderização, e não num efeito, pelo mesmo motivo do
+   * espelho de `ControleDescontoCapa`: um efeito daria um quadro com o valor
+   * velho em tela, e um Enter nesse quadro inseriria o número errado.
+   */
+  const [faltantePreenchido, setFaltantePreenchido] = useState<Centavos | null>(null);
+  if (faltantePreenchido !== null && faltantePreenchido !== saldoRestante) {
+    if (saldoRestante === ZERO_CENTAVOS) {
+      setFaltantePreenchido(null);
+      setValorTexto('');
+    } else {
+      setFaltantePreenchido(saldoRestante);
+      setValorTexto(textoDoValor(saldoRestante));
+    }
+  }
   const campo = useRef<HTMLInputElement>(null);
 
   // Em efeito, e não no clique que escolheu a forma: ali o campo ainda está
@@ -158,6 +200,7 @@ export function EntradaPagamento({
     // operador por toast, e manter o valor antigo faria o próximo Enter
     // repetir a mesma tentativa.
     setValorTexto('');
+    setFaltantePreenchido(null);
 
     // Coberta a venda, o foco vai para "Finalizar venda" (pedido do usuário,
     // 2026-09-16): o gesto seguinte do caixa é fechar, e o Enter no botão
@@ -205,9 +248,8 @@ export function EntradaPagamento({
     if (faltante === ZERO_CENTAVOS) {
       return;
     }
-    // Mesma vírgula decimal de `textoDoDescontoAplicado`: a conversão é do
-    // domínio (`reaisDeCentavos`), o componente só escolhe a apresentação.
-    setValorTexto(reaisDeCentavos(faltante).toFixed(2).replace('.', ','));
+    setValorTexto(textoDoValor(faltante));
+    setFaltantePreenchido(faltante);
   }
 
   function aoTeclar(evento: KeyboardEvent<HTMLInputElement>): void {
@@ -268,6 +310,9 @@ export function EntradaPagamento({
             onChange={(evento) => {
               if (bloqueioDoCampo === null) {
                 setValorTexto(evento.target.value);
+                // Digitou por cima: o número passa a ser dele, e o saldo não o
+                // reescreve mais.
+                setFaltantePreenchido(null);
               }
             }}
             onFocus={preencherComFaltante}
