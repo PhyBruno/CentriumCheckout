@@ -28,6 +28,21 @@ export interface AuditoriaSlice {
   readonly eventos: HistoricoAuditoriaVenda;
 
   /**
+   * O histórico já foi serializado no `Log` de um `FaturarNFCe` que ainda não
+   * respondeu (AD-280, revisão de 2026-10-16).
+   *
+   * Quem liga e desliga é a finalização (004), que é quem serializa e envia.
+   * Quem lê é a auditoria de alertas (`auditarAlertasNaVenda`): um alerta
+   * exibido nesse intervalo não tem como chegar ao ERP — no sucesso o histórico é
+   * descartado —, então não é registrado. Zerado junto com o histórico, para
+   * nenhuma venda nascer achando que o `Log` dela está em trânsito.
+   */
+  readonly logEmEnvio: boolean;
+
+  /** Marca o início (`true`) e o fim (`false`) do envio do `Log` ao ERP. */
+  marcarLogEmEnvio(emEnvio: boolean): void;
+
+  /**
    * Registra um evento ao final do histórico, carimbando o `timestamp` no
    * momento do `push` — o call site nunca fornece a data/hora.
    *
@@ -87,13 +102,22 @@ export const criarAuditoriaSlice: StateCreator<
       state.eventos.push(carimbar(evento));
     }),
 
+  logEmEnvio: false,
+
+  marcarLogEmEnvio: (emEnvio) =>
+    set((state) => {
+      state.logEmEnvio = emEnvio;
+    }),
+
   resetarAuditoria: (origem) =>
     set((state) => {
       state.eventos = [carimbar(eventoVendaIniciada({ origem }))];
+      state.logEmEnvio = false;
     }),
 
   descartarAuditoria: () =>
     set((state) => {
       state.eventos = [];
+      state.logEmEnvio = false;
     }),
 });

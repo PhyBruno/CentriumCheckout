@@ -25,6 +25,7 @@ import {
   calcularTotalLinha,
   formatarCentavos,
   somar,
+  type Centavos,
 } from '../../domain/precificacao/dinheiro';
 import { preservarSelecaoNoProximoFoco } from '@/lib/selecionarConteudoAoFocar';
 import {
@@ -66,6 +67,7 @@ import {
   useInsercaoDeProduto,
   useMotivoCarrinhoBloqueado,
   usePoliticaSaldo,
+  type AjustesDaBarra,
   type ResultadoConfirmacao,
   type RevisaoProduto,
 } from './useCarrinho';
@@ -425,6 +427,15 @@ export function EntradaRapidaProduto({
    */
   const entradaRecusada = useRef<string | null>(null);
   /**
+   * O desconto manual que o operador pediu antes de a barra ajustá-lo ao preço
+   * mínimo (AD-280), ou `null` sem ajuste pendente. Ref, e não estado: só a
+   * confirmação lê, e o valor não muda nada na tela.
+   *
+   * Zera quando o pedido deixa de existir — o operador digita de novo no preço
+   * ou no desconto, a barra volta ao vazio ou carrega outro item.
+   */
+  const descontoPedidoAntesDoMinimo = useRef<Centavos | null>(null);
+  /**
    * Uma recusa abriu a janela de cenário e o foco ainda precisa voltar ao
    * código quando ela fechar — ver `voltarAoCodigoAposRecusa`.
    */
@@ -485,11 +496,35 @@ export function EntradaRapidaProduto({
    * daqui dentro do limite, o slice não repete o aviso (FR-013).
    */
   function ajustarAoMinimoEAvisar(): boolean {
-    if (!editavel || snapshotAtivo === null || vinculo.ajustarAoMinimo() === null) {
+    if (!editavel || snapshotAtivo === null) {
       return false;
+    }
+    // Lido **antes** do ajuste: depois dele o campo já mostra o permitido, e o
+    // que o operador pediu só existe aqui.
+    const pedido = vinculo.consolidar()?.descontoManual ?? null;
+    if (vinculo.ajustarAoMinimo() === null) {
+      return false;
+    }
+    if (pedido !== null) {
+      descontoPedidoAntesDoMinimo.current = pedido;
     }
     notificar.aviso(avisoDePrecoMinimo(snapshotAtivo.precoMinimo));
     return true;
+  }
+
+  /**
+   * O que a confirmação grava, mais o desconto pedido quando a barra o ajustou
+   * ao preço mínimo — o `Log` registra os dois (AD-280).
+   */
+  function ajustesParaGravar(quantidade: Milesimos, par: ItemConsolidado): AjustesDaBarra {
+    const pedido = descontoPedidoAntesDoMinimo.current;
+    return {
+      quantidade,
+      ...par,
+      ...(pedido === null || pedido === par.descontoManual
+        ? {}
+        : { descontoManualSolicitado: pedido }),
+    };
   }
 
   /**
@@ -647,6 +682,7 @@ export function EntradaRapidaProduto({
     setQuantidadeTexto(formatarQuantidade(linhaEmEdicao.quantidade, 3));
     // O par **derivado** (017): o preço praticado, não o `precoUnitario` de
     // referência — que, com desconto, é o preço de tabela.
+    descontoPedidoAntesDoMinimo.current = null;
     carregarVinculo(linhaEmEdicao);
     if (linhaEmEdicao.snapshot.pesavelEditavel === 'E') {
       campoQuantidade.current?.focus();
@@ -818,6 +854,7 @@ export function EntradaRapidaProduto({
     saldoAnunciado.current = null;
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
+    descontoPedidoAntesDoMinimo.current = null;
     zerarVinculo();
     setSaldoConhecido(null);
     limparEdicao();
@@ -1016,6 +1053,7 @@ export function EntradaRapidaProduto({
     setResolvido(revisao);
     setSaldoConhecido(revisao.saldo);
     setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
+    descontoPedidoAntesDoMinimo.current = null;
     iniciarVinculo(revisao.snapshot);
   }
 
@@ -1157,8 +1195,13 @@ export function EntradaRapidaProduto({
   async function aoSairDoCodigo(): Promise<void> {
     // Venda congelada: o campo está fechado e o clique nele já disse o motivo —
     // sair dele não consulta nada nem repete o aviso.
+    //
+    // Tela inerte (suspensão esperando o ERP, AD-280): o foco saiu porque o
+    // navegador o tirou, não porque o operador terminou de digitar. Consultar
+    // aqui mandaria ao ERP um `GetProduto` no meio da suspensão da venda.
     if (
       bloqueioDoCarrinho !== null ||
+      (campoCodigo.current?.closest('[inert]') ?? null) !== null ||
       trocandoTeclado.current ||
       ocupado ||
       !codigoPendenteDeConsulta()
@@ -1324,7 +1367,7 @@ export function EntradaRapidaProduto({
       // Saldo (AD-236): a linha só muda se a reconsulta deixar; recusada, o
       // item continua carregado aqui, com o botão já bloqueado pelo saldo novo.
       const linha = linhaEmEdicao;
-      const ajustes = { quantidade: quantidadeLida, ...par };
+      const ajustes = ajustesParaGravar(quantidadeLida, par);
       void aplicarConfirmacao(() => confirmarEdicaoDeLinha(linha, ajustes, saldoConhecido));
       return;
     }
@@ -1361,7 +1404,7 @@ export function EntradaRapidaProduto({
       if (par === null) {
         return;
       }
-      const ajustes = { quantidade, ...par };
+      const ajustes = ajustesParaGravar(quantidade, par);
       void aplicarConfirmacao(() =>
         confirmarEdicao(
           {
@@ -1850,6 +1893,8 @@ export function EntradaRapidaProduto({
               value={precoExibido}
               onChange={(evento) => {
                 if (editavel) {
+                  // Digitar de novo é um pedido novo: o ajuste anterior não vale mais.
+                  descontoPedidoAntesDoMinimo.current = null;
                   vinculo.mudarPreco(evento.target.value);
                 }
               }}
@@ -1881,6 +1926,7 @@ export function EntradaRapidaProduto({
               value={descontoExibido}
               onChange={(evento) => {
                 if (editavel) {
+                  descontoPedidoAntesDoMinimo.current = null;
                   vinculo.mudarDesconto(evento.target.value);
                 }
               }}

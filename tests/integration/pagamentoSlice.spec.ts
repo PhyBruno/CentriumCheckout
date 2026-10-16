@@ -1496,6 +1496,45 @@ describe('pagamentoSlice — capa pela condição de pagamento (017)', () => {
       ]);
     });
 
+    it('a digitação acima do teto registra o que foi pedido ao lado do que entrou (AD-280)', () => {
+      const { store } = montarStore();
+      store.getState().selecionarCondicao(COND_A);
+
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 30);
+
+      expect(eventosDeCapa(store).at(-1)).toEqual({
+        origem: 'MANUAL',
+        modo: 'PERCENTUAL',
+        entrada: 8,
+        valor: 800,
+        entradaSolicitada: 30,
+      });
+    });
+
+    it('a mesma capa ajustada, vinda de outro pedido, é uma tentativa nova e não é deduplicada', () => {
+      const { store } = montarStore();
+      store.getState().selecionarCondicao(COND_A);
+
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 8);
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 30);
+      store.getState().aplicarDescontoCapa('PERCENTUAL', 30);
+
+      expect(eventosDeCapa(store).slice(1)).toEqual([
+        { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 8, valor: 800 },
+        { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 8, valor: 800, entradaSolicitada: 30 },
+      ]);
+    });
+
+    it('a condição que traz mais desconto do que o próprio teto registra o pedido dela', () => {
+      const { store } = montarStore();
+
+      store.getState().selecionarCondicao(COND_C);
+
+      expect(eventosDeCapa(store)).toEqual([
+        { origem: 'CONDICAO', modo: 'PERCENTUAL', entrada: 8, valor: 800, entradaSolicitada: 10 },
+      ]);
+    });
+
     it('na venda seguinte a mesma capa registra de novo (achado D1)', () => {
       const { store } = montarStore();
       store.getState().selecionarCondicao(COND_A);

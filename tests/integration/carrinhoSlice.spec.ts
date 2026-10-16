@@ -609,8 +609,45 @@ describe('carrinhoSlice — preço mínimo', () => {
     expect(store.getState().linhas[0]?.descontoManual).toBe(1200);
     expect(avisar).toHaveBeenCalledTimes(1);
     expect(avisar).toHaveBeenCalledWith(AVISO);
-    // A auditoria registra o desconto que de fato entrou.
-    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({ desconto: 1200 });
+    // A auditoria registra o desconto que de fato entrou — e o que foi pedido
+    // (AD-280).
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      desconto: 1200,
+      descontoManualSolicitado: 1500,
+    });
+  });
+
+  it('o pedido que a barra já ajustou chega ao Log pela inserção (AD-280)', () => {
+    const store = montarStore({ avisar: vi.fn() });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1200),
+      descontoManualSolicitado: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]).not.toHaveProperty('descontoManualSolicitado');
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      desconto: 1200,
+      descontoManualSolicitado: 1500,
+    });
+  });
+
+  it('sem ajuste, o evento não carrega pedido nenhum', () => {
+    const store = montarStore({ avisar: vi.fn() });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(500),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().eventos.at(-1)?.detalhes).not.toHaveProperty(
+      'descontoManualSolicitado',
+    );
   });
 
   it('dentro do limite não avisa', () => {
@@ -663,6 +700,90 @@ describe('carrinhoSlice — preço mínimo', () => {
     expect(gravou).toBe(true);
     expect(store.getState().linhas[0]?.descontoManual).toBe(3600);
     expect(avisar).toHaveBeenCalledTimes(1);
+    const alteracaoDoDesconto = store
+      .getState()
+      .eventos.find(
+        (evento) =>
+          evento.tipo === 'PRODUTO_ALTERADO' && evento.detalhes.campo === 'descontoManual',
+      );
+    expect(alteracaoDoDesconto?.detalhes).toMatchObject({
+      valorNovo: 3600,
+      valorSolicitado: 4000,
+    });
+  });
+
+  it('editarItem registra o pedido quando o mínimo o ajusta (AD-280)', () => {
+    const store = montarStore({ avisar: vi.fn() });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3000),
+      origem: 'MANUAL',
+    });
+
+    store.getState().editarItem('linha-1', 'descontoManual', emCentavos(4000));
+
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      campo: 'descontoManual',
+      valorAnterior: 3000,
+      valorNovo: 3600,
+      valorSolicitado: 4000,
+    });
+  });
+
+  it('atualizarItem leva o pedido da barra, fora dos campos da linha (AD-280)', () => {
+    const store = montarStore({ avisar: vi.fn() });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(1000),
+      origem: 'MANUAL',
+    });
+
+    store.getState().atualizarItem(
+      'linha-1',
+      {
+        quantidade: unidades(3),
+        precoUnitario: emCentavos(2000),
+        descontoManual: emCentavos(3600),
+      },
+      { descontoManualSolicitado: emCentavos(5000) },
+    );
+
+    expect(store.getState().linhas[0]).not.toHaveProperty('descontoManualSolicitado');
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      campo: 'descontoManual',
+      valorNovo: 3600,
+      valorSolicitado: 5000,
+    });
+  });
+
+  it('pedido ajustado de volta ao desconto que já estava: a linha não muda, mas a tentativa fica', () => {
+    const store = montarStore({ avisar: vi.fn() });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3600),
+      origem: 'MANUAL',
+    });
+    const linhaAntes = store.getState().linhas[0];
+
+    const gravou = store.getState().atualizarItem(
+      'linha-1',
+      {
+        quantidade: unidades(3),
+        precoUnitario: emCentavos(2000),
+        descontoManual: emCentavos(3600),
+      },
+      { descontoManualSolicitado: emCentavos(5000) },
+    );
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]).toBe(linhaAntes);
+    expect(store.getState().eventos.at(-1)).toMatchObject({
+      tipo: 'PRODUTO_ALTERADO',
+      detalhes: { valorAnterior: 3600, valorNovo: 3600, valorSolicitado: 5000 },
+    });
   });
 
   it('não toca linha não vinculável, de importação nem produto sem mínimo', () => {

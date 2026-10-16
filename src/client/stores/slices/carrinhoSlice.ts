@@ -88,6 +88,12 @@ interface InserirItemInputComum {
   readonly quantidade: Milesimos;
   /** Desconto manual informado antes da inserção, em produto `'E'` (`FR-014`). */
   readonly descontoManual?: Centavos;
+  /**
+   * O desconto manual que o operador **pediu**, quando a barra já o ajustou ao
+   * preço mínimo antes de chegar aqui (AD-280). Só para a auditoria: o que
+   * entra na linha é `descontoManual`.
+   */
+  readonly descontoManualSolicitado?: Centavos;
 }
 
 /**
@@ -122,6 +128,16 @@ export interface AjustesDeItem {
   readonly descontoManual: Centavos;
 }
 
+/**
+ * O que acompanha `atualizarItem` só para a auditoria — fora de `AjustesDeItem`
+ * de propósito: aquele objeto é espalhado na linha, e um campo a mais nele
+ * entraria no estado do carrinho.
+ */
+export interface OpcoesAuditoriaDoItem {
+  /** Ver `InserirItemInputComum.descontoManualSolicitado`. */
+  readonly descontoManualSolicitado?: Centavos;
+}
+
 const CAMPOS_EDITAVEIS: readonly CampoEditavel[] = [
   'quantidade',
   'precoUnitario',
@@ -146,7 +162,7 @@ export interface CarrinhoSlice {
    * aceito — terminando num estado que o operador nunca digitou (`research.md`
    * D5).
    */
-  atualizarItem(idLinha: string, ajustes: AjustesDeItem): boolean;
+  atualizarItem(idLinha: string, ajustes: AjustesDeItem, opcoes?: OpcoesAuditoriaDoItem): boolean;
   cancelarItem(idLinha: string): void;
   /** `FR-018` — troca de cliente com carrinho já populado. */
   reprecificarPorTrocaDeCliente(): void;
@@ -435,12 +451,19 @@ export function criarCarrinhoSlice(
 
         aplicarLinhas(linhas);
 
+        // O pedido é o que a barra recebeu do operador antes de ajustar, ou o
+        // próprio `descontoManual` quando quem ajustou foi `comPrecoMinimo`
+        // aqui dentro (AD-280).
+        const pedido = input.descontoManualSolicitado ?? input.descontoManual;
         get().registrarEventoAuditoria(
           eventoProdutoInserido({
             codigoProduto,
             quantidade: inserida.quantidade,
             precoUnitario: inserida.precoUnitario,
             desconto: somar(inserida.descontoConvenio, inserida.descontoManual),
+            ...(pedido !== undefined && pedido !== inserida.descontoManual
+              ? { descontoManualSolicitado: pedido }
+              : {}),
           }),
         );
       },
@@ -491,19 +514,21 @@ export function criarCarrinhoSlice(
 
         aplicarLinhas(resultantes);
 
+        // O valor que entrou, que difere do pedido quando o preço mínimo
+        // ajustou o desconto — e aí o pedido acompanha (AD-280).
+        const valorNovo = resultante?.[campo] ?? valor;
         get().registrarEventoAuditoria(
           eventoProdutoAlterado({
             codigoProduto: alvo.snapshot.codigoProduto,
             campo,
             valorAnterior,
-            // O valor que entrou, que difere do pedido quando o preço mínimo
-            // ajustou o desconto.
-            valorNovo: resultante?.[campo] ?? valor,
+            valorNovo,
+            ...(valorNovo === valor ? {} : { valorSolicitado: valor }),
           }),
         );
       },
 
-      atualizarItem: (idLinha, ajustes) => {
+      atualizarItem: (idLinha, ajustes, opcoes) => {
         if (carrinhoBloqueado()) {
           return false;
         }
@@ -516,6 +541,21 @@ export function criarCarrinhoSlice(
 
         const alterados = CAMPOS_EDITAVEIS.filter((campo) => alvo[campo] !== ajustes[campo]);
         if (alterados.length === 0) {
+          // Nada muda na linha — nem o descongelamento, que é efeito de edição
+          // —, mas um desconto pedido e ajustado de volta ao que já estava é
+          // uma tentativa, e fica no `Log` (AD-280).
+          const pedido = opcoes?.descontoManualSolicitado;
+          if (pedido !== undefined && pedido !== alvo.descontoManual) {
+            get().registrarEventoAuditoria(
+              eventoProdutoAlterado({
+                codigoProduto: alvo.snapshot.codigoProduto,
+                campo: 'descontoManual',
+                valorAnterior: alvo.descontoManual,
+                valorNovo: alvo.descontoManual,
+                valorSolicitado: pedido,
+              }),
+            );
+          }
           return true;
         }
 
@@ -544,18 +584,31 @@ export function criarCarrinhoSlice(
 
         aplicarLinhas(resultantes);
 
+        // O desconto pedido (AD-280): o da barra, se ela ajustou antes, ou o que
+        // chegou aqui, se quem ajustou foi `comPrecoMinimo`.
+        const descontoAplicado = resultante?.descontoManual ?? ajustes.descontoManual;
+        const descontoPedido = opcoes?.descontoManualSolicitado ?? ajustes.descontoManual;
+        const descontoFoiAjustado = descontoPedido !== descontoAplicado;
+
+        // Um pedido ajustado de volta ao desconto que a linha já tinha não
+        // altera o campo, mas é uma tentativa: entra com anterior = novo, para o
+        // `Log` mostrar o que foi pedido.
+        const campos =
+          descontoFoiAjustado && !alterados.includes('descontoManual')
+            ? [...alterados, 'descontoManual' as const]
+            : alterados;
+
         // Um evento por campo, no mesmo formato de `editarItem`: o `Log` que o
         // ERP recebe não muda de forma por causa da edição atômica.
-        for (const campo of alterados) {
+        for (const campo of campos) {
+          const ehDesconto = campo === 'descontoManual';
           get().registrarEventoAuditoria(
             eventoProdutoAlterado({
               codigoProduto: alvo.snapshot.codigoProduto,
               campo,
               valorAnterior: alvo[campo],
-              valorNovo:
-                campo === 'descontoManual' && resultante !== undefined
-                  ? resultante.descontoManual
-                  : ajustes[campo],
+              valorNovo: ehDesconto ? descontoAplicado : ajustes[campo],
+              ...(ehDesconto && descontoFoiAjustado ? { valorSolicitado: descontoPedido } : {}),
             }),
           );
         }

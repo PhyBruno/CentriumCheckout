@@ -102,6 +102,12 @@ export type EventoProdutoInserido = EventoAuditoriaBase<
     readonly precoUnitario: number;
     /** Absoluto e referente ao **total da linha**, não por unidade; centavos inteiros. */
     readonly desconto: number;
+    /**
+     * O desconto **manual** que o operador pediu, em centavos, quando o preço
+     * mínimo do produto o ajustou (AD-280). Ausente quando nada foi ajustado.
+     * Só a parte manual: o convênio de `desconto` não é pedido de ninguém.
+     */
+    readonly descontoManualSolicitado?: number;
   }
 >;
 
@@ -112,6 +118,11 @@ export type EventoProdutoAlterado = EventoAuditoriaBase<
     readonly campo: string;
     readonly valorAnterior: unknown;
     readonly valorNovo: unknown;
+    /**
+     * O valor pedido, quando o que entrou (`valorNovo`) é outro — hoje só o
+     * `descontoManual` ajustado ao preço mínimo (AD-280).
+     */
+    readonly valorSolicitado?: unknown;
   }
 >;
 
@@ -174,6 +185,13 @@ export type EventoDescontoCapaAplicado = EventoAuditoriaBase<
     readonly entrada: number;
     /** Centavos inteiros. */
     readonly valor: number;
+    /**
+     * O que foi **pedido**, na mesma unidade de `entrada`, quando o teto da
+     * condição o ajustou (AD-280) — o operador digitou 30% e a condição só
+     * permite 10%, ou a própria condição traz 15% com teto de 10%. Ausente
+     * quando nada foi ajustado: aí o pedido é a própria `entrada`.
+     */
+    readonly entradaSolicitada?: number;
   }
 >;
 
@@ -296,37 +314,42 @@ export type EventoAtalhoAcionado = EventoAuditoriaBase<
 >;
 
 /* ------------------------------------------------------------------ *
- * 24. Tentativa recusada (AD-280)
+ * 24. Alerta exibido ao operador (AD-280)
  * ------------------------------------------------------------------ */
 
-/** Com que peso a recusa chegou ao operador — o tipo do toast que ele leu. */
-export type NivelRecusa = 'ERRO' | 'AVISO';
+/** O tipo do toast que o operador leu. */
+export type NivelAlerta = 'ERRO' | 'AVISO';
 
 /**
- * O operador tentou algo que a venda não aceitou, e leu o porquê num toast de
- * erro ou de aviso (pedido do usuário, 2026-10-16: "Log tem que explicitar quando
- * tentou fazer uma operação que não podia, seja ela com erro ou aviso").
+ * O operador leu um toast de erro ou de aviso (pedido do usuário, 2026-10-16:
+ * "Log tem que explicitar quando tentou fazer uma operação que não podia, seja
+ * ela com erro ou aviso").
  *
- * Antes disto a trilha só registrava o que **aconteceu**: um desconto acima do
- * teto virava um `DESCONTO_CAPA_APLICADO` já ajustado, e quem lia o `Log` não
- * sabia que o operador tinha pedido mais. Um clique num botão bloqueado, uma
- * forma recusada pelo saldo, um produto barrado pela venda congelada — nada
- * disso deixava rastro.
+ * Antes disto a trilha só registrava o que **aconteceu**: um clique num botão
+ * bloqueado, uma forma recusada pelo saldo, um produto barrado pela venda
+ * congelada — nada disso deixava rastro.
  *
- * **Um evento genérico com a frase, e não um tipo por recusa**: são dezenas de
- * recusas espalhadas pelas features, e cada uma já tem a sua frase escrita para
- * o operador. Um tipo por recusa obrigaria cada call site a saber da auditoria
- * — e a próxima recusa nova nasceria sem rastro. Quem emite é a composição do
- * `vendaStore`, ouvindo `notificar` (o canal único dos toasts): toda frase de
- * erro ou aviso que o operador lê entra no `Log` exatamente como ele a leu.
+ * **"Alerta exibido", e não "operação recusada"** (revisão de 2026-10-16): pelo
+ * contrato de `notificar`, o `aviso` diz que o gesto **aconteceu** com algo a
+ * saber — a capa ajustada ao teto, a reprecificação que falhou depois de uma
+ * troca de cliente aceita. Chamar isso de recusa faria o `Log` afirmar que uma
+ * operação bem-sucedida foi negada. O evento descreve o que se sabe com
+ * certeza: esta frase, com este peso, chegou à tela. O `nivel` diz qual era.
  *
- * Convive com os eventos específicos de recusa (`PAGAMENTO_RECUSADO`,
- * `VALIDACAO_VENDA_RECUSADA`, `FATURAMENTO_FALHOU`): aqueles registram o fato
- * estruturado, este registra o que foi dito ao operador.
+ * **Um evento genérico com a frase, e não um tipo por alerta**: são dezenas de
+ * frases espalhadas pelas features, e um tipo por frase obrigaria cada call site
+ * a saber da auditoria — e o próximo alerta novo nasceria sem rastro. Quem emite
+ * é a composição do `vendaStore`, ouvindo `notificar` (o canal único dos
+ * toasts): a frase entra no `Log` exatamente como o operador a leu.
+ *
+ * Convive com os eventos estruturados (`PAGAMENTO_RECUSADO`,
+ * `VALIDACAO_VENDA_RECUSADA`, `FATURAMENTO_FALHOU`, e o valor pedido de
+ * `DESCONTO_CAPA_APLICADO`/`PRODUTO_*`): aqueles registram o fato, este registra
+ * o que foi dito.
  */
-export type EventoOperacaoRecusada = EventoAuditoriaBase<
-  'OPERACAO_RECUSADA',
-  { readonly nivel: NivelRecusa; readonly mensagem: string }
+export type EventoAlertaExibidoAoOperador = EventoAuditoriaBase<
+  'ALERTA_EXIBIDO_AO_OPERADOR',
+  { readonly nivel: NivelAlerta; readonly mensagem: string }
 >;
 
 /* ------------------------------------------------------------------ *
@@ -358,7 +381,7 @@ export type EventoAuditoria =
   | EventoDavImportado
   | EventoNFCeRecuperada
   | EventoAtalhoAcionado
-  | EventoOperacaoRecusada;
+  | EventoAlertaExibidoAoOperador;
 
 /** Todo `tipo` do catálogo, para exaustividade em testes e consumidores. */
 export type TipoEventoAuditoria = EventoAuditoria['tipo'];
@@ -575,8 +598,8 @@ export function eventoAtalhoAcionado(
   return { tipo: 'ATALHO_ACIONADO', detalhes };
 }
 
-export function eventoOperacaoRecusada(
-  detalhes: EventoOperacaoRecusada['detalhes'],
-): SemTimestamp<EventoOperacaoRecusada> {
-  return { tipo: 'OPERACAO_RECUSADA', detalhes };
+export function eventoAlertaExibidoAoOperador(
+  detalhes: EventoAlertaExibidoAoOperador['detalhes'],
+): SemTimestamp<EventoAlertaExibidoAoOperador> {
+  return { tipo: 'ALERTA_EXIBIDO_AO_OPERADOR', detalhes };
 }

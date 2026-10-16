@@ -14,11 +14,7 @@ import type {
 } from '../../domain/vendaRapida/tipos';
 import { useEtapaVendaStore } from '../../stores/etapaVendaStore';
 import { useVendaStore } from '../../stores/vendaStore';
-import {
-  MOTIVO_AGUARDANDO_ERP,
-  aguardandoRetornoDoErp,
-  useFinalizacaoVenda,
-} from '../finalizacao-suspensao/AcoesFinaisVenda';
+import { useFinalizacaoVenda } from '../finalizacao-suspensao/AcoesFinaisVenda';
 import { aplicarFormaComIntegracao } from './aplicarFormaComIntegracao';
 import {
   AVISO_ATALHO_SEM_ITENS,
@@ -359,23 +355,14 @@ export interface ApiVendaRapida {
 export function useAcionarCenario(): ApiVendaRapida {
   const atalhos = useAtalhosVendaRapida();
   const condicoes = useCatalogoDeCondicoes();
-  const { finalizar, estado } = useFinalizacaoVenda();
-  const aguardandoErp = aguardandoRetornoDoErp(estado);
+  const { finalizar } = useFinalizacaoVenda();
 
+  // Com a venda esperando o ERP, a tela está inerte (a faixa não recebe clique)
+  // e a tecla é recusada pela trava do mapa de teclas (`useTravaDasTeclas`,
+  // AD-280) — nenhum dos dois caminhos chega aqui.
   const acionar = useCallback(
-    (tecla: TeclaAtalho): Promise<ResultadoAcionamento> => {
-      // Venda esperando o ERP (AD-280): a tela está inerte, mas F6–F9 são
-      // ouvidas no `document`. Recusa antes de G1 — nada do cenário pode
-      // começar numa venda que está a caminho de virar rascunho. O motivo é o
-      // de "um acionamento por vez" porque é isto: já há uma operação da venda
-      // em curso, só que não é do atalho.
-      if (aguardandoErp) {
-        notificar.erro(MOTIVO_AGUARDANDO_ERP);
-        return Promise.resolve({ tipo: 'RECUSADO', motivo: 'ACIONAMENTO_EM_ANDAMENTO' });
-      }
-      return acionarCenario(tecla, atalhos, criarDepsPadrao(condicoes, finalizar));
-    },
-    [aguardandoErp, atalhos, condicoes, finalizar],
+    (tecla: TeclaAtalho) => acionarCenario(tecla, atalhos, criarDepsPadrao(condicoes, finalizar)),
+    [atalhos, condicoes, finalizar],
   );
 
   return { atalhos, acionar };

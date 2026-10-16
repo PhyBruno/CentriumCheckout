@@ -214,14 +214,19 @@ describe('MobileWizard — navegação', () => {
     expect(depois.linhas).toBe(antes.linhas);
     expect(depois.clienteAtual).toBe(antes.clienteAtual);
     expect(depois.pagamentos).toBe(antes.pagamentos);
-    // A trilha só ganha a recusa do avanço que o operador leu (AD-280): a
-    // navegação em si continua sem deixar evento nenhum.
+    // A trilha só ganha o alerta do avanço recusado para a revisão, que o
+    // operador leu (AD-280): a navegação em si continua sem deixar evento.
     expect(depois.eventos.slice(0, antes.eventos.length)).toEqual(antes.eventos);
-    expect(
-      depois.eventos
-        .slice(antes.eventos.length)
-        .every((evento) => evento.tipo === 'OPERACAO_RECUSADA'),
-    ).toBe(true);
+    expect(depois.eventos.slice(antes.eventos.length)).toEqual([
+      expect.objectContaining({
+        tipo: 'ALERTA_EXIBIDO_AO_OPERADOR',
+        detalhes: {
+          nivel: 'ERRO',
+          mensagem:
+            'Adicione formas de pagamento que cubram todo o valor da venda antes de revisar.',
+        },
+      }),
+    ]);
   });
 });
 

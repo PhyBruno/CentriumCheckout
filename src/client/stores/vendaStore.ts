@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { notificadorDeVeredito, notificar, ouvirRecusas } from '@/lib/notificar';
+import { notificadorDeVeredito, notificar, ouvirAlertas } from '@/lib/notificar';
 import { useRecusaValidacaoStore } from './recusaValidacaoStore';
 import { criarAuditoriaSlice } from './slices/auditoriaSlice';
 import type { AuditoriaSlice } from './slices/auditoriaSlice';
@@ -17,7 +17,7 @@ import type { ValidacaoDeps, ValidacaoVendaSlice } from './slices/validacaoVenda
 import { criarVendedorSlice } from './slices/vendedorSlice';
 import type { VendedorDeps, VendedorSlice } from './slices/vendedorSlice';
 import { useSessionStore } from './sessionStore';
-import { eventoOperacaoRecusada } from '../domain/auditoria/eventos';
+import { eventoAlertaExibidoAoOperador } from '../domain/auditoria/eventos';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
 import type { CapacidadesPagamento } from '../domain/pagamento/roteamentoIntegracao';
 import type { LinhaRateavel } from '../domain/pagamento/descontoCapa';
@@ -405,32 +405,40 @@ export function criarVendaStore(
 export const useVendaStore = criarVendaStore();
 
 /**
- * Toda recusa que o operador lê num toast vira `OPERACAO_RECUSADA` na trilha da
- * venda (AD-280) — inclusive o clique num controle bloqueado, que passa por
- * `acaoBloqueavel` e chega ao mesmo `notificar`.
+ * Todo alerta de erro ou aviso que o operador lê num toast vira
+ * `ALERTA_EXIBIDO_AO_OPERADOR` na trilha da venda (AD-280) — inclusive o clique
+ * num controle bloqueado, que passa por `acaoBloqueavel` e chega ao mesmo
+ * `notificar`.
  *
  * Aqui, e não em `notificar`, pelo mesmo motivo de `avisar` e da recusa da
  * validação logo acima: é a composição que conhece os dois lados, e `lib/` não
  * importa store nenhum.
  *
- * **Só com uma sessão de venda aberta**: antes de `abrirSessaoDeVenda` (o
- * bootstrap ainda carregando, por exemplo) não há venda a que a recusa
- * pertença, e registrá-la num histórico vazio é o que `registrarEventoAuditoria`
- * existe para denunciar (FR-002).
+ * Fica de fora em dois momentos, e pelo mesmo motivo — não há `Log` que o leve
+ * ao ERP:
+ *
+ * - **Sem sessão de venda aberta**: antes de `abrirSessaoDeVenda` (o bootstrap
+ *   ainda carregando, por exemplo) não há venda a que o alerta pertença, e
+ *   registrá-lo num histórico vazio é o que `registrarEventoAuditoria` existe
+ *   para denunciar (FR-002).
+ * - **Com o `Log` já a caminho do ERP** (`logEmEnvio`, revisão de 2026-10-16): o
+ *   retrato é serializado antes do envio, e no sucesso o histórico é descartado.
+ *   Um alerta registrado na espera nunca chegaria a lugar nenhum — e o `Log`
+ *   prometeria ao leitor do código uma linha que o ERP não recebe.
  */
-export function auditarRecusasNaVenda(store: typeof useVendaStore): () => void {
-  return ouvirRecusas(({ tipo, mensagem }) => {
+export function auditarAlertasNaVenda(store: typeof useVendaStore): () => void {
+  return ouvirAlertas(({ tipo, mensagem }) => {
     const venda = store.getState();
-    if (venda.eventos.length === 0) {
+    if (venda.eventos.length === 0 || venda.logEmEnvio) {
       return;
     }
     venda.registrarEventoAuditoria(
-      eventoOperacaoRecusada({ nivel: tipo === 'erro' ? 'ERRO' : 'AVISO', mensagem }),
+      eventoAlertaExibidoAoOperador({ nivel: tipo === 'erro' ? 'ERRO' : 'AVISO', mensagem }),
     );
   });
 }
 
-auditarRecusasNaVenda(useVendaStore);
+auditarAlertasNaVenda(useVendaStore);
 
 /**
  * Abre uma sessão de venda: **único** ponto que toca `auditoria` e

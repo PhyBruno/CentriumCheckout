@@ -159,46 +159,45 @@ function montarToast(
   };
 }
 
-/** Uma recusa que o operador acabou de ler — o que os ouvintes recebem. */
-export interface RecusaNotificada {
+/** Um alerta de erro ou de aviso que o operador acabou de ler — o que os ouvintes recebem. */
+export interface AlertaNotificado {
   readonly tipo: Exclude<TipoNotificacao, 'sucesso'>;
   readonly mensagem: string;
 }
 
-export type OuvinteDeRecusa = (recusa: RecusaNotificada) => void;
+export type OuvinteDeAlerta = (alerta: AlertaNotificado) => void;
 
-const ouvintesDeRecusa = new Set<OuvinteDeRecusa>();
+const ouvintesDeAlerta = new Set<OuvinteDeAlerta>();
 
 /**
  * Inscreve um ouvinte de **erro e aviso** e devolve a função que o desinscreve
  * (AD-280).
  *
- * Existe para a auditoria registrar toda tentativa recusada sem que este módulo
- * conheça store nenhum — `lib/` não importa `stores/`. Quem liga os dois é a
- * composição do `vendaStore`, do mesmo jeito que ela já liga `avisar` e
+ * Existe para a auditoria registrar todo alerta que o operador leu sem que este
+ * módulo conheça store nenhum — `lib/` não importa `stores/`. Quem liga os dois
+ * é a composição do `vendaStore`, do mesmo jeito que ela já liga `avisar` e
  * `notificadorDeVeredito`.
  *
- * `sucesso` fica de fora: o desfecho que deu certo já tem o próprio evento, e
- * a pergunta aqui é só "o que o operador tentou e não pôde".
+ * `sucesso` fica de fora: o desfecho que deu certo já tem o próprio evento.
  */
-export function ouvirRecusas(ouvinte: OuvinteDeRecusa): () => void {
-  ouvintesDeRecusa.add(ouvinte);
+export function ouvirAlertas(ouvinte: OuvinteDeAlerta): () => void {
+  ouvintesDeAlerta.add(ouvinte);
   return () => {
-    ouvintesDeRecusa.delete(ouvinte);
+    ouvintesDeAlerta.delete(ouvinte);
   };
 }
 
 /**
  * Avisa os ouvintes **depois** do toast: um ouvinte que falhe não pode tirar do
- * operador a frase que explica a recusa — perder uma linha do `Log` é ruim, mas
+ * operador a frase que ele precisa ler — perder uma linha do `Log` é ruim, mas
  * deixar o caixa sem resposta é pior (mesma escolha de `registrarEventoAuditoria`).
  */
-function avisarOuvintes(recusa: RecusaNotificada): void {
-  for (const ouvinte of ouvintesDeRecusa) {
+function avisarOuvintes(alerta: AlertaNotificado): void {
+  for (const ouvinte of ouvintesDeAlerta) {
     try {
-      ouvinte(recusa);
+      ouvinte(alerta);
     } catch (erro) {
-      console.error('[notificar] um ouvinte de recusa falhou.', erro);
+      console.error('[notificar] um ouvinte de alerta falhou.', erro);
     }
   }
 }

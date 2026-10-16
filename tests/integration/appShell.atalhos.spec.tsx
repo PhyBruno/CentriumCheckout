@@ -550,8 +550,9 @@ describe('US4 — F10 suspende a venda', () => {
       expect(chamada).toEqual([MOTIVO_AGUARDANDO_ERP]);
     }
     expect(useJanelasStore.getState().janela).toBe('nenhuma');
-    // Cada tentativa recusada fica no `Log` com a frase que o operador leu.
-    expect(tiposDeEvento().filter((tipo) => tipo === 'OPERACAO_RECUSADA')).toHaveLength(4);
+    // O `Log` desta venda já partiu no corpo do envio: um alerta registrado
+    // agora seria descartado no sucesso sem nunca chegar ao ERP (AD-280).
+    expect(tiposDeEvento()).not.toContain('ALERTA_EXIBIDO_AO_OPERADOR');
   });
 
   it('F10 tem um desfecho só: suspende, nunca finaliza nem oferece descarte (FR-017, US4-6)', async () => {

@@ -1,6 +1,16 @@
-import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
+import { haJanelaAberta } from '@/lib/useFocoDeModal';
 import { cn } from '@/lib/utils';
+import { useTravaDasTeclas } from '../../hotkeys/mapaAtalhos';
+import { useFocoVendaStore } from '../../stores/focoVendaStore';
 import type { ImpressaoDeps } from '../../services/impressao/imprimirNFCeLocal';
 import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useRecusaValidacaoStore } from '../../stores/recusaValidacaoStore';
@@ -272,26 +282,14 @@ function useVendaTemAlgoACancelar(): boolean {
 export const MOTIVO_AGUARDANDO_ERP = 'Aguarde: esta venda ainda está sendo enviada ao ERP.';
 
 /**
- * A venda está esperando o ERP responder a um `FaturarNFCe` (emitir ou
- * suspender)? Enquanto estiver, **nada** na tela pode agir (pedido do usuário,
- * 2026-10-16, AD-280: "enquanto cancela, nenhuma ação deve estar disponível").
+ * Fecha a tela de venda inteira enquanto a suspensão espera o ERP (pedido do
+ * usuário, 2026-10-16, AD-280: "enquanto cancela, nenhuma ação deve estar
+ * disponível").
  *
- * Emitir já tinha essa propriedade de graça — a janela "Autorizando NFCe"
- * (AD-244) cobre a tela. Suspender não abre janela nenhuma e termina num toast,
- * então durante a espera o operador ainda bipava produto, trocava cliente e
- * lançava pagamento numa venda que já estava a caminho de virar rascunho no
- * ERP; o que ele fazia ali se perdia quando a resposta zerava o caixa.
- *
- * Função pura do estado da máquina, exportada para as teclas (F1–F4/F10 e
- * F6–F9), que não enxergam a trava visual de `TravaDaVendaDuranteEnvio`.
- */
-export function aguardandoRetornoDoErp(estado: ApiFinalizacaoVenda['estado']): boolean {
-  return estado.tipo === 'enviando';
-}
-
-/**
- * Fecha a tela de venda inteira enquanto a venda espera o ERP
- * (`aguardandoRetornoDoErp`).
+ * Suspender não abre janela nenhuma e termina num toast, então durante a espera
+ * o operador ainda bipava produto, trocava cliente e lançava pagamento numa
+ * venda que já estava a caminho de virar rascunho no ERP; o que ele fazia ali se
+ * perdia quando a resposta zerava o caixa.
  *
  * **`inert` no contêiner, e não um `disabled` em cada controle**: são dezenas de
  * botões e campos em duas árvores de layout, e qualquer um que ficasse de fora
@@ -302,8 +300,8 @@ export function aguardandoRetornoDoErp(estado: ApiFinalizacaoVenda['estado']): b
  *
  * O clique não explica o motivo, ao contrário do padrão de `lib/bloqueio.ts`:
  * a espera dura o tempo de uma chamada ao ERP, e o próprio estado apagado já é a
- * resposta. As teclas, que não enxergam o `inert`, recusam com
- * `MOTIVO_AGUARDANDO_ERP`.
+ * resposta. As teclas, que não enxergam o `inert`, são travadas no próprio mapa
+ * de teclas (`useTravaDasTeclas`) e recusam com `MOTIVO_AGUARDANDO_ERP`.
  *
  * **Só na suspensão.** Na emissão a janela "Autorizando NFCe" já cobre a tela e
  * prende o foco; fechar o fundo por baixo dela não acrescentaria nada, e o fundo
@@ -317,6 +315,8 @@ export function TravaDaVendaDuranteEnvio({
 }): ReactElement {
   const { estado } = useFinalizacaoVenda();
   const travada = estado.tipo === 'enviando' && estado.operacao === 'SUSPENDER';
+  useTravaDasTeclas(travada ? MOTIVO_AGUARDANDO_ERP : null);
+  useFocoDeVoltaAoDestravar(travada, estado.tipo === 'sucesso');
 
   return (
     <div
@@ -331,6 +331,37 @@ export function TravaDaVendaDuranteEnvio({
       {children}
     </div>
   );
+}
+
+/**
+ * Devolve o foco ao campo de código quando a tela sai da trava (revisão de
+ * 2026-10-16).
+ *
+ * O `inert` tira o foco de quem estava dentro da tela — o campo de código, de
+ * onde o F10 costuma sair —, e o navegador o deixa no `body`. A venda seguinte
+ * nasce com a barra de produto já vazia, então o efeito dela que foca o código
+ * "ao voltar ao vazio" não roda de novo: sem isto, os dígitos do primeiro bipe
+ * da próxima venda caíam no `body`, sem nada na tela.
+ *
+ * Só na saída **sem janela** — o sucesso, que na suspensão termina num toast — e
+ * com o foco mesmo perdido. Todo outro desfecho (falha de rede, recusa do ERP)
+ * abre diálogo, e o foco é dele. A pergunta é feita pelo desfecho, e não por
+ * `haJanelaAberta()`: o diálogo se registra no efeito dele, que roda **depois**
+ * deste — a pilha ainda estaria vazia aqui.
+ */
+function useFocoDeVoltaAoDestravar(travada: boolean, saiuSemJanela: boolean): void {
+  const estavaTravada = useRef(false);
+  useEffect(() => {
+    const acabouDeDestravar = estavaTravada.current && !travada;
+    estavaTravada.current = travada;
+    if (!acabouDeDestravar || !saiuSemJanela || haJanelaAberta()) {
+      return;
+    }
+    const focado = document.activeElement;
+    if (focado === null || focado === document.body) {
+      useFocoVendaStore.getState().focarCodigoProduto();
+    }
+  }, [travada, saiuSemJanela]);
 }
 
 /**
