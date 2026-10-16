@@ -4302,4 +4302,6 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 
 **Impact:** `src/client/features/carrinho/EntradaRapidaProduto.tsx`; `tests/unit/client/carrinho/EntradaRapidaProduto.spec.tsx` (6 casos novos; o caso "desconto vazio vale zero" passou a sair do campo por Shift+TAB); `tests/e2e/carrinho-precificacao.spec.ts` (Q2 da 017: o TAB do desconto acima do mínimo agora ajusta e insere).
 
-**Verificação:** `tsc`, ESLint e Prettier limpos; 2339 testes unit e integração verdes; E2E completo 206/208. Falhou 1, `validacao-previa.spec.ts:330` ("aceito, o pagamento entra no mobile e a etapa 3 libera a finalização"), e 1 foi pulado. **Essa falha é anterior a esta branch:** reproduz 5 de 5 no `master` `dec2dad` e fica como pendência própria.
+**Verificação:** `tsc`, ESLint e Prettier limpos; 2339 testes unit e integração verdes; E2E completo 207/208 (1 pulado).
+
+**E2E corrigido junto, defeito anterior a esta branch:** `validacao-previa.spec.ts:330` ("aceito, o pagamento entra no mobile e a etapa 3 libera a finalização") falhava 5 de 5 também no `master` `dec2dad`. O teste esperava `linha-carrinho` chegar a zero como sinal de venda emitida, mas na etapa 3 do wizard a lista de itens não existe. A espera passava antes do clique ter efeito, e o contador do mock era lido antes de `FaturarNFCe` chegar. A venda era emitida normalmente. O teste agora espera a janela do documento fiscal ("Venda finalizada", AD-246), o mesmo sinal de `finalizacao-suspensao.spec.ts`, e passou 45 de 45 (a spec inteira 5 vezes).
