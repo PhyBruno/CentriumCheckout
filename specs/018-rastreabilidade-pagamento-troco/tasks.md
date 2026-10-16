@@ -123,6 +123,24 @@ description: "Task list — 018 rastreabilidade de pagamentos cancelados e troco
 
 ---
 
+## Phase 7: User Story 4 — Desistir do TEF/PIX deixa rastro (Priority: P1)
+
+*Acrescentada em 2026-10-16 a pedido do usuário. Depende do Foundational (tipo do evento) e de US1.*
+
+**Goal**: o identificador da cobrança fica na forma assim que existe; desistência ou falha de cobrança criada risca a forma e leva o identificador ao `Log`.
+
+- [X] T034 [US4] RED em `tests/unit/domain/pagamento/remocaoPagamento.spec.ts`: PIX **pendente** com identificador guardado → `pixGuid` no detalhe; TEF pendente com identificador guardado → `tefPagId`; `dadosTEF.pagId` tem precedência sobre o guardado
+- [X] T035 [US4] RED em `tests/integration/pagamentoSlice.spec.ts`: `registrarIdentificadorIntegracao` só age em forma `PENDENTE_INTEGRACAO` e não entra no payload; `recusarPagamentoIntegrado` com identificador guardado ou motivo de desistência deixa a forma `EXCLUIDO` e registra `PAGAMENTO_RECUSADO` com forma, valor e identificadores; sem identificador e sem desistência a forma sai da lista (FR-024); aprovação tardia sobre forma riscada é ignorada
+- [X] T036 [US4] `PagamentoAplicado.tefPagId: string | null` em `saldoPagamento.ts` (e nas fábricas: `aplicarNucleo`, `importarFormasDePagamento`, `candidataComoPagamento`, `tests/support/pagamento.ts`); `detalhesDaRemocao` lê `dadosTEF?.pagId ?? tefPagId` e o `pixGuid` da forma
+- [X] T037 [US4] `EventoPagamentoRecusado` ganha `formaPagamento?`, `valor?`, `tefPagId?`, `pixGuid?` em `eventos.ts`; constante `MOTIVO_DESISTENCIA_DO_OPERADOR` em `domain/pagamento/remocaoPagamento.ts`, reexportada pelos dois modais (`MOTIVO_TEF_DESISTENCIA`, `MOTIVO_FECHADO_PELO_OPERADOR`)
+- [X] T038 [US4] `pagamentoSlice.ts`: action `registrarIdentificadorIntegracao(idPagamento, { tefPagId?, pixGuid? })`; `recusarPagamentoIntegrado` risca (`EXCLUIDO`) quando há identificador ou o motivo é a desistência, e mantém a saída da lista nos demais casos; evento com os campos novos
+- [X] T039 [US4] `ModalTef` e `ModalPix`: prop `onCobrancaCriada`/`onCobrancaGerada` chamada quando o ERP devolve a cobrança; `ListaPagamentosAplicados` liga a action; testes de `ModalTef.spec.tsx`/`ModalPix.spec.tsx`
+- [X] T040 [US4] Ajustar os testes que esperavam a forma fora da lista depois da desistência (`pagamento-pix.spec.ts`, `pagamento-tef.spec.ts`, `layout-mobile.spec.ts`, `ListaPagamentosAplicados.spec.tsx`, `vendaRapida.spec.ts`) e acrescentar o e2e: TEF e PIX desistidos chegam riscados e com o identificador no `Log` de `FaturarNFCe`
+- [X] T041 [US4] Docs no ponto: AD-285 em `STATE.md`; `data-model.md` §5 e o contrato da 018; Assumption "Formas recusadas…" já corrigida na spec; linha de `PAGAMENTO_RECUSADO` do catálogo da 001
+- [X] T042 [US4] Gates (tsc, eslint, vitest, playwright), commit e push
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

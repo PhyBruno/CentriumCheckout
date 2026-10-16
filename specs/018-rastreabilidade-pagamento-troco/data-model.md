@@ -4,9 +4,9 @@ Deltas sobre `specs/008-pagamento-geral/data-model.md`, `specs/001-auditoria-aco
 
 ---
 
-## 1. `PagamentoAplicado` — sem campo novo
+## 1. `PagamentoAplicado` — um campo novo (`tefPagId`, US4)
 
-Forma e estados inalterados (`saldoPagamento.ts`). Muda **quem** leva um pagamento a `EXCLUIDO`:
+Estados inalterados (`saldoPagamento.ts`). **Campo novo da US4:** `tefPagId: string | null`, o `payment_identifier` da cobrança TEF **criada**, guardado antes da aprovação ao lado de `dadosTEF` (que só existe depois do `CNC`). `pixGuid` já existia e passa a ser preenchido na geração da cobrança, não só na aprovação; só a forma `APROVADO` vai ao payload, então o valor guardado numa forma pendente nunca chega a `FormaPixGUID`/`TEFPagId`. Muda **quem** leva um pagamento a `EXCLUIDO`:
 
 | Transição | Antes | Depois |
 |---|---|---|
@@ -24,6 +24,18 @@ Forma e estados inalterados (`saldoPagamento.ts`). Muda **quem** leva um pagamen
 - Toda regra de "há pagamento?" usa `pagamentoVivo` ou `status === 'APROVADO'`, então formas riscadas pelo "Limpar" ficam fora de saldo, payload, congelamento e guardas (FR-008).
 
 **Invariante nova (I-18.1)**: depois de `descartarPagamento` aceito, `pagamentos.filter(pagamentoVivo)` é vazio e `pagamentos.length` é igual ao de antes da chamada.
+
+**Transições da US4** (`recusarPagamentoIntegrado`, só a partir de `PENDENTE_INTEGRACAO`):
+
+| Situação | Antes | Depois |
+|---|---|---|
+| desistência do operador (`FECHADO_PELO_OPERADOR`) | retirada do array | `EXCLUIDO`, na lista, riscada |
+| falha de cobrança já criada (identificador guardado) | retirada do array | `EXCLUIDO`, na lista, riscada |
+| recusa sem cobrança e sem desistência (sem cliente, sem GAM, PIX abaixo do mínimo) | retirada do array | retirada do array (inalterado, FR-024) |
+
+`registrarIdentificadorIntegracao` só age em `PENDENTE_INTEGRACAO`. **Invariante nova (I-18.2)**: um identificador guardado numa forma pendente nunca chega a `FormasDePagamento` (só `APROVADO` vai ao payload).
+
+O evento é `PAGAMENTO_RECUSADO` com `formaPagamento`, `valor`, `tefPagId?` e `pixGuid?` quando a forma fica riscada.
 
 ---
 
@@ -77,8 +89,8 @@ Delta da linha 12 de `specs/001-auditoria-acoes-operador/data-model.md`:
 | `formaPagamento` | `string` | sim | rótulo da forma, resolvido antes de qualquer `set` (inalterado) |
 | `valor` | `number` (centavos inteiros) | sim | `valorRecebido ?? valorAplicado` |
 | `motivo` | `MotivoRemocaoPagamento` = `'OPERADOR' \| 'ESTORNO_TEF' \| 'LIMPAR'` | sim | a action que excluiu |
-| `tefPagId` | `string` | só se `dadosTEF !== null` | `dadosTEF.pagId` (`payment_identifier` da SmartTEF) |
-| `pixGuid` | `string` | só se `pixGuid !== null` (PIX aprovado; o pendente ainda não tem o identificador na forma) | `pixGuid` |
+| `tefPagId` | `string` | só se há `dadosTEF` ou `tefPagId` guardado na criação da cobrança (US4) | `dadosTEF?.pagId ?? tefPagId` (`payment_identifier` da SmartTEF) |
+| `pixGuid` | `string` | só se `pixGuid !== null` (a cobrança PIX foi gerada; desde a US4 vale também para o pendente) | `pixGuid` |
 
 | Action | `motivo` |
 |---|---|

@@ -401,6 +401,9 @@ function usePixPendente(): ReactElement | null {
   const clienteAtual = useVendaStore((estado) => estado.clienteAtual);
   const confirmarPagamentoIntegrado = useVendaStore((estado) => estado.confirmarPagamentoIntegrado);
   const recusarPagamentoIntegrado = useVendaStore((estado) => estado.recusarPagamentoIntegrado);
+  const registrarIdentificadorIntegracao = useVendaStore(
+    (estado) => estado.registrarIdentificadorIntegracao,
+  );
   const [idExibido, setIdExibido] = useState<string | null>(null);
 
   // O catálogo já está em cache (`staleTime` de 30 min, `PAY-01`): a mesma query
@@ -470,6 +473,9 @@ function usePixPendente(): ReactElement | null {
       onAbandonado={(motivo) => {
         recusarPagamentoIntegrado(exibido.idPagamento, motivo);
       }}
+      onCobrancaGerada={(pixGuid) => {
+        registrarIdentificadorIntegracao(exibido.idPagamento, { pixGuid });
+      }}
       onFechar={() => {
         // Único caminho de saída da janela — o automático de 10s depois da
         // aprovação, o `X`, o ESC (só com o pagamento aprovado) e a desistência
@@ -505,6 +511,9 @@ function useTefPendente(): ReactElement | null {
   const prazoDaCondicao = useVendaStore((estado) => estado.condicaoSelecionada?.prazo ?? 0);
   const confirmarPagamentoIntegrado = useVendaStore((estado) => estado.confirmarPagamentoIntegrado);
   const recusarPagamentoIntegrado = useVendaStore((estado) => estado.recusarPagamentoIntegrado);
+  const registrarIdentificadorIntegracao = useVendaStore(
+    (estado) => estado.registrarIdentificadorIntegracao,
+  );
   // Só a presença: o valor do `UsuarioGAM` fica no cookie do BFF, que o insere
   // no corpo de `CriarCardPagamento` (AD-224, invariante T8).
   const usuarioGamPresente = useSessionStore(
@@ -544,6 +553,9 @@ function useTefPendente(): ReactElement | null {
       }}
       onAbandonado={(motivo) => {
         recusarPagamentoIntegrado(exibido.idPagamento, motivo);
+      }}
+      onCobrancaCriada={(tefPagId) => {
+        registrarIdentificadorIntegracao(exibido.idPagamento, { tefPagId });
       }}
       onFechar={() => {
         setIdExibido(null);

@@ -73,6 +73,7 @@ function candidataComoPagamento(candidata: FormaCandidata): PagamentoAplicado {
     status: 'APROVADO',
     dadosTEF: null,
     pixGuid: null,
+    tefPagId: null,
     ticketDevolucao: candidata.ticketDevolucao,
     veioDeDocumento: false,
   };

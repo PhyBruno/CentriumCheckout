@@ -86,7 +86,20 @@ export interface PagamentoAplicado {
   readonly integracao: IntegracaoPagamento;
   readonly status: StatusPagamento;
   readonly dadosTEF: DadosTEF | null;
+  /**
+   * Identificador da cobrança PIX. Guardado já na **geração** (feature 018, US4),
+   * e não só na aprovação: a cobrança desistida precisa dele no `Log` do ERP.
+   * Só a forma `APROVADO` vai ao payload, então o valor guardado numa forma
+   * pendente nunca chega a `FormaPixGUID`.
+   */
   readonly pixGuid: string | null;
+  /**
+   * `payment_identifier` da cobrança TEF **criada**, antes da aprovação (feature
+   * 018, US4). Existe ao lado de `dadosTEF.pagId`, e não no lugar dele, porque
+   * `dadosTEF` descreve o que a SmartTEF aprovou (bandeira, NSU, autorização) e
+   * só existe depois do `CNC`. `null` sem cobrança criada e fora do TEF.
+   */
+  readonly tefPagId: string | null;
   readonly ticketDevolucao: string | null;
   /**
    * A forma entrou **com o documento** (DAV importado ou rascunho de NFCe

@@ -190,7 +190,21 @@ export type EventoValeDevolucaoUsado = EventoAuditoriaBase<
  */
 export type EventoPagamentoRecusado = EventoAuditoriaBase<
   'PAGAMENTO_RECUSADO',
-  { readonly tipo: string; readonly motivo?: string }
+  {
+    readonly tipo: string;
+    readonly motivo?: string;
+    /**
+     * Quando a recusa deixa a forma riscada na lista (feature 018, US4: desistência
+     * ou falha de uma cobrança já criada), o evento diz **qual** forma e quanto,
+     * e leva o identificador da cobrança, que o Checkout não cancela. Ausentes na
+     * recusa sem cobrança, que continua tirando a forma da lista.
+     */
+    readonly formaPagamento?: string;
+    /** Centavos inteiros. */
+    readonly valor?: number;
+    readonly tefPagId?: string;
+    readonly pixGuid?: string;
+  }
 >;
 
 /**

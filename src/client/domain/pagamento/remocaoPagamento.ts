@@ -16,6 +16,30 @@ import type {
 import type { PagamentoAplicado } from './saldoPagamento';
 
 /**
+ * Motivo com que as janelas de TEF e PIX avisam que **o operador** encerrou a
+ * cobrança. É um código, não uma frase, e mora aqui para o slice reconhecê-lo
+ * sem importar uma feature: as duas janelas o reexportam com o nome antigo.
+ */
+export const MOTIVO_DESISTENCIA_DO_OPERADOR = 'FECHADO_PELO_OPERADOR';
+
+/**
+ * Os identificadores que o `Log` do ERP leva de uma forma, quando existem.
+ *
+ * Compartilhada por `detalhesDaRemocao` e pela recusa de uma cobrança, para os
+ * dois eventos nomearem a mesma transação do mesmo jeito. Omite o que não há:
+ * campo vazio afirmaria uma transação que não existe.
+ */
+export function identificadoresDaForma(
+  pagamento: PagamentoAplicado,
+): { readonly tefPagId?: string; readonly pixGuid?: string } {
+  const tefPagId = pagamento.dadosTEF?.pagId ?? pagamento.tefPagId;
+  return {
+    ...(tefPagId !== null && { tefPagId }),
+    ...(pagamento.pixGuid !== null && { pixGuid: pagamento.pixGuid }),
+  };
+}
+
+/**
  * @param rotulo Descrição da forma, resolvida pelo chamador **antes** de qualquer
  * `set` que a zere (a condição some no "Limpar").
  *
@@ -33,7 +57,6 @@ export function detalhesDaRemocao(
     formaPagamento: rotulo,
     valor: pagamento.valorRecebido ?? pagamento.valorAplicado,
     motivo,
-    ...(pagamento.dadosTEF !== null && { tefPagId: pagamento.dadosTEF.pagId }),
-    ...(pagamento.pixGuid !== null && { pixGuid: pagamento.pixGuid }),
+    ...identificadoresDaForma(pagamento),
   };
 }

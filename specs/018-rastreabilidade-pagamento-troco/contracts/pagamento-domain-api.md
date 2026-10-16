@@ -11,6 +11,8 @@ Só o que muda. O contrato base continua em `specs/008-pagamento-geral/contracts
 | `confirmarEstornoTef(id)` | inalterada | inalterado | `FORMA_PAGAMENTO_REMOVIDA` com `motivo: 'ESTORNO_TEF'` e `tefPagId` |
 | `importarFormasDePagamento(formas)` | inalterada | antes de gravar, `reconstruirTrocoImportado(importados, deps.subtotalCarrinho())` | nenhum (inalterado) |
 | `limparPagamentos()` | inalterada | **inalterado**: esvazia tudo | nenhum |
+| `registrarIdentificadorIntegracao(id, { tefPagId?, pixGuid? })` (US4) | forma em `PENDENTE_INTEGRACAO`; no-op fora disso | guarda o identificador da cobrança recém-criada; não muda o status nem entra no payload | nenhum |
+| `recusarPagamentoIntegrado(id, motivo)` (US4) | forma em `PENDENTE_INTEGRACAO` | com identificador guardado ou `motivo === MOTIVO_DESISTENCIA_DO_OPERADOR`: forma vira `EXCLUIDO` e fica na lista; senão, sai da lista | `PAGAMENTO_RECUSADO`, com `formaPagamento`, `valor`, `tefPagId?` e `pixGuid?` quando a forma fica riscada |
 
 ## Funções puras novas (`src/client/domain/pagamento/`)
 

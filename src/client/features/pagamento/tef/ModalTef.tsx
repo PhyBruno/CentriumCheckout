@@ -6,6 +6,7 @@ import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/
 import { useFocoDeModal } from '@/lib/useFocoDeModal';
 import type { ClienteVenda } from '../../../domain/cliente/clienteVenda';
 import type { MeioPagtoNFe } from '../../../domain/pagamento/formaPagamento';
+import { MOTIVO_DESISTENCIA_DO_OPERADOR } from '../../../domain/pagamento/remocaoPagamento';
 import type { DadosTEF } from '../../../domain/pagamento/saldoPagamento';
 import { formatarCentavos, type Centavos } from '../../../domain/precificacao/dinheiro';
 import type { CobrancaTef } from '../../../domain/tef/cobrancaTef';
@@ -111,6 +112,12 @@ export interface ModalTefProps {
   readonly onAprovado: (dados: DadosTEF) => void;
   /** → `recusarPagamentoIntegrado(idPagamento, motivo)`. */
   readonly onAbandonado: (motivo: string) => void;
+  /**
+   * → `registrarIdentificadorIntegracao(idPagamento, { tefPagId })`. Chamada assim
+   * que o ERP devolve a cobrança, antes de qualquer aprovação: é o que deixa a
+   * desistência levar o `payment_identifier` ao `Log` (feature 018, US4).
+   */
+  readonly onCobrancaCriada?: (paymentIdentifier: string) => void;
   readonly onFechar: () => void;
   /** Injetável só para teste. */
   readonly deps?: TefQueriesDeps;
@@ -119,7 +126,7 @@ export interface ModalTefProps {
 }
 
 /** Motivos registrados em `PAGAMENTO_RECUSADO` — códigos, não frases. */
-export const MOTIVO_TEF_DESISTENCIA = 'FECHADO_PELO_OPERADOR';
+export const MOTIVO_TEF_DESISTENCIA = MOTIVO_DESISTENCIA_DO_OPERADOR;
 export const MOTIVO_TEF_SEM_USUARIO_GAM = 'SEM_USUARIO_GAM';
 export const MOTIVO_TEF_SEM_CLIENTE = 'SEM_CLIENTE';
 
@@ -158,10 +165,15 @@ export function ModalTef({
   usuarioGamPresente,
   onAprovado,
   onAbandonado,
+  onCobrancaCriada,
   onFechar,
   deps = DEPS_VAZIAS,
   atrasoFechamentoMs = MS_FECHAMENTO_APOS_APROVACAO_TEF,
 }: ModalTefProps): ReactElement | null {
+  // Pela ref, e não pelas dependências de `criarCobranca`: a função nova a cada
+  // render do pai não pode recriar a cobrança nem reabrir o efeito que a dispara.
+  const onCobrancaCriadaRef = useRef(onCobrancaCriada);
+  onCobrancaCriadaRef.current = onCobrancaCriada;
   const [preCondicao] = useState(() => avaliarPreCondicao(clienteAtual, usuarioGamPresente));
   const [cobranca, setCobranca] = useState<CobrancaTef | null>(null);
   /** Desliga o polling na **mesma** renderização que processa o desfecho (J3). */
@@ -205,7 +217,12 @@ export function ModalTef({
       parcelas: parcelasDoTef(meioPagtoNFe, prazoDaCondicao),
       pagador: preCondicao.pagador,
     })
-      .then(setCobranca)
+      .then((criada) => {
+        // Antes do estado local: a desistência que vier a seguir já encontra o
+        // identificador na forma, e o `Log` do ERP o leva.
+        onCobrancaCriadaRef.current?.(criada.paymentIdentifier);
+        setCobranca(criada);
+      })
       .catch(() => {
         // O motivo já está em `erro` e vira o painel; engolir aqui impede o
         // `unhandledrejection` — o desfecho de uma criação recusada é tela.

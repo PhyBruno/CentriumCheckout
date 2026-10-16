@@ -45,7 +45,11 @@ import {
 import { ehFormaDeValeDevolucao, type ResultadoTicket } from '../../domain/pagamento/valeDevolucao';
 import { subtrair, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import { formaParaRetrato } from '../../domain/pagamento/formaParaRetrato';
-import { detalhesDaRemocao } from '../../domain/pagamento/remocaoPagamento';
+import {
+  detalhesDaRemocao,
+  identificadoresDaForma,
+  MOTIVO_DESISTENCIA_DO_OPERADOR,
+} from '../../domain/pagamento/remocaoPagamento';
 import { reconstruirTrocoImportado } from '../../domain/pagamento/trocoImportado';
 import type { FormaCandidata } from '../../domain/validacaoVenda/projetarPagamentos';
 import type { OrigemAcionamento } from './validacaoVendaSlice';
@@ -153,6 +157,14 @@ export interface ContextoIntegracao {
 /** Resultado opaco devolvido pela integração ao confirmar o pagamento. */
 export interface DadosIntegracao {
   readonly dadosTEF?: DadosTEF;
+  readonly pixGuid?: string;
+}
+
+/** O que a integração já sabe da cobrança **criada**, antes da aprovação (018, US4). */
+export interface IdentificadorCobranca {
+  /** `payment_identifier` da SmartTEF. */
+  readonly tefPagId?: string;
+  /** Identificador da cobrança PIX (`trnGuid`). */
   readonly pixGuid?: string;
 }
 
@@ -300,6 +312,17 @@ export interface PagamentoSlice {
   /** Liga/desliga o guard de acionamento único da feature 013 (I9). */
   marcarAcionamentoEmAndamento(emAndamento: boolean): void;
   confirmarPagamentoIntegrado(idPagamento: string, dados: DadosIntegracao): void;
+  /**
+   * Guarda o identificador da cobrança assim que o ERP a cria (feature 018, US4),
+   * antes de qualquer aprovação. No-op fora de `PENDENTE_INTEGRACAO`. Não muda o
+   * status e não entra no payload: só a forma aprovada vai ao ERP.
+   */
+  registrarIdentificadorIntegracao(idPagamento: string, identificador: IdentificadorCobranca): void;
+  /**
+   * Encerra uma forma pendente que não foi aprovada. Com cobrança criada
+   * (identificador guardado) ou desistência do operador, a forma fica riscada
+   * (`EXCLUIDO`); sem nenhum dos dois, sai da lista.
+   */
   recusarPagamentoIntegrado(idPagamento: string, motivo: string): void;
   removerPagamento(idPagamento: string): void;
   /**
@@ -829,6 +852,7 @@ export function criarPagamentoSlice(
         status: integracao === 'NENHUMA' ? 'APROVADO' : 'PENDENTE_INTEGRACAO',
         dadosTEF: null,
         pixGuid: null,
+        tefPagId: null,
         ticketDevolucao,
         // Gesto do operador nesta venda: nada foi recebido antes, e "Limpar"
         // sobre esta forma descarta só o que ele acabou de digitar.
@@ -992,11 +1016,24 @@ export function criarPagamentoSlice(
           return;
         }
 
-        // `RECUSADO` é terminal e **efêmero** (`data-model.md` §4): o evento
-        // preserva o registro na auditoria e o pagamento sai da lista, para que
-        // o operador possa tentar outra forma imediatamente.
+        // A forma **fica riscada** (`EXCLUIDO`) quando houve cobrança de verdade
+        // (já há identificador guardado) ou o operador desistiu — feature 018,
+        // US4: a cobrança segue viva na SmartTEF ou no banco, e o operador e o
+        // ERP precisam ver o que aconteceu. Mesmo tratamento de `removerPagamento`
+        // (AD-163). Sem cobrança e sem gesto do operador (sem cliente, PIX abaixo
+        // do mínimo) nada foi tentado de fato: a forma sai da lista, como era no
+        // desenho original (`data-model.md` §4 da 008), e o operador tenta outra.
+        const identificadores = identificadoresDaForma(alvo);
+        const deixaRastro =
+          motivo === MOTIVO_DESISTENCIA_DO_OPERADOR || Object.keys(identificadores).length > 0;
         aplicarPagamentos(
-          get().pagamentos.filter((pagamento) => pagamento.idPagamento !== idPagamento),
+          deixaRastro
+            ? get().pagamentos.map((pagamento) =>
+                pagamento.idPagamento === idPagamento
+                  ? { ...pagamento, status: 'EXCLUIDO' as const }
+                  : pagamento,
+              )
+            : get().pagamentos.filter((pagamento) => pagamento.idPagamento !== idPagamento),
         );
 
         // Mesma razão de `removerPagamento`: a forma saiu da venda, então o
@@ -1008,7 +1045,39 @@ export function criarPagamentoSlice(
         deps.invalidarVeredito();
 
         get().registrarEventoAuditoria(
-          eventoPagamentoRecusado({ tipo: nomeDoMeioPagto(alvo.meioPagtoNFe), motivo }),
+          eventoPagamentoRecusado({
+            tipo: nomeDoMeioPagto(alvo.meioPagtoNFe),
+            motivo,
+            // Só quando a forma ficou na lista: aí o `Log` precisa dizer qual e
+            // quanto, e levar a cobrança que o Checkout não cancela.
+            ...(deixaRastro && {
+              formaPagamento: rotuloDoPagamento(alvo),
+              valor: alvo.valorAplicado,
+              ...identificadores,
+            }),
+          }),
+        );
+      },
+
+      registrarIdentificadorIntegracao: (idPagamento, identificador) => {
+        const alvo = get().pagamentos.find((pagamento) => pagamento.idPagamento === idPagamento);
+        // Só a forma ainda pendente: depois de aprovada o identificador já está em
+        // `dadosTEF`/`pixGuid`, e numa forma encerrada a resposta chegou tarde
+        // demais para o evento que já foi registrado.
+        if (alvo === undefined || alvo.status !== 'PENDENTE_INTEGRACAO') {
+          return;
+        }
+
+        aplicarPagamentos(
+          get().pagamentos.map((pagamento) =>
+            pagamento.idPagamento === idPagamento
+              ? {
+                  ...pagamento,
+                  tefPagId: identificador.tefPagId ?? pagamento.tefPagId,
+                  pixGuid: identificador.pixGuid ?? pagamento.pixGuid,
+                }
+              : pagamento,
+          ),
         );
       },
 
@@ -1419,6 +1488,7 @@ export function criarPagamentoSlice(
             veioDeDocumento: true,
             dadosTEF: forma.tef,
             pixGuid: forma.pixGuid,
+            tefPagId: null,
             ticketDevolucao: forma.ticketDevolucao,
           });
         }

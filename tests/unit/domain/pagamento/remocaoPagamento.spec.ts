@@ -102,6 +102,55 @@ describe('detalhesDaRemocao', () => {
     expect(detalhes).not.toHaveProperty('tefPagId');
   });
 
+  // Feature 018, US4: a cobrança desistida ainda não foi aprovada, mas o
+  // identificador já foi guardado quando o ERP a criou (FR-022).
+  it('PIX pendente com o identificador guardado leva o pixGuid', () => {
+    const detalhes = detalhesDaRemocao(
+      pagamentoDe({
+        integracao: 'PIX_DINAMICO',
+        status: 'PENDENTE_INTEGRACAO',
+        valorAplicado: 2500,
+        pixGuid: 'guid-pendente-0001',
+      }),
+      'PIX',
+      'LIMPAR',
+    );
+
+    expect(detalhes).toMatchObject({ pixGuid: 'guid-pendente-0001' });
+  });
+
+  it('TEF pendente com o identificador guardado leva o tefPagId, sem dadosTEF', () => {
+    const detalhes = detalhesDaRemocao(
+      pagamentoDe({
+        meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
+        integracao: 'TEF',
+        status: 'PENDENTE_INTEGRACAO',
+        valorAplicado: 5000,
+        tefPagId: 'pay_pendente_0001',
+      }),
+      'CARTAO DEBITO',
+      'LIMPAR',
+    );
+
+    expect(detalhes).toMatchObject({ tefPagId: 'pay_pendente_0001' });
+  });
+
+  it('o pagId de dadosTEF tem precedência sobre o guardado na criação', () => {
+    const detalhes = detalhesDaRemocao(
+      pagamentoDe({
+        meioPagtoNFe: MEIO_PAGTO.CartaoDebito,
+        integracao: 'TEF',
+        valorAplicado: 5000,
+        tefPagId: 'pay_antigo',
+        dadosTEF: DADOS_TEF,
+      }),
+      'CARTAO DEBITO',
+      'ESTORNO_TEF',
+    );
+
+    expect(detalhes).toMatchObject({ tefPagId: 'pay_exemplo_0001' });
+  });
+
   it('nenhum campo de identificador sai vazio ou undefined', () => {
     const detalhes = detalhesDaRemocao(pagamentoDe({}), 'DINHEIRO', 'OPERADOR');
 

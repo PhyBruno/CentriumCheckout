@@ -152,7 +152,7 @@ Nada disso é gravado no estado — é seletor puro sobre carrinho + pagamentos 
 ```
 
 - `PENDENTE_INTEGRACAO` **não** conta para `totalAplicado` nem bloqueia o carrinho — só um pagamento aprovado o faz (`FR-004`/`FR-005`: "só registra o pagamento após a aprovação").
-- `RECUSADO` é um estado terminal e efêmero: emite `PAGAMENTO_RECUSADO` na auditoria (`FR-017`) e é retirado da lista, para que o operador possa tentar outra forma.
+- Uma forma pendente que não chega a ser aprovada emite `PAGAMENTO_RECUSADO` na auditoria (`FR-017`). **Corrigido em 2026-10-16 (018, US4, AD-285):** com cobrança já criada ou desistência do operador ela passa a `EXCLUIDO` e continua riscada na lista (o `Log` leva forma, valor e identificador); só a recusa sem cobrança e sem gesto do operador a retira da lista, para o operador tentar outra forma. A antiga redação tratava `RECUSADO` como estado efêmero que sempre saía da lista.
 - Não há transição de `APROVADO` para `RECUSADO` — um estorno é operação do ERP/adquirente, fora do escopo do Checkout.
 
 ---

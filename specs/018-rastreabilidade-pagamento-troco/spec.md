@@ -72,6 +72,25 @@ Venda de R$ 87,00; o cliente entrega R$ 100,00 em dinheiro. O Checkout mostra tr
 
 ---
 
+### User Story 4 - Desistir do TEF/PIX deixa rastro: forma riscada e identificadores no ERP (Priority: P1)
+
+*Acrescentada em 2026-10-16, a pedido do usuário, depois da US1.* O operador cobra no TEF ou no PIX e o cliente desiste antes da aprovação (ou a cobrança falha depois de criada). A cobrança já existe na SmartTEF ou no banco, e o Checkout não a cancela. Hoje a forma some da lista e o `Log` leva só o tipo e o motivo, sem nada que ligue o evento à cobrança. Passa a ficar riscada na tela, e o `Log` leva o valor e o identificador da cobrança.
+
+**Why this priority**: mesma razão da US1. Uma cobrança que o Checkout deixou viva e que o ERP não consegue associar à venda pode ser paga depois e virar divergência de conciliação. O `payment_identifier` só entrava na forma na aprovação (`CNC`), então uma cobrança abandonada antes disso não tinha identificador nenhum para mandar.
+
+**Independent Test**: Cobrar no TEF, esperar a cobrança ser criada, desistir; finalizar a venda com outra forma e verificar que a forma continua riscada na tela e que o `Log` enviado ao ERP traz o `payment_identifier` da cobrança desistida. Idem no PIX, com o identificador da cobrança PIX.
+
+**Acceptance Scenarios**:
+
+1. **Given** uma cobrança TEF criada (identificador `X`) e ainda não aprovada, **When** o operador desiste, **Then** a forma continua na lista, riscada, fora do saldo, e o `Log` registra a recusa com a forma, o valor, o motivo e o identificador `X`.
+2. **Given** uma cobrança PIX gerada (identificador `Y`) e não paga, **When** o operador desiste, **Then** a forma continua riscada e o `Log` traz o identificador `Y`.
+3. **Given** uma cobrança que falha depois de criada (recusa do cartão, PIX expirado), **When** a janela encerra a cobrança, **Then** o mesmo: riscada e com o identificador no `Log`.
+4. **Given** o operador desiste enquanto a cobrança ainda está sendo criada ou a criação deu erro, **When** a desistência é confirmada, **Then** a forma fica riscada e o `Log` registra a recusa sem identificador (não existe um para mandar).
+5. **Given** uma recusa antes de qualquer cobrança (sem usuário GAM, sem cliente, PIX abaixo do mínimo), **When** a janela se encerra, **Then** a forma sai da lista como hoje: nada foi cobrado e o operador não fez nenhum gesto.
+6. **Given** uma forma riscada por desistência, **When** o operador tenta outra forma, **Then** a nova entra normalmente e a riscada fica fora do saldo, do payload e das guardas.
+
+---
+
 ### Edge Cases
 
 - **Forma pendente de integração no "Limpar"** (PIX gerado e não pago): passa a riscada como as demais; a confirmação de PIX que existe hoje antes do "Limpar" continua valendo.
@@ -106,7 +125,7 @@ Venda de R$ 87,00; o cliente entrega R$ 100,00 em dinheiro. O Checkout mostra tr
 - **FR-010**: Todo evento de forma removida MUST registrar a descrição da forma, o valor que ela tinha na venda e o motivo.
 - **FR-011**: O motivo MUST ser um entre: removida pelo operador, estornada no TEF, descartada pelo Limpar.
 - **FR-012**: Quando a forma removida for TEF com transação aprovada, o evento MUST registrar o identificador da transação na SmartTEF (o mesmo que identifica a transação no faturamento).
-- **FR-013**: Quando a forma removida for PIX **aprovado** (o único estado em que a forma guarda o identificador da cobrança), o evento MUST registrar esse identificador.
+- **FR-013**: Quando a forma removida for PIX com cobrança gerada, o evento MUST registrar o identificador dela. (Redação original: "PIX **aprovado**, o único estado em que a forma guarda o identificador"; **corrigida em 2026-10-16** pela US4/FR-022, que guarda o identificador já na geração.)
 - **FR-014**: Campos de identificador MUST ser omitidos quando não houver transação, nunca enviados vazios.
 - **FR-015**: Os eventos MUST chegar ao ERP no histórico de auditoria da venda, junto do retrato, nas mesmas condições em que os eventos atuais chegam.
 
@@ -118,6 +137,14 @@ Venda de R$ 87,00; o cliente entrega R$ 100,00 em dinheiro. O Checkout mostra tr
 - **FR-019**: O cálculo de saldo, faltante e troco exibido ao operador MUST permanecer como hoje.
 - **FR-020**: Ao montar a venda a partir de um documento do ERP (DAV ou NFCe retomada), quando a soma das formas exceder o total da venda e houver **exatamente uma** forma dinheiro cujo valor cubra todo o excedente, o excedente MUST ser tratado como troco dessa forma: valor recebido igual ao valor do documento, valor que quita a venda igual ao valor do documento menos o excedente. Sem dinheiro, com mais de uma forma dinheiro ou com excedente maior que o dinheiro, o documento MUST ser importado como está, sem inventar troco.
 - **FR-021**: Sem excedente, a reconstrução do dinheiro importado MUST continuar com recebido igual a aplicado.
+
+**Desistência e falha de TEF/PIX (US4)**
+
+- **FR-022**: Assim que a cobrança TEF é criada, o `payment_identifier` MUST ficar guardado na forma pendente; assim que a cobrança PIX é gerada, o identificador PIX idem. Guardar não muda o status nem entra no payload: só a forma aprovada vai ao ERP.
+- **FR-023**: Quando o operador desiste de uma cobrança TEF ou PIX, ou ela falha depois de criada, a forma MUST ficar na lista como excluída (riscada), e não sair dela.
+- **FR-024**: Uma recusa sem cobrança criada e sem gesto do operador (sem usuário GAM, sem cliente, PIX abaixo do mínimo) MUST continuar tirando a forma da lista.
+- **FR-025**: A recusa MUST ser registrada no `Log` com a descrição da forma, o valor e, quando houver, o identificador da cobrança TEF ou PIX; identificador ausente é omitido, nunca vazio (FR-014).
+- **FR-026**: O identificador MUST ser o mesmo que o ERP recebe em `TEFPagId` / `FormaPixGUID` quando a forma é aprovada.
 
 ### Key Entities
 
@@ -138,11 +165,12 @@ Venda de R$ 87,00; o cliente entrega R$ 100,00 em dinheiro. O Checkout mostra tr
 ## Assumptions
 
 - O "Limpar" e a remoção individual continuam com as confirmações atuais (PIX gerado, valor vindo do documento); só o efeito final muda.
-- O identificador PIX entra no evento pelo mesmo motivo do TEF (conciliação com a cobrança no banco). O usuário pediu explicitamente só o TEF; incluir o PIX não muda nada para o operador. Um PIX **pendente** removido sai sem identificador: a forma só recebe o identificador da cobrança na aprovação. Levá-lo também no pendente exigiria gravar o identificador na geração da cobrança, mudança na feature 009 fora deste escopo.
+- O identificador PIX entra no evento pelo mesmo motivo do TEF (conciliação com a cobrança no banco). O usuário pediu explicitamente só o TEF; incluir o PIX não muda nada para o operador. **Corrigido em 2026-10-16 (US4):** a forma passa a guardar o identificador da cobrança PIX já na geração, então o PIX **pendente** desistido ou removido também leva o identificador (a antiga redação o deixava de fora por exigir mudar a 009; a US4 fez essa mudança).
 - O valor registrado no evento é o valor que a forma tinha na venda: o aplicado e, para dinheiro, o recebido, que é o que de fato entrou na gaveta. Vale com ou sem a US3.
 - O formato do histórico de auditoria (lista de eventos serializada no campo `Log`) não muda; só os detalhes do evento de forma removida ganham campos. O ERP armazena o `Log` sem interpretar campo a campo.
 - A reconstrução do troco na importação (FR-020) compara as formas com o total dos itens importados. O desconto de capa de um documento não é importado hoje (lacuna anterior a esta feature). Num documento com desconto no cabeçalho, o excedente pode ficar subestimado e o troco não ser reconstruído; nesse caso a importação segue como hoje.
-- Formas recusadas pela integração continuam saindo da lista na hora, como hoje; esta feature trata só das formas removidas, estornadas ou descartadas.
+- **Corrigido em 2026-10-16 (US4):** a desistência do operador e a falha de uma cobrança já criada **deixam de** tirar a forma da lista; ela fica riscada. Só a recusa sem cobrança criada e sem gesto do operador (FR-024) continua saindo na hora.
+- O identificador da cobrança só chega depois que o ERP responde à criação. Se o operador desistir antes dessa resposta, o `Log` sai sem identificador (cenário 4); uma resposta que chegue depois da desistência não é registrada. O Checkout continua sem cancelar a cobrança em voo, e a janela segue avisando isso.
 
 ## Dependencies
 
