@@ -1014,7 +1014,7 @@ describe('pagamentoSlice — forma sem troco acima do saldo (FR-024)', () => {
  * ------------------------------------------------------------------ */
 
 describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3)', () => {
-  it('soma exatamente o total líquido em reais, só com aprovados e com FormaEntrada', async () => {
+  it('soma o total líquido mais o troco em reais, só com aprovados e com FormaEntrada (AD-284)', async () => {
     const { store } = montarStore({ capacidades: { tefAtivo: false, pixAtivo: true } });
 
     // Um Pix pendente que **não** pode entrar no payload…
@@ -1032,7 +1032,9 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
       (acumulado, forma) => acumulado + Number(forma.FormaValor),
       0,
     );
-    expect(soma).toBeCloseTo(emReais(TOTAL_PADRAO), 10);
+    // Feature 018: o dinheiro vai com o que o cliente entregou, então a soma é o
+    // total (100,00) **mais** o troco (20,00) — o ERP deriva o troco da diferença.
+    expect(soma).toBeCloseTo(emReais(TOTAL_PADRAO + 2_000), 10);
 
     expect(payload.FormasDePagamento[0]).toEqual({
       FormaCodigo: CARTAO.codigo,
@@ -1050,18 +1052,19 @@ describe('pagamentoSlice — montagem do payload (T027, erp-pagamento-api.md §3
     expect(payload.FormasDePagamento[1]).toEqual({
       FormaCodigo: DINHEIRO.codigo,
       FormaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
-      FormaValor: 30,
+      // O recebido (50,00), não os 30,00 que quitaram a venda.
+      FormaValor: 50,
       FormaIntegracaoCartao: '',
       FormaFpgUtiCar: '',
       FormaEntrada: 'S',
       TicketDevolucao: '',
     });
 
-    // O troco de 20,00 existe no saldo e **não** aparece em campo nenhum.
+    // A tela não muda: quem quita a venda continua sendo o aplicado, e o troco de
+    // 20,00 segue no saldo. O contrato não tem campo de troco.
     expect(store.getState().saldo().troco).toBe(2_000);
-    const serializado = JSON.stringify(payload.FormasDePagamento);
-    expect(serializado).not.toContain('20');
-    expect(serializado.toLowerCase()).not.toContain('troco');
+    expect(store.getState().saldo().saldoRestante).toBe(0);
+    expect(JSON.stringify(payload.FormasDePagamento).toLowerCase()).not.toContain('troco');
   });
 });
 
@@ -1339,6 +1342,8 @@ describe('pagamentoSlice — aplicarForma (porta da feature 013)', () => {
         // payload de emissão (I5).
         integracaoCartao: '',
         ticketDevolucao: null,
+        // Feature 018: o dinheiro entra na candidata com o recebido (I5).
+        valorRecebido: 10_000,
       },
       'ATALHO_CENARIO',
     );
@@ -1416,6 +1421,54 @@ describe('pagamentoSlice — importação e limpeza', () => {
       1,
     );
     aviso.mockRestore();
+  });
+
+  // Feature 018, FR-020: o ERP grava o dinheiro com o recebido; retomado, o
+  // excedente volta a ser troco em vez de "pagamento acima do total".
+  it('dinheiro do documento acima do total reconstrói o troco, sem acusar excesso (FR-020)', () => {
+    const { store } = montarStore(); // subtotal R$ 100,00
+
+    store.getState().importarFormasDePagamento([
+      {
+        formaCodigo: DINHEIRO.codigo,
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
+        valor: centavos(15_000),
+        tef: null,
+        pixGuid: null,
+        ticketDevolucao: null,
+      },
+    ]);
+
+    const [dinheiro] = store.getState().pagamentos;
+    expect(dinheiro?.valorRecebido).toBe(15_000);
+    expect(dinheiro?.valorAplicado).toBe(TOTAL_PADRAO);
+    const saldo = store.getState().saldo();
+    expect(saldo.saldoRestante).toBe(0);
+    expect(saldo.troco).toBe(5_000);
+    // O que vai de volta ao ERP é o mesmo recebido do documento.
+    expect(store.getState().montarPagamentosParaPayload().FormasDePagamento[0]?.FormaValor).toBe(
+      150,
+    );
+  });
+
+  it('documento sem excedente segue com recebido igual ao aplicado (FR-021)', () => {
+    const { store } = montarStore();
+
+    store.getState().importarFormasDePagamento([
+      {
+        formaCodigo: DINHEIRO.codigo,
+        formaMeioPagtoNFe: MEIO_PAGTO.Dinheiro,
+        valor: centavos(TOTAL_PADRAO),
+        tef: null,
+        pixGuid: null,
+        ticketDevolucao: null,
+      },
+    ]);
+
+    const [dinheiro] = store.getState().pagamentos;
+    expect(dinheiro?.valorRecebido).toBe(TOTAL_PADRAO);
+    expect(dinheiro?.valorAplicado).toBe(TOTAL_PADRAO);
+    expect(store.getState().saldo().troco).toBe(0);
   });
 
   it('limparPagamentos esvazia pagamentos, condição, desconto e vale', async () => {

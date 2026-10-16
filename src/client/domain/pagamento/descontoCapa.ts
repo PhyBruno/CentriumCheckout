@@ -75,7 +75,7 @@ export function resolverDescontoCapa(
  * Por que um desconto de capa não pode ser aplicado — `null` significa "pode".
  *
  * - `ZERA_A_VENDA` — o desconto engole o subtotal inteiro. Não sobra nota a
- *   emitir: `Σ FormaValor` seria zero e não existe pagamento capaz de fechar
+ *   emitir: o total a pagar seria zero e não existe pagamento capaz de fechar
  *   uma venda de R$ 0,00.
  * - `ZERA_UM_ITEM` — o total da venda ainda é positivo, mas o **rateio** deixa
  *   pelo menos uma linha valendo menos de um centavo. Com a chave

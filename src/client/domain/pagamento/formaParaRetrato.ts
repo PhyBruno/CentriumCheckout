@@ -29,9 +29,14 @@ export function formaParaRetrato(pagamento: PagamentoAplicado): FormaDePagamento
     FormaCodigo: pagamento.formaCodigo,
     FormaMeioPagtoNFe: pagamento.meioPagtoNFe,
     // Fronteira de saída: o ERP recebe `double` em reais, não centavos.
-    // `Σ FormaValor` é exatamente o total líquido — o troco não tem campo no
-    // contrato e **nunca** aparece aqui (`research.md` D3 da 008).
-    FormaValor: reaisDeCentavos(pagamento.valorAplicado),
+    //
+    // O dinheiro vai com o que o cliente **entregou** (`valorRecebido`), e as
+    // demais formas com o aplicado (`valorRecebido` é `null`, I3). O contrato não
+    // tem campo de troco: o ERP o deriva de `Σ FormaValor − total da nota`, então
+    // `Σ FormaValor` é o total líquido **mais o troco** (feature 018, AD-284 —
+    // revoga D3 da 008). Quem quita a venda continua sendo `valorAplicado`:
+    // saldo, faltante e troco exibidos não mudam.
+    FormaValor: reaisDeCentavos(pagamento.valorRecebido ?? pagamento.valorAplicado),
     FormaIntegracaoCartao: pagamento.integracaoCartao,
     // `FpgUtiCar` é como o ERP identifica **crediário** ao somar `&TotalCrediario`
     // em `PCheckout_ValidarNFCe` (`erp-validacao-api.md`). Faltava no payload até

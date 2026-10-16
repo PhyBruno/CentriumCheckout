@@ -46,6 +46,7 @@ import { ehFormaDeValeDevolucao, type ResultadoTicket } from '../../domain/pagam
 import { subtrair, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import { formaParaRetrato } from '../../domain/pagamento/formaParaRetrato';
 import { detalhesDaRemocao } from '../../domain/pagamento/remocaoPagamento';
+import { reconstruirTrocoImportado } from '../../domain/pagamento/trocoImportado';
 import type { FormaCandidata } from '../../domain/validacaoVenda/projetarPagamentos';
 import type { OrigemAcionamento } from './validacaoVendaSlice';
 import type {
@@ -766,6 +767,7 @@ export function criarPagamentoSlice(
         entrada: forma.entrada,
         integracaoCartao: forma.integracaoCartao,
         ticketDevolucao,
+        valorRecebido,
       };
 
       let veredito: Veredito;
@@ -1272,8 +1274,9 @@ export function criarPagamentoSlice(
 
         // O valor é o do ticket, não um valor digitado. `derivarValores` limita
         // `valorAplicado` ao saldo, e é o correto: a nota fecha pelo total dela
-        // (`Σ FormaValor` nunca excede), enquanto o ticket é consumido por
-        // inteiro no ERP — que é exatamente a perda que a confirmação anunciou.
+        // (o vale não é dinheiro, então vai ao ERP com o aplicado e nunca
+        // excede), enquanto o ticket é consumido por inteiro no ERP — que é
+        // exatamente a perda que a confirmação anunciou.
         return aplicarNucleo(forma, resultado.valor, 'MANUAL', codigoLimpo);
       },
 
@@ -1401,9 +1404,10 @@ export function criarPagamentoSlice(
             // aceito pelo ERP com os valores que tinha.
             fpgUtiCar: doCatalogo?.fpgUtiCar ?? '',
             valorAplicado: forma.valor,
-            // I3 (`valorRecebido !== null` ⇔ `Dinheiro`) preservada: o documento
-            // registra o que quitou, então recebido e aplicado coincidem e o
-            // troco derivado é zero — que é o correto para uma venda já fechada.
+            // I3 (`valorRecebido !== null` ⇔ `Dinheiro`) preservada. Aqui
+            // recebido e aplicado coincidem; se a soma do documento passar do
+            // total, `reconstruirTrocoImportado` devolve o excedente ao dinheiro
+            // logo abaixo, antes de gravar (feature 018, FR-020).
             valorRecebido: meioPagtoNFe === MEIO_PAGTO.Dinheiro ? forma.valor : null,
             // Sempre `NENHUMA`/`APROVADO`: o veredito do ERP já está implícito
             // no próprio documento existir, e nenhuma integração é reaberta.
@@ -1431,7 +1435,12 @@ export function criarPagamentoSlice(
         // pela metade — com os itens dentro e o pagamento fora —, que é pior do
         // que reproduzir fielmente um documento estranho. A guarda vale para o
         // que o operador digita; o que o ERP já registrou entra como está.
-        aplicarPagamentos(importados);
+        //
+        // O ERP grava o dinheiro com o que o cliente entregou (AD-284), então a
+        // soma do documento pode passar do total: o excedente volta a ser troco
+        // do dinheiro, e não "pagamento acima do total". O subtotal é o dos itens
+        // já importados (`importarLinhasCongeladas` roda antes desta porta).
+        aplicarPagamentos(reconstruirTrocoImportado(importados, deps.subtotalCarrinho()));
 
         // Pelo mesmo motivo, a venda montada a partir do documento nasce com o
         // veredito da 014 dispensado (`FR-013`): estas formas não passaram por

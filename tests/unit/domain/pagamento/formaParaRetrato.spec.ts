@@ -14,6 +14,48 @@ import { pagamentoDe } from '../../../support/pagamento';
 
 const CAMPOS_TEF_REMOVIDOS = ['TEFidentificacao', 'TEFCNPJ', 'TEFNumeroAutorizacao'] as const;
 
+/**
+ * Feature 018, FR-016/FR-017 — o dinheiro vai ao ERP com o que o cliente entregou,
+ * para o ERP calcular o troco; as demais formas seguem com o valor aplicado.
+ */
+describe('formaParaRetrato — FormaValor e troco', () => {
+  it('dinheiro com troco leva o recebido, não o que quitou a venda', () => {
+    const forma = formaParaRetrato(
+      pagamentoDe({
+        meioPagtoNFe: MEIO_PAGTO.Dinheiro,
+        valorAplicado: 8_700,
+        valorRecebido: 10_000,
+      }),
+    );
+
+    expect(forma).toMatchObject({ FormaValor: 100 });
+  });
+
+  it('dinheiro exato leva o valor da venda (recebido igual ao aplicado)', () => {
+    const forma = formaParaRetrato(
+      pagamentoDe({
+        meioPagtoNFe: MEIO_PAGTO.Dinheiro,
+        valorAplicado: 8_700,
+        valorRecebido: 8_700,
+      }),
+    );
+
+    expect(forma).toMatchObject({ FormaValor: 87 });
+  });
+
+  it('cartão leva o valor aplicado', () => {
+    const forma = formaParaRetrato(
+      pagamentoDe({
+        meioPagtoNFe: MEIO_PAGTO.CartaoCredito,
+        valorAplicado: 6_000,
+        valorRecebido: null,
+      }),
+    );
+
+    expect(forma).toMatchObject({ FormaValor: 60 });
+  });
+});
+
 describe('formaParaRetrato — TEF', () => {
   it('forma TEF aprovada leva TEFPagId, TEFBandeira e TEFTipoIntegracao "1" (T11)', () => {
     const forma = formaParaRetrato(

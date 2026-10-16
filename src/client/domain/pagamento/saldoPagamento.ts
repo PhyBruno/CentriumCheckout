@@ -113,7 +113,11 @@ export interface PagamentoAplicado {
 /** Derivado, nunca armazenado — seletor puro sobre carrinho + pagamentos. */
 export interface SaldoPagamento {
   readonly totalLiquido: Centavos;
-  /** Σ `valorAplicado` dos aprovados — o que abate a venda e vai ao ERP. */
+  /**
+   * Σ `valorAplicado` dos aprovados — o que abate a venda. Não é o que vai ao ERP
+   * em `FormaValor`: o dinheiro vai com o recebido (`totalRecebido`), e o ERP
+   * deriva o troco da diferença (feature 018).
+   */
   readonly totalAplicado: Centavos;
   /**
    * Σ do que o operador **entregou**: `valorRecebido` quando existe (dinheiro),
@@ -279,7 +283,9 @@ export function podeAplicarForma(
  * `podeAplicarForma` antes de chegar aqui, em vez de truncado em silêncio. Ele
  * permanece como rede de segurança — se um chamador futuro esquecer de passar
  * `valorInformado` à validação, o pior desfecho é um valor truncado, nunca um
- * `FormaValor` acima do total da nota.
+ * `FormaValor` acima do saldo numa forma que não gera troco. (No dinheiro o
+ * `FormaValor` passa do total de propósito: vai o recebido, e o ERP gera o
+ * troco — feature 018.)
  */
 export function derivarValores(
   forma: FormaPagamento,

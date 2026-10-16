@@ -93,21 +93,21 @@ description: "Task list — 018 rastreabilidade de pagamentos cancelados e troco
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] `tests/unit/domain/pagamento/formaParaRetrato.spec.ts`: dinheiro com `valorRecebido` 10000 e `valorAplicado` 8700 → `FormaValor: 100`; cartão → `FormaValor` = aplicado (RED)
-- [ ] T018 [P] [US3] `tests/unit/domain/validacaoVenda/projetarPagamentos.spec.ts:16-24`: `FormaCandidata` com `valorRecebido`; candidata dinheiro projetada com `FormaValor` = recebido (RED)
-- [ ] T019 [P] [US3] Escrever primeiro `tests/unit/domain/pagamento/trocoImportado.spec.ts`: sem excedente → intacto; excedente com exatamente 1 dinheiro que o cobre → `valorRecebido` = original, `valorAplicado` = original − excedente; excedente igual ao dinheiro inteiro → `valorAplicado` 0; sem dinheiro, 2 dinheiros ou excedente > dinheiro → intacto (FR-020 revisado); I3 preservada (data-model §4)
-- [ ] T020 [US3] `tests/integration/pagamentoSlice.spec.ts:899-944`: `FormaValor` do dinheiro passa de 30 para 50; atualizar o formato exato da candidata em `:1213-1227`; acrescentar caso de `importarFormasDePagamento` com dinheiro acima do subtotal → troco reconstruído
-- [ ] T021 [P] [US3] `tests/integration/validacaoVendaSlice.spec.ts:263-285` (formato da candidata) e garantir que `:377-379` (retrato validado == emitido) cobre um dinheiro com troco (FR-018)
-- [ ] T022 [P] [US3] `tests/e2e/pagamento-geral.spec.ts:163-192`: Σ `FormaValor` passa de ≈98 para 100; asserir o mesmo `FormaValor` de dinheiro no corpo de `ValidarNFCe` e de `FaturarNFCe`
+- [X] T017 [P] [US3] `tests/unit/domain/pagamento/formaParaRetrato.spec.ts`: dinheiro com `valorRecebido` 10000 e `valorAplicado` 8700 → `FormaValor: 100`; cartão → `FormaValor` = aplicado (RED)
+- [X] T018 [P] [US3] `tests/unit/domain/validacaoVenda/projetarPagamentos.spec.ts:16-24`: `FormaCandidata` com `valorRecebido`; candidata dinheiro projetada com `FormaValor` = recebido (RED)
+- [X] T019 [P] [US3] Escrever primeiro `tests/unit/domain/pagamento/trocoImportado.spec.ts`: sem excedente → intacto; excedente com exatamente 1 dinheiro que o cobre → `valorRecebido` = original, `valorAplicado` = original − excedente; excedente igual ao dinheiro inteiro → `valorAplicado` 0; sem dinheiro, 2 dinheiros ou excedente > dinheiro → intacto (FR-020 revisado); I3 preservada (data-model §4)
+- [X] T020 [US3] `tests/integration/pagamentoSlice.spec.ts:899-944`: `FormaValor` do dinheiro passa de 30 para 50; atualizar o formato exato da candidata em `:1213-1227`; acrescentar caso de `importarFormasDePagamento` com dinheiro acima do subtotal → troco reconstruído
+- [X] T021 [P] [US3] `tests/integration/validacaoVendaSlice.spec.ts:263-285` (formato da candidata) e garantir que `:377-379` (retrato validado == emitido) cobre um dinheiro com troco (FR-018)
+- [X] T022 [P] [US3] `tests/e2e/pagamento-geral.spec.ts:163-192`: Σ `FormaValor` passa de ≈98 para 100; asserir o mesmo `FormaValor` de dinheiro no corpo de `ValidarNFCe` e de `FaturarNFCe`
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] `src/client/domain/validacaoVenda/projetarPagamentos.ts`: `FormaCandidata.valorRecebido: Centavos | null` com TSDoc (I3, I5); `candidataComoPagamento` copia o campo em vez de `null`
-- [ ] T024 [US3] `src/client/stores/slices/pagamentoSlice.ts` `aplicarNucleo` (`:753-761`): a candidata recebe `valorRecebido` de `derivarValores`
-- [ ] T025 [US3] `src/client/domain/pagamento/formaParaRetrato.ts:31-34`: `FormaValor: reaisDeCentavos(pagamento.valorRecebido ?? pagamento.valorAplicado)`; reescrever o comentário que afirma que o troco "nunca aparece aqui"
-- [ ] T026 [US3] Implementar `reconstruirTrocoImportado(pagamentos, totalLiquido)` em `src/client/domain/pagamento/trocoImportado.ts` com `somar`/`subtrair` de `domain/precificacao/dinheiro` (Constitution V) até T019 passar
-- [ ] T027 [US3] `pagamentoSlice.ts` `importarFormasDePagamento` (`:1403`): `aplicarPagamentos(reconstruirTrocoImportado(importados, deps.subtotalCarrinho()))`; atualizar o comentário de I3 em `:1373`
-- [ ] T028 [US3] Reescrever os comentários que afirmam `Σ FormaValor == total`: `src/client/domain/pagamento/saldoPagamento.ts:212,282` e `src/client/domain/pagamento/descontoCapa.ts:78` (só onde a afirmação fala do payload; a regra de saldo não muda)
+- [X] T023 [US3] `src/client/domain/validacaoVenda/projetarPagamentos.ts`: `FormaCandidata.valorRecebido: Centavos | null` com TSDoc (I3, I5); `candidataComoPagamento` copia o campo em vez de `null`
+- [X] T024 [US3] `src/client/stores/slices/pagamentoSlice.ts` `aplicarNucleo` (`:753-761`): a candidata recebe `valorRecebido` de `derivarValores`
+- [X] T025 [US3] `src/client/domain/pagamento/formaParaRetrato.ts:31-34`: `FormaValor: reaisDeCentavos(pagamento.valorRecebido ?? pagamento.valorAplicado)`; reescrever o comentário que afirma que o troco "nunca aparece aqui"
+- [X] T026 [US3] Implementar `reconstruirTrocoImportado(pagamentos, totalLiquido)` em `src/client/domain/pagamento/trocoImportado.ts` com `somar`/`subtrair` de `domain/precificacao/dinheiro` (Constitution V) até T019 passar
+- [X] T027 [US3] `pagamentoSlice.ts` `importarFormasDePagamento` (`:1403`): `aplicarPagamentos(reconstruirTrocoImportado(importados, deps.subtotalCarrinho()))`; atualizar o comentário de I3 em `:1373`
+- [X] T028 [US3] Reescrever os comentários que afirmam `Σ FormaValor == total`: `src/client/domain/pagamento/saldoPagamento.ts:212,282` e `src/client/domain/pagamento/descontoCapa.ts:78` (só onde a afirmação fala do payload; a regra de saldo não muda)
 - [ ] T029 [US3] **Gate de merge (bloqueante, manual)**: homologar com o ERP real a venda do quickstart #13 (R$ 87,00, dinheiro R$ 100,00) e confirmar NFCe autorizada com troco R$ 13,00. Se possível, ler `PCheckout_FaturarNFCe` na KB GenExus para confirmar o cálculo do troco e se `FormaValor` é gravado com troco (research D1/D6). Registrar o resultado em `research.md` D1. Se o ERP recusar, reverter T023–T028 do PR e abrir pendência em `.specs/project/PENDENCIES.md`
 
 **Checkpoint**: as três stories verdes; US3 só sobe para `master` depois de T029.

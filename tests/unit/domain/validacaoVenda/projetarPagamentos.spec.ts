@@ -21,6 +21,7 @@ const CANDIDATA: FormaCandidata = {
   entrada: 'N',
   integracaoCartao: '',
   ticketDevolucao: null,
+  valorRecebido: null,
 };
 
 describe('projetarPagamentos', () => {
@@ -66,6 +67,19 @@ describe('projetarPagamentos', () => {
     );
 
     expect(projetado[0]).toMatchObject({ FormaFpgUtiCar: 'CRD', FormaEntrada: 'N' });
+  });
+
+  // Feature 018, FR-018 (I5): o dinheiro vai ao gate com o mesmo `FormaValor` que
+  // iria no faturamento — o recebido, não o que quita a venda.
+  it('candidata dinheiro projeta `FormaValor` igual ao recebido, não ao aplicado', () => {
+    const projetado = projetarPagamentos([], {
+      ...CANDIDATA,
+      meioPagtoNFe: MEIO_PAGTO.Dinheiro,
+      valor: centavos(8_700),
+      valorRecebido: centavos(10_000),
+    });
+
+    expect(projetado[0]).toMatchObject({ FormaValor: 100 });
   });
 
   it('descarta pendentes e excluídos, como o payload de emissão faz', () => {

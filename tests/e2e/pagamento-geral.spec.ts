@@ -13,7 +13,7 @@ import { informarValorRecebido } from './support/pagamento';
  *   → aplicar CartaoCredito 60,00
  *   → aplicar Dinheiro recebido 40,00  (aplicado 38,00, troco 2,00)
  *   → saldo zerado, botão "Finalizar Venda" habilitado
- *   → payload: Σ FormaValor = 98,00; DescontoValor por item soma 2,00; sem campo de troco
+ *   → payload: Σ FormaValor = 100,00 (98,00 + troco 2,00, 018); DescontoValor por item soma 2,00; sem campo de troco
  * ```
  *
  * O quickstart original usava 10%; o percentual caiu para 2% em 2026-09-04,
@@ -78,6 +78,12 @@ const URL_SERVICO_IMPRESSAO = 'http://127.0.0.1:4545/**';
 
 async function ultimoRetrato(request: APIRequestContext): Promise<RetratoFaturado> {
   const resposta = await request.get(`${URL_ERP_MOCK}/__mock/ultimo-faturamento`);
+  return (await resposta.json()) as RetratoFaturado;
+}
+
+/** O retrato que o gate da 014 mandou ao `ValidarNFCe` na última inserção. */
+async function ultimaValidacao(request: APIRequestContext): Promise<RetratoFaturado> {
+  const resposta = await request.get(`${URL_ERP_MOCK}/__mock/ultima-validacao`);
   return (await resposta.json()) as RetratoFaturado;
 }
 
@@ -185,12 +191,18 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
     const formas = retrato?.FormasDePagamento ?? [];
     expect(formas).toHaveLength(2);
 
-    // `Σ FormaValor` é **exatamente** o total líquido: 60,00 + 38,00 = 98,00.
-    // O troco de 2,00 não aparece em campo nenhum — não existe campo de troco
-    // no contrato (`research.md` D3).
+    // Feature 018 (AD-284): o dinheiro vai com o que o cliente entregou, então
+    // `Σ FormaValor` é o total líquido **mais o troco**: 60,00 + 40,00 = 100,00
+    // (98,00 + 2,00). Não existe campo de troco no contrato — o ERP o deriva da
+    // diferença.
     const somaFormas = formas.reduce((total, forma) => total + (forma.FormaValor ?? 0), 0);
-    expect(somaFormas).toBeCloseTo(98, 2);
+    expect(somaFormas).toBeCloseTo(100, 2);
+    expect(formas.map((forma) => forma.FormaValor)).toEqual([60, 40]);
     expect(JSON.stringify(retrato)).not.toContain('roco');
+
+    // FR-018: a validação prévia recebeu exatamente as mesmas formas.
+    const { retrato: validado } = await ultimaValidacao(request);
+    expect(validado?.FormasDePagamento).toEqual(formas);
 
     // `FormaEntrada` ecoado do catálogo em toda forma (`FR-022`/AD-111): sem ele
     // o ERP calcula crediário zero e o gate da 014 aprovaria o que deve barrar.
