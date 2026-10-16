@@ -31,7 +31,7 @@ Os nomes de campo dentro de `detalhes` (`codigoCliente`, `codigoVendedor`, `codi
 | 9 | `PRODUTO_CANCELADO` | 003-carrinho-produto-precificacao | `{ codigoProduto: string }` |
 | 10 | `CONDICAO_PAGAMENTO_APLICADA` | 008-pagamento-geral | `{ condicao: string }` |
 | 11 | `FORMA_PAGAMENTO_APLICADA` | 008-pagamento-geral | `{ formaPagamento: string, valor: number }` (centavos inteiros) |
-| 12 | `FORMA_PAGAMENTO_REMOVIDA` | 008-pagamento-geral | `{ formaPagamento: string }` |
+| 12 | `FORMA_PAGAMENTO_REMOVIDA` | 008-pagamento-geral; ampliado pela 018 (AD-283) | `{ formaPagamento: string, valor: number, motivo: 'OPERADOR' \| 'ESTORNO_TEF' \| 'LIMPAR', tefPagId?: string, pixGuid?: string }` — `valor` em centavos inteiros (`valorRecebido ?? valorAplicado`); `motivo` é o gesto que tirou a forma (botão Remover, estorno confirmado pelo TEF, "Limpar"); `tefPagId` (`payment_identifier` da SmartTEF, o `TEFPagId` do faturamento) e `pixGuid` só aparecem quando a forma tem a transação, nunca vazios |
 | 13 | `VALE_DEVOLUCAO_USADO` | 008-pagamento-geral | `{ codigoVale: string, valor: number }` (centavos inteiros) |
 | 14 | `PAGAMENTO_RECUSADO` | 008-pagamento-geral / 009-pagamento-pix / 010-pagamento-tef | `{ tipo: string, motivo?: string }` |
 | 15 | `FATURAMENTO_FALHOU` | 004-finalizacao-suspensao-venda | `{ operacao: 'FATURAR' \| 'SUSPENDER' }` |

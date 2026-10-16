@@ -30,11 +30,13 @@ Todas as `NEEDS CLARIFICATION` do Technical Context estão resolvidas abaixo. Tr
 
 ---
 
-## D3 — Troco não existe no contrato: é grandeza de UI, não de payload
+## D3 — O estado guarda recebido e aplicado; o recebido vai ao ERP em `FormaValor`, e o ERP deriva o troco
 
-**Decision**: O troco é calculado e exibido, mas **nunca** entra em `CheckoutFaturarNFCe`. Para a forma dinheiro, o estado guarda dois valores distintos: `valorRecebido` (o que o cliente entregou, usado só para exibir o troco) e `valorAplicado` (o que efetivamente quita a venda, que é o que vai em `FormaValor`). Invariante: `Σ FormaValor == total líquido da venda`.
+**[CORRIGIDO em 2026-10-16 pela feature 018 (AD-284): a versão original desta decisão dizia que o troco "nunca entra em `CheckoutFaturarNFCe`" e que `Σ FormaValor == total líquido`. Isso não vale mais: o dinheiro vai com `valorRecebido` e `Σ FormaValor == total líquido + troco`. A separação das duas grandezas no estado continua valendo.]**
 
-**Rationale**: `CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem` (linhas 1510-1550) não tem campo de troco nem de valor recebido — só `FormaValor`. Enviar o valor recebido em `FormaValor` faria a soma das formas exceder o total da nota, quebrando o fechamento fiscal. Separar as duas grandezas no modelo torna o erro impossível de cometer, em vez de depender de disciplina no call site.
+**Decision**: Para a forma dinheiro, o estado guarda dois valores distintos: `valorRecebido` (o que o cliente entregou) e `valorAplicado` (o que efetivamente quita a venda: é ele que entra no saldo, no faltante e no troco exibido). **`FormaValor` do dinheiro é `valorRecebido`**, e as demais formas vão com `valorAplicado`. O contrato não tem campo de troco: o ERP o deriva de `Σ FormaValor − total da nota`. Invariante: `Σ FormaValor == total líquido da venda + troco`, com o troco que `calcularSaldo` exibe.
+
+**Rationale**: `CheckoutFaturarNFCe.FormasDePagamento_FormasDePagamentoItem` (linhas 1510-1550) não tem campo de troco nem de valor recebido — só `FormaValor`. Mandar o aplicado fazia a NFCe sair sem troco (pedido do usuário, 2026-10-16, que reverteu a decisão original). Manter as duas grandezas separadas no estado continua sendo o que impede o erro: o saldo, o botão Finalizar e a candidata da validação prévia seguem sobre `valorAplicado`, e só `formaParaRetrato` escolhe o que sai (`specs/018-rastreabilidade-pagamento-troco/research.md` D1/D2). A aceitação da soma acima do total pelo faturamento do ERP depende da homologação T029 da 018.
 
 **Alternatives considered**: *Guardar só `valorRecebido` e subtrair o troco na montagem do payload*: rejeitado — espalha a regra monetária para fora do domínio e torna o payload dependente de um cálculo feito na feature 004.
 

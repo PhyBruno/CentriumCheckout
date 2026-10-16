@@ -28,7 +28,7 @@ O roteamento de integração é uma **função pura de tabela** — `resolverInt
 
 **Constraints**:
 - Nenhuma operação monetária em ponto flutuante (Constitution V) — `double` do ERP vira `Centavos` no schema Zod, na fronteira.
-- `Σ FormaValor` do payload é exatamente o total líquido — o troco não existe no contrato e nunca é enviado (`research.md`, D3).
+- `Σ FormaValor` do payload é o total líquido mais o troco: o dinheiro vai com o recebido e o ERP deriva o troco, que não tem campo no contrato (`research.md`, D3; **corrigido em 2026-10-16 pela 018, AD-284** — a regra original mandava só o total líquido).
 - Uma única condição de pagamento por venda; trocar a condição esvazia as formas aplicadas (I1/I9).
 - Uma única forma `Dinheiro` por venda (`FR-013`, AD-036), garantida no domínio e não no componente.
 - Pagamento só é registrado após aprovação da integração (`FR-004`/`FR-005`); `PENDENTE_INTEGRACAO` não conta para o saldo nem bloqueia o carrinho.

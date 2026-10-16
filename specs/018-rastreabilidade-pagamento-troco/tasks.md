@@ -116,8 +116,8 @@ description: "Task list — 018 rastreabilidade de pagamentos cancelados e troco
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T030 [P] Corrigir decisões superadas **no ponto da decisão** (regra de `docs/agents/domain.md`): D3 de `specs/008-pagamento-geral/research.md` (troco passa a ir no payload) e D8 de `specs/011-recuperacao-nfce/research.md` (troco reconstruído); linha 12 de `specs/001-auditoria-acoes-operador/data-model.md`; linha de `removerPagamento` em `specs/008-pagamento-geral/contracts/pagamento-domain-api.md:205`
-- [ ] T031 [P] Registrar AD-282 ("Limpar" preserva o histórico), AD-283 (evento de remoção com valor, motivo e `tefPagId`) e AD-284 (troco ao ERP pelo `FormaValor` do dinheiro) em `.specs/project/STATE.md`, no formato das ADs vizinhas
+- [X] T030 [P] Corrigir decisões superadas **no ponto da decisão** (regra de `docs/agents/domain.md`): D3 de `specs/008-pagamento-geral/research.md` (troco passa a ir no payload) e D8 de `specs/011-recuperacao-nfce/research.md` (troco reconstruído); linha 12 de `specs/001-auditoria-acoes-operador/data-model.md`; linha de `removerPagamento` em `specs/008-pagamento-geral/contracts/pagamento-domain-api.md:205`
+- [X] T031 [P] Registrar AD-282 ("Limpar" preserva o histórico), AD-283 (evento de remoção com valor, motivo e `tefPagId`) e AD-284 (troco ao ERP pelo `FormaValor` do dinheiro) em `.specs/project/STATE.md`, no formato das ADs vizinhas
 - [ ] T032 Gates: `npx tsc --noEmit`, `npx vitest run`, `npx playwright test` (desktop e mobile) verdes; skill `typescript-strict` antes do push; `/owasp-security` antes do merge do PR para `master` (Constitution, Development Workflow)
 - [ ] T033 Commit e push na branch `feat/rastreabilidade-pagamento-troco` (`rules.md`, "Fim de tarefa"); mensagens `feat:`/`docs:` citando AD-282/283/284
 

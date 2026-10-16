@@ -1893,13 +1893,13 @@ Sete correções do usuário na quinta rodada; as três primeiras são de regra,
 
 **Impact:** `src/client/domain/precificacao/linha.ts` (`TOTAL_MINIMO_DA_LINHA`), `src/client/domain/pagamento/descontoCapa.ts` (`recusaDoDescontoCapa`, `RecusaDescontoCapa`), `src/client/stores/slices/pagamentoSlice.ts`, `src/client/features/pagamento/` (`SeletorCondicaoForma`, `ControleDescontoCapa`, `PainelPagamentoETotais`, `TotalDaVenda`), `src/client/features/carrinho/EntradaRapidaProduto.tsx`, `tests/unit/domain/pagamento/descontoCapa.spec.ts`, `tests/integration/pagamentoSlice.spec.ts`, `tests/unit/client/pagamento/SeletorCondicaoForma.spec.tsx` e `tests/e2e/pagamento-geral.spec.ts`. 634 testes verdes, `tsc --noEmit` e `eslint` limpos; os E2E de pagamento não puderam ser executados nesta máquina — já falhavam antes destas mudanças, na bipagem do produto contra o mock local.
 
-### AD-152: A condição de pagamento congela a venda, e o pagamento ganha uma saída explícita — "Limpar" (2026-09-04)
+### AD-152: A condição de pagamento congela a venda, e o pagamento ganha uma saída explícita — "Limpar" (2026-09-04; corrigido em 2026-10-16 pela AD-282 — o "Limpar" risca as formas vivas em vez de apagá-las)
 
 Cinco correções do usuário na sexta rodada, todas no cartão de pagamento.
 
 **(1) `podeMutarCarrinho()` passa a exigir também condição não selecionada — e por isso nasce `descartarPagamento()`.** O predicado era "nenhum pagamento aprovado" (I7). Agora é "nenhuma condição escolhida **e** nenhum pagamento aprovado": a condição é o ponto em que o operador declara que terminou de montar a compra e passou a cobrá-la, e deixar a grid editável a partir dali permitiria mudar o total por baixo de um pagamento em curso — a condição é justamente o que o gate da 014 e o rateio do desconto de capa tomam como fixo. Como o predicado é compartilhado com cliente e identidade da venda por decisão explícita (AD-043), o congelamento vale para os três; uma segunda regra de "a venda ainda pode mudar" divergiria em silêncio.
 
-Isso criava um beco sem saída: o combobox só **troca** de condição, nunca a desmarca, e `limparPagamentos()` é a limpeza pós-entrega da feature 004, sem guarda nenhuma. Daí a action nova `descartarPagamento()` — gesto de tela que zera condição, formas, desconto de capa e vales, recusa quando há TEF/PIX aprovado (I6 — o estorno é do ERP), audita cada forma removida e chama `invalidarVeredito()` (`FR-021`). Na tela ela é o botão "Limpar", no cabeçalho do cartão, na faixa que a pílula "Seguro" desocupou em AD-151. `AVISO_CARRINHO_BLOQUEADO` foi reescrito para nomear essa saída: o texto anterior falava só de "pagamento aprovado", que deixou de ser o gatilho mais comum.
+Isso criava um beco sem saída: o combobox só **troca** de condição, nunca a desmarca, e `limparPagamentos()` é a limpeza pós-entrega da feature 004, sem guarda nenhuma. Daí a action nova `descartarPagamento()` — gesto de tela que zera condição, desconto de capa e vales e **risca as formas vivas, mantendo-as na lista (corrigido pela AD-282; a redação original dizia que zerava as formas)**, recusa quando há TEF aprovado (I6 — o estorno é do ERP; a redação original dizia "TEF/PIX", corrigida pela AD-161), audita cada forma removida e chama `invalidarVeredito()` (`FR-021`). Na tela ela é o botão "Limpar", no cabeçalho do cartão, na faixa que a pílula "Seguro" desocupou em AD-151. `AVISO_CARRINHO_BLOQUEADO` foi reescrito para nomear essa saída: o texto anterior falava só de "pagamento aprovado", que deixou de ser o gatilho mais comum.
 
 **(2) Venda sem valor líquido não recebe pagamento.** Guarda em `aplicarNucleo`, **antes** de `podeAplicarForma`: com `totalLiquido` zero o `saldoRestante` também é zero, e a função pura responderia `SALDO_JA_COBERTO` — a frase do desfecho oposto, o da venda integralmente paga. `AVISO_VENDA_SEM_VALOR` nomeia a causa real. A guarda ficou no slice, e não no domínio, para não trocar a assinatura de `podeAplicarForma` (que decide sobre a **forma**, não sobre a venda) e os oito call sites de teste que dependem dela. `recusaDoDescontoCapa` (AD-151) já impede o desconto de zerar a venda; esta guarda cobre o que vem **depois** — itens cancelados derrubam o subtotal sem tocar no desconto aplicado, e `calcularSaldo` pisa o líquido em zero (AD-150). O motivo também aparece antes do clique, no combobox de forma e no botão "Adicionar pagamento".
 
@@ -4305,3 +4305,37 @@ O cartão **"Detalhes da transação"** (NSU, Autorização, Bandeira) sai da te
 **Verificação:** `tsc`, ESLint e Prettier limpos; 2339 testes unit e integração verdes; E2E completo 207/208 (1 pulado).
 
 **E2E corrigido junto, defeito anterior a esta branch:** `validacao-previa.spec.ts:330` ("aceito, o pagamento entra no mobile e a etapa 3 libera a finalização") falhava 5 de 5 também no `master` `dec2dad`. O teste esperava `linha-carrinho` chegar a zero como sinal de venda emitida, mas na etapa 3 do wizard a lista de itens não existe. A espera passava antes do clique ter efeito, e o contador do mock era lido antes de `FaturarNFCe` chegar. A venda era emitida normalmente. O teste agora espera a janela do documento fiscal ("Venda finalizada", AD-246), o mesmo sinal de `finalizacao-suspensao.spec.ts`, e passou 45 de 45 (a spec inteira 5 vezes).
+
+### AD-282: "Limpar" risca as formas vivas e mantém o histórico na lista (2026-10-16)
+
+**Pedido do usuário (feature 018):** o "Limpar" do pagamento deixa de apagar a lista de formas. Zera condição, desconto de capa e vales, passa as formas ainda vivas para excluídas e mantém riscadas as que já estavam, o TEF estornado entre elas.
+
+**Decision:** `descartarPagamento` mapeia cada forma viva (`pagamentoVivo`: aprovada ou pendente) para `EXCLUIDO` no mesmo `set` que zera condição, capa e vales, e deixa o resto do array como está. Sem forma viva, condição nem capa é no-op silencioso (antes olhava `pagamentos.length`). A recusa por TEF aprovado continua. O botão passa a olhar só formas vivas (`vazio` e `temPix`): uma forma riscada sozinha não o habilita e um PIX já riscado não pede a confirmação de "cobrança segue no banco". A suspensão continua pedindo essa confirmação para qualquer PIX, em qualquer status, porque a cobrança riscada segue viva no banco. `limparPagamentos`, a limpeza pós-entrega, continua esvaziando tudo.
+
+**Supera, no ponto:** a frase de AD-152 (reescrita no lugar) e o TSDoc do slice e do botão de que o "Limpar" zera as formas. A ideia de guardar a descrição da forma no pagamento, levantada no `/speckit-specify`, foi descartada: a lista rotula pelo meio de pagamento, e a auditoria resolve o rótulo antes do `set`.
+
+**Reason:** é o tratamento que `removerPagamento` dá a uma forma desde AD-163, aplicado em bloco. O operador vê tudo o que aconteceu com o pagamento da venda.
+
+**Impact:** `src/client/stores/slices/pagamentoSlice.ts`, `src/client/features/pagamento/ConfiguracaoPagamento.tsx`; testes em `pagamentoSlice.spec.ts`, `limparPagamentoDoDocumento.spec.tsx`, `finalizacaoSuspensao.spec.ts`, `e2e/pagamento-geral.spec.ts` e `e2e/recuperacao-nfce.spec.ts`.
+
+### AD-283: o evento de forma removida leva valor, motivo e o identificador da transação (2026-10-16)
+
+**Pedido do usuário (feature 018):** o ERP precisa receber os dados do TEF estornado, nem que seja só na auditoria.
+
+**Decision:** `FORMA_PAGAMENTO_REMOVIDA` passa a `{ formaPagamento, valor, motivo, tefPagId?, pixGuid? }`. `valor` em centavos inteiros (`valorRecebido ?? valorAplicado`). `motivo` é `'OPERADOR' | 'ESTORNO_TEF' | 'LIMPAR'`, literal estável para quem filtra o `Log` no ERP. `tefPagId` é o `payment_identifier` da SmartTEF, o mesmo `TEFPagId` do faturamento e a chave para achar a `TransacaoTEF`. `pixGuid` só no PIX aprovado: o pendente ainda não tem o identificador na forma. Identificador ausente é omitido, nunca vazio. Os detalhes saem de `detalhesDaRemocao`, chamada pelas três actions que excluem forma (`removerPagamento`, `confirmarEstornoTef`, `descartarPagamento`), para não divergirem. O transporte do `Log` não muda.
+
+**Supera, no ponto:** a linha 12 do catálogo de `specs/001-auditoria-acoes-operador/data-model.md` (`{ formaPagamento }`).
+
+**Impact:** `src/client/domain/auditoria/eventos.ts`, `src/client/domain/pagamento/remocaoPagamento.ts` (novo), `pagamentoSlice.ts`; `tests/unit/domain/pagamento/remocaoPagamento.spec.ts` (novo), `pagamentoSlice.spec.ts`, `e2e/pagamento-tef.spec.ts` (o estorno chega no `Log` de `FaturarNFCe` com `ESTORNO_TEF` e o `TEFPagId` da transação).
+
+### AD-284: o dinheiro vai ao ERP com o valor recebido, e o ERP gera o troco (2026-10-16)
+
+**Pedido do usuário (feature 018):** a forma dinheiro vai ao ERP com o valor total digitado, e não só com o que completa a venda, para a NFCe sair com troco.
+
+**Decision:** `formaParaRetrato` manda `FormaValor = valorRecebido ?? valorAplicado`: o dinheiro com o recebido, as demais formas com o aplicado. `Σ FormaValor` passa a ser o total líquido **mais o troco**. O contrato não tem campo de troco, então o ERP o deriva da diferença. Quem quita a venda continua sendo `valorAplicado`: saldo, faltante, troco exibido e o botão Finalizar não mudam. `FormaCandidata` ganha `valorRecebido`, para a validação prévia mandar o mesmo `FormaValor` que o faturamento (I5). Na retomada de DAV ou NFCe, `reconstruirTrocoImportado` devolve o excedente do documento ao dinheiro, só quando há exatamente uma forma dinheiro que o cubra; nos demais casos o documento entra como veio.
+
+**Supera, no ponto:** D3 de `specs/008-pagamento-geral/research.md` (e o plano, o quickstart e `erp-pagamento-api.md` da 008) e D8 de `specs/011-recuperacao-nfce/research.md`. Os dois foram reescritos no lugar.
+
+**Trade-off / pendência de merge:** o `ValidarNFCe` não confere `Σ FormaValor` contra o total (KB lida em 2026-08-31), mas o comportamento de `PCheckout_FaturarNFCe` com a soma acima do total **não foi confirmado**: o MCP `genexus` não estava disponível na sessão. A tarefa T029 da 018 (homologação com o ERP real, venda de R$ 87,00 com dinheiro de R$ 100,00) bloqueia o merge desta parte. Se o ERP recusar, reverter o commit `227dbb0` e abrir pendência em `PENDENCIES.md`; o commit está separado dos de AD-282/283 para isso. Num documento com desconto de capa no cabeçalho, que o Checkout não importa, o troco pode não ser reconstruído (lacuna anterior).
+
+**Impact:** `src/client/domain/pagamento/{formaParaRetrato,trocoImportado}.ts`, `src/client/domain/validacaoVenda/projetarPagamentos.ts`, `pagamentoSlice.ts`; testes em `formaParaRetrato.spec.ts`, `trocoImportado.spec.ts`, `projetarPagamentos.spec.ts`, `pagamentoSlice.spec.ts`, `validacaoVendaSlice.spec.ts`, `recuperacaoNFCe.spec.ts` e `e2e/pagamento-geral.spec.ts`.

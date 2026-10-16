@@ -118,7 +118,7 @@ Esta feature **não chama** `FaturarNFCe` — quem chama é a feature 004. O que
 
 | Regra | Motivo |
 |---|---|
-| `Σ FormaValor` é exatamente o total líquido da venda | não há campo de troco no contrato — o excedente em dinheiro fica fora do payload (`research.md`, D3) |
+| `Σ FormaValor` é o total líquido da venda **mais o troco**: o dinheiro vai com o valor recebido, as demais formas com o aplicado (feature 018, AD-284 — **corrigido em 2026-10-16**; a regra original era `Σ FormaValor == total líquido`) | não há campo de troco no contrato — o ERP o deriva de `Σ FormaValor − total da nota` (`research.md`, D3) |
 | Só pagamentos com `status = 'APROVADO'` entram em `FormasDePagamento[]` | `FR-004`/`FR-005` — pendente e recusado nunca são registrados |
 | `CondicaoPagamentoCodigo` é escalar | contrato (yaml linha 1431); split é entre formas, não entre condições |
 | ⚠️ **Superado em 2026-10-13 pela 017 (AD-279) quando a chave `DESCONTO_CAPA_NO_ERP` está ligada:** o campo de cabeçalho **passou a existir** — `CheckoutFaturarNFCe.DescontoCapaValor`, em reais com até 2 casas — e a capa vai inteira nele, com cada item levando só convênio + manual. Com a chave desligada (padrão) vale a regra original: o desconto de capa vira `DescontoValor` **por item**, nunca um campo de cabeçalho | Regra original: **não existia campo de desconto de capa** em `CheckoutFaturarNFCe` — o rateio de `FR-016` era a única forma de expressar o desconto no contrato. Ver `specs/017-motor-desconto/contracts/motor-desconto-api.md` §5 |
