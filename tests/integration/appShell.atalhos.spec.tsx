@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import type { OrigemCliente } from '../../src/client/domain/cliente/clienteVenda';
+import { MOTIVO_AGUARDANDO_ERP } from '../../src/client/features/finalizacao-suspensao/AcoesFinaisVenda';
 import { AppShell, MOTIVO_IMPORTACAO_NO_COMPACTO } from '../../src/client/layout/AppShell';
 import { notificar } from '../../src/client/lib/notificar';
 import { useFocoDeModal } from '../../src/client/lib/useFocoDeModal';
@@ -514,6 +515,44 @@ describe('US4 — F10 suspende a venda', () => {
       'Aguarde: esta venda ainda está sendo enviada ao ERP.',
     );
     expect(tiposDeEvento().filter((tipo) => tipo === 'VENDA_SUSPENSA')).toHaveLength(1);
+  });
+
+  it('com a suspensão esperando o ERP, a tela inteira fica inerte (AD-280)', async () => {
+    const usuario = userEvent.setup();
+    useVendaStore.setState({ linhas: [linhaDe({ idLinha: 'linha-1' })] });
+    renderizarShell();
+    const area = screen.getByTestId('area-da-venda');
+    expect(area).not.toHaveAttribute('inert');
+
+    await usuario.keyboard('{F10}');
+
+    // A rede desta suíte nunca responde: a máquina fica em `enviando`.
+    expect(area).toHaveAttribute('inert');
+    expect(area).toHaveAttribute('aria-busy', 'true');
+    expect(area).toContainElement(screen.getByTestId('campo-codigo-produto'));
+    expect(area).toContainElement(screen.getByTestId('botao-cancelar-venda'));
+  });
+
+  it('com a suspensão esperando o ERP, F1–F4 recusam com o aviso de espera e não abrem nada (AD-280)', async () => {
+    const usuario = userEvent.setup();
+    const erro = vi.spyOn(notificar, 'erro');
+    useVendaStore.setState({ linhas: [linhaDe({ idLinha: 'linha-1' })] });
+    renderizarShell();
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await usuario.keyboard('{F10}');
+    for (const tecla of ['F1', 'F2', 'F3', 'F4']) {
+      await usuario.keyboard(`{${tecla}}`);
+    }
+
+    expect(erro).toHaveBeenCalledTimes(4);
+    for (const chamada of erro.mock.calls) {
+      expect(chamada).toEqual([MOTIVO_AGUARDANDO_ERP]);
+    }
+    expect(useJanelasStore.getState().janela).toBe('nenhuma');
+    // O `Log` desta venda já partiu no corpo do envio: um alerta registrado
+    // agora seria descartado no sucesso sem nunca chegar ao ERP (AD-280).
+    expect(tiposDeEvento()).not.toContain('ALERTA_EXIBIDO_AO_OPERADOR');
   });
 
   it('F10 tem um desfecho só: suspende, nunca finaliza nem oferece descarte (FR-017, US4-6)', async () => {

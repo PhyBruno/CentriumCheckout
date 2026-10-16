@@ -6,6 +6,7 @@ import {
   eventoClienteTrocado,
   eventoCondicaoPagamentoAplicada,
   eventoDavImportado,
+  eventoDescontoCapaAplicado,
   eventoFaturamentoFalhou,
   eventoFormaPagamentoAplicada,
   eventoFormaPagamentoRemovida,
@@ -20,8 +21,10 @@ import {
   eventoVendaSuspensa,
   eventoVendedorSelecionado,
   eventoVendedorTrocado,
+  ultimoDescontoCapaAuditado,
 } from '../../../../src/client/domain/auditoria/eventos';
 import type { EventoAuditoriaRegistravel } from '../../../../src/client/domain/auditoria/eventos';
+import { serializarLogAuditoria } from '../../../../src/client/domain/auditoria/serializarLog';
 
 /**
  * Catálogo de eventos + dispatcher do slice de auditoria (feature 001).
@@ -31,8 +34,11 @@ import type { EventoAuditoriaRegistravel } from '../../../../src/client/domain/a
  * tela de revisão (FR-009), então ninguém percebe antes da auditoria fiscal.
  */
 
-/** `new Date().toISOString()` — UTC com milissegundos (research.md #2). */
-const ISO_8601_MS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+/**
+ * ISO 8601 com milissegundos no fuso do navegador e o deslocamento explícito
+ * (AD-280) — nunca o `Z` de `toISOString()`.
+ */
+const ISO_8601_MS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/;
 
 function historico() {
   return useVendaStore.getState().eventos;
@@ -240,11 +246,24 @@ describe('Eventos de ação (T009)', () => {
     vi.advanceTimersByTime(1500);
     registrar(eventoProdutoCancelado({ codigoProduto: 'PROD-3' }));
 
+    // A suíte roda em `America/Sao_Paulo` (`vitest.config.ts`): 10h UTC são 7h
+    // no relógio do caixa.
     expect(historico().map((evento) => evento.timestamp)).toEqual([
-      '2026-01-01T10:00:00.000Z',
-      '2026-01-01T10:00:00.001Z',
-      '2026-01-01T10:00:01.501Z',
+      '2026-01-01T07:00:00.000-03:00',
+      '2026-01-01T07:00:00.001-03:00',
+      '2026-01-01T07:00:01.501-03:00',
     ]);
+  });
+
+  it('carimba no horário do navegador, e o texto continua sendo o mesmo instante (AD-280)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-16T13:23:45.123Z'));
+
+    registrar(eventoProdutoCancelado({ codigoProduto: 'PROD-1' }));
+
+    const timestamp = historico()[0]?.timestamp ?? '';
+    expect(timestamp).toBe('2026-10-16T10:23:45.123-03:00');
+    expect(new Date(timestamp).toISOString()).toBe('2026-10-16T13:23:45.123Z');
   });
 
   it('ignora um timestamp fornecido pelo call site', () => {
@@ -258,7 +277,7 @@ describe('Eventos de ação (T009)', () => {
       timestamp: '1999-12-31T23:59:59.999Z',
     } as EventoAuditoriaRegistravel);
 
-    expect(historico()[0]?.timestamp).toBe('2026-01-01T10:00:00.000Z');
+    expect(historico()[0]?.timestamp).toBe('2026-01-01T07:00:00.000-03:00');
   });
 });
 
@@ -352,6 +371,66 @@ describe('VENDA_RAPIDA_ACIONADA (T023)', () => {
       },
     });
     expect(historico()[0]?.timestamp).toMatch(ISO_8601_MS);
+  });
+});
+
+/** 017, US3 (T038, FR-025) — a capa registra se veio da condição ou do operador. */
+describe('DESCONTO_CAPA_APLICADO', () => {
+  it('registra origem, modo, entrada e valor em centavos', () => {
+    registrar(
+      eventoDescontoCapaAplicado({
+        origem: 'CONDICAO',
+        modo: 'PERCENTUAL',
+        entrada: 5,
+        valor: 500,
+      }),
+    );
+
+    expect(historico()[0]).toMatchObject({
+      tipo: 'DESCONTO_CAPA_APLICADO',
+      detalhes: { origem: 'CONDICAO', modo: 'PERCENTUAL', entrada: 5, valor: 500 },
+    });
+    expect(historico()[0]?.timestamp).toMatch(ISO_8601_MS);
+  });
+
+  it('vai inteiro no Log do retrato', () => {
+    registrar(
+      eventoDescontoCapaAplicado({ origem: 'MANUAL', modo: 'VALOR', entrada: 300, valor: 300 }),
+    );
+
+    const log: unknown = JSON.parse(serializarLogAuditoria(historico()));
+
+    expect(log).toEqual([
+      expect.objectContaining({
+        tipo: 'DESCONTO_CAPA_APLICADO',
+        detalhes: { origem: 'MANUAL', modo: 'VALOR', entrada: 300, valor: 300 },
+      }),
+    ]);
+  });
+
+  it('ultimoDescontoCapaAuditado devolve o último evento de capa, ignorando os demais', () => {
+    expect(ultimoDescontoCapaAuditado([])).toBeNull();
+
+    registrar(
+      eventoDescontoCapaAplicado({
+        origem: 'CONDICAO',
+        modo: 'PERCENTUAL',
+        entrada: 5,
+        valor: 500,
+      }),
+    );
+    registrar(
+      eventoDescontoCapaAplicado({ origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 7, valor: 700 }),
+    );
+    registrar(eventoVendaSuspensa());
+
+    expect(ultimoDescontoCapaAuditado(historico())?.detalhes).toEqual({
+      origem: 'MANUAL',
+      modo: 'PERCENTUAL',
+      entrada: 7,
+      valor: 700,
+    });
+    expect(ultimoDescontoCapaAuditado([historico()[2]].flatMap((e) => (e ? [e] : [])))).toBeNull();
   });
 });
 

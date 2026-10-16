@@ -113,6 +113,7 @@ function montar(opcoes: OpcoesMontagem = {}) {
     subtotalCarrinho: () => subtotal,
     linhasRateaveis: () => [],
     capacidades: () => capacidades,
+    descontoCapaNoErp: () => false,
     validarTicket: (): Promise<ResultadoTicket> =>
       Promise.resolve({ valido: false, mensagem: 'não exercitado' }),
     iniciarIntegracao,

@@ -2,9 +2,10 @@ import type { ReactElement } from 'react';
 import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/bloqueio';
 import { cn } from '@/lib/utils';
 import { ICONE_POR_MEIO } from '../pagamento/iconePorMeio';
+import { haPagamentoVivo } from '../../domain/pagamento/saldoPagamento';
 import type { AtalhoVendaRapida, ListaAtalhos, TeclaAtalho } from '../../domain/vendaRapida/tipos';
 import { useVendaStore } from '../../stores/vendaStore';
-import { AVISO_ATALHO_SEM_ITENS } from './avisosVendaRapida';
+import { AVISO_ATALHO_SEM_ITENS, AVISO_PAGAMENTO_JA_INICIADO } from './avisosVendaRapida';
 import { useAcionarCenario } from './useAcionarCenario';
 
 /**
@@ -99,9 +100,9 @@ export interface DicaAtalhosProps {
    * Chega por prop, e não é lido do store aqui, pelo mesmo motivo de `atalhos`:
    * este componente não decide nada. Quem responde é `FaixaAtalhosVendaRapida`.
    *
-   * Vale para os quatro botões de uma vez porque a única causa hoje — venda sem
-   * item — é da venda, não de um cenário: não existe atalho que funcione numa
-   * venda vazia.
+   * Vale para os quatro botões de uma vez porque as duas causas — venda sem item
+   * e venda com forma de pagamento já lançada (AD-280) — são da venda, não de um
+   * cenário: nenhum atalho funciona numa venda vazia nem numa já em pagamento.
    */
   readonly bloqueio?: MotivoBloqueio;
 }
@@ -165,13 +166,43 @@ export function FaixaAtalhosVendaRapida(): ReactElement | null {
    */
   const semItemAtivo = useVendaStore((estado) => !estado.linhas.some((linha) => !linha.cancelada));
 
+  /**
+   * Forma viva na venda: nenhum cenário lança mais (pedido do usuário,
+   * 2026-10-16, AD-280: "já que não pode usar mesmo").
+   *
+   * É a primeira metade da guarda G5 de `acionarCenario` — a que vale para os
+   * quatro botões de uma vez. A outra metade (condição **diferente** da do
+   * cenário) é por atalho e continua só no gesto: a faixa recebe um bloqueio
+   * só, e o cenário da mesma condição precisa seguir acionável para repetir um
+   * lançamento que falhou (ver o TSDoc de G5).
+   */
+  const comFormaAplicada = useVendaStore((estado) => haPagamentoVivo(estado.pagamentos));
+
   return (
     <DicaAtalhos
       atalhos={atalhos}
       onAcionar={(tecla) => {
         void acionar(tecla);
       }}
-      bloqueio={semItemAtivo ? AVISO_ATALHO_SEM_ITENS : null}
+      bloqueio={motivoDeBloqueioDaFaixa(semItemAtivo, comFormaAplicada)}
     />
   );
+}
+
+/**
+ * A frase da faixa bloqueada, na ordem das guardas de `acionarCenario` (G3 antes
+ * de G5) — a mesma frase que o gesto diria, para o botão apagado e a tecla nunca
+ * divergirem.
+ */
+export function motivoDeBloqueioDaFaixa(
+  semItemAtivo: boolean,
+  comFormaAplicada: boolean,
+): MotivoBloqueio {
+  if (semItemAtivo) {
+    return AVISO_ATALHO_SEM_ITENS;
+  }
+  if (comFormaAplicada) {
+    return AVISO_PAGAMENTO_JA_INICIADO;
+  }
+  return null;
 }

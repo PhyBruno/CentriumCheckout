@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { notificar } from '@/lib/notificar';
 import type { MotivoBloqueio } from '@/lib/bloqueio';
-import { motivoCarrinhoBloqueado } from '../../stores/slices/carrinhoSlice';
+import { motivoCarrinhoBloqueado, type AjustesDeItem } from '../../stores/slices/carrinhoSlice';
 import {
   ErroPrecoIndisponivelParaPesagem,
   interpretarEntradaCodigo,
@@ -221,9 +221,14 @@ export type ResultadoInsercao =
  *
  * `bloqueado` traz o saldo usado na decisão, para a barra reavaliar o `+`/`−`
  * com ele em vez do saldo antigo.
+ *
+ * `recusado` (017): o slice recusou a edição pelo lápis (`atualizarItem`
+ * devolveu `false`) e já avisou o motivo. A barra **não** se limpa — antes ela
+ * se limpava sempre, e o operador perdia o que digitou junto com a edição.
  */
 export type ResultadoConfirmacao =
   | { readonly situacao: 'confirmado' }
+  | { readonly situacao: 'recusado' }
   | { readonly situacao: 'bloqueado'; readonly saldo: SaldoMilesimos | null };
 
 /**
@@ -365,6 +370,15 @@ export interface OpcoesConfirmacaoPrevia extends OpcoesConfirmacao {
   readonly saldoRecemConsultado?: boolean;
 }
 
+/**
+ * O que a barra de entrada confirma: os três campos da linha e, quando ela
+ * ajustou o desconto ao preço mínimo, o que o operador tinha pedido — só para o
+ * `Log` (AD-280).
+ */
+export interface AjustesDaBarra extends AjustesDeItem {
+  readonly descontoManualSolicitado?: Centavos;
+}
+
 export interface ApiInsercao {
   /**
    * Resolve o produto por código e decide o fluxo pelo `ProdutoPesavelEditavel`.
@@ -377,7 +391,7 @@ export interface ApiInsercao {
    */
   confirmarEdicao(
     pendente: PendenteDeEdicao,
-    ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
+    ajustes: AjustesDaBarra,
     opcoes?: OpcoesConfirmacao,
   ): Promise<ResultadoConfirmacao>;
   /**
@@ -747,6 +761,9 @@ export function useInsercaoDeProduto(): ApiInsercao {
               origem: 'MANUAL',
               precoUnitario: ajustes.precoUnitario,
               descontoManual: ajustes.descontoManual,
+              ...(ajustes.descontoManualSolicitado === undefined
+                ? {}
+                : { descontoManualSolicitado: ajustes.descontoManualSolicitado }),
             });
           },
           opcoes,
@@ -764,10 +781,10 @@ export interface ApiEdicaoItem {
    * 2026-09-03), em vez de editar só a quantidade inline
    * (`EdicaoQuantidadeItem`, removido).
    *
-   * Cada campo passa por `editarItem`, que já é idempotente (no-op quando o
-   * valor não mudou, `carrinhoSlice.ts`) e audita por campo — chamar os três
-   * incondicionalmente é seguro mesmo quando só a quantidade mudou (produto
-   * pesável, `'S'`/`'B'`: preço e desconto chegam inalterados).
+   * Os três campos vão juntos para `atualizarItem` (017, FR-007): o conjunto é
+   * gravado ou recusado por inteiro, e a auditoria continua sendo por campo
+   * efetivamente alterado. Até a 017 eram três `editarItem` seguidos, cada um
+   * validando sozinho — o que gravava estado parcial (`research.md` D5).
    *
    * **Saldo (AD-236):** quando a quantidade muda, reconsulta o saldo e avalia
    * sem a própria linha na soma. Aumento acima do saldo em `'B'` não altera
@@ -776,13 +793,13 @@ export interface ApiEdicaoItem {
    */
   confirmarEdicaoDeLinha(
     linha: LinhaCarrinho,
-    ajustes: { quantidade: Milesimos; precoUnitario: Centavos; descontoManual: Centavos },
+    ajustes: AjustesDaBarra,
     saldoConhecido?: SaldoMilesimos | null,
   ): Promise<ResultadoConfirmacao>;
 }
 
 export function useEdicaoDeItemExistente(): ApiEdicaoItem {
-  const editarItem = useVendaStore((estado) => estado.editarItem);
+  const atualizarItem = useVendaStore((estado) => estado.atualizarItem);
   const contexto = useContextoPrecificacao();
   const politica = usePoliticaSaldo();
 
@@ -804,12 +821,16 @@ export function useEdicaoDeItemExistente(): ApiEdicaoItem {
             return { situacao: 'bloqueado', saldo };
           }
         }
-        editarItem(linha.idLinha, 'quantidade', ajustes.quantidade);
-        editarItem(linha.idLinha, 'precoUnitario', ajustes.precoUnitario);
-        editarItem(linha.idLinha, 'descontoManual', ajustes.descontoManual);
-        return { situacao: 'confirmado' };
+        // O pedido vai à parte: `ajustes` é espalhado na linha pelo slice, e o
+        // campo de auditoria entraria no estado do carrinho.
+        const { descontoManualSolicitado, ...campos } = ajustes;
+        const opcoes =
+          descontoManualSolicitado === undefined ? undefined : { descontoManualSolicitado };
+        return atualizarItem(linha.idLinha, campos, opcoes)
+          ? { situacao: 'confirmado' }
+          : { situacao: 'recusado' };
       },
-      [contexto, editarItem, politica],
+      [atualizarItem, contexto, politica],
     ),
   };
 }

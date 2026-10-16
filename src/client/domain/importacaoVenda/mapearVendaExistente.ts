@@ -327,6 +327,9 @@ export function paraLinhaCarrinho(
       limiaresFaixa: [ZERO_MILESIMOS, ZERO_MILESIMOS, ZERO_MILESIMOS, ZERO_MILESIMOS] as const,
       // Linha congelada não reabre edição de pesagem.
       pesavelEditavel: '',
+      // O documento já foi aceito pelo ERP: a linha importada não entra no
+      // limite do preço mínimo (017, `research.md` D2).
+      precoMinimo: ZERO_CENTAVOS,
     },
     quantidade: linha.quantidade,
     precoUnitario: linha.precoUnitario,

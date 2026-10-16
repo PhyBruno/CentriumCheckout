@@ -515,6 +515,49 @@ const CATALOGO: Record<string, Record<string, unknown>> = {
     ProdutoPesavelEditavel: 'E',
   },
   /**
+   * Motor de desconto (017, quickstart Q2). O `003000` acima é o `'E'` de
+   * R$ 20,00 **sem** mínimo (`PrecoMinimo` cai no default `0.0000`); estes dois
+   * completam o trio: o mesmo preço com mínimo de R$ 8,00, e um `'E'` de preço
+   * de tabela zero, que fica fora do vínculo (FR-005).
+   */
+  '003100': {
+    CodigoProduto: '003100',
+    Descricao: 'EDITAVEL COM MINIMO',
+    Referencia: 'REF-MINIMO',
+    CodigoBarras: '7890000000031',
+    PrecoVenda: String(20.0),
+    PrecoVenda1: String(20.0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    PrecoMinimo: '8.0000',
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: 'E',
+  },
+  '003200': {
+    CodigoProduto: '003200',
+    Descricao: 'EDITAVEL SEM PRECO',
+    Referencia: 'REF-SEM-PRECO',
+    CodigoBarras: '7890000000032',
+    PrecoVenda: String(0),
+    PrecoVenda1: String(0),
+    PrecoVenda2: String(0),
+    PrecoVenda3: String(0),
+    PrecoVenda4: String(0),
+    PrecoVenda5: String(0),
+    QtdMinimaPreco2: String(0),
+    QtdMinimaPreco3: String(0),
+    QtdMinimaPreco4: String(0),
+    QtdMinimaPreco5: String(0),
+    UDM: 'UN',
+    ProdutoPesavelEditavel: 'E',
+  },
+  /**
    * Os três itens do fluxo dourado da feature 008 — 70,00 + 29,00 + 1,00 = 100,00
    * (`pagamento-geral.spec.ts`).
    *
@@ -1455,7 +1498,10 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
         CondicaoPrazo: '0.00000',
         CondicaoMinimoEntrada: '0.00000',
         CondicaoDesconto: '0.00000',
-        CondicaoDescontoMaximo: '0.00000',
+        // Teto de 10% (017, AD-279): com teto zero a capa fica bloqueada, e o
+        // fluxo dourado aplica 2% de capa sobre esta condição. Sem desconto
+        // automático, para nenhum outro fluxo mudar de total.
+        CondicaoDescontoMaximo: '10.00000',
         CondicaoFormasDePagamento: [
           {
             FormaCodigo: String(1), // int64
@@ -1605,6 +1651,7 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
       // Só com o TEF ligado (feature 010, padrão desde 2026-10-02): a empresa
       // sem TEF não oferece a condição cujas formas só existem no terminal.
       ...(config.tefAtivo ? [CONDICAO_TEF_DUAS_VEZES] : []),
+      ...CONDICOES_MOTOR_DESCONTO,
     ],
     /**
      * TEF e PIX **ligados** no cenário padrão, para a stack local cobrar nos
@@ -1659,6 +1706,45 @@ function payloadGetSessao(config: ConfigMockErp): unknown {
  * Códigos 11–13, a partir do próximo livre: os E2E endereçam as formas por
  * `opcao-forma-<codigo>`.
  */
+/**
+ * As três condições do quickstart Q3 da 017 (motor de desconto, AD-279): **A**
+ * concede 5% com teto 8%; **B** não permite desconto (teto zero); **C** é o
+ * cadastro incoerente, desconto 10% acima do próprio teto de 8%. Só dinheiro,
+ * para o roteiro não depender de integração.
+ */
+function condicaoDoMotor(
+  codigo: number,
+  descricao: string,
+  desconto: string,
+  descontoMaximo: string,
+): Record<string, unknown> {
+  return {
+    CondicaoCodigo: String(codigo), // int64
+    CondicaoDescricao: descricao,
+    CondicaoPrazo: '0.00000',
+    CondicaoMinimoEntrada: '0.00000',
+    CondicaoDesconto: desconto,
+    CondicaoDescontoMaximo: descontoMaximo,
+    CondicaoFormasDePagamento: [
+      {
+        FormaCodigo: String(1), // int64
+        FormaDescricao: '1 - DINHEIRO',
+        FormaEntrada: 'S',
+        FormaMeioPagtoNFe: '01',
+        FormaIntegracaoCartao: ' ',
+        FormaTipoTransacaoTEF: '',
+        FormaFpgUtiCar: '',
+      },
+    ],
+  };
+}
+
+const CONDICOES_MOTOR_DESCONTO = [
+  condicaoDoMotor(20, 'COND A 5 POR CENTO', '5.00000', '8.00000'),
+  condicaoDoMotor(21, 'COND B SEM DESCONTO', '0.00000', '0.00000'),
+  condicaoDoMotor(22, 'COND C INCOERENTE', '10.00000', '8.00000'),
+];
+
 const CONDICAO_TEF_DUAS_VEZES = {
   CondicaoCodigo: String(3), // int64
   CondicaoDescricao: '2 VEZES',
@@ -1909,10 +1995,18 @@ export async function criarMockErp(porta: number): Promise<FastifyInstance> {
     };
     const campo = campoFiltrado[tipo];
 
+    // O reduzido (`MatCodRed`) é **numérico** no ERP: `2000` e `002000` são o
+    // mesmo produto. A etiqueta de balança consulta sem os zeros à esquerda
+    // desde AD-252, e a comparação de texto exato deste mock nunca achava o
+    // `002000` — o E2E da etiqueta falhava por causa do mock, não do Checkout.
+    const mesmoCodigo = (valor: unknown): boolean =>
+      campo === 'CodigoProduto' && /^\d+$/.test(codigo) && /^\d+$/.test(String(valor))
+        ? Number(valor) === Number(codigo)
+        : String(valor) === codigo;
     const produto =
       campo === undefined
         ? catalogo[0]
-        : catalogo.find((candidato) => String(candidato[campo]) === codigo);
+        : catalogo.find((candidato) => mesmoCodigo(candidato[campo]));
 
     // **Nunca `404`.** Não encontrou é `200` com o SDT todo zerado
     // (`CodigoProduto: ''`) — o `404` que este mock devolvia não existe no ERP

@@ -11,6 +11,7 @@ import { acaoBloqueavel, atributosDeBloqueio, type MotivoBloqueio } from '@/lib/
 import { cn } from '@/lib/utils';
 import type { CondicaoPagamento, FormaPagamento } from '../../domain/pagamento/formaPagamento';
 import { formaDisponivel } from '../../domain/pagamento/roteamentoIntegracao';
+import { haPagamentoVivo } from '../../domain/pagamento/saldoPagamento';
 import { ZERO_CENTAVOS } from '../../domain/precificacao/dinheiro';
 import { totalVenda } from '../../domain/precificacao/linha';
 import { useCondicoesPagamento } from '../../services/pagamento/pagamentoQueries';
@@ -334,11 +335,7 @@ export function SeletorCondicaoPagamento(): ReactElement {
   // fechado numa venda cujo último pagamento o operador acabou de excluir —
   // com o slice já disposto a aceitar a escolha. O seletor devolve um booleano,
   // não a lista, então nada re-renderiza à toa.
-  const temPagamento = useVendaStore((estado) =>
-    estado.pagamentos.some(
-      (pagamento) => pagamento.status !== 'EXCLUIDO' && pagamento.status !== 'RECUSADO',
-    ),
-  );
+  const temPagamento = useVendaStore((estado) => haPagamentoVivo(estado.pagamentos));
 
   const condicoes = catalogo.data?.condicoes ?? [];
 

@@ -12,11 +12,11 @@ Não há `NEEDS CLARIFICATION` pendente em `spec.md` (checklist `requirements.md
 
 ## 2. Formato do timestamp
 
-**Decision**: `new Date().toISOString()` — UTC, com milissegundos (ex.: `"2026-08-26T17:32:07.123Z"`).
+**Decision** (reescrita por AD-280, 2026-10-16): ISO 8601 com milissegundos **no fuso do navegador**, com o deslocamento explícito — ex.: `"2026-08-26T14:32:07.123-03:00"` —, produzido por `instanteLocalIso()` (`src/client/lib/instanteLocal.ts`). ⚠️ A decisão original desta seção era `new Date().toISOString()` (UTC, `…Z`); foi superada por pedido do usuário ("Log tem que ser no horário do navegador"): quem lê o `Log` no ERP via a hora de Greenwich e precisava descontar o fuso de cabeça.
 
-**Rationale**: AD-061 exige "ISO 8601 completo, com segundos — não só precisão de minuto". `toISOString()` nativo do JS já satisfaz isso (e entrega precisão maior, em milissegundos) sem dependência externa, alinhado à ausência de nova lib de data neste projeto (`.specs/codebase/STACK.md` não lista lib de data/hora).
+**Rationale**: AD-061 exige "ISO 8601 completo, com segundos — não só precisão de minuto", e o formato local continua satisfazendo isso. O sufixo `±hh:mm` mantém o texto um instante absoluto: `new Date(timestamp)` devolve o mesmo momento que o `toISOString()` devolveria, então ordenar ou comparar instantes não perde nada. O fuso é o da máquina do caixa, não um `-03:00` fixo, pelo mesmo motivo de AD-258: o Brasil tem quatro fusos. Sem dependência externa, alinhado à ausência de lib de data neste projeto (`.specs/codebase/STACK.md`).
 
-**Alternatives considered**: Biblioteca de data (`date-fns`, `dayjs`) só para formatar timestamp — rejeitada por adicionar dependência para um caso já coberto pela API nativa do navegador.
+**Alternatives considered**: Biblioteca de data (`date-fns`, `dayjs`) só para formatar timestamp — rejeitada por adicionar dependência para um caso coberto pelos getters locais de `Date`. Hora local **sem** deslocamento (`…T14:32:07.123`) — rejeitada: o texto deixaria de identificar o instante, e um PDV num fuso diferente do ERP produziria horários ambíguos.
 
 ## 3. Middleware genérico vs. dispatcher explícito por evento
 

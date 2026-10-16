@@ -149,6 +149,28 @@ describe('cache de bootstrap no Dexie', () => {
     expect((await repositorio.obterPorTenant('acme'))?.SessaoUsuario.CadMaqCod).toBe('PDV02');
   });
 
+  /**
+   * 017, US4 (T053, `research.md` D11): o Dexie não reparseia o registro ao
+   * ler, então quem impede um registro anterior a `recursos` de ser reaproveitado
+   * é o hash — `recursos` entra no corpo, o hash muda e o servidor manda o novo.
+   */
+  it('não reaproveita o registro guardado antes de recursos: o hash novo o substitui', async () => {
+    const antigo = bootstrapPayloadSchema.parse(payload('acme'));
+    await repositorio.salvar({ ...antigo, _versionHash: 'hash-anterior-a-017' });
+
+    const comChave = { ...payload('acme'), recursos: { descontoCapaNoErp: true } };
+    const { fetchImpl, chamadas } = criarFetchFalso(comChave);
+    const resultado = await carregarBootstrap({ repositorio, analisador, fetchImpl });
+
+    expect(resultado.estado).toBe('pronto');
+    if (resultado.estado !== 'pronto') return;
+    expect(resultado.reaproveitado).toBe(false);
+    expect(chamadas().corposEnviados).toBe(1);
+    expect((await repositorio.obterPorTenant('acme'))?.recursos).toEqual({
+      descontoCapaNoErp: true,
+    });
+  });
+
   it('isola tenants diferentes no mesmo navegador (FR-009, Cenário 3)', async () => {
     await carregarBootstrap({
       repositorio,

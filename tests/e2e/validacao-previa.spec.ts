@@ -350,8 +350,13 @@ test.describe('O gate no layout compacto (FR-019)', () => {
     const botaoFinalizar = page.getByTestId('botao-finalizar-venda');
     await botaoFinalizar.click();
 
-    // Caminho feliz não tem modal: o sinal é o carrinho zerado.
-    await expect(page.getByTestId('linha-carrinho')).toHaveCount(0);
+    // O sinal de venda emitida é a janela do documento fiscal (AD-246). O
+    // carrinho zerado não serve aqui: na etapa 3 do wizard a lista de itens não
+    // existe, então `linha-carrinho` já valia zero antes do clique — a espera
+    // passava na hora e o contador era lido antes de `FaturarNFCe` chegar.
+    await expect(
+      page.getByTestId('dialogo-documento-fiscal').getByText('Venda finalizada'),
+    ).toBeVisible();
 
     const chamadas = await contadores(request);
     expect(chamadas.validarNFCe).toBe(1);

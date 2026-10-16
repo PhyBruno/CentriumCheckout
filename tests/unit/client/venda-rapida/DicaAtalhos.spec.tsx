@@ -3,9 +3,24 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { useFocoDeModal } from '../../../../src/client/lib/useFocoDeModal';
-import { DicaAtalhos } from '../../../../src/client/features/venda-rapida/DicaAtalhos';
+import {
+  DicaAtalhos,
+  motivoDeBloqueioDaFaixa,
+} from '../../../../src/client/features/venda-rapida/DicaAtalhos';
+import {
+  AVISO_ATALHO_SEM_ITENS,
+  AVISO_PAGAMENTO_JA_INICIADO,
+} from '../../../../src/client/features/venda-rapida/avisosVendaRapida';
+import {
+  haPagamentoVivo,
+  type PagamentoAplicado,
+} from '../../../../src/client/domain/pagamento/saldoPagamento';
 import { TeclasDosAtalhos } from '../../../../src/client/features/venda-rapida/TeclasVendaRapida';
-import { ATRIBUTO_ATALHOS_PERMITIDOS } from '../../../../src/client/hotkeys/mapaAtalhos';
+import {
+  ATRIBUTO_ATALHOS_PERMITIDOS,
+  useTravaDasTeclas,
+} from '../../../../src/client/hotkeys/mapaAtalhos';
+import { notificar } from '../../../../src/client/lib/notificar';
 import { MEIO_PAGTO } from '../../../../src/client/domain/pagamento/formaPagamento';
 import type { AtalhoVendaRapida } from '../../../../src/client/domain/vendaRapida/tipos';
 
@@ -304,6 +319,42 @@ describe('DicaAtalhos — faixa bloqueada (correção do usuário, 2026-09-10)',
   });
 });
 
+/**
+ * Pedido do usuário (2026-10-16, AD-280): com uma forma de pagamento já na
+ * venda, nenhum cenário lança mais — e a faixa precisa dizer isso antes do
+ * clique, como já dizia para a venda sem item.
+ */
+describe('motivoDeBloqueioDaFaixa — a mesma ordem das guardas do gesto', () => {
+  it('sem item ativo vem primeiro (G3), mesmo com forma na venda', () => {
+    expect(motivoDeBloqueioDaFaixa(true, true)).toBe(AVISO_ATALHO_SEM_ITENS);
+    expect(motivoDeBloqueioDaFaixa(true, false)).toBe(AVISO_ATALHO_SEM_ITENS);
+  });
+
+  it('com item e forma viva na venda, a faixa fecha com a frase do pagamento iniciado (G5)', () => {
+    expect(motivoDeBloqueioDaFaixa(false, true)).toBe(AVISO_PAGAMENTO_JA_INICIADO);
+  });
+
+  it('com item e sem forma, a faixa fica livre', () => {
+    expect(motivoDeBloqueioDaFaixa(false, false)).toBeNull();
+  });
+});
+
+describe('haPagamentoVivo — o que conta como forma na venda', () => {
+  function pagamentoCom(status: PagamentoAplicado['status']): PagamentoAplicado {
+    return { status } as PagamentoAplicado;
+  }
+
+  it('aprovada ou pendente de integração conta', () => {
+    expect(haPagamentoVivo([pagamentoCom('APROVADO')])).toBe(true);
+    expect(haPagamentoVivo([pagamentoCom('PENDENTE_INTEGRACAO')])).toBe(true);
+  });
+
+  it('recusada ou excluída já saiu do fluxo e não fecha a faixa', () => {
+    expect(haPagamentoVivo([pagamentoCom('RECUSADO'), pagamentoCom('EXCLUIDO')])).toBe(false);
+    expect(haPagamentoVivo([])).toBe(false);
+  });
+});
+
 /* ------------------------------------------------------------------ *
  * Posse das teclas com cenário (achado do usuário, 2026-09-15)
  * ------------------------------------------------------------------ */
@@ -408,6 +459,35 @@ describe('TeclasDosAtalhos — a tecla com cenário nunca escapa para o navegado
     expect(chegadas).toHaveLength(3);
     expect(chegadas.every((chegada) => chegada.engolida)).toBe(true);
     expect(onAcionar).toHaveBeenCalledOnce();
+  });
+
+  it('com a tela travada, F6 é engolida, explica o motivo e não aciona (AD-280)', async () => {
+    const usuario = userEvent.setup();
+    const onAcionar = vi.fn();
+    const erro = vi.spyOn(notificar, 'erro').mockImplementation(() => {});
+    function Trava(): null {
+      useTravaDasTeclas('Aguarde: esta venda ainda está sendo enviada ao ERP.');
+      return null;
+    }
+    const { unmount } = render(
+      <>
+        <TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />
+        <Trava />
+      </>,
+    );
+
+    await usuario.keyboard('{F6}');
+
+    expect(chegadas).toEqual([{ tecla: 'F6', engolida: true }]);
+    expect(onAcionar).not.toHaveBeenCalled();
+    expect(erro).toHaveBeenCalledExactlyOnceWith(
+      'Aguarde: esta venda ainda está sendo enviada ao ERP.',
+    );
+    // Desmontar o dono da trava destrava.
+    unmount();
+    render(<TeclasDosAtalhos atalhos={DOIS_ATALHOS} onAcionar={onAcionar} />);
+    await usuario.keyboard('{F6}');
+    expect(onAcionar).toHaveBeenCalledExactlyOnceWith('F6');
   });
 
   it('tecla sem cenário continua com o navegador — a posse cobre só o que está cadastrado', async () => {

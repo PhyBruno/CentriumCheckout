@@ -159,7 +159,57 @@ function montarToast(
   };
 }
 
+/** Um alerta de erro ou de aviso que o operador acabou de ler — o que os ouvintes recebem. */
+export interface AlertaNotificado {
+  readonly tipo: Exclude<TipoNotificacao, 'sucesso'>;
+  readonly mensagem: string;
+}
+
+export type OuvinteDeAlerta = (alerta: AlertaNotificado) => void;
+
+const ouvintesDeAlerta = new Set<OuvinteDeAlerta>();
+
+/**
+ * Inscreve um ouvinte de **erro e aviso** e devolve a função que o desinscreve
+ * (AD-280).
+ *
+ * Existe para a auditoria registrar todo alerta que o operador leu sem que este
+ * módulo conheça store nenhum — `lib/` não importa `stores/`. Quem liga os dois
+ * é a composição do `vendaStore`, do mesmo jeito que ela já liga `avisar` e
+ * `notificadorDeVeredito`.
+ *
+ * `sucesso` fica de fora: o desfecho que deu certo já tem o próprio evento.
+ */
+export function ouvirAlertas(ouvinte: OuvinteDeAlerta): () => void {
+  ouvintesDeAlerta.add(ouvinte);
+  return () => {
+    ouvintesDeAlerta.delete(ouvinte);
+  };
+}
+
+/**
+ * Avisa os ouvintes **depois** do toast: um ouvinte que falhe não pode tirar do
+ * operador a frase que ele precisa ler — perder uma linha do `Log` é ruim, mas
+ * deixar o caixa sem resposta é pior (mesma escolha de `registrarEventoAuditoria`).
+ */
+function avisarOuvintes(alerta: AlertaNotificado): void {
+  for (const ouvinte of ouvintesDeAlerta) {
+    try {
+      ouvinte(alerta);
+    } catch (erro) {
+      console.error('[notificar] um ouvinte de alerta falhou.', erro);
+    }
+  }
+}
+
 function emitir(tipo: TipoNotificacao, mensagem: string): void {
+  exibir(tipo, mensagem);
+  if (tipo !== 'sucesso') {
+    avisarOuvintes({ tipo, mensagem });
+  }
+}
+
+function exibir(tipo: TipoNotificacao, mensagem: string): void {
   const { titulo, opcoes } = montarToast(tipo, mensagem);
 
   // **No compacto, a tela volta ao topo junto com o toast** (pedido do usuário,

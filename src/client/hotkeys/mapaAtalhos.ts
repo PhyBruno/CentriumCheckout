@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { notificar } from '@/lib/notificar';
 import { haJanelaAberta } from '@/lib/useFocoDeModal';
@@ -118,6 +118,51 @@ function dentroDeModal(alvo: EventTarget | null): boolean {
 }
 
 /**
+ * Por que **nenhuma** tecla age agora, ou `null` — a trava da tela inteira
+ * (AD-280, revisão de 2026-10-16).
+ *
+ * Uma só, para os dois mapas: a tela de venda inerte (`inert`) não recebe
+ * clique nem foco, mas as teclas são ouvidas no `document` e o `inert` não as
+ * alcança. Antes a mesma checagem era repetida por superfície — F1–F4 no
+ * `AppShell`, F6–F9 em `useAcionarCenario` —, e a próxima tecla ou o próximo
+ * caminho de cenário teria de lembrar de se embrulhar nela. Aqui ela vale para
+ * toda tecla registrada por este módulo.
+ *
+ * Estado de módulo, como a pilha de `haJanelaAberta`: quem trava é um
+ * componente (`useTravaDasTeclas`), quem lê é o handler da tecla, no instante da
+ * pressionada.
+ */
+let motivoDaTrava: string | null = null;
+
+/**
+ * Trava todas as teclas deste módulo enquanto `motivo` não for `null`. A tecla
+ * continua engolida (a posse não muda) e o operador lê o motivo.
+ *
+ * Um dono só por vez — hoje, `TravaDaVendaDuranteEnvio`. Desmontar o dono
+ * destrava.
+ */
+export function useTravaDasTeclas(motivo: string | null): void {
+  useEffect(() => {
+    if (motivo === null) {
+      return;
+    }
+    motivoDaTrava = motivo;
+    return () => {
+      motivoDaTrava = null;
+    };
+  }, [motivo]);
+}
+
+/** Travada, avisa o motivo e responde `true`: a tecla não age. */
+function recusadaPelaTrava(): boolean {
+  if (motivoDaTrava === null) {
+    return false;
+  }
+  notificar.erro(motivoDaTrava);
+  return true;
+}
+
+/**
  * A pressionada é da tecla, mas **não aciona** o atalho.
  *
  * `repeat`: tecla segurada dispara um acionamento por pressionada, nunca pela
@@ -176,7 +221,7 @@ export function useAtalhosDeTeclado(atalhos: readonly AtalhoDeTeclado[], ativo =
     (evento) => {
       // A tecla já foi engolida pela biblioteca; daqui para baixo só se decide
       // se o atalho age.
-      if (acionamentoSuprimido(evento)) {
+      if (acionamentoSuprimido(evento) || recusadaPelaTrava()) {
         return;
       }
       const alvo = atalhosRef.current.find(
@@ -302,7 +347,11 @@ export function useTeclasFixas(acoes: Readonly<Record<IdComando, AcaoFixa>>): vo
         return;
       }
 
-      // Estágio 3.
+      // Estágio 3 — a tela travada vem antes da disponibilidade de cada
+      // comando: nenhum deles pode rodar, seja qual for o motivo próprio.
+      if (recusadaPelaTrava()) {
+        return;
+      }
       const acao = acoesRef.current[entrada.comando];
       const motivo = acao.indisponivel();
       if (motivo !== null) {

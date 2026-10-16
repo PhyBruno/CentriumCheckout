@@ -458,6 +458,402 @@ describe('carrinhoSlice — auditoria (AD-061, D11)', () => {
   });
 });
 
+/**
+ * 017, US1 (T017, FR-007, I-D7) — a edição pelo lápis é **uma** operação:
+ * grava o conjunto ou não grava nada.
+ */
+describe('carrinhoSlice — atualizarItem atômico', () => {
+  const editavel = snapshotDe({ codigoProduto: SKU, pesavelEditavel: 'E', precoBase: 1000 });
+
+  function comLinha(sobrescritas: Partial<CarrinhoDeps> = {}) {
+    const store = montarStore(sobrescritas);
+    store.getState().inserirItem({
+      snapshot: editavel,
+      quantidade: unidades(10),
+      descontoManual: emCentavos(5000),
+      origem: 'MANUAL',
+    });
+    return store;
+  }
+
+  it('grava o conjunto e devolve true', () => {
+    const store = comLinha();
+
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(4),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(800),
+    });
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]).toMatchObject({
+      quantidade: 4000,
+      precoUnitario: 1000,
+      descontoManual: 800,
+    });
+  });
+
+  it('recusa por inteiro o conjunto que zera a linha — nunca grava parcial', () => {
+    const avisar = vi.fn();
+    const store = comLinha({ avisar });
+
+    // 10 × R$ 5,00 = R$ 50,00 bruto, com R$ 20,00 de desconto daria R$ 30,00 —
+    // mas com 10 × 1,00 = 10,00 bruto o desconto de 20,00 zera a linha.
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(10),
+      precoUnitario: emCentavos(100),
+      descontoManual: emCentavos(2000),
+    });
+
+    expect(gravou).toBe(false);
+    expect(avisar).toHaveBeenCalledTimes(1);
+    expect(store.getState().linhas[0]).toMatchObject({
+      quantidade: 10000,
+      precoUnitario: 1000,
+      descontoManual: 5000,
+    });
+  });
+
+  it('aceita a combinação que, aplicada campo a campo, seria recusada no meio', () => {
+    const store = comLinha();
+
+    // Preço 5,00 sozinho (bruto 50,00 − desconto 50,00 = 0) seria recusado pelo
+    // `editarItem`; com o desconto novo de 20,00 junto, o conjunto vale 30,00.
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(10),
+      precoUnitario: emCentavos(500),
+      descontoManual: emCentavos(2000),
+    });
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]).toMatchObject({ precoUnitario: 500, descontoManual: 2000 });
+  });
+
+  it('reprecifica quando a quantidade muda', () => {
+    const store = montarStore();
+    store.getState().inserirItem({ snapshot: produto, quantidade: unidades(3), origem: 'MANUAL' });
+
+    store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(6),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(0),
+    });
+
+    // Produto '' com faixa: 6 unidades cruzam o limiar de 5 → 900.
+    expect(store.getState().linhas[0]?.precoUnitario).toBe(900);
+  });
+
+  it('audita um PRODUTO_ALTERADO por campo efetivamente alterado', () => {
+    const store = comLinha();
+    const antes = store.getState().eventos.length;
+
+    store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(10),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(3000),
+    });
+
+    const novos = store.getState().eventos.slice(antes);
+    expect(novos).toHaveLength(1);
+    expect(novos[0]?.tipo).toBe('PRODUTO_ALTERADO');
+    expect(novos[0]?.detalhes).toMatchObject({
+      campo: 'descontoManual',
+      valorAnterior: 5000,
+      valorNovo: 3000,
+    });
+  });
+
+  it('respeita o carrinho bloqueado', () => {
+    const avisar = vi.fn();
+    let pode = true;
+    const store = comLinha({ avisar, podeMutarCarrinho: () => pode });
+    pode = false;
+
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(2),
+      precoUnitario: emCentavos(1000),
+      descontoManual: emCentavos(0),
+    });
+
+    expect(gravou).toBe(false);
+    expect(avisar).toHaveBeenCalledTimes(1);
+    expect(store.getState().linhas[0]?.quantidade).toBe(10000);
+  });
+});
+
+/**
+ * 017, US2 (T028, FR-010 a FR-014) — o slice é a rede de segurança do preço
+ * mínimo: ajusta (não recusa) e avisa **uma vez**, só quando ainda precisou.
+ * Produto `'E'`, tabela R$ 20,00, mínimo R$ 8,00.
+ */
+describe('carrinhoSlice — preço mínimo', () => {
+  const AVISO = 'Preço mínimo deste item: R$ 8,00. O desconto foi ajustado automaticamente.';
+  const comMinimo = snapshotDe({
+    codigoProduto: SKU,
+    pesavelEditavel: 'E',
+    precoBase: 2000,
+    precoMinimo: 800,
+  });
+
+  it('inserirItem ajusta o desconto acima do limite e avisa uma vez', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]?.descontoManual).toBe(1200);
+    expect(avisar).toHaveBeenCalledTimes(1);
+    expect(avisar).toHaveBeenCalledWith(AVISO);
+    // A auditoria registra o desconto que de fato entrou — e o que foi pedido
+    // (AD-280).
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      desconto: 1200,
+      descontoManualSolicitado: 1500,
+    });
+  });
+
+  it('o pedido que a barra já ajustou chega ao Log pela inserção (AD-280)', () => {
+    const store = montarStore({ avisar: vi.fn() });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1200),
+      descontoManualSolicitado: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]).not.toHaveProperty('descontoManualSolicitado');
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      desconto: 1200,
+      descontoManualSolicitado: 1500,
+    });
+  });
+
+  it('sem ajuste, o evento não carrega pedido nenhum', () => {
+    const store = montarStore({ avisar: vi.fn() });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(500),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().eventos.at(-1)?.detalhes).not.toHaveProperty(
+      'descontoManualSolicitado',
+    );
+  });
+
+  it('dentro do limite não avisa', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3600),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]?.descontoManual).toBe(3600);
+    expect(avisar).not.toHaveBeenCalled();
+  });
+
+  it('editarItem ajusta o desconto digitado e a quantidade reduzida que estoura o limite', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3000),
+      origem: 'MANUAL',
+    });
+
+    store.getState().editarItem('linha-1', 'descontoManual', emCentavos(4000));
+    expect(store.getState().linhas[0]?.descontoManual).toBe(3600);
+
+    // 2 unidades: limite 24,00 — os 36,00 passam do mínimo.
+    store.getState().editarItem('linha-1', 'quantidade', unidades(2));
+    expect(store.getState().linhas[0]?.descontoManual).toBe(2400);
+    expect(avisar).toHaveBeenCalledTimes(2);
+  });
+
+  it('atualizarItem ajusta o conjunto e grava', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+    store
+      .getState()
+      .inserirItem({ snapshot: comMinimo, quantidade: unidades(1), origem: 'MANUAL' });
+
+    const gravou = store.getState().atualizarItem('linha-1', {
+      quantidade: unidades(3),
+      precoUnitario: emCentavos(2000),
+      descontoManual: emCentavos(4000),
+    });
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]?.descontoManual).toBe(3600);
+    expect(avisar).toHaveBeenCalledTimes(1);
+    const alteracaoDoDesconto = store
+      .getState()
+      .eventos.find(
+        (evento) =>
+          evento.tipo === 'PRODUTO_ALTERADO' && evento.detalhes.campo === 'descontoManual',
+      );
+    expect(alteracaoDoDesconto?.detalhes).toMatchObject({
+      valorNovo: 3600,
+      valorSolicitado: 4000,
+    });
+  });
+
+  it('editarItem registra o pedido quando o mínimo o ajusta (AD-280)', () => {
+    const store = montarStore({ avisar: vi.fn() });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3000),
+      origem: 'MANUAL',
+    });
+
+    store.getState().editarItem('linha-1', 'descontoManual', emCentavos(4000));
+
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      campo: 'descontoManual',
+      valorAnterior: 3000,
+      valorNovo: 3600,
+      valorSolicitado: 4000,
+    });
+  });
+
+  it('atualizarItem leva o pedido da barra, fora dos campos da linha (AD-280)', () => {
+    const store = montarStore({ avisar: vi.fn() });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(1000),
+      origem: 'MANUAL',
+    });
+
+    store.getState().atualizarItem(
+      'linha-1',
+      {
+        quantidade: unidades(3),
+        precoUnitario: emCentavos(2000),
+        descontoManual: emCentavos(3600),
+      },
+      { descontoManualSolicitado: emCentavos(5000) },
+    );
+
+    expect(store.getState().linhas[0]).not.toHaveProperty('descontoManualSolicitado');
+    expect(store.getState().eventos.at(-1)?.detalhes).toMatchObject({
+      campo: 'descontoManual',
+      valorNovo: 3600,
+      valorSolicitado: 5000,
+    });
+  });
+
+  it('pedido ajustado de volta ao desconto que já estava: a linha não muda, mas a tentativa fica', () => {
+    const store = montarStore({ avisar: vi.fn() });
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(3),
+      descontoManual: emCentavos(3600),
+      origem: 'MANUAL',
+    });
+    const linhaAntes = store.getState().linhas[0];
+
+    const gravou = store.getState().atualizarItem(
+      'linha-1',
+      {
+        quantidade: unidades(3),
+        precoUnitario: emCentavos(2000),
+        descontoManual: emCentavos(3600),
+      },
+      { descontoManualSolicitado: emCentavos(5000) },
+    );
+
+    expect(gravou).toBe(true);
+    expect(store.getState().linhas[0]).toBe(linhaAntes);
+    expect(store.getState().eventos.at(-1)).toMatchObject({
+      tipo: 'PRODUTO_ALTERADO',
+      detalhes: { valorAnterior: 3600, valorNovo: 3600, valorSolicitado: 5000 },
+    });
+  });
+
+  it('não toca linha não vinculável, de importação nem produto sem mínimo', () => {
+    const avisar = vi.fn();
+    const store = montarStore({ avisar });
+
+    // Preço de tabela zero: sem referência, sem limite (FR-005).
+    store.getState().inserirItem({
+      snapshot: snapshotDe({
+        codigoProduto: 'A',
+        pesavelEditavel: 'E',
+        precoBase: 0,
+        precoMinimo: 800,
+      }),
+      quantidade: unidades(1),
+      precoUnitario: emCentavos(2000),
+      descontoManual: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+    // Produto '' (como a linha de DAV/NFCe): fora do vínculo.
+    store.getState().inserirItem({
+      snapshot: snapshotDe({
+        codigoProduto: 'B',
+        pesavelEditavel: '',
+        precoBase: 2000,
+        // `''` é reprecificado pela faixa: ela precisa valer os mesmos 20,00.
+        precosFaixa: [2000, 0, 0, 0, 0],
+        precoMinimo: 800,
+      }),
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1500),
+      origem: 'MANUAL',
+    });
+    // Sem mínimo.
+    store.getState().inserirItem({
+      snapshot: snapshotDe({ codigoProduto: 'C', pesavelEditavel: 'E', precoBase: 2000 }),
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1900),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas.map((linha) => linha.descontoManual)).toEqual([
+      1500, 1500, 1900,
+    ]);
+    expect(avisar).not.toHaveBeenCalled();
+  });
+
+  it('o desconto de convênio fica fora da comparação (FR-014)', () => {
+    const avisar = vi.fn();
+    const store = montarStore({
+      avisar,
+      clienteAtual: () => ({ codigo: 7, listaPreco: null, descontoConvenio: 10 }),
+    });
+
+    // Manual 12,00 está no limite; com os 2,00 de convênio passaria dele.
+    store.getState().inserirItem({
+      snapshot: comMinimo,
+      quantidade: unidades(1),
+      descontoManual: emCentavos(1200),
+      origem: 'MANUAL',
+    });
+
+    expect(store.getState().linhas[0]).toMatchObject({
+      descontoManual: 1200,
+      descontoConvenio: 200,
+    });
+    expect(avisar).not.toHaveBeenCalled();
+  });
+});
+
 describe('carrinhoSlice — limparCarrinho', () => {
   it('esvazia as linhas, canceladas inclusive', () => {
     const store = montarStore();

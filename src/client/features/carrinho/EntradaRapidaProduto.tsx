@@ -25,6 +25,7 @@ import {
   calcularTotalLinha,
   formatarCentavos,
   somar,
+  type Centavos,
 } from '../../domain/precificacao/dinheiro';
 import { preservarSelecaoNoProximoFoco } from '@/lib/selecionarConteudoAoFocar';
 import {
@@ -46,6 +47,8 @@ import {
   somarQuantidades,
   type Milesimos,
 } from '../../domain/precificacao/quantidade';
+import type { ItemConsolidado } from '../../domain/precificacao/descontoItem';
+import { avisoDePrecoMinimo } from '../../stores/slices/carrinhoSlice';
 import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
@@ -56,6 +59,7 @@ import { useVendaStore } from '../../stores/vendaStore';
 // respostas possíveis para "esta venda tem vendedor?".
 import { useVendedorAtual } from '../vendedor/useVendedor';
 import { ModalBuscaProduto } from './ModalBuscaProduto';
+import { TEXTO_SEM_DESCONTO, useVinculoPrecoDesconto } from './useVinculoPrecoDesconto';
 import {
   avaliarContraCarrinho,
   useContextoPrecificacao,
@@ -63,6 +67,7 @@ import {
   useInsercaoDeProduto,
   useMotivoCarrinhoBloqueado,
   usePoliticaSaldo,
+  type AjustesDaBarra,
   type ResultadoConfirmacao,
   type RevisaoProduto,
 } from './useCarrinho';
@@ -109,7 +114,6 @@ const AVISO_PRECO_INVALIDO =
   'Informe o preço unitário do item: ele precisa ser um valor maior que zero.';
 const AVISO_DESCONTO_INVALIDO =
   'Desconto do item inválido: use apenas números, com no máximo duas casas decimais.';
-const TEXTO_SEM_DESCONTO = '0,00';
 
 /**
  * Código apagado com uma revisão na tela (correção do usuário, 2026-09-16).
@@ -385,8 +389,6 @@ export function EntradaRapidaProduto({
   const [quantidadeTexto, setQuantidadeTexto] = useState(() =>
     formatarQuantidade(QUANTIDADE_INICIAL, 3),
   );
-  const [precoTexto, setPrecoTexto] = useState('');
-  const [descontoTexto, setDescontoTexto] = useState(TEXTO_SEM_DESCONTO);
   /**
    * Último saldo de estoque conhecido do produto na barra (AD-236): vem da
    * resolução (TAB, Enter, modal, câmera) e é atualizado por cada confirmação
@@ -425,6 +427,15 @@ export function EntradaRapidaProduto({
    */
   const entradaRecusada = useRef<string | null>(null);
   /**
+   * O desconto manual que o operador pediu antes de a barra ajustá-lo ao preço
+   * mínimo (AD-280), ou `null` sem ajuste pendente. Ref, e não estado: só a
+   * confirmação lê, e o valor não muda nada na tela.
+   *
+   * Zera quando o pedido deixa de existir — o operador digita de novo no preço
+   * ou no desconto, a barra volta ao vazio ou carrega outro item.
+   */
+  const descontoPedidoAntesDoMinimo = useRef<Centavos | null>(null);
+  /**
    * Uma recusa abriu a janela de cenário e o foco ainda precisa voltar ao
    * código quando ela fechar — ver `voltarAoCodigoAposRecusa`.
    */
@@ -436,6 +447,8 @@ export function EntradaRapidaProduto({
   const campoPreco = useRef<HTMLInputElement>(null);
   const campoDesconto = useRef<HTMLInputElement>(null);
   const botaoConfirmar = useRef<HTMLButtonElement>(null);
+  /** Contador de TABs do desconto para o "+" — ver `aoTeclarNoCartao`. */
+  const [pedidosDeInsercaoPorTab, setPedidosDeInsercaoPorTab] = useState(0);
 
   // `linhaEmEdicao` (item já inserido, recarregado pelo lápis) e `resolvido`
   // (produto novo em revisão, TAB/busca) nunca coexistem — cada um "vence" o
@@ -452,12 +465,84 @@ export function EntradaRapidaProduto({
   // representa exclusivamente o `descontoManual` que este formulário grava.
   const descontoConvenioFixo = linhaEmEdicao?.descontoConvenio ?? ZERO_CENTAVOS;
   const quantidadeLida = lerQuantidadeTexto(quantidadeTexto);
+  /**
+   * Preço e desconto da barra (017, AD-279): em produto `'E'` com preço de
+   * tabela eles são a mesma informação vista de dois lados, e o hook decide
+   * qual recalcular. O par que a linha guarda sai de `consolidar()` — o preço
+   * na tela é derivado e não entra no total como se fosse a referência.
+   */
+  const vinculo = useVinculoPrecoDesconto({ snapshot: snapshotAtivo, quantidade: quantidadeLida });
+  const {
+    precoTexto,
+    descontoTexto,
+    carregar: carregarVinculo,
+    iniciar: iniciarVinculo,
+    zerar: zerarVinculo,
+  } = vinculo;
+  const precoDigitado = editavel ? lerCentavosDigitados(precoTexto) : null;
+  const descontoDigitado = editavel ? lerCentavosDigitados(descontoTexto) : null;
+  const consolidado = editavel && vinculo.vinculavel ? vinculo.consolidar() : null;
   const precoLido = editavel
-    ? lerCentavosDigitados(precoTexto)
+    ? (consolidado?.precoUnitario ?? precoDigitado)
     : (linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? null);
   const descontoManualLido = editavel
-    ? lerCentavosDigitados(descontoTexto)
+    ? (consolidado?.descontoManual ?? descontoDigitado)
     : (linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS);
+  // Preço derivado do desconto não é digitação do operador: um desconto que
+  // leva o preço a zero é o caso de `descontoZeraItem`, não de preço inválido.
+  const precoDerivado = vinculo.vinculavel && vinculo.mestre === 'DESCONTO';
+
+  /**
+   * Limita o desconto ao preço mínimo do produto e avisa (017, US2). Roda ao
+   * sair do preço ou do desconto e na confirmação; como o par ajustado já sai
+   * daqui dentro do limite, o slice não repete o aviso (FR-013).
+   */
+  function ajustarAoMinimoEAvisar(): boolean {
+    if (!editavel || snapshotAtivo === null) {
+      return false;
+    }
+    // Lido **antes** do ajuste: depois dele o campo já mostra o permitido, e o
+    // que o operador pediu só existe aqui.
+    const pedido = vinculo.consolidar()?.descontoManual ?? null;
+    if (vinculo.ajustarAoMinimo() === null) {
+      return false;
+    }
+    if (pedido !== null) {
+      descontoPedidoAntesDoMinimo.current = pedido;
+    }
+    notificar.aviso(avisoDePrecoMinimo(snapshotAtivo.precoMinimo));
+    return true;
+  }
+
+  /**
+   * O que a confirmação grava, mais o desconto pedido quando a barra o ajustou
+   * ao preço mínimo — o `Log` registra os dois (AD-280).
+   */
+  function ajustesParaGravar(quantidade: Milesimos, par: ItemConsolidado): AjustesDaBarra {
+    const pedido = descontoPedidoAntesDoMinimo.current;
+    return {
+      quantidade,
+      ...par,
+      ...(pedido === null || pedido === par.descontoManual
+        ? {}
+        : { descontoManualSolicitado: pedido }),
+    };
+  }
+
+  /**
+   * O par preço/desconto que a confirmação grava. No produto vinculável ele sai
+   * do hook **depois** do ajuste ao mínimo — o estado do React ainda é o do
+   * quadro anterior dentro deste mesmo gesto.
+   */
+  function parParaGravar(): ItemConsolidado | null {
+    if (editavel && vinculo.vinculavel) {
+      ajustarAoMinimoEAvisar();
+      return vinculo.consolidar();
+    }
+    return precoLido === null || descontoManualLido === null
+      ? null
+      : { precoUnitario: precoLido, descontoManual: descontoManualLido };
+  }
   const descontoTotalLido =
     descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
 
@@ -497,8 +582,9 @@ export function EntradaRapidaProduto({
    * um beco sem saída, sem campo onde corrigir.
    */
   const quantidadeInvalida = quantidadeLida === null;
-  const precoInvalido = editavel && (precoLido === null || precoLido <= ZERO_CENTAVOS);
-  const descontoInvalido = editavel && descontoManualLido === null;
+  const precoInvalido =
+    editavel && !precoDerivado && (precoDigitado === null || precoDigitado <= ZERO_CENTAVOS);
+  const descontoInvalido = editavel && descontoDigitado === null;
 
   /**
    * Saldo de estoque da quantidade na barra, reavaliado **a cada render**
@@ -596,15 +682,17 @@ export function EntradaRapidaProduto({
     entradaRevisada.current = linhaEmEdicao.snapshot.codigoProduto;
     setTexto(linhaEmEdicao.snapshot.codigoProduto);
     setQuantidadeTexto(formatarQuantidade(linhaEmEdicao.quantidade, 3));
-    setPrecoTexto(paraTextoDecimal(linhaEmEdicao.precoUnitario));
-    setDescontoTexto(paraTextoDecimal(linhaEmEdicao.descontoManual));
+    // O par **derivado** (017): o preço praticado, não o `precoUnitario` de
+    // referência — que, com desconto, é o preço de tabela.
+    descontoPedidoAntesDoMinimo.current = null;
+    carregarVinculo(linhaEmEdicao);
     if (linhaEmEdicao.snapshot.pesavelEditavel === 'E') {
       campoQuantidade.current?.focus();
       campoQuantidade.current?.select();
     } else {
       focarSemTeclado(botaoConfirmar.current);
     }
-  }, [linhaEmEdicao]);
+  }, [carregarVinculo, linhaEmEdicao]);
 
   /**
    * Foco de volta pro código sempre que a barra volta ao estado vazio —
@@ -768,8 +856,8 @@ export function EntradaRapidaProduto({
     saldoAnunciado.current = null;
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
-    setPrecoTexto('');
-    setDescontoTexto(TEXTO_SEM_DESCONTO);
+    descontoPedidoAntesDoMinimo.current = null;
+    zerarVinculo();
     setSaldoConhecido(null);
     limparEdicao();
   }
@@ -780,6 +868,7 @@ export function EntradaRapidaProduto({
     const nova = milesimos(Math.max(UMA_UNIDADE, proxima));
     avisarSeCruzouSaldo(nova);
     setQuantidadeTexto(formatarQuantidade(nova, 3));
+    vinculo.mudarQuantidade(nova);
   }
 
   /**
@@ -793,6 +882,11 @@ export function EntradaRapidaProduto({
       const resultado = await acao();
       if (resultado.situacao === 'bloqueado') {
         setSaldoConhecido(resultado.saldo);
+        return;
+      }
+      // O slice recusou a edição e já disse o porquê (017): o que o operador
+      // digitou fica na barra para ele corrigir.
+      if (resultado.situacao === 'recusado') {
         return;
       }
       resetar();
@@ -961,8 +1055,8 @@ export function EntradaRapidaProduto({
     setResolvido(revisao);
     setSaldoConhecido(revisao.saldo);
     setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
-    setPrecoTexto(paraTextoDecimal(revisao.snapshot.precoBase));
-    setDescontoTexto(TEXTO_SEM_DESCONTO);
+    descontoPedidoAntesDoMinimo.current = null;
+    iniciarVinculo(revisao.snapshot);
   }
 
   /**
@@ -1103,8 +1197,13 @@ export function EntradaRapidaProduto({
   async function aoSairDoCodigo(): Promise<void> {
     // Venda congelada: o campo está fechado e o clique nele já disse o motivo —
     // sair dele não consulta nada nem repete o aviso.
+    //
+    // Tela inerte (suspensão esperando o ERP, AD-280): o foco saiu porque o
+    // navegador o tirou, não porque o operador terminou de digitar. Consultar
+    // aqui mandaria ao ERP um `GetProduto` no meio da suspensão da venda.
     if (
       bloqueioDoCarrinho !== null ||
+      (campoCodigo.current?.closest('[inert]') ?? null) !== null ||
       trocandoTeclado.current ||
       ocupado ||
       !codigoPendenteDeConsulta()
@@ -1263,17 +1362,14 @@ export function EntradaRapidaProduto({
     // própria linha (campos somente leitura), então `editarItem` não muda
     // nada neles (é idempotente, `carrinhoSlice.ts`).
     if (linhaEmEdicao !== null) {
-      if (quantidadeLida === null || precoLido === null || descontoManualLido === null) {
+      const par = parParaGravar();
+      if (quantidadeLida === null || par === null) {
         return;
       }
       // Saldo (AD-236): a linha só muda se a reconsulta deixar; recusada, o
       // item continua carregado aqui, com o botão já bloqueado pelo saldo novo.
       const linha = linhaEmEdicao;
-      const ajustes = {
-        quantidade: quantidadeLida,
-        precoUnitario: precoLido,
-        descontoManual: descontoManualLido,
-      };
+      const ajustes = ajustesParaGravar(quantidadeLida, par);
       void aplicarConfirmacao(() => confirmarEdicaoDeLinha(linha, ajustes, saldoConhecido));
       return;
     }
@@ -1306,14 +1402,11 @@ export function EntradaRapidaProduto({
     const quantidade = quantidadeLida;
     const opcoesSaldo = { avisoJaComunicado: saldoAnunciado.current };
     if (revisao.editavel) {
-      if (precoLido === null || descontoManualLido === null) {
+      const par = parParaGravar();
+      if (par === null) {
         return;
       }
-      const ajustes = {
-        quantidade,
-        precoUnitario: precoLido,
-        descontoManual: descontoManualLido,
-      };
+      const ajustes = ajustesParaGravar(quantidade, par);
       void aplicarConfirmacao(() =>
         confirmarEdicao(
           {
@@ -1386,6 +1479,27 @@ export function EntradaRapidaProduto({
       resetar();
       return;
     }
+    // **TAB no desconto insere** (pedido do usuário, 2026-10-16): no produto
+    // editável o desconto é o último campo antes do "+", e o TAB que chegava ao
+    // botão só o focava — o operador que percorria a barra pelo teclado
+    // precisava de um Enter a mais em cada item. O foco vai ao "+" pelo código
+    // (inclusive quando ele está bloqueado e fora da ordem de TAB, para o
+    // motivo ser dito), a saída do desconto roda como sempre, e quem insere é
+    // o efeito de `pedidosDeInsercaoPorTab`, depois desse render.
+    if (
+      evento.key === 'Tab' &&
+      !evento.shiftKey &&
+      !evento.altKey &&
+      !evento.ctrlKey &&
+      !evento.metaKey &&
+      editavel &&
+      evento.target === campoDesconto.current
+    ) {
+      evento.preventDefault();
+      botaoConfirmar.current?.focus();
+      setPedidosDeInsercaoPorTab((pedidos) => pedidos + 1);
+      return;
+    }
     if (evento.key === 'Enter' && evento.target instanceof HTMLInputElement) {
       evento.preventDefault();
       confirmar();
@@ -1454,6 +1568,71 @@ export function EntradaRapidaProduto({
                     // item: a quantidade é válida, quem a recusa é o saldo
                     // (AD-236). A saída é reduzi-la.
                     (motivoSaldo ?? 'Revise quantidade, preço e desconto: há um valor inválido.');
+
+  /**
+   * O que acionar o "+" faz — pelo clique, pelo toque ou pelo TAB que chega a
+   * ele vindo do desconto (`pedidosDeInsercaoPorTab`). Um handler só, para os
+   * dois gestos nunca divergirem nas exceções abaixo.
+   *
+   * Quatro exceções ao `acaoBloqueavel`, todas porque `confirmar` faz mais do
+   * que notificar:
+   * - **sem vendedor**, quem responde é `exigirVendedor`, que também leva o
+   *   foco ao campo do vendedor;
+   * - **saldo** (AD-239), porque a confirmação reconsulta o ERP: o estoque pode
+   *   ter sido reposto desde a última consulta, e repetir o motivo antigo
+   *   obrigaria o operador a bipar de novo. Recusada a reconsulta, o motivo
+   *   volta em toast por `comunicarSaldo`.
+   * - **campo obrigatório inválido** (correção do usuário, 2026-09-17):
+   *   `confirmar` passa por `previaValida`, que além de avisar leva o foco ao
+   *   campo — só o toast deixava o operador sem saber onde corrigir o preço
+   *   zerado.
+   * - **código em consulta** (AD-254): no celular, tocar aqui com um código
+   *   digitado tira o foco do campo, e é essa saída que consulta e insere. O
+   *   toque chega com a consulta em voo, e anunciar "Aguarde" por cima de uma
+   *   inserção que já está acontecendo seria um aviso de erro para o gesto
+   *   certo. `confirmar` ignora a segunda inserção sozinho
+   *   (`confirmarEntradaRapida` com `ocupado`).
+   *
+   * Nos quatro casos o motivo continua em `bloqueioDeInsercao`, para o botão
+   * aparecer bloqueado e o `title` explicar sem depender do clique.
+   */
+  const acionarConfirmacao = acaoBloqueavel(
+    bloqueadoPorVendedor ||
+      (ocupado && semResolucao) ||
+      motivoSaldo !== null ||
+      (!semResolucao && (quantidadeInvalida || precoInvalido || descontoInvalido))
+      ? null
+      : bloqueioDeInsercao,
+    confirmar,
+  );
+
+  /**
+   * O TAB que sai do desconto pediu a inserção: confirma **depois** do render
+   * que a saída do campo provocou.
+   *
+   * Num efeito, e não no próprio `keydown`: o `blur` do desconto ainda mexe na
+   * barra — campo vazio vira `0,00`, desconto acima do mínimo é ajustado — e
+   * esses valores só existem no render seguinte. Confirmar ali gravaria o
+   * desconto de antes da saída do campo.
+   *
+   * Não confirma quando a saída do desconto já disse o que impede: o foco
+   * preso de volta no campo (texto que não é número, `exigirCampo` no
+   * `onBlur`) ou o aviso do desconto que zera o item. Nos dois o operador já
+   * leu o motivo, e confirmar repetiria a mesma frase como erro.
+   */
+  useEffect(() => {
+    if (
+      pedidosDeInsercaoPorTab === 0 ||
+      document.activeElement !== botaoConfirmar.current ||
+      descontoZeraItem
+    ) {
+      return;
+    }
+    acionarConfirmacao();
+    // Reage só ao pedido: `acionarConfirmacao` é refeita a cada render e, nas
+    // dependências, confirmaria a cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidosDeInsercaoPorTab]);
 
   const classeRotulo = 'font-semibold text-muted-foreground';
   // Sem `flex`: um `<input>` é elemento substituído — `display:flex` nele
@@ -1686,20 +1865,35 @@ export function EntradaRapidaProduto({
               className="size-8 shrink-0 rounded-full bg-background"
               aria-label="Diminuir quantidade"
               data-testid="previa-quantidade-diminuir"
-              onClick={() => {
+              /* **Venda congelada fecha a quantidade** (pedido do usuário,
+               2026-10-16, AD-280): com pagamento na venda nenhum produto entra
+               nem muda, e o par −/+ seguia aceso convidando a mexer numa
+               quantidade que não ia a lugar nenhum. Mesmo bloqueio explicativo
+               do campo de código e do lápis da grid. */
+              {...atributosDeBloqueio(bloqueioDoCarrinho)}
+              onClick={acaoBloqueavel(bloqueioDoCarrinho, () => {
                 alterarQuantidade(-1);
-              }}
+              })}
             >
               <Minus className="size-4" aria-hidden="true" />
             </Button>
             <input
               ref={campoQuantidade}
               id={ID_CAMPO_QUANTIDADE}
-              className="h-full w-full min-w-0 bg-transparent text-center font-mono text-lg tabular-nums outline-none"
+              className="h-full w-full min-w-0 bg-transparent text-center font-mono text-lg tabular-nums outline-none aria-disabled:cursor-not-allowed aria-disabled:opacity-70"
               inputMode="decimal"
               data-testid="previa-quantidade"
               value={quantidadeTexto}
+              // Fechado com a venda congelada, como o par −/+ ao lado.
+              readOnly={bloqueioDoCarrinho !== null}
+              {...atributosDeBloqueio(bloqueioDoCarrinho)}
+              onClick={acaoBloqueavel(bloqueioDoCarrinho, () => {
+                /* campo livre: o clique só posiciona o cursor. */
+              })}
               onChange={(evento) => {
+                if (bloqueioDoCarrinho !== null) {
+                  return;
+                }
                 // Letra digitada no campo **não entra** (correção do usuário,
                 // 2026-09-16): quantidade é número, e deixar o texto livre
                 // dependia do operador reparar no aviso do `onBlur` para
@@ -1707,6 +1901,7 @@ export function EntradaRapidaProduto({
                 const digitado = somenteQuantidade(evento.target.value);
                 avisarSeCruzouSaldo(lerQuantidadeTexto(digitado));
                 setQuantidadeTexto(digitado);
+                vinculo.mudarQuantidade(lerQuantidadeTexto(digitado));
               }}
               // Quantidade vazia ou zerada não sai do campo (pedido do
               // usuário, 2026-09-04). Só vale com um produto em revisão: com a
@@ -1743,9 +1938,10 @@ export function EntradaRapidaProduto({
               className="size-8 shrink-0 rounded-full bg-background"
               aria-label="Aumentar quantidade"
               data-testid="previa-quantidade-aumentar"
-              onClick={() => {
+              {...atributosDeBloqueio(bloqueioDoCarrinho)}
+              onClick={acaoBloqueavel(bloqueioDoCarrinho, () => {
                 alterarQuantidade(1);
-              }}
+              })}
             >
               <Plus className="size-4" aria-hidden="true" />
             </Button>
@@ -1785,7 +1981,9 @@ export function EntradaRapidaProduto({
               value={precoExibido}
               onChange={(evento) => {
                 if (editavel) {
-                  setPrecoTexto(evento.target.value);
+                  // Digitar de novo é um pedido novo: o ajuste anterior não vale mais.
+                  descontoPedidoAntesDoMinimo.current = null;
+                  vinculo.mudarPreco(evento.target.value);
                 }
               }}
               // Preço vazio ou zerado não sai do campo (pedido do usuário,
@@ -1794,7 +1992,9 @@ export function EntradaRapidaProduto({
               onBlur={() => {
                 if (precoInvalido) {
                   exigirCampo(campoPreco, AVISO_PRECO_INVALIDO);
+                  return;
                 }
+                ajustarAoMinimoEAvisar();
               }}
             />
           </span>
@@ -1814,7 +2014,8 @@ export function EntradaRapidaProduto({
               value={descontoExibido}
               onChange={(evento) => {
                 if (editavel) {
-                  setDescontoTexto(evento.target.value);
+                  descontoPedidoAntesDoMinimo.current = null;
+                  vinculo.mudarDesconto(evento.target.value);
                 }
               }}
               // Avisa ao **sair do campo**, não a cada tecla (pedido do
@@ -1834,11 +2035,16 @@ export function EntradaRapidaProduto({
               // está escrito e o operador decide se reduz ou desiste do item.
               onBlur={() => {
                 if (editavel && descontoTexto.trim() === '') {
-                  setDescontoTexto(TEXTO_SEM_DESCONTO);
+                  vinculo.mudarDesconto(TEXTO_SEM_DESCONTO);
                   return;
                 }
                 if (descontoInvalido) {
                   exigirCampo(campoDesconto, AVISO_DESCONTO_INVALIDO);
+                  return;
+                }
+                // Acima do mínimo o desconto é ajustado, e o ajustado nunca zera
+                // o item: o aviso de mínimo basta.
+                if (ajustarAoMinimoEAvisar()) {
                   return;
                 }
                 if (descontoZeraItem) {
@@ -1893,36 +2099,9 @@ export function EntradaRapidaProduto({
           }
           data-testid="previa-confirmar"
           {...atributosDeBloqueio(bloqueioDeInsercao)}
-          // Duas exceções ao `acaoBloqueavel`, e as duas porque `confirmar` faz
-          // mais do que notificar:
-          // - **sem vendedor**, quem responde é `exigirVendedor`, que também
-          //   leva o foco ao campo do vendedor;
-          // - **saldo** (AD-239), porque a confirmação reconsulta o ERP: o
-          //   estoque pode ter sido reposto desde a última consulta, e repetir
-          //   o motivo antigo obrigaria o operador a bipar de novo. Recusada a
-          //   reconsulta, o motivo volta em toast por `comunicarSaldo`.
-          // - **campo obrigatório inválido** (correção do usuário, 2026-09-17):
-          //   `confirmar` passa por `previaValida`, que além de avisar leva o
-          //   foco ao campo — só o toast deixava o operador sem saber onde
-          //   corrigir o preço zerado.
-          // - **código em consulta** (AD-254): no celular, tocar aqui com um
-          //   código digitado tira o foco do campo, e é essa saída que consulta
-          //   e insere. O toque chega com a consulta em voo, e anunciar
-          //   "Aguarde" por cima de uma inserção que já está acontecendo seria
-          //   um aviso de erro para o gesto certo. `confirmar` ignora a
-          //   segunda inserção sozinho (`confirmarEntradaRapida` com `ocupado`).
-          // Nos quatro casos o motivo continua em `bloqueioDeInsercao`, para o
-          // botão aparecer bloqueado e o `title` explicar sem depender do
-          // clique.
-          onClick={acaoBloqueavel(
-            bloqueadoPorVendedor ||
-              (ocupado && semResolucao) ||
-              motivoSaldo !== null ||
-              (!semResolucao && (quantidadeInvalida || precoInvalido || descontoInvalido))
-              ? null
-              : bloqueioDeInsercao,
-            confirmar,
-          )}
+          // As exceções ao bloqueio explicativo estão em `acionarConfirmacao`,
+          // o mesmo handler do TAB que chega aqui vindo do desconto.
+          onClick={acionarConfirmacao}
         >
           <Plus className="size-5 shrink-0" aria-hidden="true" />
           <span className="text-md font-bold md:hidden">

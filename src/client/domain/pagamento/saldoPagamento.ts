@@ -180,6 +180,27 @@ export function calcularSaldo(
 }
 
 /**
+ * O pagamento ainda participa da venda? `RECUSADO` e `EXCLUIDO` ficam de fora:
+ * os dois já saíram do fluxo — a forma riscada permanece no array só por
+ * rastreabilidade (AD-163), e contá-la travava a venda sem pagamento nenhum
+ * (AD-171).
+ *
+ * Um predicado só para todo "há pagamento aqui?" da base (revisão de
+ * 2026-10-16): a regra vivia copiada em meia dúzia de lugares, e um status
+ * terminal novo acrescentado a uma cópia e não às outras faria a faixa de
+ * atalhos, a troca de condição e o desconto de capa discordarem sobre a mesma
+ * venda.
+ */
+export function pagamentoVivo(pagamento: PagamentoAplicado): boolean {
+  return pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO';
+}
+
+/** A venda tem algum pagamento vivo (`pagamentoVivo`)? */
+export function haPagamentoVivo(pagamentos: readonly PagamentoAplicado[]): boolean {
+  return pagamentos.some(pagamentoVivo);
+}
+
+/**
  * `FR-013`/AD-036 (I2): recusa uma segunda forma `Dinheiro`, considerando
  * apenas pagamentos que não estejam `RECUSADO` — um pagamento recusado já foi
  * retirado do fluxo e não deveria travar uma nova tentativa.
@@ -209,9 +230,7 @@ export function podeAplicarForma(
   // `EXCLUIDO` entra na mesma exclusão de `RECUSADO`: uma forma que o operador
   // riscou da lista não deveria travar uma nova tentativa de dinheiro, pelo
   // mesmo motivo — ela já saiu do fluxo (pedido do usuário, 2026-09-04).
-  const naoRecusados = pagamentosAtuais.filter(
-    (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
-  );
+  const naoRecusados = pagamentosAtuais.filter(pagamentoVivo);
 
   if (
     forma.meioPagtoNFe === MEIO_PAGTO.Dinheiro &&

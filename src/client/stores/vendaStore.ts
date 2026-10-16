@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { notificadorDeVeredito, notificar } from '@/lib/notificar';
+import { notificadorDeVeredito, notificar, ouvirAlertas } from '@/lib/notificar';
 import { useRecusaValidacaoStore } from './recusaValidacaoStore';
 import { criarAuditoriaSlice } from './slices/auditoriaSlice';
 import type { AuditoriaSlice } from './slices/auditoriaSlice';
@@ -17,6 +17,7 @@ import type { ValidacaoDeps, ValidacaoVendaSlice } from './slices/validacaoVenda
 import { criarVendedorSlice } from './slices/vendedorSlice';
 import type { VendedorDeps, VendedorSlice } from './slices/vendedorSlice';
 import { useSessionStore } from './sessionStore';
+import { eventoAlertaExibidoAoOperador } from '../domain/auditoria/eventos';
 import type { OrigemVenda } from '../domain/auditoria/eventos';
 import type { CapacidadesPagamento } from '../domain/pagamento/roteamentoIntegracao';
 import type { LinhaRateavel } from '../domain/pagamento/descontoCapa';
@@ -219,6 +220,20 @@ function capacidadesDoBootstrap(): CapacidadesPagamento {
   return paraCapacidadesPagamento(validado.data);
 }
 
+/**
+ * Chave `DESCONTO_CAPA_NO_ERP` do BFF, entregue no bootstrap (017, AD-279).
+ *
+ * Mesmo padrão e mesmo desfecho seguro de `capacidadesDoBootstrap`: lida de
+ * forma síncrona (a decisão acontece dentro da montagem do payload) e, sem
+ * bootstrap ou sem o campo, vale **desligada** — o comportamento de antes da 017.
+ * O registro guardado no Dexie não é reparseado ao ler, então um registro de
+ * antes do campo chega aqui sem `recursos`; o ETag é que o substitui na próxima
+ * carga (`research.md` D11).
+ */
+function descontoCapaNoErpDoBootstrap(): boolean {
+  return useSessionStore.getState().registro?.recursos?.descontoCapaNoErp === true;
+}
+
 /** Linhas ativas no formato que o rateio do desconto de capa consome (AD-098). */
 function linhasRateaveisDoCarrinho(): readonly LinhaRateavel[] {
   return linhasAtivas(useVendaStore.getState().linhas).map((linha) => ({
@@ -245,6 +260,7 @@ export const pagamentoDepsPadrao: PagamentoDeps = {
   subtotalCarrinho: () => totalVenda(useVendaStore.getState().linhas),
   linhasRateaveis: linhasRateaveisDoCarrinho,
   capacidades: capacidadesDoBootstrap,
+  descontoCapaNoErp: descontoCapaNoErpDoBootstrap,
   validarTicket: (codigo) => validarTicket(codigo),
   iniciarIntegracao: () => {
     /**
@@ -348,8 +364,7 @@ export const validacaoDepsPadrao: ValidacaoDeps = {
   // pelo mesmo motivo de `snapshotDaVendaCorrente`: é a função que a emissão
   // usa, e dois rateios independentes poderiam distribuir centavos diferentes
   // entre as mesmas linhas (I5).
-  rateioDescontoCapa: () =>
-    useVendaStore.getState().montarPagamentosParaPayload().rateioDescontoCapa,
+  descontoCapa: () => useVendaStore.getState().montarPagamentosParaPayload().descontoCapa,
   validar: (retrato) => enviarValidarNFCe(retrato),
   registrarEvento: (evento) => {
     useVendaStore.getState().registrarEventoAuditoria(evento);
@@ -388,6 +403,42 @@ export function criarVendaStore(
 }
 
 export const useVendaStore = criarVendaStore();
+
+/**
+ * Todo alerta de erro ou aviso que o operador lê num toast vira
+ * `ALERTA_EXIBIDO_AO_OPERADOR` na trilha da venda (AD-280) — inclusive o clique
+ * num controle bloqueado, que passa por `acaoBloqueavel` e chega ao mesmo
+ * `notificar`.
+ *
+ * Aqui, e não em `notificar`, pelo mesmo motivo de `avisar` e da recusa da
+ * validação logo acima: é a composição que conhece os dois lados, e `lib/` não
+ * importa store nenhum.
+ *
+ * Fica de fora em dois momentos, e pelo mesmo motivo — não há `Log` que o leve
+ * ao ERP:
+ *
+ * - **Sem sessão de venda aberta**: antes de `abrirSessaoDeVenda` (o bootstrap
+ *   ainda carregando, por exemplo) não há venda a que o alerta pertença, e
+ *   registrá-lo num histórico vazio é o que `registrarEventoAuditoria` existe
+ *   para denunciar (FR-002).
+ * - **Com o `Log` já a caminho do ERP** (`logEmEnvio`, revisão de 2026-10-16): o
+ *   retrato é serializado antes do envio, e no sucesso o histórico é descartado.
+ *   Um alerta registrado na espera nunca chegaria a lugar nenhum — e o `Log`
+ *   prometeria ao leitor do código uma linha que o ERP não recebe.
+ */
+export function auditarAlertasNaVenda(store: typeof useVendaStore): () => void {
+  return ouvirAlertas(({ tipo, mensagem }) => {
+    const venda = store.getState();
+    if (venda.eventos.length === 0 || venda.logEmEnvio) {
+      return;
+    }
+    venda.registrarEventoAuditoria(
+      eventoAlertaExibidoAoOperador({ nivel: tipo === 'erro' ? 'ERRO' : 'AVISO', mensagem }),
+    );
+  });
+}
+
+auditarAlertasNaVenda(useVendaStore);
 
 /**
  * Abre uma sessão de venda: **único** ponto que toca `auditoria` e

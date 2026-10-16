@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useVendaStore } from '../../stores/vendaStore';
 import { AVISO_TEF_IRREVERSIVEL } from '../../stores/slices/pagamentoSlice';
 import type { FormaPagamento } from '../../domain/pagamento/formaPagamento';
+import { pagamentoVivo } from '../../domain/pagamento/saldoPagamento';
 import { ehFormaDeValeDevolucao } from '../../domain/pagamento/valeDevolucao';
 import { ControleDescontoCapa } from './ControleDescontoCapa';
 import { EntradaPagamento } from './EntradaPagamento';
@@ -258,9 +259,7 @@ export function ConfiguracaoPagamento({
    */
   const acionamentoEmAndamento = useVendaStore((estado) => estado.acionamentoEmAndamento);
   const formaDoUltimoPagamento = useVendaStore((estado) => {
-    const vivo = estado.pagamentos.findLast(
-      (pagamento) => pagamento.status !== 'RECUSADO' && pagamento.status !== 'EXCLUIDO',
-    );
+    const vivo = estado.pagamentos.findLast(pagamentoVivo);
     return vivo === undefined
       ? null
       : (estado.condicaoSelecionada?.formas.find((forma) => forma.codigo === vivo.formaCodigo) ??

@@ -2,8 +2,8 @@
  * Catálogo de eventos de auditoria da venda (feature 001).
  *
  * Domínio puro: nenhuma dependência de React, Zustand ou rede — só a união
- * discriminada dos 20 tipos de evento (`data-model.md`) e uma factory tipada
- * por tipo, para que nenhuma feature consumidora precise montar o objeto
+ * discriminada dos tipos de evento (24 desde AD-280; `data-model.md`) e uma
+ * factory tipada por tipo, para que nenhuma feature consumidora precise montar o objeto
  * literal solto em cada call site (`contracts/auditoria-events.md`).
  *
  * Este módulo **não** conhece regra de negócio de cliente/vendedor/produto/
@@ -40,7 +40,10 @@ export type OrigemAcionamento = 'CLIQUE' | 'TECLADO';
  */
 export interface EventoAuditoriaBase<TTipo extends string, TDetalhes> {
   readonly tipo: TTipo;
-  /** ISO 8601 UTC com milissegundos, `new Date().toISOString()` (research.md #2). */
+  /**
+   * ISO 8601 com milissegundos **no fuso do navegador** e o deslocamento
+   * explícito — `2026-10-16T10:23:45.123-03:00` (AD-280, `instanteLocalIso`).
+   */
   readonly timestamp: string;
   readonly detalhes: TDetalhes;
 }
@@ -99,6 +102,12 @@ export type EventoProdutoInserido = EventoAuditoriaBase<
     readonly precoUnitario: number;
     /** Absoluto e referente ao **total da linha**, não por unidade; centavos inteiros. */
     readonly desconto: number;
+    /**
+     * O desconto **manual** que o operador pediu, em centavos, quando o preço
+     * mínimo do produto o ajustou (AD-280). Ausente quando nada foi ajustado.
+     * Só a parte manual: o convênio de `desconto` não é pedido de ninguém.
+     */
+    readonly descontoManualSolicitado?: number;
   }
 >;
 
@@ -109,6 +118,11 @@ export type EventoProdutoAlterado = EventoAuditoriaBase<
     readonly campo: string;
     readonly valorAnterior: unknown;
     readonly valorNovo: unknown;
+    /**
+     * O valor pedido, quando o que entrou (`valorNovo`) é outro — hoje só o
+     * `descontoManual` ajustado ao preço mínimo (AD-280).
+     */
+    readonly valorSolicitado?: unknown;
   }
 >;
 
@@ -151,6 +165,34 @@ export type EventoValeDevolucaoUsado = EventoAuditoriaBase<
 export type EventoPagamentoRecusado = EventoAuditoriaBase<
   'PAGAMENTO_RECUSADO',
   { readonly tipo: string; readonly motivo?: string }
+>;
+
+/**
+ * Desconto de capa definido — pela condição de pagamento ou digitado pelo
+ * operador (feature 017, FR-025, AD-279).
+ *
+ * Um evento por **confirmação**, não por tecla: a capa grava a cada tecla
+ * (AD-278), e auditar cada passagem ("1" a caminho de "10") encheria o `Log`
+ * que vai inteiro ao ERP. `origem` é texto literal, e não o tipo do domínio de
+ * pagamento, pelo mesmo motivo de `condicao` e `formaPagamento` serem texto.
+ */
+export type EventoDescontoCapaAplicado = EventoAuditoriaBase<
+  'DESCONTO_CAPA_APLICADO',
+  {
+    readonly origem: 'CONDICAO' | 'MANUAL';
+    readonly modo: 'PERCENTUAL' | 'VALOR';
+    /** Percentual em `'PERCENTUAL'`, centavos inteiros em `'VALOR'`. */
+    readonly entrada: number;
+    /** Centavos inteiros. */
+    readonly valor: number;
+    /**
+     * O que foi **pedido**, na mesma unidade de `entrada`, quando o teto da
+     * condição o ajustou (AD-280) — o operador digitou 30% e a condição só
+     * permite 10%, ou a própria condição traz 15% com teto de 10%. Ausente
+     * quando nada foi ajustado: aí o pedido é a própria `entrada`.
+     */
+    readonly entradaSolicitada?: number;
+  }
 >;
 
 /* ------------------------------------------------------------------ *
@@ -272,10 +314,49 @@ export type EventoAtalhoAcionado = EventoAuditoriaBase<
 >;
 
 /* ------------------------------------------------------------------ *
+ * 24. Alerta exibido ao operador (AD-280)
+ * ------------------------------------------------------------------ */
+
+/** O tipo do toast que o operador leu. */
+export type NivelAlerta = 'ERRO' | 'AVISO';
+
+/**
+ * O operador leu um toast de erro ou de aviso (pedido do usuário, 2026-10-16:
+ * "Log tem que explicitar quando tentou fazer uma operação que não podia, seja
+ * ela com erro ou aviso").
+ *
+ * Antes disto a trilha só registrava o que **aconteceu**: um clique num botão
+ * bloqueado, uma forma recusada pelo saldo, um produto barrado pela venda
+ * congelada — nada disso deixava rastro.
+ *
+ * **"Alerta exibido", e não "operação recusada"** (revisão de 2026-10-16): pelo
+ * contrato de `notificar`, o `aviso` diz que o gesto **aconteceu** com algo a
+ * saber — a capa ajustada ao teto, a reprecificação que falhou depois de uma
+ * troca de cliente aceita. Chamar isso de recusa faria o `Log` afirmar que uma
+ * operação bem-sucedida foi negada. O evento descreve o que se sabe com
+ * certeza: esta frase, com este peso, chegou à tela. O `nivel` diz qual era.
+ *
+ * **Um evento genérico com a frase, e não um tipo por alerta**: são dezenas de
+ * frases espalhadas pelas features, e um tipo por frase obrigaria cada call site
+ * a saber da auditoria — e o próximo alerta novo nasceria sem rastro. Quem emite
+ * é a composição do `vendaStore`, ouvindo `notificar` (o canal único dos
+ * toasts): a frase entra no `Log` exatamente como o operador a leu.
+ *
+ * Convive com os eventos estruturados (`PAGAMENTO_RECUSADO`,
+ * `VALIDACAO_VENDA_RECUSADA`, `FATURAMENTO_FALHOU`, e o valor pedido de
+ * `DESCONTO_CAPA_APLICADO`/`PRODUTO_*`): aqueles registram o fato, este registra
+ * o que foi dito.
+ */
+export type EventoAlertaExibidoAoOperador = EventoAuditoriaBase<
+  'ALERTA_EXIBIDO_AO_OPERADOR',
+  { readonly nivel: NivelAlerta; readonly mensagem: string }
+>;
+
+/* ------------------------------------------------------------------ *
  * União e histórico
  * ------------------------------------------------------------------ */
 
-/** União discriminada por `tipo` dos 22 eventos do catálogo (`data-model.md`). */
+/** União discriminada por `tipo` dos 24 eventos do catálogo (`data-model.md`). */
 export type EventoAuditoria =
   | EventoVendaIniciada
   | EventoClienteSelecionado
@@ -291,6 +372,7 @@ export type EventoAuditoria =
   | EventoFormaPagamentoRemovida
   | EventoValeDevolucaoUsado
   | EventoPagamentoRecusado
+  | EventoDescontoCapaAplicado
   | EventoFaturamentoFalhou
   | EventoVendaFinalizada
   | EventoVendaSuspensa
@@ -298,7 +380,8 @@ export type EventoAuditoria =
   | EventoVendaRapidaAcionada
   | EventoDavImportado
   | EventoNFCeRecuperada
-  | EventoAtalhoAcionado;
+  | EventoAtalhoAcionado
+  | EventoAlertaExibidoAoOperador;
 
 /** Todo `tipo` do catálogo, para exaustividade em testes e consumidores. */
 export type TipoEventoAuditoria = EventoAuditoria['tipo'];
@@ -444,6 +527,33 @@ export function eventoPagamentoRecusado(
   return { tipo: 'PAGAMENTO_RECUSADO', detalhes };
 }
 
+export function eventoDescontoCapaAplicado(
+  detalhes: EventoDescontoCapaAplicado['detalhes'],
+): SemTimestamp<EventoDescontoCapaAplicado> {
+  return { tipo: 'DESCONTO_CAPA_APLICADO', detalhes };
+}
+
+/**
+ * O último `DESCONTO_CAPA_APLICADO` do histórico da venda, ou `null` — a base da
+ * deduplicação da auditoria da capa (017, `research.md` D10).
+ *
+ * Lê o histórico, e não uma variável guardada no slice, porque o histórico é
+ * zerado a cada venda e a variável não: com ela, a mesma capa na venda seguinte
+ * (a mesma condição de 5%, o caso comum) pareceria "já auditada" e não geraria
+ * evento a partir da 2ª venda.
+ */
+export function ultimoDescontoCapaAuditado(
+  eventos: readonly EventoAuditoria[],
+): EventoDescontoCapaAplicado | null {
+  for (let indice = eventos.length - 1; indice >= 0; indice -= 1) {
+    const evento = eventos[indice];
+    if (evento?.tipo === 'DESCONTO_CAPA_APLICADO') {
+      return evento;
+    }
+  }
+  return null;
+}
+
 export function eventoFaturamentoFalhou(
   detalhes: EventoFaturamentoFalhou['detalhes'],
 ): SemTimestamp<EventoFaturamentoFalhou> {
@@ -486,4 +596,10 @@ export function eventoAtalhoAcionado(
   detalhes: EventoAtalhoAcionado['detalhes'],
 ): SemTimestamp<EventoAtalhoAcionado> {
   return { tipo: 'ATALHO_ACIONADO', detalhes };
+}
+
+export function eventoAlertaExibidoAoOperador(
+  detalhes: EventoAlertaExibidoAoOperador['detalhes'],
+): SemTimestamp<EventoAlertaExibidoAoOperador> {
+  return { tipo: 'ALERTA_EXIBIDO_AO_OPERADOR', detalhes };
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EventoAuditoria } from '../../../../src/client/domain/auditoria/eventos';
+import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
 import {
   montarRetratoVenda,
   type SnapshotVenda,
@@ -260,5 +261,61 @@ describe('montarRetratoVenda — retrato VALIDAR (I5 da feature 014, FR-015)', (
     const paraFaturar = montarRetratoVenda(snapshot, 'FATURAR', []);
 
     expect({ ...paraSuspender, SuspenderOuFaturar: 'FATURAR' }).toEqual(paraFaturar);
+  });
+});
+
+/**
+ * 017, US4 (T050) — a capa rateada (chave desligada) ou no cabeçalho (chave
+ * ligada). Três linhas de 1 × R$ 10,00 com capa de R$ 3,00.
+ */
+describe('montarRetratoVenda — capa no retrato (017)', () => {
+  const linhas = [
+    linhaDe({ idLinha: 'a', precoUnitario: 1000 }),
+    linhaDe({ idLinha: 'b', precoUnitario: 1000, descontoManual: 200 }),
+    linhaDe({ idLinha: 'c', precoUnitario: 1000 }),
+  ];
+  const snapshot = snapshotVendaDe({ linhas });
+  const rateio = new Map([
+    ['a', centavos(100)],
+    ['b', centavos(100)],
+    ['c', centavos(100)],
+  ]);
+
+  it('RATEADA: sem a chave DescontoCapaValor e com a parcela em cada item (SC-007)', () => {
+    const retrato = montarRetratoVenda(snapshot, 'FATURAR', [], { tipo: 'RATEADA', rateio });
+
+    expect('DescontoCapaValor' in retrato).toBe(false);
+    expect(retrato.produtos.map((item) => item.DescontoValor)).toEqual([1, 3, 1]);
+    expect(retrato.produtos.map((item) => item.ValorTotal)).toEqual([9, 7, 9]);
+  });
+
+  it('NO_CABECALHO: a capa em reais no cabeçalho e os itens só com o próprio desconto', () => {
+    const retrato = montarRetratoVenda(snapshot, 'FATURAR', [], {
+      tipo: 'NO_CABECALHO',
+      valor: centavos(300),
+    });
+
+    expect(retrato.DescontoCapaValor).toBe(3);
+    expect(retrato.produtos.map((item) => item.DescontoValor)).toEqual([0, 2, 0]);
+    expect(retrato.produtos.map((item) => item.ValorTotal)).toEqual([10, 8, 10]);
+  });
+
+  it.each([
+    [33, 0.33],
+    [1, 0.01],
+    [0, 0],
+    [12_345, 123.45],
+  ])('NO_CABECALHO serializa %i centavos como %d reais, sem ruído', (valor, reais) => {
+    const retrato = montarRetratoVenda(snapshot, 'SUSPENDER', [], {
+      tipo: 'NO_CABECALHO',
+      valor: centavos(valor),
+    });
+
+    expect(retrato.DescontoCapaValor).toBe(reais);
+    expect(JSON.stringify(retrato)).toContain(`"DescontoCapaValor":${String(reais)}`);
+  });
+
+  it('sem capa nenhuma (padrão) o corpo também não tem a chave', () => {
+    expect('DescontoCapaValor' in montarRetratoVenda(snapshot, 'FATURAR', [])).toBe(false);
   });
 });

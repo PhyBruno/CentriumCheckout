@@ -44,8 +44,23 @@ interface FormaRetrato {
   readonly FormaMeioPagtoNFe?: string;
 }
 
+/**
+ * Chave `DESCONTO_CAPA_NO_ERP` da 017 (AD-279), repassada à stack por
+ * `support/stack.ts`. Este spec roda nas duas variantes:
+ *
+ * ```text
+ * npx playwright test pagamento-geral                              # desligada (padrão)
+ * DESCONTO_CAPA_NO_ERP=true npx playwright test pagamento-geral    # ligada
+ * ```
+ *
+ * Derrube a stack (porta 3100) entre as duas: o `webServer` reaproveita a que
+ * estiver de pé, com a chave com que ela subiu.
+ */
+const CAPA_NO_ERP = process.env['DESCONTO_CAPA_NO_ERP'] === 'true';
+
 interface RetratoFaturado {
   retrato: {
+    DescontoCapaValor?: number;
     CondicaoPagamentoCodigo?: number;
     produtos?: readonly ItemRetrato[];
     FormasDePagamento?: readonly FormaRetrato[];
@@ -183,17 +198,92 @@ test.describe('Fluxo dourado do pagamento (T043)', () => {
       expect(forma.FormaEntrada).toBeTruthy();
     }
 
-    // O desconto de capa só existe no payload diluído por item — não há campo de
-    // cabeçalho para ele. Soma exata de 2,00, e **nenhum item fica abaixo de
-    // 0,01**: é a guarda de 2026-09-04, que só deixa passar o desconto cujo
-    // rateio preserva todas as linhas.
     const itens = retrato?.produtos ?? [];
     expect(itens).toHaveLength(3);
     const somaDescontos = itens.reduce((total, item) => total + (item.DescontoValor ?? 0), 0);
-    expect(somaDescontos).toBeCloseTo(2, 2);
-    for (const item of itens) {
-      expect(item.ValorTotal ?? 0).toBeGreaterThanOrEqual(0.01);
+    if (CAPA_NO_ERP) {
+      // Chave ligada (017, AD-279): a capa vai inteira no cabeçalho e nenhum
+      // item leva parcela dela — estes itens não têm desconto próprio.
+      expect(retrato?.DescontoCapaValor).toBe(2);
+      expect(somaDescontos).toBe(0);
+    } else {
+      // Chave desligada: a capa só existe diluída por item, sem a chave de
+      // cabeçalho. Soma exata de 2,00, e **nenhum item fica abaixo de 0,01**: é
+      // a guarda de 2026-09-04, que só deixa passar o desconto cujo rateio
+      // preserva todas as linhas.
+      expect(retrato).not.toHaveProperty('DescontoCapaValor');
+      expect(somaDescontos).toBeCloseTo(2, 2);
+      for (const item of itens) {
+        expect(item.ValorTotal ?? 0).toBeGreaterThanOrEqual(0.01);
+      }
     }
+  });
+
+  /** Quickstart Q3 da 017 — capa pela condição, com teto (US3, AD-279). */
+  test('a condição preenche a capa e o teto dela limita a digitação (017, Q3)', async ({
+    page,
+  }) => {
+    await stubarImpressoraLocal(page);
+    await abrirTelaDeVenda(page);
+
+    // 1. Subtotal líquido 100,00: 6 × R$ 20,00 = 120,00 bruto, com R$ 20,00 de
+    //    desconto de item.
+    const codigo = page.getByTestId('campo-codigo-produto');
+    await codigo.fill('003000');
+    await codigo.press('Tab');
+    // A prévia chega depois do `GetProduto`: preencher antes dela deixaria a
+    // revisão sobrescrever a quantidade com 1.
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('20,00');
+    await page.getByTestId('previa-quantidade').fill('6');
+    await page.getByTestId('previa-desconto-item').fill('20');
+    await page.getByTestId('previa-desconto-item').press('Enter');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+
+    const campo = page.getByTestId('campo-valor-ajuste');
+    const equivalente = page.getByTestId('equivalente-financeiro-desconto-capa');
+    const total = page.getByTestId('total-a-pagar');
+
+    // 2. Condição A: 5% sobre os 100,00 líquidos, não sobre os 120,00.
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-20');
+    await expect(campo).toHaveValue('5');
+    await expect(equivalente).toContainText('5,00');
+    await expect(total).toContainText('95,00');
+
+    // 3. 7% passa; 10% é ajustado ao teto de 8% ao sair do campo, com aviso.
+    await campo.fill('7');
+    await expect(total).toContainText('93,00');
+    await campo.fill('10');
+    await campo.press('Tab');
+    await expect(campo).toHaveValue('8');
+    await expect(total).toContainText('92,00');
+    // `.first()`: a frase aparece no toast e na região `aria-live` dele.
+    await expect(
+      page
+        .getByText(
+          'Desconto máximo desta condição de pagamento: 8%. O desconto foi ajustado automaticamente.',
+        )
+        .first(),
+    ).toBeVisible();
+
+    // 4. Condição B: a capa digitada some e o campo fica bloqueado.
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-21');
+    await expect(campo).toHaveAttribute('aria-disabled', 'true');
+    await expect(total).toContainText('100,00');
+
+    // 5. Condição C: o desconto de 10% entra limitado ao teto de 8%.
+    await escolherNoCombobox(page, 'combobox-condicao-pagamento', 'opcao-condicao-22');
+    await expect(campo).toHaveValue('8');
+    await expect(total).toContainText('92,00');
+
+    // 6. Com forma aplicada a condição não muda, e a capa fica.
+    await aplicarPagamento(page, 'opcao-forma-1', '10,00');
+    await expect(page.getByTestId('pagamento-aplicado')).toHaveCount(1);
+    await expect(page.getByTestId('combobox-condicao-pagamento')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await expect(page.getByTestId('combobox-condicao-pagamento')).toContainText('COND C');
+    await expect(campo).toHaveValue('8');
   });
 
   test('segunda forma dinheiro é recusada e a lista permanece intacta (FR-013/SC-003)', async ({

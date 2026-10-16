@@ -407,13 +407,21 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
         },
         operacao,
         injetadas.formasDePagamento?.() ?? pagamentosDaVenda.FormasDePagamento,
-        pagamentosDaVenda.rateioDescontoCapa,
+        pagamentosDaVenda.descontoCapa,
       );
 
       aplicarEstado({ tipo: 'enviando', operacao });
 
+      // Daqui até a resposta, o `Log` desta venda já está no corpo do envio
+      // (AD-280): alerta exibido na espera não tem como entrar nele.
+      useVendaStore.getState().marcarLogEmEnvio(true);
       const enviar = injetadas.enviar;
-      const resultado = await (enviar === undefined ? enviarFaturarNFCe(retrato) : enviar(retrato));
+      let resultado: Awaited<ReturnType<typeof enviarFaturarNFCe>>;
+      try {
+        resultado = await (enviar === undefined ? enviarFaturarNFCe(retrato) : enviar(retrato));
+      } finally {
+        useVendaStore.getState().marcarLogEmEnvio(false);
+      }
 
       switch (resultado.estado) {
         case 'sucesso':
