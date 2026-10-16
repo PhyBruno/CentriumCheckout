@@ -16,12 +16,19 @@ import {
   type Centavos,
 } from '../precificacao/dinheiro';
 import { TOTAL_MINIMO_DA_LINHA } from '../precificacao/linha';
+import type { CondicaoPagamento } from './formaPagamento';
 
 /** Linha do carrinho elegível para o rateio — só o que o algoritmo precisa. */
 export interface LinhaRateavel {
   readonly idLinha: string;
   readonly totalLiquido: Centavos;
 }
+
+/**
+ * Quem definiu a capa (017, FR-025): a condição de pagamento escolhida
+ * (`selecionarCondicao`) ou o operador digitando (`aplicarDescontoCapa`).
+ */
+export type OrigemDescontoCapa = 'CONDICAO' | 'MANUAL';
 
 /**
  * Modo e entrada bruta com que o operador expressou o desconto de capa
@@ -32,6 +39,7 @@ export interface DescontoCapa {
   readonly modo: 'PERCENTUAL' | 'VALOR';
   readonly entrada: number;
   readonly valorResolvido: Centavos;
+  readonly origem: OrigemDescontoCapa;
 }
 
 /** Desconto de capa maior que a soma das linhas — pré-condição de `ratearDescontoCapa` violada. */
@@ -45,10 +53,10 @@ export class ErroDescontoCapaAcimaDoSubtotal extends Error {
 /**
  * Resolve a entrada do operador para `Centavos`, sem aplicar teto.
  *
- * `FR-015`/AD-039: o desconto de capa não tem limite máximo no domínio — o
- * único freio é a guarda I8 (`descontoCapa <= subtotal`), que vive no slice,
- * porque é ali que o subtotal corrente do carrinho está disponível para
- * recusar a aplicação com toast. Aqui a função só resolve o valor.
+ * Aqui a função só resolve o valor. ⚠️ O "sem teto" de `FR-015`/AD-039 foi
+ * superado pela 017 (AD-279): quem aplica o teto da condição é
+ * `resolverCapaComTeto`, abaixo, chamado pelo slice; a guarda I8
+ * (`descontoCapa < subtotal`) continua vivendo no slice.
  */
 export function resolverDescontoCapa(
   modo: 'PERCENTUAL' | 'VALOR',
@@ -70,9 +78,75 @@ export function resolverDescontoCapa(
  *   emitir: `Σ FormaValor` seria zero e não existe pagamento capaz de fechar
  *   uma venda de R$ 0,00.
  * - `ZERA_UM_ITEM` — o total da venda ainda é positivo, mas o **rateio** deixa
- *   pelo menos uma linha valendo menos de um centavo.
+ *   pelo menos uma linha valendo menos de um centavo. Com a chave
+ *   `DESCONTO_CAPA_NO_ERP` ligada o rateio é do ERP e esta recusa não é
+ *   avaliada (017, AD-279).
+ * - `CONDICAO_SEM_DESCONTO` — a condição escolhida tem teto zero (017,
+ *   FR-018): não há valor ao qual ajustar além de zero.
  */
-export type RecusaDescontoCapa = 'ZERA_A_VENDA' | 'ZERA_UM_ITEM';
+export type RecusaDescontoCapa = 'ZERA_A_VENDA' | 'ZERA_UM_ITEM' | 'CONDICAO_SEM_DESCONTO';
+
+/**
+ * Teto da capa em centavos (017, FR-017/FR-018): o percentual máximo da
+ * condição sobre o subtotal líquido. `null` = sem condição, sem teto (FR-022);
+ * `0` = a condição não permite desconto.
+ */
+export function tetoDaCapa(
+  condicao: Pick<CondicaoPagamento, 'descontoMaximo'> | null,
+  subtotal: Centavos,
+): Centavos | null {
+  if (condicao === null) {
+    return null;
+  }
+  if (condicao.descontoMaximo <= 0) {
+    return ZERO_CENTAVOS;
+  }
+  return aplicarPercentual(subtotal, condicao.descontoMaximo);
+}
+
+/** A capa resolvida, já ajustada ao teto quando passou dele. */
+export interface ResolucaoDaCapa {
+  readonly modo: 'PERCENTUAL' | 'VALOR';
+  readonly entrada: number;
+  readonly valorResolvido: Centavos;
+  readonly ajustadaAoTeto: boolean;
+}
+
+/**
+ * Resolve a entrada do operador aplicando o teto da condição como **ajuste**,
+ * não como recusa (017, FR-016, `research.md` D8): a capa grava a cada tecla
+ * (AD-278), e ao digitar "10" o "1" já foi uma capa válida — recusar e "voltar
+ * ao último valor" restauraria um número que o operador nunca escolheu.
+ *
+ * A comparação é em **centavos**, nunca em percentual (D8): percentual contra
+ * percentual e valor contra valor dariam respostas diferentes para o mesmo
+ * desconto por causa do arredondamento. Ajustada, a entrada passa a ser o
+ * próprio teto na unidade do modo — `descontoMaximo` em `'PERCENTUAL'`, o teto
+ * em centavos em `'VALOR'`.
+ *
+ * Teto zero com desconto positivo é a única recusa daqui.
+ */
+export function resolverCapaComTeto(
+  modo: 'PERCENTUAL' | 'VALOR',
+  entrada: number,
+  subtotal: Centavos,
+  teto: Centavos | null,
+  descontoMaximo: number | null,
+): ResolucaoDaCapa | { readonly recusa: 'CONDICAO_SEM_DESCONTO' } {
+  const valorResolvido = resolverDescontoCapa(modo, entrada, subtotal);
+  if (teto === null || valorResolvido <= teto) {
+    return { modo, entrada, valorResolvido, ajustadaAoTeto: false };
+  }
+  if (teto === ZERO_CENTAVOS) {
+    return { recusa: 'CONDICAO_SEM_DESCONTO' };
+  }
+  return {
+    modo,
+    entrada: modo === 'PERCENTUAL' ? (descontoMaximo ?? entrada) : teto,
+    valorResolvido: teto,
+    ajustadaAoTeto: true,
+  };
+}
 
 /**
  * Guarda do desconto de capa antes de aplicá-lo (pedido do usuário,

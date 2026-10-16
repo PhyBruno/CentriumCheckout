@@ -18,8 +18,8 @@ Derivadas de `SessaoUsuario.CondicoesDePagamento[]` de `GetSessao`, expostas ao 
 | `descricao` | `string` | `CondicaoDescricao` | rótulo exibido |
 | `prazo` | `number` | `CondicaoPrazo` | dias; não usado por esta feature, preservado para a 004 |
 | `minimoEntrada` | `Centavos` | `CondicaoMinimoEntrada` | convertido de `double` na fronteira Zod |
-| `desconto` | `number` | `CondicaoDesconto` | percentual da condição; **não** é o desconto manual de capa |
-| `descontoMaximo` | `number` | `CondicaoDescontoMaximo` | teto da condição; **não** limita o desconto manual (`FR-015` é sem teto) |
+| `desconto` | `number` | `CondicaoDesconto` | percentual da condição. ⚠️ **Desde a 017 (AD-279) preenche a capa ao escolher a condição** (`origem: 'CONDICAO'`), limitado ao teto |
+| `descontoMaximo` | `number` | `CondicaoDescontoMaximo` | teto da condição. ⚠️ **Desde a 017 (AD-279) limita a capa** digitada pelo operador (excesso ajustado ao teto, comparado em centavos); teto `0` bloqueia a capa |
 | `formas` | `readonly FormaPagamento[]` | `CondicaoFormasDePagamento[]` | pelo menos uma para a condição ser selecionável |
 
 ### `FormaPagamento`

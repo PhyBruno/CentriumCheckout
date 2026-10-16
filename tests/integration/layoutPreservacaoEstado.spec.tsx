@@ -86,7 +86,12 @@ function popularVendaAdiantada(): void {
     condicaoSelecionada: CONDICAO,
     // 10% sobre os 99,00 das duas linhas, já resolvido em centavos — é assim
     // que o slice o grava, e é o valor que a travessia tem de preservar.
-    descontoCapa: { modo: 'PERCENTUAL', entrada: 10, valorResolvido: emCentavos(990) },
+    descontoCapa: {
+      modo: 'PERCENTUAL',
+      entrada: 10,
+      valorResolvido: emCentavos(990),
+      origem: 'MANUAL',
+    },
     // R$ 89,10 = os 99,00 das duas linhas menos os 10% de capa: o saldo fica
     // zerado, que é o que a etapa 3 do wizard passou a exigir para ser
     // alcançada (2026-09-09). A venda "adiantada" deste cenário é justamente a

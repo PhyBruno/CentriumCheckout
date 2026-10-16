@@ -10,7 +10,7 @@
  * (`data-model.md` §1).
  */
 
-import { MILESIMOS_POR_UNIDADE, type Milesimos } from './quantidade';
+import { ErroQuantidadeInvalida, MILESIMOS_POR_UNIDADE, type Milesimos } from './quantidade';
 
 /**
  * Branded type: impede, em tempo de compilação, passar um `number` cru (reais,
@@ -82,6 +82,30 @@ export function multiplicarPorQuantidade(preco: Centavos, qtd: Milesimos): Centa
     );
   }
   return centavos(dividirArredondando(produto, MILESIMOS_POR_UNIDADE));
+}
+
+/**
+ * Valor por unidade: `arredondar(valor × 1000 ÷ quantidade)` — a operação
+ * inversa de `multiplicarPorQuantidade` (017, `research.md` D3).
+ *
+ * Existe para o vínculo preço ↔ desconto do item (`descontoItem.ts`): o preço
+ * exibido é `referência − desconto ÷ quantidade`, e fazer essa divisão no
+ * componente seria cálculo monetário solto (Constitution V). Quantidade zero
+ * não tem valor por unidade e lança, em vez de devolver `Infinity`.
+ */
+export function dividirPorQuantidade(valor: Centavos, quantidade: Milesimos): Centavos {
+  if (quantidade <= 0) {
+    throw new ErroQuantidadeInvalida(
+      `Divisão por quantidade exige quantidade positiva; recebido ${String(quantidade)}.`,
+    );
+  }
+  const dividendo = valor * MILESIMOS_POR_UNIDADE;
+  if (!Number.isSafeInteger(dividendo)) {
+    throw new ErroPrecisaoMonetaria(
+      `Valor × 1000 estourou a faixa segura de inteiros: ${String(dividendo)}.`,
+    );
+  }
+  return centavos(dividirArredondando(dividendo, quantidade));
 }
 
 /**

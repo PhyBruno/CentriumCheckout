@@ -6,6 +6,7 @@ import {
   eventoClienteTrocado,
   eventoCondicaoPagamentoAplicada,
   eventoDavImportado,
+  eventoDescontoCapaAplicado,
   eventoFaturamentoFalhou,
   eventoFormaPagamentoAplicada,
   eventoFormaPagamentoRemovida,
@@ -20,8 +21,10 @@ import {
   eventoVendaSuspensa,
   eventoVendedorSelecionado,
   eventoVendedorTrocado,
+  ultimoDescontoCapaAuditado,
 } from '../../../../src/client/domain/auditoria/eventos';
 import type { EventoAuditoriaRegistravel } from '../../../../src/client/domain/auditoria/eventos';
+import { serializarLogAuditoria } from '../../../../src/client/domain/auditoria/serializarLog';
 
 /**
  * Catálogo de eventos + dispatcher do slice de auditoria (feature 001).
@@ -352,6 +355,66 @@ describe('VENDA_RAPIDA_ACIONADA (T023)', () => {
       },
     });
     expect(historico()[0]?.timestamp).toMatch(ISO_8601_MS);
+  });
+});
+
+/** 017, US3 (T038, FR-025) — a capa registra se veio da condição ou do operador. */
+describe('DESCONTO_CAPA_APLICADO', () => {
+  it('registra origem, modo, entrada e valor em centavos', () => {
+    registrar(
+      eventoDescontoCapaAplicado({
+        origem: 'CONDICAO',
+        modo: 'PERCENTUAL',
+        entrada: 5,
+        valor: 500,
+      }),
+    );
+
+    expect(historico()[0]).toMatchObject({
+      tipo: 'DESCONTO_CAPA_APLICADO',
+      detalhes: { origem: 'CONDICAO', modo: 'PERCENTUAL', entrada: 5, valor: 500 },
+    });
+    expect(historico()[0]?.timestamp).toMatch(ISO_8601_MS);
+  });
+
+  it('vai inteiro no Log do retrato', () => {
+    registrar(
+      eventoDescontoCapaAplicado({ origem: 'MANUAL', modo: 'VALOR', entrada: 300, valor: 300 }),
+    );
+
+    const log: unknown = JSON.parse(serializarLogAuditoria(historico()));
+
+    expect(log).toEqual([
+      expect.objectContaining({
+        tipo: 'DESCONTO_CAPA_APLICADO',
+        detalhes: { origem: 'MANUAL', modo: 'VALOR', entrada: 300, valor: 300 },
+      }),
+    ]);
+  });
+
+  it('ultimoDescontoCapaAuditado devolve o último evento de capa, ignorando os demais', () => {
+    expect(ultimoDescontoCapaAuditado([])).toBeNull();
+
+    registrar(
+      eventoDescontoCapaAplicado({
+        origem: 'CONDICAO',
+        modo: 'PERCENTUAL',
+        entrada: 5,
+        valor: 500,
+      }),
+    );
+    registrar(
+      eventoDescontoCapaAplicado({ origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 7, valor: 700 }),
+    );
+    registrar(eventoVendaSuspensa());
+
+    expect(ultimoDescontoCapaAuditado(historico())?.detalhes).toEqual({
+      origem: 'MANUAL',
+      modo: 'PERCENTUAL',
+      entrada: 7,
+      valor: 700,
+    });
+    expect(ultimoDescontoCapaAuditado([historico()[2]].flatMap((e) => (e ? [e] : [])))).toBeNull();
   });
 });
 

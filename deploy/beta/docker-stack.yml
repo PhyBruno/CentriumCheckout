@@ -25,6 +25,9 @@
 #                                ex.: TENANTX=https://host-do-token.exemplo/caminho-base
 #   TENANTS_PERMITIDOS=          `t1,t2`; vazio = qualquer tenant alfanumérico
 #
+#   DESCONTO_CAPA_NO_ERP=false   padrão; `true` manda a capa em DescontoCapaValor e o
+#                                ERP rateia (017, AD-279) — só depois de o ERP ler o campo
+#
 # Subir:
 #   docker build -t "$CHECKOUT_IMAGE" . && docker push "$CHECKOUT_IMAGE"
 #   docker stack deploy -c deploy/beta/docker-stack.yml checkout-beta
@@ -53,6 +56,7 @@ services:
       ENTRADA_AES_IV: ${ENTRADA_AES_IV:?defina ENTRADA_AES_IV}
       SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET}
       ERP_PROXY: ${ERP_PROXY:-1}
+      DESCONTO_CAPA_NO_ERP: ${DESCONTO_CAPA_NO_ERP:-false}
     # A troca de destino fica aqui, e não no `environment`, porque o compose não
     # tem condicional: com ERP_PROXY=1 o BFF chama `erp-proxy:4020/<tenant>/…`,
     # e com outro valor vai direto a `https://<tenant>.<baseDomain>`.

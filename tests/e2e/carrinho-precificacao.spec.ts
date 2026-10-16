@@ -224,18 +224,124 @@ test.describe('User Story 2 — inserção direta por código conhecido (T025)',
     // contaminou a leitura.
     await expect(page.getByTestId('previa-preco-unitario-simbolo')).toHaveText('R$');
     await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('15,00');
+    // Preço e desconto vinculados (017): R$ 20,00 de tabela − R$ 15,00 = R$ 5,00.
+    await expect(page.getByTestId('previa-desconto-item')).toHaveValue('5,00');
     await page.getByTestId('previa-quantidade-aumentar').click();
+    // Quantidade 2 mantém o preço e dobra o desconto da linha (FR-004).
+    await expect(page.getByTestId('previa-desconto-item')).toHaveValue('10,00');
 
     // Enter em QUALQUER campo confirma (correção do usuário, 2026-09-03) —
     // aqui a partir do campo de desconto, não do botão "+".
     await page.getByTestId('previa-desconto-item').fill('2,00');
     await expect(page.getByTestId('previa-desconto-item-simbolo')).toHaveText('R$');
     await expect(page.getByTestId('previa-desconto-item')).toHaveValue('2,00');
+    // R$ 2,00 em 2 unidades: R$ 1,00 por unidade → preço R$ 19,00.
+    await expect(page.getByTestId('previa-preco-unitario')).toHaveValue('19,00');
     await page.getByTestId('previa-desconto-item').press('Enter');
 
     await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
-    // 2 × R$ 15,00 − R$ 2,00 de desconto manual = R$ 28,00.
-    await expect(page.getByTestId('total-venda')).toHaveText('R$ 28,00');
+    // 2 × R$ 20,00 − R$ 2,00 de desconto manual = R$ 38,00.
+    await expect(page.getByTestId('total-venda')).toHaveText('R$ 38,00');
+  });
+
+  /** Quickstart Q1 da 017 — preço e desconto andam juntos (US1). */
+  test('preço e desconto do produto editável andam juntos (017, Q1)', async ({ page }) => {
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    await campo.fill(SKU_EDITAVEL);
+    await campo.press('Tab');
+    const preco = page.getByTestId('previa-preco-unitario');
+    const desconto = page.getByTestId('previa-desconto-item');
+    await expect(preco).toHaveValue('20,00');
+
+    await preco.fill('18');
+    await expect(desconto).toHaveValue('2,00');
+    await desconto.fill('0');
+    await expect(preco).toHaveValue('20,00');
+    await desconto.fill('5');
+    await expect(preco).toHaveValue('15,00');
+
+    await page.getByTestId('previa-quantidade').fill('3');
+    await preco.fill('18');
+    await expect(desconto).toHaveValue('6,00');
+    await page.getByTestId('previa-quantidade').fill('5');
+    await expect(preco).toHaveValue('18');
+    await expect(desconto).toHaveValue('10,00');
+
+    await preco.fill('25');
+    await expect(desconto).toHaveValue('0,00');
+    await desconto.fill('5');
+    // Parte do preço de tabela (20,00), não do 25,00 digitado.
+    await expect(preco).toHaveValue('19,00');
+
+    await page.getByTestId('previa-quantidade').fill('3');
+    await desconto.fill('1');
+    await expect(preco).toHaveValue('19,67');
+    // Sair do preço sem mexer não reescreve o desconto (research D4).
+    await preco.focus();
+    await preco.press('Tab');
+    await expect(desconto).toHaveValue('1');
+    await desconto.press('Enter');
+
+    // 3 × R$ 20,00 − R$ 1,00 = R$ 59,00.
+    await expect(page.getByTestId('total-venda')).toHaveText('R$ 59,00');
+  });
+
+  /** Quickstart Q2 da 017 — o preço mínimo limita o desconto (US2). */
+  test('preço mínimo ajusta o desconto e avisa uma vez (017, Q2)', async ({ page }) => {
+    const AVISO = 'Preço mínimo deste item: R$ 8,00. O desconto foi ajustado automaticamente.';
+    await abrirTelaDeVenda(page);
+
+    const campo = page.getByTestId('campo-codigo-produto');
+    const preco = page.getByTestId('previa-preco-unitario');
+    const desconto = page.getByTestId('previa-desconto-item');
+    const quantidade = page.getByTestId('previa-quantidade');
+
+    // 1. Preço abaixo do mínimo, ao sair do campo: sobe ao mínimo.
+    await campo.fill('003100');
+    await campo.press('Tab');
+    // Espera a prévia: a revisão chega depois do `GetProduto` e reescreveria
+    // os campos preenchidos antes dela.
+    await expect(preco).toHaveValue('20,00');
+    await preco.fill('6');
+    await preco.press('Tab');
+    await expect(preco).toHaveValue('8,00');
+    await expect(desconto).toHaveValue('12,00');
+    await expect(page.getByText(AVISO)).toHaveCount(1);
+
+    // 2. Desconto acima do limite.
+    await desconto.fill('15');
+    await desconto.press('Tab');
+    await expect(desconto).toHaveValue('12,00');
+    await expect(preco).toHaveValue('8,00');
+
+    // 3. O limite é sobre o total da linha: 3 × 12,00 = 36,00.
+    await quantidade.fill('3');
+    await desconto.fill('40');
+    await desconto.press('Enter');
+    await expect(page.getByTestId('linha-carrinho')).toHaveCount(1);
+    // 3 × R$ 20,00 − R$ 36,00 = R$ 24,00 — nunca abaixo de 3 × R$ 8,00.
+    await expect(page.getByTestId('total-venda')).toHaveText('R$ 24,00');
+
+    // 4. Sem mínimo: qualquer desconto que não zere o item é aceito.
+    await campo.fill(SKU_EDITAVEL);
+    await campo.press('Tab');
+    await expect(preco).toHaveValue('20,00');
+    await desconto.fill('19');
+    await desconto.press('Tab');
+    await expect(desconto).toHaveValue('19');
+    await expect(preco).toHaveValue('1,00');
+
+    // 5. Preço de tabela zero: os campos seguem independentes.
+    await page.keyboard.press('Escape');
+    await campo.fill('003200');
+    await campo.press('Tab');
+    await expect(preco).toHaveValue('0,00');
+    await expect(preco).toBeEnabled();
+    await preco.fill('10');
+    await desconto.fill('2');
+    await expect(preco).toHaveValue('10');
   });
 
   test('TAB num produto não editável insere direto, sem prévia', async ({ page }) => {

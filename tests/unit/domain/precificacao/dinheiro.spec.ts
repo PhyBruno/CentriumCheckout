@@ -4,12 +4,51 @@ import {
   calcularTotalLinha,
   centavos,
   distribuirPorMaiorResto,
+  dividirPorQuantidade,
   ErroPrecisaoMonetaria,
   multiplicarPorQuantidade,
   somar,
   subtrair,
 } from '../../../../src/client/domain/precificacao/dinheiro';
-import { milesimosDeUnidades } from '../../../../src/client/domain/precificacao/quantidade';
+import {
+  ErroQuantidadeInvalida,
+  milesimos,
+  milesimosDeUnidades,
+} from '../../../../src/client/domain/precificacao/quantidade';
+
+/** 017, T014 — a operação inversa de `multiplicarPorQuantidade`. */
+describe('dividirPorQuantidade', () => {
+  it('divide exato', () => {
+    expect(dividirPorQuantidade(centavos(600), milesimosDeUnidades(3))).toBe(200);
+  });
+
+  it('arredonda o meio-centavo para longe de zero', () => {
+    // 100 ÷ 3 = 33,33… → 33; 5 ÷ 2 = 2,5 → 3; -5 ÷ 2 = -2,5 → -3
+    expect(dividirPorQuantidade(centavos(100), milesimosDeUnidades(3))).toBe(33);
+    expect(dividirPorQuantidade(centavos(5), milesimosDeUnidades(2))).toBe(3);
+    expect(dividirPorQuantidade(centavos(-5), milesimosDeUnidades(2))).toBe(-3);
+  });
+
+  it('aceita quantidade fracionária', () => {
+    // R$ 3,00 ÷ 1,5 = R$ 2,00
+    expect(dividirPorQuantidade(centavos(300), milesimosDeUnidades(1.5))).toBe(200);
+  });
+
+  it('lança em quantidade zero', () => {
+    expect(() => dividirPorQuantidade(centavos(100), milesimos(0))).toThrow(ErroQuantidadeInvalida);
+  });
+
+  it('ida e volta com multiplicarPorQuantidade fica dentro de 1 centavo por unidade', () => {
+    for (let total = 0; total <= 2_000; total += 7) {
+      for (const qtd of [1, 2, 3, 7, 1.5, 0.333]) {
+        const quantidade = milesimosDeUnidades(qtd);
+        const unitario = dividirPorQuantidade(centavos(total), quantidade);
+        const volta = multiplicarPorQuantidade(unitario, quantidade);
+        expect(Math.abs(volta - total)).toBeLessThanOrEqual(Math.ceil(qtd));
+      }
+    }
+  });
+});
 
 /** Cobertura prioritária declarada em `.specs/codebase/STACK.md` (T010). */
 describe('dinheiro — centavos inteiros', () => {

@@ -46,6 +46,8 @@ import {
   somarQuantidades,
   type Milesimos,
 } from '../../domain/precificacao/quantidade';
+import type { ItemConsolidado } from '../../domain/precificacao/descontoItem';
+import { avisoDePrecoMinimo } from '../../stores/slices/carrinhoSlice';
 import { useCenarioProdutoStore } from '../../stores/cenarioProdutoStore';
 import { useEdicaoItemStore } from '../../stores/edicaoItemStore';
 import { useFocoVendaStore } from '../../stores/focoVendaStore';
@@ -56,6 +58,7 @@ import { useVendaStore } from '../../stores/vendaStore';
 // respostas possíveis para "esta venda tem vendedor?".
 import { useVendedorAtual } from '../vendedor/useVendedor';
 import { ModalBuscaProduto } from './ModalBuscaProduto';
+import { TEXTO_SEM_DESCONTO, useVinculoPrecoDesconto } from './useVinculoPrecoDesconto';
 import {
   avaliarContraCarrinho,
   useContextoPrecificacao,
@@ -109,7 +112,6 @@ const AVISO_PRECO_INVALIDO =
   'Informe o preço unitário do item: ele precisa ser um valor maior que zero.';
 const AVISO_DESCONTO_INVALIDO =
   'Desconto do item inválido: use apenas números, com no máximo duas casas decimais.';
-const TEXTO_SEM_DESCONTO = '0,00';
 
 /**
  * Código apagado com uma revisão na tela (correção do usuário, 2026-09-16).
@@ -385,8 +387,6 @@ export function EntradaRapidaProduto({
   const [quantidadeTexto, setQuantidadeTexto] = useState(() =>
     formatarQuantidade(QUANTIDADE_INICIAL, 3),
   );
-  const [precoTexto, setPrecoTexto] = useState('');
-  const [descontoTexto, setDescontoTexto] = useState(TEXTO_SEM_DESCONTO);
   /**
    * Último saldo de estoque conhecido do produto na barra (AD-236): vem da
    * resolução (TAB, Enter, modal, câmera) e é atualizado por cada confirmação
@@ -452,12 +452,60 @@ export function EntradaRapidaProduto({
   // representa exclusivamente o `descontoManual` que este formulário grava.
   const descontoConvenioFixo = linhaEmEdicao?.descontoConvenio ?? ZERO_CENTAVOS;
   const quantidadeLida = lerQuantidadeTexto(quantidadeTexto);
+  /**
+   * Preço e desconto da barra (017, AD-279): em produto `'E'` com preço de
+   * tabela eles são a mesma informação vista de dois lados, e o hook decide
+   * qual recalcular. O par que a linha guarda sai de `consolidar()` — o preço
+   * na tela é derivado e não entra no total como se fosse a referência.
+   */
+  const vinculo = useVinculoPrecoDesconto({ snapshot: snapshotAtivo, quantidade: quantidadeLida });
+  const {
+    precoTexto,
+    descontoTexto,
+    carregar: carregarVinculo,
+    iniciar: iniciarVinculo,
+    zerar: zerarVinculo,
+  } = vinculo;
+  const precoDigitado = editavel ? lerCentavosDigitados(precoTexto) : null;
+  const descontoDigitado = editavel ? lerCentavosDigitados(descontoTexto) : null;
+  const consolidado = editavel && vinculo.vinculavel ? vinculo.consolidar() : null;
   const precoLido = editavel
-    ? lerCentavosDigitados(precoTexto)
+    ? (consolidado?.precoUnitario ?? precoDigitado)
     : (linhaEmEdicao?.precoUnitario ?? resolvido?.snapshot.precoBase ?? null);
   const descontoManualLido = editavel
-    ? lerCentavosDigitados(descontoTexto)
+    ? (consolidado?.descontoManual ?? descontoDigitado)
     : (linhaEmEdicao?.descontoManual ?? ZERO_CENTAVOS);
+  // Preço derivado do desconto não é digitação do operador: um desconto que
+  // leva o preço a zero é o caso de `descontoZeraItem`, não de preço inválido.
+  const precoDerivado = vinculo.vinculavel && vinculo.mestre === 'DESCONTO';
+
+  /**
+   * Limita o desconto ao preço mínimo do produto e avisa (017, US2). Roda ao
+   * sair do preço ou do desconto e na confirmação; como o par ajustado já sai
+   * daqui dentro do limite, o slice não repete o aviso (FR-013).
+   */
+  function ajustarAoMinimoEAvisar(): boolean {
+    if (!editavel || snapshotAtivo === null || vinculo.ajustarAoMinimo() === null) {
+      return false;
+    }
+    notificar.aviso(avisoDePrecoMinimo(snapshotAtivo.precoMinimo));
+    return true;
+  }
+
+  /**
+   * O par preço/desconto que a confirmação grava. No produto vinculável ele sai
+   * do hook **depois** do ajuste ao mínimo — o estado do React ainda é o do
+   * quadro anterior dentro deste mesmo gesto.
+   */
+  function parParaGravar(): ItemConsolidado | null {
+    if (editavel && vinculo.vinculavel) {
+      ajustarAoMinimoEAvisar();
+      return vinculo.consolidar();
+    }
+    return precoLido === null || descontoManualLido === null
+      ? null
+      : { precoUnitario: precoLido, descontoManual: descontoManualLido };
+  }
   const descontoTotalLido =
     descontoManualLido === null ? null : somar(descontoConvenioFixo, descontoManualLido);
 
@@ -497,8 +545,9 @@ export function EntradaRapidaProduto({
    * um beco sem saída, sem campo onde corrigir.
    */
   const quantidadeInvalida = quantidadeLida === null;
-  const precoInvalido = editavel && (precoLido === null || precoLido <= ZERO_CENTAVOS);
-  const descontoInvalido = editavel && descontoManualLido === null;
+  const precoInvalido =
+    editavel && !precoDerivado && (precoDigitado === null || precoDigitado <= ZERO_CENTAVOS);
+  const descontoInvalido = editavel && descontoDigitado === null;
 
   /**
    * Saldo de estoque da quantidade na barra, reavaliado **a cada render**
@@ -596,15 +645,16 @@ export function EntradaRapidaProduto({
     entradaRevisada.current = linhaEmEdicao.snapshot.codigoProduto;
     setTexto(linhaEmEdicao.snapshot.codigoProduto);
     setQuantidadeTexto(formatarQuantidade(linhaEmEdicao.quantidade, 3));
-    setPrecoTexto(paraTextoDecimal(linhaEmEdicao.precoUnitario));
-    setDescontoTexto(paraTextoDecimal(linhaEmEdicao.descontoManual));
+    // O par **derivado** (017): o preço praticado, não o `precoUnitario` de
+    // referência — que, com desconto, é o preço de tabela.
+    carregarVinculo(linhaEmEdicao);
     if (linhaEmEdicao.snapshot.pesavelEditavel === 'E') {
       campoQuantidade.current?.focus();
       campoQuantidade.current?.select();
     } else {
       focarSemTeclado(botaoConfirmar.current);
     }
-  }, [linhaEmEdicao]);
+  }, [carregarVinculo, linhaEmEdicao]);
 
   /**
    * Foco de volta pro código sempre que a barra volta ao estado vazio —
@@ -768,8 +818,7 @@ export function EntradaRapidaProduto({
     saldoAnunciado.current = null;
     setTexto('');
     setQuantidadeTexto(formatarQuantidade(QUANTIDADE_INICIAL, 3));
-    setPrecoTexto('');
-    setDescontoTexto(TEXTO_SEM_DESCONTO);
+    zerarVinculo();
     setSaldoConhecido(null);
     limparEdicao();
   }
@@ -780,6 +829,7 @@ export function EntradaRapidaProduto({
     const nova = milesimos(Math.max(UMA_UNIDADE, proxima));
     avisarSeCruzouSaldo(nova);
     setQuantidadeTexto(formatarQuantidade(nova, 3));
+    vinculo.mudarQuantidade(nova);
   }
 
   /**
@@ -793,6 +843,11 @@ export function EntradaRapidaProduto({
       const resultado = await acao();
       if (resultado.situacao === 'bloqueado') {
         setSaldoConhecido(resultado.saldo);
+        return;
+      }
+      // O slice recusou a edição e já disse o porquê (017): o que o operador
+      // digitou fica na barra para ele corrigir.
+      if (resultado.situacao === 'recusado') {
         return;
       }
       resetar();
@@ -961,8 +1016,7 @@ export function EntradaRapidaProduto({
     setResolvido(revisao);
     setSaldoConhecido(revisao.saldo);
     setQuantidadeTexto(formatarQuantidade(revisao.quantidade, 3));
-    setPrecoTexto(paraTextoDecimal(revisao.snapshot.precoBase));
-    setDescontoTexto(TEXTO_SEM_DESCONTO);
+    iniciarVinculo(revisao.snapshot);
   }
 
   /**
@@ -1263,17 +1317,14 @@ export function EntradaRapidaProduto({
     // própria linha (campos somente leitura), então `editarItem` não muda
     // nada neles (é idempotente, `carrinhoSlice.ts`).
     if (linhaEmEdicao !== null) {
-      if (quantidadeLida === null || precoLido === null || descontoManualLido === null) {
+      const par = parParaGravar();
+      if (quantidadeLida === null || par === null) {
         return;
       }
       // Saldo (AD-236): a linha só muda se a reconsulta deixar; recusada, o
       // item continua carregado aqui, com o botão já bloqueado pelo saldo novo.
       const linha = linhaEmEdicao;
-      const ajustes = {
-        quantidade: quantidadeLida,
-        precoUnitario: precoLido,
-        descontoManual: descontoManualLido,
-      };
+      const ajustes = { quantidade: quantidadeLida, ...par };
       void aplicarConfirmacao(() => confirmarEdicaoDeLinha(linha, ajustes, saldoConhecido));
       return;
     }
@@ -1306,14 +1357,11 @@ export function EntradaRapidaProduto({
     const quantidade = quantidadeLida;
     const opcoesSaldo = { avisoJaComunicado: saldoAnunciado.current };
     if (revisao.editavel) {
-      if (precoLido === null || descontoManualLido === null) {
+      const par = parParaGravar();
+      if (par === null) {
         return;
       }
-      const ajustes = {
-        quantidade,
-        precoUnitario: precoLido,
-        descontoManual: descontoManualLido,
-      };
+      const ajustes = { quantidade, ...par };
       void aplicarConfirmacao(() =>
         confirmarEdicao(
           {
@@ -1707,6 +1755,7 @@ export function EntradaRapidaProduto({
                 const digitado = somenteQuantidade(evento.target.value);
                 avisarSeCruzouSaldo(lerQuantidadeTexto(digitado));
                 setQuantidadeTexto(digitado);
+                vinculo.mudarQuantidade(lerQuantidadeTexto(digitado));
               }}
               // Quantidade vazia ou zerada não sai do campo (pedido do
               // usuário, 2026-09-04). Só vale com um produto em revisão: com a
@@ -1785,7 +1834,7 @@ export function EntradaRapidaProduto({
               value={precoExibido}
               onChange={(evento) => {
                 if (editavel) {
-                  setPrecoTexto(evento.target.value);
+                  vinculo.mudarPreco(evento.target.value);
                 }
               }}
               // Preço vazio ou zerado não sai do campo (pedido do usuário,
@@ -1794,7 +1843,9 @@ export function EntradaRapidaProduto({
               onBlur={() => {
                 if (precoInvalido) {
                   exigirCampo(campoPreco, AVISO_PRECO_INVALIDO);
+                  return;
                 }
+                ajustarAoMinimoEAvisar();
               }}
             />
           </span>
@@ -1814,7 +1865,7 @@ export function EntradaRapidaProduto({
               value={descontoExibido}
               onChange={(evento) => {
                 if (editavel) {
-                  setDescontoTexto(evento.target.value);
+                  vinculo.mudarDesconto(evento.target.value);
                 }
               }}
               // Avisa ao **sair do campo**, não a cada tecla (pedido do
@@ -1834,11 +1885,16 @@ export function EntradaRapidaProduto({
               // está escrito e o operador decide se reduz ou desiste do item.
               onBlur={() => {
                 if (editavel && descontoTexto.trim() === '') {
-                  setDescontoTexto(TEXTO_SEM_DESCONTO);
+                  vinculo.mudarDesconto(TEXTO_SEM_DESCONTO);
                   return;
                 }
                 if (descontoInvalido) {
                   exigirCampo(campoDesconto, AVISO_DESCONTO_INVALIDO);
+                  return;
+                }
+                // Acima do mínimo o desconto é ajustado, e o ajustado nunca zera
+                // o item: o aviso de mínimo basta.
+                if (ajustarAoMinimoEAvisar()) {
                   return;
                 }
                 if (descontoZeraItem) {

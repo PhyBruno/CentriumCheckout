@@ -21,6 +21,9 @@ async function main(): Promise<void> {
     ERP_PROTOCOL: 'http',
     ERP_HOST_OVERRIDE: `127.0.0.1:${PORTA_ERP_MOCK}`,
     SERVE_STATIC_CLIENT: 'true',
+    // Chave da 017 repassada do ambiente do Playwright: o `pagamento-geral.spec`
+    // roda nas duas variantes (`DESCONTO_CAPA_NO_ERP=true npx playwright test …`).
+    DESCONTO_CAPA_NO_ERP: process.env['DESCONTO_CAPA_NO_ERP'] ?? 'false',
   });
 
   const app = await buildApp(env);

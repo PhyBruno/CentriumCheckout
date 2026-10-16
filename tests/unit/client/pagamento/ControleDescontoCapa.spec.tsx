@@ -1,12 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { ControleDescontoCapa } from '../../../../src/client/features/pagamento/ControleDescontoCapa';
 import { centavos } from '../../../../src/client/domain/precificacao/dinheiro';
-import { AVISO_DESCONTO_COM_PAGAMENTO } from '../../../../src/client/stores/slices/pagamentoSlice';
+import { notificar } from '../../../../src/client/lib/notificar';
+import {
+  AVISO_CONDICAO_SEM_DESCONTO,
+  AVISO_DESCONTO_COM_PAGAMENTO,
+  avisoTetoDaCondicao,
+} from '../../../../src/client/stores/slices/pagamentoSlice';
 import { useVendaStore } from '../../../../src/client/stores/vendaStore';
-import { pagamentoDe } from '../../../support/pagamento';
+import { condicaoDe, pagamentoDe } from '../../../support/pagamento';
 import { linhaDe } from '../../../support/precificacao';
 
 /**
@@ -57,7 +62,12 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
 
   it('um desconto já aplicado manda no modo de abertura, não o padrão', () => {
     useVendaStore.setState({
-      descontoCapa: { modo: 'PERCENTUAL', entrada: 10, valorResolvido: centavos(1_000) },
+      descontoCapa: {
+        modo: 'PERCENTUAL',
+        entrada: 10,
+        valorResolvido: centavos(1_000),
+        origem: 'MANUAL',
+      },
     });
     render(createElement(ControleDescontoCapa));
 
@@ -129,6 +139,7 @@ describe('ControleDescontoCapa — percentual e equivalente financeiro', () => {
       modo: 'PERCENTUAL',
       entrada: 99.9,
       valorResolvido: 9_990,
+      origem: 'MANUAL',
     });
   });
 
@@ -186,6 +197,7 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
       modo: 'VALOR',
       entrada: 1_000,
       valorResolvido: 1_000,
+      origem: 'MANUAL',
     });
   });
 
@@ -242,7 +254,12 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
 
   it('remoção vinda de fora esvazia o campo', () => {
     useVendaStore.setState({
-      descontoCapa: { modo: 'VALOR', entrada: 1_000, valorResolvido: centavos(1_000) },
+      descontoCapa: {
+        modo: 'VALOR',
+        entrada: 1_000,
+        valorResolvido: centavos(1_000),
+        origem: 'MANUAL',
+      },
     });
     render(createElement(ControleDescontoCapa));
     expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('10,00');
@@ -257,7 +274,12 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
   it('com forma de pagamento inserida, campo e unidade ficam bloqueados', async () => {
     const usuario = userEvent.setup();
     useVendaStore.setState({
-      descontoCapa: { modo: 'VALOR', entrada: 1_000, valorResolvido: centavos(1_000) },
+      descontoCapa: {
+        modo: 'VALOR',
+        entrada: 1_000,
+        valorResolvido: centavos(1_000),
+        origem: 'MANUAL',
+      },
       pagamentos: [pagamentoDe({ valorAplicado: 9_000 })],
     });
     render(createElement(ControleDescontoCapa));
@@ -265,10 +287,7 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
 
     expect(campo).toHaveAttribute('aria-disabled', 'true');
     expect(campo).toHaveAttribute('title', AVISO_DESCONTO_COM_PAGAMENTO);
-    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute('aria-disabled', 'true');
 
     await usuario.click(campo);
     await usuario.keyboard('{Backspace}{Backspace}5');
@@ -280,6 +299,7 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
       modo: 'VALOR',
       entrada: 1_000,
       valorResolvido: 1_000,
+      origem: 'MANUAL',
     });
   });
 
@@ -290,5 +310,142 @@ describe('ControleDescontoCapa — total dinâmico e congelamento com pagamento'
     render(createElement(ControleDescontoCapa));
 
     expect(screen.getByTestId('campo-valor-ajuste')).not.toHaveAttribute('aria-disabled');
+  });
+});
+
+/** 017, US3 (T040) — a capa preenchida pela condição e limitada pelo teto dela. */
+describe('ControleDescontoCapa — teto da condição (017)', () => {
+  beforeEach(() => {
+    useVendaStore.setState({
+      linhas: [linhaDe({ precoUnitario: 10_000, quantidadeEmUnidades: 1 })],
+      condicaoSelecionada: null,
+      pagamentos: [],
+      descontoCapa: null,
+    });
+    useVendaStore.getState().resetarAuditoria('NOVA');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function escolher(desconto: number, descontoMaximo: number): void {
+    act(() => {
+      useVendaStore.getState().selecionarCondicao({
+        ...condicaoDe(10, 'COND A'),
+        desconto,
+        descontoMaximo,
+      });
+    });
+  }
+
+  it('a condição preenche o campo e o teto aparece', () => {
+    render(createElement(ControleDescontoCapa));
+
+    escolher(5, 8);
+
+    expect(screen.getByTestId('toggle-ajuste-percentual')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('5');
+    expect(screen.getByTestId('teto-desconto-capa')).toHaveTextContent('Máx. 8%');
+  });
+
+  it('teto zero bloqueia o campo com a explicação', () => {
+    render(createElement(ControleDescontoCapa));
+
+    escolher(0, 0);
+
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveAttribute(
+      'title',
+      AVISO_CONDICAO_SEM_DESCONTO,
+    );
+  });
+
+  it('acima do teto, ao sair do campo o texto vira o teto e há um aviso só', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    render(createElement(ControleDescontoCapa));
+    escolher(5, 8);
+
+    await usuario.clear(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.type(screen.getByTestId('campo-valor-ajuste'), '10');
+    // Durante a digitação o equivalente nunca passa do teto.
+    expect(screen.getByTestId('equivalente-financeiro-desconto-capa')).toHaveTextContent('R$ 8,00');
+    await usuario.tab();
+
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('8');
+    expect(useVendaStore.getState().descontoCapa?.valorResolvido).toBe(800);
+    expect(aviso).toHaveBeenCalledTimes(1);
+    expect(aviso).toHaveBeenCalledWith(avisoTetoDaCondicao(8));
+  });
+
+  it('a entrada do ERP com duas casas é exibida inteira e sobrevive a sair do campo (D9)', async () => {
+    const usuario = userEvent.setup();
+    render(createElement(ControleDescontoCapa));
+    escolher(3.25, 8);
+
+    expect(screen.getByTestId('campo-valor-ajuste')).toHaveValue('3,25');
+    await usuario.click(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.tab();
+
+    expect(useVendaStore.getState().descontoCapa).toMatchObject({
+      entrada: 3.25,
+      origem: 'CONDICAO',
+    });
+  });
+
+  /**
+   * Achado no ERP real (2026-10-13): a capa digitada não chegava ao `Log`. A
+   * digitação grava em silêncio a cada tecla, e a guarda "sair sem mexer não
+   * reaplica" via o texto igual à capa vigente — então a chamada não silenciosa,
+   * que é a que audita, nunca acontecia.
+   */
+  it.each([
+    ['Tab', '{Tab}'],
+    ['Enter', '{Enter}'],
+  ])('a capa digitada é auditada ao sair do campo pelo %s (FR-025)', async (_rotulo, tecla) => {
+    const usuario = userEvent.setup();
+    render(createElement(ControleDescontoCapa));
+    escolher(0, 10);
+
+    await usuario.click(screen.getByTestId('toggle-ajuste-percentual'));
+    await usuario.type(screen.getByTestId('campo-valor-ajuste'), '5');
+    await usuario.keyboard(tecla);
+
+    const eventosDeCapa = useVendaStore
+      .getState()
+      .eventos.filter((evento) => evento.tipo === 'DESCONTO_CAPA_APLICADO');
+    expect(eventosDeCapa.map((evento) => evento.detalhes)).toEqual([
+      { origem: 'MANUAL', modo: 'PERCENTUAL', entrada: 5, valor: 500 },
+    ]);
+  });
+
+  it('a capa da condição não vira digitada nem é reauditada ao só passar pelo campo', async () => {
+    const usuario = userEvent.setup();
+    render(createElement(ControleDescontoCapa));
+    escolher(5, 8);
+
+    await usuario.click(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.tab();
+
+    expect(useVendaStore.getState().descontoCapa?.origem).toBe('CONDICAO');
+    expect(
+      useVendaStore.getState().eventos.filter((evento) => evento.tipo === 'DESCONTO_CAPA_APLICADO'),
+    ).toHaveLength(1);
+  });
+
+  it('só a digitação rejeita casas extras', async () => {
+    const usuario = userEvent.setup();
+    const aviso = vi.spyOn(notificar, 'aviso');
+    render(createElement(ControleDescontoCapa));
+    escolher(5, 8);
+
+    await usuario.clear(screen.getByTestId('campo-valor-ajuste'));
+    await usuario.type(screen.getByTestId('campo-valor-ajuste'), '3,25');
+    await usuario.tab();
+
+    expect(aviso).toHaveBeenCalledWith(
+      'Percentual inválido: use apenas números, com até uma casa decimal.',
+    );
   });
 });

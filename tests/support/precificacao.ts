@@ -25,6 +25,8 @@ export interface OpcoesSnapshot {
   readonly precosFaixa?: readonly [number, number, number, number, number];
   readonly limiaresFaixaEmUnidades?: readonly [number, number, number, number];
   readonly pesavelEditavel?: PesavelEditavel;
+  /** Centavos. Padrão `0` (sem mínimo), para não limitar o desconto por acaso. */
+  readonly precoMinimo?: number;
 }
 
 export function snapshotDe(opcoes: OpcoesSnapshot = {}): SnapshotPrecoProduto {
@@ -50,6 +52,7 @@ export function snapshotDe(opcoes: OpcoesSnapshot = {}): SnapshotPrecoProduto {
       milesimosDeUnidades(limiares[3]),
     ],
     pesavelEditavel: opcoes.pesavelEditavel ?? '',
+    precoMinimo: centavos(opcoes.precoMinimo ?? 0),
   };
 }
 

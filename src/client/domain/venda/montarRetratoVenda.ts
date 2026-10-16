@@ -13,7 +13,13 @@
  * devolve sempre o mesmo objeto, sem ler relógio nem gerar identificador.
  */
 
-import { centavos, somar, ZERO_CENTAVOS, type Centavos } from '../precificacao/dinheiro';
+import {
+  centavos,
+  reaisDeCentavos,
+  somar,
+  ZERO_CENTAVOS,
+  type Centavos,
+} from '../precificacao/dinheiro';
 import { linhasAtivas, totalBruto, totalLinha, type LinhaCarrinho } from '../precificacao/linha';
 import { MILESIMOS_POR_UNIDADE, type Milesimos } from '../precificacao/quantidade';
 import { serializarLogAuditoria } from '../auditoria/serializarLog';
@@ -84,6 +90,13 @@ export interface CheckoutFaturarNFCe {
   readonly produtos: readonly ItemRetratoVenda[];
   readonly FormasDePagamento: readonly FormaDePagamentoRetrato[];
   readonly Log: string;
+  /**
+   * Desconto de capa em reais, até 2 casas (017, AD-279) — só com a chave
+   * `DESCONTO_CAPA_NO_ERP` ligada, e então **sempre** presente (zero sem capa).
+   * Com a chave desligada a chave **não existe** no objeto, para o corpo ficar
+   * byte a byte igual ao de antes da 017 (SC-007).
+   */
+  readonly DescontoCapaValor?: number;
 }
 
 /**
@@ -151,21 +164,27 @@ export interface SnapshotVenda {
   readonly eventos: HistoricoAuditoriaVenda;
 }
 
-const CENTAVOS_POR_REAL = 100;
 const SEM_DESCONTO_PERCENTUAL = 0;
 
 /**
- * Fronteira de saída: centavos inteiros → reais decimais.
+ * Como a capa entra no retrato (017, `research.md` D12, AD-279) — decidido por
+ * `pagamentoSlice.montarPagamentosParaPayload()`, o único produtor, para o
+ * retrato validado (014) e o emitido (004) receberem a mesma (I-D5).
  *
- * É o **único** ponto em que um valor monetário deixa de ser inteiro, e o
- * resultado nunca volta para dentro de um cálculo — ele só é serializado no
- * corpo da requisição. `valor / 100` sobre um inteiro seguro produz o `double`
- * mais próximo do decimal exato, que é o que `JSON.stringify` imprime de volta
- * como `12.34` (Constitution V).
+ * - `RATEADA` — chave `DESCONTO_CAPA_NO_ERP` desligada: a capa vai diluída no
+ *   `DescontoValor` de cada item, pelo rateio de AD-098, como antes da 017.
+ * - `NO_CABECALHO` — chave ligada: a capa vai inteira em `DescontoCapaValor` e
+ *   o ERP rateia.
+ *
+ * União, e não dois parâmetros opcionais: com dois seria representável o
+ * estado "os dois", em que o desconto contaria em dobro.
  */
-function reaisDeCentavos(valor: Centavos): number {
-  return valor / CENTAVOS_POR_REAL;
-}
+export type DescontoCapaNoRetrato =
+  | { readonly tipo: 'RATEADA'; readonly rateio: ReadonlyMap<string, Centavos> }
+  | { readonly tipo: 'NO_CABECALHO'; readonly valor: Centavos };
+
+const SEM_RATEIO: ReadonlyMap<string, Centavos> = new Map();
+const CAPA_RATEADA_VAZIA: DescontoCapaNoRetrato = { tipo: 'RATEADA', rateio: SEM_RATEIO };
 
 /** Mesma fronteira de saída, para quantidade: milésimos inteiros → unidades. */
 function unidadesDeMilesimos(quantidade: Milesimos): number {
@@ -193,15 +212,15 @@ function suspenderOuFaturar(operacao: OperacaoVenda): SuspenderOuFaturar {
  */
 function itensDoRetrato(
   linhas: readonly LinhaCarrinho[],
-  rateioDescontoCapa: ReadonlyMap<string, Centavos>,
+  descontoCapa: DescontoCapaNoRetrato,
 ): readonly ItemRetratoVenda[] {
+  const rateioDescontoCapa = descontoCapa.tipo === 'RATEADA' ? descontoCapa.rateio : SEM_RATEIO;
   return linhasAtivas(linhas).map((linha, indice) => {
-    // O desconto de capa **não existe como campo de cabeçalho** em
-    // `CheckoutFaturarNFCe` (`erp-pagamento-api.md` §3): a única forma de
-    // expressá-lo no contrato é diluído por item, e é por isso que o rateio de
-    // `FR-016` é obrigatório e não preferência de design. Ele **soma** ao
-    // desconto que a linha já trazia (convênio + manual) em vez de substituí-lo
-    // — os três são descontos distintos concedidos na mesma venda.
+    // Com a capa `RATEADA` (chave desligada) ela vai diluída por item, pelo
+    // rateio de `FR-016`, e **soma** ao desconto que a linha já trazia
+    // (convênio + manual) — os três são descontos distintos da mesma venda.
+    // Com `NO_CABECALHO` (017) não há parcela aqui: o item leva só convênio +
+    // manual e a capa vai em `DescontoCapaValor`.
     const descontoDaLinha = somar(linha.descontoConvenio, linha.descontoManual);
     const parcelaDeCapa = rateioDescontoCapa.get(linha.idLinha) ?? ZERO_CENTAVOS;
     const descontoTotal = somar(descontoDaLinha, parcelaDeCapa);
@@ -228,18 +247,18 @@ function itensDoRetrato(
 }
 
 /**
- * @param rateioDescontoCapa Parcela do desconto de capa por `idLinha`, vinda de
- * `pagamentoSlice.montarPagamentosParaPayload()` (feature 008). Omitido quando
- * não há desconto de capa — é o caso da maioria das vendas, e da feature 014
- * quando ela valida uma venda antes de qualquer desconto.
+ * @param descontoCapa Como a capa entra no retrato, vindo de
+ * `pagamentoSlice.montarPagamentosParaPayload()` (008/017). Omitido quando não
+ * há desconto de capa — é o caso da maioria das vendas, e da feature 014 quando
+ * ela valida uma venda antes de qualquer desconto.
  */
 export function montarRetratoVenda(
   snapshot: SnapshotVenda,
   operacao: OperacaoVenda,
   pagamentos: readonly FormaDePagamentoRetrato[],
-  rateioDescontoCapa: ReadonlyMap<string, Centavos> = new Map(),
+  descontoCapa: DescontoCapaNoRetrato = CAPA_RATEADA_VAZIA,
 ): CheckoutFaturarNFCe {
-  return {
+  const retrato: CheckoutFaturarNFCe = {
     Empresa: snapshot.empresa,
     SuspenderOuFaturar: suspenderOuFaturar(operacao),
     NumeroRascunho: snapshot.identidade.numeroRascunho,
@@ -249,11 +268,16 @@ export function montarRetratoVenda(
     vendedorCodigo: snapshot.vendedorCodigo,
     UsuarioCodigo: snapshot.usuarioCodigo,
     CondicaoPagamentoCodigo: snapshot.condicaoPagamentoCodigo,
-    produtos: itensDoRetrato(snapshot.linhas, rateioDescontoCapa),
+    produtos: itensDoRetrato(snapshot.linhas, descontoCapa),
     FormasDePagamento: pagamentos,
     // O log entra serializado e íntegro — sem filtrar, resumir nem reordenar
     // (`contracts/auditoria-events.md`). `FR-011`: vale para `FATURAR` **e**
     // `SUSPENDER`.
     Log: serializarLogAuditoria(snapshot.eventos),
   };
+  // Acrescentado só no ramo do cabeçalho: na capa rateada a chave não pode nem
+  // existir com valor zero (SC-007).
+  return descontoCapa.tipo === 'NO_CABECALHO'
+    ? { ...retrato, DescontoCapaValor: reaisDeCentavos(descontoCapa.valor) }
+    : retrato;
 }

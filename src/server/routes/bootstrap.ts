@@ -121,6 +121,9 @@ export function registrarRotaBootstrap(app: FastifyInstance, deps: BootstrapDeps
       SessaoUsuario: sessaoComOperadorTef,
       tenant: sessao.tenant,
       codigoEmpresa: sessao.codigoEmpresa,
+      // Configuração do BFF, não do ERP (017): entra **antes** do hash, para o
+      // ETag mudar quando a chave muda e o cache do Dexie não sobreviver a ela.
+      recursos: { descontoCapaNoErp: deps.env.descontoCapaNoErp },
     };
 
     // Validação de fronteira antes de entregar ao navegador (Constitution IV).

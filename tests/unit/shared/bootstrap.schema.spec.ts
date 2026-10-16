@@ -133,6 +133,34 @@ describe('bootstrapPayloadSchema', () => {
   });
 });
 
+/** Chave do BFF (017, US4, T053). */
+describe('recursos', () => {
+  it('BFF anterior sem recursos é aceito — quem lê trata a ausência como desligada', () => {
+    const lido = bootstrapPayloadSchema.safeParse(payloadValido());
+
+    expect(lido.success).toBe(true);
+    expect(lido.data?.recursos).toBeUndefined();
+  });
+
+  it('lê a chave ligada', () => {
+    const lido = bootstrapPayloadSchema.parse({
+      ...payloadValido(),
+      recursos: { descontoCapaNoErp: true },
+    });
+
+    expect(lido.recursos?.descontoCapaNoErp).toBe(true);
+  });
+
+  it('recusa chave que não é booleana', () => {
+    expect(
+      bootstrapPayloadSchema.safeParse({
+        ...payloadValido(),
+        recursos: { descontoCapaNoErp: 'true' },
+      }).success,
+    ).toBe(false);
+  });
+});
+
 /** Contato do cliente default (`CliFonCel`, contrato de 2026-09-14, AD-237). */
 describe('SessaoUsuario.ClienteDefaultContato', () => {
   it('aceita o celular do cliente default como texto', () => {

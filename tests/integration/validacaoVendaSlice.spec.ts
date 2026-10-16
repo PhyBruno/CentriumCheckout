@@ -129,6 +129,8 @@ function recusa(texto: string, tipo = ERROR): VereditoCompleto {
 interface Opcoes {
   readonly condicao?: CondicaoPagamento;
   readonly capacidades?: { tefAtivo: boolean; pixAtivo: boolean };
+  /** Chave `DESCONTO_CAPA_NO_ERP` (017). Padrão desligada. */
+  readonly descontoCapaNoErp?: boolean;
 }
 
 function montarStore(opcoes: Opcoes = {}) {
@@ -149,7 +151,7 @@ function montarStore(opcoes: Opcoes = {}) {
       eventos: store.getState().eventos,
     }),
     pagamentosAplicados: () => store.getState().pagamentos,
-    rateioDescontoCapa: () => store.getState().montarPagamentosParaPayload().rateioDescontoCapa,
+    descontoCapa: () => store.getState().montarPagamentosParaPayload().descontoCapa,
     validar: (retrato) => {
       retratosEnviados.push(retrato);
       return validar(retrato);
@@ -165,6 +167,7 @@ function montarStore(opcoes: Opcoes = {}) {
     subtotalCarrinho: () => centavos(TOTAL_PADRAO),
     linhasRateaveis: () => [],
     capacidades: () => capacidades,
+    descontoCapaNoErp: () => opcoes.descontoCapaNoErp ?? false,
     validarTicket: (): Promise<ResultadoTicket> =>
       Promise.resolve({ valido: false, mensagem: 'não exercitado' }),
     iniciarIntegracao,
@@ -320,6 +323,30 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
     expect(store.getState().podeFinalizar()).toBe(false);
   });
 
+  it('com a chave ligada, validar e faturar recebem a mesma capa no cabeçalho (017, I-D5)', async () => {
+    const { store, retratosEnviados } = montarStore({ descontoCapaNoErp: true });
+    store.setState({
+      descontoCapa: {
+        modo: 'VALOR',
+        entrada: 300,
+        valorResolvido: centavos(300),
+        origem: 'MANUAL',
+      },
+    });
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(9_700) });
+
+    const enviado = retratosEnviados[0];
+    const paraFaturar = montarRetratoVenda(
+      { ...SNAPSHOT, condicaoPagamentoCodigo: A_VISTA.codigo, eventos: store.getState().eventos },
+      'FATURAR',
+      enviado?.FormasDePagamento ?? [],
+      store.getState().montarPagamentosParaPayload().descontoCapa,
+    );
+    expect(enviado?.DescontoCapaValor).toBe(3);
+    expect({ ...enviado, Log: '' }).toEqual({ ...paraFaturar, Log: '' });
+  });
+
   it('o retrato de VALIDAR é idêntico ao de FATURAR, exceto SuspenderOuFaturar (I5, C2)', async () => {
     const { store, retratosEnviados } = montarStore();
 
@@ -334,7 +361,7 @@ describe('validacaoVendaSlice — núcleo (T012)', () => {
       { ...SNAPSHOT, condicaoPagamentoCodigo: A_VISTA.codigo, eventos: store.getState().eventos },
       'FATURAR',
       enviado?.FormasDePagamento ?? [],
-      store.getState().montarPagamentosParaPayload().rateioDescontoCapa,
+      store.getState().montarPagamentosParaPayload().descontoCapa,
     );
 
     // `'VALIDAR'` chega ao ERP como `'FATURAR'` — a igualdade é total, o que é

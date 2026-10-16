@@ -407,7 +407,7 @@ export function useFinalizarOuSuspenderVenda(deps: FinalizacaoDeps = {}): ApiFin
         },
         operacao,
         injetadas.formasDePagamento?.() ?? pagamentosDaVenda.FormasDePagamento,
-        pagamentosDaVenda.rateioDescontoCapa,
+        pagamentosDaVenda.descontoCapa,
       );
 
       aplicarEstado({ tipo: 'enviando', operacao });

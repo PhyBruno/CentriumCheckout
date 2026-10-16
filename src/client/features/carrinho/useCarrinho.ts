@@ -221,9 +221,14 @@ export type ResultadoInsercao =
  *
  * `bloqueado` traz o saldo usado na decisão, para a barra reavaliar o `+`/`−`
  * com ele em vez do saldo antigo.
+ *
+ * `recusado` (017): o slice recusou a edição pelo lápis (`atualizarItem`
+ * devolveu `false`) e já avisou o motivo. A barra **não** se limpa — antes ela
+ * se limpava sempre, e o operador perdia o que digitou junto com a edição.
  */
 export type ResultadoConfirmacao =
   | { readonly situacao: 'confirmado' }
+  | { readonly situacao: 'recusado' }
   | { readonly situacao: 'bloqueado'; readonly saldo: SaldoMilesimos | null };
 
 /**
@@ -764,10 +769,10 @@ export interface ApiEdicaoItem {
    * 2026-09-03), em vez de editar só a quantidade inline
    * (`EdicaoQuantidadeItem`, removido).
    *
-   * Cada campo passa por `editarItem`, que já é idempotente (no-op quando o
-   * valor não mudou, `carrinhoSlice.ts`) e audita por campo — chamar os três
-   * incondicionalmente é seguro mesmo quando só a quantidade mudou (produto
-   * pesável, `'S'`/`'B'`: preço e desconto chegam inalterados).
+   * Os três campos vão juntos para `atualizarItem` (017, FR-007): o conjunto é
+   * gravado ou recusado por inteiro, e a auditoria continua sendo por campo
+   * efetivamente alterado. Até a 017 eram três `editarItem` seguidos, cada um
+   * validando sozinho — o que gravava estado parcial (`research.md` D5).
    *
    * **Saldo (AD-236):** quando a quantidade muda, reconsulta o saldo e avalia
    * sem a própria linha na soma. Aumento acima do saldo em `'B'` não altera
@@ -782,7 +787,7 @@ export interface ApiEdicaoItem {
 }
 
 export function useEdicaoDeItemExistente(): ApiEdicaoItem {
-  const editarItem = useVendaStore((estado) => estado.editarItem);
+  const atualizarItem = useVendaStore((estado) => estado.atualizarItem);
   const contexto = useContextoPrecificacao();
   const politica = usePoliticaSaldo();
 
@@ -804,12 +809,11 @@ export function useEdicaoDeItemExistente(): ApiEdicaoItem {
             return { situacao: 'bloqueado', saldo };
           }
         }
-        editarItem(linha.idLinha, 'quantidade', ajustes.quantidade);
-        editarItem(linha.idLinha, 'precoUnitario', ajustes.precoUnitario);
-        editarItem(linha.idLinha, 'descontoManual', ajustes.descontoManual);
-        return { situacao: 'confirmado' };
+        return atualizarItem(linha.idLinha, ajustes)
+          ? { situacao: 'confirmado' }
+          : { situacao: 'recusado' };
       },
-      [contexto, editarItem, politica],
+      [atualizarItem, contexto, politica],
     ),
   };
 }

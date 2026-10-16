@@ -125,6 +125,46 @@ describe('sdtCheckoutGetProdutoSchema', () => {
     expect(produto['CampoNovoDoErp']).toBe('valor');
   });
 
+  /**
+   * `PrecoMinimo` (017, T002): limite do desconto do item. Entra pela fronteira
+   * em centavos, e `0`/ausente/`null` significam "sem mínimo" (FR-009).
+   */
+  describe('PrecoMinimo', () => {
+    it('converte reais em centavos inteiros', () => {
+      expect(sdtCheckoutGetProdutoSchema.parse(respostaGetProduto()).PrecoMinimo).toBe(850);
+    });
+
+    it('aceita a string numérica do ERP real', () => {
+      const produto = sdtCheckoutGetProdutoSchema.parse(
+        respostaGetProduto({ PrecoMinimo: '8.50000' }),
+      );
+
+      expect(produto.PrecoMinimo).toBe(850);
+    });
+
+    it.each([
+      ['zero', 0],
+      ['null', null],
+    ])('%s vira 0 (sem mínimo)', (_rotulo, valor) => {
+      expect(
+        sdtCheckoutGetProdutoSchema.parse(respostaGetProduto({ PrecoMinimo: valor })).PrecoMinimo,
+      ).toBe(0);
+    });
+
+    it('ausente vira 0 (sem mínimo)', () => {
+      const payload = respostaGetProduto();
+      delete payload['PrecoMinimo'];
+
+      expect(sdtCheckoutGetProdutoSchema.parse(payload).PrecoMinimo).toBe(0);
+    });
+
+    it.each([-1, 'oito', ''])('recusa %s na fronteira (Constitution IV)', (valor) => {
+      expect(
+        sdtCheckoutGetProdutoSchema.safeParse(respostaGetProduto({ PrecoMinimo: valor })).success,
+      ).toBe(false);
+    });
+  });
+
   /** `Saldo` do contrato de 2026-09-14 (AD-236): string decimal, pode ser negativa. */
   describe('Saldo', () => {
     it('converte a string decimal do ERP em milésimos inteiros', () => {
