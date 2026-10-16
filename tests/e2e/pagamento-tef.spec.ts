@@ -190,6 +190,19 @@ test.describe('Fluxo dourado do TEF (T037)', () => {
       expect(forma).not.toHaveProperty('TEFNumeroAutorizacao');
     }
     expect((await contadores(request)).estornarPagamento).toBe(1);
+
+    // Feature 018 (FR-012): o estorno chega ao ERP no `Log` com valor, motivo e o
+    // `TEFPagId` da transação estornada — a chave de conciliação com a operadora.
+    const eventos: { tipo: string; detalhes: Record<string, unknown> }[] = JSON.parse(
+      (retrato as { Log?: string } | null)?.Log ?? '[]',
+    );
+    const removidas = eventos.filter((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA');
+    expect(removidas).toHaveLength(1);
+    expect(removidas[0]?.detalhes).toMatchObject({ valor: 500, motivo: 'ESTORNO_TEF' });
+    const tefPagIdEstornado = removidas[0]?.detalhes['tefPagId'];
+    expect(tefPagIdEstornado).toMatch(/^pay_mock_/);
+    // Não é nenhuma das transações que ficaram na nota.
+    expect(pagIds).not.toContain(tefPagIdEstornado);
   });
 
   // Cenário 6: o Checkout não cancela a transação em voo, e diz isso.

@@ -189,7 +189,12 @@ describe('Eventos de ação (T009)', () => {
     eventoProdutoCancelado({ codigoProduto: 'PROD-1' }),
     eventoCondicaoPagamentoAplicada({ condicao: 'A VISTA' }),
     eventoFormaPagamentoAplicada({ formaPagamento: 'DINHEIRO', valor: 5000 }),
-    eventoFormaPagamentoRemovida({ formaPagamento: 'DINHEIRO' }),
+    eventoFormaPagamentoRemovida({
+      formaPagamento: 'CARTAO CREDITO',
+      valor: 5000,
+      motivo: 'ESTORNO_TEF',
+      tefPagId: 'PAG-001',
+    }),
     eventoValeDevolucaoUsado({ codigoVale: 'VALE-0001', valor: 2500 }),
     eventoPagamentoRecusado({ tipo: 'PIX', motivo: 'Saldo insuficiente' }),
   ];

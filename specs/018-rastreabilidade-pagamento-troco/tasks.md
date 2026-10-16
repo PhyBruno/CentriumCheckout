@@ -25,7 +25,7 @@ description: "Task list — 018 rastreabilidade de pagamentos cancelados e troco
 
 **Purpose**: Nenhuma infraestrutura nova: a feature altera código existente. Só a branch e a linha de base.
 
-- [ ] T001 Confirmar a branch `feat/rastreabilidade-pagamento-troco` e rodar a linha de base (`npx tsc --noEmit` e `npx vitest run`), registrando falhas pré-existentes para não confundi-las com regressão desta feature
+- [X] T001 Confirmar a branch `feat/rastreabilidade-pagamento-troco` e rodar a linha de base (`npx tsc --noEmit` e `npx vitest run`), registrando falhas pré-existentes para não confundi-las com regressão desta feature
 
 ---
 
@@ -33,10 +33,10 @@ description: "Task list — 018 rastreabilidade de pagamentos cancelados e troco
 
 **Purpose**: O tipo do evento ampliado é usado pelas três stories (US1 diretamente, US2 pelo `motivo: 'LIMPAR'`). Precisa existir antes.
 
-- [ ] T002 Ampliar `EventoFormaPagamentoRemovida` em `src/client/domain/auditoria/eventos.ts:148` para `{ formaPagamento: string; valor: number /* centavos */; motivo: 'OPERADOR' | 'ESTORNO_TEF' | 'LIMPAR'; tefPagId?: string; pixGuid?: string }`, exportando o tipo `MotivoRemocaoPagamento`, com TSDoc no padrão dos vizinhos (data-model §5, research D4)
-- [ ] T003 Atualizar `tests/unit/domain/auditoria/eventos.spec.ts:192,220` para o formato novo (factory devolve os detalhes completos, campos opcionais omitidos quando ausentes)
-- [ ] T004 [P] Escrever primeiro (RED) `tests/unit/domain/pagamento/remocaoPagamento.spec.ts`: dinheiro → `valor` = recebido; cartão sem TEF → `valor` = aplicado, sem `tefPagId`; TEF com `dadosTEF` → `tefPagId = dadosTEF.pagId`; PIX aprovado com `pixGuid` → `pixGuid`; PIX pendente (sem `pixGuid`) → sem o campo; nenhum campo de identificador vazio (FR-010 a FR-014)
-- [ ] T005 Implementar `detalhesDaRemocao(pagamento, rotulo, motivo)` em `src/client/domain/pagamento/remocaoPagamento.ts` (função pura, sem store; `valorRecebido ?? valorAplicado`; spread condicional para os identificadores, como `formaParaRetrato`) até T004 passar
+- [X] T002 Ampliar `EventoFormaPagamentoRemovida` em `src/client/domain/auditoria/eventos.ts:148` para `{ formaPagamento: string; valor: number /* centavos */; motivo: 'OPERADOR' | 'ESTORNO_TEF' | 'LIMPAR'; tefPagId?: string; pixGuid?: string }`, exportando o tipo `MotivoRemocaoPagamento`, com TSDoc no padrão dos vizinhos (data-model §5, research D4)
+- [X] T003 Atualizar `tests/unit/domain/auditoria/eventos.spec.ts:192,220` para o formato novo (factory devolve os detalhes completos, campos opcionais omitidos quando ausentes)
+- [X] T004 [P] Escrever primeiro (RED) `tests/unit/domain/pagamento/remocaoPagamento.spec.ts`: dinheiro → `valor` = recebido; cartão sem TEF → `valor` = aplicado, sem `tefPagId`; TEF com `dadosTEF` → `tefPagId = dadosTEF.pagId`; PIX aprovado com `pixGuid` → `pixGuid`; PIX pendente (sem `pixGuid`) → sem o campo; nenhum campo de identificador vazio (FR-010 a FR-014)
+- [X] T005 Implementar `detalhesDaRemocao(pagamento, rotulo, motivo)` em `src/client/domain/pagamento/remocaoPagamento.ts` (função pura, sem store; `valorRecebido ?? valorAplicado`; spread condicional para os identificadores, como `formaParaRetrato`) até T004 passar
 
 **Checkpoint**: o tipo compila em todo o projeto (`npx tsc --noEmit` vai apontar as três chamadas do slice, corrigidas em US1/US2).
 
@@ -50,13 +50,13 @@ description: "Task list — 018 rastreabilidade de pagamentos cancelados e troco
 
 ### Tests for User Story 1
 
-- [ ] T006 [US1] Em `tests/integration/pagamentoSlice.spec.ts`, acrescentar asserts de `detalhes` (hoje só se conta o evento, `:566`, `:598`, `:1696-1732`): `removerPagamento` de dinheiro → `motivo: 'OPERADOR'`, `valor` = recebido; `confirmarEstornoTef` → `motivo: 'ESTORNO_TEF'` com `tefPagId` do `dadosTEF`; remoção de PIX aprovado → `pixGuid` (RED)
-- [ ] T007 [P] [US1] Em `tests/e2e/pagamento-tef.spec.ts`, no cenário de estorno (`SOL_EST → PROC_EST → EST`), finalizar a venda e asserir no corpo de `FaturarNFCe` capturado pelo mock que o `Log` contém `FORMA_PAGAMENTO_REMOVIDA` com `motivo: "ESTORNO_TEF"` e `tefPagId` igual ao `TEFPagId` da aprovação
+- [X] T006 [US1] Em `tests/integration/pagamentoSlice.spec.ts`, acrescentar asserts de `detalhes` (hoje só se conta o evento, `:566`, `:598`, `:1696-1732`): `removerPagamento` de dinheiro → `motivo: 'OPERADOR'`, `valor` = recebido; `confirmarEstornoTef` → `motivo: 'ESTORNO_TEF'` com `tefPagId` do `dadosTEF`; remoção de PIX aprovado → `pixGuid` (RED)
+- [X] T007 [P] [US1] Em `tests/e2e/pagamento-tef.spec.ts`, no cenário de estorno (`SOL_EST → PROC_EST → EST`), finalizar a venda e asserir no corpo de `FaturarNFCe` capturado pelo mock que o `Log` contém `FORMA_PAGAMENTO_REMOVIDA` com `motivo: "ESTORNO_TEF"` e `tefPagId` igual ao `TEFPagId` da aprovação
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Em `src/client/stores/slices/pagamentoSlice.ts`, `removerPagamento` (`:1056`) e `confirmarEstornoTef` (`:1084`) passam a registrar `eventoFormaPagamentoRemovida(detalhesDaRemocao(alvo, rotuloDoPagamento(alvo), 'OPERADOR' | 'ESTORNO_TEF'))`; atualizar os comentários que descrevem o evento
-- [ ] T009 [US1] Em `descartarPagamento` (`pagamentoSlice.ts:1316-1328`), trocar a lista de rótulos por detalhes completos resolvidos **antes** do `set` (`detalhesDaRemocao(p, rotuloDoPagamento(p), 'LIMPAR')` para cada vivo), sem ainda mudar o esvaziamento (isso é US2), para o projeto compilar e T006 passar
+- [X] T008 [US1] Em `src/client/stores/slices/pagamentoSlice.ts`, `removerPagamento` (`:1056`) e `confirmarEstornoTef` (`:1084`) passam a registrar `eventoFormaPagamentoRemovida(detalhesDaRemocao(alvo, rotuloDoPagamento(alvo), 'OPERADOR' | 'ESTORNO_TEF'))`; atualizar os comentários que descrevem o evento
+- [X] T009 [US1] Em `descartarPagamento` (`pagamentoSlice.ts:1316-1328`), trocar a lista de rótulos por detalhes completos resolvidos **antes** do `set` (`detalhesDaRemocao(p, rotuloDoPagamento(p), 'LIMPAR')` para cada vivo), sem ainda mudar o esvaziamento (isso é US2), para o projeto compilar e T006 passar
 
 **Checkpoint**: US1 entregável sozinha: `npx tsc --noEmit`, `npx vitest run tests/integration/pagamentoSlice.spec.ts tests/unit/domain` e o e2e de TEF verdes.
 

@@ -45,6 +45,7 @@ import {
 import { ehFormaDeValeDevolucao, type ResultadoTicket } from '../../domain/pagamento/valeDevolucao';
 import { subtrair, ZERO_CENTAVOS, type Centavos } from '../../domain/precificacao/dinheiro';
 import { formaParaRetrato } from '../../domain/pagamento/formaParaRetrato';
+import { detalhesDaRemocao } from '../../domain/pagamento/remocaoPagamento';
 import type { FormaCandidata } from '../../domain/validacaoVenda/projetarPagamentos';
 import type { OrigemAcionamento } from './validacaoVendaSlice';
 import type {
@@ -1053,8 +1054,12 @@ export function criarPagamentoSlice(
         // ERP de novo, mesmo que a candidata seja idêntica à anterior.
         deps.invalidarVeredito();
 
+        // Feature 018: valor, motivo e, quando há, o identificador da cobrança
+        // PIX — o `Log` deixa de mostrar duas formas iguais como linhas iguais.
         get().registrarEventoAuditoria(
-          eventoFormaPagamentoRemovida({ formaPagamento: rotuloDoPagamento(alvo) }),
+          eventoFormaPagamentoRemovida(
+            detalhesDaRemocao(alvo, rotuloDoPagamento(alvo), 'OPERADOR'),
+          ),
         );
       },
 
@@ -1081,8 +1086,12 @@ export function criarPagamentoSlice(
 
         deps.invalidarVeredito();
 
+        // `tefPagId` é o `payment_identifier` da SmartTEF, o mesmo `TEFPagId` do
+        // faturamento: com ele o ERP concilia o estorno com a `TransacaoTEF`.
         get().registrarEventoAuditoria(
-          eventoFormaPagamentoRemovida({ formaPagamento: rotuloDoPagamento(alvo) }),
+          eventoFormaPagamentoRemovida(
+            detalhesDaRemocao(alvo, rotuloDoPagamento(alvo), 'ESTORNO_TEF'),
+          ),
         );
       },
 
@@ -1313,7 +1322,9 @@ export function criarPagamentoSlice(
         // reemiti-lo aqui mandaria ao ERP, no `Log`, a mesma forma removida
         // duas vezes (AD-171). `RECUSADO` nunca chegou a valer como pagamento,
         // pelo mesmo critério de `pagamentosVivos`.
-        const rotulos = pagamentos.filter(pagamentoVivo).map(rotuloDoPagamento);
+        const removidas = pagamentos
+          .filter(pagamentoVivo)
+          .map((pagamento) => detalhesDaRemocao(pagamento, rotuloDoPagamento(pagamento), 'LIMPAR'));
 
         condicaoVeioDeDocumento = false;
         set({
@@ -1323,8 +1334,8 @@ export function criarPagamentoSlice(
           valesDevolucao: [],
         });
 
-        for (const formaPagamento of rotulos) {
-          get().registrarEventoAuditoria(eventoFormaPagamentoRemovida({ formaPagamento }));
+        for (const detalhes of removidas) {
+          get().registrarEventoAuditoria(eventoFormaPagamentoRemovida(detalhes));
         }
 
         // `FR-021`/I11, mesma razão de `removerPagamento`: o veredito da 014

@@ -251,6 +251,14 @@ function tiposDeEvento(store: ReturnType<typeof montarStore>['store']): readonly
   return store.getState().eventos.map((evento) => evento.tipo);
 }
 
+/** Detalhes de cada `FORMA_PAGAMENTO_REMOVIDA`, na ordem do `Log` (feature 018). */
+function detalhesDasRemocoes(store: ReturnType<typeof montarStore>['store']): readonly object[] {
+  return store
+    .getState()
+    .eventos.filter((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA')
+    .map((evento) => evento.detalhes);
+}
+
 /** O rateio da capa no payload — `RATEADA` é o único modo com a chave desligada (017). */
 function rateioDoPayload(
   store: ReturnType<typeof montarStore>['store'],
@@ -566,6 +574,23 @@ describe('pagamentoSlice — bloqueio do carrinho (T015, I6/I7, Cenário 6)', ()
     expect(
       store.getState().eventos.some((evento) => evento.tipo === 'FORMA_PAGAMENTO_REMOVIDA'),
     ).toBe(true);
+    // Feature 018 (FR-013): a cobrança PIX aprovada leva o identificador ao `Log`.
+    expect(detalhesDasRemocoes(store)).toEqual([
+      expect.objectContaining({ motivo: 'OPERADOR', valor: 10_000, pixGuid: 'guid-exemplo' }),
+    ]);
+  });
+
+  // Feature 018, FR-010/FR-011: o evento deixa de levar só o nome da forma.
+  it('removerPagamento de dinheiro registra valor recebido e motivo OPERADOR, sem identificador', async () => {
+    const { store } = montarStore();
+
+    await store.getState().aplicarPagamento({ forma: DINHEIRO, valorInformado: centavos(5_000) });
+    store.getState().removerPagamento('pag-1');
+
+    const [detalhes] = detalhesDasRemocoes(store);
+    expect(detalhes).toMatchObject({ valor: 5_000, motivo: 'OPERADOR' });
+    expect(detalhes).not.toHaveProperty('tefPagId');
+    expect(detalhes).not.toHaveProperty('pixGuid');
   });
 
   it('descartarPagamento aceita venda com PIX aprovado (AD-161)', async () => {
@@ -1710,6 +1735,21 @@ describe('pagamentoSlice — confirmarEstornoTef (feature 010)', () => {
     expect(store.getState().saldo().saldoRestante).toBe(TOTAL_PADRAO);
     expect(removidas(store)).toBe(1);
     expect(invalidarVeredito).toHaveBeenCalled();
+  });
+
+  // Feature 018, FR-012: o ERP concilia o estorno pelo `payment_identifier`.
+  it('o evento do estorno leva valor, motivo ESTORNO_TEF e o pagId da transação', async () => {
+    const { store } = await vendaComTefAprovado();
+
+    store.getState().confirmarEstornoTef('pag-1');
+
+    expect(detalhesDasRemocoes(store)).toEqual([
+      expect.objectContaining({
+        valor: TOTAL_PADRAO,
+        motivo: 'ESTORNO_TEF',
+        tefPagId: 'pay_exemplo_0001',
+      }),
+    ]);
   });
 
   // (b)

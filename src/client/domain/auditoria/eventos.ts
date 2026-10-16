@@ -145,9 +145,35 @@ export type EventoFormaPagamentoAplicada = EventoAuditoriaBase<
   { readonly formaPagamento: string; /** Centavos inteiros. */ readonly valor: number }
 >;
 
+/**
+ * Quem tirou a forma da venda: o botão Remover (`OPERADOR`), o estorno
+ * confirmado pelo TEF (`ESTORNO_TEF`) ou o "Limpar" (`LIMPAR`). Literal, e não
+ * frase, pelo mesmo motivo de `origem` em `DESCONTO_CAPA_APLICADO`: o `Log`
+ * vai ao ERP e quem o consulta filtra por um valor estável.
+ */
+export type MotivoRemocaoPagamento = 'OPERADOR' | 'ESTORNO_TEF' | 'LIMPAR';
+
+/**
+ * Forma de pagamento que saiu da venda (feature 018). Leva o suficiente para o
+ * ERP identificar **qual** forma foi — dois cartões de R$ 50,00 estornados já
+ * não viram duas linhas iguais — e, no TEF, conciliar o estorno com a
+ * transação da operadora.
+ */
 export type EventoFormaPagamentoRemovida = EventoAuditoriaBase<
   'FORMA_PAGAMENTO_REMOVIDA',
-  { readonly formaPagamento: string }
+  {
+    readonly formaPagamento: string;
+    /** Centavos inteiros: `valorRecebido ?? valorAplicado`, o que a forma valia na venda. */
+    readonly valor: number;
+    readonly motivo: MotivoRemocaoPagamento;
+    /**
+     * `payment_identifier` da SmartTEF (o `TEFPagId` do faturamento). Ausente
+     * quando não há transação TEF: campo vazio afirmaria uma que não houve.
+     */
+    readonly tefPagId?: string;
+    /** Identificador da cobrança PIX. Ausente no PIX pendente e nas demais formas. */
+    readonly pixGuid?: string;
+  }
 >;
 
 export type EventoValeDevolucaoUsado = EventoAuditoriaBase<
